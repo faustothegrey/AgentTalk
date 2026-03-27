@@ -51,7 +51,7 @@ The system can be built in two ways. While PTY-backed is more "pure," the cmux-h
 
 ### Option B: cmux-hosted (The "Remote Control" Model) - **V1 CHOICE**
 *   **How:** `cmux` spawns the shell/agent. Node polls `cmux` for output and sends input via CLI.
-*   **Pros:** Simple architecture, native visual fidelity, persistence (agents survive Node crashes).
+*   **Pros:** Simple architecture, native visual fidelity, agents can continue running if Node crashes.
 *   **Cons:** Polling latency, potential for data loss in high-volume streams.
 
 **Decision:** We are proceeding with **Option B (cmux-hosted)** for the Alpha/V1 to prioritize speed of integration and visual correctness.
@@ -98,7 +98,7 @@ The simplest signal is the environment, especially:
 - optionally `CMUX_WORKSPACE_ID`
 - optionally `CMUX_SURFACE_ID`
 
-If `CMUX_SOCKET_PATH` is absent, the system should degrade gracefully to terminal-only mode.
+If `CMUX_SOCKET_PATH` is absent, V1 should fail fast with a clear startup error. A terminal-only fallback remains a future option, not a supported V1 mode.
 
 ## Do not over-wrap the cmux CLI
 
@@ -186,7 +186,7 @@ This is stronger than "parse arbitrary terminal output and guess what is a messa
 
 ## Known unaddressed issue: orchestrator crash recovery
 
-If the Node orchestrator crashes, the agents may still be alive inside cmux. Reconnecting to those existing panes is a real problem, but it is deliberately left aside for now in favor of simplicity. For this exploration phase, if the orchestrator dies, the agents are considered lost and must be restarted.
+If the Node orchestrator crashes, the agents may still be alive inside cmux. That is process persistence, not system recovery. Reconnecting to those existing panes is a real problem, but it is deliberately left aside for now in favor of simplicity. For this exploration phase, if the orchestrator dies, the agents are operationally considered lost and must be restarted or manually recovered.
 
 ## The actual hard part
 

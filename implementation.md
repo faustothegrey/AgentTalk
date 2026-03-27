@@ -81,17 +81,26 @@ For asynchronous updates (like messages from other agents):
 
 ## 3. The Parsing Engine
 
-The orchestrator must handle the fact that terminal output arrives as chunks, not necessarily full lines, and may contain ANSI escape codes.
+The orchestrator does not receive a live PTY stream in V1. It receives polled terminal text via `readSurface(surfaceRef)`.
+
+That means the parser input is:
+
+- the newly observed suffix derived from the latest surface read
+- not raw `pty.onData` chunks
 
 ### Algorithm:
-1.  **Strip ANSI:** Use a library like `strip-ansi` or a regex to clean the incoming chunk.
-2.  **Buffer:** Append the cleaned chunk to `agent.lineBuffer`.
-3.  **Scan for Newlines:** If `\n` is found:
+1.  **Read surface:** Call `readSurface(surfaceRef)` for the agent.
+2.  **Derive unseen text:** Compare the latest surface text to `lastSeenText` or `lastSeenCursor` and compute the newly observed suffix.
+3.  **Strip ANSI:** Clean the unseen text with `strip-ansi` or an equivalent parser if the surface read includes terminal formatting sequences.
+4.  **Buffer:** Append the cleaned unseen text to `agent.lineBuffer`.
+5.  **Scan for Newlines:** If `\n` is found:
     - Extract the line.
     - Check for `[NodePTY]:` prefix.
     - If found, attempt JSON parse.
-    - If parsing fails, log a "protocol error" and notify the agent via `stdin`.
-4.  **Transcript:** Write the raw output to the transcript file to preserve terminal formatting for playback.
+    - If parsing fails, log a "protocol error" and notify the agent via `cmux send`.
+6.  **Transcript:** Write the newly observed raw text to the transcript file.
+
+The parser should never process the full surface snapshot directly more than once. All parsing should operate on the deduplicated suffix only.
 
 ## 4. cmux Integration Patterns
 
@@ -202,7 +211,7 @@ Best-effort for now: the orchestrator writes the `EVT` packet into the target ag
 
 -   **Agent Crash:** Orchestrator detects that the target shell or `agent-cli` process is no longer responsive. It marks the agent `terminated`, notifies the user in the `cmux` pane, and may relaunch it by sending a fresh command through the pane shell.
 -   **cmux Disconnect:** If `CMUX_SOCKET_PATH` becomes unreachable, the orchestrator loses control of the running agents. In V1, this is treated as a control-plane failure and requires manual recovery or orchestrator restart.
--   **Orchestrator Crash:** Agents may still be alive inside cmux. V1 does not attempt to reconstruct full state from existing panes; it restarts cleanly instead.
+-   **Orchestrator Crash:** Agents may still be alive inside cmux, but V1 does not attempt to reconstruct full state from existing panes. Process survival is possible; orchestrator recovery is not implemented.
 
 ## 8. Deferred Considerations (V2+)
 
