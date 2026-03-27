@@ -2,29 +2,45 @@
 
 This document specifies the technical implementation details for the Node orchestrator and its interaction with `node-pty` and `cmux`.
 
+## Chosen Direction
+
+For the first implementation, the simplest coherent model is:
+
+`Node orchestrator -> cmux pane/surface -> zsh -> agent-cli`
+
+This is the explicit choice for now.
+
+- Each agent instance lives inside a real cmux context.
+- The shell hierarchy is `cmux -> zsh -> agent-cli`.
+- The orchestrator uses the cmux CLI as the primary control surface.
+- `node-pty` is not the primary host for the agent process in V1.
+
+This choice is simpler than trying to split responsibility between a Node-owned PTY and a separate cmux UI layer. It matches the actual runtime model we want, and it avoids designing around a false distinction between "the real agent terminal" and "the cmux representation of that terminal".
+
+The tradeoff is that the first version should not promise PTY reattachment or low-level terminal ownership from Node. The orchestrator is a controller and router around cmux-hosted agents, not the terminal host itself.
+
 ## 1. Orchestration State (The Registry)
 
 The orchestrator maintains a singleton `Registry` to manage agent lifecycles.
 
 ```typescript
 interface AgentSurface {
-  paneId: string;        // cmux pane identifier
-  workspaceId: string;   // cmux workspace identifier
-  browserId?: string;    // optional associated browser surface
+  workspaceRef: string;        // e.g. workspace:2
+  paneRef: string;             // e.g. pane:4
+  surfaceRef: string;          // e.g. surface:6
+  browserSurfaceRef?: string;  // optional associated browser surface
 }
 
 class Agent {
   readonly id: string;
-  readonly pty: IPty;
   readonly surface: AgentSurface;
   status: 'initializing' | 'ready' | 'busy' | 'error' | 'terminated';
   
   private lineBuffer: string = '';
   private transcriptStream: WriteStream;
 
-  constructor(id: string, pty: IPty, surface: AgentSurface) {
+  constructor(id: string, surface: AgentSurface) {
     this.id = id;
-    this.pty = pty;
     this.surface = surface;
     this.transcriptStream = createWriteStream(`./transcripts/${id}.log`);
   }
@@ -35,9 +51,21 @@ class Agent {
 const registry = new Map<string, Agent>();
 ```
 
-## 2. Structured Tool-Call Protocol (V2)
+## 2. Simplest Protocol Choice
 
-To ensure reliability, the protocol uses a **Request/Response/Event** model with unique IDs.
+For V1, the simplest implementation choice is an **in-band structured control protocol** carried through the agent terminal stream.
+
+This is not the ideal long-term architecture, but it is the easiest path to a working system.
+
+- Agent emits machine-readable control lines with a strict prefix.
+- The orchestrator watches terminal output, extracts only those prefixed lines, and ignores normal terminal chatter.
+- The orchestrator delivers responses and events back into the agent terminal as similarly prefixed lines.
+
+This keeps the system buildable without inventing a separate side channel in the first iteration.
+
+The important constraint is that the prefix format must be treated as reserved protocol output, not normal prose.
+
+The protocol uses a **Request/Response/Event** model with unique IDs.
 
 ### 2.1 Request Format (Agent -> Orchestrator)
 The agent emits a single line to `stdout`:
@@ -51,9 +79,9 @@ The orchestrator writes back to the agent's `stdin`:
 For asynchronous updates (like messages from other agents):
 `[NodePTY]:EVT:{"type":"message_received","from":"agent-b","payload":"..."}`
 
-## 3. The Parsing Engine (The "Hard Part")
+## 3. The Parsing Engine
 
-The orchestrator must handle the fact that `pty.onData` provides "chunks," not necessarily full lines, and may contain ANSI escape codes.
+The orchestrator must handle the fact that terminal output arrives as chunks, not necessarily full lines, and may contain ANSI escape codes.
 
 ### Algorithm:
 1.  **Strip ANSI:** Use a library like `strip-ansi` or a regex to clean the incoming chunk.
@@ -63,36 +91,103 @@ The orchestrator must handle the fact that `pty.onData` provides "chunks," not n
     - Check for `[NodePTY]:` prefix.
     - If found, attempt JSON parse.
     - If parsing fails, log a "protocol error" and notify the agent via `stdin`.
-4.  **Transcript:** Write the *un-stripped* raw output to the transcript file to preserve terminal formatting for playback.
+4.  **Transcript:** Write the raw output to the transcript file to preserve terminal formatting for playback.
 
 ## 4. cmux Integration Patterns
 
 The orchestrator interacts with `cmux` primarily via its CLI.
 
-### 4.1 Provisioning Panes
-The actual cmux CLI uses `cmux new-split` and returns refs:
+### 4.1 Provisioning panes and launching agents
+The orchestrator should create a pane, capture the returned refs, and then start the agent inside that pane's shell context.
+
 ```bash
-# Split the current pane — returns e.g. "OK surface:6 workspace:2"
+# Split the current pane — returns e.g. "OK pane:4 surface:6 workspace:2"
 cmux new-split right
-cmux new-split down
+
+# Start the agent in the target pane through zsh
+cmux send --target pane:4 'zsh -lc "agent-cli"'$'\n'
 ```
 
 The orchestrator should parse these responses to capture the returned refs.
 
-### 4.2 PTY and cmux are separate layers
-`node-pty` spawns the agent process directly — it does not run inside a cmux pane. cmux is used alongside for UI and browser control, not as the agent's process host.
+### 4.2 Read/write model
+For the first version, the orchestrator should treat cmux as the terminal host.
 
-```typescript
-const ptyProcess = pty.spawn(shell, [], {
-  name: 'xterm-256color',
-  env: {
-    ...process.env,
-    AGENT_ID: id
-  }
-});
-```
+- writes happen through `cmux send`
+- reads happen through a single explicit surface-read adapter in the orchestrator
+- the registry maps logical agent IDs to cmux refs
 
-The orchestrator tracks the mapping between each agent's PTY and any associated cmux refs (pane, surface, browser) separately in the registry.
+This is intentionally simpler than trying to keep a separate Node-owned PTY attached to the same live agent session.
+
+The important implementation choice is to avoid multiple read paths. V1 should define one `readSurface(surfaceRef)` operation in the orchestrator and route all terminal observation through it.
+
+That adapter should:
+
+- call the chosen cmux capture primitive for the agent terminal surface
+- return plain text for parser consumption
+- preserve the raw response separately for transcript or debugging when useful
+- hide cmux-specific command details from the rest of the routing code
+
+The first version should assume **polling**, not streaming.
+
+- writes are immediate via `cmux send`
+- reads are periodic via `readSurface(surfaceRef)`
+- the parser compares newly observed text against the prior cursor or offset for that agent
+
+This is the simplest coherent control loop because it does not depend on cmux exposing a live event stream for terminal output.
+
+### 4.2.1 Cursoring and duplicate suppression
+Polling only works if the orchestrator has a stable way to avoid reprocessing old output.
+
+For each agent, the registry should track:
+
+- `lastSeenText`, if the capture API only gives whole-surface snapshots
+- or `lastSeenCursor`, if the capture API exposes a stable offset, sequence, or timestamp
+
+Preferred rule:
+
+- if cmux exposes incremental reads, use them
+- otherwise, read the full visible terminal text and compute the unseen suffix
+
+V1 should favor correctness over efficiency. Full-surface polling is acceptable if that is the only reliable read primitive.
+
+### 4.2.2 Polling loop
+The orchestrator loop for each active agent should be:
+
+1. read current terminal text from `surfaceRef`
+2. compute newly appended text since the last successful read
+3. append new text to the transcript
+4. feed only the new text into the line buffer/parser
+5. update the agent cursor state
+
+If a poll fails, the orchestrator should:
+
+- mark the read as failed
+- keep the previous cursor state
+- retry on the next interval
+
+It should not advance cursor state on failed or partial reads.
+
+### 4.2.3 Known limitation
+This design assumes the agent protocol lines remain visible to the chosen surface-read primitive long enough to be observed.
+
+That means V1 is best suited to:
+
+- moderate terminal output volume
+- explicit machine-readable control lines
+- low fan-out multi-agent experiments
+
+If high-volume terminal traffic causes protocol lines to scroll out of the readable surface before polling sees them, the next step is not "more parser logic"; the next step is introducing a real side channel or a direct PTY-owned runtime.
+
+### 4.3 Browser coordination
+Browser actions stay in the cmux layer.
+
+- open browser surface
+- navigate browser surface
+- inspect elements
+- perform clicks/fills/eval
+
+The orchestrator should keep browser refs separate from the agent terminal surface ref.
 
 ## 5. Multi-Agent Routing Logic
 
@@ -101,15 +196,17 @@ Agents can query the registry via a tool call:
 `[NodePTY]:REQ:{"id":"q1","call":"list_agents","args":{}}`
 
 ### 5.2 Delivery
-Best-effort for now: the orchestrator writes the `EVT` packet to the target agent's `stdin`. No acknowledgment or retry logic in this phase.
+Best-effort for now: the orchestrator writes the `EVT` packet into the target agent's cmux-hosted terminal session. No acknowledgment or retry logic in this phase.
 
 ## 6. Failure & Recovery
 
--   **Agent Crash:** Orchestrator detects `pty.onExit`. It marks the agent `terminated`, notifies the user in the `cmux` pane, and attempts a restart if the `RestartPolicy` allows.
--   **cmux Disconnect:** If `CMUX_SOCKET_PATH` becomes unreachable, the orchestrator should keep the PTYs alive but log that UI sync is suspended.
+-   **Agent Crash:** Orchestrator detects that the target shell or `agent-cli` process is no longer responsive. It marks the agent `terminated`, notifies the user in the `cmux` pane, and may relaunch it by sending a fresh command through the pane shell.
+-   **cmux Disconnect:** If `CMUX_SOCKET_PATH` becomes unreachable, the orchestrator loses control of the running agents. In V1, this is treated as a control-plane failure and requires manual recovery or orchestrator restart.
+-   **Orchestrator Crash:** Agents may still be alive inside cmux. V1 does not attempt to reconstruct full state from existing panes; it restarts cleanly instead.
 
 ## 7. Refined Development Path
 
-1.  **Alpha:** `node-pty` + `strip-ansi` + `line-buffer`. Verify tool calls from a simple bash script.
-2.  **Beta:** `cmux` CLI integration. Automate workspace/pane creation.
-3.  **V1:** Multi-agent `EVT` routing and `Agent` class implementation.
+1.  **Alpha:** cmux pane creation + `cmux send` launch path + line-buffer parser. Verify tool calls from a simple shell script or mock agent.
+2.  **Beta:** registry implementation with explicit `workspaceRef` / `paneRef` / `surfaceRef` tracking.
+3.  **V1:** multi-agent `EVT` routing across cmux-hosted agent sessions.
+4.  **Later:** re-evaluate whether direct `node-pty` ownership adds enough value to justify the extra complexity.
