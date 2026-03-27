@@ -106,16 +106,173 @@ interface CreatePaneResult {
 }
 
 interface CmuxAdapter {
-  createPane(splitDirection: 'right' | 'down'): Promise<CreatePaneResult>;
-  sendKeys(paneRef: string, text: string): Promise<void>;
+  createPane(splitDirection: 'right' | 'down', anchorSurfaceRef?: string): Promise<CreatePaneResult>;
+  sendText(surfaceRef: string, text: string): Promise<void>;
   readSurface(surfaceRef: string): Promise<SurfaceReadResult>;
-  notify(message: string): Promise<void>;
+  notify(title: string, body?: string, surfaceRef?: string): Promise<void>;
 }
 ```
 
 This is the required internal interface even if the underlying cmux CLI changes.
 
 The implementation may shell out to concrete cmux commands, but no code outside the adapter should know those command details.
+
+### Concrete V1 command mapping
+
+The V1 adapter should use these exact cmux commands:
+
+- `createPane(...)`
+  Uses `cmux new-split <left|right|up|down> [--workspace ...] [--surface ...]`
+- `sendText(surfaceRef, text)`
+  Uses `cmux send --surface <surfaceRef> <text>`
+- `readSurface(surfaceRef)`
+  Uses `cmux read-screen --surface <surfaceRef> --scrollback --lines <n>`
+- `notify(title, body, surfaceRef?)`
+  Uses `cmux notify --title <title> [--body <body>] [--surface <surfaceRef>]`
+
+Compatibility note:
+
+- `capture-pane` exists as a tmux-compatibility alias, but V1 should standardize on `read-screen`
+- `send-panel` and `send-key-panel` exist, but V1 should standardize on `send --surface`
+
+V1 should prefer explicit `--surface` / `--workspace` arguments over implicit environment defaults so the orchestrator remains deterministic.
+
+### 1.1.1 Adapter shell implementation
+
+The adapter should shell out with `execFile`, not `exec`, so argument quoting stays predictable.
+
+Recommended helper:
+
+```typescript
+async function runCmux(args: string[]): Promise<string> {
+  const { stdout } = await execFileAsync("cmux", args, {
+    env: process.env,
+    maxBuffer: 1024 * 1024,
+  });
+
+  return stdout.trimEnd();
+}
+```
+
+V1 rule:
+
+- all adapter methods call `runCmux`
+- non-zero exit status becomes an adapter error
+- adapter errors are surfaced to the orchestrator as operational failures, not silently retried inside the adapter
+
+### 1.1.2 `createPane` implementation
+
+Implementation shape:
+
+```typescript
+async function createPane(
+  splitDirection: "right" | "down",
+  anchorSurfaceRef?: string,
+): Promise<CreatePaneResult> {
+  const args = ["new-split", splitDirection];
+
+  if (anchorSurfaceRef) {
+    args.push("--surface", anchorSurfaceRef);
+  }
+
+  const output = await runCmux(args);
+  return parseCreatePaneResult(output);
+}
+```
+
+`parseCreatePaneResult(output)` must extract:
+
+- `workspace:<n>`
+- `pane:<n>`
+- `surface:<n>`
+
+from the command output.
+
+If any of the three refs is missing, `createPane` must fail.
+
+### 1.1.3 `sendText` implementation
+
+Implementation shape:
+
+```typescript
+async function sendText(surfaceRef: string, text: string): Promise<void> {
+  await runCmux(["send", "--surface", surfaceRef, text]);
+}
+```
+
+Rules:
+
+- `text` may contain embedded newlines
+- protocol packets must always be sent with a trailing `\n`
+- the caller, not the adapter, is responsible for appending the trailing newline required by the agent protocol
+
+V1 standard:
+
+- target terminal writes by `surfaceRef`
+- do not target by pane when writing ordinary protocol traffic
+
+### 1.1.4 `readSurface` implementation
+
+Implementation shape:
+
+```typescript
+async function readSurface(surfaceRef: string): Promise<SurfaceReadResult> {
+  const lines = "400";
+  const raw = await runCmux([
+    "read-screen",
+    "--surface",
+    surfaceRef,
+    "--scrollback",
+    "--lines",
+    lines,
+  ]);
+
+  return {
+    text: raw,
+    raw,
+  };
+}
+```
+
+V1 read policy:
+
+- use `read-screen`, not `capture-pane`
+- always include `--scrollback`
+- default to `--lines 400`
+- return `cursor: undefined` because the current CLI help does not advertise a terminal cursor/offset for `read-screen`
+
+That means V1 deduplication is text-based, not cursor-based.
+
+### 1.1.5 `notify` implementation
+
+Implementation shape:
+
+```typescript
+async function notify(
+  title: string,
+  body?: string,
+  surfaceRef?: string,
+): Promise<void> {
+  const args = ["notify", "--title", title];
+
+  if (body) {
+    args.push("--body", body);
+  }
+
+  if (surfaceRef) {
+    args.push("--surface", surfaceRef);
+  }
+
+  await runCmux(args);
+}
+```
+
+Use `notify` for:
+
+- readiness timeout
+- consecutive read failures
+- protocol parse errors
+- agent termination events
 
 ## 1.2 Agent Lifecycle State Machine
 
