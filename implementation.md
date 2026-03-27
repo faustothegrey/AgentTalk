@@ -38,6 +38,7 @@ V1 does not include:
 - guaranteed delivery
 - streaming terminal reads
 - hidden or out-of-band protocol channels
+- protocol dual-write to files, FIFOs, or side logs
 - terminal-only fallback without cmux
 
 If a behavior is not described here, it should be treated as out of scope for V1 rather than inferred ad hoc during implementation.
@@ -418,6 +419,8 @@ The exact flag may differ in real code, but V1 requires one explicit launch mode
 - the agent emits `[NodePTY]:READY:` when initialized
 - the agent can receive injected `[NodePTY]:RES:` and `[NodePTY]:EVT:` lines
 - startup banners do not suppress or delay readiness indefinitely
+- terminal output is line-oriented and append-like
+- no spinners, progress bars, carriage-return redraws, or full-screen TUI behavior
 
 ### 4.2 Read/write model
 For the first version, the orchestrator should treat cmux as the terminal host.
@@ -501,6 +504,14 @@ That means V1 is best suited to:
 
 If high-volume terminal traffic causes protocol lines to scroll out of the readable surface before polling sees them, the next step is not "more parser logic"; the next step is introducing a real side channel or a direct PTY-owned runtime.
 
+V1 mitigation:
+
+- the launched `agent-cli --nodepty-v1` must intentionally avoid screen-rewrite behavior
+- output should resemble an append-only line log as closely as possible
+- protocol packets must appear on their own newline-terminated lines
+
+V1 explicitly does **not** add protocol dual-write or a side log yet. The goal is to validate the pure cmux-hosted polling model first, with a constrained agent output mode.
+
 ### 4.3 Browser coordination
 Browser actions stay in the cmux layer.
 
@@ -582,6 +593,10 @@ If `cmux` output is large and terminal buffers wrap, simple "new text" logic may
 Since the protocol is **in-band** (printed to the terminal), an agent could potentially "spoof" a response from the orchestrator.
 *   **Strategy:** For V1, the orchestrator is the only entity parsing `REQ` from the agent. In V2, we may use a non-printable character sequence or a hidden side-channel.
 
-### 9.3 Persistence Reattachment
+### 9.3 Protocol Dual-Write
+If polling proves too fragile even with line-oriented agent output, a future version may mirror protocol packets to a dedicated file, FIFO, or side log.
+*   **Strategy:** Keep terminal output for human inspection, but treat the mirrored protocol stream as the source of truth for the orchestrator.
+
+### 9.4 Persistence Reattachment
 If the Node process restarts, it does not currently attempt to "claim" existing `cmux` panes.
 *   **Strategy:** Implement a `cmux` surface discovery loop to re-associate running panes with Agent IDs.

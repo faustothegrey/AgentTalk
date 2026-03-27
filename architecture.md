@@ -210,6 +210,15 @@ This is the V1 choice because:
 
 The risk is that protocol lines could scroll out of the readable surface before polling observes them. V1 accepts this limitation and is scoped to moderate-volume, low-fan-out experiments. If this becomes a real problem, the next step is a true side channel or a move to the PTY-backed model (Option A).
 
+To make the polling model viable, V1 also constrains the agent runtime:
+
+- `agent-cli --nodepty-v1` must behave as a line-oriented terminal program
+- no spinners, progress bars, or carriage-return redraws
+- no curses/TUI-style screen rewriting
+- protocol packets must be emitted as full newline-terminated lines
+
+This does not remove all risk, but it makes `read-screen` behave much more like a log poller and much less like a snapshot of a constantly mutating screen.
+
 ## Concrete control flow
 
 An implementation-ready example should look like this:
