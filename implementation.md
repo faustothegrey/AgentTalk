@@ -19,6 +19,29 @@ This choice is simpler than trying to split responsibility between a Node-owned 
 
 The tradeoff is that the first version should not promise PTY reattachment or low-level terminal ownership from Node. The orchestrator is a controller and router around cmux-hosted agents, not the terminal host itself.
 
+## V1 Scope Contract
+
+This document is the implementation contract for V1.
+
+V1 includes:
+
+- cmux-hosted agent sessions
+- one Node orchestrator process
+- polling-based terminal observation
+- in-band `[NodePTY]:` control packets
+- best-effort multi-agent routing
+- transcript capture
+
+V1 does not include:
+
+- orchestrator crash reattachment
+- guaranteed delivery
+- streaming terminal reads
+- hidden or out-of-band protocol channels
+- terminal-only fallback without cmux
+
+If a behavior is not described here, it should be treated as out of scope for V1 rather than inferred ad hoc during implementation.
+
 ## 1. Orchestration State (The Registry)
 
 The orchestrator maintains a singleton `Registry` to manage agent lifecycles.
@@ -34,7 +57,7 @@ interface AgentSurface {
 class Agent {
   readonly id: string;
   readonly surface: AgentSurface;
-  status: 'initializing' | 'ready' | 'busy' | 'error' | 'terminated';
+  status: 'creating' | 'starting' | 'ready' | 'busy' | 'error' | 'terminated';
   
   private lineBuffer: string = '';
   private transcriptStream: WriteStream;
@@ -50,6 +73,80 @@ class Agent {
 
 const registry = new Map<string, Agent>();
 ```
+
+The registry entry for each agent should also track:
+
+- `lastSeenText?: string`
+- `lastSeenCursor?: string`
+- `lastPollAt?: number`
+- `lastProgressAt?: number`
+- `launchCommand: string`
+- `pendingRequests: Map<string, PendingRequest>`
+
+V1 rule:
+
+- use `lastSeenCursor` if the cmux adapter can provide a stable incremental cursor
+- otherwise use `lastSeenText`
+
+## 1.1 cmux Adapter Contract
+
+The rest of the orchestrator should not call raw cmux commands directly. It should call a single adapter with the following contract:
+
+```typescript
+interface SurfaceReadResult {
+  text: string;
+  raw: string;
+  cursor?: string;
+}
+
+interface CreatePaneResult {
+  workspaceRef: string;
+  paneRef: string;
+  surfaceRef: string;
+}
+
+interface CmuxAdapter {
+  createPane(splitDirection: 'right' | 'down'): Promise<CreatePaneResult>;
+  sendKeys(paneRef: string, text: string): Promise<void>;
+  readSurface(surfaceRef: string): Promise<SurfaceReadResult>;
+  notify(message: string): Promise<void>;
+}
+```
+
+This is the required internal interface even if the underlying cmux CLI changes.
+
+The implementation may shell out to concrete cmux commands, but no code outside the adapter should know those command details.
+
+## 1.2 Agent Lifecycle State Machine
+
+Each agent must follow this state machine:
+
+1. `creating`
+   The orchestrator is creating the pane and capturing refs.
+2. `starting`
+   The pane exists and the launch command has been sent, but readiness has not been observed yet.
+3. `ready`
+   The agent has emitted a valid readiness packet.
+4. `busy`
+   The agent has at least one in-flight request owned by the orchestrator.
+5. `error`
+   The agent session exists, but the orchestrator has encountered a protocol or liveness failure.
+6. `terminated`
+   The agent is no longer considered controllable.
+
+Allowed transitions:
+
+- `creating -> starting`
+- `starting -> ready`
+- `starting -> error`
+- `ready -> busy`
+- `busy -> ready`
+- `ready -> error`
+- `busy -> error`
+- `error -> starting`
+- `creating | starting | ready | busy | error -> terminated`
+
+V1 must not invent extra states during implementation.
 
 ## 2. Simplest Protocol Choice
 
@@ -67,6 +164,8 @@ The important constraint is that the prefix format must be treated as reserved p
 
 The protocol uses a **Request/Response/Event** model with unique IDs.
 
+V1 reserves the prefix `[NodePTY]:`. Any line that begins with this prefix is protocol traffic, not user-visible terminal content.
+
 ### 2.1 Request Format (Agent -> Orchestrator)
 The agent emits a single line to `stdout`:
 `[NodePTY]:REQ:{"id":"uuid-123","call":"tool_name","args":{...}}`
@@ -78,6 +177,26 @@ The orchestrator writes back to the agent's `stdin`:
 ### 2.3 Event/Message Format (Orchestrator -> Agent)
 For asynchronous updates (like messages from other agents):
 `[NodePTY]:EVT:{"type":"message_received","from":"agent-b","payload":"..."}`
+
+### 2.4 Ready Format (Agent -> Orchestrator)
+An agent becomes `ready` only after emitting:
+`[NodePTY]:READY:{"agentId":"agent-a","session":"uuid-123"}`
+
+This is the only readiness signal V1 recognizes.
+
+### 2.5 Delivery Convention
+Responses and events are injected into the target pane as full protocol lines followed by a newline.
+
+Example:
+`cmux send --target pane:4 '[NodePTY]:EVT:{"type":"message_received","from":"agent-b","payload":"..."}'$'\n'`
+
+The agent runtime is responsible for consuming these lines as control input instead of treating them as ordinary shell text.
+
+V1 assumption:
+
+- the launched `agent-cli` is protocol-aware
+- the shell exists only to start the agent process
+- once the agent is running, protocol traffic is intended for the agent, not for interactive human shell use
 
 ## 3. The Parsing Engine
 
@@ -102,6 +221,14 @@ That means the parser input is:
 
 The parser should never process the full surface snapshot directly more than once. All parsing should operate on the deduplicated suffix only.
 
+### Parsing rules
+
+- ignore all lines that do not begin with `[NodePTY]:`
+- treat malformed JSON as a protocol error on that agent
+- process protocol lines in the order they appear in the unseen suffix
+- never parse the same suffix twice
+- never update cursor state before transcript write and parser completion both succeed
+
 ## 4. cmux Integration Patterns
 
 The orchestrator interacts with `cmux` primarily via its CLI.
@@ -118,6 +245,22 @@ cmux send --target pane:4 'zsh -lc "agent-cli"'$'\n'
 ```
 
 The orchestrator should parse these responses to capture the returned refs.
+
+### 4.1.1 Launch contract
+
+The orchestrator launch command must start the agent in non-interactive, protocol-aware mode.
+
+Required launch shape:
+
+```bash
+cmux send --target pane:4 'zsh -lc "agent-cli --nodepty-v1"'$'\n'
+```
+
+The exact flag may differ in real code, but V1 requires one explicit launch mode that guarantees:
+
+- the agent emits `[NodePTY]:READY:` when initialized
+- the agent can receive injected `[NodePTY]:RES:` and `[NodePTY]:EVT:` lines
+- startup banners do not suppress or delay readiness indefinitely
 
 ### 4.2 Read/write model
 For the first version, the orchestrator should treat cmux as the terminal host.
@@ -144,6 +287,17 @@ The first version should assume **polling**, not streaming.
 - the parser compares newly observed text against the prior cursor or offset for that agent
 
 This is the simplest coherent control loop because it does not depend on cmux exposing a live event stream for terminal output.
+
+### 4.2.0 Polling defaults
+
+V1 polling defaults are:
+
+- poll interval: `250ms`
+- startup readiness timeout: `15s`
+- idle liveness timeout: `60s` without any newly observed text
+- busy liveness timeout: `120s` without any newly observed text
+
+These values should be configuration defaults, not hard-coded literals in business logic.
 
 ### 4.2.1 Cursoring and duplicate suppression
 Polling only works if the orchestrator has a stable way to avoid reprocessing old output.
@@ -177,6 +331,8 @@ If a poll fails, the orchestrator should:
 
 It should not advance cursor state on failed or partial reads.
 
+If three consecutive polls fail for the same agent, transition the agent to `error`.
+
 ### 4.2.3 Known limitation
 This design assumes the agent protocol lines remain visible to the chosen surface-read primitive long enough to be observed.
 
@@ -207,13 +363,57 @@ Agents can query the registry via a tool call:
 ### 5.2 Delivery
 Best-effort for now: the orchestrator writes the `EVT` packet into the target agent's cmux-hosted terminal session. No acknowledgment or retry logic in this phase.
 
+### 5.3 Routing rules
+
+V1 routing behavior is:
+
+- reject sends to unknown agents immediately
+- reject sends to agents in `error` or `terminated`
+- allow sends to `ready` and `busy` agents
+- serialize outbound writes per target agent
+- preserve message order per target agent
+
+Cross-agent global ordering is not required in V1.
+
 ## 6. Failure & Recovery
 
 -   **Agent Crash:** Orchestrator detects that the target shell or `agent-cli` process is no longer responsive. It marks the agent `terminated`, notifies the user in the `cmux` pane, and may relaunch it by sending a fresh command through the pane shell.
 -   **cmux Disconnect:** If `CMUX_SOCKET_PATH` becomes unreachable, the orchestrator loses control of the running agents. In V1, this is treated as a control-plane failure and requires manual recovery or orchestrator restart.
 -   **Orchestrator Crash:** Agents may still be alive inside cmux, but V1 does not attempt to reconstruct full state from existing panes. Process survival is possible; orchestrator recovery is not implemented.
 
-## 8. Deferred Considerations (V2+)
+## 7. Startup and Readiness Flow
+
+The startup sequence for one agent is:
+
+1. create pane via the cmux adapter
+2. register agent in `creating`
+3. send launch command
+4. transition to `starting`
+5. begin polling `surfaceRef`
+6. wait for `[NodePTY]:READY:` packet
+7. transition to `ready`
+
+If the readiness timeout expires before a valid `READY` packet is observed:
+
+- transition the agent to `error`
+- emit an orchestrator notification
+- do not silently retry unless an explicit restart policy says to do so
+
+## 8. Implementation Checklist
+
+V1 is only considered complete when all of the following exist:
+
+- a `CmuxAdapter` implementation
+- a registry with explicit state transitions
+- per-agent poll loops
+- suffix-based deduplication
+- transcript writing
+- `READY`, `REQ`, `RES`, and `EVT` packet handling
+- ordered per-agent outbound routing
+- readiness and liveness timeouts
+- explicit error transitions and notifications
+
+## 9. Deferred Considerations (V2+)
 
 These technical details are recognized but deferred to avoid V1 scope creep.
 
