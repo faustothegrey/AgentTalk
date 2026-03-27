@@ -204,9 +204,18 @@ Best-effort for now: the orchestrator writes the `EVT` packet into the target ag
 -   **cmux Disconnect:** If `CMUX_SOCKET_PATH` becomes unreachable, the orchestrator loses control of the running agents. In V1, this is treated as a control-plane failure and requires manual recovery or orchestrator restart.
 -   **Orchestrator Crash:** Agents may still be alive inside cmux. V1 does not attempt to reconstruct full state from existing panes; it restarts cleanly instead.
 
-## 7. Refined Development Path
+## 8. Deferred Considerations (V2+)
 
-1.  **Alpha:** cmux pane creation + `cmux send` launch path + line-buffer parser. Verify tool calls from a simple shell script or mock agent.
-2.  **Beta:** registry implementation with explicit `workspaceRef` / `paneRef` / `surfaceRef` tracking.
-3.  **V1:** multi-agent `EVT` routing across cmux-hosted agent sessions.
-4.  **Later:** re-evaluate whether direct `node-pty` ownership adds enough value to justify the extra complexity.
+These technical details are recognized but deferred to avoid V1 scope creep.
+
+### 8.1 Advanced Deduplication
+If `cmux` output is large and terminal buffers wrap, simple "new text" logic may fail. 
+*   **Strategy:** Track a unique hash of the last 10 lines of seen text or use a stable `cmux` cursor sequence if available.
+
+### 8.2 Protocol Security
+Since the protocol is **in-band** (printed to the terminal), an agent could potentially "spoof" a response from the orchestrator.
+*   **Strategy:** For V1, the orchestrator is the only entity parsing `REQ` from the agent. In V2, we may use a non-printable character sequence or a hidden side-channel.
+
+### 8.3 Persistence Reattachment
+If the Node process restarts, it does not currently attempt to "claim" existing `cmux` panes.
+*   **Strategy:** Implement a `cmux` surface discovery loop to re-associate running panes with Agent IDs.
