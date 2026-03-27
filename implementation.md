@@ -345,7 +345,7 @@ This is the only readiness signal V1 recognizes.
 Responses and events are injected into the target pane as full protocol lines followed by a newline.
 
 Example:
-`cmux send --target pane:4 '[NodePTY]:EVT:{"type":"message_received","from":"agent-b","payload":"..."}'$'\n'`
+`cmux send --surface surface:6 '[NodePTY]:EVT:{"type":"message_received","from":"agent-b","payload":"..."}'$'\n'`
 
 The agent runtime is responsible for consuming these lines as control input instead of treating them as ordinary shell text.
 
@@ -398,7 +398,7 @@ The orchestrator should create a pane, capture the returned refs, and then start
 cmux new-split right
 
 # Start the agent in the target pane through zsh
-cmux send --target pane:4 'zsh -lc "agent-cli"'$'\n'
+cmux send --surface surface:6 'zsh -lc "agent-cli"'$'\n'
 ```
 
 The orchestrator should parse these responses to capture the returned refs.
@@ -410,7 +410,7 @@ The orchestrator launch command must start the agent in non-interactive, protoco
 Required launch shape:
 
 ```bash
-cmux send --target pane:4 'zsh -lc "agent-cli --nodepty-v1"'$'\n'
+cmux send --surface surface:6 'zsh -lc "agent-cli --nodepty-v1"'$'\n'
 ```
 
 The exact flag may differ in real code, but V1 requires one explicit launch mode that guarantees:
@@ -574,14 +574,14 @@ V1 is only considered complete when all of the following exist:
 
 These technical details are recognized but deferred to avoid V1 scope creep.
 
-### 8.1 Advanced Deduplication
+### 9.1 Advanced Deduplication
 If `cmux` output is large and terminal buffers wrap, simple "new text" logic may fail. 
 *   **Strategy:** Track a unique hash of the last 10 lines of seen text or use a stable `cmux` cursor sequence if available.
 
-### 8.2 Protocol Security
+### 9.2 Protocol Security
 Since the protocol is **in-band** (printed to the terminal), an agent could potentially "spoof" a response from the orchestrator.
 *   **Strategy:** For V1, the orchestrator is the only entity parsing `REQ` from the agent. In V2, we may use a non-printable character sequence or a hidden side-channel.
 
-### 8.3 Persistence Reattachment
+### 9.3 Persistence Reattachment
 If the Node process restarts, it does not currently attempt to "claim" existing `cmux` panes.
 *   **Strategy:** Implement a `cmux` surface discovery loop to re-associate running panes with Agent IDs.
