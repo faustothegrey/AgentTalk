@@ -159,7 +159,7 @@ export function startServer(registry: Registry, adapter: CmuxAdapter, port: numb
           }
 
           case 'start_pair_chat': {
-            const { agentAId, agentBId } = message;
+            const { agentAId, agentBId, maxReplies: clientMaxReplies } = message;
             if (typeof agentAId !== 'string' || typeof agentBId !== 'string' || agentAId === agentBId) {
               console.warn('[Server] Invalid start_pair_chat payload:', message);
               break;
@@ -167,7 +167,7 @@ export function startServer(registry: Registry, adapter: CmuxAdapter, port: numb
 
             try {
               const topic = 'Discuss the current NodePTY project and propose concrete next-step implementation ideas or simplifications: architecture quality, risks, and the most useful changes to make next.';
-              const maxReplies = 5;
+              const maxReplies = typeof clientMaxReplies === 'number' ? clientMaxReplies : 5;
               const scenario = await registry.startScenario(agentAId, agentBId, topic, maxReplies);
 
               ws.send(JSON.stringify({

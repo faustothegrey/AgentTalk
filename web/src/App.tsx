@@ -57,6 +57,7 @@ function App() {
   const [provider, setProvider] = useState<Provider>('gemini');
   const [conversationAgentA, setConversationAgentA] = useState<string>('');
   const [conversationAgentB, setConversationAgentB] = useState<string>('');
+  const [maxReplies, setMaxReplies] = useState<number>(5);
   const messageInputRef = useRef<HTMLInputElement>(null);
 
   const selectedAgent = agents.find(a => a.id === selectedAgentId);
@@ -200,6 +201,7 @@ function App() {
       type: 'start_pair_chat',
       agentAId: conversationAgentA,
       agentBId: conversationAgentB,
+      maxReplies: maxReplies,
     }));
   };
 
@@ -348,6 +350,25 @@ function App() {
                   </option>
                 ))}
               </select>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                <span style={{ fontSize: '10px', color: '#666', textTransform: 'uppercase' }}>Max replies per agent</span>
+                <input
+                  type="number"
+                  min={1}
+                  max={20}
+                  value={maxReplies}
+                  onChange={(e) => setMaxReplies(parseInt(e.target.value) || 1)}
+                  style={{
+                    backgroundColor: '#1e1e1e',
+                    color: '#ddd',
+                    border: '1px solid #3b3b3b',
+                    borderRadius: '6px',
+                    padding: '6px 10px',
+                    fontSize: '13px',
+                    outline: 'none',
+                  }}
+                />
+              </div>
               <button
                 onClick={startTwoAgentConversation}
                 disabled={!ws || ws.readyState !== WebSocket.OPEN || !conversationAgentA || !conversationAgentB || conversationAgentA === conversationAgentB}
