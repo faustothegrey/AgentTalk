@@ -20,6 +20,7 @@ export class Agent {
   lineBuffer: string = '';
   lastSeenText: string = '';
   lastSeenClean: string = '';
+  pendingOutboundProtocolEchoes: string[] = [];
   lastPollAt?: number;
   lastProgressAt?: number;
   launchCommand?: string;

@@ -62,6 +62,7 @@ export class Registry extends EventEmitter {
     agent.lineBuffer = '';
     agent.lastSeenText = '';
     agent.lastSeenClean = '';
+    agent.pendingOutboundProtocolEchoes = [];
     this.consecutiveFailures.set(id, 0);
 
     try {
@@ -130,16 +131,16 @@ export class Registry extends EventEmitter {
       }
 
       const newText = this.deduplicate(agent, result.text);
+      const visibleText = this.suppressOutboundProtocolEchoes(agent, newText);
 
-      if (newText) {
-        console.log(`[Registry] New text from agent ${id} (${newText.length} chars, status: ${agent.status}): "${newText.slice(0, 200).replace(/\n/g, '\\n')}"`);
+      if (visibleText) {
+        console.log(`[Registry] New text from agent ${id} (${visibleText.length} chars, status: ${agent.status}): "${visibleText.slice(0, 200).replace(/\n/g, '\\n')}"`);
         agent.lastProgressAt = Date.now();
-        // newText is already ANSI-stripped (dedup now compares clean text)
-        agent.appendToTranscript(newText);
-        await this.processNewText(agent, newText);
+        agent.appendToTranscript(visibleText);
+        await this.processNewText(agent, visibleText);
 
         // Filter protocol lines for the UI display
-        const lines = newText.split(/(\r?\n)/);
+        const lines = visibleText.split(/(\r?\n)/);
         const filteredLines = lines.filter(line => !line.includes('[NodePTY]:'));
         // Convert bare \n to \r\n for xterm.js (it needs \r to move cursor to column 0)
         const uiText = filteredLines.join('').replace(/\r?\n/g, '\r\n');
@@ -198,6 +199,36 @@ export class Registry extends EventEmitter {
     agent.lastSeenText = newText;
     agent.lastSeenClean = newClean;
     return '';
+  }
+
+  /**
+   * Cmux writes injected protocol lines back into the terminal surface.
+   * Suppress those exact echoes so they don't get parsed as if they came
+   * from the agent and don't pollute the UI.
+   */
+  private suppressOutboundProtocolEchoes(agent: Agent, newText: string): string {
+    if (!newText || agent.pendingOutboundProtocolEchoes.length === 0) {
+      return newText;
+    }
+
+    let remaining = newText;
+
+    while (agent.pendingOutboundProtocolEchoes.length > 0) {
+      const nextEcho = agent.pendingOutboundProtocolEchoes[0];
+      if (nextEcho === undefined) {
+        break;
+      }
+
+      if (!remaining.startsWith(nextEcho)) {
+        break;
+      }
+
+      console.log(`[Registry] Suppressed echoed outbound protocol for ${agent.id}: "${nextEcho.replace(/\n/g, '\\n')}"`);
+      remaining = remaining.slice(nextEcho.length);
+      agent.pendingOutboundProtocolEchoes.shift();
+    }
+
+    return remaining;
   }
 
   /**
@@ -350,6 +381,7 @@ export class Registry extends EventEmitter {
 
     // Special target: "user" routes back to the web UI
     if (to === 'user') {
+      this.setAgentBusyState(agent, false);
       this.emit('user_message', { from: agent.id, payload });
       await this.sendProtocol(agent.id, 'RES', {
         id: reqId,
@@ -397,6 +429,10 @@ export class Registry extends EventEmitter {
 
   private async handleEvent(agent: Agent, payload: any): Promise<void> {
     console.log(`[Registry] EVT from ${agent.id}:`, payload);
+
+    if (payload?.type === 'busy_state' && typeof payload.busy === 'boolean') {
+      this.setAgentBusyState(agent, payload.busy);
+    }
   }
 
   /**
@@ -407,9 +443,21 @@ export class Registry extends EventEmitter {
     const agent = this.getAgent(id);
     const jsonStr = JSON.stringify(payload);
     const line = `[NodePTY]:${type}:${jsonStr}\n`;
+    agent.pendingOutboundProtocolEchoes.push(line);
 
     console.log(`[Registry] Sending ${type} to agent ${id}: ${jsonStr}`);
     await this.adapter.sendText(agent.surface.surfaceRef, line);
+  }
+
+  private setAgentBusyState(agent: Agent, busy: boolean): void {
+    if (busy && agent.status === 'ready') {
+      this.setAgentStatus(agent, 'busy');
+      return;
+    }
+
+    if (!busy && agent.status === 'busy') {
+      this.setAgentStatus(agent, 'ready');
+    }
   }
 
   private stopPolling(id: string): void {

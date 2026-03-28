@@ -458,6 +458,80 @@ describe('Registry', () => {
     );
   });
 
+  it('should suppress echoed outbound protocol lines from agent output processing', async () => {
+    await registry.createAgent('agent-1', 'right');
+    await registry.startAgent('agent-1', 'agent-cli');
+
+    vi.mocked(adapter.readSurface).mockResolvedValueOnce({
+      text: '[NodePTY]:READY:{"session":"s1"}\n',
+      raw: '[NodePTY]:READY:{"session":"s1"}\n',
+    });
+    await vi.advanceTimersByTimeAsync(100);
+
+    vi.mocked(adapter.sendText).mockClear();
+    await registry.sendProtocol('agent-1', 'EVT', {
+      type: 'message_received',
+      from: 'user',
+      payload: 'hello',
+    });
+
+    const outputListener = vi.fn();
+    registry.on('output', outputListener);
+
+    vi.mocked(adapter.readSurface).mockResolvedValueOnce({
+      text:
+        '[NodePTY]:READY:{"session":"s1"}\n' +
+        '[NodePTY]:EVT:{"type":"message_received","from":"user","payload":"hello"}\n' +
+        '[llm-agent] Message from user: hello\n',
+      raw:
+        '[NodePTY]:READY:{"session":"s1"}\n' +
+        '[NodePTY]:EVT:{"type":"message_received","from":"user","payload":"hello"}\n' +
+        '[llm-agent] Message from user: hello\n',
+    });
+    await vi.advanceTimersByTimeAsync(100);
+
+    expect(outputListener).toHaveBeenCalledWith({
+      id: 'agent-1',
+      text: '[llm-agent] Message from user: hello\r\n',
+    });
+  });
+
+  it('should transition busy state from agent EVT packets', async () => {
+    await registry.createAgent('agent-1', 'right');
+    await registry.startAgent('agent-1', 'agent-cli');
+
+    vi.mocked(adapter.readSurface).mockResolvedValueOnce({
+      text: '[NodePTY]:READY:{"session":"s1"}\n',
+      raw: '[NodePTY]:READY:{"session":"s1"}\n',
+    });
+    await vi.advanceTimersByTimeAsync(100);
+    expect(registry.getAgent('agent-1').status).toBe('ready');
+
+    vi.mocked(adapter.readSurface).mockResolvedValueOnce({
+      text:
+        '[NodePTY]:READY:{"session":"s1"}\n' +
+        '[NodePTY]:EVT:{"type":"busy_state","busy":true}\n',
+      raw:
+        '[NodePTY]:READY:{"session":"s1"}\n' +
+        '[NodePTY]:EVT:{"type":"busy_state","busy":true}\n',
+    });
+    await vi.advanceTimersByTimeAsync(100);
+    expect(registry.getAgent('agent-1').status).toBe('busy');
+
+    vi.mocked(adapter.readSurface).mockResolvedValueOnce({
+      text:
+        '[NodePTY]:READY:{"session":"s1"}\n' +
+        '[NodePTY]:EVT:{"type":"busy_state","busy":true}\n' +
+        '[NodePTY]:EVT:{"type":"busy_state","busy":false}\n',
+      raw:
+        '[NodePTY]:READY:{"session":"s1"}\n' +
+        '[NodePTY]:EVT:{"type":"busy_state","busy":true}\n' +
+        '[NodePTY]:EVT:{"type":"busy_state","busy":false}\n',
+    });
+    await vi.advanceTimersByTimeAsync(100);
+    expect(registry.getAgent('agent-1').status).toBe('ready');
+  });
+
   it('should throw when sending protocol to nonexistent agent', async () => {
     await expect(registry.sendProtocol('nope', 'RES', {})).rejects.toThrow('Agent nope not found');
   });

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // LLM Agent for NodePTY V1
-// Speaks the [NodePTY]: protocol and routes messages to a persistent Claude CLI session.
+// Speaks the [NodePTY]: protocol and routes messages to a Gemini CLI session.
 
 import { createInterface } from 'readline';
 import { spawn } from 'child_process';
@@ -9,9 +9,6 @@ import { spawn } from 'child_process';
 const sessionId = `llm-${Date.now()}`;
 console.log(`[NodePTY]:READY:{"session":"${sessionId}"}`);
 
-// Spawn a persistent Claude process in conversation mode
-// First message uses -p, subsequent messages use -p --continue to resume the same conversation
-let conversationStarted = false;
 let busy = false;
 const messageQueue = [];
 
@@ -45,12 +42,13 @@ rl.on('line', async (line) => {
 async function processQueue() {
   if (busy || messageQueue.length === 0) return;
   busy = true;
+  console.log('[NodePTY]:EVT:{"type":"busy_state","busy":true}');
 
   const evt = messageQueue.shift();
   console.error(`[llm-agent] Message from ${evt.from}: ${evt.payload}`);
 
   try {
-    const reply = await callClaude(evt.payload);
+    const reply = await callGemini(evt.payload);
     console.error(`[llm-agent] Reply (${reply.length} chars): ${reply.slice(0, 200)}`);
 
     const reqId = `req-${Date.now()}`;
@@ -62,22 +60,19 @@ async function processQueue() {
     console.log(`[NodePTY]:REQ:${JSON.stringify(req)}`);
   } catch (err) {
     console.error(`[llm-agent] Error: ${err.message}`);
+  } finally {
+    busy = false;
+    console.log('[NodePTY]:EVT:{"type":"busy_state","busy":false}');
   }
-
-  busy = false;
   processQueue();
 }
 
-function callClaude(userMessage) {
+function callGemini(userMessage) {
   return new Promise((resolve, reject) => {
     const args = ['-p', userMessage];
-    if (conversationStarted) {
-      args.push('--continue');
-    }
-    conversationStarted = true;
 
-    console.error(`[llm-agent] Running: claude ${args.join(' ')}`);
-    const proc = spawn('claude', args, {
+    console.error(`[llm-agent] Running: gemini ${args.join(' ')}`);
+    const proc = spawn('gemini', args, {
       stdio: ['ignore', 'pipe', 'pipe'],
       timeout: 120000,
     });
@@ -89,16 +84,23 @@ function callClaude(userMessage) {
     proc.stderr.on('data', (chunk) => { stderr += chunk; });
 
     proc.on('close', (code) => {
-      if (stderr) console.error(`[llm-agent] claude stderr: ${stderr.trimEnd()}`);
+      const cleanStdout = stdout.trim();
+      const cleanStderr = stderr.trim();
+
+      if (cleanStderr) {
+        console.error(`[llm-agent] gemini stderr: ${cleanStderr}`);
+      }
+
       if (code !== 0) {
-        reject(new Error(`claude exited with code ${code}: ${stderr.trimEnd()}`));
+        const details = cleanStderr || cleanStdout || `exit code ${code}`;
+        reject(new Error(`gemini failed: ${details}`));
       } else {
-        resolve(stdout.trim());
+        resolve(cleanStdout);
       }
     });
 
     proc.on('error', (err) => {
-      reject(new Error(`Failed to spawn claude: ${err.message}`));
+      reject(new Error(`Failed to spawn gemini: ${err.message}`));
     });
   });
 }

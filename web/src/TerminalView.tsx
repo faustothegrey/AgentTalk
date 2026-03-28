@@ -5,6 +5,8 @@ import { FitAddon } from 'xterm-addon-fit';
 import { WebLinksAddon } from 'xterm-addon-web-links';
 import 'xterm/css/xterm.css';
 
+const lastAttachedAgentBySocket = new WeakMap<WebSocket, string>();
+
 interface TerminalViewProps {
   agentId: string;
   ws: WebSocket | null;
@@ -76,6 +78,12 @@ export function TerminalView({ agentId, ws }: TerminalViewProps) {
   // Send attach message when agentId changes
   useEffect(() => {
     if (ws && ws.readyState === WebSocket.OPEN) {
+      const lastAttachedAgent = lastAttachedAgentBySocket.get(ws);
+      if (lastAttachedAgent === agentId) {
+        return;
+      }
+
+      lastAttachedAgentBySocket.set(ws, agentId);
       ws.send(JSON.stringify({ type: 'attach', agentId }));
     }
   }, [agentId, ws]);
