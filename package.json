@@ -1,0 +1,33 @@
+{
+  "name": "nodepty",
+  "version": "1.0.0",
+  "description": "",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "test": "vitest run",
+    "build": "tsc",
+    "dev": "concurrently \"npm run backend\" \"npm run frontend\"",
+    "backend": "npm run build && node dist/index.js",
+    "frontend": "cd web && npm run dev"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/express": "^5.0.6",
+    "@types/node": "^25.5.0",
+    "@types/uuid": "^11.0.0",
+    "@types/ws": "^8.18.1",
+    "concurrently": "^9.2.1",
+    "ts-node": "^10.9.2",
+    "typescript": "^6.0.2",
+    "vitest": "^2.1.8"
+  },
+  "dependencies": {
+    "express": "^5.2.1",
+    "strip-ansi": "^7.2.0",
+    "uuid": "^13.0.0",
+    "ws": "^8.20.0"
+  }
+}

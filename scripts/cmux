@@ -1,0 +1,34 @@
+#!/bin/bash
+CMD=$1
+mkdir -p /tmp/nodepty-mock
+
+if [ "$CMD" = "ping" ]; then
+    echo "PONG"
+elif [ "$CMD" = "new-split" ]; then
+    SID=$RANDOM
+    echo "workspace:1 pane:2 surface:$SID"
+    touch /tmp/nodepty-mock/surface_$SID
+elif [ "$CMD" = "send" ]; then
+    # args: send --surface <n> <text...>
+    SURFACE=$3
+    shift 3
+    TEXT="$*"
+
+    # Detect Enter key (\r or \n) — simulate shell echoing a newline
+    if printf "%s" "$TEXT" | tr -d '\r\n' | cmp -s - /dev/null; then
+        # TEXT is only whitespace/newlines — treat as Enter
+        printf "\n" >> /tmp/nodepty-mock/surface_$SURFACE
+    else
+        printf "%s" "$TEXT" >> /tmp/nodepty-mock/surface_$SURFACE
+    fi
+
+    if echo "$TEXT" | grep -q 'E2E'; then
+        printf "\n[NodePTY]:READY:{\"session\":\"123\"}\n" >> /tmp/nodepty-mock/surface_$SURFACE
+    fi
+elif [ "$CMD" = "read-screen" ]; then
+    # args: read-screen --surface <n> --scrollback --lines 400
+    SURFACE=$3
+    cat /tmp/nodepty-mock/surface_$SURFACE 2>/dev/null || echo ""
+elif [ "$CMD" = "notify" ]; then
+    exit 0
+fi

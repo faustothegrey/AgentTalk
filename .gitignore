@@ -1,1 +1,6 @@
 .claude/
+transcripts/
+node_modules/
+dist/
+coverage/
+test-transcripts/
