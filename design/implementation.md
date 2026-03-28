@@ -310,15 +310,14 @@ V1 must not invent extra states during implementation.
 
 For V1, the simplest implementation choice is an **in-band structured control protocol** carried through the agent terminal stream.
 
-This is not the ideal long-term architecture, but it is the easiest path to a working system.
+### 2.1 Critical Constraint: Line-Oriented Output
+To ensure the polling-based `readSurface` model is reliable, the agent process (e.g., `agent-cli --nodepty-v1`) **must** operate in a strict line-oriented mode:
+- **No spinners** or progress bars.
+- **No carriage-return (`\r`) redraws.**
+- **No TUI/curses behavior.**
+- Every protocol packet (`REQ`, `RES`, `EVT`) must be a **newline-terminated full line**.
 
-- Agent emits machine-readable control lines with a strict prefix.
-- The orchestrator watches terminal output, extracts only those prefixed lines, and ignores normal terminal chatter.
-- The orchestrator delivers responses and events back into the agent terminal as similarly prefixed lines.
-
-This keeps the system buildable without inventing a separate side channel in the first iteration.
-
-The important constraint is that the prefix format must be treated as reserved protocol output, not normal prose.
+The orchestrator treats the terminal as an append-only log. Any "in-place" screen updates will break the deduplication and parsing logic.
 
 The protocol uses a **Request/Response/Event** model with unique IDs.
 

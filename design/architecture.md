@@ -1,4 +1,4 @@
-# NodePTY + cmux Brainstorm
+# NodePTY + cmux Architecture
 
 ## Working conclusion
 
