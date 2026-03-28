@@ -79,6 +79,24 @@ describe('Registry', () => {
     expect(agent.status).toBe('ready');
   });
 
+  it('should handle usage_updated events', async () => {
+    const usageSpy = vi.fn();
+    registry.on('usage', usageSpy);
+
+    const agent = await registry.createAgent('agent-1', 'right');
+    await registry.startAgent('agent-1', 'agent-cli');
+
+    vi.mocked(adapter.readSurface).mockResolvedValueOnce({
+      text: '[NodePTY]:EVT:{"type":"usage_updated","total":500,"limit":200000}\n',
+      raw: '[NodePTY]:EVT:{"type":"usage_updated","total":500,"limit":200000}\n',
+    });
+
+    await vi.advanceTimersByTimeAsync(100);
+
+    expect(agent.usage).toEqual({ total: 500, limit: 200000 });
+    expect(usageSpy).toHaveBeenCalledWith({ id: 'agent-1', usage: { total: 500, limit: 200000 } });
+  });
+
   it('should transition to ready when READY is the last line without trailing newline', async () => {
     await registry.createAgent('agent-1', 'right');
     await registry.startAgent('agent-1', 'echo "E2E Test Started"');

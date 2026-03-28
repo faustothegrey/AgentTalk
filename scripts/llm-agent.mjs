@@ -10,10 +10,20 @@ const providerArg = (process.argv[2] ?? 'gemini').toLowerCase();
 const provider = supportedProviders.has(providerArg) ? providerArg : 'gemini';
 const scenarioStateByPeer = new Map();
 
+const DEFAULT_LIMITS = {
+  claude: 1000000,
+  gemini: 1048576,
+  codex: 128000,
+};
+
+let currentUsage = 0;
+const limit = DEFAULT_LIMITS[provider] || 128000;
+
 // Emit READY
 const sessionId = `llm-${Date.now()}`;
 console.log(`[NodePTY]:READY:{"session":"${sessionId}"}`);
-console.error(`[llm-agent] Provider: ${provider}`);
+console.log(`[NodePTY]:EVT:{"type":"usage_updated","total":0,"limit":${limit}}`);
+console.error(`[llm-agent] Provider: ${provider}, Token Limit: ${limit}`);
 
 let busy = false;
 const messageQueue = [];
@@ -167,20 +177,76 @@ function getProviderCommand(providerName, userMessage) {
     case 'claude':
       return {
         command: 'claude',
-        args: ['-p', userMessage],
+        args: ['-p', userMessage, '--output-format', 'json'],
       };
     case 'codex':
       return {
         command: 'codex',
-        args: ['exec', '--skip-git-repo-check', '--color', 'never', '--full-auto', userMessage],
+        args: ['exec', '--skip-git-repo-check', '--color', 'never', '--full-auto', '--json', userMessage],
       };
     case 'gemini':
     default:
       return {
         command: 'gemini',
-        args: ['-p', userMessage],
+        args: ['-p', userMessage, '-o', 'json'],
       };
   }
+}
+
+function extractTokens(providerName, stdout) {
+  try {
+    if (providerName === 'codex') {
+      const lines = stdout.split('\n');
+      for (const line of lines) {
+        if (!line.trim()) continue;
+        const json = JSON.parse(line);
+        if (json.type === 'turn.completed' && json.usage) {
+          return (json.usage.input_tokens || 0) + (json.usage.output_tokens || 0);
+        }
+      }
+    } else {
+      const json = JSON.parse(stdout);
+      if (providerName === 'claude') {
+        return (json.usage?.input_tokens || 0) + (json.usage?.output_tokens || 0);
+      } else if (providerName === 'gemini') {
+        if (json.stats?.models) {
+          let total = 0;
+          for (const model of Object.values(json.stats.models)) {
+            total += model.tokens?.total || 0;
+          }
+          return total;
+        }
+      }
+    }
+  } catch (e) {
+    // console.error(`[llm-agent] Failed to extract tokens from ${providerName} output: ${e.message}`);
+  }
+  return 0;
+}
+
+function extractResponse(providerName, stdout) {
+  try {
+    if (providerName === 'codex') {
+      const lines = stdout.split('\n');
+      for (const line of lines) {
+        if (!line.trim()) continue;
+        const json = JSON.parse(line);
+        if (json.type === 'item.completed' && json.item?.text) {
+          return json.item.text;
+        }
+      }
+    } else {
+      const json = JSON.parse(stdout);
+      if (providerName === 'claude') {
+        return json.result || '';
+      } else if (providerName === 'gemini') {
+        return json.response || '';
+      }
+    }
+  } catch (e) {
+    // console.error(`[llm-agent] Failed to extract response from ${providerName} output: ${e.message}`);
+  }
+  return stdout; // Fallback to raw stdout
 }
 
 function callProvider(providerName, userMessage) {
@@ -207,11 +273,26 @@ function callProvider(providerName, userMessage) {
         console.error(`[llm-agent] ${providerName} stderr: ${cleanStderr}`);
       }
 
-      if (code !== 0) {
+      if (code !== 0 && providerName !== 'claude') { // Claude might return 1 on credit error but we still want to parse usage if possible
+        const details = cleanStderr || cleanStdout || `exit code ${code}`;
+        reject(new Error(`${providerName} failed: ${details}`));
+        return;
+      }
+
+      const response = extractResponse(providerName, cleanStdout);
+      const tokens = extractTokens(providerName, cleanStdout);
+      
+      if (tokens > 0) {
+        currentUsage += tokens;
+        console.log(`[NodePTY]:EVT:{"type":"usage_updated","total":${currentUsage},"limit":${limit}}`);
+        console.error(`[llm-agent] Usage: +${tokens} tokens (Total: ${currentUsage}/${limit})`);
+      }
+
+      if (code !== 0 && !response) {
         const details = cleanStderr || cleanStdout || `exit code ${code}`;
         reject(new Error(`${providerName} failed: ${details}`));
       } else {
-        resolve(cleanStdout);
+        resolve(response);
       }
     });
 

@@ -26,6 +26,7 @@ export class Agent {
   lastPollAt?: number;
   lastProgressAt?: number;
   launchCommand?: string;
+  usage?: { total: number; limit: number };
 
   private transcriptStream: WriteStream;
   private destroyPromise?: Promise<void>;

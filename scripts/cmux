@@ -24,6 +24,10 @@ elif [ "$CMD" = "send" ]; then
 
     if echo "$TEXT" | grep -q 'E2E'; then
         printf "\n[NodePTY]:READY:{\"session\":\"123\"}\n" >> /tmp/nodepty-mock/surface_$SURFACE
+        printf "\n[NodePTY]:EVT:{\"type\":\"usage_updated\",\"total\":1234,\"limit\":200000}\n" >> /tmp/nodepty-mock/surface_$SURFACE
+    fi
+    if echo "$TEXT" | grep -q 'usage'; then
+        printf "\n[NodePTY]:EVT:{\"type\":\"usage_updated\",\"total\":5000,\"limit\":200000}\n" >> /tmp/nodepty-mock/surface_$SURFACE
     fi
 elif [ "$CMD" = "read-screen" ]; then
     # args: read-screen --surface <n> --scrollback --lines 400

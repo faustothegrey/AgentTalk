@@ -631,6 +631,11 @@ export class Registry extends EventEmitter {
     if (payload?.type === 'busy_state' && typeof payload.busy === 'boolean') {
       this.setAgentBusyState(agent, payload.busy);
     }
+
+    if (payload?.type === 'usage_updated' && typeof payload.total === 'number' && typeof payload.limit === 'number') {
+      agent.usage = { total: payload.total, limit: payload.limit };
+      this.emit('usage', { id: agent.id, usage: agent.usage });
+    }
   }
 
   /**

@@ -9,6 +9,7 @@ interface Agent {
   id: string;
   status: string;
   surface: any;
+  usage?: { total: number; limit: number };
 }
 
 const providerOptions: { value: Provider; label: string }[] = [
@@ -57,6 +58,8 @@ function App() {
   const [conversationAgentB, setConversationAgentB] = useState<string>('');
   const messageInputRef = useRef<HTMLInputElement>(null);
 
+  const selectedAgent = agents.find(a => a.id === selectedAgentId);
+
   const handleError = (msg: string, err: any) => {
     console.error(msg, err);
     setGlobalError(`${msg} ${err?.message || ''}`);
@@ -96,6 +99,10 @@ function App() {
       if (message.type === 'status') {
         setAgents(prev => prev.map(a =>
           a.id === message.id ? { ...a, status: message.status } : a
+        ));
+      } else if (message.type === 'usage') {
+        setAgents(prev => prev.map(a =>
+          a.id === message.id ? { ...a, usage: message.usage } : a
         ));
       } else if (message.type === 'agent_message') {
         console.log(`[App] Agent reply from ${message.from}: ${message.payload}`);
@@ -368,6 +375,11 @@ function App() {
                   <div style={{ fontSize: '13px' }}>{agent.id}</div>
                   <div style={{ fontSize: '11px', color: '#888', display: 'flex', alignItems: 'center', gap: '4px' }}>
                     {getStatusIcon(agent.status)} {agent.status}
+                    {agent.usage && (
+                      <span style={{ marginLeft: '6px', color: '#555' }}>
+                        ({((agent.usage.total / agent.usage.limit) * 100).toFixed(0)}%)
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>
@@ -379,8 +391,13 @@ function App() {
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', backgroundColor: '#1e1e1e' }}>
           {selectedAgentId ? (
             <>
-              <div style={{ padding: '8px 16px', backgroundColor: '#2d2d2d', fontSize: '12px', color: '#ccc', borderBottom: '1px solid #333' }}>
-                Connected to: <strong>{selectedAgentId}</strong>
+              <div style={{ padding: '8px 16px', backgroundColor: '#2d2d2d', fontSize: '12px', color: '#ccc', borderBottom: '1px solid #333', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>Connected to: <strong>{selectedAgentId}</strong></div>
+                {selectedAgent?.usage && (
+                  <div style={{ color: '#888', fontSize: '11px' }}>
+                    Usage: <strong>{selectedAgent.usage.total.toLocaleString()}</strong> / {selectedAgent.usage.limit.toLocaleString()} ({((selectedAgent.usage.total / selectedAgent.usage.limit) * 100).toFixed(2)}%)
+                  </div>
+                )}
               </div>
               <div style={{ flex: 1, position: 'relative' }}>
                 <ErrorBoundary>
