@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { existsSync, rmSync } from 'fs';
 import type { AddressInfo } from 'net';
 import type { Server } from 'http';
 import { WebSocket } from 'ws';
@@ -11,6 +12,7 @@ describe('startServer', () => {
   let registry: Registry;
   let server: Server;
   let baseUrl: string;
+  const scenarioStorePath = './test-transcripts-server/scenarios.json';
 
   beforeEach(async () => {
     let nextRef = 1;
@@ -32,6 +34,7 @@ describe('startServer', () => {
       pollIntervalMs: 100,
       readinessTimeoutMs: 500,
       maxConsecutiveFailures: 2,
+      scenarioStorePath,
     });
 
     server = startServer(registry, adapter, 0);
@@ -47,6 +50,10 @@ describe('startServer', () => {
       server.close((err) => (err ? reject(err) : resolve()));
     });
     vi.restoreAllMocks();
+
+    if (existsSync('./test-transcripts-server')) {
+      rmSync('./test-transcripts-server', { recursive: true, force: true });
+    }
   });
 
   it('should reject invalid splitDirection values', async () => {
@@ -114,5 +121,38 @@ describe('startServer', () => {
 
     socket.close();
     await new Promise<void>((resolve) => socket.once('close', () => resolve()));
+  });
+
+  it('should expose persisted scenarios via the api', async () => {
+    const agent1 = await registry.createAgent('agent-1', 'right');
+    const agent2 = await registry.createAgent('agent-2', 'down');
+    agent1.setStatus('starting');
+    agent1.setStatus('ready');
+    agent2.setStatus('starting');
+    agent2.setStatus('ready');
+
+    vi.spyOn(registry as any, 'requestHealthCheck').mockResolvedValue({
+      agentId: 'agent-1',
+      message: 'hello',
+    });
+
+    await registry.startScenario(
+      'agent-1',
+      'agent-2',
+      'Discuss the current NodePTY project and propose concrete next-step implementation ideas or simplifications: architecture quality, risks, and the most useful changes to make next.',
+      5,
+    );
+
+    const response = await fetch(`${baseUrl}/api/scenarios`);
+    expect(response.status).toBe(200);
+
+    const scenarios = await response.json();
+    expect(scenarios).toHaveLength(1);
+    expect(scenarios[0]).toMatchObject({
+      agentAId: 'agent-1',
+      agentBId: 'agent-2',
+      status: 'active',
+      maxRepliesPerAgent: 5,
+    });
   });
 });

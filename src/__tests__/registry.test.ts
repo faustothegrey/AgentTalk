@@ -206,6 +206,36 @@ describe('Registry', () => {
     expect(agent.lastSeenText).toBe('New content\n');
   });
 
+  it('should recover protocol lines from a divergent snapshot', async () => {
+    await registry.createAgent('agent-1', 'right');
+    await registry.startAgent('agent-1', 'agent-cli');
+
+    vi.mocked(adapter.readSurface).mockResolvedValueOnce({
+      text: '[NodePTY]:READY:{"session":"s1"}\n',
+      raw: '[NodePTY]:READY:{"session":"s1"}\n',
+    });
+    await vi.advanceTimersByTimeAsync(100);
+
+    vi.mocked(adapter.sendText).mockClear();
+
+    vi.mocked(adapter.readSurface).mockResolvedValueOnce({
+      text:
+        'terminal redraw...\n' +
+        '[NodePTY]:READY:{"session":"s1"}\n' +
+        '[NodePTY]:REQ:{"id":"q-diverge","call":"list_agents","args":{}}\n',
+      raw:
+        'terminal redraw...\n' +
+        '[NodePTY]:READY:{"session":"s1"}\n' +
+        '[NodePTY]:REQ:{"id":"q-diverge","call":"list_agents","args":{}}\n',
+    });
+    await vi.advanceTimersByTimeAsync(100);
+
+    expect(adapter.sendText).toHaveBeenCalledWith(
+      'surface:1',
+      expect.stringContaining('[NodePTY]:RES:{"id":"q-diverge","status":"success"'),
+    );
+  });
+
   it('should reject duplicate agent IDs', async () => {
     await registry.createAgent('agent-1', 'right');
     await expect(registry.createAgent('agent-1', 'down')).rejects.toThrow('Agent agent-1 already exists');

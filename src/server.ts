@@ -40,6 +40,13 @@ export function startServer(registry: Registry, adapter: CmuxAdapter, port: numb
     res.json(agents);
   });
 
+  app.get('/api/scenarios', (req, res) => {
+    console.log('[Server] GET /api/scenarios');
+    const scenarios = registry.getScenarios();
+    console.log(`[Server] Returning ${scenarios.length} scenarios`);
+    res.json(scenarios);
+  });
+
   app.post('/api/agents', async (req, res) => {
     console.log('[Server] POST /api/agents', req.body);
     const { id, splitDirection } = req.body;
@@ -145,38 +152,13 @@ export function startServer(registry: Registry, adapter: CmuxAdapter, port: numb
             }
 
             try {
-              const agentA = registry.getAgent(agentAId);
-              const agentB = registry.getAgent(agentBId);
-
-              if ((agentA.status !== 'ready' && agentA.status !== 'busy') || (agentB.status !== 'ready' && agentB.status !== 'busy')) {
-                throw new Error('Both agents must be ready before starting a conversation');
-              }
-
-              const topic = 'Discuss the current NodePTY project: architecture quality, risks, and the most important next improvements.';
+              const topic = 'Discuss the current NodePTY project and propose concrete next-step implementation ideas or simplifications: architecture quality, risks, and the most useful changes to make next.';
               const maxReplies = 5;
-
-              await registry.sendProtocol(agentAId, 'EVT', {
-                type: 'scenario_start',
-                peerId: agentBId,
-                topic,
-                maxReplies,
-                initiator: true,
-              });
-
-              await registry.sendProtocol(agentBId, 'EVT', {
-                type: 'scenario_start',
-                peerId: agentAId,
-                topic,
-                maxReplies,
-                initiator: false,
-              });
+              const scenario = await registry.startScenario(agentAId, agentBId, topic, maxReplies);
 
               ws.send(JSON.stringify({
                 type: 'scenario_started',
-                agentAId,
-                agentBId,
-                topic,
-                maxReplies,
+                scenario,
               }));
             } catch (err) {
               const error = err instanceof Error ? err.message : String(err);
@@ -237,6 +219,17 @@ export function startServer(registry: Registry, adapter: CmuxAdapter, port: numb
       }
     });
     console.log(`[Server] Status ${id}: ${status} → ${sent} client(s)`);
+  });
+
+  registry.on('scenario', (scenario) => {
+    let sent = 0;
+    wss.clients.forEach((client) => {
+      if (client.readyState === WebSocket.OPEN) {
+        client.send(JSON.stringify({ type: 'scenario', scenario }));
+        sent++;
+      }
+    });
+    console.log(`[Server] Scenario ${scenario.id}: ${scenario.status} → ${sent} client(s)`);
   });
 
   server.listen(port, () => {

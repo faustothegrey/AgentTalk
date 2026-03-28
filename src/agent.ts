@@ -20,7 +20,9 @@ export class Agent {
   lineBuffer: string = '';
   lastSeenText: string = '';
   lastSeenClean: string = '';
+  lastDedupDiverged: boolean = false;
   pendingOutboundProtocolEchoes: string[] = [];
+  processedRequestIds: string[] = [];
   lastPollAt?: number;
   lastProgressAt?: number;
   launchCommand?: string;

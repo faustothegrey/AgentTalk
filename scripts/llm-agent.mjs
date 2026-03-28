@@ -37,6 +37,9 @@ rl.on('line', async (line) => {
     if (evt.type === 'message_received') {
       messageQueue.push(evt);
       processQueue();
+    } else if (evt.type === 'healthcheck') {
+      messageQueue.push(evt);
+      processQueue();
     } else if (evt.type === 'scenario_start') {
       handleScenarioStart(evt);
     }
@@ -53,7 +56,11 @@ async function processQueue() {
   console.log('[NodePTY]:EVT:{"type":"busy_state","busy":true}');
 
   const evt = messageQueue.shift();
-  console.error(`[llm-agent] Message from ${evt.from}: ${evt.payload}`);
+  if (evt.type === 'healthcheck') {
+    console.error(`[llm-agent] Healthcheck requested (token: ${evt.token})`);
+  } else {
+    console.error(`[llm-agent] Message from ${evt.from}: ${evt.payload}`);
+  }
 
   try {
     const reply = await buildReplyForEvent(evt);
@@ -64,12 +71,7 @@ async function processQueue() {
 
     console.error(`[llm-agent] Reply (${reply.length} chars): ${reply.slice(0, 200)}`);
 
-    const reqId = `req-${Date.now()}`;
-    const req = {
-      id: reqId,
-      call: 'send_to_agent',
-      args: { to: evt.from, payload: reply },
-    };
+    const req = buildProtocolRequest(evt, reply);
     console.log(`[NodePTY]:REQ:${JSON.stringify(req)}`);
   } catch (err) {
     console.error(`[llm-agent] Error: ${err.message}`);
@@ -109,6 +111,13 @@ function handleScenarioStart(evt) {
 }
 
 async function buildReplyForEvent(evt) {
+  if (evt.type === 'healthcheck') {
+    const prompt = typeof evt.prompt === 'string' && evt.prompt.trim()
+      ? evt.prompt
+      : 'Reply with a short greeting confirming you are responsive.';
+    return callProvider(provider, prompt);
+  }
+
   const scenarioState = scenarioStateByPeer.get(evt.from);
   if (!scenarioState) {
     return callProvider(provider, evt.payload);
@@ -130,6 +139,27 @@ async function buildReplyForEvent(evt) {
   ].join('\n');
 
   return callProvider(provider, prompt);
+}
+
+function buildProtocolRequest(evt, reply) {
+  const reqId = `req-${Date.now()}`;
+
+  if (evt.type === 'healthcheck') {
+    return {
+      id: reqId,
+      call: 'ack_healthcheck',
+      args: {
+        token: evt.token,
+        message: reply,
+      },
+    };
+  }
+
+  return {
+    id: reqId,
+    call: 'send_to_agent',
+    args: { to: evt.from, payload: reply },
+  };
 }
 
 function getProviderCommand(providerName, userMessage) {

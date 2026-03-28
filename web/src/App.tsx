@@ -101,7 +101,9 @@ function App() {
         console.log(`[App] Agent reply from ${message.from}: ${message.payload}`);
       } else if (message.type === 'scenario_started') {
         setGlobalError(null);
-        console.log(`[App] Started scenario between ${message.agentAId} and ${message.agentBId}`);
+        console.log(`[App] Started scenario ${message.scenario?.id ?? 'unknown'}`);
+      } else if (message.type === 'scenario') {
+        console.log(`[App] Scenario update ${message.scenario?.id ?? 'unknown'}: ${message.scenario?.status ?? 'unknown'}`);
       } else if (message.type === 'scenario_error') {
         setGlobalError(`Failed to start two-agent conversation: ${message.error}`);
       }
@@ -341,7 +343,7 @@ function App() {
                 Start Project Discussion
               </button>
               <div style={{ fontSize: '11px', color: '#777', lineHeight: 1.4 }}>
-                Hardwired topic: discuss the current project. Max 5 replies per agent.
+                Hardwired topic: discuss the project and suggest next-step implementation or simplification ideas. Max 5 replies per agent.
               </div>
             </div>
           </div>

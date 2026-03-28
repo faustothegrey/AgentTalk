@@ -1,7 +1,19 @@
 import { EventEmitter } from 'events';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
+import path from 'path';
 import stripAnsi from 'strip-ansi';
 import { Agent } from './agent.js';
 import type { CmuxAdapter } from './cmux-adapter.js';
+import type { ConversationScenario, ScenarioTranscriptEntry } from './types.js';
+
+interface RegistryConfig {
+  pollIntervalMs: number;
+  readinessTimeoutMs: number;
+  maxConsecutiveFailures: number;
+  scenarioStorePath: string;
+  agentIdleTimeoutMs: number;
+  healthcheckTimeoutMs: number;
+}
 
 export class Registry extends EventEmitter {
   private agents: Map<string, Agent> = new Map();
@@ -10,16 +22,30 @@ export class Registry extends EventEmitter {
   private consecutiveFailures: Map<string, number> = new Map();
   private pollsInFlight: Set<string> = new Set();
   private pollCount: Map<string, number> = new Map();
+  private scenarios: Map<string, ConversationScenario> = new Map();
+  private pendingHealthChecks: Map<string, {
+    agentId: string;
+    resolve: (value: { agentId: string; message: string }) => void;
+    reject: (reason?: unknown) => void;
+    timeout: NodeJS.Timeout;
+  }> = new Map();
+  private readonly config: RegistryConfig;
 
   constructor(
     private readonly adapter: CmuxAdapter,
-    private readonly config = {
+    config: Partial<RegistryConfig> = {}
+  ) {
+    super();
+    this.config = {
       pollIntervalMs: 250,
       readinessTimeoutMs: 60000,
       maxConsecutiveFailures: 3,
-    }
-  ) {
-    super();
+      scenarioStorePath: './transcripts/scenarios.json',
+      agentIdleTimeoutMs: 180000,
+      healthcheckTimeoutMs: 20000,
+      ...config,
+    };
+    this.loadScenarios();
   }
 
   /**
@@ -36,6 +62,78 @@ export class Registry extends EventEmitter {
     const agent = new Agent(id, surface);
     this.agents.set(id, agent);
     return agent;
+  }
+
+  async startScenario(agentAId: string, agentBId: string, topic: string, maxRepliesPerAgent: number): Promise<ConversationScenario> {
+    const agentA = this.getAgent(agentAId);
+    const agentB = this.getAgent(agentBId);
+
+    if (agentAId === agentBId) {
+      throw new Error('Scenario requires two different agents');
+    }
+
+    if ((agentA.status !== 'ready' && agentA.status !== 'busy') || (agentB.status !== 'ready' && agentB.status !== 'busy')) {
+      throw new Error('Both agents must be ready before starting a conversation');
+    }
+
+    await Promise.all([
+      this.requestHealthCheck(agentAId),
+      this.requestHealthCheck(agentBId),
+    ]);
+
+    const existingScenario = this.findActiveScenarioByAgents(agentAId, agentBId);
+    if (existingScenario) {
+      return existingScenario;
+    }
+
+    const now = new Date().toISOString();
+    const scenario: ConversationScenario = {
+      id: `scenario-${Date.now()}`,
+      agentAId,
+      agentBId,
+      topic,
+      maxRepliesPerAgent,
+      replyCounts: {
+        [agentAId]: 0,
+        [agentBId]: 0,
+      },
+      status: 'active',
+      createdAt: now,
+      updatedAt: now,
+      transcript: [
+        {
+          kind: 'system',
+          timestamp: now,
+          from: 'system',
+          to: `${agentAId},${agentBId}`,
+          payload: `Scenario created: ${topic}`,
+        },
+      ],
+    };
+
+    this.scenarios.set(scenario.id, scenario);
+    this.persistScenarios();
+    this.emit('scenario', scenario);
+
+    await this.sendProtocol(agentAId, 'EVT', {
+      type: 'scenario_start',
+      scenarioId: scenario.id,
+      peerId: agentBId,
+      topic,
+      maxReplies: maxRepliesPerAgent,
+      initiator: true,
+    });
+
+    await this.sendProtocol(agentBId, 'EVT', {
+      type: 'scenario_start',
+      scenarioId: scenario.id,
+      peerId: agentAId,
+      topic,
+      maxReplies: maxRepliesPerAgent,
+      initiator: false,
+    });
+
+    return scenario;
   }
 
   /**
@@ -115,6 +213,14 @@ export class Registry extends EventEmitter {
       return;
     }
 
+    if (this.hasAgentTimedOut(agent)) {
+      console.error(`[Registry] Agent ${id} exceeded idle timeout (${this.config.agentIdleTimeoutMs}ms) while ${agent.status}`);
+      this.stopPolling(id);
+      this.clearReadinessTimeout(id);
+      this.setAgentStatus(agent, 'error');
+      return;
+    }
+
     this.pollsInFlight.add(id);
     agent.lastPollAt = Date.now();
     const count = (this.pollCount.get(id) ?? 0) + 1;
@@ -124,14 +230,18 @@ export class Registry extends EventEmitter {
       const result = await this.adapter.readSurface(agent.surface.surfaceRef);
       this.consecutiveFailures.set(id, 0);
 
-      // Log raw surface read periodically (every 20 polls) or always while starting
-      if (agent.status === 'starting' || count % 20 === 1) {
+      // Log raw surface read while starting or occasionally while busy.
+      if (agent.status === 'starting' || (agent.status === 'busy' && count % 120 === 1)) {
         const preview = result.text.slice(-300).replace(/\n/g, '\\n');
         console.log(`[Registry] Poll #${count} for ${id} (status: ${agent.status}), surface tail: "${preview}"`);
       }
 
       const newText = this.deduplicate(agent, result.text);
       const visibleText = this.suppressOutboundProtocolEchoes(agent, newText);
+
+      if (agent.lastDedupDiverged) {
+        await this.processProtocolSnapshot(agent, agent.lastSeenClean);
+      }
 
       if (visibleText) {
         console.log(`[Registry] New text from agent ${id} (${visibleText.length} chars, status: ${agent.status}): "${visibleText.slice(0, 200).replace(/\n/g, '\\n')}"`);
@@ -178,6 +288,7 @@ export class Registry extends EventEmitter {
       console.log(`[Registry] Dedup first read for ${agent.id}: ${newClean.length} chars`);
       agent.lastSeenText = newText;
       agent.lastSeenClean = newClean;
+      agent.lastDedupDiverged = false;
       return newClean;
     }
 
@@ -190,6 +301,7 @@ export class Registry extends EventEmitter {
       }
       agent.lastSeenText = newText;
       agent.lastSeenClean = newClean;
+      agent.lastDedupDiverged = false;
       return unseenText;
     }
 
@@ -198,7 +310,29 @@ export class Registry extends EventEmitter {
     console.log(`[Registry] Dedup reset for agent ${agent.id}: surface text diverged (old: ${oldClean.length} chars, new: ${newClean.length} chars)`);
     agent.lastSeenText = newText;
     agent.lastSeenClean = newClean;
+    agent.lastDedupDiverged = true;
     return '';
+  }
+
+  private async processProtocolSnapshot(agent: Agent, snapshot: string): Promise<void> {
+    agent.lastDedupDiverged = false;
+
+    const lines = snapshot.split(/\r?\n/);
+    let recovered = 0;
+
+    for (const rawLine of lines) {
+      const line = rawLine.trim();
+      if (!line.startsWith('[NodePTY]:')) {
+        continue;
+      }
+
+      recovered += 1;
+      await this.handleProtocolLine(agent, line);
+    }
+
+    if (recovered > 0) {
+      console.log(`[Registry] Recovered ${recovered} protocol line(s) from divergent snapshot for ${agent.id}`);
+    }
   }
 
   /**
@@ -291,6 +425,11 @@ export class Registry extends EventEmitter {
       return;
     }
 
+    if (packetType === 'REQ' && !this.markRequestSeen(agent, payload?.id)) {
+      console.log(`[Registry] Skipping duplicate REQ from ${agent.id}: ${payload?.id}`);
+      return;
+    }
+
     switch (packetType) {
       case 'READY':
         console.log(`[Registry] Agent ${agent.id} ready (session: ${payload.session})`);
@@ -343,6 +482,10 @@ export class Registry extends EventEmitter {
         await this.handleSendToAgent(agent, reqId, args);
         return;
 
+      case 'ack_healthcheck':
+        await this.handleHealthcheckAck(agent, reqId, args);
+        return;
+
       default:
         await this.sendProtocol(agent.id, 'RES', {
           id: reqId,
@@ -392,6 +535,7 @@ export class Registry extends EventEmitter {
 
     try {
       const targetAgent = this.getAgent(to);
+      const scenario = this.findActiveScenarioByAgents(agent.id, to);
 
       if (targetAgent.status !== 'ready' && targetAgent.status !== 'busy') {
         await this.sendProtocol(agent.id, 'RES', {
@@ -402,12 +546,35 @@ export class Registry extends EventEmitter {
         return;
       }
 
+      if (scenario) {
+        const currentCount = scenario.replyCounts[agent.id] ?? 0;
+        if (currentCount >= scenario.maxRepliesPerAgent) {
+          this.markScenarioCompleted(scenario, `Reply cap reached by ${agent.id}`);
+          await this.sendProtocol(agent.id, 'RES', {
+            id: reqId,
+            status: 'error',
+            error: `Scenario ${scenario.id} reply cap reached for ${agent.id}`,
+          });
+          return;
+        }
+      }
+
       // V1 Delivery: write EVT to target terminal
       await this.sendProtocol(targetAgent.id, 'EVT', {
         type: 'message_received',
         from: agent.id,
         payload: payload,
       });
+
+      if (scenario) {
+        this.recordScenarioMessage(scenario, {
+          kind: 'message',
+          timestamp: new Date().toISOString(),
+          from: agent.id,
+          to,
+          payload: String(payload),
+        });
+      }
 
       // Confirm to requester
       await this.sendProtocol(agent.id, 'RES', {
@@ -421,6 +588,37 @@ export class Registry extends EventEmitter {
         error: err instanceof Error ? err.message : `Target agent ${to} not found`,
       });
     }
+  }
+
+  private async handleHealthcheckAck(agent: Agent, reqId: string, args: any): Promise<void> {
+    const { token, message } = args || {};
+    if (typeof token !== 'string' || typeof message !== 'string' || !message.trim()) {
+      await this.sendProtocol(agent.id, 'RES', {
+        id: reqId,
+        status: 'error',
+        error: 'Missing "token" or "message" in ack_healthcheck args',
+      });
+      return;
+    }
+
+    const pending = this.pendingHealthChecks.get(token);
+    if (!pending || pending.agentId !== agent.id) {
+      await this.sendProtocol(agent.id, 'RES', {
+        id: reqId,
+        status: 'error',
+        error: `Unknown healthcheck token: ${token}`,
+      });
+      return;
+    }
+
+    clearTimeout(pending.timeout);
+    this.pendingHealthChecks.delete(token);
+    pending.resolve({ agentId: agent.id, message });
+
+    await this.sendProtocol(agent.id, 'RES', {
+      id: reqId,
+      status: 'success',
+    });
   }
 
   private async handleResponse(agent: Agent, payload: any): Promise<void> {
@@ -460,6 +658,146 @@ export class Registry extends EventEmitter {
     }
   }
 
+  private async requestHealthCheck(agentId: string): Promise<{ agentId: string; message: string }> {
+    const token = `health-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+    const resultPromise = new Promise<{ agentId: string; message: string }>((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        this.pendingHealthChecks.delete(token);
+        reject(new Error(`Agent ${agentId} did not respond to healthcheck within ${this.config.healthcheckTimeoutMs}ms`));
+      }, this.config.healthcheckTimeoutMs);
+
+      this.pendingHealthChecks.set(token, {
+        agentId,
+        resolve,
+        reject,
+        timeout,
+      });
+    });
+
+    await this.sendProtocol(agentId, 'EVT', {
+      type: 'healthcheck',
+      token,
+      prompt: 'Reply with a short greeting confirming you are responsive.',
+    });
+
+    const result = await resultPromise;
+    console.log(`[Registry] Healthcheck ack from ${agentId}: ${result.message}`);
+    return result;
+  }
+
+  private hasAgentTimedOut(agent: Agent): boolean {
+    if (agent.status !== 'busy') {
+      return false;
+    }
+
+    const since = agent.lastProgressAt ?? agent.lastPollAt;
+    if (!since) {
+      return false;
+    }
+
+    return Date.now() - since > this.config.agentIdleTimeoutMs;
+  }
+
+  private markRequestSeen(agent: Agent, requestId: unknown): boolean {
+    if (typeof requestId !== 'string' || requestId.length === 0) {
+      return true;
+    }
+
+    if (agent.processedRequestIds.includes(requestId)) {
+      return false;
+    }
+
+    agent.processedRequestIds.push(requestId);
+    if (agent.processedRequestIds.length > 100) {
+      agent.processedRequestIds.shift();
+    }
+
+    return true;
+  }
+
+  getScenarios(): ConversationScenario[] {
+    return Array.from(this.scenarios.values()).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  }
+
+  private loadScenarios(): void {
+    const storePath = this.getScenarioStorePath();
+    if (!existsSync(storePath)) {
+      return;
+    }
+
+    try {
+      const raw = readFileSync(storePath, 'utf8').trim();
+      if (!raw) {
+        return;
+      }
+
+      const scenarios = JSON.parse(raw) as ConversationScenario[];
+      for (const scenario of scenarios) {
+        this.scenarios.set(scenario.id, scenario);
+      }
+    } catch (err) {
+      console.error('[Registry] Failed to load scenarios:', err);
+    }
+  }
+
+  private persistScenarios(): void {
+    const storePath = this.getScenarioStorePath();
+    mkdirSync(path.dirname(storePath), { recursive: true });
+    writeFileSync(
+      storePath,
+      JSON.stringify(this.getScenarios(), null, 2),
+      'utf8',
+    );
+  }
+
+  private getScenarioStorePath(): string {
+    return path.resolve(this.config.scenarioStorePath);
+  }
+
+  private findActiveScenarioByAgents(agentAId: string, agentBId: string): ConversationScenario | undefined {
+    return this.getScenarios().find((scenario) =>
+      scenario.status === 'active' &&
+      (
+        (scenario.agentAId === agentAId && scenario.agentBId === agentBId) ||
+        (scenario.agentAId === agentBId && scenario.agentBId === agentAId)
+      )
+    );
+  }
+
+  private recordScenarioMessage(scenario: ConversationScenario, entry: ScenarioTranscriptEntry): void {
+    scenario.transcript.push(entry);
+    const nextCount = (scenario.replyCounts[entry.from] ?? 0) + 1;
+    scenario.replyCounts[entry.from] = nextCount;
+    scenario.updatedAt = entry.timestamp;
+
+    if (nextCount >= scenario.maxRepliesPerAgent) {
+      this.markScenarioCompleted(scenario, `Reply cap reached by ${entry.from}`);
+      return;
+    }
+
+    this.persistScenarios();
+    this.emit('scenario', scenario);
+  }
+
+  private markScenarioCompleted(scenario: ConversationScenario, reason: string): void {
+    if (scenario.status === 'completed') {
+      return;
+    }
+
+    scenario.status = 'completed';
+    scenario.updatedAt = new Date().toISOString();
+    scenario.transcript.push({
+      kind: 'system',
+      timestamp: scenario.updatedAt,
+      from: 'system',
+      to: `${scenario.agentAId},${scenario.agentBId}`,
+      payload: reason,
+    });
+    this.persistScenarios();
+    this.emit('scenario', scenario);
+  }
+
   private stopPolling(id: string): void {
     const interval = this.pollIntervals.get(id);
     if (interval) {
@@ -493,6 +831,12 @@ export class Registry extends EventEmitter {
    * Cleanup all agents and polling loops.
    */
   async destroy(): Promise<void> {
+    this.persistScenarios();
+    for (const pending of this.pendingHealthChecks.values()) {
+      clearTimeout(pending.timeout);
+      pending.reject(new Error('Registry destroyed before healthcheck completed'));
+    }
+    this.pendingHealthChecks.clear();
     const teardowns: Promise<void>[] = [];
     for (const id of this.agents.keys()) {
       this.stopPolling(id);
