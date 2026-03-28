@@ -1,12 +1,24 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { TerminalView } from './TerminalView';
 import { ErrorBoundary } from './ErrorBoundary';
-import { Plus, Terminal as TerminalIcon, Activity, AlertCircle, X, Send } from 'lucide-react';
+import { Plus, Terminal as TerminalIcon, Activity, AlertCircle, X, Send, MessagesSquare } from 'lucide-react';
+
+type Provider = 'claude' | 'gemini' | 'codex';
 
 interface Agent {
   id: string;
   status: string;
   surface: any;
+}
+
+const providerOptions: { value: Provider; label: string }[] = [
+  { value: 'claude', label: 'Claude' },
+  { value: 'gemini', label: 'Gemini' },
+  { value: 'codex', label: 'Codex' },
+];
+
+function getAgentCommand(provider: Provider): string {
+  return `node scripts/llm-agent.mjs ${provider}`;
 }
 
 // Helper to add timeout to our fetch commands
@@ -40,6 +52,9 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [globalError, setGlobalError] = useState<string | null>(null);
   const [messageInput, setMessageInput] = useState('');
+  const [provider, setProvider] = useState<Provider>('gemini');
+  const [conversationAgentA, setConversationAgentA] = useState<string>('');
+  const [conversationAgentB, setConversationAgentB] = useState<string>('');
   const messageInputRef = useRef<HTMLInputElement>(null);
 
   const handleError = (msg: string, err: any) => {
@@ -84,6 +99,11 @@ function App() {
         ));
       } else if (message.type === 'agent_message') {
         console.log(`[App] Agent reply from ${message.from}: ${message.payload}`);
+      } else if (message.type === 'scenario_started') {
+        setGlobalError(null);
+        console.log(`[App] Started scenario between ${message.agentAId} and ${message.agentBId}`);
+      } else if (message.type === 'scenario_error') {
+        setGlobalError(`Failed to start two-agent conversation: ${message.error}`);
       }
     };
 
@@ -108,11 +128,11 @@ function App() {
       const data = await res.json();
       setSelectedAgentId(data.id);
 
-      // Auto-start with test agent
+      // Auto-start with the selected provider-backed agent
       await fetchWithTimeout(`/api/agents/${data.id}/start`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ command: 'node scripts/llm-agent.mjs' }),
+        body: JSON.stringify({ command: getAgentCommand(provider) }),
       }, 10000);
 
       await fetchAgents();
@@ -129,6 +149,32 @@ function App() {
     setMessageInput('');
     messageInputRef.current?.focus();
   };
+
+  const startTwoAgentConversation = () => {
+    if (!ws || ws.readyState !== WebSocket.OPEN) {
+      setGlobalError('Two-agent conversation requires an open WebSocket connection.');
+      return;
+    }
+
+    if (!conversationAgentA || !conversationAgentB) {
+      setGlobalError('Select two agents before starting the conversation.');
+      return;
+    }
+
+    if (conversationAgentA === conversationAgentB) {
+      setGlobalError('Choose two different agents for the conversation.');
+      return;
+    }
+
+    setGlobalError(null);
+    ws.send(JSON.stringify({
+      type: 'start_pair_chat',
+      agentAId: conversationAgentA,
+      agentBId: conversationAgentB,
+    }));
+  };
+
+  const conversationCandidates = agents.filter(agent => agent.status === 'ready' || agent.status === 'busy');
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -182,23 +228,122 @@ function App() {
           flexDirection: 'column',
           backgroundColor: '#252526' 
         }}>
-          <div style={{ padding: '16px', borderBottom: '1px solid #333', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <h2 style={{ margin: 0, fontSize: '14px', textTransform: 'uppercase', letterSpacing: '1px' }}>Agents</h2>
-            <button 
-              onClick={createAgent} 
-              disabled={loading}
-              style={{ 
-                background: 'none', 
-                border: 'none', 
-                color: '#fff', 
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                opacity: loading ? 0.5 : 1
-              }}
-            >
-              <Plus size={18} />
-            </button>
+          <div style={{ padding: '16px', borderBottom: '1px solid #333', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h2 style={{ margin: 0, fontSize: '14px', textTransform: 'uppercase', letterSpacing: '1px' }}>Agents</h2>
+              <button 
+                onClick={createAgent} 
+                disabled={loading}
+                title={`Create ${provider} agent`}
+                style={{ 
+                  background: 'none', 
+                  border: 'none', 
+                  color: '#fff', 
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  opacity: loading ? 0.5 : 1
+                }}
+              >
+                <Plus size={18} />
+              </button>
+            </div>
+
+            <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <span style={{ fontSize: '11px', color: '#888', textTransform: 'uppercase', letterSpacing: '0.8px' }}>
+                New Agent Provider
+              </span>
+              <select
+                value={provider}
+                onChange={(e) => setProvider(e.target.value as Provider)}
+                disabled={loading}
+                style={{
+                  backgroundColor: '#1e1e1e',
+                  color: '#ddd',
+                  border: '1px solid #3b3b3b',
+                  borderRadius: '6px',
+                  padding: '8px 10px',
+                  fontSize: '13px',
+                  outline: 'none',
+                }}
+              >
+                {providerOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', paddingTop: '4px', borderTop: '1px solid #333' }}>
+              <span style={{ fontSize: '11px', color: '#888', textTransform: 'uppercase', letterSpacing: '0.8px' }}>
+                Two-Agent Scenario
+              </span>
+              <select
+                value={conversationAgentA}
+                onChange={(e) => setConversationAgentA(e.target.value)}
+                style={{
+                  backgroundColor: '#1e1e1e',
+                  color: '#ddd',
+                  border: '1px solid #3b3b3b',
+                  borderRadius: '6px',
+                  padding: '8px 10px',
+                  fontSize: '13px',
+                  outline: 'none',
+                }}
+              >
+                <option value="">Agent A</option>
+                {conversationCandidates.map((agent) => (
+                  <option key={`a-${agent.id}`} value={agent.id}>
+                    {agent.id}
+                  </option>
+                ))}
+              </select>
+              <select
+                value={conversationAgentB}
+                onChange={(e) => setConversationAgentB(e.target.value)}
+                style={{
+                  backgroundColor: '#1e1e1e',
+                  color: '#ddd',
+                  border: '1px solid #3b3b3b',
+                  borderRadius: '6px',
+                  padding: '8px 10px',
+                  fontSize: '13px',
+                  outline: 'none',
+                }}
+              >
+                <option value="">Agent B</option>
+                {conversationCandidates.map((agent) => (
+                  <option key={`b-${agent.id}`} value={agent.id}>
+                    {agent.id}
+                  </option>
+                ))}
+              </select>
+              <button
+                onClick={startTwoAgentConversation}
+                disabled={!ws || ws.readyState !== WebSocket.OPEN || !conversationAgentA || !conversationAgentB || conversationAgentA === conversationAgentB}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                  backgroundColor: '#1e1e1e',
+                  color: '#ddd',
+                  border: '1px solid #3b3b3b',
+                  borderRadius: '6px',
+                  padding: '8px 10px',
+                  fontSize: '13px',
+                  cursor: 'pointer',
+                  opacity: (!ws || ws.readyState !== WebSocket.OPEN || !conversationAgentA || !conversationAgentB || conversationAgentA === conversationAgentB) ? 0.5 : 1,
+                }}
+              >
+                <MessagesSquare size={14} />
+                Start Project Discussion
+              </button>
+              <div style={{ fontSize: '11px', color: '#777', lineHeight: 1.4 }}>
+                Hardwired topic: discuss the current project. Max 5 replies per agent.
+              </div>
+            </div>
           </div>
           
           <div style={{ flex: 1, overflowY: 'auto' }}>

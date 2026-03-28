@@ -137,6 +137,58 @@ export function startServer(registry: Registry, adapter: CmuxAdapter, port: numb
             break;
           }
 
+          case 'start_pair_chat': {
+            const { agentAId, agentBId } = message;
+            if (typeof agentAId !== 'string' || typeof agentBId !== 'string' || agentAId === agentBId) {
+              console.warn('[Server] Invalid start_pair_chat payload:', message);
+              break;
+            }
+
+            try {
+              const agentA = registry.getAgent(agentAId);
+              const agentB = registry.getAgent(agentBId);
+
+              if ((agentA.status !== 'ready' && agentA.status !== 'busy') || (agentB.status !== 'ready' && agentB.status !== 'busy')) {
+                throw new Error('Both agents must be ready before starting a conversation');
+              }
+
+              const topic = 'Discuss the current NodePTY project: architecture quality, risks, and the most important next improvements.';
+              const maxReplies = 5;
+
+              await registry.sendProtocol(agentAId, 'EVT', {
+                type: 'scenario_start',
+                peerId: agentBId,
+                topic,
+                maxReplies,
+                initiator: true,
+              });
+
+              await registry.sendProtocol(agentBId, 'EVT', {
+                type: 'scenario_start',
+                peerId: agentAId,
+                topic,
+                maxReplies,
+                initiator: false,
+              });
+
+              ws.send(JSON.stringify({
+                type: 'scenario_started',
+                agentAId,
+                agentBId,
+                topic,
+                maxReplies,
+              }));
+            } catch (err) {
+              const error = err instanceof Error ? err.message : String(err);
+              console.error('[Server] Failed to start pair chat:', err);
+              ws.send(JSON.stringify({
+                type: 'scenario_error',
+                error,
+              }));
+            }
+            break;
+          }
+
           default:
             console.warn('[Server] Unknown WS message type:', message.type);
         }
