@@ -13,11 +13,11 @@ const scenarioStateByPeer = new Map();
 const DEFAULT_LIMITS = {
   claude: 1000000,
   gemini: 1048576,
-  codex: 128000,
+  codex: 200000,
 };
 
 let currentUsage = 0;
-const limit = DEFAULT_LIMITS[provider] || 128000;
+const limit = DEFAULT_LIMITS[provider] || 200000;
 
 // Emit READY
 const sessionId = `llm-${Date.now()}`;
