@@ -35,4 +35,9 @@ elif [ "$CMD" = "read-screen" ]; then
     cat /tmp/nodepty-mock/surface_$SURFACE 2>/dev/null || echo ""
 elif [ "$CMD" = "notify" ]; then
     exit 0
+elif [ "$CMD" = "close-surface" ]; then
+    # args: close-surface --surface <n>
+    SURFACE=$3
+    rm /tmp/nodepty-mock/surface_$SURFACE 2>/dev/null
+    exit 0
 fi

@@ -6,6 +6,7 @@ export interface CmuxAdapter {
   sendText(surfaceRef: string, text: string): Promise<void>;
   readSurface(surfaceRef: string): Promise<SurfaceReadResult>;
   notify(title: string, body?: string, surfaceRef?: string): Promise<void>;
+  closeSurface(surfaceRef: string): Promise<void>;
 }
 
 export class CmuxAdapterImpl implements CmuxAdapter {
@@ -70,6 +71,13 @@ export class CmuxAdapterImpl implements CmuxAdapter {
     }
 
     await runCmux(args);
+  }
+
+  /**
+   * Closes a surface via `cmux close-surface`.
+   */
+  async closeSurface(surfaceRef: string): Promise<void> {
+    await runCmux(['close-surface', '--surface', surfaceRef]);
   }
 
   /**

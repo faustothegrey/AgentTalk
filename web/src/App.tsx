@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { TerminalView } from './TerminalView';
 import { ErrorBoundary } from './ErrorBoundary';
-import { Plus, Terminal as TerminalIcon, Activity, AlertCircle, X, Send, MessagesSquare } from 'lucide-react';
+import { Plus, Terminal as TerminalIcon, Activity, AlertCircle, X, Send, MessagesSquare, Trash2 } from 'lucide-react';
 
 type Provider = 'claude' | 'gemini' | 'codex';
 
@@ -149,6 +149,21 @@ function App() {
       handleError('Failed to create agent:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const removeAgent = async (id: string) => {
+    setGlobalError(null);
+    try {
+      await fetchWithTimeout(`/api/agents/${id}`, {
+        method: 'DELETE',
+      });
+      setAgents(prev => prev.filter(a => a.id !== id));
+      if (selectedAgentId === id) {
+        setSelectedAgentId(null);
+      }
+    } catch (err) {
+      handleError('Failed to remove agent:', err);
     }
   };
 
@@ -382,6 +397,25 @@ function App() {
                     )}
                   </div>
                 </div>
+                <button 
+                  onClick={(e) => { e.stopPropagation(); removeAgent(agent.id); }}
+                  title="Remove Agent"
+                  style={{ 
+                    background: 'none', 
+                    border: 'none', 
+                    color: '#888', 
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    padding: '4px',
+                    borderRadius: '4px',
+                    transition: 'color 0.2s, background-color 0.2s'
+                  }}
+                  onMouseOver={(e) => { e.currentTarget.style.color = '#ef4444'; e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.1)'; }}
+                  onMouseOut={(e) => { e.currentTarget.style.color = '#888'; e.currentTarget.style.backgroundColor = 'transparent'; }}
+                >
+                  <Trash2 size={14} />
+                </button>
               </div>
             ))}
           </div>

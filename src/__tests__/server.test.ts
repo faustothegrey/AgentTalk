@@ -28,6 +28,7 @@ describe('startServer', () => {
       sendText: vi.fn().mockResolvedValue(undefined),
       readSurface: vi.fn().mockResolvedValue({ text: '', raw: '' }),
       notify: vi.fn().mockResolvedValue(undefined),
+      closeSurface: vi.fn().mockResolvedValue(undefined),
     };
 
     registry = new Registry(adapter, {
@@ -154,5 +155,18 @@ describe('startServer', () => {
       status: 'active',
       maxRepliesPerAgent: 5,
     });
+  });
+
+  it('should remove an agent via the DELETE /api/agents/:id endpoint', async () => {
+    await registry.createAgent('agent-1', 'right');
+    const removeSpy = vi.spyOn(registry, 'removeAgent');
+
+    const response = await fetch(`${baseUrl}/api/agents/agent-1`, {
+      method: 'DELETE',
+    });
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({ success: true });
+    expect(removeSpy).toHaveBeenCalledWith('agent-1');
   });
 });

@@ -92,6 +92,18 @@ export function startServer(registry: Registry, adapter: CmuxAdapter, port: numb
     }
   });
 
+  app.delete('/api/agents/:id', async (req, res) => {
+    const { id } = req.params;
+    console.log(`[Server] DELETE /api/agents/${id}`);
+    try {
+      await registry.removeAgent(id);
+      res.json({ success: true });
+    } catch (err) {
+      console.error(`[Server] Failed to remove agent ${id}:`, err);
+      res.status(getErrorStatus(err)).json({ error: err instanceof Error ? err.message : String(err) });
+    }
+  });
+
   const server = createServer(app);
   const wss = new WebSocketServer({ server, path: '/ws' });
 

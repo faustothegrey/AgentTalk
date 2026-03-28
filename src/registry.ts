@@ -200,6 +200,37 @@ export class Registry extends EventEmitter {
   }
 
   /**
+   * Removes an agent from the registry and closes its cmux surface.
+   */
+  async removeAgent(id: string): Promise<void> {
+    const agent = this.agents.get(id);
+    if (!agent) return;
+
+    console.log(`[Registry] Removing agent ${id}...`);
+    
+    this.stopPolling(id);
+    this.clearReadinessTimeout(id);
+    this.pollsInFlight.delete(id);
+    this.consecutiveFailures.delete(id);
+
+    try {
+      this.setAgentStatus(agent, 'terminated');
+    } catch (err) {
+      // If already terminated, this might throw, which is fine to ignore for removal.
+    }
+
+    this.agents.delete(id);
+    await agent.destroy();
+
+    try {
+      await this.adapter.closeSurface(agent.surface.surfaceRef);
+      console.log(`[Registry] Agent ${id} surface ${agent.surface.surfaceRef} closed.`);
+    } catch (err) {
+      console.warn(`[Registry] Failed to close surface for agent ${id}:`, err);
+    }
+  }
+
+  /**
    * Main polling loop for an agent.
    */
   private async pollAgent(id: string): Promise<void> {

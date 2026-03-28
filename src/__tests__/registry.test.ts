@@ -22,6 +22,7 @@ describe('Registry', () => {
       sendText: vi.fn().mockResolvedValue(undefined),
       readSurface: vi.fn().mockResolvedValue({ text: '', raw: '' }),
       notify: vi.fn().mockResolvedValue(undefined),
+      closeSurface: vi.fn().mockResolvedValue(undefined),
     };
 
     registry = new Registry(adapter, {
@@ -77,6 +78,21 @@ describe('Registry', () => {
 
     const agent = registry.getAgent('agent-1');
     expect(agent.status).toBe('ready');
+  });
+
+  it('should remove an agent and close its surface', async () => {
+    adapter.closeSurface = vi.fn().mockResolvedValue(undefined);
+    const agent = await registry.createAgent('agent-1', 'right');
+    await registry.startAgent('agent-1', 'agent-cli');
+    
+    // Status should be starting and poll should be in flight
+    expect(agent.status).toBe('starting');
+
+    await registry.removeAgent('agent-1');
+
+    expect(agent.status).toBe('terminated');
+    expect(() => registry.getAgent('agent-1')).toThrow('Agent agent-1 not found');
+    expect(adapter.closeSurface).toHaveBeenCalledWith('surface:1');
   });
 
   it('should handle usage_updated events', async () => {
