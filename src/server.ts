@@ -36,6 +36,7 @@ export function startServer(registry: Registry, adapter: CmuxAdapter, port: numb
       status: a.status,
       surface: a.surface,
       usage: a.usage,
+      provider: a.provider,
     }));
     console.log(`[Server] Returning ${agents.length} agents`);
     res.json(agents);
@@ -243,6 +244,17 @@ export function startServer(registry: Registry, adapter: CmuxAdapter, port: numb
       }
     });
     console.log(`[Server] Usage ${id}: ${JSON.stringify(usage)} → ${sent} client(s)`);
+  });
+
+  registry.on('provider', ({ id, provider }) => {
+    let sent = 0;
+    wss.clients.forEach((client) => {
+      if (client.readyState === WebSocket.OPEN) {
+        client.send(JSON.stringify({ type: 'provider', id, provider }));
+        sent++;
+      }
+    });
+    console.log(`[Server] Provider ${id}: ${provider} → ${sent} client(s)`);
   });
 
   registry.on('scenario', (scenario) => {

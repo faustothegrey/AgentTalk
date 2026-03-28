@@ -157,6 +157,14 @@ export class Registry extends EventEmitter {
 
     this.setAgentStatus(agent, 'starting');
     agent.launchCommand = launchCommand;
+    
+    // Try to extract provider from command (e.g. node scripts/llm-agent.mjs gemini)
+    const providerMatch = launchCommand.match(/llm-agent\.mjs\s+([^\s]+)/);
+    if (providerMatch && providerMatch[1]) {
+      agent.provider = providerMatch[1].toLowerCase();
+      this.emit('provider', { id: agent.id, provider: agent.provider });
+    }
+
     agent.lineBuffer = '';
     agent.lastSeenText = '';
     agent.lastSeenClean = '';

@@ -10,6 +10,7 @@ interface Agent {
   status: string;
   surface: any;
   usage?: { total: number; limit: number };
+  provider?: string;
 }
 
 const providerOptions: { value: Provider; label: string }[] = [
@@ -103,6 +104,10 @@ function App() {
       } else if (message.type === 'usage') {
         setAgents(prev => prev.map(a =>
           a.id === message.id ? { ...a, usage: message.usage } : a
+        ));
+      } else if (message.type === 'provider') {
+        setAgents(prev => prev.map(a =>
+          a.id === message.id ? { ...a, provider: message.provider } : a
         ));
       } else if (message.type === 'agent_message') {
         console.log(`[App] Agent reply from ${message.from}: ${message.payload}`);
@@ -387,7 +392,14 @@ function App() {
               >
                 <TerminalIcon size={16} />
                 <div style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  <div style={{ fontSize: '13px' }}>{agent.id}</div>
+                  <div style={{ fontSize: '13px' }}>
+                    {agent.id}
+                    {agent.provider && (
+                      <span style={{ marginLeft: '6px', fontSize: '11px', color: '#666', fontWeight: 'normal' }}>
+                        ({agent.provider.charAt(0).toUpperCase() + agent.provider.slice(1)})
+                      </span>
+                    )}
+                  </div>
                   <div style={{ fontSize: '11px', color: '#888', display: 'flex', alignItems: 'center', gap: '4px' }}>
                     {getStatusIcon(agent.status)} {agent.status}
                     {agent.usage && (

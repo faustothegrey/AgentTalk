@@ -64,6 +64,17 @@ describe('Registry', () => {
     expect(adapter.sendText).toHaveBeenCalledWith('surface:1', 'ls\n');
   });
 
+  it('should extract provider from launch command', async () => {
+    const providerSpy = vi.fn();
+    registry.on('provider', providerSpy);
+
+    const agent = await registry.createAgent('agent-1', 'right');
+    await registry.startAgent('agent-1', 'node scripts/llm-agent.mjs gemini');
+
+    expect(agent.provider).toBe('gemini');
+    expect(providerSpy).toHaveBeenCalledWith({ id: 'agent-1', provider: 'gemini' });
+  });
+
   it('should transition to ready when READY protocol line is received', async () => {
     await registry.createAgent('agent-1', 'right');
     await registry.startAgent('agent-1', 'agent-cli');
