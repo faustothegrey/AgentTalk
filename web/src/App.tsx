@@ -1,10 +1,11 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { TerminalView } from './TerminalView';
 import { ErrorBoundary } from './ErrorBoundary';
-import { Plus, Terminal as TerminalIcon, Activity, AlertCircle, X, Send, MessagesSquare, Trash2, History } from 'lucide-react';
+import { Plus, Terminal as TerminalIcon, Activity, AlertCircle, X, Send, MessagesSquare, Trash2, History, Clock, Copy, Check } from 'lucide-react';
+import { getAgentColor } from './agentColors';
 
 type Provider = 'claude' | 'gemini' | 'codex';
-type SidebarTab = 'new-agent' | 'conversation' | 'usage';
+type SidebarTab = 'new-agent' | 'conversation' | 'history' | 'usage';
 
 interface Agent {
   id: string;
@@ -58,25 +59,47 @@ const modelOptions: Record<Provider, { value: string; label: string }[]> = {
   ],
 };
 
-const AGENT_COLORS = ['#5b9bd5', '#e06c75', '#98c379', '#d19a66', '#c678dd', '#56b6c2'];
-
-function getAgentColor(agentId: string, agentIds: string[]): string {
-  const idx = agentIds.indexOf(agentId);
-  return AGENT_COLORS[idx >= 0 ? idx % AGENT_COLORS.length : 0];
+function CopyButton({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <button
+      onClick={(e) => {
+        e.stopPropagation();
+        navigator.clipboard.writeText(text).then(() => {
+          setCopied(true);
+          setTimeout(() => setCopied(false), 1500);
+        });
+      }}
+      style={{ background: 'none', border: 'none', color: copied ? '#4caf50' : '#666', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center' }}
+      onMouseOver={(e) => { if (!copied) e.currentTarget.style.color = '#aaa'; }}
+      onMouseOut={(e) => { if (!copied) e.currentTarget.style.color = '#666'; }}
+      title="Copy to clipboard"
+    >
+      {copied ? <Check size={13} /> : <Copy size={13} />}
+    </button>
+  );
 }
 
 function ConversationTranscript({ conversation }: { conversation: Conversation }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const shouldAutoScroll = useRef(true);
   const messages = conversation.transcript.filter((entry) => entry.kind === 'message');
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (shouldAutoScroll.current) {
+      bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
   }, [messages.length]);
 
   return (
     <div
       ref={containerRef}
+      onScroll={() => {
+        const el = containerRef.current;
+        if (!el) return;
+        shouldAutoScroll.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+      }}
       style={{
         flex: 1,
         overflowY: 'auto',
@@ -97,15 +120,16 @@ function ConversationTranscript({ conversation }: { conversation: Conversation }
         </div>
       ) : (
         messages.map((entry, index) => {
-          const color = getAgentColor(entry.from, conversation.agentIds);
+          const color = getAgentColor(entry.from);
           return (
             <div
               key={`${entry.timestamp}-${entry.from}-${index}`}
               style={{
                 alignSelf: 'stretch',
-                backgroundColor: '#252526',
-                borderLeft: `3px solid ${color}`,
-                borderRadius: '4px',
+                backgroundColor: color.tint,
+                borderLeft: `3px solid ${color.accent}`,
+                border: `1px solid ${color.glow}`,
+                borderRadius: '8px',
                 padding: '12px 14px',
               }}
             >
@@ -119,11 +143,14 @@ function ConversationTranscript({ conversation }: { conversation: Conversation }
                 textTransform: 'uppercase',
                 letterSpacing: '0.6px',
               }}>
-                <span style={{ color, fontWeight: 'bold' }}>{entry.from}</span>
-                <span style={{ color: '#888' }}>{new Date(entry.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
+                <span style={{ color: color.accent, fontWeight: 'bold' }}>{entry.from}</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ color: '#888' }}>{new Date(entry.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
+                  <CopyButton text={entry.payload} />
+                </div>
               </div>
               <div style={{
-                color: '#ddd',
+                color: color.text,
                 fontSize: '14px',
                 lineHeight: 1.5,
                 whiteSpace: 'pre-wrap',
@@ -273,6 +300,7 @@ function App() {
   const [topic, setTopic] = useState('Discuss the current NodePTY project and propose concrete next-step implementation ideas or simplifications: architecture quality, risks, and the most useful changes to make next.');
   const [topicHistory, setTopicHistory] = useState<string[]>([]);
   const [showHistory, setShowHistory] = useState(false);
+  const [conversationHistory, setConversationHistory] = useState<Conversation[]>([]);
   const [activeSidebarTab, setActiveSidebarTab] = useState<SidebarTab>('new-agent');
   const messageInputRef = useRef<HTMLInputElement>(null);
 
@@ -321,9 +349,20 @@ function App() {
     }
   }, []);
 
+  const fetchConversationHistory = useCallback(async () => {
+    try {
+      const res = await fetchWithTimeout('/api/conversations');
+      const data = await res.json();
+      setConversationHistory(data);
+    } catch (err) {
+      console.warn('Failed to fetch conversation history:', err);
+    }
+  }, []);
+
   useEffect(() => {
     fetchAgents();
     fetchTopicHistory();
+    fetchConversationHistory();
     
     // Setup WebSocket
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -383,6 +422,9 @@ function App() {
         console.log(`[App] Conversation update ${message.conversation?.id ?? 'unknown'}: ${message.conversation?.status ?? 'unknown'}`);
         if (message.conversation?.id === activeConversationId) {
           setActiveConversation(message.conversation);
+        }
+        if (message.conversation?.status === 'completed') {
+          fetchConversationHistory();
         }
       } else if (message.type === 'conversation_error') {
         setGlobalError(`Failed to start conversation: ${message.error}`);
@@ -471,6 +513,21 @@ function App() {
   };
 
   const conversationCandidates = agents.filter(agent => agent.status === 'ready' || agent.status === 'busy');
+  const selectedAgentColor = selectedAgentId ? getAgentColor(selectedAgentId) : null;
+  const getConversationSelectStyle = (agentId: string) => {
+    const color = agentId ? getAgentColor(agentId) : null;
+    return {
+      backgroundColor: color ? color.tint : '#1e1e1e',
+      color: color ? color.text : '#ddd',
+      border: `1px solid ${color ? color.accent : '#3b3b3b'}`,
+      boxShadow: color ? `inset 0 0 0 1px ${color.glow}` : 'none',
+      borderRadius: '6px',
+      padding: '8px 10px',
+      fontSize: '13px',
+      outline: 'none',
+      transition: 'background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease',
+    } as const;
+  };
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -535,6 +592,9 @@ function App() {
               </button>
               <button onClick={() => setActiveSidebarTab('conversation')} style={sidebarTabButtonStyle('conversation')}>
                 <MessagesSquare size={14} /> Conv
+              </button>
+              <button onClick={() => { setActiveSidebarTab('history'); fetchConversationHistory(); }} style={sidebarTabButtonStyle('history')}>
+                <Clock size={14} /> History
               </button>
               <button onClick={() => setActiveSidebarTab('usage')} style={sidebarTabButtonStyle('usage')}>
                 <Activity size={14} /> Usage
@@ -654,15 +714,7 @@ function App() {
                 <select
                   value={conversationAgentA}
                   onChange={(e) => setConversationAgentA(e.target.value)}
-                  style={{
-                    backgroundColor: '#1e1e1e',
-                    color: '#ddd',
-                    border: '1px solid #3b3b3b',
-                    borderRadius: '6px',
-                    padding: '8px 10px',
-                    fontSize: '13px',
-                    outline: 'none',
-                  }}
+                  style={getConversationSelectStyle(conversationAgentA)}
                 >
                   <option value="">Agent A</option>
                   {conversationCandidates.map((agent) => (
@@ -674,15 +726,7 @@ function App() {
                 <select
                   value={conversationAgentB}
                   onChange={(e) => setConversationAgentB(e.target.value)}
-                  style={{
-                    backgroundColor: '#1e1e1e',
-                    color: '#ddd',
-                    border: '1px solid #3b3b3b',
-                    borderRadius: '6px',
-                    padding: '8px 10px',
-                    fontSize: '13px',
-                    outline: 'none',
-                  }}
+                  style={getConversationSelectStyle(conversationAgentB)}
                 >
                   <option value="">Agent B</option>
                   {conversationCandidates.map((agent) => (
@@ -694,15 +738,7 @@ function App() {
                 <select
                   value={conversationAgentC}
                   onChange={(e) => setConversationAgentC(e.target.value)}
-                  style={{
-                    backgroundColor: '#1e1e1e',
-                    color: '#ddd',
-                    border: '1px solid #3b3b3b',
-                    borderRadius: '6px',
-                    padding: '8px 10px',
-                    fontSize: '13px',
-                    outline: 'none',
-                  }}
+                  style={getConversationSelectStyle(conversationAgentC)}
                 >
                   <option value="">Agent C (Optional)</option>
                   {conversationCandidates.map((agent) => (
@@ -832,8 +868,87 @@ function App() {
                 </button>
               </div>
             )}
+
+            {activeSidebarTab === 'history' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                <span style={{ fontSize: '11px', color: '#888', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '4px' }}>
+                  Past Conversations
+                </span>
+                {conversationHistory.length === 0 ? (
+                  <div style={{ fontSize: '12px', color: '#666', textAlign: 'center', padding: '20px 0' }}>No conversations yet</div>
+                ) : (
+                  conversationHistory.map((conv) => {
+                    const msgCount = conv.transcript.filter(e => e.kind === 'message').length;
+                    const isActive = conv.id === activeConversationId;
+                    return (
+                      <div
+                        key={conv.id}
+                        onClick={() => { setActiveConversationId(conv.id); setActiveConversation(conv); setSelectedAgentId(null); }}
+                        style={{
+                          padding: '10px 12px',
+                          cursor: 'pointer',
+                          backgroundColor: isActive ? '#3a3d49' : '#252526',
+                          border: isActive ? '1px solid #555' : '1px solid #333',
+                          borderRadius: '6px',
+                          transition: 'background-color 0.15s',
+                        }}
+                        onMouseOver={(e) => { if (!isActive) e.currentTarget.style.backgroundColor = '#2d2d2d'; }}
+                        onMouseOut={(e) => { if (!isActive) e.currentTarget.style.backgroundColor = '#252526'; }}
+                      >
+                        <div style={{ fontSize: '11px', color: '#aaa', marginBottom: '4px', display: 'flex', justifyContent: 'space-between' }}>
+                          <span>{new Date(conv.createdAt).toLocaleDateString([], { month: 'short', day: 'numeric' })} {new Date(conv.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                          <span style={{
+                            fontSize: '9px',
+                            padding: '1px 6px',
+                            borderRadius: '8px',
+                            backgroundColor: conv.status === 'completed' ? '#2d4a2d' : '#4a3d2d',
+                            color: conv.status === 'completed' ? '#4caf50' : '#e0a030',
+                          }}>
+                            {conv.status}
+                          </span>
+                        </div>
+                        <div style={{
+                          fontSize: '12px',
+                          color: '#ccc',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          display: '-webkit-box',
+                          WebkitLineClamp: 2,
+                          WebkitBoxOrient: 'vertical',
+                          lineHeight: '1.3',
+                          marginBottom: '6px',
+                        }}>
+                          {conv.topic}
+                        </div>
+                        <div style={{ fontSize: '10px', color: '#666', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span>{conv.agentIds.join(', ')} · {msgCount} messages</span>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              fetch(`/api/conversations/${conv.id}`, { method: 'DELETE' }).then(() => {
+                                if (activeConversationId === conv.id) {
+                                  setActiveConversationId(null);
+                                  setActiveConversation(null);
+                                }
+                                fetchConversationHistory();
+                              });
+                            }}
+                            style={{ background: 'none', border: 'none', color: '#666', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center' }}
+                            onMouseOver={(e) => { e.currentTarget.style.color = '#e06c75'; }}
+                            onMouseOut={(e) => { e.currentTarget.style.color = '#666'; }}
+                            title="Remove conversation"
+                          >
+                            <Trash2 size={12} />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            )}
           </div>
-          
+
           <div style={{ flex: 1, overflowY: 'auto' }}>
             {agents.map(agent => (
               <div 
@@ -842,16 +957,30 @@ function App() {
                 style={{ 
                   padding: '12px 16px', 
                   cursor: 'pointer',
-                  backgroundColor: selectedAgentId === agent.id ? '#37373d' : 'transparent',
+                  backgroundColor: selectedAgentId === agent.id ? getAgentColor(agent.id).tint : 'transparent',
                   borderBottom: '1px solid #2d2d2d',
+                  borderLeft: `3px solid ${selectedAgentId === agent.id ? getAgentColor(agent.id).accent : 'transparent'}`,
                   display: 'flex',
                   alignItems: 'center',
                   gap: '10px'
                 }}
               >
-                <TerminalIcon size={16} />
+                <div style={{
+                  width: '24px',
+                  height: '24px',
+                  borderRadius: '999px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  backgroundColor: getAgentColor(agent.id).tint,
+                  color: getAgentColor(agent.id).accent,
+                  boxShadow: `inset 0 0 0 1px ${getAgentColor(agent.id).glow}`,
+                  flexShrink: 0,
+                }}>
+                  <TerminalIcon size={14} />
+                </div>
                 <div style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  <div style={{ fontSize: '13px' }}>
+                  <div style={{ fontSize: '13px', color: selectedAgentId === agent.id ? getAgentColor(agent.id).text : '#ddd' }}>
                     {agent.id}
                     {agent.provider && (
                       <span style={{ marginLeft: '6px', fontSize: '11px', color: '#666', fontWeight: 'normal' }}>
@@ -891,13 +1020,31 @@ function App() {
         {/* Main Area */}
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', backgroundColor: '#1e1e1e' }}>
           {activeConversationId ? (
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-              <div style={{ padding: '8px 16px', backgroundColor: '#2d2d2d', fontSize: '12px', color: '#ccc', borderBottom: '1px solid #333', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+              <div style={{ padding: '8px 16px', backgroundColor: '#2d2d2d', fontSize: '12px', color: '#ccc', borderBottom: '1px solid #333', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                   <div>Conversation: <strong>{activeConversationId}</strong></div>
                   {activeConversation?.agentIds?.length ? (
-                    <div style={{ color: '#888' }}>
-                      {activeConversation.agentIds.join(' • ')}
+                    <div style={{ color: '#888', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                      {activeConversation.agentIds.map((agentId) => {
+                        const color = getAgentColor(agentId);
+                        return (
+                          <span
+                            key={agentId}
+                            style={{
+                              color: color.accent,
+                              backgroundColor: color.tint,
+                              border: `1px solid ${color.glow}`,
+                              borderRadius: '999px',
+                              padding: '3px 8px',
+                              fontSize: '11px',
+                              fontWeight: 700,
+                            }}
+                          >
+                            {agentId}
+                          </span>
+                        );
+                      })}
                     </div>
                   ) : null}
                   {activeConversation?.status === 'completed' && (
@@ -917,8 +1064,20 @@ function App() {
             </div>
           ) : selectedAgentId ? (
             <>
-              <div style={{ padding: '8px 16px', backgroundColor: '#2d2d2d', fontSize: '12px', color: '#ccc', borderBottom: '1px solid #333', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div>Connected to: <strong>{selectedAgentId}</strong></div>
+              <div style={{ padding: '8px 16px', backgroundColor: '#2d2d2d', fontSize: '12px', color: '#ccc', borderBottom: '1px solid #333', borderTop: selectedAgentColor ? `2px solid ${selectedAgentColor.accent}` : undefined, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  {selectedAgentColor && (
+                    <span style={{
+                      width: '10px',
+                      height: '10px',
+                      borderRadius: '999px',
+                      backgroundColor: selectedAgentColor.accent,
+                      boxShadow: `0 0 0 3px ${selectedAgentColor.tint}`,
+                      flexShrink: 0,
+                    }} />
+                  )}
+                  <div>Connected to: <strong style={{ color: selectedAgentColor?.accent }}>{selectedAgentId}</strong></div>
+                </div>
                 {selectedAgent?.usage && (
                   <div style={{ color: '#888', fontSize: '11px' }}>
                     Usage: <strong>{selectedAgent.usage.total.toLocaleString()}</strong> / {selectedAgent.usage.limit.toLocaleString()} ({((selectedAgent.usage.total / selectedAgent.usage.limit) * 100).toFixed(2)}%)
@@ -938,7 +1097,18 @@ function App() {
                 alignItems: 'center',
                 gap: '8px',
               }}>
-                <Send size={14} color="#888" />
+
+                {topic.trim() && (
+                  <button
+                    onClick={() => setMessageInput(topic.trim())}
+                    style={{ background: 'none', border: 'none', color: '#666', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center', flexShrink: 0 }}
+                    onMouseOver={(e) => { e.currentTarget.style.color = selectedAgentColor?.accent || '#aaa'; }}
+                    onMouseOut={(e) => { e.currentTarget.style.color = '#666'; }}
+                    title="Use conversation topic"
+                  >
+                    <MessagesSquare size={14} />
+                  </button>
+                )}
                 <input
                   ref={messageInputRef}
                   type="text"
@@ -963,7 +1133,7 @@ function App() {
                   style={{
                     background: 'none',
                     border: 'none',
-                    color: messageInput.trim() ? '#4caf50' : '#555',
+                    color: messageInput.trim() ? (selectedAgentColor?.accent || '#4caf50') : '#555',
                     cursor: messageInput.trim() ? 'pointer' : 'default',
                     display: 'flex',
                     alignItems: 'center',

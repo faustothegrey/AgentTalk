@@ -4,6 +4,7 @@ import { FitAddon } from 'xterm-addon-fit';
 
 import { WebLinksAddon } from 'xterm-addon-web-links';
 import 'xterm/css/xterm.css';
+import { getAgentColor } from './agentColors';
 
 const lastAttachedAgentBySocket = new WeakMap<WebSocket, string>();
 
@@ -15,6 +16,7 @@ interface TerminalViewProps {
 export function TerminalView({ agentId, ws }: TerminalViewProps) {
   const terminalRef = useRef<HTMLDivElement>(null);
   const xtermRef = useRef<Terminal | null>(null);
+  const agentColor = getAgentColor(agentId);
 
   useEffect(() => {
     if (!terminalRef.current) return;
@@ -67,7 +69,7 @@ export function TerminalView({ agentId, ws }: TerminalViewProps) {
         xtermRef.current?.write(message.text);
       } else if (message.type === 'agent_message' && message.from === agentId) {
         // Protocol response from agent — display with visual indicator
-        xtermRef.current?.write(`\r\n\x1b[36m[agent → user]\x1b[0m ${message.payload}\r\n`);
+        xtermRef.current?.write(`\r\n\x1b[38;2;${parseInt(agentColor.accent.slice(1, 3), 16)};${parseInt(agentColor.accent.slice(3, 5), 16)};${parseInt(agentColor.accent.slice(5, 7), 16)}m[${agentId} → user]\x1b[0m ${message.payload}\r\n`);
       }
     };
 

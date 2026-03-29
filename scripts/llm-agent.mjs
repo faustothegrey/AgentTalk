@@ -408,10 +408,14 @@ function callProvider(providerName, userMessage) {
 
     console.error(`[llm-agent] Running: ${command} ${args.join(' ')}`);
     const proc = spawn(command, args, {
-      stdio: ['ignore', 'pipe', 'pipe'],
+      stdio: ['pipe', 'pipe', 'pipe'],
       timeout: 120000,
       env: getSpawnEnv(providerName),
     });
+
+    // Close stdin immediately — codex needs it to be 'pipe' (not 'ignore') for
+    // internal tool execution, but we have nothing to write.
+    proc.stdin.end();
 
     let stdout = '';
     let stderr = '';

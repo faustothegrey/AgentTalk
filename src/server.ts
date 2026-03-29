@@ -45,6 +45,17 @@ export function startServer(registry: Registry, port: number = 3000) {
     res.json(conversations);
   });
 
+  app.delete('/api/conversations/:id', (req, res) => {
+    const { id } = req.params;
+    console.log(`[Server] DELETE /api/conversations/${id}`);
+    const deleted = registry.removeConversation(id);
+    if (deleted) {
+      res.json({ success: true });
+    } else {
+      res.status(404).json({ error: 'Conversation not found' });
+    }
+  });
+
   app.get('/api/topics', (req, res) => {
     console.log('[Server] GET /api/topics');
     const conversations = registry.getConversations();

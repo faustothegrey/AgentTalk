@@ -772,6 +772,14 @@ export class Registry extends EventEmitter {
     return Array.from(this.conversations.values()).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   }
 
+  removeConversation(id: string): boolean {
+    const deleted = this.conversations.delete(id);
+    if (deleted) {
+      this.persistConversations();
+    }
+    return deleted;
+  }
+
   private loadConversations(): void {
     const storePath = this.getConversationStorePath();
     if (!existsSync(storePath)) {
