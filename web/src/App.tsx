@@ -4,6 +4,24 @@ import { ErrorBoundary } from './ErrorBoundary';
 import { Plus, Terminal as TerminalIcon, Activity, AlertCircle, X, Send, MessagesSquare, Trash2, History, Clock, Copy, Check } from 'lucide-react';
 import { getAgentColor } from './agentColors';
 
+const theme = {
+  bg:          '#1e1e1e',
+  bgRaised:    '#252526',
+  bgSurface:   '#2d2d2d',
+  bgActive:    '#3a3d49',
+  border:      '#333',
+  borderLight: '#444',
+  borderInput: '#3b3b3b',
+  textPrimary: '#ddd',
+  textSecondary: '#ccc',
+  textMuted:   '#888',
+  textDim:     '#666',
+  textBright:  '#fff',
+  textSubtle:  '#aaa',
+  success:     '#4caf50',
+  error:       '#ef4444',
+} as const;
+
 type Provider = 'claude' | 'gemini' | 'codex';
 type SidebarTab = 'new-agent' | 'conversation' | 'history' | 'usage';
 
@@ -112,7 +130,7 @@ function ConversationTranscript({ conversation }: { conversation: Conversation }
       {messages.length === 0 ? (
         <div style={{
           margin: 'auto',
-          color: '#666',
+          color: theme.textDim,
           textAlign: 'center',
           fontSize: '14px',
         }}>
@@ -145,7 +163,7 @@ function ConversationTranscript({ conversation }: { conversation: Conversation }
               }}>
                 <span style={{ color: color.accent, fontWeight: 'bold' }}>{entry.from}</span>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span style={{ color: '#888' }}>{new Date(entry.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
+                  <span style={{ color: theme.textMuted }}>{new Date(entry.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
                   <CopyButton text={entry.payload} />
                 </div>
               </div>
@@ -262,7 +280,7 @@ const ExternalUsageDisplay = ({ output, provider, isGreyed }: { output?: string,
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
           {visibleSections.map((section, idx) => (
             <div key={idx} style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: '#888' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: theme.textMuted }}>
                 <span>{section.title}</span>
                 <span>{section.percent}%</span>
               </div>
@@ -309,7 +327,7 @@ function App() {
     fontSize: '11px',
     fontWeight: 700,
     textTransform: 'uppercase' as const,
-    backgroundColor: activeSidebarTab === tab ? '#3a3d49' : 'transparent',
+    backgroundColor: activeSidebarTab === tab ? theme.bgActive : 'transparent',
     color: activeSidebarTab === tab ? '#fff' : '#888',
     border: 'none',
     borderRadius: '4px',
@@ -437,7 +455,7 @@ function App() {
     };
 
     return () => socket.close();
-  }, [fetchAgents, activeConversationId, fetchTopicHistory]);
+  }, [fetchAgents, activeConversationId, fetchTopicHistory, fetchConversationHistory]);
 
   const createAgent = async () => {
     setLoading(true);
@@ -549,7 +567,7 @@ function App() {
           left: '50%',
           transform: 'translateX(-50%)',
           backgroundColor: '#ef4444',
-          color: '#fff',
+          color: theme.textBright,
           padding: '12px 24px',
           borderRadius: '6px',
           boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.5), 0 2px 4px -1px rgba(0, 0, 0, 0.25)',
@@ -565,7 +583,7 @@ function App() {
           </div>
           <button 
             onClick={() => setGlobalError(null)}
-            style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+            style={{ background: 'none', border: 'none', color: theme.textBright, cursor: 'pointer', display: 'flex', alignItems: 'center' }}
           >
             <X size={18} />
           </button>
@@ -579,14 +597,14 @@ function App() {
           borderRight: '1px solid #333', 
           display: 'flex', 
           flexDirection: 'column',
-          backgroundColor: '#252526' 
+          backgroundColor: theme.bgRaised 
         }}>
-          <div style={{ padding: '16px', borderBottom: '1px solid #333', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          <div style={{ padding: '16px', borderBottom: `1px solid ${theme.border}`, display: 'flex', flexDirection: 'column', gap: '12px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <h2 style={{ margin: 0, fontSize: '14px', textTransform: 'uppercase', letterSpacing: '1px' }}>Agents</h2>
             </div>
 
-            <div style={{ display: 'flex', gap: '8px', paddingBottom: '12px', borderBottom: '1px solid #333' }}>
+            <div style={{ display: 'flex', gap: '8px', paddingBottom: '12px', borderBottom: `1px solid ${theme.border}` }}>
               <button onClick={() => setActiveSidebarTab('new-agent')} style={sidebarTabButtonStyle('new-agent')}>
                 <Plus size={14} /> Agent
               </button>
@@ -603,7 +621,7 @@ function App() {
 
             {activeSidebarTab === 'usage' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '12px' }}>
-                <span style={{ fontSize: '11px', color: '#888', textTransform: 'uppercase', letterSpacing: '0.8px' }}>
+                <span style={{ fontSize: '11px', color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px' }}>
                   Subscription Quotas
                 </span>
                 <ExternalUsageDisplay 
@@ -627,7 +645,7 @@ function App() {
             {activeSidebarTab === 'new-agent' && (
               <>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <span style={{ fontSize: '11px', color: '#888', textTransform: 'uppercase', letterSpacing: '0.8px' }}>
+                  <span style={{ fontSize: '11px', color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px' }}>
                     New Agent Provider
                   </span>
                   <select
@@ -639,9 +657,9 @@ function App() {
                     }}
                     disabled={loading}
                     style={{
-                      backgroundColor: '#1e1e1e',
-                      color: '#ddd',
-                      border: '1px solid #3b3b3b',
+                      backgroundColor: theme.bg,
+                      color: theme.textPrimary,
+                      border: `1px solid ${theme.borderInput}`,
                       borderRadius: '6px',
                       padding: '8px 10px',
                       fontSize: '13px',
@@ -657,7 +675,7 @@ function App() {
                 </label>
 
                 <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <span style={{ fontSize: '11px', color: '#888', textTransform: 'uppercase', letterSpacing: '0.8px' }}>
+                  <span style={{ fontSize: '11px', color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px' }}>
                     Model
                   </span>
                   <select
@@ -665,9 +683,9 @@ function App() {
                     onChange={(e) => setSelectedModel(e.target.value)}
                     disabled={loading}
                     style={{
-                      backgroundColor: '#1e1e1e',
-                      color: '#ddd',
-                      border: '1px solid #3b3b3b',
+                      backgroundColor: theme.bg,
+                      color: theme.textPrimary,
+                      border: `1px solid ${theme.borderInput}`,
                       borderRadius: '6px',
                       padding: '8px 10px',
                       fontSize: '13px',
@@ -691,9 +709,9 @@ function App() {
                     alignItems: 'center',
                     justifyContent: 'center',
                     gap: '8px',
-                    backgroundColor: '#1e1e1e',
-                    border: '1px solid #3b3b3b',
-                    color: '#fff',
+                    backgroundColor: theme.bg,
+                    border: `1px solid ${theme.borderInput}`,
+                    color: theme.textBright,
                     borderRadius: '6px',
                     padding: '9px 10px',
                     cursor: 'pointer',
@@ -708,7 +726,7 @@ function App() {
 
             {activeSidebarTab === 'conversation' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <span style={{ fontSize: '11px', color: '#888', textTransform: 'uppercase', letterSpacing: '0.8px' }}>
+                <span style={{ fontSize: '11px', color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px' }}>
                   Multi-Agent Conversation
                 </span>
                 <select
@@ -748,7 +766,7 @@ function App() {
                   ))}
                 </select>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                  <span style={{ fontSize: '10px', color: '#666', textTransform: 'uppercase' }}>Max replies per agent</span>
+                  <span style={{ fontSize: '10px', color: theme.textDim, textTransform: 'uppercase' }}>Max replies per agent</span>
                   <input
                     type="number"
                     min={1}
@@ -756,9 +774,9 @@ function App() {
                     value={maxReplies}
                     onChange={(e) => setMaxReplies(parseInt(e.target.value) || 1)}
                     style={{
-                      backgroundColor: '#1e1e1e',
-                      color: '#ddd',
-                      border: '1px solid #3b3b3b',
+                      backgroundColor: theme.bg,
+                      color: theme.textPrimary,
+                      border: `1px solid ${theme.borderInput}`,
                       borderRadius: '6px',
                       padding: '6px 10px',
                       fontSize: '13px',
@@ -768,10 +786,10 @@ function App() {
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', position: 'relative' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: '10px', color: '#666', textTransform: 'uppercase' }}>Discussion Topic</span>
+                    <span style={{ fontSize: '10px', color: theme.textDim, textTransform: 'uppercase' }}>Discussion Topic</span>
                     <button
                       onClick={() => setShowHistory(!showHistory)}
-                      style={{ background: 'none', border: 'none', color: '#888', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: '2px' }}
+                      style={{ background: 'none', border: 'none', color: theme.textMuted, cursor: 'pointer', display: 'flex', alignItems: 'center', padding: '2px' }}
                       title="Topic History"
                     >
                       <History size={14} />
@@ -781,9 +799,9 @@ function App() {
                     value={topic}
                     onChange={(e) => setTopic(e.target.value)}
                     style={{
-                      backgroundColor: '#1e1e1e',
-                      color: '#ddd',
-                      border: '1px solid #3b3b3b',
+                      backgroundColor: theme.bg,
+                      color: theme.textPrimary,
+                      border: `1px solid ${theme.borderInput}`,
                       borderRadius: '6px',
                       padding: '8px 10px',
                       fontSize: '12px',
@@ -802,8 +820,8 @@ function App() {
                       bottom: '100%',
                       left: 0,
                       right: 0,
-                      backgroundColor: '#2d2d2d',
-                      border: '1px solid #444',
+                      backgroundColor: theme.bgSurface,
+                      border: `1px solid ${theme.borderLight}`,
                       borderRadius: '6px',
                       boxShadow: '0 -4px 12px rgba(0, 0, 0, 0.5)',
                       zIndex: 100,
@@ -811,12 +829,12 @@ function App() {
                       overflowY: 'auto',
                       marginBottom: '8px',
                     }}>
-                      <div style={{ padding: '8px 12px', fontSize: '11px', color: '#888', borderBottom: '1px solid #3d3d3d', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div style={{ padding: '8px 12px', fontSize: '11px', color: theme.textMuted, borderBottom: '1px solid #3d3d3d', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <span>PAST TOPICS</span>
                         <X size={12} style={{ cursor: 'pointer' }} onClick={() => setShowHistory(false)} />
                       </div>
                       {topicHistory.length === 0 ? (
-                        <div style={{ padding: '12px', fontSize: '12px', color: '#666', textAlign: 'center' }}>No history yet</div>
+                        <div style={{ padding: '12px', fontSize: '12px', color: theme.textDim, textAlign: 'center' }}>No history yet</div>
                       ) : (
                         topicHistory.map((h, i) => (
                           <div
@@ -825,7 +843,7 @@ function App() {
                             style={{
                               padding: '8px 12px',
                               fontSize: '12px',
-                              color: '#ccc',
+                              color: theme.textSecondary,
                               cursor: 'pointer',
                               borderBottom: i === topicHistory.length - 1 ? 'none' : '1px solid #3d3d3d',
                               overflow: 'hidden',
@@ -853,9 +871,9 @@ function App() {
                     alignItems: 'center',
                     justifyContent: 'center',
                     gap: '8px',
-                    backgroundColor: '#1e1e1e',
-                    color: '#ddd',
-                    border: '1px solid #3b3b3b',
+                    backgroundColor: theme.bg,
+                    color: theme.textPrimary,
+                    border: `1px solid ${theme.borderInput}`,
                     borderRadius: '6px',
                     padding: '8px 10px',
                     fontSize: '13px',
@@ -871,11 +889,11 @@ function App() {
 
             {activeSidebarTab === 'history' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                <span style={{ fontSize: '11px', color: '#888', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '4px' }}>
+                <span style={{ fontSize: '11px', color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '4px' }}>
                   Past Conversations
                 </span>
                 {conversationHistory.length === 0 ? (
-                  <div style={{ fontSize: '12px', color: '#666', textAlign: 'center', padding: '20px 0' }}>No conversations yet</div>
+                  <div style={{ fontSize: '12px', color: theme.textDim, textAlign: 'center', padding: '20px 0' }}>No conversations yet</div>
                 ) : (
                   conversationHistory.map((conv) => {
                     const msgCount = conv.transcript.filter(e => e.kind === 'message').length;
@@ -895,7 +913,7 @@ function App() {
                         onMouseOver={(e) => { if (!isActive) e.currentTarget.style.backgroundColor = '#2d2d2d'; }}
                         onMouseOut={(e) => { if (!isActive) e.currentTarget.style.backgroundColor = '#252526'; }}
                       >
-                        <div style={{ fontSize: '11px', color: '#aaa', marginBottom: '4px', display: 'flex', justifyContent: 'space-between' }}>
+                        <div style={{ fontSize: '11px', color: theme.textSubtle, marginBottom: '4px', display: 'flex', justifyContent: 'space-between' }}>
                           <span>{new Date(conv.createdAt).toLocaleDateString([], { month: 'short', day: 'numeric' })} {new Date(conv.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                           <span style={{
                             fontSize: '9px',
@@ -909,7 +927,7 @@ function App() {
                         </div>
                         <div style={{
                           fontSize: '12px',
-                          color: '#ccc',
+                          color: theme.textSecondary,
                           overflow: 'hidden',
                           textOverflow: 'ellipsis',
                           display: '-webkit-box',
@@ -920,7 +938,7 @@ function App() {
                         }}>
                           {conv.topic}
                         </div>
-                        <div style={{ fontSize: '10px', color: '#666', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div style={{ fontSize: '10px', color: theme.textDim, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                           <span>{conv.agentIds.join(', ')} · {msgCount} messages</span>
                           <button
                             onClick={(e) => {
@@ -933,7 +951,7 @@ function App() {
                                 fetchConversationHistory();
                               });
                             }}
-                            style={{ background: 'none', border: 'none', color: '#666', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center' }}
+                            style={{ background: 'none', border: 'none', color: theme.textDim, cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center' }}
                             onMouseOver={(e) => { e.currentTarget.style.color = '#e06c75'; }}
                             onMouseOut={(e) => { e.currentTarget.style.color = '#666'; }}
                             title="Remove conversation"
@@ -983,13 +1001,13 @@ function App() {
                   <div style={{ fontSize: '13px', color: selectedAgentId === agent.id ? getAgentColor(agent.id).text : '#ddd' }}>
                     {agent.id}
                     {agent.provider && (
-                      <span style={{ marginLeft: '6px', fontSize: '11px', color: '#666', fontWeight: 'normal' }}>
+                      <span style={{ marginLeft: '6px', fontSize: '11px', color: theme.textDim, fontWeight: 'normal' }}>
                         ({agent.provider.charAt(0).toUpperCase() + agent.provider.slice(1)}
                         {agent.model ? `: ${agent.model}` : ''})
                       </span>
                     )}
                   </div>
-                  <div style={{ fontSize: '11px', color: '#888', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <div style={{ fontSize: '11px', color: theme.textMuted, display: 'flex', alignItems: 'center', gap: '4px' }}>
                     {getStatusIcon(agent.status)} {agent.status}
                   </div>
                 </div>
@@ -999,7 +1017,7 @@ function App() {
                   style={{ 
                     background: 'none', 
                     border: 'none', 
-                    color: '#888', 
+                    color: theme.textMuted, 
                     cursor: 'pointer',
                     display: 'flex',
                     alignItems: 'center',
@@ -1018,14 +1036,14 @@ function App() {
         </div>
 
         {/* Main Area */}
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', backgroundColor: '#1e1e1e' }}>
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', backgroundColor: theme.bg }}>
           {activeConversationId ? (
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-              <div style={{ padding: '8px 16px', backgroundColor: '#2d2d2d', fontSize: '12px', color: '#ccc', borderBottom: '1px solid #333', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
+              <div style={{ padding: '8px 16px', backgroundColor: theme.bgSurface, fontSize: '12px', color: theme.textSecondary, borderBottom: `1px solid ${theme.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                   <div>Conversation: <strong>{activeConversationId}</strong></div>
                   {activeConversation?.agentIds?.length ? (
-                    <div style={{ color: '#888', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                    <div style={{ color: theme.textMuted, display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                       {activeConversation.agentIds.map((agentId) => {
                         const color = getAgentColor(agentId);
                         return (
@@ -1048,14 +1066,14 @@ function App() {
                     </div>
                   ) : null}
                   {activeConversation?.status === 'completed' && (
-                    <span style={{ fontSize: '10px', backgroundColor: '#4caf50', color: '#fff', padding: '2px 8px', borderRadius: '10px', fontWeight: 'bold', textTransform: 'uppercase' }}>
+                    <span style={{ fontSize: '10px', backgroundColor: theme.success, color: theme.textBright, padding: '2px 8px', borderRadius: '10px', fontWeight: 'bold', textTransform: 'uppercase' }}>
                       Conversation Finished
                     </span>
                   )}
                 </div>
                 <button 
                   onClick={() => { setActiveConversationId(null); setActiveConversation(null); }}
-                  style={{ background: 'none', border: 'none', color: '#888', cursor: 'pointer', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px' }}
+                  style={{ background: 'none', border: 'none', color: theme.textMuted, cursor: 'pointer', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px' }}
                 >
                   Close Conversation View
                 </button>
@@ -1064,7 +1082,7 @@ function App() {
             </div>
           ) : selectedAgentId ? (
             <>
-              <div style={{ padding: '8px 16px', backgroundColor: '#2d2d2d', fontSize: '12px', color: '#ccc', borderBottom: '1px solid #333', borderTop: selectedAgentColor ? `2px solid ${selectedAgentColor.accent}` : undefined, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ padding: '8px 16px', backgroundColor: theme.bgSurface, fontSize: '12px', color: theme.textSecondary, borderBottom: `1px solid ${theme.border}`, borderTop: selectedAgentColor ? `2px solid ${selectedAgentColor.accent}` : undefined, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   {selectedAgentColor && (
                     <span style={{
@@ -1079,7 +1097,7 @@ function App() {
                   <div>Connected to: <strong style={{ color: selectedAgentColor?.accent }}>{selectedAgentId}</strong></div>
                 </div>
                 {selectedAgent?.usage && (
-                  <div style={{ color: '#888', fontSize: '11px' }}>
+                  <div style={{ color: theme.textMuted, fontSize: '11px' }}>
                     Usage: <strong>{selectedAgent.usage.total.toLocaleString()}</strong> / {selectedAgent.usage.limit.toLocaleString()} ({((selectedAgent.usage.total / selectedAgent.usage.limit) * 100).toFixed(2)}%)
                   </div>
                 )}
@@ -1092,7 +1110,7 @@ function App() {
               <div style={{
                 padding: '8px 12px',
                 borderTop: '1px solid #333',
-                backgroundColor: '#2d2d2d',
+                backgroundColor: theme.bgSurface,
                 display: 'flex',
                 alignItems: 'center',
                 gap: '8px',
@@ -1101,7 +1119,7 @@ function App() {
                 {topic.trim() && (
                   <button
                     onClick={() => setMessageInput(topic.trim())}
-                    style={{ background: 'none', border: 'none', color: '#666', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center', flexShrink: 0 }}
+                    style={{ background: 'none', border: 'none', color: theme.textDim, cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center', flexShrink: 0 }}
                     onMouseOver={(e) => { e.currentTarget.style.color = selectedAgentColor?.accent || '#aaa'; }}
                     onMouseOut={(e) => { e.currentTarget.style.color = '#666'; }}
                     title="Use conversation topic"
@@ -1118,11 +1136,11 @@ function App() {
                   placeholder="Send protocol message to agent..."
                   style={{
                     flex: 1,
-                    backgroundColor: '#1e1e1e',
-                    border: '1px solid #444',
+                    backgroundColor: theme.bg,
+                    border: `1px solid ${theme.borderLight}`,
                     borderRadius: '4px',
                     padding: '6px 10px',
-                    color: '#ccc',
+                    color: theme.textSecondary,
                     fontSize: '13px',
                     outline: 'none',
                   }}
@@ -1144,7 +1162,7 @@ function App() {
               </div>
             </>
           ) : (
-            <div style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', color: '#666' }}>
+            <div style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', color: theme.textDim }}>
               <div style={{ textAlign: 'center' }}>
                 <TerminalIcon size={48} style={{ marginBottom: '16px', opacity: 0.5 }} />
                 <div>Select an agent from the sidebar or spawn a new one.</div>

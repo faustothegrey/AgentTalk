@@ -4,7 +4,7 @@ import path from 'path';
 import stripAnsi from 'strip-ansi';
 import { Agent } from './agent.js';
 import type { ProcessAdapter } from './process-adapter.js';
-import type { Conversation, TranscriptEntry } from './types.js';
+import type { AgentStatus, Conversation, TranscriptEntry } from './types.js';
 import { deriveConversationStatus, withDerivedConversationStatus } from './conversation-status.js';
 
 interface RegistryConfig {
@@ -147,11 +147,19 @@ export class Registry extends EventEmitter {
     return conversation;
   }
 
+  private async sendErrorResponse(agentId: string, reqId: string, error: string): Promise<void> {
+    await this.sendProtocol(agentId, 'RES', { id: reqId, status: 'error', error });
+  }
+
+  private async sendSuccessResponse(agentId: string, reqId: string, data?: Record<string, unknown>): Promise<void> {
+    await this.sendProtocol(agentId, 'RES', { id: reqId, status: 'success', ...(data && { data }) });
+  }
+
   /**
    * Updates the agent status and logs the transition.
    * Also emits a status event for the UI.
    */
-  private setAgentStatus(agent: Agent, newStatus: any): void {
+  private setAgentStatus(agent: Agent, newStatus: AgentStatus): void {
     agent.setStatus(newStatus);
     this.emit('status', { id: agent.id, status: newStatus });
   }
@@ -299,14 +307,8 @@ export class Registry extends EventEmitter {
         agent.appendToTranscript(visibleText);
         await this.processNewText(agent, visibleText);
 
-        // Filter protocol lines for the UI display
-        const lines = visibleText.split(/(\r?\n)/);
-        const filteredLines = lines.filter(line => !line.includes('[NodePTY]:'));
-        // Convert bare \n to \r\n for xterm.js (it needs \r to move cursor to column 0)
-        const uiText = filteredLines.join('').replace(/\r?\n/g, '\r\n');
-
+        const uiText = this.filterTextForUI(visibleText);
         if (uiText) {
-          // Emit output for UI
           this.emit('output', { id: agent.id, text: uiText });
         }
       }
@@ -323,6 +325,15 @@ export class Registry extends EventEmitter {
     } finally {
       this.pollsInFlight.delete(id);
     }
+  }
+
+  /**
+   * Strips protocol lines and normalises newlines for xterm.js display.
+   */
+  private filterTextForUI(text: string): string {
+    const lines = text.split(/(\r?\n)/);
+    const filtered = lines.filter(line => !line.includes('[NodePTY]:'));
+    return filtered.join('').replace(/\r?\n/g, '\r\n');
   }
 
   /**
@@ -531,11 +542,7 @@ export class Registry extends EventEmitter {
         return;
 
       default:
-        await this.sendProtocol(agent.id, 'RES', {
-          id: reqId,
-          status: 'error',
-          error: `Unknown tool call: ${call}`,
-        });
+        await this.sendErrorResponse(agent.id, reqId, `Unknown tool call: ${call}`);
         return;
     }
   }
@@ -545,23 +552,14 @@ export class Registry extends EventEmitter {
       id: a.id,
       status: a.status,
     }));
-
-    await this.sendProtocol(agent.id, 'RES', {
-      id: reqId,
-      status: 'success',
-      data: { agents: agentList },
-    });
+    await this.sendSuccessResponse(agent.id, reqId, { agents: agentList });
   }
 
   private async handleSendToAgent(agent: Agent, reqId: string, args: any): Promise<void> {
     const { to, payload } = args || {};
 
     if (!to || payload === undefined) {
-      await this.sendProtocol(agent.id, 'RES', {
-        id: reqId,
-        status: 'error',
-        error: 'Missing "to" or "payload" in send_to_agent args',
-      });
+      await this.sendErrorResponse(agent.id, reqId, 'Missing "to" or "payload" in send_to_agent args');
       return;
     }
 
@@ -569,10 +567,7 @@ export class Registry extends EventEmitter {
     if (to === 'user') {
       this.setAgentBusyState(agent, false);
       this.emit('user_message', { from: agent.id, payload });
-      await this.sendProtocol(agent.id, 'RES', {
-        id: reqId,
-        status: 'success',
-      });
+      await this.sendSuccessResponse(agent.id, reqId);
       return;
     }
 
@@ -581,11 +576,7 @@ export class Registry extends EventEmitter {
       const conversation = this.findActiveConversationByAgents(agent.id, to);
 
       if (targetAgent.status !== 'ready' && targetAgent.status !== 'busy') {
-        await this.sendProtocol(agent.id, 'RES', {
-          id: reqId,
-          status: 'error',
-          error: `Target agent ${to} is in ${targetAgent.status} state`,
-        });
+        await this.sendErrorResponse(agent.id, reqId, `Target agent ${to} is in ${targetAgent.status} state`);
         return;
       }
 
@@ -593,11 +584,7 @@ export class Registry extends EventEmitter {
         const currentCount = conversation.replyCounts[agent.id] ?? 0;
         if (currentCount >= conversation.maxRepliesPerAgent) {
           this.markConversationCompleted(conversation, `Reply cap reached by ${agent.id}`);
-          await this.sendProtocol(agent.id, 'RES', {
-            id: reqId,
-            status: 'error',
-            error: `Conversation ${conversation.id} reply cap reached for ${agent.id}`,
-          });
+          await this.sendErrorResponse(agent.id, reqId, `Conversation ${conversation.id} reply cap reached for ${agent.id}`);
           return;
         }
       }
@@ -619,38 +606,22 @@ export class Registry extends EventEmitter {
         });
       }
 
-      // Confirm to requester
-      await this.sendProtocol(agent.id, 'RES', {
-        id: reqId,
-        status: 'success',
-      });
+      await this.sendSuccessResponse(agent.id, reqId);
     } catch (err) {
-      await this.sendProtocol(agent.id, 'RES', {
-        id: reqId,
-        status: 'error',
-        error: err instanceof Error ? err.message : `Target agent ${to} not found`,
-      });
+      await this.sendErrorResponse(agent.id, reqId, err instanceof Error ? err.message : `Target agent ${to} not found`);
     }
   }
 
   private async handleHealthcheckAck(agent: Agent, reqId: string, args: any): Promise<void> {
     const { token, message } = args || {};
     if (typeof token !== 'string' || typeof message !== 'string' || !message.trim()) {
-      await this.sendProtocol(agent.id, 'RES', {
-        id: reqId,
-        status: 'error',
-        error: 'Missing "token" or "message" in ack_healthcheck args',
-      });
+      await this.sendErrorResponse(agent.id, reqId, 'Missing "token" or "message" in ack_healthcheck args');
       return;
     }
 
     const pending = this.pendingHealthChecks.get(token);
     if (!pending || pending.agentId !== agent.id) {
-      await this.sendProtocol(agent.id, 'RES', {
-        id: reqId,
-        status: 'error',
-        error: `Unknown healthcheck token: ${token}`,
-      });
+      await this.sendErrorResponse(agent.id, reqId, `Unknown healthcheck token: ${token}`);
       return;
     }
 
@@ -658,10 +629,7 @@ export class Registry extends EventEmitter {
     this.pendingHealthChecks.delete(token);
     pending.resolve({ agentId: agent.id, message });
 
-    await this.sendProtocol(agent.id, 'RES', {
-      id: reqId,
-      status: 'success',
-    });
+    await this.sendSuccessResponse(agent.id, reqId);
   }
 
   private async handleResponse(agent: Agent, payload: any): Promise<void> {

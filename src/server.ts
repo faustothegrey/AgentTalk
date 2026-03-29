@@ -226,92 +226,57 @@ export function startServer(registry: Registry, port: number = 3000) {
     });
   });
 
-  // Listen to Registry events and broadcast to attached clients
-  registry.on('output', ({ id, text }) => {
+  // Broadcast helper: sends a message to all open WebSocket clients,
+  // optionally filtered to only the client attached to a specific agent.
+  function broadcast(msg: Record<string, unknown>, onlyAttachedTo?: string): number {
     let sent = 0;
     wss.clients.forEach((client) => {
-      if (client.readyState === WebSocket.OPEN && clientAttachments.get(client) === id) {
-        client.send(JSON.stringify({ type: 'output', id, text }));
-        sent++;
-      }
+      if (client.readyState !== WebSocket.OPEN) return;
+      if (onlyAttachedTo && clientAttachments.get(client) !== onlyAttachedTo) return;
+      client.send(JSON.stringify(msg));
+      sent++;
     });
+    return sent;
+  }
+
+  // Listen to Registry events and broadcast to clients
+  registry.on('output', ({ id, text }) => {
+    const sent = broadcast({ type: 'output', id, text }, id);
     console.log(`[Server] Output from ${id} (${text.length} chars) → ${sent} client(s)`);
   });
 
   registry.on('user_message', ({ from, payload }) => {
-    let sent = 0;
-    wss.clients.forEach((client) => {
-      if (client.readyState === WebSocket.OPEN && clientAttachments.get(client) === from) {
-        client.send(JSON.stringify({ type: 'agent_message', from, payload }));
-        sent++;
-      }
-    });
+    const sent = broadcast({ type: 'agent_message', from, payload }, from);
     console.log(`[Server] Agent message from ${from}: "${payload}" → ${sent} client(s)`);
   });
 
   registry.on('status', ({ id, status }) => {
-    let sent = 0;
-    wss.clients.forEach((client) => {
-      if (client.readyState === WebSocket.OPEN) {
-        client.send(JSON.stringify({ type: 'status', id, status }));
-        sent++;
-      }
-    });
+    const sent = broadcast({ type: 'status', id, status });
     console.log(`[Server] Status ${id}: ${status} → ${sent} client(s)`);
   });
 
   registry.on('usage', ({ id, usage }) => {
-    let sent = 0;
-    wss.clients.forEach((client) => {
-      if (client.readyState === WebSocket.OPEN) {
-        client.send(JSON.stringify({ type: 'usage', id, usage }));
-        sent++;
-      }
-    });
+    const sent = broadcast({ type: 'usage', id, usage });
     console.log(`[Server] Usage ${id}: ${JSON.stringify(usage)} → ${sent} client(s)`);
   });
 
   registry.on('provider', ({ id, provider }) => {
-    let sent = 0;
-    wss.clients.forEach((client) => {
-      if (client.readyState === WebSocket.OPEN) {
-        client.send(JSON.stringify({ type: 'provider', id, provider }));
-        sent++;
-      }
-    });
+    const sent = broadcast({ type: 'provider', id, provider });
     console.log(`[Server] Provider ${id}: ${provider} → ${sent} client(s)`);
   });
 
   registry.on('model', ({ id, model }) => {
-    let sent = 0;
-    wss.clients.forEach((client) => {
-      if (client.readyState === WebSocket.OPEN) {
-        client.send(JSON.stringify({ type: 'model', id, model }));
-        sent++;
-      }
-    });
+    const sent = broadcast({ type: 'model', id, model });
     console.log(`[Server] Model ${id}: ${model} → ${sent} client(s)`);
   });
 
   registry.on('external_usage', ({ id, externalUsage }) => {
-    let sent = 0;
-    wss.clients.forEach((client) => {
-      if (client.readyState === WebSocket.OPEN) {
-        client.send(JSON.stringify({ type: 'external_usage', id, externalUsage }));
-        sent++;
-      }
-    });
+    const sent = broadcast({ type: 'external_usage', id, externalUsage });
     console.log(`[Server] External Usage ${id}: (${externalUsage.length} chars) → ${sent} client(s)`);
   });
 
   registry.on('conversation', (conversation) => {
-    let sent = 0;
-    wss.clients.forEach((client) => {
-      if (client.readyState === WebSocket.OPEN) {
-        client.send(JSON.stringify({ type: 'conversation', conversation }));
-        sent++;
-      }
-    });
+    const sent = broadcast({ type: 'conversation', conversation });
     console.log(`[Server] Conversation ${conversation.id}: ${conversation.status} → ${sent} client(s)`);
   });
 
