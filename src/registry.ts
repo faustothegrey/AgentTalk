@@ -3,7 +3,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
 import path from 'path';
 import stripAnsi from 'strip-ansi';
 import { Agent } from './agent.js';
-import type { CmuxAdapter } from './cmux-adapter.js';
+import type { ProcessAdapter } from './process-adapter.js';
 import type { ConversationScenario, ScenarioTranscriptEntry } from './types.js';
 
 interface RegistryConfig {
@@ -32,7 +32,7 @@ export class Registry extends EventEmitter {
   private readonly config: RegistryConfig;
 
   constructor(
-    private readonly adapter: CmuxAdapter,
+    private readonly adapter: ProcessAdapter,
     config: Partial<RegistryConfig> = {}
   ) {
     super();
@@ -46,20 +46,31 @@ export class Registry extends EventEmitter {
       ...config,
     };
     this.loadScenarios();
+
+    this.adapter.onExit((id, code) => {
+      const agent = this.agents.get(id);
+      if (!agent || agent.status === 'terminated') return;
+      console.log(`[Registry] Process exited for agent ${id} (code: ${code})`);
+      this.stopPolling(id);
+      this.clearReadinessTimeout(id);
+      try {
+        this.setAgentStatus(agent, 'error');
+      } catch {
+        // already in terminal state
+      }
+    });
   }
 
   /**
-   * Creates a new agent and its corresponding cmux pane.
+   * Registers a new agent. No process is spawned yet — call startAgent for that.
    */
-  async createAgent(id: string, splitDirection: 'right' | 'down'): Promise<Agent> {
+  async createAgent(id: string): Promise<Agent> {
     if (this.agents.has(id)) {
       throw new Error(`Agent ${id} already exists`);
     }
 
-    console.log(`[Registry] Creating agent ${id} (split: ${splitDirection})...`);
-    const surface = await this.adapter.createPane(splitDirection);
-    console.log(`[Registry] Agent ${id} pane created: workspace=${surface.workspaceRef} pane=${surface.paneRef} surface=${surface.surfaceRef}`);
-    const agent = new Agent(id, surface);
+    console.log(`[Registry] Creating agent ${id}...`);
+    const agent = new Agent(id);
     this.agents.set(id, agent);
     return agent;
   }
@@ -146,7 +157,7 @@ export class Registry extends EventEmitter {
   }
 
   /**
-   * Sends the launch command to the agent's pane and starts the polling loop.
+   * Spawns the agent process and starts the polling loop.
    */
   async startAgent(id: string, launchCommand: string): Promise<void> {
     const agent = this.getAgent(id);
@@ -157,7 +168,7 @@ export class Registry extends EventEmitter {
 
     this.setAgentStatus(agent, 'starting');
     agent.launchCommand = launchCommand;
-    
+
     // Try to extract provider from command (e.g. node scripts/llm-agent.mjs gemini)
     const providerMatch = launchCommand.match(/llm-agent\.mjs\s+([^\s]+)/);
     if (providerMatch && providerMatch[1]) {
@@ -178,12 +189,11 @@ export class Registry extends EventEmitter {
     this.consecutiveFailures.set(id, 0);
 
     try {
-      // Send launch command followed by newline
-      console.log(`[Registry] Sending launch command to ${agent.surface.surfaceRef}: ${launchCommand}`);
-      await this.adapter.sendText(agent.surface.surfaceRef, `${launchCommand}\n`);
-      console.log(`[Registry] Launch command sent to agent ${id}`);
+      console.log(`[Registry] Spawning process for agent ${id}: ${launchCommand}`);
+      this.adapter.spawn(id, launchCommand);
+      console.log(`[Registry] Process spawned for agent ${id}`);
     } catch (err) {
-      console.error(`[Registry] Failed to send launch command to agent ${id}:`, err);
+      console.error(`[Registry] Failed to spawn process for agent ${id}:`, err);
       this.setAgentStatus(agent, 'error');
       throw err;
     }
@@ -202,11 +212,6 @@ export class Registry extends EventEmitter {
         console.error(`[Registry] Agent ${id} readiness timeout reached (${this.config.readinessTimeoutMs}ms)`);
         this.setAgentStatus(agent, 'error');
         this.stopPolling(id);
-        void this.adapter.notify(
-          'Readiness Timeout',
-          `Agent ${id} failed to signal READY within ${this.config.readinessTimeoutMs}ms`,
-          agent.surface.surfaceRef,
-        );
       }
       this.readinessTimeouts.delete(id);
     }, this.config.readinessTimeoutMs);
@@ -214,14 +219,14 @@ export class Registry extends EventEmitter {
   }
 
   /**
-   * Removes an agent from the registry and closes its cmux surface.
+   * Removes an agent from the registry and kills its process.
    */
   async removeAgent(id: string): Promise<void> {
     const agent = this.agents.get(id);
     if (!agent) return;
 
     console.log(`[Registry] Removing agent ${id}...`);
-    
+
     this.stopPolling(id);
     this.clearReadinessTimeout(id);
     this.pollsInFlight.delete(id);
@@ -230,17 +235,17 @@ export class Registry extends EventEmitter {
     try {
       this.setAgentStatus(agent, 'terminated');
     } catch (err) {
-      // If already terminated, this might throw, which is fine to ignore for removal.
+      // If already terminated, this might throw, which is fine for removal.
     }
 
     this.agents.delete(id);
     await agent.destroy();
 
     try {
-      await this.adapter.closeSurface(agent.surface.surfaceRef);
-      console.log(`[Registry] Agent ${id} surface ${agent.surface.surfaceRef} closed.`);
+      this.adapter.kill(id);
+      console.log(`[Registry] Agent ${id} process killed.`);
     } catch (err) {
-      console.warn(`[Registry] Failed to close surface for agent ${id}:`, err);
+      console.warn(`[Registry] Failed to kill process for agent ${id}:`, err);
     }
   }
 
@@ -272,16 +277,16 @@ export class Registry extends EventEmitter {
     this.pollCount.set(id, count);
 
     try {
-      const result = await this.adapter.readSurface(agent.surface.surfaceRef);
+      const text = this.adapter.readOutput(id);
       this.consecutiveFailures.set(id, 0);
 
-      // Log raw surface read while starting or occasionally while busy.
+      // Log while starting or occasionally while busy.
       if (agent.status === 'starting' || (agent.status === 'busy' && count % 120 === 1)) {
-        const preview = result.text.slice(-300).replace(/\n/g, '\\n');
-        console.log(`[Registry] Poll #${count} for ${id} (status: ${agent.status}), surface tail: "${preview}"`);
+        const preview = text.slice(-300).replace(/\n/g, '\\n');
+        console.log(`[Registry] Poll #${count} for ${id} (status: ${agent.status}), output tail: "${preview}"`);
       }
 
-      const newText = this.deduplicate(agent, result.text);
+      const newText = this.deduplicate(agent, text);
       const visibleText = this.suppressOutboundProtocolEchoes(agent, newText);
 
       if (agent.lastDedupDiverged) {
@@ -299,7 +304,7 @@ export class Registry extends EventEmitter {
         const filteredLines = lines.filter(line => !line.includes('[NodePTY]:'));
         // Convert bare \n to \r\n for xterm.js (it needs \r to move cursor to column 0)
         const uiText = filteredLines.join('').replace(/\r?\n/g, '\r\n');
-        
+
         if (uiText) {
           // Emit output for UI
           this.emit('output', { id: agent.id, text: uiText });
@@ -321,11 +326,11 @@ export class Registry extends EventEmitter {
   }
 
   /**
-   * Deduplicates newly read surface text against previously seen text.
-   * V1: simple suffix-based approach.
+   * Deduplicates newly read output against previously seen text.
+   * With a process buffer that only grows, divergence should not happen,
+   * but we keep the logic for safety.
    */
   private deduplicate(agent: Agent, newText: string): string {
-    // Compare ANSI-stripped text to avoid false divergence from cursor/color changes
     const newClean = stripAnsi(newText);
     const oldClean = agent.lastSeenClean ?? '';
 
@@ -339,10 +344,8 @@ export class Registry extends EventEmitter {
 
     if (newClean.startsWith(oldClean)) {
       const unseenText = newClean.slice(oldClean.length);
-      if (unseenText.length === 0) {
-        // No new text — completely silent, don't log every poll
-      } else {
-        console.log(`[Registry] Dedup for ${agent.id}: ${unseenText.length} new chars (total surface: ${newClean.length})`);
+      if (unseenText.length > 0) {
+        console.log(`[Registry] Dedup for ${agent.id}: ${unseenText.length} new chars (total: ${newClean.length})`);
       }
       agent.lastSeenText = newText;
       agent.lastSeenClean = newClean;
@@ -350,9 +353,7 @@ export class Registry extends EventEmitter {
       return unseenText;
     }
 
-    // Terminal wrapped or cleared — we can't reliably derive the unseen suffix.
-    // Reset to the current snapshot and skip this poll so future reads can progress again.
-    console.log(`[Registry] Dedup reset for agent ${agent.id}: surface text diverged (old: ${oldClean.length} chars, new: ${newClean.length} chars)`);
+    console.log(`[Registry] Dedup reset for agent ${agent.id}: output diverged (old: ${oldClean.length} chars, new: ${newClean.length} chars)`);
     agent.lastSeenText = newText;
     agent.lastSeenClean = newClean;
     agent.lastDedupDiverged = true;
@@ -381,9 +382,8 @@ export class Registry extends EventEmitter {
   }
 
   /**
-   * Cmux writes injected protocol lines back into the terminal surface.
-   * Suppress those exact echoes so they don't get parsed as if they came
-   * from the agent and don't pollute the UI.
+   * Suppress echoed outbound protocol lines so they don't get
+   * parsed as agent-originated and don't pollute the UI.
    */
   private suppressOutboundProtocolEchoes(agent: Agent, newText: string): string {
     if (!newText || agent.pendingOutboundProtocolEchoes.length === 0) {
@@ -434,7 +434,7 @@ export class Registry extends EventEmitter {
       }
     }
 
-    // Handle protocol lines at end of surface that lack a trailing newline
+    // Handle protocol lines at end of buffer that lack a trailing newline
     const remaining = agent.lineBuffer.trim();
     if (remaining.startsWith('[NodePTY]:')) {
       console.log(`[Registry] Protocol line from ${agent.id} (no trailing newline): "${remaining.slice(0, 200)}"`);
@@ -451,7 +451,6 @@ export class Registry extends EventEmitter {
   private async handleProtocolLine(agent: Agent, line: string): Promise<void> {
     console.log(`[Registry] Protocol line from ${agent.id}: ${line}`);
 
-    // Strip prefix to get e.g. "READY:{...}" or "REQ:{...}"
     const body = line.slice('[NodePTY]:'.length);
     const colonIdx = body.indexOf(':');
     if (colonIdx === -1) {
@@ -511,7 +510,7 @@ export class Registry extends EventEmitter {
 
   private async handleRequest(agent: Agent, payload: any): Promise<void> {
     console.log(`[Registry] REQ from ${agent.id}:`, payload);
-    
+
     const { id: reqId, call, args } = payload;
     if (!reqId || !call) {
       console.warn(`[Registry] Invalid REQ from ${agent.id}: missing id or call`);
@@ -522,7 +521,7 @@ export class Registry extends EventEmitter {
       case 'list_agents':
         await this.handleListAgents(agent, reqId);
         return;
-      
+
       case 'send_to_agent':
         await this.handleSendToAgent(agent, reqId, args);
         return;
@@ -545,7 +544,6 @@ export class Registry extends EventEmitter {
     const agentList = Array.from(this.agents.values()).map(a => ({
       id: a.id,
       status: a.status,
-      surface: a.surface,
     }));
 
     await this.sendProtocol(agent.id, 'RES', {
@@ -604,7 +602,7 @@ export class Registry extends EventEmitter {
         }
       }
 
-      // V1 Delivery: write EVT to target terminal
+      // Delivery: write EVT to target process stdin
       await this.sendProtocol(targetAgent.id, 'EVT', {
         type: 'message_received',
         from: agent.id,
@@ -689,7 +687,7 @@ export class Registry extends EventEmitter {
   }
 
   /**
-   * Sends a protocol packet back to an agent's terminal stdin.
+   * Sends a protocol packet to an agent's stdin.
    * V1 Protocol Rule: [NodePTY]:TYPE:JSON\n
    */
   async sendProtocol(id: string, type: 'RES' | 'EVT', payload: any): Promise<void> {
@@ -699,7 +697,7 @@ export class Registry extends EventEmitter {
     agent.pendingOutboundProtocolEchoes.push(line);
 
     console.log(`[Registry] Sending ${type} to agent ${id}: ${jsonStr}`);
-    await this.adapter.sendText(agent.surface.surfaceRef, line);
+    this.adapter.sendText(id, line);
   }
 
   private setAgentBusyState(agent: Agent, busy: boolean): void {

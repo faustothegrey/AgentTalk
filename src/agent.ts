@@ -1,5 +1,5 @@
 import { createWriteStream, WriteStream, mkdirSync, existsSync } from 'fs';
-import type { AgentStatus, AgentSurface } from './types.js';
+import type { AgentStatus } from './types.js';
 import path from 'path';
 import { once } from 'events';
 
@@ -14,7 +14,6 @@ const ALLOWED_TRANSITIONS: Record<AgentStatus, AgentStatus[]> = {
 
 export class Agent {
   readonly id: string;
-  readonly surface: AgentSurface;
   status: AgentStatus = 'creating';
 
   lineBuffer: string = '';
@@ -34,9 +33,8 @@ export class Agent {
   private transcriptStream: WriteStream;
   private destroyPromise?: Promise<void>;
 
-  constructor(id: string, surface: AgentSurface, transcriptDir: string = './transcripts') {
+  constructor(id: string, transcriptDir: string = './transcripts') {
     this.id = id;
-    this.surface = surface;
 
     if (!existsSync(transcriptDir)) {
       mkdirSync(transcriptDir, { recursive: true });

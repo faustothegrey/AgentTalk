@@ -5,30 +5,27 @@ import type { Server } from 'http';
 import { WebSocket } from 'ws';
 import { Registry } from '../registry.js';
 import { startServer } from '../server.js';
-import type { CmuxAdapter } from '../cmux-adapter.js';
+import type { ProcessAdapter } from '../process-adapter.js';
 
 describe('startServer', () => {
-  let adapter: CmuxAdapter;
+  let adapter: ProcessAdapter;
   let registry: Registry;
   let server: Server;
   let baseUrl: string;
+  let outputBuffers: Map<string, string>;
   const scenarioStorePath = './test-transcripts-server/scenarios.json';
 
   beforeEach(async () => {
-    let nextRef = 1;
+    outputBuffers = new Map();
+
     adapter = {
-      createPane: vi.fn().mockImplementation(async () => {
-        const ref = nextRef++;
-        return {
-          workspaceRef: `workspace:${ref}`,
-          paneRef: `pane:${ref}`,
-          surfaceRef: `surface:${ref}`,
-        };
+      spawn: vi.fn().mockImplementation((id: string) => {
+        outputBuffers.set(id, '');
       }),
-      sendText: vi.fn().mockResolvedValue(undefined),
-      readSurface: vi.fn().mockResolvedValue({ text: '', raw: '' }),
-      notify: vi.fn().mockResolvedValue(undefined),
-      closeSurface: vi.fn().mockResolvedValue(undefined),
+      sendText: vi.fn(),
+      readOutput: vi.fn().mockImplementation((id: string) => outputBuffers.get(id) ?? ''),
+      kill: vi.fn(),
+      onExit: vi.fn(),
     };
 
     registry = new Registry(adapter, {
@@ -38,7 +35,7 @@ describe('startServer', () => {
       scenarioStorePath,
     });
 
-    server = startServer(registry, adapter, 0);
+    server = startServer(registry, 0);
     await new Promise<void>((resolve) => server.once('listening', resolve));
 
     const { port } = server.address() as AddressInfo;
@@ -57,21 +54,8 @@ describe('startServer', () => {
     }
   });
 
-  it('should reject invalid splitDirection values', async () => {
-    const response = await fetch(`${baseUrl}/api/agents`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ splitDirection: 'left' }),
-    });
-
-    expect(response.status).toBe(400);
-    await expect(response.json()).resolves.toEqual({
-      error: 'splitDirection must be "right" or "down"',
-    });
-  });
-
   it('should reject start requests without a command', async () => {
-    await registry.createAgent('agent-1', 'right');
+    await registry.createAgent('agent-1');
 
     const response = await fetch(`${baseUrl}/api/agents/agent-1/start`, {
       method: 'POST',
@@ -81,7 +65,7 @@ describe('startServer', () => {
 
     expect(response.status).toBe(400);
     await expect(response.json()).resolves.toEqual({ error: 'command is required' });
-    expect(adapter.sendText).not.toHaveBeenCalled();
+    expect(adapter.spawn).not.toHaveBeenCalled();
   });
 
   it('should return 404 when starting an unknown agent', async () => {
@@ -96,7 +80,7 @@ describe('startServer', () => {
   });
 
   it('should return 409 when creating a duplicate agent', async () => {
-    await registry.createAgent('agent-1', 'right');
+    await registry.createAgent('agent-1');
 
     const response = await fetch(`${baseUrl}/api/agents`, {
       method: 'POST',
@@ -125,8 +109,8 @@ describe('startServer', () => {
   });
 
   it('should expose persisted scenarios via the api', async () => {
-    const agent1 = await registry.createAgent('agent-1', 'right');
-    const agent2 = await registry.createAgent('agent-2', 'down');
+    const agent1 = await registry.createAgent('agent-1');
+    const agent2 = await registry.createAgent('agent-2');
     agent1.setStatus('starting');
     agent1.setStatus('ready');
     agent2.setStatus('starting');
@@ -140,7 +124,7 @@ describe('startServer', () => {
     await registry.startScenario(
       'agent-1',
       'agent-2',
-      'Discuss the current NodePTY project and propose concrete next-step implementation ideas or simplifications: architecture quality, risks, and the most useful changes to make next.',
+      'Discuss the current NodePTY project.',
       5,
     );
 
@@ -158,7 +142,7 @@ describe('startServer', () => {
   });
 
   it('should remove an agent via the DELETE /api/agents/:id endpoint', async () => {
-    await registry.createAgent('agent-1', 'right');
+    await registry.createAgent('agent-1');
     const removeSpy = vi.spyOn(registry, 'removeAgent');
 
     const response = await fetch(`${baseUrl}/api/agents/agent-1`, {

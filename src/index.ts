@@ -1,25 +1,19 @@
-import { CmuxAdapterImpl } from './cmux-adapter.js';
+import { ProcessAdapterImpl } from './process-adapter.js';
 import { Registry } from './registry.js';
 import { startServer } from './server.js';
-import { ensureCmux } from './utils/shell.js';
 
 async function main() {
-  await ensureCmux();
-
-  const adapter = new CmuxAdapterImpl();
+  const adapter = new ProcessAdapterImpl();
   const registry = new Registry(adapter);
   let shuttingDown = false;
 
   console.log('NodePTY Orchestrator V1 started.');
 
   const port = Number(process.env.PORT) || 3000;
-  startServer(registry, adapter, port);
+  startServer(registry, port);
 
-  console.log('Ready to manage agents via cmux and Web UI.');
+  console.log('Ready to manage agents.');
 
-  // This is a minimal entry point.
-  // In a real scenario, we might start a WebSocket server or a CLI repl here.
-  
   const shutdown = async (signal: NodeJS.Signals) => {
     if (shuttingDown) {
       return;
@@ -29,6 +23,7 @@ async function main() {
     console.log(`Received ${signal}. Shutting down...`);
     try {
       await registry.destroy();
+      adapter.destroyAll();
       process.exit(0);
     } catch (err) {
       console.error('Shutdown failed:', err);

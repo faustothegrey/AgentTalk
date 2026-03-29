@@ -2,11 +2,6 @@ import express from 'express';
 import { createServer } from 'http';
 import { WebSocketServer, WebSocket } from 'ws';
 import { Registry } from './registry.js';
-import type { CmuxAdapter } from './cmux-adapter.js';
-
-function isSplitDirection(value: unknown): value is 'right' | 'down' {
-  return value === 'right' || value === 'down';
-}
 
 function getErrorStatus(err: unknown): number {
   if (!(err instanceof Error)) {
@@ -24,7 +19,7 @@ function getErrorStatus(err: unknown): number {
   return 500;
 }
 
-export function startServer(registry: Registry, adapter: CmuxAdapter, port: number = 3000) {
+export function startServer(registry: Registry, port: number = 3000) {
   const app = express();
   app.use(express.json());
 
@@ -34,7 +29,6 @@ export function startServer(registry: Registry, adapter: CmuxAdapter, port: numb
     const agents = registry.getAgents().map(a => ({
       id: a.id,
       status: a.status,
-      surface: a.surface,
       usage: a.usage,
       provider: a.provider,
       model: a.model,
@@ -54,7 +48,6 @@ export function startServer(registry: Registry, adapter: CmuxAdapter, port: numb
   app.get('/api/topics', (req, res) => {
     console.log('[Server] GET /api/topics');
     const scenarios = registry.getScenarios();
-    // Unique topics, most recent first
     const topics = Array.from(new Set(scenarios.map(s => s.topic))).filter(Boolean);
     console.log(`[Server] Returning ${topics.length} topics`);
     res.json(topics);
@@ -62,17 +55,12 @@ export function startServer(registry: Registry, adapter: CmuxAdapter, port: numb
 
   app.post('/api/agents', async (req, res) => {
     console.log('[Server] POST /api/agents', req.body);
-    const { id, splitDirection } = req.body;
-    if (splitDirection !== undefined && !isSplitDirection(splitDirection)) {
-      console.log('[Server] Invalid splitDirection:', splitDirection);
-      res.status(400).json({ error: 'splitDirection must be "right" or "down"' });
-      return;
-    }
+    const { id } = req.body;
 
     try {
-      const agent = await registry.createAgent(id || `agent-${Date.now()}`, splitDirection || 'right');
+      const agent = await registry.createAgent(id || `agent-${Date.now()}`);
       console.log(`[Server] Agent created: ${agent.id} (status: ${agent.status})`);
-      res.json({ id: agent.id, status: agent.status, surface: agent.surface });
+      res.json({ id: agent.id, status: agent.status });
     } catch (err) {
       console.error('[Server] Failed to create agent:', err);
       res.status(getErrorStatus(err)).json({ error: err instanceof Error ? err.message : String(err) });
@@ -142,8 +130,11 @@ export function startServer(registry: Registry, adapter: CmuxAdapter, port: numb
               break;
             }
             try {
-              const agent = registry.getAgent(agentId);
-              await adapter.sendText(agent.surface.surfaceRef, message.text);
+              registry.getAgent(agentId); // validate agent exists
+              registry.sendProtocol(agentId, 'EVT', {
+                type: 'user_input',
+                text: message.text,
+              });
             } catch (err) {
               console.error(`[Server] Failed to forward input to agent ${agentId}:`, err);
             }
@@ -224,7 +215,6 @@ export function startServer(registry: Registry, adapter: CmuxAdapter, port: numb
     console.log(`[Server] Output from ${id} (${text.length} chars) → ${sent} client(s)`);
   });
 
-  // Route agent→user messages back to attached WebSocket clients
   registry.on('user_message', ({ from, payload }) => {
     let sent = 0;
     wss.clients.forEach((client) => {

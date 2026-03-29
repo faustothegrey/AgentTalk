@@ -9,7 +9,6 @@ type SidebarTab = 'new-agent' | 'conversation' | 'usage';
 interface Agent {
   id: string;
   status: string;
-  surface: any;
   usage?: { total: number; limit: number };
   provider?: string;
   model?: string;
@@ -30,22 +29,20 @@ const modelOptions: Record<Provider, { value: string; label: string }[]> = {
     { value: 'haiku', label: 'Haiku' },
   ],
   gemini: [
-    { value: '2.0-flash', label: '2.0 Flash' },
-    { value: '2.0-flash-thinking', label: '2.0 Flash Thinking' },
-    { value: '2.0-pro-exp', label: '2.0 Pro Exp' },
-    { value: '1.5-pro', label: '1.5 Pro' },
-    { value: '1.5-flash', label: '1.5 Flash' },
+    { value: 'gemini-2.5-flash', label: '2.5 Flash' },
+    { value: 'gemini-2.5-pro', label: '2.5 Pro' },
+    { value: 'gemini-2.0-flash', label: '2.0 Flash' },
   ],
   codex: [
-    { value: 'o3-mini', label: 'o3-mini' },
-    { value: 'o1', label: 'o1' },
-    { value: 'gpt-4o', label: 'GPT-4o' },
-    { value: 'gpt-4o-mini', label: 'GPT-4o-mini' },
+    { value: '', label: 'Default' },
   ],
 };
 
 function getAgentCommand(provider: Provider, model: string): string {
-  return `node scripts/llm-agent.mjs ${provider} --model ${model}`;
+  if (model) {
+    return `node scripts/llm-agent.mjs ${provider} --model ${model}`;
+  }
+  return `node scripts/llm-agent.mjs ${provider}`;
 }
 
 // Helper to add timeout to our fetch commands
@@ -164,7 +161,7 @@ function App() {
   const [globalError, setGlobalError] = useState<string | null>(null);
   const [messageInput, setMessageInput] = useState('');
   const [provider, setProvider] = useState<Provider>('gemini');
-  const [selectedModel, setSelectedModel] = useState<string>('2.0-flash');
+  const [selectedModel, setSelectedModel] = useState('');
   const [conversationAgentA, setConversationAgentA] = useState<string>('');
   const [conversationAgentB, setConversationAgentB] = useState<string>('');
   const [maxReplies, setMaxReplies] = useState<number>(5);
@@ -297,7 +294,7 @@ function App() {
       const res = await fetchWithTimeout('/api/agents', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ splitDirection: 'right' }),
+        body: JSON.stringify({}),
       }, 15000);
 
       const data = await res.json();
@@ -307,7 +304,7 @@ function App() {
       await fetchWithTimeout(`/api/agents/${data.id}/start`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ command: getAgentCommand(provider, selectedModel) }),
+        body: JSON.stringify({ command: getAgentCommand(provider, selectedModel || modelOptions[provider][0].value) }),
       }, 10000);
 
       await fetchAgents();

@@ -1,21 +1,14 @@
 import { describe, it, expect, afterEach } from 'vitest';
 import { Agent } from '../agent.js';
 import { existsSync, rmSync, readFileSync } from 'fs';
-import type { AgentSurface } from '../types.js';
 
 const TRANSCRIPT_DIR = './test-transcripts-agent';
-
-const surface: AgentSurface = {
-  workspaceRef: 'workspace:1',
-  paneRef: 'pane:1',
-  surfaceRef: 'surface:1',
-};
 
 describe('Agent', () => {
   const agents: Agent[] = [];
 
   function createAgent(id: string): Agent {
-    const agent = new Agent(id, surface, TRANSCRIPT_DIR);
+    const agent = new Agent(id, TRANSCRIPT_DIR);
     agents.push(agent);
     return agent;
   }
@@ -56,7 +49,7 @@ describe('Agent', () => {
 
     it('should allow terminated from any non-terminated state', () => {
       for (const from of ['creating', 'starting', 'ready', 'busy', 'error'] as const) {
-        const agent = new Agent(`term-${from}`, surface, TRANSCRIPT_DIR);
+        const agent = new Agent(`term-${from}`, TRANSCRIPT_DIR);
         agents.push(agent);
 
         // Drive to target state
