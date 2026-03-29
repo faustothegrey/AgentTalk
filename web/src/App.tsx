@@ -15,6 +15,26 @@ interface Agent {
   externalUsage?: string;
 }
 
+interface TranscriptEntry {
+  kind: 'system' | 'message';
+  timestamp: string;
+  from: string;
+  to: string;
+  payload: string;
+}
+
+interface Conversation {
+  id: string;
+  agentIds: string[];
+  topic: string;
+  maxRepliesPerAgent: number;
+  replyCounts: Record<string, number>;
+  status: 'active' | 'completed';
+  createdAt: string;
+  updatedAt: string;
+  transcript: TranscriptEntry[];
+}
+
 const providerOptions: { value: Provider; label: string }[] = [
   { value: 'claude', label: 'Claude' },
   { value: 'gemini', label: 'Gemini' },
@@ -37,6 +57,79 @@ const modelOptions: Record<Provider, { value: string; label: string }[]> = {
     { value: '', label: 'Default' },
   ],
 };
+
+function ConversationTranscript({ conversation }: { conversation: Conversation }) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const messages = conversation.transcript.filter((entry) => entry.kind === 'message');
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+    container.scrollTop = container.scrollHeight;
+  }, [conversation]);
+
+  return (
+    <div
+      ref={containerRef}
+      style={{
+        flex: 1,
+        overflowY: 'auto',
+        padding: '20px',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '14px',
+      }}
+    >
+      {messages.length === 0 ? (
+        <div style={{
+          margin: 'auto',
+          color: '#666',
+          textAlign: 'center',
+          fontSize: '14px',
+        }}>
+          Waiting for agent replies...
+        </div>
+      ) : (
+        messages.map((entry, index) => (
+          <div
+            key={`${entry.timestamp}-${entry.from}-${index}`}
+            style={{
+              alignSelf: 'stretch',
+              backgroundColor: '#252526',
+              border: '1px solid #333',
+              borderRadius: '10px',
+              padding: '12px 14px',
+            }}
+          >
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              gap: '12px',
+              marginBottom: '8px',
+              fontSize: '11px',
+              color: '#888',
+              textTransform: 'uppercase',
+              letterSpacing: '0.6px',
+            }}>
+              <span>{entry.from}</span>
+              <span>{new Date(entry.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
+            </div>
+            <div style={{
+              color: '#ddd',
+              fontSize: '14px',
+              lineHeight: 1.5,
+              whiteSpace: 'pre-wrap',
+              wordBreak: 'break-word',
+            }}>
+              {entry.payload}
+            </div>
+          </div>
+        ))
+      )}
+    </div>
+  );
+}
 
 function getAgentCommand(provider: Provider, model: string): string {
   if (model) {
@@ -166,7 +259,7 @@ function App() {
   const [conversationAgentB, setConversationAgentB] = useState<string>('');
   const [conversationAgentC, setConversationAgentC] = useState<string>('');
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
-  const [activeConversation, setActiveConversation] = useState<any | null>(null);
+  const [activeConversation, setActiveConversation] = useState<Conversation | null>(null);
   const [maxReplies, setMaxReplies] = useState<number>(5);
   const [topic, setTopic] = useState('Discuss the current NodePTY project and propose concrete next-step implementation ideas or simplifications: architecture quality, risks, and the most useful changes to make next.');
   const [topicHistory, setTopicHistory] = useState<string[]>([]);
@@ -793,6 +886,11 @@ function App() {
               <div style={{ padding: '8px 16px', backgroundColor: '#2d2d2d', fontSize: '12px', color: '#ccc', borderBottom: '1px solid #333', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                   <div>Conversation: <strong>{activeConversationId}</strong></div>
+                  {activeConversation?.agentIds?.length ? (
+                    <div style={{ color: '#888' }}>
+                      {activeConversation.agentIds.join(' • ')}
+                    </div>
+                  ) : null}
                   {activeConversation?.status === 'completed' && (
                     <span style={{ fontSize: '10px', backgroundColor: '#4caf50', color: '#fff', padding: '2px 8px', borderRadius: '10px', fontWeight: 'bold', textTransform: 'uppercase' }}>
                       Conversation Finished
@@ -806,26 +904,7 @@ function App() {
                   Close Conversation View
                 </button>
               </div>
-              <div style={{ 
-                flex: 1, 
-                display: 'grid', 
-                gridTemplateColumns: [conversationAgentA, conversationAgentB, conversationAgentC].filter(Boolean).length > 2 ? 'repeat(auto-fit, minmax(400px, 1fr))' : '1fr 1fr',
-                gap: '1px',
-                backgroundColor: '#333'
-              }}>
-                {[conversationAgentA, conversationAgentB, conversationAgentC].filter(Boolean).map(id => (
-                  <div key={id} style={{ display: 'flex', flexDirection: 'column', backgroundColor: '#1e1e1e' }}>
-                    <div style={{ padding: '4px 12px', backgroundColor: '#252526', fontSize: '10px', color: '#888', borderBottom: '1px solid #333' }}>
-                      AGENT: {id}
-                    </div>
-                    <div style={{ flex: 1, position: 'relative' }}>
-                      <ErrorBoundary>
-                        <TerminalView agentId={id} ws={ws} />
-                      </ErrorBoundary>
-                    </div>
-                  </div>
-                ))}
-              </div>
+              {activeConversation && <ConversationTranscript conversation={activeConversation} />}
             </div>
           ) : selectedAgentId ? (
             <>
