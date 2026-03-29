@@ -8,22 +8,150 @@ import { spawn } from 'child_process';
 const supportedProviders = new Set(['claude', 'gemini', 'codex']);
 const providerArg = (process.argv[2] ?? 'gemini').toLowerCase();
 const provider = supportedProviders.has(providerArg) ? providerArg : 'gemini';
+
+// Parse --model argument if present
+let selectedModel = null;
+const modelIdx = process.argv.indexOf('--model');
+if (modelIdx !== -1 && process.argv[modelIdx + 1]) {
+  selectedModel = process.argv[modelIdx + 1];
+}
+
 const scenarioStateByPeer = new Map();
 
-const DEFAULT_LIMITS = {
-  claude: 1000000,
+const MODEL_LIMITS = {
+  // Claude
+  'sonnet': 200000,
+  'sonnet-3-5': 200000,
+  'opus': 500000,
+  'haiku': 200000,
+  // Gemini
+  '2.0-flash': 1048576,
+  '2.0-flash-thinking': 1048576,
+  '2.0-pro-exp': 2097152,
+  '1.5-pro': 2097152,
+  '1.5-flash': 1048576,
+  // Codex
+  'o3-mini': 200000,
+  'o1': 200000,
+  'gpt-4o': 128000,
+  'gpt-4o-mini': 128000,
+};
+
+const DEFAULT_PROVIDER_LIMITS = {
+  claude: 200000,
   gemini: 1048576,
-  codex: 200000,
+  codex: 128000,
 };
 
 let currentUsage = 0;
-const limit = DEFAULT_LIMITS[provider] || 200000;
+const limit = (selectedModel && MODEL_LIMITS[selectedModel]) || DEFAULT_PROVIDER_LIMITS[provider] || 200000;
+
+function emitExternalUsage(output) {
+  console.log(`[NodePTY]:EVT:{"type":"external_usage","provider":"${provider}","output":${JSON.stringify(output)}}`);
+}
+
+function getSpawnEnv(providerName) {
+  if (providerName !== 'claude') {
+    return process.env;
+  }
+
+  const env = { ...process.env };
+  delete env.ANTHROPIC_API_KEY;
+  return env;
+}
+
+function stripAnsi(text) {
+  return text.replace(/\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])/g, '');
+}
+
+function runProcess(command, args, options = {}) {
+  return new Promise((resolve, reject) => {
+    const proc = spawn(command, args, {
+      stdio: ['ignore', 'pipe', 'pipe'],
+      ...options,
+    });
+
+    let stdout = '';
+    let stderr = '';
+
+    proc.stdout.on('data', (chunk) => { stdout += chunk; });
+    proc.stderr.on('data', (chunk) => { stderr += chunk; });
+
+    proc.on('close', (code) => resolve({ code, stdout, stderr }));
+    proc.on('error', (err) => reject(err));
+  });
+}
+
+function extractClaudeUsageOutput(rawOutput) {
+  const cleaned = stripAnsi(rawOutput)
+    .replace(/\u0007/g, '')
+    .replace(/\r/g, '')
+    .replace(/^spawn .*\n/m, '')
+    .replace(/^\/exit\s*$/gm, '')
+    .trim();
+
+  const usageStart = cleaned.search(/Current session|Current week|% used/i);
+  if (usageStart === -1) {
+    return '';
+  }
+
+  return cleaned.slice(usageStart).trim();
+}
+
+async function scrapeClaudeUsageViaSlashCommand() {
+  const expectScript = `
+set timeout 35
+match_max 200000
+log_user 1
+spawn -noecho env -u ANTHROPIC_API_KEY claude
+after 5000
+send -- "/usage\\t\\r"
+after 15000
+send -- "/exit\\r"
+expect eof
+`;
+
+  const { stdout, stderr } = await runProcess('expect', ['-c', expectScript], {
+    env: getSpawnEnv('claude'),
+    timeout: 35000,
+  });
+
+  return extractClaudeUsageOutput(`${stdout}${stderr}`);
+}
+
+// Scrape external usage from the CLI
+async function scrapeExternalUsage() {
+  try {
+    let output = '';
+    if (provider === 'claude') {
+      output = await scrapeClaudeUsageViaSlashCommand();
+    } else if (provider === 'gemini') {
+      const proc = spawn('gemini', ['-p', '/stats model'], { stdio: ['ignore', 'pipe', 'pipe'] });
+      let stdout = '';
+      proc.stdout.on('data', (d) => { stdout += d; });
+      await new Promise(r => proc.on('close', r));
+      output = stdout;
+    }
+
+    if (output) {
+      emitExternalUsage(output);
+    }
+  } catch (err) {
+    console.error(`[llm-agent] Failed to scrape external usage: ${err.message}`);
+    emitExternalUsage(`Usage unavailable: ${err.message}`);
+  }
+}
 
 // Emit READY
 const sessionId = `llm-${Date.now()}`;
 console.log(`[NodePTY]:READY:{"session":"${sessionId}"}`);
 console.log(`[NodePTY]:EVT:{"type":"usage_updated","total":0,"limit":${limit}}`);
-console.error(`[llm-agent] Provider: ${provider}, Token Limit: ${limit}`);
+emitExternalUsage('Loading usage...');
+console.error(`[llm-agent] Provider: ${provider}, Model: ${selectedModel || 'default'}, Token Limit: ${limit}`);
+
+// Initial scrape and periodic refresh
+scrapeExternalUsage();
+setInterval(scrapeExternalUsage, 300000); // Every 5 minutes
 
 let busy = false;
 const messageQueue = [];
@@ -177,19 +305,30 @@ function getProviderCommand(providerName, userMessage) {
     case 'claude':
       return {
         command: 'claude',
-        args: ['-p', userMessage, '--output-format', 'json'],
+        args: ['-p', userMessage, '--model', selectedModel || 'sonnet', '--output-format', 'json'],
       };
-    case 'codex':
+    case 'codex': {
+      const args = ['exec', '--skip-git-repo-check', '--color', 'never', '--full-auto', '--json'];
+      if (selectedModel) {
+        args.push('--model', selectedModel);
+      }
+      args.push(userMessage);
       return {
         command: 'codex',
-        args: ['exec', '--skip-git-repo-check', '--color', 'never', '--full-auto', '--json', userMessage],
+        args,
       };
+    }
     case 'gemini':
-    default:
+    default: {
+      const args = ['-p', userMessage, '-o', 'json'];
+      if (selectedModel) {
+        args.push('--model', selectedModel);
+      }
       return {
         command: 'gemini',
-        args: ['-p', userMessage, '-o', 'json'],
+        args,
       };
+    }
   }
 }
 
@@ -257,6 +396,7 @@ function callProvider(providerName, userMessage) {
     const proc = spawn(command, args, {
       stdio: ['ignore', 'pipe', 'pipe'],
       timeout: 120000,
+      env: getSpawnEnv(providerName),
     });
 
     let stdout = '';

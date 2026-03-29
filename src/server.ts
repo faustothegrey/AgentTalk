@@ -37,6 +37,8 @@ export function startServer(registry: Registry, adapter: CmuxAdapter, port: numb
       surface: a.surface,
       usage: a.usage,
       provider: a.provider,
+      model: a.model,
+      externalUsage: a.externalUsage,
     }));
     console.log(`[Server] Returning ${agents.length} agents`);
     res.json(agents);
@@ -47,6 +49,15 @@ export function startServer(registry: Registry, adapter: CmuxAdapter, port: numb
     const scenarios = registry.getScenarios();
     console.log(`[Server] Returning ${scenarios.length} scenarios`);
     res.json(scenarios);
+  });
+
+  app.get('/api/topics', (req, res) => {
+    console.log('[Server] GET /api/topics');
+    const scenarios = registry.getScenarios();
+    // Unique topics, most recent first
+    const topics = Array.from(new Set(scenarios.map(s => s.topic))).filter(Boolean);
+    console.log(`[Server] Returning ${topics.length} topics`);
+    res.json(topics);
   });
 
   app.post('/api/agents', async (req, res) => {
@@ -159,14 +170,15 @@ export function startServer(registry: Registry, adapter: CmuxAdapter, port: numb
           }
 
           case 'start_pair_chat': {
-            const { agentAId, agentBId, maxReplies: clientMaxReplies } = message;
+            const { agentAId, agentBId, topic: clientTopic, maxReplies: clientMaxReplies } = message;
             if (typeof agentAId !== 'string' || typeof agentBId !== 'string' || agentAId === agentBId) {
               console.warn('[Server] Invalid start_pair_chat payload:', message);
               break;
             }
 
             try {
-              const topic = 'Discuss the current NodePTY project and propose concrete next-step implementation ideas or simplifications: architecture quality, risks, and the most useful changes to make next.';
+              const defaultTopic = 'Discuss the current NodePTY project and propose concrete next-step implementation ideas or simplifications: architecture quality, risks, and the most useful changes to make next.';
+              const topic = typeof clientTopic === 'string' && clientTopic.trim() !== '' ? clientTopic : defaultTopic;
               const maxReplies = typeof clientMaxReplies === 'number' ? clientMaxReplies : 5;
               const scenario = await registry.startScenario(agentAId, agentBId, topic, maxReplies);
 
@@ -255,6 +267,28 @@ export function startServer(registry: Registry, adapter: CmuxAdapter, port: numb
       }
     });
     console.log(`[Server] Provider ${id}: ${provider} → ${sent} client(s)`);
+  });
+
+  registry.on('model', ({ id, model }) => {
+    let sent = 0;
+    wss.clients.forEach((client) => {
+      if (client.readyState === WebSocket.OPEN) {
+        client.send(JSON.stringify({ type: 'model', id, model }));
+        sent++;
+      }
+    });
+    console.log(`[Server] Model ${id}: ${model} → ${sent} client(s)`);
+  });
+
+  registry.on('external_usage', ({ id, externalUsage }) => {
+    let sent = 0;
+    wss.clients.forEach((client) => {
+      if (client.readyState === WebSocket.OPEN) {
+        client.send(JSON.stringify({ type: 'external_usage', id, externalUsage }));
+        sent++;
+      }
+    });
+    console.log(`[Server] External Usage ${id}: (${externalUsage.length} chars) → ${sent} client(s)`);
   });
 
   registry.on('scenario', (scenario) => {

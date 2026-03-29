@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { TerminalView } from './TerminalView';
 import { ErrorBoundary } from './ErrorBoundary';
-import { Plus, Terminal as TerminalIcon, Activity, AlertCircle, X, Send, MessagesSquare, Trash2 } from 'lucide-react';
+import { Plus, Terminal as TerminalIcon, Activity, AlertCircle, X, Send, MessagesSquare, Trash2, History } from 'lucide-react';
 
 type Provider = 'claude' | 'gemini' | 'codex';
+type SidebarTab = 'new-agent' | 'conversation' | 'usage';
 
 interface Agent {
   id: string;
@@ -11,6 +12,8 @@ interface Agent {
   surface: any;
   usage?: { total: number; limit: number };
   provider?: string;
+  model?: string;
+  externalUsage?: string;
 }
 
 const providerOptions: { value: Provider; label: string }[] = [
@@ -19,8 +22,30 @@ const providerOptions: { value: Provider; label: string }[] = [
   { value: 'codex', label: 'Codex' },
 ];
 
-function getAgentCommand(provider: Provider): string {
-  return `node scripts/llm-agent.mjs ${provider}`;
+const modelOptions: Record<Provider, { value: string; label: string }[]> = {
+  claude: [
+    { value: 'sonnet', label: 'Sonnet 3.7' },
+    { value: 'sonnet-3-5', label: 'Sonnet 3.5' },
+    { value: 'opus', label: 'Opus' },
+    { value: 'haiku', label: 'Haiku' },
+  ],
+  gemini: [
+    { value: '2.0-flash', label: '2.0 Flash' },
+    { value: '2.0-flash-thinking', label: '2.0 Flash Thinking' },
+    { value: '2.0-pro-exp', label: '2.0 Pro Exp' },
+    { value: '1.5-pro', label: '1.5 Pro' },
+    { value: '1.5-flash', label: '1.5 Flash' },
+  ],
+  codex: [
+    { value: 'o3-mini', label: 'o3-mini' },
+    { value: 'o1', label: 'o1' },
+    { value: 'gpt-4o', label: 'GPT-4o' },
+    { value: 'gpt-4o-mini', label: 'GPT-4o-mini' },
+  ],
+};
+
+function getAgentCommand(provider: Provider, model: string): string {
+  return `node scripts/llm-agent.mjs ${provider} --model ${model}`;
 }
 
 // Helper to add timeout to our fetch commands
@@ -47,18 +72,125 @@ async function fetchWithTimeout(url: string, options: RequestInit = {}, timeoutM
   }
 }
 
+const ExternalUsageDisplay = ({ output, provider, isGreyed }: { output?: string, provider: string, isGreyed: boolean }) => {
+  const parsePercent = (line?: string) => {
+    if (!line) return null;
+    const match = line.match(/(\d+)%/);
+    return match ? parseInt(match[1], 10) : null;
+  };
+
+  const lines = (output || '').split('\n').map(l => l.trim()).filter(Boolean);
+  
+  const usageSections = lines.reduce<Array<{ title: string; percent: number; reset?: string }>>((sections, line, index) => {
+    const percent = parsePercent(line);
+    if (percent === null) return sections;
+
+    let title = '';
+    let reset = '';
+
+    for (let cursor = index - 1; cursor >= 0; cursor -= 1) {
+      const candidate = lines[cursor];
+      if (!title && !candidate.includes('%')) {
+        title = candidate;
+        continue;
+      }
+      if (title && !candidate.includes('%')) {
+        reset = candidate;
+        break;
+      }
+    }
+
+    sections.push({ title, percent, reset });
+    return sections;
+  }, []);
+
+  const visibleSections = usageSections.filter(s => s.title);
+
+  const getBarColor = (percent: number) => {
+    if (percent >= 90) return '#ef4444';
+    if (percent >= 75) return '#f59e0b';
+    return '#a8acf0';
+  };
+
+  return (
+    <div style={{ 
+      display: 'flex', 
+      flexDirection: 'column', 
+      gap: '12px', 
+      padding: '12px',
+      backgroundColor: isGreyed ? 'transparent' : '#2b2d36',
+      borderRadius: '8px',
+      border: isGreyed ? '1px dashed #333' : '1px solid #3a3d49',
+      opacity: isGreyed ? 0.3 : 1,
+      filter: isGreyed ? 'grayscale(1)' : 'none',
+      transition: 'all 0.3s ease'
+    }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ fontSize: '11px', fontWeight: 800, color: isGreyed ? '#555' : '#aaa', textTransform: 'uppercase', letterSpacing: '1px' }}>
+          {provider}
+        </div>
+        {isGreyed && <div style={{ fontSize: '9px', color: '#444' }}>OFFLINE</div>}
+      </div>
+      
+      {visibleSections.length > 0 ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          {visibleSections.map((section, idx) => (
+            <div key={idx} style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: '#888' }}>
+                <span>{section.title}</span>
+                <span>{section.percent}%</span>
+              </div>
+              <div style={{ width: '100%', height: '6px', backgroundColor: '#1a1b23', borderRadius: '0', overflow: 'hidden' }}>
+                <div style={{ width: `${section.percent}%`, height: '100%', backgroundColor: getBarColor(section.percent) }} />
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div style={{ fontSize: '10px', color: '#555', fontStyle: 'italic', textAlign: 'center', padding: '4px 0' }}>
+          {isGreyed ? 'No data' : (output?.trim().slice(0, 50) || 'Active...')}
+        </div>
+      )}
+    </div>
+  );
+};
+
 function App() {
   const [agents, setAgents] = useState<Agent[]>([]);
+  const [globalUsage, setGlobalUsage] = useState<Record<string, string>>({});
   const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
   const [ws, setWs] = useState<WebSocket | null>(null);
   const [loading, setLoading] = useState(false);
   const [globalError, setGlobalError] = useState<string | null>(null);
   const [messageInput, setMessageInput] = useState('');
   const [provider, setProvider] = useState<Provider>('gemini');
+  const [selectedModel, setSelectedModel] = useState<string>('2.0-flash');
   const [conversationAgentA, setConversationAgentA] = useState<string>('');
   const [conversationAgentB, setConversationAgentB] = useState<string>('');
   const [maxReplies, setMaxReplies] = useState<number>(5);
+  const [topic, setTopic] = useState('Discuss the current NodePTY project and propose concrete next-step implementation ideas or simplifications: architecture quality, risks, and the most useful changes to make next.');
+  const [topicHistory, setTopicHistory] = useState<string[]>([]);
+  const [showHistory, setShowHistory] = useState(false);
+  const [activeSidebarTab, setActiveSidebarTab] = useState<SidebarTab>('new-agent');
   const messageInputRef = useRef<HTMLInputElement>(null);
+
+  const sidebarTabButtonStyle = (tab: SidebarTab) => ({
+    padding: '8px 12px',
+    fontSize: '11px',
+    fontWeight: 700,
+    textTransform: 'uppercase' as const,
+    backgroundColor: activeSidebarTab === tab ? '#3a3d49' : 'transparent',
+    color: activeSidebarTab === tab ? '#fff' : '#888',
+    border: 'none',
+    borderRadius: '4px',
+    cursor: 'pointer',
+    flex: 1,
+    transition: 'all 0.2s',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '6px'
+  });
 
   const selectedAgent = agents.find(a => a.id === selectedAgentId);
 
@@ -77,8 +209,19 @@ function App() {
     }
   }, []);
 
+  const fetchTopicHistory = useCallback(async () => {
+    try {
+      const res = await fetchWithTimeout('/api/topics');
+      const data = await res.json();
+      setTopicHistory(data);
+    } catch (err) {
+      console.warn('Failed to fetch topic history:', err);
+    }
+  }, []);
+
   useEffect(() => {
     fetchAgents();
+    fetchTopicHistory();
     
     // Setup WebSocket
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -110,11 +253,28 @@ function App() {
         setAgents(prev => prev.map(a =>
           a.id === message.id ? { ...a, provider: message.provider } : a
         ));
+      } else if (message.type === 'model') {
+        setAgents(prev => prev.map(a =>
+          a.id === message.id ? { ...a, model: message.model } : a
+        ));
+      } else if (message.type === 'external_usage') {
+        setAgents(prev => prev.map(a =>
+          a.id === message.id ? { ...a, externalUsage: message.externalUsage } : a
+        ));
+        // Update global usage tracker
+        setAgents(prev => {
+          const agent = prev.find(a => a.id === message.id);
+          if (agent?.provider) {
+            setGlobalUsage(g => ({ ...g, [agent.provider!]: message.externalUsage }));
+          }
+          return prev;
+        });
       } else if (message.type === 'agent_message') {
         console.log(`[App] Agent reply from ${message.from}: ${message.payload}`);
       } else if (message.type === 'scenario_started') {
         setGlobalError(null);
         console.log(`[App] Started scenario ${message.scenario?.id ?? 'unknown'}`);
+        fetchTopicHistory();
       } else if (message.type === 'scenario') {
         console.log(`[App] Scenario update ${message.scenario?.id ?? 'unknown'}: ${message.scenario?.status ?? 'unknown'}`);
       } else if (message.type === 'scenario_error') {
@@ -147,7 +307,7 @@ function App() {
       await fetchWithTimeout(`/api/agents/${data.id}/start`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ command: getAgentCommand(provider) }),
+        body: JSON.stringify({ command: getAgentCommand(provider, selectedModel) }),
       }, 10000);
 
       await fetchAgents();
@@ -201,6 +361,7 @@ function App() {
       type: 'start_pair_chat',
       agentAId: conversationAgentA,
       agentBId: conversationAgentB,
+      topic: topic.trim(),
       maxReplies: maxReplies,
     }));
   };
@@ -253,7 +414,7 @@ function App() {
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
         {/* Sidebar */}
         <div style={{ 
-          width: '260px', 
+          width: '390px', 
           borderRight: '1px solid #333', 
           display: 'flex', 
           flexDirection: 'column',
@@ -262,138 +423,291 @@ function App() {
           <div style={{ padding: '16px', borderBottom: '1px solid #333', display: 'flex', flexDirection: 'column', gap: '12px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <h2 style={{ margin: 0, fontSize: '14px', textTransform: 'uppercase', letterSpacing: '1px' }}>Agents</h2>
-              <button 
-                onClick={createAgent} 
-                disabled={loading}
-                title={`Create ${provider} agent`}
-                style={{ 
-                  background: 'none', 
-                  border: 'none', 
-                  color: '#fff', 
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  opacity: loading ? 0.5 : 1
-                }}
-              >
-                <Plus size={18} />
+            </div>
+
+            <div style={{ display: 'flex', gap: '8px', paddingBottom: '12px', borderBottom: '1px solid #333' }}>
+              <button onClick={() => setActiveSidebarTab('new-agent')} style={sidebarTabButtonStyle('new-agent')}>
+                <Plus size={14} /> Agent
+              </button>
+              <button onClick={() => setActiveSidebarTab('conversation')} style={sidebarTabButtonStyle('conversation')}>
+                <MessagesSquare size={14} /> Pair
+              </button>
+              <button onClick={() => setActiveSidebarTab('usage')} style={sidebarTabButtonStyle('usage')}>
+                <Activity size={14} /> Usage
               </button>
             </div>
 
-            <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              <span style={{ fontSize: '11px', color: '#888', textTransform: 'uppercase', letterSpacing: '0.8px' }}>
-                New Agent Provider
-              </span>
-              <select
-                value={provider}
-                onChange={(e) => setProvider(e.target.value as Provider)}
-                disabled={loading}
-                style={{
-                  backgroundColor: '#1e1e1e',
-                  color: '#ddd',
-                  border: '1px solid #3b3b3b',
-                  borderRadius: '6px',
-                  padding: '8px 10px',
-                  fontSize: '13px',
-                  outline: 'none',
-                }}
-              >
-                {providerOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </label>
+            {activeSidebarTab === 'usage' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '12px' }}>
+                <span style={{ fontSize: '11px', color: '#888', textTransform: 'uppercase', letterSpacing: '0.8px' }}>
+                  Subscription Quotas
+                </span>
+                <ExternalUsageDisplay 
+                  provider="Claude" 
+                  output={globalUsage['claude']} 
+                  isGreyed={!globalUsage['claude']} 
+                />
+                <ExternalUsageDisplay 
+                  provider="Gemini" 
+                  output={globalUsage['gemini']} 
+                  isGreyed={!globalUsage['gemini']} 
+                />
+                <ExternalUsageDisplay 
+                  provider="Codex" 
+                  output={globalUsage['codex']} 
+                  isGreyed={!globalUsage['codex']} 
+                />
+              </div>
+            )}
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', paddingTop: '4px', borderTop: '1px solid #333' }}>
-              <span style={{ fontSize: '11px', color: '#888', textTransform: 'uppercase', letterSpacing: '0.8px' }}>
-                Two-Agent Scenario
-              </span>
-              <select
-                value={conversationAgentA}
-                onChange={(e) => setConversationAgentA(e.target.value)}
-                style={{
-                  backgroundColor: '#1e1e1e',
-                  color: '#ddd',
-                  border: '1px solid #3b3b3b',
-                  borderRadius: '6px',
-                  padding: '8px 10px',
-                  fontSize: '13px',
-                  outline: 'none',
-                }}
-              >
-                <option value="">Agent A</option>
-                {conversationCandidates.map((agent) => (
-                  <option key={`a-${agent.id}`} value={agent.id}>
-                    {agent.id}
-                  </option>
-                ))}
-              </select>
-              <select
-                value={conversationAgentB}
-                onChange={(e) => setConversationAgentB(e.target.value)}
-                style={{
-                  backgroundColor: '#1e1e1e',
-                  color: '#ddd',
-                  border: '1px solid #3b3b3b',
-                  borderRadius: '6px',
-                  padding: '8px 10px',
-                  fontSize: '13px',
-                  outline: 'none',
-                }}
-              >
-                <option value="">Agent B</option>
-                {conversationCandidates.map((agent) => (
-                  <option key={`b-${agent.id}`} value={agent.id}>
-                    {agent.id}
-                  </option>
-                ))}
-              </select>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                <span style={{ fontSize: '10px', color: '#666', textTransform: 'uppercase' }}>Max replies per agent</span>
-                <input
-                  type="number"
-                  min={1}
-                  max={20}
-                  value={maxReplies}
-                  onChange={(e) => setMaxReplies(parseInt(e.target.value) || 1)}
+            {activeSidebarTab === 'new-agent' && (
+              <>
+                <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <span style={{ fontSize: '11px', color: '#888', textTransform: 'uppercase', letterSpacing: '0.8px' }}>
+                    New Agent Provider
+                  </span>
+                  <select
+                    value={provider}
+                    onChange={(e) => {
+                      const newProvider = e.target.value as Provider;
+                      setProvider(newProvider);
+                      setSelectedModel(modelOptions[newProvider][0].value);
+                    }}
+                    disabled={loading}
+                    style={{
+                      backgroundColor: '#1e1e1e',
+                      color: '#ddd',
+                      border: '1px solid #3b3b3b',
+                      borderRadius: '6px',
+                      padding: '8px 10px',
+                      fontSize: '13px',
+                      outline: 'none',
+                    }}
+                  >
+                    {providerOptions.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <span style={{ fontSize: '11px', color: '#888', textTransform: 'uppercase', letterSpacing: '0.8px' }}>
+                    Model
+                  </span>
+                  <select
+                    value={selectedModel}
+                    onChange={(e) => setSelectedModel(e.target.value)}
+                    disabled={loading}
+                    style={{
+                      backgroundColor: '#1e1e1e',
+                      color: '#ddd',
+                      border: '1px solid #3b3b3b',
+                      borderRadius: '6px',
+                      padding: '8px 10px',
+                      fontSize: '13px',
+                      outline: 'none',
+                    }}
+                  >
+                    {modelOptions[provider].map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <button 
+                  onClick={createAgent} 
+                  disabled={loading}
+                  title={`Create ${provider} agent`}
+                  style={{ 
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px',
+                    backgroundColor: '#1e1e1e',
+                    border: '1px solid #3b3b3b',
+                    color: '#fff',
+                    borderRadius: '6px',
+                    padding: '9px 10px',
+                    cursor: 'pointer',
+                    opacity: loading ? 0.5 : 1
+                  }}
+                >
+                  <Plus size={16} />
+                  Create Agent
+                </button>
+              </>
+            )}
+
+            {activeSidebarTab === 'conversation' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <span style={{ fontSize: '11px', color: '#888', textTransform: 'uppercase', letterSpacing: '0.8px' }}>
+                  Two-Agent Scenario
+                </span>
+                <select
+                  value={conversationAgentA}
+                  onChange={(e) => setConversationAgentA(e.target.value)}
                   style={{
                     backgroundColor: '#1e1e1e',
                     color: '#ddd',
                     border: '1px solid #3b3b3b',
                     borderRadius: '6px',
-                    padding: '6px 10px',
+                    padding: '8px 10px',
                     fontSize: '13px',
                     outline: 'none',
                   }}
-                />
+                >
+                  <option value="">Agent A</option>
+                  {conversationCandidates.map((agent) => (
+                    <option key={`a-${agent.id}`} value={agent.id}>
+                      {agent.id}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  value={conversationAgentB}
+                  onChange={(e) => setConversationAgentB(e.target.value)}
+                  style={{
+                    backgroundColor: '#1e1e1e',
+                    color: '#ddd',
+                    border: '1px solid #3b3b3b',
+                    borderRadius: '6px',
+                    padding: '8px 10px',
+                    fontSize: '13px',
+                    outline: 'none',
+                  }}
+                >
+                  <option value="">Agent B</option>
+                  {conversationCandidates.map((agent) => (
+                    <option key={`b-${agent.id}`} value={agent.id}>
+                      {agent.id}
+                    </option>
+                  ))}
+                </select>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <span style={{ fontSize: '10px', color: '#666', textTransform: 'uppercase' }}>Max replies per agent</span>
+                  <input
+                    type="number"
+                    min={1}
+                    max={20}
+                    value={maxReplies}
+                    onChange={(e) => setMaxReplies(parseInt(e.target.value) || 1)}
+                    style={{
+                      backgroundColor: '#1e1e1e',
+                      color: '#ddd',
+                      border: '1px solid #3b3b3b',
+                      borderRadius: '6px',
+                      padding: '6px 10px',
+                      fontSize: '13px',
+                      outline: 'none',
+                    }}
+                  />
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', position: 'relative' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: '10px', color: '#666', textTransform: 'uppercase' }}>Discussion Topic</span>
+                    <button
+                      onClick={() => setShowHistory(!showHistory)}
+                      style={{ background: 'none', border: 'none', color: '#888', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: '2px' }}
+                      title="Topic History"
+                    >
+                      <History size={14} />
+                    </button>
+                  </div>
+                  <textarea
+                    value={topic}
+                    onChange={(e) => setTopic(e.target.value)}
+                    style={{
+                      backgroundColor: '#1e1e1e',
+                      color: '#ddd',
+                      border: '1px solid #3b3b3b',
+                      borderRadius: '6px',
+                      padding: '8px 10px',
+                      fontSize: '12px',
+                      outline: 'none',
+                      minHeight: '80px',
+                      maxHeight: '150px',
+                      resize: 'vertical',
+                      fontFamily: 'inherit',
+                      lineHeight: '1.4',
+                    }}
+                  />
+                  
+                  {showHistory && (
+                    <div style={{
+                      position: 'absolute',
+                      bottom: '100%',
+                      left: 0,
+                      right: 0,
+                      backgroundColor: '#2d2d2d',
+                      border: '1px solid #444',
+                      borderRadius: '6px',
+                      boxShadow: '0 -4px 12px rgba(0, 0, 0, 0.5)',
+                      zIndex: 100,
+                      maxHeight: '200px',
+                      overflowY: 'auto',
+                      marginBottom: '8px',
+                    }}>
+                      <div style={{ padding: '8px 12px', fontSize: '11px', color: '#888', borderBottom: '1px solid #3d3d3d', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span>PAST TOPICS</span>
+                        <X size={12} style={{ cursor: 'pointer' }} onClick={() => setShowHistory(false)} />
+                      </div>
+                      {topicHistory.length === 0 ? (
+                        <div style={{ padding: '12px', fontSize: '12px', color: '#666', textAlign: 'center' }}>No history yet</div>
+                      ) : (
+                        topicHistory.map((h, i) => (
+                          <div
+                            key={i}
+                            onClick={() => { setTopic(h); setShowHistory(false); }}
+                            style={{
+                              padding: '8px 12px',
+                              fontSize: '12px',
+                              color: '#ccc',
+                              cursor: 'pointer',
+                              borderBottom: i === topicHistory.length - 1 ? 'none' : '1px solid #3d3d3d',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              display: '-webkit-box',
+                              WebkitLineClamp: 2,
+                              WebkitBoxOrient: 'vertical',
+                            }}
+                            onMouseOver={(e) => { e.currentTarget.style.backgroundColor = '#3d3d3d'; }}
+                            onMouseOut={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
+                            title={h}
+                          >
+                            {h}
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  )}
+                </div>
+                <button
+                  onClick={startTwoAgentConversation}
+                  disabled={!ws || ws.readyState !== WebSocket.OPEN || !conversationAgentA || !conversationAgentB || conversationAgentA === conversationAgentB}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px',
+                    backgroundColor: '#1e1e1e',
+                    color: '#ddd',
+                    border: '1px solid #3b3b3b',
+                    borderRadius: '6px',
+                    padding: '8px 10px',
+                    fontSize: '13px',
+                    cursor: 'pointer',
+                    opacity: (!ws || ws.readyState !== WebSocket.OPEN || !conversationAgentA || !conversationAgentB || conversationAgentA === conversationAgentB) ? 0.5 : 1,
+                  }}
+                >
+                  <MessagesSquare size={14} />
+                  Start Project Discussion
+                </button>
               </div>
-              <button
-                onClick={startTwoAgentConversation}
-                disabled={!ws || ws.readyState !== WebSocket.OPEN || !conversationAgentA || !conversationAgentB || conversationAgentA === conversationAgentB}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '8px',
-                  backgroundColor: '#1e1e1e',
-                  color: '#ddd',
-                  border: '1px solid #3b3b3b',
-                  borderRadius: '6px',
-                  padding: '8px 10px',
-                  fontSize: '13px',
-                  cursor: 'pointer',
-                  opacity: (!ws || ws.readyState !== WebSocket.OPEN || !conversationAgentA || !conversationAgentB || conversationAgentA === conversationAgentB) ? 0.5 : 1,
-                }}
-              >
-                <MessagesSquare size={14} />
-                Start Project Discussion
-              </button>
-              <div style={{ fontSize: '11px', color: '#777', lineHeight: 1.4 }}>
-                Hardwired topic: discuss the project and suggest next-step implementation or simplification ideas. Max 5 replies per agent.
-              </div>
-            </div>
+            )}
           </div>
           
           <div style={{ flex: 1, overflowY: 'auto' }}>
@@ -417,17 +731,13 @@ function App() {
                     {agent.id}
                     {agent.provider && (
                       <span style={{ marginLeft: '6px', fontSize: '11px', color: '#666', fontWeight: 'normal' }}>
-                        ({agent.provider.charAt(0).toUpperCase() + agent.provider.slice(1)})
+                        ({agent.provider.charAt(0).toUpperCase() + agent.provider.slice(1)}
+                        {agent.model ? `: ${agent.model}` : ''})
                       </span>
                     )}
                   </div>
                   <div style={{ fontSize: '11px', color: '#888', display: 'flex', alignItems: 'center', gap: '4px' }}>
                     {getStatusIcon(agent.status)} {agent.status}
-                    {agent.usage && (
-                      <span style={{ marginLeft: '6px', color: '#555' }}>
-                        ({((agent.usage.total / agent.usage.limit) * 100).toFixed(0)}%)
-                      </span>
-                    )}
                   </div>
                 </div>
                 <button 

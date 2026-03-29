@@ -165,6 +165,12 @@ export class Registry extends EventEmitter {
       this.emit('provider', { id: agent.id, provider: agent.provider });
     }
 
+    const modelMatch = launchCommand.match(/--model\s+([^\s]+)/);
+    if (modelMatch && modelMatch[1]) {
+      agent.model = modelMatch[1];
+      this.emit('model', { id: agent.id, model: agent.model });
+    }
+
     agent.lineBuffer = '';
     agent.lastSeenText = '';
     agent.lastSeenClean = '';
@@ -674,6 +680,11 @@ export class Registry extends EventEmitter {
     if (payload?.type === 'usage_updated' && typeof payload.total === 'number' && typeof payload.limit === 'number') {
       agent.usage = { total: payload.total, limit: payload.limit };
       this.emit('usage', { id: agent.id, usage: agent.usage });
+    }
+
+    if (payload?.type === 'external_usage' && typeof payload.output === 'string') {
+      agent.externalUsage = payload.output;
+      this.emit('external_usage', { id: agent.id, externalUsage: agent.externalUsage });
     }
   }
 
