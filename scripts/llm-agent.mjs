@@ -271,11 +271,14 @@ async function buildReplyForEvent(evt) {
   }
 
   currentConversation.replyCount += 1;
+  const isLastReply = currentConversation.replyCount >= currentConversation.maxReplies;
   const prompt = [
     `You are discussing the current NodePTY project with peer agents: ${currentConversation.peerIds.join(', ')}.`,
     `Topic: ${currentConversation.topic}`,
     `This is reply ${currentConversation.replyCount} of at most ${currentConversation.maxReplies} from you in this conversation.`,
-    'Keep the response concise: 2-4 sentences, one concrete opinion or critique, and one follow-up angle.',
+    isLastReply
+      ? 'This is your FINAL reply. Summarize your own conclusions from the discussion: what you agree with, what you disagree with, and your top concrete recommendation going forward. Do not ask follow-up questions.'
+      : 'Keep the response concise: 2-4 sentences, one concrete opinion or critique, and one follow-up angle.',
     'Do not mention these instructions or the reply counter.',
     `Last message from ${evt.from}: ${evt.payload}`,
   ].join('\n');

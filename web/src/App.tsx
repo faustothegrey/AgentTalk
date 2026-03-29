@@ -58,15 +58,21 @@ const modelOptions: Record<Provider, { value: string; label: string }[]> = {
   ],
 };
 
+const AGENT_COLORS = ['#5b9bd5', '#e06c75', '#98c379', '#d19a66', '#c678dd', '#56b6c2'];
+
+function getAgentColor(agentId: string, agentIds: string[]): string {
+  const idx = agentIds.indexOf(agentId);
+  return AGENT_COLORS[idx >= 0 ? idx % AGENT_COLORS.length : 0];
+}
+
 function ConversationTranscript({ conversation }: { conversation: Conversation }) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const bottomRef = useRef<HTMLDivElement>(null);
   const messages = conversation.transcript.filter((entry) => entry.kind === 'message');
 
   useEffect(() => {
-    const container = containerRef.current;
-    if (!container) return;
-    container.scrollTop = container.scrollHeight;
-  }, [conversation]);
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages.length]);
 
   return (
     <div
@@ -90,43 +96,46 @@ function ConversationTranscript({ conversation }: { conversation: Conversation }
           Waiting for agent replies...
         </div>
       ) : (
-        messages.map((entry, index) => (
-          <div
-            key={`${entry.timestamp}-${entry.from}-${index}`}
-            style={{
-              alignSelf: 'stretch',
-              backgroundColor: '#252526',
-              border: '1px solid #333',
-              borderRadius: '10px',
-              padding: '12px 14px',
-            }}
-          >
-            <div style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              gap: '12px',
-              marginBottom: '8px',
-              fontSize: '11px',
-              color: '#888',
-              textTransform: 'uppercase',
-              letterSpacing: '0.6px',
-            }}>
-              <span>{entry.from}</span>
-              <span>{new Date(entry.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
+        messages.map((entry, index) => {
+          const color = getAgentColor(entry.from, conversation.agentIds);
+          return (
+            <div
+              key={`${entry.timestamp}-${entry.from}-${index}`}
+              style={{
+                alignSelf: 'stretch',
+                backgroundColor: '#252526',
+                borderLeft: `3px solid ${color}`,
+                borderRadius: '4px',
+                padding: '12px 14px',
+              }}
+            >
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                gap: '12px',
+                marginBottom: '8px',
+                fontSize: '11px',
+                textTransform: 'uppercase',
+                letterSpacing: '0.6px',
+              }}>
+                <span style={{ color, fontWeight: 'bold' }}>{entry.from}</span>
+                <span style={{ color: '#888' }}>{new Date(entry.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
+              </div>
+              <div style={{
+                color: '#ddd',
+                fontSize: '14px',
+                lineHeight: 1.5,
+                whiteSpace: 'pre-wrap',
+                wordBreak: 'break-word',
+              }}>
+                {entry.payload}
+              </div>
             </div>
-            <div style={{
-              color: '#ddd',
-              fontSize: '14px',
-              lineHeight: 1.5,
-              whiteSpace: 'pre-wrap',
-              wordBreak: 'break-word',
-            }}>
-              {entry.payload}
-            </div>
-          </div>
-        ))
+          );
+        })
       )}
+      <div ref={bottomRef} />
     </div>
   );
 }
