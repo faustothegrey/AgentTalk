@@ -1,71 +1,51 @@
 # NodePTY
 
-NodePTY is a Node.js-based orchestrator designed to manage and communicate with agents running in terminal panes hosted by `cmux` on macOS.
+NodePTY is a Node.js-based orchestrator designed to manage and communicate with LLM-based agents.
 
-## Architecture
+## Project Overview
 
-NodePTY operates as a central controller that interacts with agents through the `cmux` CLI. It uses a polling-based model to observe terminal output and an in-band protocol to send and receive structured data.
+NodePTY provides a central control plane for spawning agents, routing messages between them, and observing their terminal output through a Web UI. It uses a direct process management model with a line-based protocol for structured communication.
 
-- **Orchestrator**: Manages agent lifecycles, polling loops, and multi-agent routing.
-- **CmuxAdapter**: Wraps `cmux` CLI commands (`new-split`, `send`, `read-screen`, `notify`).
-- **Registry**: Tracks active agents and their states (`creating`, `starting`, `ready`, `busy`, `error`, `terminated`).
-- **Protocol**: An in-band, line-oriented JSON protocol prefixed with `[NodePTY]:`.
+## Core Architecture
 
-## Features
+- **Registry**: The central management layer for agent processes, statuses, and multi-agent "conversations".
+- **ProcessAdapter**: A clean abstraction for spawning processes, reading output, and sending input.
+- **Protocol**: A line-prefixed JSON protocol (`[NodePTY]:`) that allows agents to request actions from the orchestrator and receive events.
+- **Web UI**: A React-based dashboard that provides real-time terminal observation and agent control.
 
-- **Cmux Integration**: Leverages native macOS terminal panes via `cmux`.
-- **Polling Loop**: Robust terminal observation (250ms interval) with suffix-based deduplication.
-- **ANSI Stripping**: Cleans terminal formatting for reliable protocol parsing.
-- **Multi-Agent Routing**: Allows agents to discover each other (`list_agents`) and exchange messages (`send_to_agent`).
-- **Transcripts**: Automatically logs all terminal output (raw) to individual agent log files.
-- **State Machine**: Strict enforcement of agent lifecycle transitions.
+## Key Features
 
-## Prerequisites
+- **Direct Process Management**: Agents are spawned and managed directly by the Node.js orchestrator.
+- **Polling-based Observation**: A robust polling and deduplication mechanism to capture agent terminal output and protocol messages.
+- **Multi-Agent Conversations**: Support for orchestrating complex conversations between multiple agents with persisted transcripts.
+- **Real-time Monitoring**: WebSocket-based updates to a modern Web UI with xterm.js terminal views.
 
-- **Node.js**: v20 or higher recommended.
-- **cmux**: Must be installed and available in your `PATH`.
+## Getting Started
 
-## Installation
+### Prerequisites
+
+- **Node.js**: Version 18 or later.
+- **npm**: Standard Node.js package manager.
+
+### Installation
 
 ```bash
 npm install
 ```
 
-## Running Tests
+### Running the Orchestrator
 
-The project uses [Vitest](https://vitest.dev/) for unit testing.
+To start both the backend orchestrator and the frontend Web UI:
 
 ```bash
-npm test
+npm run dev
 ```
 
-## Protocol Definition
+The Web UI will be available at `http://localhost:5173`.
 
-All protocol lines must be newline-terminated and start with `[NodePTY]:`.
+## Documentation
 
-- **READY**: `[NodePTY]:READY:{"session":"uuid"}` (Sent by agent on startup)
-- **REQ**: `[NodePTY]:REQ:{"id":"uuid","call":"tool_name","args":{}}` (Sent by agent)
-- **RES**: `[NodePTY]:RES:{"id":"uuid","status":"success|error","data":{},"error":""}` (Sent by orchestrator)
-- **EVT**: `[NodePTY]:EVT:{"type":"event_type",...}` (Sent by orchestrator)
-
-## Multi-Agent Routing Calls
-
-Agents can use these standard requests:
-
-1.  **`list_agents`**: Returns a list of all known agents and their statuses.
-2.  **`send_to_agent`**: Sends a `message_received` event to a target agent.
-    - Args: `{ "to": "agent-id", "payload": "message content" }`
-
-## Project Structure
-
-- `src/index.ts`: CLI entry point.
-- `src/registry.ts`: Core orchestration and routing logic.
-- `src/agent.ts`: Per-agent state and transcript management.
-- `src/cmux-adapter.ts`: implementation of the `cmux` CLI contract.
-- `src/types.ts`: TypeScript interfaces and types.
-- `src/__tests__/`: Unit test battery.
-- `transcripts/`: Default directory for agent logs (gitignored).
-
-## License
-
-ISC
+Detailed design information can be found in the `design/` directory:
+- [Architecture](./design/architecture.md)
+- [Implementation](./design/implementation.md)
+- [Handoff Document](./design/transient/handoff.md)

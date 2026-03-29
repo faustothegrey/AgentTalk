@@ -164,6 +164,9 @@ function App() {
   const [selectedModel, setSelectedModel] = useState('');
   const [conversationAgentA, setConversationAgentA] = useState<string>('');
   const [conversationAgentB, setConversationAgentB] = useState<string>('');
+  const [conversationAgentC, setConversationAgentC] = useState<string>('');
+  const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
+  const [activeConversation, setActiveConversation] = useState<any | null>(null);
   const [maxReplies, setMaxReplies] = useState<number>(5);
   const [topic, setTopic] = useState('Discuss the current NodePTY project and propose concrete next-step implementation ideas or simplifications: architecture quality, risks, and the most useful changes to make next.');
   const [topicHistory, setTopicHistory] = useState<string[]>([]);
@@ -268,14 +271,19 @@ function App() {
         });
       } else if (message.type === 'agent_message') {
         console.log(`[App] Agent reply from ${message.from}: ${message.payload}`);
-      } else if (message.type === 'scenario_started') {
+      } else if (message.type === 'conversation_started') {
         setGlobalError(null);
-        console.log(`[App] Started scenario ${message.scenario?.id ?? 'unknown'}`);
+        setActiveConversationId(message.conversation?.id || null);
+        setActiveConversation(message.conversation || null);
+        console.log(`[App] Started conversation ${message.conversation?.id ?? 'unknown'}`);
         fetchTopicHistory();
-      } else if (message.type === 'scenario') {
-        console.log(`[App] Scenario update ${message.scenario?.id ?? 'unknown'}: ${message.scenario?.status ?? 'unknown'}`);
-      } else if (message.type === 'scenario_error') {
-        setGlobalError(`Failed to start two-agent conversation: ${message.error}`);
+      } else if (message.type === 'conversation') {
+        console.log(`[App] Conversation update ${message.conversation?.id ?? 'unknown'}: ${message.conversation?.status ?? 'unknown'}`);
+        if (message.conversation?.id === activeConversationId) {
+          setActiveConversation(message.conversation);
+        }
+      } else if (message.type === 'conversation_error') {
+        setGlobalError(`Failed to start conversation: ${message.error}`);
       }
     };
 
@@ -285,7 +293,7 @@ function App() {
     };
 
     return () => socket.close();
-  }, [fetchAgents]);
+  }, [fetchAgents, activeConversationId, fetchTopicHistory]);
 
   const createAgent = async () => {
     setLoading(true);
@@ -337,27 +345,24 @@ function App() {
     messageInputRef.current?.focus();
   };
 
-  const startTwoAgentConversation = () => {
+  const startConversation = () => {
     if (!ws || ws.readyState !== WebSocket.OPEN) {
-      setGlobalError('Two-agent conversation requires an open WebSocket connection.');
+      setGlobalError('Conversation requires an open WebSocket connection.');
       return;
     }
 
-    if (!conversationAgentA || !conversationAgentB) {
-      setGlobalError('Select two agents before starting the conversation.');
-      return;
-    }
+    const agentIds = [conversationAgentA, conversationAgentB, conversationAgentC].filter(Boolean);
+    const uniqueAgentIds = [...new Set(agentIds)];
 
-    if (conversationAgentA === conversationAgentB) {
-      setGlobalError('Choose two different agents for the conversation.');
+    if (uniqueAgentIds.length < 2) {
+      setGlobalError('Select at least two different agents before starting the conversation.');
       return;
     }
 
     setGlobalError(null);
     ws.send(JSON.stringify({
-      type: 'start_pair_chat',
-      agentAId: conversationAgentA,
-      agentBId: conversationAgentB,
+      type: 'start_pair_chat', // keeping the name for protocol compatibility
+      agentIds: uniqueAgentIds,
       topic: topic.trim(),
       maxReplies: maxReplies,
     }));
@@ -427,7 +432,7 @@ function App() {
                 <Plus size={14} /> Agent
               </button>
               <button onClick={() => setActiveSidebarTab('conversation')} style={sidebarTabButtonStyle('conversation')}>
-                <MessagesSquare size={14} /> Pair
+                <MessagesSquare size={14} /> Conv
               </button>
               <button onClick={() => setActiveSidebarTab('usage')} style={sidebarTabButtonStyle('usage')}>
                 <Activity size={14} /> Usage
@@ -542,7 +547,7 @@ function App() {
             {activeSidebarTab === 'conversation' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 <span style={{ fontSize: '11px', color: '#888', textTransform: 'uppercase', letterSpacing: '0.8px' }}>
-                  Two-Agent Scenario
+                  Multi-Agent Conversation
                 </span>
                 <select
                   value={conversationAgentA}
@@ -580,6 +585,26 @@ function App() {
                   <option value="">Agent B</option>
                   {conversationCandidates.map((agent) => (
                     <option key={`b-${agent.id}`} value={agent.id}>
+                      {agent.id}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  value={conversationAgentC}
+                  onChange={(e) => setConversationAgentC(e.target.value)}
+                  style={{
+                    backgroundColor: '#1e1e1e',
+                    color: '#ddd',
+                    border: '1px solid #3b3b3b',
+                    borderRadius: '6px',
+                    padding: '8px 10px',
+                    fontSize: '13px',
+                    outline: 'none',
+                  }}
+                >
+                  <option value="">Agent C (Optional)</option>
+                  {conversationCandidates.map((agent) => (
+                    <option key={`c-${agent.id}`} value={agent.id}>
                       {agent.id}
                     </option>
                   ))}
@@ -683,8 +708,8 @@ function App() {
                   )}
                 </div>
                 <button
-                  onClick={startTwoAgentConversation}
-                  disabled={!ws || ws.readyState !== WebSocket.OPEN || !conversationAgentA || !conversationAgentB || conversationAgentA === conversationAgentB}
+                  onClick={startConversation}
+                  disabled={!ws || ws.readyState !== WebSocket.OPEN || [...new Set([conversationAgentA, conversationAgentB, conversationAgentC].filter(Boolean))].length < 2}
                   style={{
                     display: 'flex',
                     alignItems: 'center',
@@ -697,11 +722,11 @@ function App() {
                     padding: '8px 10px',
                     fontSize: '13px',
                     cursor: 'pointer',
-                    opacity: (!ws || ws.readyState !== WebSocket.OPEN || !conversationAgentA || !conversationAgentB || conversationAgentA === conversationAgentB) ? 0.5 : 1,
+                    opacity: (!ws || ws.readyState !== WebSocket.OPEN || [...new Set([conversationAgentA, conversationAgentB, conversationAgentC].filter(Boolean))].length < 2) ? 0.5 : 1,
                   }}
                 >
                   <MessagesSquare size={14} />
-                  Start Project Discussion
+                  Start Conversation
                 </button>
               </div>
             )}
@@ -763,7 +788,46 @@ function App() {
 
         {/* Main Area */}
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', backgroundColor: '#1e1e1e' }}>
-          {selectedAgentId ? (
+          {activeConversationId ? (
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+              <div style={{ padding: '8px 16px', backgroundColor: '#2d2d2d', fontSize: '12px', color: '#ccc', borderBottom: '1px solid #333', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <div>Conversation: <strong>{activeConversationId}</strong></div>
+                  {activeConversation?.status === 'completed' && (
+                    <span style={{ fontSize: '10px', backgroundColor: '#4caf50', color: '#fff', padding: '2px 8px', borderRadius: '10px', fontWeight: 'bold', textTransform: 'uppercase' }}>
+                      Conversation Finished
+                    </span>
+                  )}
+                </div>
+                <button 
+                  onClick={() => { setActiveConversationId(null); setActiveConversation(null); }}
+                  style={{ background: 'none', border: 'none', color: '#888', cursor: 'pointer', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px' }}
+                >
+                  Close Conversation View
+                </button>
+              </div>
+              <div style={{ 
+                flex: 1, 
+                display: 'grid', 
+                gridTemplateColumns: [conversationAgentA, conversationAgentB, conversationAgentC].filter(Boolean).length > 2 ? 'repeat(auto-fit, minmax(400px, 1fr))' : '1fr 1fr',
+                gap: '1px',
+                backgroundColor: '#333'
+              }}>
+                {[conversationAgentA, conversationAgentB, conversationAgentC].filter(Boolean).map(id => (
+                  <div key={id} style={{ display: 'flex', flexDirection: 'column', backgroundColor: '#1e1e1e' }}>
+                    <div style={{ padding: '4px 12px', backgroundColor: '#252526', fontSize: '10px', color: '#888', borderBottom: '1px solid #333' }}>
+                      AGENT: {id}
+                    </div>
+                    <div style={{ flex: 1, position: 'relative' }}>
+                      <ErrorBoundary>
+                        <TerminalView agentId={id} ws={ws} />
+                      </ErrorBoundary>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : selectedAgentId ? (
             <>
               <div style={{ padding: '8px 16px', backgroundColor: '#2d2d2d', fontSize: '12px', color: '#ccc', borderBottom: '1px solid #333', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>Connected to: <strong>{selectedAgentId}</strong></div>

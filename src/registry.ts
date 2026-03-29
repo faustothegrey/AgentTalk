@@ -4,13 +4,13 @@ import path from 'path';
 import stripAnsi from 'strip-ansi';
 import { Agent } from './agent.js';
 import type { ProcessAdapter } from './process-adapter.js';
-import type { ConversationScenario, ScenarioTranscriptEntry } from './types.js';
+import type { Conversation, TranscriptEntry } from './types.js';
 
 interface RegistryConfig {
   pollIntervalMs: number;
   readinessTimeoutMs: number;
   maxConsecutiveFailures: number;
-  scenarioStorePath: string;
+  conversationStorePath: string;
   agentIdleTimeoutMs: number;
   healthcheckTimeoutMs: number;
 }
@@ -22,7 +22,7 @@ export class Registry extends EventEmitter {
   private consecutiveFailures: Map<string, number> = new Map();
   private pollsInFlight: Set<string> = new Set();
   private pollCount: Map<string, number> = new Map();
-  private scenarios: Map<string, ConversationScenario> = new Map();
+  private conversations: Map<string, Conversation> = new Map();
   private pendingHealthChecks: Map<string, {
     agentId: string;
     resolve: (value: { agentId: string; message: string }) => void;
@@ -40,12 +40,12 @@ export class Registry extends EventEmitter {
       pollIntervalMs: 250,
       readinessTimeoutMs: 60000,
       maxConsecutiveFailures: 3,
-      scenarioStorePath: './transcripts/scenarios.json',
+      conversationStorePath: './transcripts/conversations.json',
       agentIdleTimeoutMs: 180000,
       healthcheckTimeoutMs: 20000,
       ...config,
     };
-    this.loadScenarios();
+    this.loadConversations();
 
     this.adapter.onExit((id, code) => {
       const agent = this.agents.get(id);
@@ -75,39 +75,41 @@ export class Registry extends EventEmitter {
     return agent;
   }
 
-  async startScenario(agentAId: string, agentBId: string, topic: string, maxRepliesPerAgent: number): Promise<ConversationScenario> {
-    const agentA = this.getAgent(agentAId);
-    const agentB = this.getAgent(agentBId);
-
-    if (agentAId === agentBId) {
-      throw new Error('Scenario requires two different agents');
+  async startConversation(agentIds: string[], topic: string, maxRepliesPerAgent: number): Promise<Conversation> {
+    if (agentIds.length < 2) {
+      throw new Error('Conversation requires at least two agents');
     }
 
-    if ((agentA.status !== 'ready' && agentA.status !== 'busy') || (agentB.status !== 'ready' && agentB.status !== 'busy')) {
-      throw new Error('Both agents must be ready before starting a conversation');
+    const uniqueAgentIds = [...new Set(agentIds)];
+    if (uniqueAgentIds.length !== agentIds.length) {
+      throw new Error('Conversation requires different agents');
     }
 
-    await Promise.all([
-      this.requestHealthCheck(agentAId),
-      this.requestHealthCheck(agentBId),
-    ]);
+    const agents = agentIds.map(id => this.getAgent(id));
 
-    const existingScenario = this.findActiveScenarioByAgents(agentAId, agentBId);
-    if (existingScenario) {
-      return existingScenario;
+    for (const agent of agents) {
+      if (agent.status !== 'ready' && agent.status !== 'busy') {
+        throw new Error(`Agent ${agent.id} must be ready before starting a conversation`);
+      }
+    }
+
+    await Promise.all(agentIds.map(id => this.requestHealthCheck(id)));
+
+    const existingConversation = this.findActiveConversationByAgents(agentIds);
+    if (existingConversation) {
+      return existingConversation;
     }
 
     const now = new Date().toISOString();
-    const scenario: ConversationScenario = {
-      id: `scenario-${Date.now()}`,
-      agentAId,
-      agentBId,
+    const replyCounts: Record<string, number> = {};
+    agentIds.forEach(id => { replyCounts[id] = 0; });
+
+    const conversation: Conversation = {
+      id: `conversation-${Date.now()}`,
+      agentIds,
       topic,
       maxRepliesPerAgent,
-      replyCounts: {
-        [agentAId]: 0,
-        [agentBId]: 0,
-      },
+      replyCounts,
       status: 'active',
       createdAt: now,
       updatedAt: now,
@@ -116,35 +118,32 @@ export class Registry extends EventEmitter {
           kind: 'system',
           timestamp: now,
           from: 'system',
-          to: `${agentAId},${agentBId}`,
-          payload: `Scenario created: ${topic}`,
+          to: agentIds.join(','),
+          payload: `Conversation created with ${agentIds.length} agents: ${topic}`,
         },
       ],
     };
 
-    this.scenarios.set(scenario.id, scenario);
-    this.persistScenarios();
-    this.emit('scenario', scenario);
+    this.conversations.set(conversation.id, conversation);
+    this.persistConversations();
+    this.emit('conversation', conversation);
 
-    await this.sendProtocol(agentAId, 'EVT', {
-      type: 'scenario_start',
-      scenarioId: scenario.id,
-      peerId: agentBId,
-      topic,
-      maxReplies: maxRepliesPerAgent,
-      initiator: true,
-    });
+    // Send conversation_start to all agents
+    for (const [i, id] of agentIds.entries()) {
+      const peerIds = agentIds.filter(pid => pid !== id);
+      
+      await this.sendProtocol(id, 'EVT', {
+        type: 'conversation_start',
+        conversationId: conversation.id,
+        peerIds, // plural for multi-agent support
+        peerId: peerIds[0], // backward compatibility for V1 agents
+        topic,
+        maxReplies: maxRepliesPerAgent,
+        initiator: i === 0, // only the first agent is the initiator
+      });
+    }
 
-    await this.sendProtocol(agentBId, 'EVT', {
-      type: 'scenario_start',
-      scenarioId: scenario.id,
-      peerId: agentAId,
-      topic,
-      maxReplies: maxRepliesPerAgent,
-      initiator: false,
-    });
-
-    return scenario;
+    return conversation;
   }
 
   /**
@@ -578,7 +577,7 @@ export class Registry extends EventEmitter {
 
     try {
       const targetAgent = this.getAgent(to);
-      const scenario = this.findActiveScenarioByAgents(agent.id, to);
+      const conversation = this.findActiveConversationByAgents(agent.id, to);
 
       if (targetAgent.status !== 'ready' && targetAgent.status !== 'busy') {
         await this.sendProtocol(agent.id, 'RES', {
@@ -589,14 +588,14 @@ export class Registry extends EventEmitter {
         return;
       }
 
-      if (scenario) {
-        const currentCount = scenario.replyCounts[agent.id] ?? 0;
-        if (currentCount >= scenario.maxRepliesPerAgent) {
-          this.markScenarioCompleted(scenario, `Reply cap reached by ${agent.id}`);
+      if (conversation) {
+        const currentCount = conversation.replyCounts[agent.id] ?? 0;
+        if (currentCount >= conversation.maxRepliesPerAgent) {
+          this.markConversationCompleted(conversation, `Reply cap reached by ${agent.id}`);
           await this.sendProtocol(agent.id, 'RES', {
             id: reqId,
             status: 'error',
-            error: `Scenario ${scenario.id} reply cap reached for ${agent.id}`,
+            error: `Conversation ${conversation.id} reply cap reached for ${agent.id}`,
           });
           return;
         }
@@ -609,8 +608,8 @@ export class Registry extends EventEmitter {
         payload: payload,
       });
 
-      if (scenario) {
-        this.recordScenarioMessage(scenario, {
+      if (conversation) {
+        this.recordConversationMessage(conversation, {
           kind: 'message',
           timestamp: new Date().toISOString(),
           from: agent.id,
@@ -769,12 +768,12 @@ export class Registry extends EventEmitter {
     return true;
   }
 
-  getScenarios(): ConversationScenario[] {
-    return Array.from(this.scenarios.values()).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  getConversations(): Conversation[] {
+    return Array.from(this.conversations.values()).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   }
 
-  private loadScenarios(): void {
-    const storePath = this.getScenarioStorePath();
+  private loadConversations(): void {
+    const storePath = this.getConversationStorePath();
     if (!existsSync(storePath)) {
       return;
     }
@@ -785,70 +784,90 @@ export class Registry extends EventEmitter {
         return;
       }
 
-      const scenarios = JSON.parse(raw) as ConversationScenario[];
-      for (const scenario of scenarios) {
-        this.scenarios.set(scenario.id, scenario);
+      const conversations = JSON.parse(raw) as Conversation[];
+      for (const conversation of conversations) {
+        this.conversations.set(conversation.id, conversation);
       }
     } catch (err) {
-      console.error('[Registry] Failed to load scenarios:', err);
+      console.error('[Registry] Failed to load conversations:', err);
     }
   }
 
-  private persistScenarios(): void {
-    const storePath = this.getScenarioStorePath();
+  private persistConversations(): void {
+    const storePath = this.getConversationStorePath();
     mkdirSync(path.dirname(storePath), { recursive: true });
     writeFileSync(
       storePath,
-      JSON.stringify(this.getScenarios(), null, 2),
+      JSON.stringify(this.getConversations(), null, 2),
       'utf8',
     );
   }
 
-  private getScenarioStorePath(): string {
-    return path.resolve(this.config.scenarioStorePath);
+  private getConversationStorePath(): string {
+    return path.resolve(this.config.conversationStorePath);
   }
 
-  private findActiveScenarioByAgents(agentAId: string, agentBId: string): ConversationScenario | undefined {
-    return this.getScenarios().find((scenario) =>
-      scenario.status === 'active' &&
-      (
-        (scenario.agentAId === agentAId && scenario.agentBId === agentBId) ||
-        (scenario.agentAId === agentBId && scenario.agentBId === agentAId)
-      )
+  private findActiveConversationByAgents(agentIds: string[] | string, maybeTo?: string): Conversation | undefined {
+    let ids: string[];
+    if (Array.isArray(agentIds)) {
+      ids = agentIds;
+    } else if (maybeTo) {
+      ids = [agentIds, maybeTo];
+    } else {
+      return undefined;
+    }
+
+    return this.getConversations().find((conversation) =>
+      conversation.status === 'active' &&
+      conversation.agentIds.length === ids.length &&
+      ids.every(id => conversation.agentIds.includes(id))
     );
   }
 
-  private recordScenarioMessage(scenario: ConversationScenario, entry: ScenarioTranscriptEntry): void {
-    scenario.transcript.push(entry);
-    const nextCount = (scenario.replyCounts[entry.from] ?? 0) + 1;
-    scenario.replyCounts[entry.from] = nextCount;
-    scenario.updatedAt = entry.timestamp;
+  private recordConversationMessage(conversation: Conversation, entry: TranscriptEntry): void {
+    conversation.transcript.push(entry);
+    const nextCount = (conversation.replyCounts[entry.from] ?? 0) + 1;
+    conversation.replyCounts[entry.from] = nextCount;
+    conversation.updatedAt = entry.timestamp;
 
-    if (nextCount >= scenario.maxRepliesPerAgent) {
-      this.markScenarioCompleted(scenario, `Reply cap reached by ${entry.from}`);
+    const allFinished = conversation.agentIds.every(
+      id => (conversation.replyCounts[id] ?? 0) >= conversation.maxRepliesPerAgent
+    );
+
+    if (allFinished) {
+      this.markConversationCompleted(conversation, 'All agents reached reply limit');
       return;
     }
 
-    this.persistScenarios();
-    this.emit('scenario', scenario);
+    this.persistConversations();
+    this.emit('conversation', conversation);
   }
 
-  private markScenarioCompleted(scenario: ConversationScenario, reason: string): void {
-    if (scenario.status === 'completed') {
+  private markConversationCompleted(conversation: Conversation, reason: string): void {
+    if (conversation.status === 'completed') {
       return;
     }
 
-    scenario.status = 'completed';
-    scenario.updatedAt = new Date().toISOString();
-    scenario.transcript.push({
+    conversation.status = 'completed';
+    conversation.updatedAt = new Date().toISOString();
+    conversation.transcript.push({
       kind: 'system',
-      timestamp: scenario.updatedAt,
+      timestamp: conversation.updatedAt,
       from: 'system',
-      to: `${scenario.agentAId},${scenario.agentBId}`,
+      to: conversation.agentIds.join(','),
       payload: reason,
     });
-    this.persistScenarios();
-    this.emit('scenario', scenario);
+    this.persistConversations();
+    this.emit('conversation', conversation);
+
+    // Notify all agents that the conversation has ended
+    for (const id of conversation.agentIds) {
+      this.sendProtocol(id, 'EVT', {
+        type: 'conversation_end',
+        conversationId: conversation.id,
+        reason,
+      }).catch(err => console.error(`[Registry] Failed to send conversation_end to ${id}:`, err));
+    }
   }
 
   private stopPolling(id: string): void {
@@ -884,7 +903,7 @@ export class Registry extends EventEmitter {
    * Cleanup all agents and polling loops.
    */
   async destroy(): Promise<void> {
-    this.persistScenarios();
+    this.persistConversations();
     for (const pending of this.pendingHealthChecks.values()) {
       clearTimeout(pending.timeout);
       pending.reject(new Error('Registry destroyed before healthcheck completed'));

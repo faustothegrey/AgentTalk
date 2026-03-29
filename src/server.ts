@@ -38,17 +38,17 @@ export function startServer(registry: Registry, port: number = 3000) {
     res.json(agents);
   });
 
-  app.get('/api/scenarios', (req, res) => {
-    console.log('[Server] GET /api/scenarios');
-    const scenarios = registry.getScenarios();
-    console.log(`[Server] Returning ${scenarios.length} scenarios`);
-    res.json(scenarios);
+  app.get('/api/conversations', (req, res) => {
+    console.log('[Server] GET /api/conversations');
+    const conversations = registry.getConversations();
+    console.log(`[Server] Returning ${conversations.length} conversations`);
+    res.json(conversations);
   });
 
   app.get('/api/topics', (req, res) => {
     console.log('[Server] GET /api/topics');
-    const scenarios = registry.getScenarios();
-    const topics = Array.from(new Set(scenarios.map(s => s.topic))).filter(Boolean);
+    const conversations = registry.getConversations();
+    const topics = Array.from(new Set(conversations.map(s => s.topic))).filter(Boolean);
     console.log(`[Server] Returning ${topics.length} topics`);
     res.json(topics);
   });
@@ -161,9 +161,21 @@ export function startServer(registry: Registry, port: number = 3000) {
           }
 
           case 'start_pair_chat': {
-            const { agentAId, agentBId, topic: clientTopic, maxReplies: clientMaxReplies } = message;
-            if (typeof agentAId !== 'string' || typeof agentBId !== 'string' || agentAId === agentBId) {
-              console.warn('[Server] Invalid start_pair_chat payload:', message);
+            const { agentIds: clientAgentIds, agentAId, agentBId, topic: clientTopic, maxReplies: clientMaxReplies } = message;
+            
+            let agentIds: string[] = [];
+            if (Array.isArray(clientAgentIds)) {
+              agentIds = clientAgentIds;
+            } else if (typeof agentAId === 'string' && typeof agentBId === 'string') {
+              agentIds = [agentAId, agentBId];
+            }
+
+            if (agentIds.length < 2) {
+              console.warn('[Server] Invalid start_pair_chat payload: need at least 2 agents', message);
+              ws.send(JSON.stringify({
+                type: 'conversation_error',
+                error: 'Select at least two agents for the conversation.',
+              }));
               break;
             }
 
@@ -171,17 +183,17 @@ export function startServer(registry: Registry, port: number = 3000) {
               const defaultTopic = 'Discuss the current NodePTY project and propose concrete next-step implementation ideas or simplifications: architecture quality, risks, and the most useful changes to make next.';
               const topic = typeof clientTopic === 'string' && clientTopic.trim() !== '' ? clientTopic : defaultTopic;
               const maxReplies = typeof clientMaxReplies === 'number' ? clientMaxReplies : 5;
-              const scenario = await registry.startScenario(agentAId, agentBId, topic, maxReplies);
+              const conversation = await registry.startConversation(agentIds, topic, maxReplies);
 
               ws.send(JSON.stringify({
-                type: 'scenario_started',
-                scenario,
+                type: 'conversation_started',
+                conversation,
               }));
             } catch (err) {
               const error = err instanceof Error ? err.message : String(err);
-              console.error('[Server] Failed to start pair chat:', err);
+              console.error('[Server] Failed to start conversation:', err);
               ws.send(JSON.stringify({
-                type: 'scenario_error',
+                type: 'conversation_error',
                 error,
               }));
             }
@@ -281,15 +293,15 @@ export function startServer(registry: Registry, port: number = 3000) {
     console.log(`[Server] External Usage ${id}: (${externalUsage.length} chars) → ${sent} client(s)`);
   });
 
-  registry.on('scenario', (scenario) => {
+  registry.on('conversation', (conversation) => {
     let sent = 0;
     wss.clients.forEach((client) => {
       if (client.readyState === WebSocket.OPEN) {
-        client.send(JSON.stringify({ type: 'scenario', scenario }));
+        client.send(JSON.stringify({ type: 'conversation', conversation }));
         sent++;
       }
     });
-    console.log(`[Server] Scenario ${scenario.id}: ${scenario.status} → ${sent} client(s)`);
+    console.log(`[Server] Conversation ${conversation.id}: ${conversation.status} → ${sent} client(s)`);
   });
 
   server.listen(port, () => {

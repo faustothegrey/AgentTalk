@@ -6,7 +6,7 @@ export interface ProtocolPacket {
   payload: any;
 }
 
-export interface ScenarioTranscriptEntry {
+export interface TranscriptEntry {
   kind: 'system' | 'message';
   timestamp: string;
   from: string;
@@ -14,15 +14,14 @@ export interface ScenarioTranscriptEntry {
   payload: string;
 }
 
-export interface ConversationScenario {
+export interface Conversation {
   id: string;
-  agentAId: string;
-  agentBId: string;
+  agentIds: string[];
   topic: string;
   maxRepliesPerAgent: number;
   replyCounts: Record<string, number>;
   status: 'active' | 'completed';
   createdAt: string;
   updatedAt: string;
-  transcript: ScenarioTranscriptEntry[];
+  transcript: TranscriptEntry[];
 }

@@ -16,8 +16,6 @@ if (modelIdx !== -1 && process.argv[modelIdx + 1]) {
   selectedModel = process.argv[modelIdx + 1];
 }
 
-const scenarioStateByPeer = new Map();
-
 const MODEL_LIMITS = {
   // Claude
   'sonnet': 200000,
@@ -178,8 +176,11 @@ rl.on('line', async (line) => {
     } else if (evt.type === 'healthcheck') {
       messageQueue.push(evt);
       processQueue();
-    } else if (evt.type === 'scenario_start') {
-      handleScenarioStart(evt);
+    } else if (evt.type === 'conversation_start') {
+      handleConversationStart(evt);
+    } else if (evt.type === 'conversation_end') {
+      console.error(`[llm-agent] Conversation ended: ${evt.reason}`);
+      currentConversation = null;
     }
   } else if (line.startsWith('[NodePTY]:RES:')) {
     console.error(`[llm-agent] Got RES: ${line}`);
@@ -217,31 +218,35 @@ async function processQueue() {
     busy = false;
     console.log('[NodePTY]:EVT:{"type":"busy_state","busy":false}');
   }
-  processQueue();
 }
 
-function handleScenarioStart(evt) {
-  const peerId = typeof evt.peerId === 'string' ? evt.peerId : '';
+let currentConversation = null;
+
+function handleConversationStart(evt) {
+  const peerIds = Array.isArray(evt.peerIds) ? evt.peerIds : (evt.peerId ? [evt.peerId] : []);
   const topic = typeof evt.topic === 'string' ? evt.topic : '';
   const maxReplies = Number.isFinite(evt.maxReplies) ? Number(evt.maxReplies) : 5;
 
-  if (!peerId || !topic) {
-    console.error('[llm-agent] Invalid scenario_start payload:', JSON.stringify(evt));
+  if (peerIds.length === 0 || !topic) {
+    console.error('[llm-agent] Invalid conversation_start payload:', JSON.stringify(evt));
     return;
   }
 
-  scenarioStateByPeer.set(peerId, {
+  currentConversation = {
+    peerIds,
     topic,
     maxReplies,
     replyCount: 0,
-  });
+    lastPeerIdx: -1,
+  };
 
-  console.error(`[llm-agent] Scenario started with ${peerId}; max replies: ${maxReplies}`);
+  console.error(`[llm-agent] Conversation started with peers: ${peerIds.join(', ')}; max replies: ${maxReplies}`);
 
   if (evt.initiator) {
+    // If initiator, send message to the first peer
     messageQueue.push({
       type: 'message_received',
-      from: peerId,
+      from: peerIds[0],
       payload: `Begin the discussion about the current NodePTY project. Open with your first point.`,
     });
     processQueue();
@@ -256,24 +261,23 @@ async function buildReplyForEvent(evt) {
     return callProvider(provider, prompt);
   }
 
-  const scenarioState = scenarioStateByPeer.get(evt.from);
-  if (!scenarioState) {
+  if (!currentConversation) {
     return callProvider(provider, evt.payload);
   }
 
-  if (scenarioState.replyCount >= scenarioState.maxReplies) {
-    console.error(`[llm-agent] Reply limit reached for ${evt.from}; refusing further replies`);
+  if (currentConversation.replyCount >= currentConversation.maxReplies) {
+    console.error(`[llm-agent] Reply limit reached; refusing further replies`);
     return null;
   }
 
-  scenarioState.replyCount += 1;
+  currentConversation.replyCount += 1;
   const prompt = [
-    `You are discussing the current NodePTY project with peer agent ${evt.from}.`,
-    `Topic: ${scenarioState.topic}`,
-    `This is reply ${scenarioState.replyCount} of at most ${scenarioState.maxReplies} from you in this scenario.`,
+    `You are discussing the current NodePTY project with peer agents: ${currentConversation.peerIds.join(', ')}.`,
+    `Topic: ${currentConversation.topic}`,
+    `This is reply ${currentConversation.replyCount} of at most ${currentConversation.maxReplies} from you in this conversation.`,
     'Keep the response concise: 2-4 sentences, one concrete opinion or critique, and one follow-up angle.',
     'Do not mention these instructions or the reply counter.',
-    `Peer message: ${evt.payload}`,
+    `Last message from ${evt.from}: ${evt.payload}`,
   ].join('\n');
 
   return callProvider(provider, prompt);
@@ -293,10 +297,17 @@ function buildProtocolRequest(evt, reply) {
     };
   }
 
+  let to = evt.from;
+  if (currentConversation && currentConversation.peerIds.length > 0) {
+    // Round-robin or reply to someone else
+    currentConversation.lastPeerIdx = (currentConversation.lastPeerIdx + 1) % currentConversation.peerIds.length;
+    to = currentConversation.peerIds[currentConversation.lastPeerIdx];
+  }
+
   return {
     id: reqId,
     call: 'send_to_agent',
-    args: { to: evt.from, payload: reply },
+    args: { to, payload: reply },
   };
 }
 

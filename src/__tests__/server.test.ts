@@ -13,7 +13,7 @@ describe('startServer', () => {
   let server: Server;
   let baseUrl: string;
   let outputBuffers: Map<string, string>;
-  const scenarioStorePath = './test-transcripts-server/scenarios.json';
+  const conversationStorePath = './test-transcripts-server/conversations.json';
 
   beforeEach(async () => {
     outputBuffers = new Map();
@@ -32,7 +32,7 @@ describe('startServer', () => {
       pollIntervalMs: 100,
       readinessTimeoutMs: 500,
       maxConsecutiveFailures: 2,
-      scenarioStorePath,
+      conversationStorePath,
     });
 
     server = startServer(registry, 0);
@@ -108,7 +108,7 @@ describe('startServer', () => {
     await new Promise<void>((resolve) => socket.once('close', () => resolve()));
   });
 
-  it('should expose persisted scenarios via the api', async () => {
+  it('should expose persisted conversations via the api', async () => {
     const agent1 = await registry.createAgent('agent-1');
     const agent2 = await registry.createAgent('agent-2');
     agent1.setStatus('starting');
@@ -121,21 +121,19 @@ describe('startServer', () => {
       message: 'hello',
     });
 
-    await registry.startScenario(
-      'agent-1',
-      'agent-2',
+    await registry.startConversation(
+      ['agent-1', 'agent-2'],
       'Discuss the current NodePTY project.',
       5,
     );
 
-    const response = await fetch(`${baseUrl}/api/scenarios`);
+    const response = await fetch(`${baseUrl}/api/conversations`);
     expect(response.status).toBe(200);
 
-    const scenarios = await response.json();
-    expect(scenarios).toHaveLength(1);
-    expect(scenarios[0]).toMatchObject({
-      agentAId: 'agent-1',
-      agentBId: 'agent-2',
+    const conversations = await response.json();
+    expect(conversations).toHaveLength(1);
+    expect(conversations[0]).toMatchObject({
+      agentIds: ['agent-1', 'agent-2'],
       status: 'active',
       maxRepliesPerAgent: 5,
     });
