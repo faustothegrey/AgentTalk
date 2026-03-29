@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { Registry } from '../registry.js';
 import type { ProcessAdapter } from '../process-adapter.js';
 import { existsSync, rmSync } from 'fs';
+import { deriveConversationStatus } from '../conversation-status.js';
 
 describe('Registry', () => {
   let adapter: ProcessAdapter;
@@ -9,6 +10,7 @@ describe('Registry', () => {
   let outputBuffers: Map<string, string>;
   let exitCallbacks: ((id: string, code: number | null) => void)[];
   const TRANSCRIPT_DIR = './test-transcripts';
+  const conversationStorePath = `${TRANSCRIPT_DIR}/conversations.json`;
 
   beforeEach(() => {
     outputBuffers = new Map();
@@ -36,6 +38,7 @@ describe('Registry', () => {
       pollIntervalMs: 100,
       readinessTimeoutMs: 500,
       maxConsecutiveFailures: 2,
+      conversationStorePath,
     });
 
     vi.useFakeTimers();
@@ -345,5 +348,65 @@ describe('Registry', () => {
 
     expect(agent.lastPollAt).toBeTypeOf('number');
     expect(agent.lastProgressAt).toBeTypeOf('number');
+  });
+
+  it('should derive completed status when all agents reached the reply cap', () => {
+    expect(deriveConversationStatus({
+      id: 'conversation-1',
+      agentIds: ['agent-1', 'agent-2'],
+      topic: 'test',
+      maxRepliesPerAgent: 2,
+      replyCounts: {
+        'agent-1': 2,
+        'agent-2': 2,
+      },
+      status: 'active',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+      transcript: [],
+    })).toBe('completed');
+  });
+
+  it('should expose derived conversation status in getConversations', () => {
+    (registry as any).conversations.set('conversation-1', {
+      id: 'conversation-1',
+      agentIds: ['agent-1', 'agent-2'],
+      topic: 'test',
+      maxRepliesPerAgent: 1,
+      replyCounts: {
+        'agent-1': 1,
+        'agent-2': 1,
+      },
+      status: 'active',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+      transcript: [],
+    });
+
+    expect(registry.getConversations()).toEqual([
+      expect.objectContaining({
+        id: 'conversation-1',
+        status: 'completed',
+      }),
+    ]);
+  });
+
+  it('should ignore derived-completed conversations when finding active conversations by agents', () => {
+    (registry as any).conversations.set('conversation-1', {
+      id: 'conversation-1',
+      agentIds: ['agent-1', 'agent-2'],
+      topic: 'test',
+      maxRepliesPerAgent: 1,
+      replyCounts: {
+        'agent-1': 1,
+        'agent-2': 1,
+      },
+      status: 'active',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+      transcript: [],
+    });
+
+    expect((registry as any).findActiveConversationByAgents(['agent-1', 'agent-2'])).toBeUndefined();
   });
 });

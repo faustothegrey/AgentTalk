@@ -5,6 +5,7 @@ import stripAnsi from 'strip-ansi';
 import { Agent } from './agent.js';
 import type { ProcessAdapter } from './process-adapter.js';
 import type { Conversation, TranscriptEntry } from './types.js';
+import { deriveConversationStatus, withDerivedConversationStatus } from './conversation-status.js';
 
 interface RegistryConfig {
   pollIntervalMs: number;
@@ -769,7 +770,9 @@ export class Registry extends EventEmitter {
   }
 
   getConversations(): Conversation[] {
-    return Array.from(this.conversations.values()).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    return Array.from(this.conversations.values())
+      .map(withDerivedConversationStatus)
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   }
 
   removeConversation(id: string): boolean {
@@ -826,7 +829,7 @@ export class Registry extends EventEmitter {
     }
 
     return this.getConversations().find((conversation) =>
-      conversation.status === 'active' &&
+      deriveConversationStatus(conversation) === 'active' &&
       conversation.agentIds.length === ids.length &&
       ids.every(id => conversation.agentIds.includes(id))
     );
