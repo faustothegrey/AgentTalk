@@ -62,6 +62,12 @@ function stripAnsi(text) {
   return text.replace(/\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])/g, '');
 }
 
+function normalizeCliOutput(providerName, text) {
+  const cleaned = stripAnsi(text).replace(/\r/g, '');
+
+  return cleaned;
+}
+
 function runProcess(command, args, options = {}) {
   return new Promise((resolve, reject) => {
     const proc = spawn(command, args, {
@@ -380,14 +386,16 @@ function extractTokens(providerName, stdout) {
 function extractResponse(providerName, stdout) {
   try {
     if (providerName === 'codex') {
+      let lastAgentMessage = '';
       const lines = stdout.split('\n');
       for (const line of lines) {
         if (!line.trim()) continue;
         const json = JSON.parse(line);
-        if (json.type === 'item.completed' && json.item?.text) {
-          return json.item.text;
+        if (json.type === 'item.completed' && json.item?.type === 'agent_message' && json.item?.text) {
+          lastAgentMessage = json.item.text;
         }
       }
+      return lastAgentMessage;
     } else {
       const json = JSON.parse(stdout);
       if (providerName === 'claude') {
@@ -413,9 +421,11 @@ function callProvider(providerName, userMessage) {
       env: getSpawnEnv(providerName),
     });
 
-    // Close stdin immediately — codex needs it to be 'pipe' (not 'ignore') for
-    // internal tool execution, but we have nothing to write.
-    proc.stdin.end();
+    // Keep stdin open for Codex so tool calls that need write_stdin can
+    // continue using the same child-process session.
+    if (providerName !== 'codex') {
+      proc.stdin.end();
+    }
 
     let stdout = '';
     let stderr = '';
@@ -424,8 +434,8 @@ function callProvider(providerName, userMessage) {
     proc.stderr.on('data', (chunk) => { stderr += chunk; });
 
     proc.on('close', (code) => {
-      const cleanStdout = stdout.trim();
-      const cleanStderr = stderr.trim();
+      const cleanStdout = normalizeCliOutput(providerName, stdout).trim();
+      const cleanStderr = normalizeCliOutput(providerName, stderr).trim();
 
       if (cleanStderr) {
         console.error(`[llm-agent] ${providerName} stderr: ${cleanStderr}`);
