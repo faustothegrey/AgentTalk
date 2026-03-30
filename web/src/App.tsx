@@ -96,11 +96,11 @@ const modelOptions: Record<Provider, { value: string; label: string }[]> = {
     { value: 'haiku', label: 'Haiku' },
   ],
   gemini: [
+    { value: 'gemini-2.5-pro', label: '2.5 Pro' },
     { value: 'gemini-3.1-pro-preview', label: '3.1 Pro (Preview)' },
     { value: 'gemini-3-pro-preview', label: '3 Pro (Preview)' },
     { value: 'gemini-3-flash-preview', label: '3 Flash (Preview)' },
     { value: 'gemini-2.5-flash', label: '2.5 Flash' },
-    { value: 'gemini-2.5-pro', label: '2.5 Pro' },
   ],
   codex: [
     { value: '', label: 'Default' },
