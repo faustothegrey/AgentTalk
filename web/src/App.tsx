@@ -315,7 +315,7 @@ function App() {
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
   const [activeConversation, setActiveConversation] = useState<Conversation | null>(null);
   const [maxReplies, setMaxReplies] = useState<number>(5);
-  const [topic, setTopic] = useState('Discuss the current NodePTY project and propose concrete next-step implementation ideas or simplifications: architecture quality, risks, and the most useful changes to make next.');
+  const [topic, setTopic] = useState('Discuss the current AgentTalk project and propose concrete next-step implementation ideas or simplifications: architecture quality, risks, and the most useful changes to make next.');
   const [topicHistory, setTopicHistory] = useState<string[]>([]);
   const [showHistory, setShowHistory] = useState(false);
   const [conversationHistory, setConversationHistory] = useState<Conversation[]>([]);
@@ -388,7 +388,7 @@ function App() {
     const socket = new WebSocket(wsUrl);
 
     socket.onopen = () => {
-      console.log('Connected to NodePTY Backend');
+      console.log('Connected to AgentTalk Backend');
       setWs(socket);
     };
 
@@ -450,7 +450,7 @@ function App() {
     };
 
     socket.onclose = () => {
-      console.log('Disconnected from NodePTY Backend');
+      console.log('Disconnected from AgentTalk Backend');
       setWs(null);
     };
 
@@ -971,7 +971,7 @@ function App() {
             {agents.map(agent => (
               <div 
                 key={agent.id}
-                onClick={() => setSelectedAgentId(agent.id)}
+                onClick={() => { setSelectedAgentId(agent.id); setActiveConversationId(null); setActiveConversation(null); }}
                 style={{ 
                   padding: '12px 16px', 
                   cursor: 'pointer',
