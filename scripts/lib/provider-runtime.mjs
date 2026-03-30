@@ -7,6 +7,10 @@ const MODEL_LIMITS = {
   'sonnet-3-5': 200000,
   'opus': 500000,
   'haiku': 200000,
+  'gemini-3-flash': 2097152,
+  'gemini-3-pro': 4194304,
+  'gemini-2.5-flash': 1048576,
+  'gemini-2.5-pro': 2097152,
   '2.0-flash': 1048576,
   '2.0-flash-thinking': 1048576,
   '2.0-pro-exp': 2097152,
@@ -20,12 +24,16 @@ const MODEL_LIMITS = {
 
 const DEFAULT_PROVIDER_LIMITS = {
   claude: 200000,
-  gemini: 1048576,
+  gemini: 2097152,
   codex: 128000,
 };
 
 export function resolveProvider(providerArg) {
-  return SUPPORTED_PROVIDERS.has(providerArg) ? providerArg : 'gemini';
+  if (SUPPORTED_PROVIDERS.has(providerArg)) {
+    return providerArg;
+  }
+
+  throw new Error(`Unsupported provider: "${providerArg}". Expected one of: ${[...SUPPORTED_PROVIDERS].join(', ')}`);
 }
 
 export function getProviderLimit(providerName, selectedModel) {
@@ -120,9 +128,7 @@ export function getProviderCommand(providerName, selectedModel, userMessage) {
     case 'gemini':
     default: {
       const args = ['--prompt', userMessage, '--output-format', 'json'];
-      if (selectedModel) {
-        args.push('--model', selectedModel);
-      }
+      args.push('--model', selectedModel || 'gemini-3-flash');
       return { command: 'gemini', args, stdin: null };
     }
   }

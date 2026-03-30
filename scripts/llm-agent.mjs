@@ -145,7 +145,7 @@ function handleInboundLine(line) {
   console.error(`[llm-agent] Unknown protocol: ${line}`);
 }
 
-emitReady(`llm-${Date.now()}`);
+emitReady(`agent-${provider}-${Date.now()}`);
 emitEvent({ type: 'usage_updated', total: 0, limit });
 emitExternalUsage('Loading usage...');
 console.error(`[llm-agent] Provider: ${provider}, Model: ${selectedModel || 'default'}, Token Limit: ${limit}`);

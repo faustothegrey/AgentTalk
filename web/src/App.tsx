@@ -68,6 +68,8 @@ const modelOptions: Record<Provider, { value: string; label: string }[]> = {
     { value: 'haiku', label: 'Haiku' },
   ],
   gemini: [
+    { value: 'gemini-3-flash', label: '3 Flash' },
+    { value: 'gemini-3-pro', label: '3 Pro' },
     { value: 'gemini-2.5-flash', label: '2.5 Flash' },
     { value: 'gemini-2.5-pro', label: '2.5 Pro' },
     { value: 'gemini-2.0-flash', label: '2.0 Flash' },
@@ -469,7 +471,7 @@ function App() {
       const res = await fetchWithTimeout('/api/agents', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({}),
+        body: JSON.stringify({ provider }),
       }, 15000);
 
       const data = await res.json();

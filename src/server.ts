@@ -66,10 +66,11 @@ export function startServer(registry: Registry, port: number = 3000) {
 
   app.post('/api/agents', async (req, res) => {
     console.log('[Server] POST /api/agents', req.body);
-    const { id } = req.body;
+    const { id, provider } = req.body;
 
     try {
-      const agent = await registry.createAgent(id || `agent-${Date.now()}`);
+      const agentId = id || (provider ? `agent-${provider}-${Date.now()}` : `agent-${Date.now()}`);
+      const agent = await registry.createAgent(agentId);
       console.log(`[Server] Agent created: ${agent.id} (status: ${agent.status})`);
       res.json({ id: agent.id, status: agent.status });
     } catch (err) {
