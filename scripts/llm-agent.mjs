@@ -221,13 +221,7 @@ function handleInboundLine(line) {
 }
 
 emitReady(`agent-${provider}-${Date.now()}`);
-emitExternalUsage('Loading usage...');
 console.error(`[llm-agent] Provider: ${provider}, Model: ${selectedModel || 'default'}, Token Limit: ${limit}`);
-
-void refreshExternalUsage();
-setInterval(() => {
-  void refreshExternalUsage();
-}, 300000);
 
 const rl = createInterface({ input: process.stdin, terminal: false });
 rl.on('line', (line) => {
