@@ -389,79 +389,90 @@ function App() {
     fetchTopicHistory();
     fetchConversationHistory();
 
-    // Setup WebSocket
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${protocol}//${window.location.host}/ws`;
-    const socket = new WebSocket(wsUrl);
+    let cancelled = false;
+    let currentSocket: WebSocket | null = null;
 
-    socket.onopen = () => {
-      console.log('Connected to AgentTalk Backend');
-      setWs(socket);
-    };
+    function connect() {
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const socket = new WebSocket(`${protocol}//${window.location.host}/ws`);
+      currentSocket = socket;
 
-    socket.onerror = (err) => {
-      console.error('WebSocket Error', err);
-      // We don't set global error here to avoid spamming the UI on reconnects,
-      // but it will be logged.
-    };
+      socket.onopen = () => {
+        console.log('Connected to AgentTalk Backend');
+        setWs(socket);
+        fetchAgents();
+      };
 
-    socket.onmessage = (event) => {
-      const message = JSON.parse(event.data);
-      if (message.type === 'status') {
-        setAgents(prev => prev.map(a =>
-          a.id === message.id ? { ...a, status: message.status } : a
-        ));
-      } else if (message.type === 'usage') {
-        setAgents(prev => prev.map(a =>
-          a.id === message.id ? { ...a, usage: message.usage } : a
-        ));
-      } else if (message.type === 'provider') {
-        setAgents(prev => prev.map(a =>
-          a.id === message.id ? { ...a, provider: message.provider } : a
-        ));
-      } else if (message.type === 'model') {
-        setAgents(prev => prev.map(a =>
-          a.id === message.id ? { ...a, model: message.model } : a
-        ));
-      } else if (message.type === 'external_usage') {
-        setAgents(prev => prev.map(a =>
-          a.id === message.id ? { ...a, externalUsage: message.externalUsage } : a
-        ));
-        // Update global usage tracker
-        setAgents(prev => {
-          const agent = prev.find(a => a.id === message.id);
-          if (agent?.provider) {
-            setGlobalUsage(g => ({ ...g, [agent.provider!]: message.externalUsage }));
+      socket.onerror = (err) => {
+        console.error('WebSocket Error', err);
+      };
+
+      socket.onmessage = (event) => {
+        const message = JSON.parse(event.data);
+        if (message.type === 'status') {
+          setAgents(prev => prev.map(a =>
+            a.id === message.id ? { ...a, status: message.status } : a
+          ));
+        } else if (message.type === 'usage') {
+          setAgents(prev => prev.map(a =>
+            a.id === message.id ? { ...a, usage: message.usage } : a
+          ));
+        } else if (message.type === 'provider') {
+          setAgents(prev => prev.map(a =>
+            a.id === message.id ? { ...a, provider: message.provider } : a
+          ));
+        } else if (message.type === 'model') {
+          setAgents(prev => prev.map(a =>
+            a.id === message.id ? { ...a, model: message.model } : a
+          ));
+        } else if (message.type === 'external_usage') {
+          setAgents(prev => prev.map(a =>
+            a.id === message.id ? { ...a, externalUsage: message.externalUsage } : a
+          ));
+          // Update global usage tracker
+          setAgents(prev => {
+            const agent = prev.find(a => a.id === message.id);
+            if (agent?.provider) {
+              setGlobalUsage(g => ({ ...g, [agent.provider!]: message.externalUsage }));
+            }
+            return prev;
+          });
+        } else if (message.type === 'agent_message') {
+          console.log(`[App] Agent reply from ${message.from}: ${message.payload}`);
+        } else if (message.type === 'conversation_started') {
+          setGlobalError(null);
+          setActiveConversationId(message.conversation?.id || null);
+          setActiveConversation(message.conversation || null);
+          console.log(`[App] Started conversation ${message.conversation?.id ?? 'unknown'}`);
+          fetchTopicHistory();
+        } else if (message.type === 'conversation') {
+          console.log(`[App] Conversation update ${message.conversation?.id ?? 'unknown'}: ${message.conversation?.status ?? 'unknown'}`);
+          if (message.conversation?.id === activeConversationIdRef.current) {
+            setActiveConversation(message.conversation);
           }
-          return prev;
-        });
-      } else if (message.type === 'agent_message') {
-        console.log(`[App] Agent reply from ${message.from}: ${message.payload}`);
-      } else if (message.type === 'conversation_started') {
-        setGlobalError(null);
-        setActiveConversationId(message.conversation?.id || null);
-        setActiveConversation(message.conversation || null);
-        console.log(`[App] Started conversation ${message.conversation?.id ?? 'unknown'}`);
-        fetchTopicHistory();
-      } else if (message.type === 'conversation') {
-        console.log(`[App] Conversation update ${message.conversation?.id ?? 'unknown'}: ${message.conversation?.status ?? 'unknown'}`);
-        if (message.conversation?.id === activeConversationIdRef.current) {
-          setActiveConversation(message.conversation);
+          if (message.conversation?.status === 'completed') {
+            fetchConversationHistory();
+          }
+        } else if (message.type === 'conversation_error') {
+          setGlobalError(`Failed to start conversation: ${message.error}`);
         }
-        if (message.conversation?.status === 'completed') {
-          fetchConversationHistory();
+      };
+
+      socket.onclose = () => {
+        console.log('Disconnected from AgentTalk Backend');
+        setWs(null);
+        if (!cancelled) {
+          setTimeout(connect, 2000);
         }
-      } else if (message.type === 'conversation_error') {
-        setGlobalError(`Failed to start conversation: ${message.error}`);
-      }
-    };
+      };
+    }
 
-    socket.onclose = () => {
-      console.log('Disconnected from AgentTalk Backend');
-      setWs(null);
-    };
+    connect();
 
-    return () => socket.close();
+    return () => {
+      cancelled = true;
+      currentSocket?.close();
+    };
   }, [fetchAgents, fetchTopicHistory, fetchConversationHistory]);
 
   const createAgent = async () => {
