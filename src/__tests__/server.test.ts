@@ -24,14 +24,13 @@ describe('startServer', () => {
       }),
       sendText: vi.fn(),
       readOutput: vi.fn().mockImplementation((id: string) => outputBuffers.get(id) ?? ''),
+      onData: vi.fn(),
       kill: vi.fn(),
       onExit: vi.fn(),
     };
 
     registry = new Registry(adapter, {
-      pollIntervalMs: 100,
       readinessTimeoutMs: 500,
-      maxConsecutiveFailures: 2,
       conversationStorePath,
     });
 
@@ -123,7 +122,7 @@ describe('startServer', () => {
 
     await registry.startConversation(
       ['agent-1', 'agent-2'],
-      'Discuss the current NodePTY project.',
+      'Discuss the current AgentTalk project.',
       5,
     );
 

@@ -7,26 +7,25 @@ import { deriveConversationStatus } from '../conversation-status.js';
 describe('Registry', () => {
   let adapter: ProcessAdapter;
   let registry: Registry;
-  let outputBuffers: Map<string, string>;
+  let dataCallbacks: Map<string, (chunk: string) => void>;
   let exitCallbacks: ((id: string, code: number | null) => void)[];
   const TRANSCRIPT_DIR = './test-transcripts';
   const conversationStorePath = `${TRANSCRIPT_DIR}/conversations.json`;
 
   beforeEach(() => {
-    outputBuffers = new Map();
+    dataCallbacks = new Map();
     exitCallbacks = [];
 
     adapter = {
-      spawn: vi.fn().mockImplementation((id: string) => {
-        outputBuffers.set(id, '');
-      }),
+      spawn: vi.fn(),
       sendText: vi.fn().mockImplementation((id: string, text: string) => {
-        // Simulate echo: text sent to stdin appears in stdout buffer
-        const current = outputBuffers.get(id) ?? '';
-        outputBuffers.set(id, current + text);
+        // Simulate echo: text sent to stdin appears back in stdout
+        const cb = dataCallbacks.get(id);
+        if (cb) cb(text);
       }),
-      readOutput: vi.fn().mockImplementation((id: string) => {
-        return outputBuffers.get(id) ?? '';
+      readOutput: vi.fn().mockReturnValue(''),
+      onData: vi.fn().mockImplementation((id: string, cb: (chunk: string) => void) => {
+        dataCallbacks.set(id, cb);
       }),
       kill: vi.fn(),
       onExit: vi.fn().mockImplementation((cb) => {
@@ -35,9 +34,7 @@ describe('Registry', () => {
     };
 
     registry = new Registry(adapter, {
-      pollIntervalMs: 100,
       readinessTimeoutMs: 500,
-      maxConsecutiveFailures: 2,
       conversationStorePath,
     });
 
@@ -57,15 +54,10 @@ describe('Registry', () => {
     }
   });
 
-  /** Helper: set the output buffer for an agent (simulates process stdout) */
-  function setOutput(id: string, text: string) {
-    outputBuffers.set(id, text);
-  }
-
-  /** Helper: append to the output buffer (simulates new stdout data) */
-  function appendOutput(id: string, text: string) {
-    const current = outputBuffers.get(id) ?? '';
-    outputBuffers.set(id, current + text);
+  /** Helper: push output to an agent's data callback (simulates process stdout) */
+  function pushOutput(id: string, text: string) {
+    const cb = dataCallbacks.get(id);
+    if (cb) cb(text);
   }
 
   it('should create an agent', async () => {
@@ -98,10 +90,7 @@ describe('Registry', () => {
     await registry.createAgent('agent-1');
     await registry.startAgent('agent-1', 'agent-cli');
 
-    // Simulate agent outputting READY
-    appendOutput('agent-1', 'Starting...\n[NodePTY]:READY:{"session":"123"}\n');
-
-    await vi.advanceTimersByTimeAsync(100);
+    pushOutput('agent-1', 'Starting...\n[AgentTalk]:READY:{"session":"123"}\n');
 
     const agent = registry.getAgent('agent-1');
     expect(agent.status).toBe('ready');
@@ -127,43 +116,38 @@ describe('Registry', () => {
     const agent = await registry.createAgent('agent-1');
     await registry.startAgent('agent-1', 'agent-cli');
 
-    appendOutput('agent-1', '[NodePTY]:EVT:{"type":"usage_updated","total":500,"limit":200000}\n');
-
-    await vi.advanceTimersByTimeAsync(100);
+    pushOutput('agent-1', '[AgentTalk]:EVT:{"type":"usage_updated","total":500,"limit":200000}\n');
 
     expect(agent.usage).toEqual({ total: 500, limit: 200000 });
     expect(usageSpy).toHaveBeenCalledWith({ id: 'agent-1', usage: { total: 500, limit: 200000 } });
   });
 
-  it('should transition to ready when READY is the last line without trailing newline', async () => {
+  it('should transition to ready when READY arrives across multiple chunks', async () => {
     await registry.createAgent('agent-1');
     await registry.startAgent('agent-1', 'echo "E2E Test Started"');
 
-    appendOutput('agent-1', 'echo "E2E Test Started"\n[NodePTY]:READY:{"session":"123"}');
-
-    await vi.advanceTimersByTimeAsync(100);
+    pushOutput('agent-1', 'echo "E2E Test Started"\n[AgentTalk]:READY:{"sess');
+    pushOutput('agent-1', 'ion":"123"}\n');
 
     const agent = registry.getAgent('agent-1');
     expect(agent.status).toBe('ready');
   });
 
-  it('should handle REQ as last line without trailing newline', async () => {
+  it('should handle REQ and send RES', async () => {
     await registry.createAgent('agent-1');
     await registry.startAgent('agent-1', 'agent-cli');
 
     // Get to ready first
-    appendOutput('agent-1', '[NodePTY]:READY:{"session":"s1"}\n');
-    await vi.advanceTimersByTimeAsync(100);
+    pushOutput('agent-1', '[AgentTalk]:READY:{"session":"s1"}\n');
     expect(registry.getAgent('agent-1').status).toBe('ready');
     vi.mocked(adapter.sendText).mockClear();
 
-    // REQ without trailing newline
-    appendOutput('agent-1', '[NodePTY]:REQ:{"id":"q1","call":"list_agents","args":{}}\n');
-    await vi.advanceTimersByTimeAsync(100);
+    // REQ
+    pushOutput('agent-1', '[AgentTalk]:REQ:{"id":"q1","call":"list_agents","args":{}}\n');
 
     expect(adapter.sendText).toHaveBeenCalledWith(
       'agent-1',
-      expect.stringContaining('[NodePTY]:RES:{"id":"q1","status":"success"'),
+      expect.stringContaining('[AgentTalk]:RES:{"id":"q1","status":"success"'),
     );
   });
 
@@ -171,12 +155,10 @@ describe('Registry', () => {
     await registry.createAgent('agent-1');
     await registry.startAgent('agent-1', 'agent-cli');
 
-    appendOutput('agent-1', '[NodePTY]:READY:{"session":"s1"}\n');
-    await vi.advanceTimersByTimeAsync(100);
+    pushOutput('agent-1', '[AgentTalk]:READY:{"session":"s1"}\n');
 
     const warn = vi.spyOn(console, 'warn');
-    appendOutput('agent-1', '[NodePTY]:READY:{"session":"s1"}\n');
-    await vi.advanceTimersByTimeAsync(100);
+    pushOutput('agent-1', '[AgentTalk]:READY:{"session":"s1"}\n');
 
     expect(registry.getAgent('agent-1').status).toBe('ready');
     expect(warn).not.toHaveBeenCalledWith(
@@ -193,76 +175,6 @@ describe('Registry', () => {
 
     const agent = registry.getAgent('agent-1');
     expect(agent.status).toBe('error');
-  });
-
-  it('should handle poll failures and transition to error after max failures', async () => {
-    await registry.createAgent('agent-1');
-    await registry.startAgent('agent-1', 'agent-cli');
-
-    vi.mocked(adapter.readOutput).mockImplementation(() => { throw new Error('Poll failed'); });
-
-    // First failure
-    await vi.advanceTimersByTimeAsync(100);
-    expect(registry.getAgent('agent-1').status).toBe('starting');
-
-    // Second failure (maxConsecutiveFailures: 2)
-    await vi.advanceTimersByTimeAsync(100);
-    expect(registry.getAgent('agent-1').status).toBe('error');
-  });
-
-  it('should correctly deduplicate output', async () => {
-    await registry.createAgent('agent-1');
-    const agent = registry.getAgent('agent-1');
-
-    // First poll — everything is new
-    setOutput('agent-1', 'Line 1\n');
-    await (registry as any).pollAgent('agent-1');
-    expect(agent.lastSeenText).toBe('Line 1\n');
-
-    // Second poll — only "Line 2\n" is new
-    setOutput('agent-1', 'Line 1\nLine 2\n');
-    await (registry as any).pollAgent('agent-1');
-    expect(agent.lastSeenText).toBe('Line 1\nLine 2\n');
-  });
-
-  it('should skip processing on output divergence', async () => {
-    await registry.createAgent('agent-1');
-    const agent = registry.getAgent('agent-1');
-
-    // First poll seeds the cursor
-    setOutput('agent-1', 'Line 1\nLine 2\n');
-    await (registry as any).pollAgent('agent-1');
-    expect(agent.lastSeenText).toBe('Line 1\nLine 2\n');
-
-    // Output diverged (e.g. process restarted into same slot — unlikely but handled)
-    setOutput('agent-1', 'New content\n');
-    await (registry as any).pollAgent('agent-1');
-
-    // Cursor resets but no text processed (skipped this poll)
-    expect(agent.lastSeenText).toBe('New content\n');
-  });
-
-  it('should recover protocol lines from a divergent snapshot', async () => {
-    await registry.createAgent('agent-1');
-    await registry.startAgent('agent-1', 'agent-cli');
-
-    appendOutput('agent-1', '[NodePTY]:READY:{"session":"s1"}\n');
-    await vi.advanceTimersByTimeAsync(100);
-
-    vi.mocked(adapter.sendText).mockClear();
-
-    // Force a divergence by replacing buffer entirely
-    setOutput('agent-1',
-      'output redraw...\n' +
-      '[NodePTY]:READY:{"session":"s1"}\n' +
-      '[NodePTY]:REQ:{"id":"q-diverge","call":"list_agents","args":{}}\n',
-    );
-    await vi.advanceTimersByTimeAsync(100);
-
-    expect(adapter.sendText).toHaveBeenCalledWith(
-      'agent-1',
-      expect.stringContaining('[NodePTY]:RES:{"id":"q-diverge","status":"success"'),
-    );
   });
 
   it('should reject duplicate agent IDs', async () => {
@@ -287,28 +199,6 @@ describe('Registry', () => {
     const agent = registry.getAgent('agent-1');
     expect(agent.status).toBe('starting');
     expect(agent.launchCommand).toBe('agent-cli --retry');
-    expect(agent.lastSeenText).toBe('');
-    expect(agent.lineBuffer).toBe('');
-  });
-
-  it('should reset consecutive failures on a successful poll', async () => {
-    await registry.createAgent('agent-1');
-    await registry.startAgent('agent-1', 'agent-cli');
-
-    // One failure
-    vi.mocked(adapter.readOutput).mockImplementationOnce(() => { throw new Error('fail'); });
-    await vi.advanceTimersByTimeAsync(100);
-    expect(registry.getAgent('agent-1').status).toBe('starting');
-
-    // Success resets counter (restore normal mock)
-    vi.mocked(adapter.readOutput).mockImplementation((id: string) => outputBuffers.get(id) ?? '');
-    appendOutput('agent-1', 'ok\n');
-    await vi.advanceTimersByTimeAsync(100);
-
-    // Another failure — counter should be back at 1, not 2
-    vi.mocked(adapter.readOutput).mockImplementationOnce(() => { throw new Error('fail'); });
-    await vi.advanceTimersByTimeAsync(100);
-    expect(registry.getAgent('agent-1').status).toBe('starting');
   });
 
   it('should handle malformed JSON in protocol lines', async () => {
@@ -317,8 +207,7 @@ describe('Registry', () => {
 
     const warn = vi.spyOn(console, 'warn');
 
-    appendOutput('agent-1', '[NodePTY]:READY:{bad json}\n');
-    await vi.advanceTimersByTimeAsync(100);
+    pushOutput('agent-1', '[AgentTalk]:READY:{bad json}\n');
 
     expect(warn).toHaveBeenCalledWith(
       expect.stringContaining('Malformed protocol payload'),
@@ -334,19 +223,15 @@ describe('Registry', () => {
     expect(registry.getAgent('agent-1').launchCommand).toBe('node scripts/llm-agent.mjs claude');
   });
 
-  it('should update lastPollAt and lastProgressAt timestamps', async () => {
+  it('should update lastProgressAt on new output', async () => {
     await registry.createAgent('agent-1');
     await registry.startAgent('agent-1', 'agent-cli');
     const agent = registry.getAgent('agent-1');
 
-    expect(agent.lastPollAt).toBeUndefined();
     expect(agent.lastProgressAt).toBeUndefined();
 
-    // Poll with new content
-    appendOutput('agent-1', 'hello\n');
-    await vi.advanceTimersByTimeAsync(100);
+    pushOutput('agent-1', 'hello\n');
 
-    expect(agent.lastPollAt).toBeTypeOf('number');
     expect(agent.lastProgressAt).toBeTypeOf('number');
   });
 

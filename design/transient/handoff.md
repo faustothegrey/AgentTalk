@@ -1,6 +1,6 @@
-# NodePTY Handoff Document
+# AgentTalk Handoff Document
 
-This document tracks the current state of the NodePTY project and identifies key implementation details for developers.
+This document tracks the current state of the AgentTalk project and identifies key implementation details for developers.
 
 ## Current Architecture (V1)
 
@@ -10,14 +10,14 @@ The system has moved away from the `cmux` CLI integration. It now uses direct pr
 
 - **Node Orchestrator**: Manages agents and communication.
 - **ProcessAdapter**: Interface for spawning and interacting with agent processes.
-- **Registry**: Manages agent lifecycle, polling, and the NodePTY protocol.
+- **Registry**: Manages agent lifecycle, polling, and the AgentTalk protocol.
 - **Web UI**: React-based dashboard for monitoring and managing agents.
 
 ### Key Implementation Details
 
 1.  **Process Ownership**: The orchestrator spawns agents directly. No external multiplexer is used.
 2.  **Communication**: Uses standard I/O (`stdin`/`stdout`).
-3.  **Protocol**: Line-based protocol prefixed with `[NodePTY]:`.
+3.  **Protocol**: Line-based protocol prefixed with `[AgentTalk]:`.
 4.  **Polling**: The orchestrator polls the `ProcessAdapter` for output every 250ms.
 5.  **Deduplication**: Handles buffering of terminal output to extract new text and protocol lines.
 6.  **Conversations**: Supports multi-agent conversations with persisted transcripts.

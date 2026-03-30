@@ -1,16 +1,16 @@
-# NodePTY
+# AgentTalk
 
-NodePTY is a Node.js-based orchestrator designed to manage and communicate with LLM-based agents.
+AgentTalk is a Node.js-based orchestrator designed to manage and communicate with LLM-based agents.
 
 ## Project Overview
 
-NodePTY provides a central control plane for spawning agents, routing messages between them, and observing their terminal output through a Web UI. It uses a direct process management model with a line-based protocol for structured communication.
+AgentTalk provides a central control plane for spawning agents, routing messages between them, and observing their terminal output through a Web UI. It uses a direct process management model with a line-based protocol for structured communication.
 
 ## Core Architecture
 
 - **Registry**: The central management layer for agent processes, statuses, and multi-agent "conversations".
 - **ProcessAdapter**: A clean abstraction for spawning processes, reading output, and sending input.
-- **Protocol**: A line-prefixed JSON protocol (`[NodePTY]:`) that allows agents to request actions from the orchestrator and receive events.
+- **Protocol**: A line-prefixed JSON protocol (`[AgentTalk]:`) that allows agents to request actions from the orchestrator and receive events.
 - **Web UI**: A React-based dashboard that provides real-time terminal observation and agent control.
 
 ## Key Features

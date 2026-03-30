@@ -1,18 +1,18 @@
 #!/bin/bash
-# Minimal protocol-aware test agent for NodePTY V1
+# Minimal protocol-aware test agent for AgentTalk V1
 # Emits READY, then handles protocol EVT messages and echoes back non-protocol input.
 
 SESSION_ID="$(uuidgen 2>/dev/null || echo $$)"
 
-echo "[NodePTY]:READY:{\"session\":\"$SESSION_ID\"}"
+echo "[AgentTalk]:READY:{\"session\":\"$SESSION_ID\"}"
 
 while IFS= read -r line; do
   # Strip any leading/trailing whitespace
   line="$(echo "$line" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
 
-  if [[ "$line" == "[NodePTY]:EVT:"* ]]; then
-    # Extract JSON payload after [NodePTY]:EVT:
-    json="${line#\[NodePTY\]:EVT:}"
+  if [[ "$line" == "[AgentTalk]:EVT:"* ]]; then
+    # Extract JSON payload after [AgentTalk]:EVT:
+    json="${line#\[AgentTalk\]:EVT:}"
 
     # Parse the payload text (simple extraction — works for {"type":"message_received",...,"payload":"..."})
     msg_type="$(echo "$json" | sed -n 's/.*"type"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')"
@@ -28,10 +28,10 @@ while IFS= read -r line; do
 
       # Send a protocol response back to orchestrator
       req_id="req-$(date +%s)"
-      echo "[NodePTY]:REQ:{\"id\":\"$req_id\",\"call\":\"send_to_agent\",\"args\":{\"to\":\"$from\",\"payload\":\"ACK: $payload\"}}"
+      echo "[AgentTalk]:REQ:{\"id\":\"$req_id\",\"call\":\"send_to_agent\",\"args\":{\"to\":\"$from\",\"payload\":\"ACK: $payload\"}}"
     fi
 
-  elif [[ "$line" == "[NodePTY]:"* ]]; then
+  elif [[ "$line" == "[AgentTalk]:"* ]]; then
     # Other protocol lines — log but don't echo
     echo "[test-agent] Received protocol: $line" >&2
 

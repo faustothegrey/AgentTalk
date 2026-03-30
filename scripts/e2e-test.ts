@@ -7,7 +7,7 @@ async function wait(ms: number) {
 }
 
 async function runE2ETest() {
-  console.log('🚀 Starting End-to-End Test for NodePTY...');
+  console.log('🚀 Starting End-to-End Test for AgentTalk...');
 
   let backend: ChildProcess | null = null;
   const port = 3001; // Use a different port for E2E to avoid conflicts

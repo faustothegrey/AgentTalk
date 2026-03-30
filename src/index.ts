@@ -7,7 +7,7 @@ async function main() {
   const registry = new Registry(adapter);
   let shuttingDown = false;
 
-  console.log('NodePTY Orchestrator V1 started.');
+  console.log('AgentTalk Orchestrator V1 started.');
 
   const port = Number(process.env.PORT) || 3000;
   startServer(registry, port);

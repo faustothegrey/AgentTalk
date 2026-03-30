@@ -191,7 +191,7 @@ export function startServer(registry: Registry, port: number = 3000) {
             }
 
             try {
-              const defaultTopic = 'Discuss the current NodePTY project and propose concrete next-step implementation ideas or simplifications: architecture quality, risks, and the most useful changes to make next.';
+              const defaultTopic = 'Discuss the current AgentTalk project and propose concrete next-step implementation ideas or simplifications: architecture quality, risks, and the most useful changes to make next.';
               const topic = typeof clientTopic === 'string' && clientTopic.trim() !== '' ? clientTopic : defaultTopic;
               const maxReplies = typeof clientMaxReplies === 'number' ? clientMaxReplies : 5;
               const conversation = await registry.startConversation(agentIds, topic, maxReplies);
@@ -283,7 +283,7 @@ export function startServer(registry: Registry, port: number = 3000) {
   server.listen(port, () => {
     const address = server.address();
     const actualPort = typeof address === 'object' && address ? address.port : port;
-    console.log(`[Server] NodePTY Web UI Backend listening on http://localhost:${actualPort}`);
+    console.log(`[Server] AgentTalk Web UI Backend listening on http://localhost:${actualPort}`);
   });
 
   return server;

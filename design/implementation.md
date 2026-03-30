@@ -1,4 +1,4 @@
-# NodePTY Implementation Design
+# AgentTalk Implementation Design
 
 This document specifies the technical implementation details for the Node orchestrator and its interaction with agent processes.
 
@@ -26,12 +26,12 @@ The current implementation (`ProcessAdapterImpl`) uses `child_process.spawn` wit
 
 ## 2. Protocol Specification
 
-Communication between the orchestrator and agents is line-oriented and uses the `[NodePTY]:` prefix on the agent's standard I/O.
+Communication between the orchestrator and agents is line-oriented and uses the `[AgentTalk]:` prefix on the agent's standard I/O.
 
 ### 2.1 Message Format
 
 Each message must be a single line:
-`[NodePTY]:TYPE:JSON`
+`[AgentTalk]:TYPE:JSON`
 
 Where `TYPE` is:
 - **READY**: Signal from agent that initialization is complete.
@@ -45,7 +45,7 @@ The orchestrator writes directly to the agent's `stdin`. To avoid mixing with po
 
 ### 2.3 Agent to Orchestrator (via stdout/stderr)
 
-Agents write protocol messages to `stdout`. The orchestrator polls for new output and parses lines matching the `[NodePTY]:` prefix.
+Agents write protocol messages to `stdout`. The orchestrator polls for new output and parses lines matching the `[AgentTalk]:` prefix.
 
 ## 3. Observation and Polling
 
@@ -63,7 +63,7 @@ Since the `ProcessAdapter` buffers all output into a growing string, the `Regist
 
 ### 3.2 Protocol Parsing
 
-Newly observed text is appended to a per-agent `lineBuffer`. The orchestrator scans for complete lines and parses those starting with `[NodePTY]:`.
+Newly observed text is appended to a per-agent `lineBuffer`. The orchestrator scans for complete lines and parses those starting with `[AgentTalk]:`.
 
 ## 4. Agent Lifecycle and Status
 

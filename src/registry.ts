@@ -1,16 +1,14 @@
 import { EventEmitter } from 'events';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
 import path from 'path';
-import stripAnsi from 'strip-ansi';
 import { Agent } from './agent.js';
+import { ProcessOutputParser } from './process-output-parser.js';
 import type { ProcessAdapter } from './process-adapter.js';
 import type { AgentStatus, Conversation, TranscriptEntry } from './types.js';
 import { deriveConversationStatus, withDerivedConversationStatus } from './conversation-status.js';
 
 interface RegistryConfig {
-  pollIntervalMs: number;
   readinessTimeoutMs: number;
-  maxConsecutiveFailures: number;
   conversationStorePath: string;
   agentIdleTimeoutMs: number;
   healthcheckTimeoutMs: number;
@@ -18,11 +16,9 @@ interface RegistryConfig {
 
 export class Registry extends EventEmitter {
   private agents: Map<string, Agent> = new Map();
-  private pollIntervals: Map<string, NodeJS.Timeout> = new Map();
+  private parsers: Map<string, ProcessOutputParser> = new Map();
   private readinessTimeouts: Map<string, NodeJS.Timeout> = new Map();
-  private consecutiveFailures: Map<string, number> = new Map();
-  private pollsInFlight: Set<string> = new Set();
-  private pollCount: Map<string, number> = new Map();
+  private idleCheckInterval: NodeJS.Timeout | undefined;
   private conversations: Map<string, Conversation> = new Map();
   private pendingHealthChecks: Map<string, {
     agentId: string;
@@ -38,9 +34,7 @@ export class Registry extends EventEmitter {
   ) {
     super();
     this.config = {
-      pollIntervalMs: 250,
       readinessTimeoutMs: 60000,
-      maxConsecutiveFailures: 3,
       conversationStorePath: './transcripts/conversations.json',
       agentIdleTimeoutMs: 180000,
       healthcheckTimeoutMs: 20000,
@@ -48,11 +42,15 @@ export class Registry extends EventEmitter {
     };
     this.loadConversations();
 
+    this.idleCheckInterval = setInterval(() => this.checkIdleAgents(), 30000);
+
     this.adapter.onExit((id, code) => {
       const agent = this.agents.get(id);
+      const parser = this.parsers.get(id);
+      parser?.flush();
       if (!agent || agent.status === 'terminated') return;
       console.log(`[Registry] Process exited for agent ${id} (code: ${code})`);
-      this.stopPolling(id);
+      this.parsers.delete(id);
       this.clearReadinessTimeout(id);
       try {
         this.setAgentStatus(agent, 'error');
@@ -170,9 +168,8 @@ export class Registry extends EventEmitter {
   async startAgent(id: string, launchCommand: string): Promise<void> {
     const agent = this.getAgent(id);
     console.log(`[Registry] Starting agent ${id} with command: ${launchCommand}`);
-    this.stopPolling(id);
+    this.parsers.delete(id);
     this.clearReadinessTimeout(id);
-    this.pollsInFlight.delete(id);
 
     this.setAgentStatus(agent, 'starting');
     agent.launchCommand = launchCommand;
@@ -190,12 +187,6 @@ export class Registry extends EventEmitter {
       this.emit('model', { id: agent.id, model: agent.model });
     }
 
-    agent.lineBuffer = '';
-    agent.lastSeenText = '';
-    agent.lastSeenClean = '';
-    agent.pendingOutboundProtocolEchoes = [];
-    this.consecutiveFailures.set(id, 0);
-
     try {
       console.log(`[Registry] Spawning process for agent ${id}: ${launchCommand}`);
       this.adapter.spawn(id, launchCommand);
@@ -206,20 +197,35 @@ export class Registry extends EventEmitter {
       throw err;
     }
 
-    // Start polling
-    console.log(`[Registry] Starting poll loop for agent ${id} (interval: ${this.config.pollIntervalMs}ms, readiness timeout: ${this.config.readinessTimeoutMs}ms)`);
-    const interval = setInterval(
-      () => this.pollAgent(id),
-      this.config.pollIntervalMs
-    );
-    this.pollIntervals.set(id, interval);
+    // Wire up push-based output processing
+    const parser = new ProcessOutputParser({
+      onProtocolLine: (line) => {
+        this.handleProtocolLine(agent, line).catch(err =>
+          console.error(`[Registry] Error handling protocol line from ${id}:`, err)
+        );
+      },
+      onPlainText: (text) => {
+        agent.lastProgressAt = Date.now();
+        agent.appendToTranscript(text);
+        const uiText = this.filterTextForUI(text);
+        if (uiText) {
+          this.emit('output', { id: agent.id, text: uiText });
+        }
+      },
+    });
+    this.parsers.set(id, parser);
+
+    this.adapter.onData(id, (chunk) => {
+      if (agent.status === 'terminated' || agent.status === 'error') return;
+      parser.feed(chunk);
+    });
 
     // Setup readiness timeout
     const timeout = setTimeout(() => {
       if (agent.status === 'starting') {
         console.error(`[Registry] Agent ${id} readiness timeout reached (${this.config.readinessTimeoutMs}ms)`);
         this.setAgentStatus(agent, 'error');
-        this.stopPolling(id);
+        this.parsers.delete(id);
       }
       this.readinessTimeouts.delete(id);
     }, this.config.readinessTimeoutMs);
@@ -235,10 +241,8 @@ export class Registry extends EventEmitter {
 
     console.log(`[Registry] Removing agent ${id}...`);
 
-    this.stopPolling(id);
+    this.parsers.delete(id);
     this.clearReadinessTimeout(id);
-    this.pollsInFlight.delete(id);
-    this.consecutiveFailures.delete(id);
 
     try {
       this.setAgentStatus(agent, 'terminated');
@@ -258,211 +262,21 @@ export class Registry extends EventEmitter {
   }
 
   /**
-   * Main polling loop for an agent.
-   */
-  private async pollAgent(id: string): Promise<void> {
-    if (this.pollsInFlight.has(id)) {
-      return;
-    }
-
-    const agent = this.getAgent(id);
-    if (agent.status === 'terminated' || agent.status === 'error') {
-      this.stopPolling(id);
-      return;
-    }
-
-    if (this.hasAgentTimedOut(agent)) {
-      console.error(`[Registry] Agent ${id} exceeded idle timeout (${this.config.agentIdleTimeoutMs}ms) while ${agent.status}`);
-      this.stopPolling(id);
-      this.clearReadinessTimeout(id);
-      this.setAgentStatus(agent, 'error');
-      return;
-    }
-
-    this.pollsInFlight.add(id);
-    agent.lastPollAt = Date.now();
-    const count = (this.pollCount.get(id) ?? 0) + 1;
-    this.pollCount.set(id, count);
-
-    try {
-      const text = this.adapter.readOutput(id);
-      this.consecutiveFailures.set(id, 0);
-
-      // Log while starting or occasionally while busy.
-      if (agent.status === 'starting' || (agent.status === 'busy' && count % 120 === 1)) {
-        const preview = text.slice(-300).replace(/\n/g, '\\n');
-        console.log(`[Registry] Poll #${count} for ${id} (status: ${agent.status}), output tail: "${preview}"`);
-      }
-
-      const newText = this.deduplicate(agent, text);
-      const visibleText = this.suppressOutboundProtocolEchoes(agent, newText);
-
-      if (agent.lastDedupDiverged) {
-        await this.processProtocolSnapshot(agent, agent.lastSeenClean);
-      }
-
-      if (visibleText) {
-        console.log(`[Registry] New text from agent ${id} (${visibleText.length} chars, status: ${agent.status}): "${visibleText.slice(0, 200).replace(/\n/g, '\\n')}"`);
-        agent.lastProgressAt = Date.now();
-        agent.appendToTranscript(visibleText);
-        await this.processNewText(agent, visibleText);
-
-        const uiText = this.filterTextForUI(visibleText);
-        if (uiText) {
-          this.emit('output', { id: agent.id, text: uiText });
-        }
-      }
-    } catch (err) {
-      const failures = (this.consecutiveFailures.get(id) ?? 0) + 1;
-      this.consecutiveFailures.set(id, failures);
-      console.error(`[Registry] Poll failure ${failures}/${this.config.maxConsecutiveFailures} for agent ${id}:`, err);
-
-      if (failures >= this.config.maxConsecutiveFailures) {
-        this.clearReadinessTimeout(id);
-        this.stopPolling(id);
-        this.setAgentStatus(agent, 'error');
-      }
-    } finally {
-      this.pollsInFlight.delete(id);
-    }
-  }
-
-  /**
    * Strips protocol lines and normalises newlines for xterm.js display.
    */
   private filterTextForUI(text: string): string {
     const lines = text.split(/(\r?\n)/);
-    const filtered = lines.filter(line => !line.includes('[NodePTY]:'));
+    const filtered = lines.filter(line => !line.includes('[AgentTalk]:'));
     return filtered.join('').replace(/\r?\n/g, '\r\n');
   }
 
   /**
-   * Deduplicates newly read output against previously seen text.
-   * With a process buffer that only grows, divergence should not happen,
-   * but we keep the logic for safety.
-   */
-  private deduplicate(agent: Agent, newText: string): string {
-    const newClean = stripAnsi(newText);
-    const oldClean = agent.lastSeenClean ?? '';
-
-    if (!oldClean) {
-      console.log(`[Registry] Dedup first read for ${agent.id}: ${newClean.length} chars`);
-      agent.lastSeenText = newText;
-      agent.lastSeenClean = newClean;
-      agent.lastDedupDiverged = false;
-      return newClean;
-    }
-
-    if (newClean.startsWith(oldClean)) {
-      const unseenText = newClean.slice(oldClean.length);
-      if (unseenText.length > 0) {
-        console.log(`[Registry] Dedup for ${agent.id}: ${unseenText.length} new chars (total: ${newClean.length})`);
-      }
-      agent.lastSeenText = newText;
-      agent.lastSeenClean = newClean;
-      agent.lastDedupDiverged = false;
-      return unseenText;
-    }
-
-    console.log(`[Registry] Dedup reset for agent ${agent.id}: output diverged (old: ${oldClean.length} chars, new: ${newClean.length} chars)`);
-    agent.lastSeenText = newText;
-    agent.lastSeenClean = newClean;
-    agent.lastDedupDiverged = true;
-    return '';
-  }
-
-  private async processProtocolSnapshot(agent: Agent, snapshot: string): Promise<void> {
-    agent.lastDedupDiverged = false;
-
-    const lines = snapshot.split(/\r?\n/);
-    let recovered = 0;
-
-    for (const rawLine of lines) {
-      const line = rawLine.trim();
-      if (!line.startsWith('[NodePTY]:')) {
-        continue;
-      }
-
-      recovered += 1;
-      await this.handleProtocolLine(agent, line);
-    }
-
-    if (recovered > 0) {
-      console.log(`[Registry] Recovered ${recovered} protocol line(s) from divergent snapshot for ${agent.id}`);
-    }
-  }
-
-  /**
-   * Suppress echoed outbound protocol lines so they don't get
-   * parsed as agent-originated and don't pollute the UI.
-   */
-  private suppressOutboundProtocolEchoes(agent: Agent, newText: string): string {
-    if (!newText || agent.pendingOutboundProtocolEchoes.length === 0) {
-      return newText;
-    }
-
-    let remaining = newText;
-
-    while (agent.pendingOutboundProtocolEchoes.length > 0) {
-      const nextEcho = agent.pendingOutboundProtocolEchoes[0];
-      if (nextEcho === undefined) {
-        break;
-      }
-
-      if (!remaining.startsWith(nextEcho)) {
-        break;
-      }
-
-      console.log(`[Registry] Suppressed echoed outbound protocol for ${agent.id}: "${nextEcho.replace(/\n/g, '\\n')}"`);
-      remaining = remaining.slice(nextEcho.length);
-      agent.pendingOutboundProtocolEchoes.shift();
-    }
-
-    return remaining;
-  }
-
-  /**
-   * Processes newly observed text and scans for protocol lines.
-   */
-  private async processNewText(agent: Agent, newText: string): Promise<void> {
-    agent.lineBuffer += newText;
-    console.log(`[Registry] processNewText for ${agent.id}: buffer now ${agent.lineBuffer.length} chars, has newline: ${agent.lineBuffer.includes('\n')}`);
-
-    let newlineIndex: number;
-    let lineCount = 0;
-    while ((newlineIndex = agent.lineBuffer.indexOf('\n')) !== -1) {
-      const line = agent.lineBuffer.slice(0, newlineIndex).trim();
-      agent.lineBuffer = agent.lineBuffer.slice(newlineIndex + 1);
-      lineCount++;
-
-      if (line.length === 0) continue;
-
-      const isProtocol = line.startsWith('[NodePTY]:');
-      console.log(`[Registry] Line ${lineCount} from ${agent.id} (protocol: ${isProtocol}): "${line.slice(0, 200)}"`);
-
-      if (isProtocol) {
-        await this.handleProtocolLine(agent, line);
-      }
-    }
-
-    // Handle protocol lines at end of buffer that lack a trailing newline
-    const remaining = agent.lineBuffer.trim();
-    if (remaining.startsWith('[NodePTY]:')) {
-      console.log(`[Registry] Protocol line from ${agent.id} (no trailing newline): "${remaining.slice(0, 200)}"`);
-      agent.lineBuffer = '';
-      await this.handleProtocolLine(agent, remaining);
-    } else if (agent.lineBuffer.length > 0) {
-      console.log(`[Registry] Remaining line buffer for ${agent.id} (${agent.lineBuffer.length} chars, no trailing newline): "${agent.lineBuffer.slice(0, 200).replace(/\n/g, '\\n')}"`);
-    }
-  }
-
-  /**
-   * Handles a single protocol line starting with [NodePTY]:
+   * Handles a single protocol line starting with [AgentTalk]:
    */
   private async handleProtocolLine(agent: Agent, line: string): Promise<void> {
     console.log(`[Registry] Protocol line from ${agent.id}: ${line}`);
 
-    const body = line.slice('[NodePTY]:'.length);
+    const body = line.slice('[AgentTalk]:'.length);
     const colonIdx = body.indexOf(':');
     if (colonIdx === -1) {
       console.warn(`[Registry] Protocol line from ${agent.id} has no colon after prefix, ignoring: "${body}"`);
@@ -656,13 +470,14 @@ export class Registry extends EventEmitter {
 
   /**
    * Sends a protocol packet to an agent's stdin.
-   * V1 Protocol Rule: [NodePTY]:TYPE:JSON\n
+   * V1 Protocol Rule: [AgentTalk]:TYPE:JSON\n
    */
   async sendProtocol(id: string, type: 'RES' | 'EVT', payload: any): Promise<void> {
     const agent = this.getAgent(id);
     const jsonStr = JSON.stringify(payload);
-    const line = `[NodePTY]:${type}:${jsonStr}\n`;
-    agent.pendingOutboundProtocolEchoes.push(line);
+    const line = `[AgentTalk]:${type}:${jsonStr}\n`;
+    const parser = this.parsers.get(id);
+    if (parser) parser.expectEcho(line);
 
     console.log(`[Registry] Sending ${type} to agent ${id}: ${jsonStr}`);
     this.adapter.sendText(id, line);
@@ -712,12 +527,22 @@ export class Registry extends EventEmitter {
       return false;
     }
 
-    const since = agent.lastProgressAt ?? agent.lastPollAt;
-    if (!since) {
+    if (!agent.lastProgressAt) {
       return false;
     }
 
-    return Date.now() - since > this.config.agentIdleTimeoutMs;
+    return Date.now() - agent.lastProgressAt > this.config.agentIdleTimeoutMs;
+  }
+
+  private checkIdleAgents(): void {
+    for (const [id, agent] of this.agents) {
+      if (this.hasAgentTimedOut(agent)) {
+        console.error(`[Registry] Agent ${id} exceeded idle timeout (${this.config.agentIdleTimeoutMs}ms) while ${agent.status}`);
+        this.parsers.delete(id);
+        this.clearReadinessTimeout(id);
+        this.setAgentStatus(agent, 'error');
+      }
+    }
   }
 
   private markRequestSeen(agent: Agent, requestId: unknown): boolean {
@@ -849,14 +674,6 @@ export class Registry extends EventEmitter {
     }
   }
 
-  private stopPolling(id: string): void {
-    const interval = this.pollIntervals.get(id);
-    if (interval) {
-      clearInterval(interval);
-      this.pollIntervals.delete(id);
-    }
-  }
-
   private clearReadinessTimeout(id: string): void {
     const timeout = this.readinessTimeouts.get(id);
     if (timeout) {
@@ -883,6 +700,10 @@ export class Registry extends EventEmitter {
    */
   async destroy(): Promise<void> {
     this.persistConversations();
+    if (this.idleCheckInterval) {
+      clearInterval(this.idleCheckInterval);
+      this.idleCheckInterval = undefined;
+    }
     for (const pending of this.pendingHealthChecks.values()) {
       clearTimeout(pending.timeout);
       pending.reject(new Error('Registry destroyed before healthcheck completed'));
@@ -890,12 +711,12 @@ export class Registry extends EventEmitter {
     this.pendingHealthChecks.clear();
     const teardowns: Promise<void>[] = [];
     for (const id of this.agents.keys()) {
-      this.stopPolling(id);
+      this.parsers.delete(id);
       this.clearReadinessTimeout(id);
-      this.pollsInFlight.delete(id);
       const agent = this.agents.get(id);
       if (agent) teardowns.push(agent.destroy());
     }
+    this.parsers.clear();
     this.agents.clear();
     await Promise.all(teardowns);
   }

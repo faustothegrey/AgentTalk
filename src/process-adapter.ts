@@ -5,6 +5,7 @@ export interface ProcessAdapter {
   spawn(id: string, command: string): void;
   sendText(id: string, text: string): void;
   readOutput(id: string): string;
+  onData(id: string, callback: (chunk: string) => void): void;
   kill(id: string): void;
   onExit(callback: (id: string, code: number | null) => void): void;
 }
@@ -16,6 +17,7 @@ interface ManagedProcess {
 
 export class ProcessAdapterImpl extends EventEmitter implements ProcessAdapter {
   private processes: Map<string, ManagedProcess> = new Map();
+  private dataCallbacks: Map<string, (chunk: string) => void> = new Map();
 
   spawn(id: string, command: string): void {
     if (this.processes.has(id)) {
@@ -32,7 +34,10 @@ export class ProcessAdapterImpl extends EventEmitter implements ProcessAdapter {
     const managed: ManagedProcess = { proc, outputBuffer: '' };
 
     proc.stdout!.on('data', (chunk: Buffer) => {
-      managed.outputBuffer += chunk.toString();
+      const text = chunk.toString();
+      managed.outputBuffer += text;
+      const cb = this.dataCallbacks.get(id);
+      if (cb) cb(text);
     });
 
     proc.stderr!.on('data', (chunk: Buffer) => {
@@ -40,10 +45,14 @@ export class ProcessAdapterImpl extends EventEmitter implements ProcessAdapter {
       console.log(`[ProcessAdapter] stderr from ${id}: ${text.slice(0, 200)}`);
       // Merge stderr into the output buffer so protocol lines on stderr are also visible
       managed.outputBuffer += text;
+      const cb = this.dataCallbacks.get(id);
+      if (cb) cb(text);
     });
 
     proc.on('exit', (code) => {
       console.log(`[ProcessAdapter] Process ${id} exited with code ${code}`);
+      this.processes.delete(id);
+      this.dataCallbacks.delete(id);
       this.emit('exit', id, code);
     });
 
@@ -65,12 +74,17 @@ export class ProcessAdapterImpl extends EventEmitter implements ProcessAdapter {
     return managed.outputBuffer;
   }
 
+  onData(id: string, callback: (chunk: string) => void): void {
+    this.dataCallbacks.set(id, callback);
+  }
+
   kill(id: string): void {
     const managed = this.processes.get(id);
     if (!managed) return;
     console.log(`[ProcessAdapter] Killing process ${id}`);
     managed.proc.kill();
     this.processes.delete(id);
+    this.dataCallbacks.delete(id);
   }
 
   onExit(callback: (id: string, code: number | null) => void): void {
@@ -83,5 +97,6 @@ export class ProcessAdapterImpl extends EventEmitter implements ProcessAdapter {
       managed.proc.kill();
     }
     this.processes.clear();
+    this.dataCallbacks.clear();
   }
 }

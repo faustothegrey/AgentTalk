@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-// LLM Agent for NodePTY V1
-// Speaks the [NodePTY]: protocol and routes messages to a selected LLM CLI.
+// LLM Agent for AgentTalk V1
+// Speaks the [AgentTalk]: protocol and routes messages to a selected LLM CLI.
 
 import { createInterface } from 'readline';
 import { spawn } from 'child_process';
@@ -45,7 +45,7 @@ let currentUsage = 0;
 const limit = (selectedModel && MODEL_LIMITS[selectedModel]) || DEFAULT_PROVIDER_LIMITS[provider] || 200000;
 
 function emitExternalUsage(output) {
-  console.log(`[NodePTY]:EVT:{"type":"external_usage","provider":"${provider}","output":${JSON.stringify(output)}}`);
+  console.log(`[AgentTalk]:EVT:{"type":"external_usage","provider":"${provider}","output":${JSON.stringify(output)}}`);
 }
 
 function getSpawnEnv(providerName) {
@@ -148,8 +148,8 @@ async function scrapeExternalUsage() {
 
 // Emit READY
 const sessionId = `llm-${Date.now()}`;
-console.log(`[NodePTY]:READY:{"session":"${sessionId}"}`);
-console.log(`[NodePTY]:EVT:{"type":"usage_updated","total":0,"limit":${limit}}`);
+console.log(`[AgentTalk]:READY:{"session":"${sessionId}"}`);
+console.log(`[AgentTalk]:EVT:{"type":"usage_updated","total":0,"limit":${limit}}`);
 emitExternalUsage('Loading usage...');
 console.error(`[llm-agent] Provider: ${provider}, Model: ${selectedModel || 'default'}, Token Limit: ${limit}`);
 
@@ -159,6 +159,7 @@ setInterval(scrapeExternalUsage, 300000); // Every 5 minutes
 
 let busy = false;
 const messageQueue = [];
+const conversationHistory = []; // Accumulates {role, content} for context
 
 const rl = createInterface({ input: process.stdin, terminal: false });
 
@@ -166,8 +167,8 @@ rl.on('line', async (line) => {
   line = line.trim();
   if (!line) return;
 
-  if (line.startsWith('[NodePTY]:EVT:')) {
-    const json = line.slice('[NodePTY]:EVT:'.length);
+  if (line.startsWith('[AgentTalk]:EVT:')) {
+    const json = line.slice('[AgentTalk]:EVT:'.length);
     let evt;
     try {
       evt = JSON.parse(json);
@@ -188,9 +189,9 @@ rl.on('line', async (line) => {
       console.error(`[llm-agent] Conversation ended: ${evt.reason}`);
       currentConversation = null;
     }
-  } else if (line.startsWith('[NodePTY]:RES:')) {
+  } else if (line.startsWith('[AgentTalk]:RES:')) {
     console.error(`[llm-agent] Got RES: ${line}`);
-  } else if (line.startsWith('[NodePTY]:')) {
+  } else if (line.startsWith('[AgentTalk]:')) {
     console.error(`[llm-agent] Unknown protocol: ${line}`);
   }
 });
@@ -198,7 +199,7 @@ rl.on('line', async (line) => {
 async function processQueue() {
   if (busy || messageQueue.length === 0) return;
   busy = true;
-  console.log('[NodePTY]:EVT:{"type":"busy_state","busy":true}');
+  console.log('[AgentTalk]:EVT:{"type":"busy_state","busy":true}');
 
   const evt = messageQueue.shift();
   if (evt.type === 'healthcheck') {
@@ -217,12 +218,12 @@ async function processQueue() {
     console.error(`[llm-agent] Reply (${reply.length} chars): ${reply.slice(0, 200)}`);
 
     const req = buildProtocolRequest(evt, reply);
-    console.log(`[NodePTY]:REQ:${JSON.stringify(req)}`);
+    console.log(`[AgentTalk]:REQ:${JSON.stringify(req)}`);
   } catch (err) {
     console.error(`[llm-agent] Error: ${err.message}`);
   } finally {
     busy = false;
-    console.log('[NodePTY]:EVT:{"type":"busy_state","busy":false}');
+    console.log('[AgentTalk]:EVT:{"type":"busy_state","busy":false}');
   }
 }
 
@@ -253,7 +254,7 @@ function handleConversationStart(evt) {
     messageQueue.push({
       type: 'message_received',
       from: peerIds[0],
-      payload: `Begin the discussion about the current NodePTY project. Open with your first point.`,
+      payload: `Begin the discussion about the current AgentTalk project. Open with your first point.`,
     });
     processQueue();
   }
@@ -267,8 +268,16 @@ async function buildReplyForEvent(evt) {
     return callProvider(provider, prompt);
   }
 
+  // Record incoming message in history
+  conversationHistory.push({ role: evt.from, content: evt.payload });
+
   if (!currentConversation) {
-    return callProvider(provider, evt.payload);
+    const prompt = buildPromptWithHistory(evt.payload);
+    const reply = await callProvider(provider, prompt);
+    if (reply) {
+      conversationHistory.push({ role: 'assistant', content: reply });
+    }
+    return reply;
   }
 
   if (currentConversation.replyCount >= currentConversation.maxReplies) {
@@ -279,7 +288,7 @@ async function buildReplyForEvent(evt) {
   currentConversation.replyCount += 1;
   const isLastReply = currentConversation.replyCount >= currentConversation.maxReplies;
   const prompt = [
-    `You are discussing the current NodePTY project with peer agents: ${currentConversation.peerIds.join(', ')}.`,
+    `You are discussing the current AgentTalk project with peer agents: ${currentConversation.peerIds.join(', ')}.`,
     `Topic: ${currentConversation.topic}`,
     `This is reply ${currentConversation.replyCount} of at most ${currentConversation.maxReplies} from you in this conversation.`,
     isLastReply
@@ -289,7 +298,23 @@ async function buildReplyForEvent(evt) {
     `Last message from ${evt.from}: ${evt.payload}`,
   ].join('\n');
 
-  return callProvider(provider, prompt);
+  const reply = await callProvider(provider, prompt);
+  if (reply) {
+    conversationHistory.push({ role: 'assistant', content: reply });
+  }
+  return reply;
+}
+
+function buildPromptWithHistory(latestMessage) {
+  if (conversationHistory.length <= 1) {
+    return latestMessage;
+  }
+
+  // Build context from prior exchanges (exclude the last entry which is the current message)
+  const prior = conversationHistory.slice(0, -1);
+  const historyBlock = prior.map(h => `[${h.role}]: ${h.content}`).join('\n\n');
+
+  return `Here is our conversation so far:\n\n${historyBlock}\n\nNow respond to the latest message:\n[${conversationHistory[conversationHistory.length - 1].role}]: ${latestMessage}`;
 }
 
 function buildProtocolRequest(evt, reply) {
@@ -325,7 +350,8 @@ function getProviderCommand(providerName, userMessage) {
     case 'claude':
       return {
         command: 'claude',
-        args: ['-p', userMessage, '--model', selectedModel || 'sonnet', '--output-format', 'json'],
+        args: ['-p', '--model', selectedModel || 'sonnet', '--output-format', 'json'],
+        stdin: userMessage,
       };
     case 'codex': {
       const args = ['exec', '--skip-git-repo-check', '--color', 'never', '--full-auto', '--json'];
@@ -336,17 +362,19 @@ function getProviderCommand(providerName, userMessage) {
       return {
         command: 'codex',
         args,
+        stdin: null,
       };
     }
     case 'gemini':
     default: {
-      const args = ['-p', userMessage, '-o', 'json'];
+      const args = ['-p', '-o', 'json'];
       if (selectedModel) {
         args.push('--model', selectedModel);
       }
       return {
         command: 'gemini',
         args,
+        stdin: userMessage,
       };
     }
   }
@@ -412,18 +440,20 @@ function extractResponse(providerName, stdout) {
 
 function callProvider(providerName, userMessage) {
   return new Promise((resolve, reject) => {
-    const { command, args } = getProviderCommand(providerName, userMessage);
+    const { command, args, stdin: stdinData } = getProviderCommand(providerName, userMessage);
 
-    console.error(`[llm-agent] Running: ${command} ${args.join(' ')}`);
+    console.error(`[llm-agent] Running: ${command} ${args.join(' ')} (prompt via ${stdinData ? 'stdin' : 'arg'}, ${userMessage.length} chars)`);
     const proc = spawn(command, args, {
       stdio: ['pipe', 'pipe', 'pipe'],
-      timeout: 120000,
+      timeout: 300000,
       env: getSpawnEnv(providerName),
     });
 
-    // Keep stdin open for Codex so tool calls that need write_stdin can
-    // continue using the same child-process session.
-    if (providerName !== 'codex') {
+    // Pass prompt via stdin if the provider supports it
+    if (stdinData) {
+      proc.stdin.write(stdinData);
+      proc.stdin.end();
+    } else if (providerName !== 'codex') {
       proc.stdin.end();
     }
 
@@ -452,7 +482,7 @@ function callProvider(providerName, userMessage) {
       
       if (tokens > 0) {
         currentUsage += tokens;
-        console.log(`[NodePTY]:EVT:{"type":"usage_updated","total":${currentUsage},"limit":${limit}}`);
+        console.log(`[AgentTalk]:EVT:{"type":"usage_updated","total":${currentUsage},"limit":${limit}}`);
         console.error(`[llm-agent] Usage: +${tokens} tokens (Total: ${currentUsage}/${limit})`);
       }
 

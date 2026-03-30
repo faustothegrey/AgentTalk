@@ -321,6 +321,7 @@ function App() {
   const [conversationHistory, setConversationHistory] = useState<Conversation[]>([]);
   const [activeSidebarTab, setActiveSidebarTab] = useState<SidebarTab>('new-agent');
   const messageInputRef = useRef<HTMLInputElement>(null);
+  const activeConversationIdRef = useRef(activeConversationId);
 
   const sidebarTabButtonStyle = (tab: SidebarTab) => ({
     padding: '8px 12px',
@@ -378,10 +379,14 @@ function App() {
   }, []);
 
   useEffect(() => {
+    activeConversationIdRef.current = activeConversationId;
+  }, [activeConversationId]);
+
+  useEffect(() => {
     fetchAgents();
     fetchTopicHistory();
     fetchConversationHistory();
-    
+
     // Setup WebSocket
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const wsUrl = `${protocol}//${window.location.host}/ws`;
@@ -438,7 +443,7 @@ function App() {
         fetchTopicHistory();
       } else if (message.type === 'conversation') {
         console.log(`[App] Conversation update ${message.conversation?.id ?? 'unknown'}: ${message.conversation?.status ?? 'unknown'}`);
-        if (message.conversation?.id === activeConversationId) {
+        if (message.conversation?.id === activeConversationIdRef.current) {
           setActiveConversation(message.conversation);
         }
         if (message.conversation?.status === 'completed') {
@@ -455,7 +460,7 @@ function App() {
     };
 
     return () => socket.close();
-  }, [fetchAgents, activeConversationId, fetchTopicHistory, fetchConversationHistory]);
+  }, [fetchAgents, fetchTopicHistory, fetchConversationHistory]);
 
   const createAgent = async () => {
     setLoading(true);
