@@ -22,7 +22,7 @@ describe('provider-runtime', () => {
     });
   });
 
-  it('should build the Codex command with explicit sandbox and approval settings', () => {
+  it('should build the Codex command with sandbox settings', () => {
     const command = getProviderCommand('codex', 'gpt-5-codex', 'overview the repo');
 
     expect(command).toEqual({
@@ -35,8 +35,6 @@ describe('provider-runtime', () => {
         '--json',
         '--sandbox',
         'workspace-write',
-        '--ask-for-approval',
-        'on-request',
         '--add-dir',
         '.git',
         '--model',
