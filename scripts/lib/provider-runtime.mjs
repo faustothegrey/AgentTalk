@@ -7,15 +7,11 @@ const MODEL_LIMITS = {
   'sonnet-3-5': 200000,
   'opus': 500000,
   'haiku': 200000,
-  'gemini-3-flash': 2097152,
-  'gemini-3-pro': 4194304,
+  'gemini-3.1-pro-preview': 4194304,
+  'gemini-3-pro-preview': 4194304,
+  'gemini-3-flash-preview': 2097152,
   'gemini-2.5-flash': 1048576,
   'gemini-2.5-pro': 2097152,
-  '2.0-flash': 1048576,
-  '2.0-flash-thinking': 1048576,
-  '2.0-pro-exp': 2097152,
-  '1.5-pro': 2097152,
-  '1.5-flash': 1048576,
   'o3-mini': 200000,
   'o1': 200000,
   'gpt-4o': 128000,
@@ -157,7 +153,7 @@ export function getProviderCommand(providerName, selectedModel, userMessage) {
         '--include-directories',
         '.git',
       ];
-      args.push('--model', selectedModel || 'gemini-3-flash');
+      args.push('--model', selectedModel || 'gemini-3-flash-preview');
       return { command: 'gemini', args, stdin: null };
     }
   }

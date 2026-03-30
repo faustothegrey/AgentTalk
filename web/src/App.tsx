@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { TerminalView } from './TerminalView';
 import { ErrorBoundary } from './ErrorBoundary';
-import { Plus, Terminal as TerminalIcon, Activity, AlertCircle, X, Send, MessagesSquare, Trash2, History, Clock, Copy, Check } from 'lucide-react';
+import { Plus, Terminal as TerminalIcon, Activity, AlertCircle, X, Send, MessagesSquare, Trash2, History, Clock, Copy, Check, Users } from 'lucide-react';
 import { getAgentColor } from './agentColors';
 
 const theme = {
@@ -23,7 +23,7 @@ const theme = {
 } as const;
 
 type Provider = 'claude' | 'gemini' | 'codex';
-type SidebarTab = 'new-agent' | 'conversation' | 'history' | 'usage';
+type SidebarTab = 'new-agent' | 'conversation' | 'history' | 'team';
 
 interface Agent {
   id: string;
@@ -68,11 +68,11 @@ const modelOptions: Record<Provider, { value: string; label: string }[]> = {
     { value: 'haiku', label: 'Haiku' },
   ],
   gemini: [
-    { value: 'gemini-3-flash', label: '3 Flash' },
-    { value: 'gemini-3-pro', label: '3 Pro' },
+    { value: 'gemini-3.1-pro-preview', label: '3.1 Pro (Preview)' },
+    { value: 'gemini-3-pro-preview', label: '3 Pro (Preview)' },
+    { value: 'gemini-3-flash-preview', label: '3 Flash (Preview)' },
     { value: 'gemini-2.5-flash', label: '2.5 Flash' },
     { value: 'gemini-2.5-pro', label: '2.5 Pro' },
-    { value: 'gemini-2.0-flash', label: '2.0 Flash' },
   ],
   codex: [
     { value: '', label: 'Default' },
@@ -632,31 +632,16 @@ function App() {
               <button onClick={() => { setActiveSidebarTab('history'); fetchConversationHistory(); }} style={sidebarTabButtonStyle('history')}>
                 <Clock size={14} /> History
               </button>
-              <button onClick={() => setActiveSidebarTab('usage')} style={sidebarTabButtonStyle('usage')}>
-                <Activity size={14} /> Usage
+              <button onClick={() => setActiveSidebarTab('team')} style={sidebarTabButtonStyle('team')}>
+                <Users size={14} /> Team
               </button>
             </div>
 
-            {activeSidebarTab === 'usage' && (
+            {activeSidebarTab === 'team' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '12px' }}>
                 <span style={{ fontSize: '11px', color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px' }}>
-                  Subscription Quotas
+                  Team
                 </span>
-                <ExternalUsageDisplay 
-                  provider="Claude" 
-                  output={globalUsage['claude']} 
-                  isGreyed={!globalUsage['claude']} 
-                />
-                <ExternalUsageDisplay 
-                  provider="Gemini" 
-                  output={globalUsage['gemini']} 
-                  isGreyed={!globalUsage['gemini']} 
-                />
-                <ExternalUsageDisplay 
-                  provider="Codex" 
-                  output={globalUsage['codex']} 
-                  isGreyed={!globalUsage['codex']} 
-                />
               </div>
             )}
 

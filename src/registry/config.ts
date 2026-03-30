@@ -10,7 +10,7 @@ export function resolveRegistryConfig(config: Partial<RegistryConfig> = {}): Reg
     readinessTimeoutMs: 60000,
     conversationStorePath: './transcripts/conversations.json',
     agentIdleTimeoutMs: 180000,
-    healthcheckTimeoutMs: 20000,
+    healthcheckTimeoutMs: 30000,
     ...config,
   };
 }
