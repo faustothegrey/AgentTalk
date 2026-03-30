@@ -22,7 +22,7 @@ describe('provider-runtime', () => {
     });
   });
 
-  it('should build the Codex command with sandbox settings', () => {
+  it('should build the Codex command with full-auto autonomous execution', () => {
     const command = getProviderCommand('codex', 'gpt-5-codex', 'overview the repo');
 
     expect(command).toEqual({
@@ -33,8 +33,7 @@ describe('provider-runtime', () => {
         '--color',
         'never',
         '--json',
-        '--sandbox',
-        'workspace-write',
+        '--full-auto',
         '--add-dir',
         '.git',
         '--model',

@@ -135,8 +135,7 @@ export function getProviderCommand(providerName, selectedModel, userMessage) {
         '--color',
         'never',
         '--json',
-        '--sandbox',
-        'workspace-write',
+        '--full-auto',
         '--add-dir',
         '.git',
       ];
