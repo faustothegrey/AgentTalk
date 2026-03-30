@@ -23,7 +23,6 @@ describe('Registry', () => {
         const cb = dataCallbacks.get(id);
         if (cb) cb(text);
       }),
-      readOutput: vi.fn().mockReturnValue(''),
       onData: vi.fn().mockImplementation((id: string, cb: (chunk: string) => void) => {
         dataCallbacks.set(id, cb);
       }),
@@ -253,7 +252,7 @@ describe('Registry', () => {
   });
 
   it('should expose derived conversation status in getConversations', () => {
-    (registry as any).conversations.set('conversation-1', {
+    (registry as any).conversations.add({
       id: 'conversation-1',
       agentIds: ['agent-1', 'agent-2'],
       topic: 'test',
@@ -277,7 +276,7 @@ describe('Registry', () => {
   });
 
   it('should ignore derived-completed conversations when finding active conversations by agents', () => {
-    (registry as any).conversations.set('conversation-1', {
+    (registry as any).conversations.add({
       id: 'conversation-1',
       agentIds: ['agent-1', 'agent-2'],
       topic: 'test',

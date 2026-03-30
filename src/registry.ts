@@ -1,7 +1,7 @@
 import { EventEmitter } from 'events';
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
-import path from 'path';
 import { Agent } from './agent.js';
+import { ConversationStore } from './conversation-store.js';
+import { HealthcheckManager } from './healthcheck-manager.js';
 import { ProcessOutputParser } from './process-output-parser.js';
 import type { ProcessAdapter } from './process-adapter.js';
 import {
@@ -17,7 +17,7 @@ import {
 } from './protocol-payloads.js';
 import { PROTOCOL_PREFIX, serializeProtocolLine, splitProtocolLine, type OutboundProtocolPacketType } from './protocol.js';
 import type { AgentStatus, Conversation, TranscriptEntry } from './types.js';
-import { deriveConversationStatus, withDerivedConversationStatus } from './conversation-status.js';
+import { deriveConversationStatus } from './conversation-status.js';
 
 interface RegistryConfig {
   readinessTimeoutMs: number;
@@ -31,13 +31,8 @@ export class Registry extends EventEmitter {
   private parsers: Map<string, ProcessOutputParser> = new Map();
   private readinessTimeouts: Map<string, NodeJS.Timeout> = new Map();
   private idleCheckInterval: NodeJS.Timeout | undefined;
-  private conversations: Map<string, Conversation> = new Map();
-  private pendingHealthChecks: Map<string, {
-    agentId: string;
-    resolve: (value: { agentId: string; message: string }) => void;
-    reject: (reason?: unknown) => void;
-    timeout: NodeJS.Timeout;
-  }> = new Map();
+  private readonly conversations: ConversationStore;
+  private readonly healthchecks = new HealthcheckManager();
   private readonly config: RegistryConfig;
 
   constructor(
@@ -52,7 +47,8 @@ export class Registry extends EventEmitter {
       healthcheckTimeoutMs: 20000,
       ...config,
     };
-    this.loadConversations();
+    this.conversations = new ConversationStore(this.config.conversationStorePath);
+    this.conversations.load();
 
     this.idleCheckInterval = setInterval(() => this.checkIdleAgents(), 30000);
 
@@ -135,8 +131,7 @@ export class Registry extends EventEmitter {
       ],
     };
 
-    this.conversations.set(conversation.id, conversation);
-    this.persistConversations();
+    this.conversations.add(conversation);
     this.emit('conversation', conversation);
 
     // Send conversation_start to all agents
@@ -449,15 +444,10 @@ export class Registry extends EventEmitter {
 
   private async handleHealthcheckAck(agent: Agent, request: AckHealthcheckRequestPayload): Promise<void> {
     const { token, message } = request.args;
-    const pending = this.pendingHealthChecks.get(token);
-    if (!pending || pending.agentId !== agent.id) {
+    if (!this.healthchecks.resolve(token, agent.id, message)) {
       await this.sendErrorResponse(agent.id, request.id, `Unknown healthcheck token: ${token}`);
       return;
     }
-
-    clearTimeout(pending.timeout);
-    this.pendingHealthChecks.delete(token);
-    pending.resolve({ agentId: agent.id, message });
 
     await this.sendSuccessResponse(agent.id, request.id);
   }
@@ -512,21 +502,7 @@ export class Registry extends EventEmitter {
   }
 
   private async requestHealthCheck(agentId: string): Promise<{ agentId: string; message: string }> {
-    const token = `health-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-
-    const resultPromise = new Promise<{ agentId: string; message: string }>((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        this.pendingHealthChecks.delete(token);
-        reject(new Error(`Agent ${agentId} did not respond to healthcheck within ${this.config.healthcheckTimeoutMs}ms`));
-      }, this.config.healthcheckTimeoutMs);
-
-      this.pendingHealthChecks.set(token, {
-        agentId,
-        resolve,
-        reject,
-        timeout,
-      });
-    });
+    const { token, result } = this.healthchecks.create(agentId, this.config.healthcheckTimeoutMs);
 
     await this.sendProtocol(agentId, 'EVT', {
       type: 'healthcheck',
@@ -534,9 +510,9 @@ export class Registry extends EventEmitter {
       prompt: 'Reply with a short greeting confirming you are responsive.',
     });
 
-    const result = await resultPromise;
-    console.log(`[Registry] Healthcheck ack from ${agentId}: ${result.message}`);
-    return result;
+    const ack = await result;
+    console.log(`[Registry] Healthcheck ack from ${agentId}: ${ack.message}`);
+    return ack;
   }
 
   private hasAgentTimedOut(agent: Agent): boolean {
@@ -580,52 +556,11 @@ export class Registry extends EventEmitter {
   }
 
   getConversations(): Conversation[] {
-    return Array.from(this.conversations.values())
-      .map(withDerivedConversationStatus)
-      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    return this.conversations.list();
   }
 
   removeConversation(id: string): boolean {
-    const deleted = this.conversations.delete(id);
-    if (deleted) {
-      this.persistConversations();
-    }
-    return deleted;
-  }
-
-  private loadConversations(): void {
-    const storePath = this.getConversationStorePath();
-    if (!existsSync(storePath)) {
-      return;
-    }
-
-    try {
-      const raw = readFileSync(storePath, 'utf8').trim();
-      if (!raw) {
-        return;
-      }
-
-      const conversations = JSON.parse(raw) as Conversation[];
-      for (const conversation of conversations) {
-        this.conversations.set(conversation.id, conversation);
-      }
-    } catch (err) {
-      console.error('[Registry] Failed to load conversations:', err);
-    }
-  }
-
-  private persistConversations(): void {
-    const storePath = this.getConversationStorePath();
-    mkdirSync(path.dirname(storePath), { recursive: true });
-    writeFileSync(
-      storePath,
-      JSON.stringify(this.getConversations(), null, 2),
-      'utf8',
-    );
-  }
-
-  private getConversationStorePath(): string {
-    return path.resolve(this.config.conversationStorePath);
+    return this.conversations.remove(id);
   }
 
   private findActiveConversationByAgents(agentIds: string[] | string, maybeTo?: string): Conversation | undefined {
@@ -638,47 +573,23 @@ export class Registry extends EventEmitter {
       return undefined;
     }
 
-    return this.getConversations().find((conversation) =>
-      deriveConversationStatus(conversation) === 'active' &&
-      conversation.agentIds.length === ids.length &&
-      ids.every(id => conversation.agentIds.includes(id))
-    );
+    return this.conversations.findActiveByAgents(ids);
   }
 
   private recordConversationMessage(conversation: Conversation, entry: TranscriptEntry): void {
-    conversation.transcript.push(entry);
-    const nextCount = (conversation.replyCounts[entry.from] ?? 0) + 1;
-    conversation.replyCounts[entry.from] = nextCount;
-    conversation.updatedAt = entry.timestamp;
-
-    const allFinished = conversation.agentIds.every(
-      id => (conversation.replyCounts[id] ?? 0) >= conversation.maxRepliesPerAgent
-    );
-
-    if (allFinished) {
+    const result = this.conversations.recordMessage(conversation, entry);
+    if (result.completed) {
       this.markConversationCompleted(conversation, 'All agents reached reply limit');
       return;
     }
 
-    this.persistConversations();
     this.emit('conversation', conversation);
   }
 
   private markConversationCompleted(conversation: Conversation, reason: string): void {
-    if (conversation.status === 'completed') {
+    if (!this.conversations.markCompleted(conversation, reason)) {
       return;
     }
-
-    conversation.status = 'completed';
-    conversation.updatedAt = new Date().toISOString();
-    conversation.transcript.push({
-      kind: 'system',
-      timestamp: conversation.updatedAt,
-      from: 'system',
-      to: conversation.agentIds.join(','),
-      payload: reason,
-    });
-    this.persistConversations();
     this.emit('conversation', conversation);
 
     // Notify all agents that the conversation has ended
@@ -716,16 +627,12 @@ export class Registry extends EventEmitter {
    * Cleanup all agents and polling loops.
    */
   async destroy(): Promise<void> {
-    this.persistConversations();
+    this.conversations.persist();
     if (this.idleCheckInterval) {
       clearInterval(this.idleCheckInterval);
       this.idleCheckInterval = undefined;
     }
-    for (const pending of this.pendingHealthChecks.values()) {
-      clearTimeout(pending.timeout);
-      pending.reject(new Error('Registry destroyed before healthcheck completed'));
-    }
-    this.pendingHealthChecks.clear();
+    this.healthchecks.destroy('Registry destroyed before healthcheck completed');
     const teardowns: Promise<void>[] = [];
     for (const id of this.agents.keys()) {
       this.parsers.delete(id);
