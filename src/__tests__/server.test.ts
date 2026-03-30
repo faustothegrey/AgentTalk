@@ -12,18 +12,12 @@ describe('startServer', () => {
   let registry: Registry;
   let server: Server;
   let baseUrl: string;
-  let outputBuffers: Map<string, string>;
   const conversationStorePath = './test-transcripts-server/conversations.json';
 
   beforeEach(async () => {
-    outputBuffers = new Map();
-
     adapter = {
-      spawn: vi.fn().mockImplementation((id: string) => {
-        outputBuffers.set(id, '');
-      }),
+      spawn: vi.fn(),
       sendText: vi.fn(),
-      readOutput: vi.fn().mockImplementation((id: string) => outputBuffers.get(id) ?? ''),
       onData: vi.fn(),
       kill: vi.fn(),
       onExit: vi.fn(),

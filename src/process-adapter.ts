@@ -4,7 +4,6 @@ import { EventEmitter } from 'events';
 export interface ProcessAdapter {
   spawn(id: string, command: string): void;
   sendText(id: string, text: string): void;
-  readOutput(id: string): string;
   onData(id: string, callback: (chunk: string) => void): void;
   kill(id: string): void;
   onExit(callback: (id: string, code: number | null) => void): void;
@@ -12,7 +11,6 @@ export interface ProcessAdapter {
 
 interface ManagedProcess {
   proc: ChildProcess;
-  outputBuffer: string;
 }
 
 export class ProcessAdapterImpl extends EventEmitter implements ProcessAdapter {
@@ -31,11 +29,10 @@ export class ProcessAdapterImpl extends EventEmitter implements ProcessAdapter {
       env: process.env,
     });
 
-    const managed: ManagedProcess = { proc, outputBuffer: '' };
+    const managed: ManagedProcess = { proc };
 
     proc.stdout!.on('data', (chunk: Buffer) => {
       const text = chunk.toString();
-      managed.outputBuffer += text;
       const cb = this.dataCallbacks.get(id);
       if (cb) cb(text);
     });
@@ -43,8 +40,6 @@ export class ProcessAdapterImpl extends EventEmitter implements ProcessAdapter {
     proc.stderr!.on('data', (chunk: Buffer) => {
       const text = chunk.toString();
       console.log(`[ProcessAdapter] stderr from ${id}: ${text.slice(0, 200)}`);
-      // Merge stderr into the output buffer so protocol lines on stderr are also visible
-      managed.outputBuffer += text;
       const cb = this.dataCallbacks.get(id);
       if (cb) cb(text);
     });
@@ -66,12 +61,6 @@ export class ProcessAdapterImpl extends EventEmitter implements ProcessAdapter {
       throw new Error(`Process ${id} stdin is not writable`);
     }
     managed.proc.stdin.write(text);
-  }
-
-  readOutput(id: string): string {
-    const managed = this.processes.get(id);
-    if (!managed) throw new Error(`Process ${id} not found`);
-    return managed.outputBuffer;
   }
 
   onData(id: string, callback: (chunk: string) => void): void {

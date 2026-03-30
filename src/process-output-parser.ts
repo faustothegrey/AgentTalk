@@ -1,4 +1,5 @@
 import stripAnsi from 'strip-ansi';
+import { isProtocolLine } from './protocol.js';
 
 type ProtocolLineCallback = (line: string) => void;
 type PlainTextCallback = (text: string) => void;
@@ -50,7 +51,7 @@ export class ProcessOutputParser {
       ? remaining.slice(0, -1)
       : remaining;
 
-    if (normalized.startsWith('[AgentTalk]:')) {
+    if (isProtocolLine(normalized)) {
       this.onProtocolLine(normalized);
       return;
     }
@@ -66,7 +67,7 @@ export class ProcessOutputParser {
       const line = rawLine.endsWith('\r\n')
         ? rawLine.slice(0, -2)
         : rawLine.slice(0, -1);
-      if (line.startsWith('[AgentTalk]:')) {
+      if (isProtocolLine(line)) {
         this.onProtocolLine(line);
       } else {
         this.onPlainText(rawLine);

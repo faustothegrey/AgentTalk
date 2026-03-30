@@ -1,11 +1,5 @@
 export type AgentStatus = 'creating' | 'starting' | 'ready' | 'busy' | 'error' | 'terminated';
 
-export interface ProtocolPacket {
-  id: string;
-  type: 'REQ' | 'RES' | 'EVT' | 'READY';
-  payload: any;
-}
-
 export interface TranscriptEntry {
   kind: 'system' | 'message';
   timestamp: string;
