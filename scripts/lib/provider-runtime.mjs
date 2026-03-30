@@ -92,7 +92,7 @@ export async function scrapeExternalUsage(providerName) {
   }
 
   if (providerName === 'gemini') {
-    const { stdout } = await spawnAndCollect('gemini', ['-p', '/stats model'], {
+    const { stdout } = await spawnAndCollect('gemini', ['--prompt', '/stats model'], {
       stdio: ['ignore', 'pipe', 'pipe'],
     });
     return stdout;
@@ -101,7 +101,7 @@ export async function scrapeExternalUsage(providerName) {
   return '';
 }
 
-function getProviderCommand(providerName, selectedModel, userMessage) {
+export function getProviderCommand(providerName, selectedModel, userMessage) {
   switch (providerName) {
     case 'claude':
       return {
@@ -119,11 +119,11 @@ function getProviderCommand(providerName, selectedModel, userMessage) {
     }
     case 'gemini':
     default: {
-      const args = ['-p', '-o', 'json'];
+      const args = ['--prompt', userMessage, '--output-format', 'json'];
       if (selectedModel) {
         args.push('--model', selectedModel);
       }
-      return { command: 'gemini', args, stdin: userMessage };
+      return { command: 'gemini', args, stdin: null };
     }
   }
 }
