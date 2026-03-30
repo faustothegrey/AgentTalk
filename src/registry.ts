@@ -4,6 +4,18 @@ import path from 'path';
 import { Agent } from './agent.js';
 import { ProcessOutputParser } from './process-output-parser.js';
 import type { ProcessAdapter } from './process-adapter.js';
+import {
+  parseEventPayload,
+  parseReadyPayload,
+  parseRequestPayload,
+  parseResponsePayload,
+  type AckHealthcheckRequestPayload,
+  type EventPayload,
+  type RequestPayload,
+  type ResponsePayload,
+  type SendToAgentRequestPayload,
+} from './protocol-payloads.js';
+import { PROTOCOL_PREFIX, serializeProtocolLine, splitProtocolLine, type OutboundProtocolPacketType } from './protocol.js';
 import type { AgentStatus, Conversation, TranscriptEntry } from './types.js';
 import { deriveConversationStatus, withDerivedConversationStatus } from './conversation-status.js';
 
@@ -130,12 +142,16 @@ export class Registry extends EventEmitter {
     // Send conversation_start to all agents
     for (const [i, id] of agentIds.entries()) {
       const peerIds = agentIds.filter(pid => pid !== id);
+      const peerId = peerIds[0];
+      if (!peerId) {
+        throw new Error(`Conversation requires at least one peer for agent ${id}`);
+      }
       
       await this.sendProtocol(id, 'EVT', {
         type: 'conversation_start',
         conversationId: conversation.id,
         peerIds, // plural for multi-agent support
-        peerId: peerIds[0], // backward compatibility for V1 agents
+        peerId, // backward compatibility for V1 agents
         topic,
         maxReplies: maxRepliesPerAgent,
         initiator: i === 0, // only the first agent is the initiator
@@ -266,7 +282,7 @@ export class Registry extends EventEmitter {
    */
   private filterTextForUI(text: string): string {
     const lines = text.split(/(\r?\n)/);
-    const filtered = lines.filter(line => !line.includes('[AgentTalk]:'));
+    const filtered = lines.filter(line => !line.includes(PROTOCOL_PREFIX));
     return filtered.join('').replace(/\r?\n/g, '\r\n');
   }
 
@@ -276,31 +292,28 @@ export class Registry extends EventEmitter {
   private async handleProtocolLine(agent: Agent, line: string): Promise<void> {
     console.log(`[Registry] Protocol line from ${agent.id}: ${line}`);
 
-    const body = line.slice('[AgentTalk]:'.length);
-    const colonIdx = body.indexOf(':');
-    if (colonIdx === -1) {
-      console.warn(`[Registry] Protocol line from ${agent.id} has no colon after prefix, ignoring: "${body}"`);
+    const parsed = splitProtocolLine(line);
+    if (!parsed) {
+      console.warn(`[Registry] Protocol line from ${agent.id} is malformed, ignoring: "${line}"`);
       return;
     }
 
-    const packetType = body.slice(0, colonIdx);
-    const jsonStr = body.slice(colonIdx + 1);
-
-    let payload: any;
+    let rawPayload: unknown;
     try {
-      payload = JSON.parse(jsonStr);
+      rawPayload = JSON.parse(parsed.payloadJson);
     } catch (err) {
-      console.warn(`[Registry] Malformed protocol payload from ${agent.id}: ${jsonStr}`, err);
+      console.warn(`[Registry] Malformed protocol payload from ${agent.id}: ${parsed.payloadJson}`, err);
       return;
     }
 
-    if (packetType === 'REQ' && !this.markRequestSeen(agent, payload?.id)) {
-      console.log(`[Registry] Skipping duplicate REQ from ${agent.id}: ${payload?.id}`);
-      return;
-    }
+    switch (parsed.packetType) {
+      case 'READY': {
+        const payload = parseReadyPayload(rawPayload);
+        if (!payload) {
+          console.warn(`[Registry] Invalid READY payload from ${agent.id}:`, rawPayload);
+          return;
+        }
 
-    switch (packetType) {
-      case 'READY':
         console.log(`[Registry] Agent ${agent.id} ready (session: ${payload.session})`);
         this.clearReadinessTimeout(agent.id);
 
@@ -315,48 +328,61 @@ export class Registry extends EventEmitter {
 
         console.warn(`[Registry] Unexpected READY from ${agent.id} while in ${agent.status} state`);
         return;
+      }
+      case 'REQ': {
+        const payload = parseRequestPayload(rawPayload);
+        if (!payload) {
+          console.warn(`[Registry] Invalid REQ from ${agent.id}:`, rawPayload);
+          return;
+        }
 
-      case 'REQ':
+        if (!this.markRequestSeen(agent, payload.id)) {
+          console.log(`[Registry] Skipping duplicate REQ from ${agent.id}: ${payload.id}`);
+          return;
+        }
+
         await this.handleRequest(agent, payload);
         return;
+      }
+      case 'RES': {
+        const payload = parseResponsePayload(rawPayload);
+        if (!payload) {
+          console.warn(`[Registry] Invalid RES from ${agent.id}:`, rawPayload);
+          return;
+        }
 
-      case 'RES':
         await this.handleResponse(agent, payload);
         return;
+      }
+      case 'EVT': {
+        const payload = parseEventPayload(rawPayload);
+        if (!payload) {
+          console.warn(`[Registry] Invalid EVT from ${agent.id}:`, rawPayload);
+          return;
+        }
 
-      case 'EVT':
         await this.handleEvent(agent, payload);
         return;
-
+      }
       default:
-        console.warn(`[Registry] Unknown packet type from ${agent.id}: ${packetType}`);
+        console.warn(`[Registry] Unknown packet type from ${agent.id}: ${parsed.packetType}`);
     }
   }
 
-  private async handleRequest(agent: Agent, payload: any): Promise<void> {
+  private async handleRequest(agent: Agent, payload: RequestPayload): Promise<void> {
     console.log(`[Registry] REQ from ${agent.id}:`, payload);
 
-    const { id: reqId, call, args } = payload;
-    if (!reqId || !call) {
-      console.warn(`[Registry] Invalid REQ from ${agent.id}: missing id or call`);
-      return;
-    }
-
-    switch (call) {
+    switch (payload.call) {
       case 'list_agents':
-        await this.handleListAgents(agent, reqId);
+        await this.handleListAgents(agent, payload.id);
         return;
 
       case 'send_to_agent':
-        await this.handleSendToAgent(agent, reqId, args);
+        await this.handleSendToAgent(agent, payload);
         return;
 
       case 'ack_healthcheck':
-        await this.handleHealthcheckAck(agent, reqId, args);
-        return;
-
-      default:
-        await this.sendErrorResponse(agent.id, reqId, `Unknown tool call: ${call}`);
+        await this.handleHealthcheckAck(agent, payload);
         return;
     }
   }
@@ -369,19 +395,14 @@ export class Registry extends EventEmitter {
     await this.sendSuccessResponse(agent.id, reqId, { agents: agentList });
   }
 
-  private async handleSendToAgent(agent: Agent, reqId: string, args: any): Promise<void> {
-    const { to, payload } = args || {};
-
-    if (!to || payload === undefined) {
-      await this.sendErrorResponse(agent.id, reqId, 'Missing "to" or "payload" in send_to_agent args');
-      return;
-    }
+  private async handleSendToAgent(agent: Agent, request: SendToAgentRequestPayload): Promise<void> {
+    const { to, payload } = request.args;
 
     // Special target: "user" routes back to the web UI
     if (to === 'user') {
       this.setAgentBusyState(agent, false);
       this.emit('user_message', { from: agent.id, payload });
-      await this.sendSuccessResponse(agent.id, reqId);
+      await this.sendSuccessResponse(agent.id, request.id);
       return;
     }
 
@@ -390,7 +411,7 @@ export class Registry extends EventEmitter {
       const conversation = this.findActiveConversationByAgents(agent.id, to);
 
       if (targetAgent.status !== 'ready' && targetAgent.status !== 'busy') {
-        await this.sendErrorResponse(agent.id, reqId, `Target agent ${to} is in ${targetAgent.status} state`);
+        await this.sendErrorResponse(agent.id, request.id, `Target agent ${to} is in ${targetAgent.status} state`);
         return;
       }
 
@@ -398,7 +419,7 @@ export class Registry extends EventEmitter {
         const currentCount = conversation.replyCounts[agent.id] ?? 0;
         if (currentCount >= conversation.maxRepliesPerAgent) {
           this.markConversationCompleted(conversation, `Reply cap reached by ${agent.id}`);
-          await this.sendErrorResponse(agent.id, reqId, `Conversation ${conversation.id} reply cap reached for ${agent.id}`);
+          await this.sendErrorResponse(agent.id, request.id, `Conversation ${conversation.id} reply cap reached for ${agent.id}`);
           return;
         }
       }
@@ -420,22 +441,17 @@ export class Registry extends EventEmitter {
         });
       }
 
-      await this.sendSuccessResponse(agent.id, reqId);
+      await this.sendSuccessResponse(agent.id, request.id);
     } catch (err) {
-      await this.sendErrorResponse(agent.id, reqId, err instanceof Error ? err.message : `Target agent ${to} not found`);
+      await this.sendErrorResponse(agent.id, request.id, err instanceof Error ? err.message : `Target agent ${to} not found`);
     }
   }
 
-  private async handleHealthcheckAck(agent: Agent, reqId: string, args: any): Promise<void> {
-    const { token, message } = args || {};
-    if (typeof token !== 'string' || typeof message !== 'string' || !message.trim()) {
-      await this.sendErrorResponse(agent.id, reqId, 'Missing "token" or "message" in ack_healthcheck args');
-      return;
-    }
-
+  private async handleHealthcheckAck(agent: Agent, request: AckHealthcheckRequestPayload): Promise<void> {
+    const { token, message } = request.args;
     const pending = this.pendingHealthChecks.get(token);
     if (!pending || pending.agentId !== agent.id) {
-      await this.sendErrorResponse(agent.id, reqId, `Unknown healthcheck token: ${token}`);
+      await this.sendErrorResponse(agent.id, request.id, `Unknown healthcheck token: ${token}`);
       return;
     }
 
@@ -443,28 +459,30 @@ export class Registry extends EventEmitter {
     this.pendingHealthChecks.delete(token);
     pending.resolve({ agentId: agent.id, message });
 
-    await this.sendSuccessResponse(agent.id, reqId);
+    await this.sendSuccessResponse(agent.id, request.id);
   }
 
-  private async handleResponse(agent: Agent, payload: any): Promise<void> {
+  private async handleResponse(agent: Agent, payload: ResponsePayload): Promise<void> {
     console.log(`[Registry] RES from ${agent.id}:`, payload);
   }
 
-  private async handleEvent(agent: Agent, payload: any): Promise<void> {
+  private async handleEvent(agent: Agent, payload: EventPayload): Promise<void> {
     console.log(`[Registry] EVT from ${agent.id}:`, payload);
 
-    if (payload?.type === 'busy_state' && typeof payload.busy === 'boolean') {
-      this.setAgentBusyState(agent, payload.busy);
-    }
-
-    if (payload?.type === 'usage_updated' && typeof payload.total === 'number' && typeof payload.limit === 'number') {
-      agent.usage = { total: payload.total, limit: payload.limit };
-      this.emit('usage', { id: agent.id, usage: agent.usage });
-    }
-
-    if (payload?.type === 'external_usage' && typeof payload.output === 'string') {
-      agent.externalUsage = payload.output;
-      this.emit('external_usage', { id: agent.id, externalUsage: agent.externalUsage });
+    switch (payload.type) {
+      case 'busy_state':
+        this.setAgentBusyState(agent, payload.busy);
+        return;
+      case 'usage_updated':
+        agent.usage = { total: payload.total, limit: payload.limit };
+        this.emit('usage', { id: agent.id, usage: agent.usage });
+        return;
+      case 'external_usage':
+        agent.externalUsage = payload.output;
+        this.emit('external_usage', { id: agent.id, externalUsage: agent.externalUsage });
+        return;
+      default:
+        return;
     }
   }
 
@@ -472,14 +490,13 @@ export class Registry extends EventEmitter {
    * Sends a protocol packet to an agent's stdin.
    * V1 Protocol Rule: [AgentTalk]:TYPE:JSON\n
    */
-  async sendProtocol(id: string, type: 'RES' | 'EVT', payload: any): Promise<void> {
+  async sendProtocol(id: string, type: OutboundProtocolPacketType, payload: EventPayload | ResponsePayload): Promise<void> {
     const agent = this.getAgent(id);
-    const jsonStr = JSON.stringify(payload);
-    const line = `[AgentTalk]:${type}:${jsonStr}\n`;
+    const line = serializeProtocolLine(type, payload);
     const parser = this.parsers.get(id);
     if (parser) parser.expectEcho(line);
 
-    console.log(`[Registry] Sending ${type} to agent ${id}: ${jsonStr}`);
+    console.log(`[Registry] Sending ${type} to agent ${id}: ${JSON.stringify(payload)}`);
     this.adapter.sendText(id, line);
   }
 
