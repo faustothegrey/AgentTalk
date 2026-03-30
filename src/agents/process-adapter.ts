@@ -39,7 +39,6 @@ export class ProcessAdapterImpl extends EventEmitter implements ProcessAdapter {
 
     proc.stderr!.on('data', (chunk: Buffer) => {
       const text = chunk.toString();
-      console.log(`[ProcessAdapter] stderr from ${id}: ${text.slice(0, 200)}`);
       const cb = this.dataCallbacks.get(id);
       if (cb) cb(text);
     });
