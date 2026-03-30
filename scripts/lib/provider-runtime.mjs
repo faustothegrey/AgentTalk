@@ -1,0 +1,256 @@
+import { spawn } from 'child_process';
+
+export const SUPPORTED_PROVIDERS = new Set(['claude', 'gemini', 'codex']);
+
+const MODEL_LIMITS = {
+  'sonnet': 200000,
+  'sonnet-3-5': 200000,
+  'opus': 500000,
+  'haiku': 200000,
+  '2.0-flash': 1048576,
+  '2.0-flash-thinking': 1048576,
+  '2.0-pro-exp': 2097152,
+  '1.5-pro': 2097152,
+  '1.5-flash': 1048576,
+  'o3-mini': 200000,
+  'o1': 200000,
+  'gpt-4o': 128000,
+  'gpt-4o-mini': 128000,
+};
+
+const DEFAULT_PROVIDER_LIMITS = {
+  claude: 200000,
+  gemini: 1048576,
+  codex: 128000,
+};
+
+export function resolveProvider(providerArg) {
+  return SUPPORTED_PROVIDERS.has(providerArg) ? providerArg : 'gemini';
+}
+
+export function getProviderLimit(providerName, selectedModel) {
+  return (selectedModel && MODEL_LIMITS[selectedModel]) || DEFAULT_PROVIDER_LIMITS[providerName] || 200000;
+}
+
+export function getSpawnEnv(providerName) {
+  if (providerName !== 'claude') {
+    return process.env;
+  }
+
+  const env = { ...process.env };
+  delete env.ANTHROPIC_API_KEY;
+  return env;
+}
+
+export function stripAnsi(text) {
+  return text.replace(/\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])/g, '');
+}
+
+function normalizeCliOutput(text) {
+  return stripAnsi(text).replace(/\r/g, '');
+}
+
+export async function callProvider(providerName, selectedModel, userMessage) {
+  const { command, args, stdin } = getProviderCommand(providerName, selectedModel, userMessage);
+
+  console.error(`[llm-agent] Running: ${command} ${args.join(' ')} (prompt via ${stdin ? 'stdin' : 'arg'}, ${userMessage.length} chars)`);
+
+  const { code, stdout, stderr } = await spawnAndCollect(command, args, {
+    stdio: ['pipe', 'pipe', 'pipe'],
+    timeout: 300000,
+    env: getSpawnEnv(providerName),
+    stdin,
+    keepStdinOpen: providerName === 'codex',
+  });
+
+  const cleanStdout = normalizeCliOutput(stdout).trim();
+  const cleanStderr = normalizeCliOutput(stderr).trim();
+
+  if (cleanStderr) {
+    console.error(`[llm-agent] ${providerName} stderr: ${cleanStderr}`);
+  }
+
+  if (code !== 0 && providerName !== 'claude') {
+    const details = cleanStderr || cleanStdout || `exit code ${code}`;
+    throw new Error(`${providerName} failed: ${details}`);
+  }
+
+  const response = extractResponse(providerName, cleanStdout);
+  const tokens = extractTokens(providerName, cleanStdout);
+
+  if (code !== 0 && !response) {
+    const details = cleanStderr || cleanStdout || `exit code ${code}`;
+    throw new Error(`${providerName} failed: ${details}`);
+  }
+
+  return { response, tokens };
+}
+
+export async function scrapeExternalUsage(providerName) {
+  if (providerName === 'claude') {
+    return scrapeClaudeUsageViaSlashCommand();
+  }
+
+  if (providerName === 'gemini') {
+    const { stdout } = await spawnAndCollect('gemini', ['-p', '/stats model'], {
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    return stdout;
+  }
+
+  return '';
+}
+
+function getProviderCommand(providerName, selectedModel, userMessage) {
+  switch (providerName) {
+    case 'claude':
+      return {
+        command: 'claude',
+        args: ['-p', '--model', selectedModel || 'sonnet', '--output-format', 'json'],
+        stdin: userMessage,
+      };
+    case 'codex': {
+      const args = ['exec', '--skip-git-repo-check', '--color', 'never', '--full-auto', '--json'];
+      if (selectedModel) {
+        args.push('--model', selectedModel);
+      }
+      args.push(userMessage);
+      return { command: 'codex', args, stdin: null };
+    }
+    case 'gemini':
+    default: {
+      const args = ['-p', '-o', 'json'];
+      if (selectedModel) {
+        args.push('--model', selectedModel);
+      }
+      return { command: 'gemini', args, stdin: userMessage };
+    }
+  }
+}
+
+function extractTokens(providerName, stdout) {
+  try {
+    if (providerName === 'codex') {
+      for (const line of stdout.split('\n')) {
+        if (!line.trim()) continue;
+        const json = JSON.parse(line);
+        if (json.type === 'turn.completed' && json.usage) {
+          return (json.usage.input_tokens || 0) + (json.usage.output_tokens || 0);
+        }
+      }
+      return 0;
+    }
+
+    const json = JSON.parse(stdout);
+    if (providerName === 'claude') {
+      return (json.usage?.input_tokens || 0) + (json.usage?.output_tokens || 0);
+    }
+
+    if (providerName === 'gemini' && json.stats?.models) {
+      let total = 0;
+      for (const model of Object.values(json.stats.models)) {
+        total += model.tokens?.total || 0;
+      }
+      return total;
+    }
+  } catch {
+    return 0;
+  }
+
+  return 0;
+}
+
+function extractResponse(providerName, stdout) {
+  try {
+    if (providerName === 'codex') {
+      let lastAgentMessage = '';
+      for (const line of stdout.split('\n')) {
+        if (!line.trim()) continue;
+        const json = JSON.parse(line);
+        if (json.type === 'item.completed' && json.item?.type === 'agent_message' && json.item?.text) {
+          lastAgentMessage = json.item.text;
+        }
+      }
+      return lastAgentMessage;
+    }
+
+    const json = JSON.parse(stdout);
+    if (providerName === 'claude') {
+      return json.result || '';
+    }
+
+    if (providerName === 'gemini') {
+      return json.response || '';
+    }
+  } catch {
+    return stdout;
+  }
+
+  return stdout;
+}
+
+async function scrapeClaudeUsageViaSlashCommand() {
+  const expectScript = `
+set timeout 35
+match_max 200000
+log_user 1
+spawn -noecho env -u ANTHROPIC_API_KEY claude
+after 5000
+send -- "/usage\\t\\r"
+after 15000
+send -- "/exit\\r"
+expect eof
+`;
+
+  const { stdout, stderr } = await spawnAndCollect('expect', ['-c', expectScript], {
+    env: getSpawnEnv('claude'),
+    timeout: 35000,
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
+
+  return extractClaudeUsageOutput(`${stdout}${stderr}`);
+}
+
+function extractClaudeUsageOutput(rawOutput) {
+  const cleaned = stripAnsi(rawOutput)
+    .replace(/\u0007/g, '')
+    .replace(/\r/g, '')
+    .replace(/^spawn .*\n/m, '')
+    .replace(/^\/exit\s*$/gm, '')
+    .trim();
+
+  const usageStart = cleaned.search(/Current session|Current week|% used/i);
+  if (usageStart === -1) {
+    return '';
+  }
+
+  return cleaned.slice(usageStart).trim();
+}
+
+function spawnAndCollect(command, args, options = {}) {
+  return new Promise((resolve, reject) => {
+    const { stdin, keepStdinOpen = false, ...spawnOptions } = options;
+    const proc = spawn(command, args, spawnOptions);
+
+    let stdout = '';
+    let stderr = '';
+
+    proc.stdout?.on('data', (chunk) => {
+      stdout += chunk;
+    });
+
+    proc.stderr?.on('data', (chunk) => {
+      stderr += chunk;
+    });
+
+    if (stdin) {
+      proc.stdin.write(stdin);
+      proc.stdin.end();
+    } else if (!keepStdinOpen && proc.stdin) {
+      proc.stdin.end();
+    }
+
+    proc.on('close', (code) => resolve({ code, stdout, stderr }));
+    proc.on('error', (err) => reject(err));
+  });
+}
