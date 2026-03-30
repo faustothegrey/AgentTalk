@@ -123,6 +123,8 @@ export class TeamCoordinator {
       throw new Error(`Cannot submit plan: task status is ${task.status}`);
     }
 
+    assertPlanIsImplementationReady(plan);
+
     const now = new Date().toISOString();
     task.plan = plan;
     task.planningComplete = true;
@@ -380,5 +382,38 @@ export class TeamCoordinator {
 
     const task = this.getTask(team.currentTaskId);
     return { team, task };
+  }
+}
+
+function assertPlanIsImplementationReady(plan: string): void {
+  const normalized = plan.trim();
+  if (!normalized) {
+    throw new Error('Plan is empty');
+  }
+
+  const lower = normalized.toLowerCase();
+  const stepLines = normalized
+    .split('\n')
+    .map((line) => line.trim())
+    .filter((line) => /^\d+\./.test(line) || /^[-*]\s+/.test(line));
+
+  const hasConcreteChangeVerb = /(implement|refactor|extract|rename|replace|update|remove|simplify|split|move|delete|add|introduce|consolidate)/i.test(normalized);
+  const hasConcreteTarget = /[`'"][^`'"\n]+[`'"]|(?:^|\s)(?:src|web|scripts)\/[^\s:]+|[A-Za-z0-9_-]+\.[a-z]{2,}/.test(normalized);
+  const exploratoryStepCount = stepLines.filter((line) =>
+    /^\d+\.\s*(?:\*\*)?(analyze|identify|find|look for|explore|review|inspect|examine|investigate)\b/i.test(line)
+  ).length;
+
+  if (!hasConcreteChangeVerb || !hasConcreteTarget) {
+    throw new Error('Plan is not implementation-ready. It must name a concrete target and a concrete code change.');
+  }
+
+  if (stepLines.length > 0 && exploratoryStepCount >= Math.ceil(stepLines.length / 2)) {
+    throw new Error('Plan is still exploratory. Submit the final implementation plan only after choosing the concrete refactoring.');
+  }
+
+  if (
+    /(i will find and implement|look for code that can be|identify refactoring target|analyze .* for .* opportunities)/i.test(lower)
+  ) {
+    throw new Error('Plan is still describing future analysis instead of the chosen change.');
   }
 }

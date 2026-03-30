@@ -84,6 +84,14 @@ interface Conversation {
   transcript: TranscriptEntry[];
 }
 
+interface SidebarEventEntry {
+  id: string;
+  timestamp: string;
+  direction: 'in' | 'out' | 'system';
+  label: string;
+  detail: string;
+}
+
 const providerOptions: { value: Provider; label: string }[] = [
   { value: 'claude', label: 'Claude' },
   { value: 'gemini', label: 'Gemini' },
@@ -255,6 +263,7 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [globalError, setGlobalError] = useState<string | null>(null);
   const [globalNotice, setGlobalNotice] = useState<string | null>(null);
+  const [sidebarEvents, setSidebarEvents] = useState<SidebarEventEntry[]>([]);
   const [messageInput, setMessageInput] = useState('');
   const [provider, setProvider] = useState<Provider>('gemini');
   const [selectedModel, setSelectedModel] = useState('');
@@ -306,6 +315,20 @@ function App() {
     console.error(msg, err);
     setGlobalError(`${msg} ${err?.message || ''}`);
   };
+
+  const pushSidebarEvent = useCallback((direction: SidebarEventEntry['direction'], label: string, detail: string) => {
+    const normalized = detail.trim();
+    setSidebarEvents(prev => [
+      {
+        id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        timestamp: new Date().toISOString(),
+        direction,
+        label,
+        detail: normalized.length > 240 ? `${normalized.slice(0, 237)}...` : normalized,
+      },
+      ...prev,
+    ].slice(0, 40));
+  }, []);
 
   useEffect(() => {
     if (!globalNotice) return;
@@ -363,40 +386,49 @@ function App() {
       socket.onopen = () => {
         console.log('Connected to AgentTalk Backend');
         setWs(socket);
+        pushSidebarEvent('system', 'WS Open', 'Connected to backend WebSocket');
         fetchAgents();
       };
 
       socket.onerror = (err) => {
         console.error('WebSocket Error', err);
+        pushSidebarEvent('system', 'WS Error', 'WebSocket error');
       };
 
       socket.onmessage = (event) => {
         const message = JSON.parse(event.data);
         if (message.type === 'status') {
+          pushSidebarEvent('in', `Status:${message.id}`, String(message.status));
           setAgents(prev => prev.map(a =>
             a.id === message.id ? { ...a, status: message.status } : a
           ));
         } else if (message.type === 'usage') {
+          pushSidebarEvent('in', `Usage:${message.id}`, JSON.stringify(message.usage));
           setAgents(prev => prev.map(a =>
             a.id === message.id ? { ...a, usage: message.usage } : a
           ));
         } else if (message.type === 'provider') {
+          pushSidebarEvent('in', `Provider:${message.id}`, String(message.provider));
           setAgents(prev => prev.map(a =>
             a.id === message.id ? { ...a, provider: message.provider } : a
           ));
         } else if (message.type === 'model') {
+          pushSidebarEvent('in', `Model:${message.id}`, String(message.model));
           setAgents(prev => prev.map(a =>
             a.id === message.id ? { ...a, model: message.model } : a
           ));
         } else if (message.type === 'agent_message') {
+          pushSidebarEvent('in', `Agent:${message.from}`, String(message.payload));
           console.log(`[App] Agent reply from ${message.from}: ${message.payload}`);
         } else if (message.type === 'conversation_started') {
+          pushSidebarEvent('in', 'Conversation', `Started ${message.conversation?.id ?? 'unknown'}`);
           setGlobalError(null);
           setActiveConversationId(message.conversation?.id || null);
           setActiveConversation(message.conversation || null);
           console.log(`[App] Started conversation ${message.conversation?.id ?? 'unknown'}`);
           fetchTopicHistory();
         } else if (message.type === 'conversation') {
+          pushSidebarEvent('in', 'Conversation Update', `${message.conversation?.id ?? 'unknown'} → ${message.conversation?.status ?? 'unknown'}`);
           console.log(`[App] Conversation update ${message.conversation?.id ?? 'unknown'}: ${message.conversation?.status ?? 'unknown'}`);
           if (message.conversation?.id === activeConversationIdRef.current) {
             setActiveConversation(message.conversation);
@@ -405,8 +437,10 @@ function App() {
             fetchConversationHistory();
           }
         } else if (message.type === 'conversation_error') {
+          pushSidebarEvent('system', 'Conversation Error', String(message.error));
           setGlobalError(`Failed to start conversation: ${message.error}`);
         } else if (message.type === 'team_updated') {
+          pushSidebarEvent('in', `Team:${message.team.id}`, `status=${message.team.status}`);
           setTeams(prev => {
             const idx = prev.findIndex(t => t.id === message.team.id);
             if (idx >= 0) {
@@ -418,10 +452,12 @@ function App() {
           });
           setActiveTeam(prev => prev?.id === message.team.id ? message.team : prev);
         } else if (message.type === 'team_task_updated') {
+          pushSidebarEvent('in', `Task:${message.task.id}`, `status=${message.task.status}`);
           setActiveTeamTask(prev =>
             prev?.id === message.task.id || prev === null ? message.task : prev
           );
         } else if (message.type === 'team_planning_complete') {
+          pushSidebarEvent('in', `Plan:${message.taskId}`, `completed by ${message.plannerAgentId}`);
           const submittedAt = typeof message.planSubmittedAt === 'string'
             ? new Date(message.planSubmittedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
             : null;
@@ -434,6 +470,7 @@ function App() {
       socket.onclose = () => {
         console.log('Disconnected from AgentTalk Backend');
         setWs(null);
+        pushSidebarEvent('system', 'WS Closed', 'Disconnected from backend WebSocket');
         if (!cancelled) {
           setTimeout(connect, 2000);
         }
@@ -446,7 +483,7 @@ function App() {
       cancelled = true;
       currentSocket?.close();
     };
-  }, [fetchAgents, fetchTopicHistory, fetchConversationHistory]);
+  }, [fetchAgents, fetchTopicHistory, fetchConversationHistory, pushSidebarEvent]);
 
   const createAgent = async () => {
     setLoading(true);
@@ -460,6 +497,7 @@ function App() {
 
       const data = await res.json();
       setSelectedAgentId(data.id);
+      pushSidebarEvent('out', 'Create Agent', `${data.id} via ${provider}${selectedModel ? ` (${selectedModel})` : ''}`);
 
       // Auto-start with the selected provider-backed agent
       await fetchWithTimeout(`/api/agents/${data.id}/start`, {
@@ -467,6 +505,7 @@ function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ command: getAgentCommand(provider, selectedModel || modelOptions[provider][0].value) }),
       }, 10000);
+      pushSidebarEvent('out', 'Start Agent', `${data.id} with ${getAgentCommand(provider, selectedModel || modelOptions[provider][0].value)}`);
 
       await fetchAgents();
     } catch (err) {
@@ -482,6 +521,7 @@ function App() {
       await fetchWithTimeout(`/api/agents/${id}`, {
         method: 'DELETE',
       });
+      pushSidebarEvent('out', 'Remove Agent', id);
       setAgents(prev => prev.filter(a => a.id !== id));
       if (selectedAgentId === id) {
         setSelectedAgentId(null);
@@ -493,7 +533,9 @@ function App() {
 
   const sendMessage = () => {
     if (!messageInput.trim() || !ws || ws.readyState !== WebSocket.OPEN) return;
-    ws.send(JSON.stringify({ type: 'message', text: messageInput.trim() }));
+    const text = messageInput.trim();
+    ws.send(JSON.stringify({ type: 'message', text }));
+    pushSidebarEvent('out', `Message:${selectedAgentId ?? 'agent'}`, text);
     setMessageInput('');
     messageInputRef.current?.focus();
   };
@@ -513,6 +555,7 @@ function App() {
     }
 
     setGlobalError(null);
+    pushSidebarEvent('out', 'Conversation Request', `${uniqueAgentIds.join(', ')} | ${topic.trim() || 'default topic'}`);
     ws.send(JSON.stringify({
       type: 'start_pair_chat', // keeping the name for protocol compatibility
       agentIds: uniqueAgentIds,
@@ -523,6 +566,13 @@ function App() {
 
   const conversationCandidates = agents.filter(agent => agent.status === 'ready' || agent.status === 'busy');
   const selectedAgentColor = selectedAgentId ? getAgentColor(selectedAgentId) : null;
+  const sendTeamMessage = () => {
+    if (!teamMessageInput.trim() || !ws || ws.readyState !== WebSocket.OPEN || !activeTeamTask) return;
+    const text = teamMessageInput.trim();
+    ws.send(JSON.stringify({ type: 'team_message', taskId: activeTeamTask.id, role: teamMessageRole, text }));
+    pushSidebarEvent('out', `Team Msg:${teamMessageRole}`, text);
+    setTeamMessageInput('');
+  };
   const getConversationSelectStyle = (agentId: string) => {
     const color = agentId ? getAgentColor(agentId) : null;
     return {
@@ -610,12 +660,80 @@ function App() {
           flexDirection: 'column',
           backgroundColor: theme.bgRaised 
         }}>
-          <div style={{ padding: '16px', borderBottom: `1px solid ${theme.border}`, display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ borderBottom: `1px solid ${theme.border}`, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+            <div style={{ padding: '14px 16px 10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <h2 style={{ margin: 0, fontSize: '14px', textTransform: 'uppercase', letterSpacing: '1px' }}>Agents</h2>
             </div>
+            <div style={{ maxHeight: '260px', overflowY: 'auto', borderTop: `1px solid ${theme.border}` }}>
+              {agents.map(agent => (
+                <div 
+                  key={agent.id}
+                  onClick={() => { setSelectedAgentId(agent.id); setActiveConversationId(null); setActiveConversation(null); }}
+                  style={{ 
+                    padding: '12px 16px', 
+                    cursor: 'pointer',
+                    backgroundColor: selectedAgentId === agent.id ? getAgentColor(agent.id).tint : 'transparent',
+                    borderBottom: '1px solid #2d2d2d',
+                    borderLeft: `3px solid ${selectedAgentId === agent.id ? getAgentColor(agent.id).accent : 'transparent'}`,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '10px'
+                  }}
+                >
+                  <div style={{
+                    width: '24px',
+                    height: '24px',
+                    borderRadius: '999px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    backgroundColor: getAgentColor(agent.id).tint,
+                    color: getAgentColor(agent.id).accent,
+                    boxShadow: `inset 0 0 0 1px ${getAgentColor(agent.id).glow}`,
+                    flexShrink: 0,
+                  }}>
+                    <TerminalIcon size={14} />
+                  </div>
+                  <div style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    <div style={{ fontSize: '13px', color: selectedAgentId === agent.id ? getAgentColor(agent.id).text : '#ddd' }}>
+                      {agent.id}
+                      {agent.provider && (
+                        <span style={{ marginLeft: '6px', fontSize: '11px', color: theme.textDim, fontWeight: 'normal' }}>
+                          ({agent.provider.charAt(0).toUpperCase() + agent.provider.slice(1)}
+                          {agent.model ? `: ${agent.model}` : ''})
+                        </span>
+                      )}
+                    </div>
+                    <div style={{ fontSize: '11px', color: theme.textMuted, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      {getStatusIcon(agent.status)} {agent.status}
+                    </div>
+                  </div>
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); removeAgent(agent.id); }}
+                    title="Remove Agent"
+                    style={{ 
+                      background: 'none', 
+                      border: 'none', 
+                      color: theme.textMuted, 
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      padding: '4px',
+                      borderRadius: '4px',
+                      transition: 'color 0.2s, background-color 0.2s'
+                    }}
+                    onMouseOver={(e) => { e.currentTarget.style.color = '#ef4444'; e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.1)'; }}
+                    onMouseOut={(e) => { e.currentTarget.style.color = '#888'; e.currentTarget.style.backgroundColor = 'transparent'; }}
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
 
-            <div style={{ display: 'flex', gap: '8px', paddingBottom: '12px', borderBottom: `1px solid ${theme.border}` }}>
+          <div style={{ padding: '12px 16px', borderBottom: `1px solid ${theme.border}` }}>
+            <div style={{ display: 'flex', gap: '8px' }}>
               <button onClick={() => setActiveSidebarTab('new-agent')} style={sidebarTabButtonStyle('new-agent')}>
                 <Plus size={14} /> Agent
               </button>
@@ -629,6 +747,9 @@ function App() {
                 <Users size={14} /> Team
               </button>
             </div>
+          </div>
+
+          <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px', overflowY: 'auto', flex: 1 }}>
 
             {activeSidebarTab === 'team' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '12px' }}>
@@ -680,6 +801,7 @@ function App() {
                           });
                           const team = await res.json();
                           if (res.ok) {
+                            pushSidebarEvent('out', 'Create Team', `${teamPlannerAgent} + ${teamWorkerAgent}`);
                             setActiveTeam(team);
                             setTeams(prev => [...prev, team]);
                           } else {
@@ -743,6 +865,7 @@ function App() {
                               });
                               const task = await res.json();
                               if (res.ok) {
+                                pushSidebarEvent('out', 'Assign Task', teamTaskInput);
                                 setActiveTeamTask(task);
                                 setTeamTaskInput('');
                               } else {
@@ -809,6 +932,7 @@ function App() {
                                 onClick={async () => {
                                   try {
                                     await fetch(`/api/teams/${activeTeam.id}/tasks/${activeTeamTask.id}/confirm`, { method: 'POST' });
+                                    pushSidebarEvent('out', 'Confirm Plan', activeTeamTask.id);
                                   } catch (err: any) {
                                     setGlobalError(err.message);
                                   }
@@ -840,6 +964,7 @@ function App() {
                                         headers: { 'Content-Type': 'application/json' },
                                         body: JSON.stringify({ feedback: rejectFeedback }),
                                       });
+                                      pushSidebarEvent('out', 'Reject Plan', rejectFeedback || activeTeamTask.id);
                                       setRejectFeedback('');
                                       setShowRejectInput(false);
                                     } catch (err: any) {
@@ -911,19 +1036,13 @@ function App() {
                                 placeholder="Type message..."
                                 onKeyDown={e => {
                                   if (e.key === 'Enter' && teamMessageInput.trim() && ws) {
-                                    ws.send(JSON.stringify({ type: 'team_message', taskId: activeTeamTask.id, role: teamMessageRole, text: teamMessageInput }));
-                                    setTeamMessageInput('');
+                                    sendTeamMessage();
                                   }
                                 }}
                                 style={{ flex: 1, backgroundColor: theme.bg, color: theme.textPrimary, border: `1px solid ${theme.borderInput}`, borderRadius: '4px', padding: '4px 6px', fontSize: '11px' }}
                               />
                               <button
-                                onClick={() => {
-                                  if (teamMessageInput.trim() && ws) {
-                                    ws.send(JSON.stringify({ type: 'team_message', taskId: activeTeamTask.id, role: teamMessageRole, text: teamMessageInput }));
-                                    setTeamMessageInput('');
-                                  }
-                                }}
+                                onClick={sendTeamMessage}
                                 style={{ padding: '4px 8px', backgroundColor: theme.bgSurface, color: theme.textPrimary, border: `1px solid ${theme.border}`, borderRadius: '4px', cursor: 'pointer' }}
                               >
                                 <Send size={10} />
@@ -1270,72 +1389,47 @@ function App() {
               </div>
             )}
           </div>
-
-          <div style={{ flex: 1, overflowY: 'auto' }}>
-            {agents.map(agent => (
-              <div 
-                key={agent.id}
-                onClick={() => { setSelectedAgentId(agent.id); setActiveConversationId(null); setActiveConversation(null); }}
-                style={{ 
-                  padding: '12px 16px', 
-                  cursor: 'pointer',
-                  backgroundColor: selectedAgentId === agent.id ? getAgentColor(agent.id).tint : 'transparent',
-                  borderBottom: '1px solid #2d2d2d',
-                  borderLeft: `3px solid ${selectedAgentId === agent.id ? getAgentColor(agent.id).accent : 'transparent'}`,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '10px'
-                }}
+          <div style={{ borderTop: `1px solid ${theme.border}`, padding: '8px 10px', backgroundColor: theme.bgSurface, height: '128px', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+              <span style={{ fontSize: '10px', color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px' }}>
+                Agent Events
+              </span>
+              <button
+                onClick={() => setSidebarEvents([])}
+                style={{ background: 'none', border: 'none', color: theme.textDim, cursor: 'pointer', fontSize: '10px', padding: 0 }}
               >
-                <div style={{
-                  width: '24px',
-                  height: '24px',
-                  borderRadius: '999px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  backgroundColor: getAgentColor(agent.id).tint,
-                  color: getAgentColor(agent.id).accent,
-                  boxShadow: `inset 0 0 0 1px ${getAgentColor(agent.id).glow}`,
-                  flexShrink: 0,
-                }}>
-                  <TerminalIcon size={14} />
+                Clear
+              </button>
+            </div>
+            <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              {sidebarEvents.length === 0 ? (
+                <div style={{ margin: 'auto 0', fontSize: '11px', color: theme.textDim }}>
+                  No agent events yet.
                 </div>
-                <div style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  <div style={{ fontSize: '13px', color: selectedAgentId === agent.id ? getAgentColor(agent.id).text : '#ddd' }}>
-                    {agent.id}
-                    {agent.provider && (
-                      <span style={{ marginLeft: '6px', fontSize: '11px', color: theme.textDim, fontWeight: 'normal' }}>
-                        ({agent.provider.charAt(0).toUpperCase() + agent.provider.slice(1)}
-                        {agent.model ? `: ${agent.model}` : ''})
+              ) : (
+                sidebarEvents.slice(0, 2).map((entry) => (
+                  <div
+                    key={entry.id}
+                    style={{
+                      padding: '7px 8px',
+                      borderRadius: '6px',
+                      backgroundColor: entry.direction === 'in' ? '#203145' : entry.direction === 'out' ? '#2f2a1f' : '#262b31',
+                      border: `1px solid ${entry.direction === 'in' ? '#31567d' : entry.direction === 'out' ? '#6a5830' : '#3a424c'}`,
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', marginBottom: '3px' }}>
+                      <span style={{ fontSize: '10px', color: theme.textBright }}>{entry.label}</span>
+                      <span style={{ fontSize: '10px', color: theme.textDim }}>
+                        {new Date(entry.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
                       </span>
-                    )}
+                    </div>
+                    <div style={{ fontSize: '11px', color: theme.textSecondary, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                      {entry.detail}
+                    </div>
                   </div>
-                  <div style={{ fontSize: '11px', color: theme.textMuted, display: 'flex', alignItems: 'center', gap: '4px' }}>
-                    {getStatusIcon(agent.status)} {agent.status}
-                  </div>
-                </div>
-                <button 
-                  onClick={(e) => { e.stopPropagation(); removeAgent(agent.id); }}
-                  title="Remove Agent"
-                  style={{ 
-                    background: 'none', 
-                    border: 'none', 
-                    color: theme.textMuted, 
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    padding: '4px',
-                    borderRadius: '4px',
-                    transition: 'color 0.2s, background-color 0.2s'
-                  }}
-                  onMouseOver={(e) => { e.currentTarget.style.color = '#ef4444'; e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.1)'; }}
-                  onMouseOut={(e) => { e.currentTarget.style.color = '#888'; e.currentTarget.style.backgroundColor = 'transparent'; }}
-                >
-                  <Trash2 size={14} />
-                </button>
-              </div>
-            ))}
+                ))
+              )}
+            </div>
           </div>
         </div>
 
