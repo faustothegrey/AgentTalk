@@ -59,7 +59,7 @@ describe('provider-runtime', () => {
         '--include-directories',
         '.git',
         '--model',
-        'gemini-3-flash-preview',
+        'gemini-2.5-pro',
       ],
       stdin: null,
     });

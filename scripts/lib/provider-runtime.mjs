@@ -153,7 +153,7 @@ export function getProviderCommand(providerName, selectedModel, userMessage) {
         '--include-directories',
         '.git',
       ];
-      args.push('--model', selectedModel || 'gemini-3-flash-preview');
+      args.push('--model', selectedModel || 'gemini-2.5-pro');
       return { command: 'gemini', args, stdin: null };
     }
   }
