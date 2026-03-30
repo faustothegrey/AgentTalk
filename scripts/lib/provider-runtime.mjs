@@ -114,11 +114,33 @@ export function getProviderCommand(providerName, selectedModel, userMessage) {
     case 'claude':
       return {
         command: 'claude',
-        args: ['-p', '--model', selectedModel || 'sonnet', '--output-format', 'json'],
+        args: [
+          '-p',
+          '--model',
+          selectedModel || 'sonnet',
+          '--output-format',
+          'json',
+          '--permission-mode',
+          'bypassPermissions',
+          '--add-dir',
+          '.git',
+        ],
         stdin: userMessage,
       };
     case 'codex': {
-      const args = ['exec', '--skip-git-repo-check', '--color', 'never', '--full-auto', '--json'];
+      const args = [
+        'exec',
+        '--skip-git-repo-check',
+        '--color',
+        'never',
+        '--json',
+        '--sandbox',
+        'workspace-write',
+        '--ask-for-approval',
+        'on-request',
+        '--add-dir',
+        '.git',
+      ];
       if (selectedModel) {
         args.push('--model', selectedModel);
       }
@@ -127,7 +149,16 @@ export function getProviderCommand(providerName, selectedModel, userMessage) {
     }
     case 'gemini':
     default: {
-      const args = ['--prompt', userMessage, '--output-format', 'json'];
+      const args = [
+        '--prompt',
+        userMessage,
+        '--output-format',
+        'json',
+        '--approval-mode',
+        'yolo',
+        '--include-directories',
+        '.git',
+      ];
       args.push('--model', selectedModel || 'gemini-3-flash');
       return { command: 'gemini', args, stdin: null };
     }
