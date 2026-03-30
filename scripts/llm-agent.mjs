@@ -5,7 +5,7 @@
 import { createInterface } from 'readline';
 import { createConversationRuntime } from './lib/conversation-runtime.mjs';
 import { emitEvent, emitReady, emitRequest, parseInboundProtocolLine } from './lib/protocol.mjs';
-import { callProvider, getProviderLimit, resolveProvider, scrapeExternalUsage } from './lib/provider-runtime.mjs';
+import { callProvider, getProviderLimit, resolveProvider } from './lib/provider-runtime.mjs';
 
 const provider = resolveProvider((process.argv[2] ?? 'gemini').toLowerCase());
 const selectedModel = getSelectedModelArg(process.argv);
@@ -15,26 +15,6 @@ let currentUsage = 0;
 let busy = false;
 const messageQueue = [];
 const conversationRuntime = createConversationRuntime();
-
-function emitExternalUsage(output) {
-  emitEvent({
-    type: 'external_usage',
-    provider,
-    output,
-  });
-}
-
-async function refreshExternalUsage() {
-  try {
-    const output = await scrapeExternalUsage(provider);
-    if (output) {
-      emitExternalUsage(output);
-    }
-  } catch (err) {
-    console.error(`[llm-agent] Failed to scrape external usage: ${err.message}`);
-    emitExternalUsage(`Usage unavailable: ${err.message}`);
-  }
-}
 
 function enqueueEvent(evt) {
   messageQueue.push(evt);

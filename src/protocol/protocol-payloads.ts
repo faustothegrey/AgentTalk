@@ -71,14 +71,6 @@ export interface BusyStateEventPayload {
   busy: boolean;
 }
 
-
-
-export interface ExternalUsageEventPayload {
-  type: 'external_usage';
-  provider?: string;
-  output: string;
-}
-
 export interface MessageReceivedEventPayload {
   type: 'message_received';
   from: string;
@@ -131,7 +123,6 @@ export interface TeamWorkAssignEventPayload {
 
 export type EventPayload =
   | BusyStateEventPayload
-  | ExternalUsageEventPayload
   | MessageReceivedEventPayload
   | UserInputEventPayload
   | HealthcheckEventPayload
@@ -271,24 +262,6 @@ export function parseEventPayload(value: unknown): EventPayload | null {
       return typeof value.busy === 'boolean'
         ? { type: 'busy_state', busy: value.busy }
         : null;
-
-    case 'external_usage':
-      if (typeof value.output !== 'string') {
-        return null;
-      }
-
-      if (typeof value.provider === 'string') {
-        return {
-          type: 'external_usage',
-          provider: value.provider,
-          output: value.output,
-        };
-      }
-
-      return {
-        type: 'external_usage',
-        output: value.output,
-      };
 
     case 'message_received':
       return typeof value.from === 'string' && 'payload' in value

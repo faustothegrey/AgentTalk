@@ -32,7 +32,6 @@ export function startServer(registry: Registry, port: number = 3000) {
       usage: a.usage,
       provider: a.provider,
       model: a.model,
-      externalUsage: a.externalUsage,
     }));
     console.log(`[Server] Returning ${agents.length} agents`);
     res.json(agents);
@@ -326,11 +325,6 @@ export function startServer(registry: Registry, port: number = 3000) {
   registry.on('model', ({ id, model }) => {
     const sent = broadcast({ type: 'model', id, model });
     console.log(`[Server] Model ${id}: ${model} → ${sent} client(s)`);
-  });
-
-  registry.on('external_usage', ({ id, externalUsage }) => {
-    const sent = broadcast({ type: 'external_usage', id, externalUsage });
-    console.log(`[Server] External Usage ${id}: (${externalUsage.length} chars) → ${sent} client(s)`);
   });
 
   registry.on('conversation', (conversation) => {

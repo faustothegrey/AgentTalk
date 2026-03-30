@@ -425,10 +425,6 @@ export class Registry extends EventEmitter {
       case 'busy_state':
         this.setAgentBusyState(agent, payload.busy);
         return;
-      case 'external_usage':
-        agent.externalUsage = payload.output;
-        this.emit('external_usage', { id: agent.id, externalUsage: agent.externalUsage });
-        return;
       default:
         return;
     }

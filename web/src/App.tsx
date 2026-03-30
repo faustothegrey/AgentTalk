@@ -31,7 +31,6 @@ interface Agent {
   usage?: { total: number; limit: number };
   provider?: string;
   model?: string;
-  externalUsage?: string;
 }
 
 interface TranscriptEntry {
@@ -378,10 +377,6 @@ function App() {
         } else if (message.type === 'model') {
           setAgents(prev => prev.map(a =>
             a.id === message.id ? { ...a, model: message.model } : a
-          ));
-        } else if (message.type === 'external_usage') {
-          setAgents(prev => prev.map(a =>
-            a.id === message.id ? { ...a, externalUsage: message.externalUsage } : a
           ));
         } else if (message.type === 'agent_message') {
           console.log(`[App] Agent reply from ${message.from}: ${message.payload}`);

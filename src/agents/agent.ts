@@ -22,7 +22,6 @@ export class Agent {
   usage?: { total: number; limit: number };
   provider?: string;
   model?: string;
-  externalUsage?: string;
 
   private transcriptStream: WriteStream;
   private destroyPromise?: Promise<void>;
