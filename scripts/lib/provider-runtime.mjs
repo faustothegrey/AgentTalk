@@ -61,7 +61,8 @@ function normalizeCliOutput(text) {
 export async function callProvider(providerName, selectedModel, userMessage) {
   const { command, args, stdin } = getProviderCommand(providerName, selectedModel, userMessage);
 
-  console.error(`[llm-agent] Running: ${command} ${args.join(' ')} (prompt via ${stdin ? 'stdin' : 'arg'}, ${userMessage.length} chars)`);
+  const safeArgs = args.map((a, i) => (args[i - 1] === '--prompt' ? '<prompt>' : a));
+  console.error(`[llm-agent] Running: ${command} ${safeArgs.join(' ')} (prompt via ${stdin ? 'stdin' : 'arg'}, ${userMessage.length} chars)`);
 
   const { code, stdout, stderr } = await spawnAndCollect(command, args, {
     stdio: ['pipe', 'pipe', 'pipe'],
