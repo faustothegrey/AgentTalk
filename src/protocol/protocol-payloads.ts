@@ -26,10 +26,38 @@ export interface AckHealthcheckRequestPayload {
   };
 }
 
+export interface SubmitPlanRequestPayload {
+  id: string;
+  call: 'submit_plan';
+  args: {
+    plan: string;
+  };
+}
+
+export interface SubmitWorkResponseRequestPayload {
+  id: string;
+  call: 'submit_work_response';
+  args: {
+    accepted: boolean;
+    reason?: string;
+  };
+}
+
+export interface SubmitWorkResultRequestPayload {
+  id: string;
+  call: 'submit_work_result';
+  args: {
+    result: string;
+  };
+}
+
 export type RequestPayload =
   | ListAgentsRequestPayload
   | SendToAgentRequestPayload
-  | AckHealthcheckRequestPayload;
+  | AckHealthcheckRequestPayload
+  | SubmitPlanRequestPayload
+  | SubmitWorkResponseRequestPayload
+  | SubmitWorkResultRequestPayload;
 
 export interface ResponsePayload {
   id: string;
@@ -43,11 +71,7 @@ export interface BusyStateEventPayload {
   busy: boolean;
 }
 
-export interface UsageUpdatedEventPayload {
-  type: 'usage_updated';
-  total: number;
-  limit: number;
-}
+
 
 export interface ExternalUsageEventPayload {
   type: 'external_usage';
@@ -88,15 +112,33 @@ export interface ConversationEndEventPayload {
   reason: string;
 }
 
+export interface TeamTaskAssignEventPayload {
+  type: 'team_task_assign';
+  teamId: string;
+  taskId: string;
+  role: 'planner';
+  description: string;
+}
+
+export interface TeamWorkAssignEventPayload {
+  type: 'team_work_assign';
+  teamId: string;
+  taskId: string;
+  role: 'worker';
+  plan: string;
+  description: string;
+}
+
 export type EventPayload =
   | BusyStateEventPayload
-  | UsageUpdatedEventPayload
   | ExternalUsageEventPayload
   | MessageReceivedEventPayload
   | UserInputEventPayload
   | HealthcheckEventPayload
   | ConversationStartEventPayload
-  | ConversationEndEventPayload;
+  | ConversationEndEventPayload
+  | TeamTaskAssignEventPayload
+  | TeamWorkAssignEventPayload;
 
 export function parseReadyPayload(value: unknown): ReadyPayload | null {
   if (!isRecord(value) || typeof value.session !== 'string' || value.session.length === 0) {
@@ -154,6 +196,45 @@ export function parseRequestPayload(value: unknown): RequestPayload | null {
         },
       };
 
+    case 'submit_plan':
+      if (!isRecord(value.args) || typeof value.args.plan !== 'string') {
+        return null;
+      }
+
+      return {
+        id: value.id,
+        call: 'submit_plan',
+        args: { plan: value.args.plan },
+      };
+
+    case 'submit_work_response':
+      if (!isRecord(value.args) || typeof value.args.accepted !== 'boolean') {
+        return null;
+      }
+
+      {
+        const result: SubmitWorkResponseRequestPayload = {
+          id: value.id,
+          call: 'submit_work_response',
+          args: { accepted: value.args.accepted },
+        };
+        if (typeof value.args.reason === 'string') {
+          result.args.reason = value.args.reason;
+        }
+        return result;
+      }
+
+    case 'submit_work_result':
+      if (!isRecord(value.args) || typeof value.args.result !== 'string') {
+        return null;
+      }
+
+      return {
+        id: value.id,
+        call: 'submit_work_result',
+        args: { result: value.args.result },
+      };
+
     default:
       return null;
   }
@@ -189,11 +270,6 @@ export function parseEventPayload(value: unknown): EventPayload | null {
     case 'busy_state':
       return typeof value.busy === 'boolean'
         ? { type: 'busy_state', busy: value.busy }
-        : null;
-
-    case 'usage_updated':
-      return typeof value.total === 'number' && typeof value.limit === 'number'
-        ? { type: 'usage_updated', total: value.total, limit: value.limit }
         : null;
 
     case 'external_usage':
@@ -258,6 +334,36 @@ export function parseEventPayload(value: unknown): EventPayload | null {
             type: 'conversation_end',
             conversationId: value.conversationId,
             reason: value.reason,
+          }
+        : null;
+
+    case 'team_task_assign':
+      return typeof value.teamId === 'string' &&
+        typeof value.taskId === 'string' &&
+        value.role === 'planner' &&
+        typeof value.description === 'string'
+        ? {
+            type: 'team_task_assign',
+            teamId: value.teamId,
+            taskId: value.taskId,
+            role: value.role,
+            description: value.description,
+          }
+        : null;
+
+    case 'team_work_assign':
+      return typeof value.teamId === 'string' &&
+        typeof value.taskId === 'string' &&
+        value.role === 'worker' &&
+        typeof value.plan === 'string' &&
+        typeof value.description === 'string'
+        ? {
+            type: 'team_work_assign',
+            teamId: value.teamId,
+            taskId: value.taskId,
+            role: value.role,
+            plan: value.plan,
+            description: value.description,
           }
         : null;
 

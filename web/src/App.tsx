@@ -42,6 +42,34 @@ interface TranscriptEntry {
   payload: string;
 }
 
+interface TeamMember {
+  agentId: string;
+  role: 'planner' | 'worker';
+}
+
+interface Team {
+  id: string;
+  members: TeamMember[];
+  status: string;
+  currentTaskId?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface TeamTask {
+  id: string;
+  teamId: string;
+  description: string;
+  plan?: string;
+  planConfirmed?: boolean;
+  workerAccepted?: boolean;
+  workerRefusalReason?: string;
+  status: string;
+  transcript: TranscriptEntry[];
+  createdAt: string;
+  updatedAt: string;
+}
+
 interface Conversation {
   id: string;
   agentIds: string[];
@@ -218,92 +246,8 @@ async function fetchWithTimeout(url: string, options: RequestInit = {}, timeoutM
   }
 }
 
-const ExternalUsageDisplay = ({ output, provider, isGreyed }: { output?: string, provider: string, isGreyed: boolean }) => {
-  const parsePercent = (line?: string) => {
-    if (!line) return null;
-    const match = line.match(/(\d+)%/);
-    return match ? parseInt(match[1], 10) : null;
-  };
-
-  const lines = (output || '').split('\n').map(l => l.trim()).filter(Boolean);
-  
-  const usageSections = lines.reduce<Array<{ title: string; percent: number; reset?: string }>>((sections, line, index) => {
-    const percent = parsePercent(line);
-    if (percent === null) return sections;
-
-    let title = '';
-    let reset = '';
-
-    for (let cursor = index - 1; cursor >= 0; cursor -= 1) {
-      const candidate = lines[cursor];
-      if (!title && !candidate.includes('%')) {
-        title = candidate;
-        continue;
-      }
-      if (title && !candidate.includes('%')) {
-        reset = candidate;
-        break;
-      }
-    }
-
-    sections.push({ title, percent, reset });
-    return sections;
-  }, []);
-
-  const visibleSections = usageSections.filter(s => s.title);
-
-  const getBarColor = (percent: number) => {
-    if (percent >= 90) return '#ef4444';
-    if (percent >= 75) return '#f59e0b';
-    return '#a8acf0';
-  };
-
-  return (
-    <div style={{ 
-      display: 'flex', 
-      flexDirection: 'column', 
-      gap: '12px', 
-      padding: '12px',
-      backgroundColor: isGreyed ? 'transparent' : '#2b2d36',
-      borderRadius: '8px',
-      border: isGreyed ? '1px dashed #333' : '1px solid #3a3d49',
-      opacity: isGreyed ? 0.3 : 1,
-      filter: isGreyed ? 'grayscale(1)' : 'none',
-      transition: 'all 0.3s ease'
-    }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div style={{ fontSize: '11px', fontWeight: 800, color: isGreyed ? '#555' : '#aaa', textTransform: 'uppercase', letterSpacing: '1px' }}>
-          {provider}
-        </div>
-        {isGreyed && <div style={{ fontSize: '9px', color: '#444' }}>OFFLINE</div>}
-      </div>
-      
-      {visibleSections.length > 0 ? (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-          {visibleSections.map((section, idx) => (
-            <div key={idx} style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: theme.textMuted }}>
-                <span>{section.title}</span>
-                <span>{section.percent}%</span>
-              </div>
-              <div style={{ width: '100%', height: '6px', backgroundColor: '#1a1b23', borderRadius: '0', overflow: 'hidden' }}>
-                <div style={{ width: `${section.percent}%`, height: '100%', backgroundColor: getBarColor(section.percent) }} />
-              </div>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <div style={{ fontSize: '10px', color: '#555', fontStyle: 'italic', textAlign: 'center', padding: '4px 0' }}>
-          {isGreyed ? 'No data' : (output?.trim().slice(0, 50) || 'Active...')}
-        </div>
-      )}
-    </div>
-  );
-};
-
 function App() {
   const [agents, setAgents] = useState<Agent[]>([]);
-  const [globalUsage, setGlobalUsage] = useState<Record<string, string>>({});
   const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
   const [ws, setWs] = useState<WebSocket | null>(null);
   const [loading, setLoading] = useState(false);
@@ -322,6 +266,16 @@ function App() {
   const [showHistory, setShowHistory] = useState(false);
   const [conversationHistory, setConversationHistory] = useState<Conversation[]>([]);
   const [activeSidebarTab, setActiveSidebarTab] = useState<SidebarTab>('new-agent');
+  const [_teams, setTeams] = useState<Team[]>([]);
+  const [activeTeam, setActiveTeam] = useState<Team | null>(null);
+  const [activeTeamTask, setActiveTeamTask] = useState<TeamTask | null>(null);
+  const [teamPlannerAgent, setTeamPlannerAgent] = useState('');
+  const [teamWorkerAgent, setTeamWorkerAgent] = useState('');
+  const [teamTaskInput, setTeamTaskInput] = useState('');
+  const [teamMessageInput, setTeamMessageInput] = useState('');
+  const [teamMessageRole, setTeamMessageRole] = useState<'planner' | 'worker'>('planner');
+  const [rejectFeedback, setRejectFeedback] = useState('');
+  const [showRejectInput, setShowRejectInput] = useState(false);
   const messageInputRef = useRef<HTMLInputElement>(null);
   const activeConversationIdRef = useRef(activeConversationId);
 
@@ -429,14 +383,6 @@ function App() {
           setAgents(prev => prev.map(a =>
             a.id === message.id ? { ...a, externalUsage: message.externalUsage } : a
           ));
-          // Update global usage tracker
-          setAgents(prev => {
-            const agent = prev.find(a => a.id === message.id);
-            if (agent?.provider) {
-              setGlobalUsage(g => ({ ...g, [agent.provider!]: message.externalUsage }));
-            }
-            return prev;
-          });
         } else if (message.type === 'agent_message') {
           console.log(`[App] Agent reply from ${message.from}: ${message.payload}`);
         } else if (message.type === 'conversation_started') {
@@ -455,6 +401,21 @@ function App() {
           }
         } else if (message.type === 'conversation_error') {
           setGlobalError(`Failed to start conversation: ${message.error}`);
+        } else if (message.type === 'team_updated') {
+          setTeams(prev => {
+            const idx = prev.findIndex(t => t.id === message.team.id);
+            if (idx >= 0) {
+              const updated = [...prev];
+              updated[idx] = message.team;
+              return updated;
+            }
+            return [...prev, message.team];
+          });
+          setActiveTeam(prev => prev?.id === message.team.id ? message.team : prev);
+        } else if (message.type === 'team_task_updated') {
+          setActiveTeamTask(prev =>
+            prev?.id === message.task.id || prev === null ? message.task : prev
+          );
         }
       };
 
@@ -639,9 +600,308 @@ function App() {
 
             {activeSidebarTab === 'team' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '12px' }}>
-                <span style={{ fontSize: '11px', color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px' }}>
-                  Team
-                </span>
+                {/* Team creation */}
+                {!activeTeam && (
+                  <>
+                    <span style={{ fontSize: '11px', color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px' }}>
+                      Create Team
+                    </span>
+                    <label style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <span style={{ fontSize: '10px', color: theme.textMuted }}>Planner Agent</span>
+                      <select
+                        value={teamPlannerAgent}
+                        onChange={e => setTeamPlannerAgent(e.target.value)}
+                        style={{ backgroundColor: theme.bg, color: theme.textPrimary, border: `1px solid ${theme.borderInput}`, borderRadius: '6px', padding: '6px 8px', fontSize: '12px' }}
+                      >
+                        <option value="">Select...</option>
+                        {agents.filter(a => a.status === 'ready' || a.status === 'busy').map(a => (
+                          <option key={a.id} value={a.id} disabled={a.id === teamWorkerAgent}>{a.id}</option>
+                        ))}
+                      </select>
+                    </label>
+                    <label style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <span style={{ fontSize: '10px', color: theme.textMuted }}>Worker Agent</span>
+                      <select
+                        value={teamWorkerAgent}
+                        onChange={e => setTeamWorkerAgent(e.target.value)}
+                        style={{ backgroundColor: theme.bg, color: theme.textPrimary, border: `1px solid ${theme.borderInput}`, borderRadius: '6px', padding: '6px 8px', fontSize: '12px' }}
+                      >
+                        <option value="">Select...</option>
+                        {agents.filter(a => a.status === 'ready' || a.status === 'busy').map(a => (
+                          <option key={a.id} value={a.id} disabled={a.id === teamPlannerAgent}>{a.id}</option>
+                        ))}
+                      </select>
+                    </label>
+                    <button
+                      disabled={!teamPlannerAgent || !teamWorkerAgent}
+                      onClick={async () => {
+                        try {
+                          const res = await fetch('/api/teams', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                              members: [
+                                { agentId: teamPlannerAgent, role: 'planner' },
+                                { agentId: teamWorkerAgent, role: 'worker' },
+                              ],
+                            }),
+                          });
+                          const team = await res.json();
+                          if (res.ok) {
+                            setActiveTeam(team);
+                            setTeams(prev => [...prev, team]);
+                          } else {
+                            setGlobalError(team.error || 'Failed to create team');
+                          }
+                        } catch (err: any) {
+                          setGlobalError(err.message);
+                        }
+                      }}
+                      style={{
+                        padding: '8px',
+                        backgroundColor: teamPlannerAgent && teamWorkerAgent ? theme.success : theme.bgSurface,
+                        color: '#fff',
+                        border: 'none',
+                        borderRadius: '6px',
+                        cursor: teamPlannerAgent && teamWorkerAgent ? 'pointer' : 'not-allowed',
+                        fontSize: '12px',
+                        fontWeight: 600,
+                      }}
+                    >
+                      Create Team
+                    </button>
+                  </>
+                )}
+
+                {/* Active team */}
+                {activeTeam && (
+                  <>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: '11px', color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px' }}>
+                        Team
+                      </span>
+                      <span style={{ fontSize: '10px', color: theme.textDim, padding: '2px 6px', backgroundColor: theme.bgSurface, borderRadius: '4px' }}>
+                        {activeTeam.status}
+                      </span>
+                    </div>
+                    <div style={{ fontSize: '11px', color: theme.textSecondary, display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                      <span>Planner: <strong>{activeTeam.members.find(m => m.role === 'planner')?.agentId}</strong></span>
+                      <span>Worker: <strong>{activeTeam.members.find(m => m.role === 'worker')?.agentId}</strong></span>
+                    </div>
+
+                    {/* Task input */}
+                    {(activeTeam.status === 'idle' || activeTeam.status === 'completed') && !activeTeamTask && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '8px' }}>
+                        <span style={{ fontSize: '10px', color: theme.textMuted }}>Assign Task</span>
+                        <textarea
+                          value={teamTaskInput}
+                          onChange={e => setTeamTaskInput(e.target.value)}
+                          placeholder="Describe the task..."
+                          rows={3}
+                          style={{ backgroundColor: theme.bg, color: theme.textPrimary, border: `1px solid ${theme.borderInput}`, borderRadius: '6px', padding: '8px', fontSize: '12px', resize: 'vertical' }}
+                        />
+                        <button
+                          disabled={!teamTaskInput.trim()}
+                          onClick={async () => {
+                            try {
+                              const res = await fetch(`/api/teams/${activeTeam.id}/task`, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ description: teamTaskInput }),
+                              });
+                              const task = await res.json();
+                              if (res.ok) {
+                                setActiveTeamTask(task);
+                                setTeamTaskInput('');
+                              } else {
+                                setGlobalError(task.error || 'Failed to assign task');
+                              }
+                            } catch (err: any) {
+                              setGlobalError(err.message);
+                            }
+                          }}
+                          style={{
+                            padding: '8px',
+                            backgroundColor: teamTaskInput.trim() ? theme.success : theme.bgSurface,
+                            color: '#fff',
+                            border: 'none',
+                            borderRadius: '6px',
+                            cursor: teamTaskInput.trim() ? 'pointer' : 'not-allowed',
+                            fontSize: '12px',
+                            fontWeight: 600,
+                          }}
+                        >
+                          <Send size={12} /> Submit Task
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Task status */}
+                    {activeTeamTask && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '8px', padding: '8px', backgroundColor: theme.bg, borderRadius: '6px', border: `1px solid ${theme.border}` }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span style={{ fontSize: '10px', color: theme.textMuted, textTransform: 'uppercase' }}>Task</span>
+                          <span style={{ fontSize: '10px', padding: '2px 6px', borderRadius: '4px', backgroundColor: activeTeamTask.status === 'completed' ? '#1a3a1a' : activeTeamTask.status === 'refused' ? '#3a1a1a' : theme.bgSurface, color: activeTeamTask.status === 'completed' ? theme.success : activeTeamTask.status === 'refused' ? theme.error : theme.textMuted }}>
+                            {activeTeamTask.status}
+                          </span>
+                        </div>
+                        <div style={{ fontSize: '11px', color: theme.textSecondary, wordBreak: 'break-word' }}>
+                          {activeTeamTask.description}
+                        </div>
+
+                        {/* Planning state */}
+                        {activeTeamTask.status === 'planning' && (
+                          <div style={{ fontSize: '11px', color: theme.textMuted, fontStyle: 'italic' }}>
+                            Planner is working on a strategy...
+                          </div>
+                        )}
+
+                        {/* Plan review */}
+                        {activeTeamTask.status === 'awaiting_confirmation' && activeTeamTask.plan && (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                            <span style={{ fontSize: '10px', color: theme.textMuted, textTransform: 'uppercase' }}>Plan</span>
+                            <div style={{ fontSize: '11px', color: theme.textPrimary, whiteSpace: 'pre-wrap', padding: '8px', backgroundColor: theme.bgSurface, borderRadius: '4px', maxHeight: '200px', overflow: 'auto', wordBreak: 'break-word' }}>
+                              {activeTeamTask.plan}
+                            </div>
+                            <div style={{ display: 'flex', gap: '6px' }}>
+                              <button
+                                onClick={async () => {
+                                  try {
+                                    await fetch(`/api/teams/${activeTeam.id}/tasks/${activeTeamTask.id}/confirm`, { method: 'POST' });
+                                  } catch (err: any) {
+                                    setGlobalError(err.message);
+                                  }
+                                }}
+                                style={{ flex: 1, padding: '6px', backgroundColor: theme.success, color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '11px', fontWeight: 600 }}
+                              >
+                                Confirm
+                              </button>
+                              <button
+                                onClick={() => setShowRejectInput(!showRejectInput)}
+                                style={{ flex: 1, padding: '6px', backgroundColor: theme.error, color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '11px', fontWeight: 600 }}
+                              >
+                                Reject
+                              </button>
+                            </div>
+                            {showRejectInput && (
+                              <div style={{ display: 'flex', gap: '4px' }}>
+                                <input
+                                  value={rejectFeedback}
+                                  onChange={e => setRejectFeedback(e.target.value)}
+                                  placeholder="Feedback..."
+                                  style={{ flex: 1, backgroundColor: theme.bg, color: theme.textPrimary, border: `1px solid ${theme.borderInput}`, borderRadius: '4px', padding: '4px 6px', fontSize: '11px' }}
+                                />
+                                <button
+                                  onClick={async () => {
+                                    try {
+                                      await fetch(`/api/teams/${activeTeam.id}/tasks/${activeTeamTask.id}/reject`, {
+                                        method: 'POST',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify({ feedback: rejectFeedback }),
+                                      });
+                                      setRejectFeedback('');
+                                      setShowRejectInput(false);
+                                    } catch (err: any) {
+                                      setGlobalError(err.message);
+                                    }
+                                  }}
+                                  style={{ padding: '4px 8px', backgroundColor: theme.error, color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '11px' }}
+                                >
+                                  Send
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Delegated / in progress */}
+                        {activeTeamTask.status === 'delegated' && (
+                          <div style={{ fontSize: '11px', color: theme.textMuted, fontStyle: 'italic' }}>
+                            Worker is reviewing the plan...
+                          </div>
+                        )}
+                        {activeTeamTask.status === 'in_progress' && (
+                          <div style={{ fontSize: '11px', color: theme.success }}>
+                            Worker accepted and is executing...
+                          </div>
+                        )}
+
+                        {/* Refused */}
+                        {activeTeamTask.status === 'refused' && (
+                          <div style={{ fontSize: '11px', color: theme.error }}>
+                            Worker refused: {activeTeamTask.workerRefusalReason || 'No reason given'}
+                          </div>
+                        )}
+
+                        {/* Completed */}
+                        {activeTeamTask.status === 'completed' && (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                            <span style={{ fontSize: '11px', color: theme.success, fontWeight: 600 }}>Completed</span>
+                            {activeTeamTask.transcript.length > 0 && (
+                              <div style={{ fontSize: '11px', color: theme.textSecondary, whiteSpace: 'pre-wrap', padding: '6px', backgroundColor: theme.bgSurface, borderRadius: '4px', maxHeight: '150px', overflow: 'auto', wordBreak: 'break-word' }}>
+                                {activeTeamTask.transcript[activeTeamTask.transcript.length - 1].payload}
+                              </div>
+                            )}
+                            <button
+                              onClick={() => { setActiveTeamTask(null); }}
+                              style={{ padding: '6px', backgroundColor: theme.bgSurface, color: theme.textMuted, border: `1px solid ${theme.border}`, borderRadius: '4px', cursor: 'pointer', fontSize: '11px' }}
+                            >
+                              New Task
+                            </button>
+                          </div>
+                        )}
+
+                        {/* Direct message to team member */}
+                        {activeTeamTask.status !== 'completed' && activeTeamTask.status !== 'planning' && activeTeamTask.status !== 'delegated' && (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '4px', borderTop: `1px solid ${theme.border}`, paddingTop: '8px' }}>
+                            <span style={{ fontSize: '10px', color: theme.textMuted }}>Message team member</span>
+                            <div style={{ display: 'flex', gap: '4px' }}>
+                              <select
+                                value={teamMessageRole}
+                                onChange={e => setTeamMessageRole(e.target.value as 'planner' | 'worker')}
+                                style={{ backgroundColor: theme.bg, color: theme.textPrimary, border: `1px solid ${theme.borderInput}`, borderRadius: '4px', padding: '4px', fontSize: '10px', width: '70px' }}
+                              >
+                                <option value="planner">Planner</option>
+                                <option value="worker">Worker</option>
+                              </select>
+                              <input
+                                value={teamMessageInput}
+                                onChange={e => setTeamMessageInput(e.target.value)}
+                                placeholder="Type message..."
+                                onKeyDown={e => {
+                                  if (e.key === 'Enter' && teamMessageInput.trim() && ws) {
+                                    ws.send(JSON.stringify({ type: 'team_message', taskId: activeTeamTask.id, role: teamMessageRole, text: teamMessageInput }));
+                                    setTeamMessageInput('');
+                                  }
+                                }}
+                                style={{ flex: 1, backgroundColor: theme.bg, color: theme.textPrimary, border: `1px solid ${theme.borderInput}`, borderRadius: '4px', padding: '4px 6px', fontSize: '11px' }}
+                              />
+                              <button
+                                onClick={() => {
+                                  if (teamMessageInput.trim() && ws) {
+                                    ws.send(JSON.stringify({ type: 'team_message', taskId: activeTeamTask.id, role: teamMessageRole, text: teamMessageInput }));
+                                    setTeamMessageInput('');
+                                  }
+                                }}
+                                style={{ padding: '4px 8px', backgroundColor: theme.bgSurface, color: theme.textPrimary, border: `1px solid ${theme.border}`, borderRadius: '4px', cursor: 'pointer' }}
+                              >
+                                <Send size={10} />
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Disband team */}
+                    <button
+                      onClick={() => { setActiveTeam(null); setActiveTeamTask(null); }}
+                      style={{ padding: '6px', backgroundColor: 'transparent', color: theme.textDim, border: `1px solid ${theme.border}`, borderRadius: '4px', cursor: 'pointer', fontSize: '10px', marginTop: '4px' }}
+                    >
+                      Disband Team
+                    </button>
+                  </>
+                )}
               </div>
             )}
 

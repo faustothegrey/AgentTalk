@@ -108,18 +108,7 @@ describe('Registry', () => {
     expect(adapter.kill).toHaveBeenCalledWith('agent-1');
   });
 
-  it('should handle usage_updated events', async () => {
-    const usageSpy = vi.fn();
-    registry.on('usage', usageSpy);
 
-    const agent = await registry.createAgent('agent-1');
-    await registry.startAgent('agent-1', 'agent-cli');
-
-    pushOutput('agent-1', '[AgentTalk]:EVT:{"type":"usage_updated","total":500,"limit":200000}\n');
-
-    expect(agent.usage).toEqual({ total: 500, limit: 200000 });
-    expect(usageSpy).toHaveBeenCalledWith({ id: 'agent-1', usage: { total: 500, limit: 200000 } });
-  });
 
   it('should transition to ready when READY arrives across multiple chunks', async () => {
     await registry.createAgent('agent-1');

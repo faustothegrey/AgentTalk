@@ -16,8 +16,9 @@ import {
   type SendToAgentRequestPayload,
 } from './protocol/protocol-payloads.js';
 import { PROTOCOL_PREFIX, serializeProtocolLine, splitProtocolLine, type OutboundProtocolPacketType } from './protocol/protocol.js';
-import type { AgentStatus, Conversation, TranscriptEntry } from './shared/types.js';
+import type { AgentStatus, Conversation, Team, TeamMember, TeamRole, TeamTask, TranscriptEntry } from './shared/types.js';
 import { ConversationCoordinator } from './registry/conversation-coordinator.js';
+import { TeamCoordinator } from './registry/team-coordinator.js';
 import { extractLaunchMetadata, resolveRegistryConfig, type RegistryConfig } from './registry/config.js';
 
 export class Registry extends EventEmitter {
@@ -27,6 +28,7 @@ export class Registry extends EventEmitter {
   private idleCheckInterval: NodeJS.Timeout | undefined;
   private readonly conversations: ConversationStore;
   private readonly conversationCoordinator: ConversationCoordinator;
+  private readonly teamCoordinator: TeamCoordinator;
   private readonly healthchecks = new HealthcheckManager();
   private readonly config: RegistryConfig;
 
@@ -44,6 +46,14 @@ export class Registry extends EventEmitter {
       requestHealthCheck: (agentId) => this.requestHealthCheck(agentId),
       sendProtocol: (id, type, payload) => this.sendProtocol(id, type, payload),
       emitConversation: (conversation) => this.emit('conversation', conversation),
+      logError: (message, err) => console.error(message, err),
+    });
+
+    this.teamCoordinator = new TeamCoordinator({
+      getAgent: (id) => this.getAgent(id),
+      sendProtocol: (id, type, payload) => this.sendProtocol(id, type, payload),
+      emitTeam: (team) => this.emit('team', team),
+      emitTeamTask: (task) => this.emit('team_task', task),
       logError: (message, err) => console.error(message, err),
     });
 
@@ -304,6 +314,33 @@ export class Registry extends EventEmitter {
       case 'ack_healthcheck':
         await this.handleHealthcheckAck(agent, payload);
         return;
+
+      case 'submit_plan':
+        try {
+          this.teamCoordinator.handlePlanSubmitted(agent.id, payload.args.plan);
+          await this.sendSuccessResponse(agent.id, payload.id);
+        } catch (err) {
+          await this.sendErrorResponse(agent.id, payload.id, err instanceof Error ? err.message : 'Failed to submit plan');
+        }
+        return;
+
+      case 'submit_work_response':
+        try {
+          this.teamCoordinator.handleWorkResponse(agent.id, payload.args.accepted, payload.args.reason);
+          await this.sendSuccessResponse(agent.id, payload.id);
+        } catch (err) {
+          await this.sendErrorResponse(agent.id, payload.id, err instanceof Error ? err.message : 'Failed to submit work response');
+        }
+        return;
+
+      case 'submit_work_result':
+        try {
+          this.teamCoordinator.handleWorkResult(agent.id, payload.args.result);
+          await this.sendSuccessResponse(agent.id, payload.id);
+        } catch (err) {
+          await this.sendErrorResponse(agent.id, payload.id, err instanceof Error ? err.message : 'Failed to submit work result');
+        }
+        return;
     }
   }
 
@@ -387,10 +424,6 @@ export class Registry extends EventEmitter {
     switch (payload.type) {
       case 'busy_state':
         this.setAgentBusyState(agent, payload.busy);
-        return;
-      case 'usage_updated':
-        agent.usage = { total: payload.total, limit: payload.limit };
-        this.emit('usage', { id: agent.id, usage: agent.usage });
         return;
       case 'external_usage':
         agent.externalUsage = payload.output;
@@ -511,6 +544,32 @@ export class Registry extends EventEmitter {
     const agent = this.agents.get(id);
     if (!agent) throw new Error(`Agent ${id} not found`);
     return agent;
+  }
+
+  // ── Team methods ──────────────────────────────────────────────
+
+  createTeam(members: TeamMember[]): Team {
+    return this.teamCoordinator.createTeam(members);
+  }
+
+  async assignTeamTask(teamId: string, description: string): Promise<TeamTask> {
+    return this.teamCoordinator.assignTask(teamId, description);
+  }
+
+  async confirmTeamPlan(taskId: string): Promise<void> {
+    return this.teamCoordinator.confirmPlan(taskId);
+  }
+
+  async rejectTeamPlan(taskId: string, feedback: string): Promise<void> {
+    return this.teamCoordinator.rejectPlan(taskId, feedback);
+  }
+
+  async sendTeamMessage(taskId: string, targetRole: TeamRole, message: string): Promise<void> {
+    return this.teamCoordinator.sendUserMessage(taskId, targetRole, message);
+  }
+
+  getTeams(): Team[] {
+    return this.teamCoordinator.getTeams();
   }
 
   /**

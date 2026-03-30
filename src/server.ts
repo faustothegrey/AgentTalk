@@ -104,6 +104,53 @@ export function startServer(registry: Registry, port: number = 3000) {
     }
   });
 
+  // ── Team endpoints ──────────────────────────────────────────
+
+  app.get('/api/teams', (req, res) => {
+    res.json(registry.getTeams());
+  });
+
+  app.post('/api/teams', (req, res) => {
+    const { members } = req.body;
+    try {
+      const team = registry.createTeam(members);
+      res.json(team);
+    } catch (err) {
+      res.status(getErrorStatus(err)).json({ error: err instanceof Error ? err.message : String(err) });
+    }
+  });
+
+  app.post('/api/teams/:id/task', async (req, res) => {
+    const { description } = req.body;
+    try {
+      const task = await registry.assignTeamTask(req.params.id, description);
+      res.json(task);
+    } catch (err) {
+      res.status(getErrorStatus(err)).json({ error: err instanceof Error ? err.message : String(err) });
+    }
+  });
+
+  app.post('/api/teams/:id/tasks/:taskId/confirm', async (req, res) => {
+    try {
+      await registry.confirmTeamPlan(req.params.taskId);
+      res.json({ success: true });
+    } catch (err) {
+      res.status(getErrorStatus(err)).json({ error: err instanceof Error ? err.message : String(err) });
+    }
+  });
+
+  app.post('/api/teams/:id/tasks/:taskId/reject', async (req, res) => {
+    const { feedback } = req.body;
+    try {
+      await registry.rejectTeamPlan(req.params.taskId, feedback || 'No feedback provided');
+      res.json({ success: true });
+    } catch (err) {
+      res.status(getErrorStatus(err)).json({ error: err instanceof Error ? err.message : String(err) });
+    }
+  });
+
+  // ── Agent endpoints (continued) ────────────────────────────
+
   app.delete('/api/agents/:id', async (req, res) => {
     const { id } = req.params;
     console.log(`[Server] DELETE /api/agents/${id}`);
@@ -212,6 +259,16 @@ export function startServer(registry: Registry, port: number = 3000) {
             break;
           }
 
+          case 'team_message': {
+            const { taskId, role, text } = message;
+            try {
+              await registry.sendTeamMessage(taskId, role, text);
+            } catch (err) {
+              console.error(`[Server] Failed to send team message:`, err);
+            }
+            break;
+          }
+
           default:
             console.warn('[Server] Unknown WS message type:', message.type);
         }
@@ -279,6 +336,14 @@ export function startServer(registry: Registry, port: number = 3000) {
   registry.on('conversation', (conversation) => {
     const sent = broadcast({ type: 'conversation', conversation });
     console.log(`[Server] Conversation ${conversation.id}: ${conversation.status} → ${sent} client(s)`);
+  });
+
+  registry.on('team', (team) => {
+    broadcast({ type: 'team_updated', team });
+  });
+
+  registry.on('team_task', (task) => {
+    broadcast({ type: 'team_task_updated', task });
   });
 
   server.listen(port, () => {

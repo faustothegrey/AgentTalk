@@ -1,5 +1,45 @@
 export type AgentStatus = 'creating' | 'starting' | 'ready' | 'busy' | 'error' | 'terminated';
 
+export type TeamRole = 'planner' | 'worker';
+
+export interface TeamMember {
+  agentId: string;
+  role: TeamRole;
+}
+
+export type TeamStatus = 'idle' | 'planning' | 'awaiting_confirmation' | 'working' | 'completed' | 'error';
+
+export interface Team {
+  id: string;
+  members: TeamMember[];
+  status: TeamStatus;
+  currentTaskId?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type TeamTaskStatus =
+  | 'planning'
+  | 'awaiting_confirmation'
+  | 'delegated'
+  | 'in_progress'
+  | 'refused'
+  | 'completed';
+
+export interface TeamTask {
+  id: string;
+  teamId: string;
+  description: string;
+  plan?: string;
+  planConfirmed?: boolean;
+  workerAccepted?: boolean;
+  workerRefusalReason?: string;
+  status: TeamTaskStatus;
+  transcript: TranscriptEntry[];
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface TranscriptEntry {
   kind: 'system' | 'message';
   timestamp: string;
