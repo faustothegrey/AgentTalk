@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { ProcessOutputParser } from '../process-output-parser.js';
+import { ProcessOutputParser } from '../agents/process-output-parser.js';
 
 describe('ProcessOutputParser', () => {
   function createParser() {

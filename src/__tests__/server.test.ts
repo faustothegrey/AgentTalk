@@ -5,7 +5,7 @@ import type { Server } from 'http';
 import { WebSocket } from 'ws';
 import { Registry } from '../registry.js';
 import { startServer } from '../server.js';
-import type { ProcessAdapter } from '../process-adapter.js';
+import type { ProcessAdapter } from '../agents/process-adapter.js';
 
 describe('startServer', () => {
   let adapter: ProcessAdapter;

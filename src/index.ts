@@ -1,4 +1,4 @@
-import { ProcessAdapterImpl } from './process-adapter.js';
+import { ProcessAdapterImpl } from './agents/process-adapter.js';
 import { Registry } from './registry.js';
 import { startServer } from './server.js';
 

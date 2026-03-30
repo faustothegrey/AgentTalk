@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
 import path from 'path';
 import { deriveConversationStatus, withDerivedConversationStatus } from './conversation-status.js';
-import type { Conversation, TranscriptEntry } from './types.js';
+import type { Conversation, TranscriptEntry } from '../shared/types.js';
 
 export class ConversationStore {
   private conversations = new Map<string, Conversation>();

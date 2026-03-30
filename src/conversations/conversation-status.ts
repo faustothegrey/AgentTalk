@@ -1,4 +1,4 @@
-import type { Conversation } from './types.js';
+import type { Conversation } from '../shared/types.js';
 
 export function deriveConversationStatus(conversation: Conversation): Conversation['status'] {
   if (conversation.status === 'completed') {

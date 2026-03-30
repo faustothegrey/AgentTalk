@@ -1,5 +1,5 @@
 import stripAnsi from 'strip-ansi';
-import { isProtocolLine } from './protocol.js';
+import { isProtocolLine } from '../protocol/protocol.js';
 
 type ProtocolLineCallback = (line: string) => void;
 type PlainTextCallback = (text: string) => void;

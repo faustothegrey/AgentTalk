@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach } from 'vitest';
-import { Agent } from '../agent.js';
+import { Agent } from '../agents/agent.js';
 import { existsSync, rmSync, readFileSync } from 'fs';
 
 const TRANSCRIPT_DIR = './test-transcripts-agent';

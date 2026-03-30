@@ -1,5 +1,5 @@
 import { createWriteStream, WriteStream, mkdirSync, existsSync } from 'fs';
-import type { AgentStatus } from './types.js';
+import type { AgentStatus } from '../shared/types.js';
 import path from 'path';
 import { once } from 'events';
 

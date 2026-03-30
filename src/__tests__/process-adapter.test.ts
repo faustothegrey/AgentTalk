@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { ProcessAdapterImpl } from '../process-adapter.js';
+import { ProcessAdapterImpl } from '../agents/process-adapter.js';
 
 describe('ProcessAdapterImpl', () => {
   const adapter = new ProcessAdapterImpl();

@@ -1,9 +1,9 @@
 import { EventEmitter } from 'events';
-import { Agent } from './agent.js';
-import { ConversationStore } from './conversation-store.js';
-import { HealthcheckManager } from './healthcheck-manager.js';
-import { ProcessOutputParser } from './process-output-parser.js';
-import type { ProcessAdapter } from './process-adapter.js';
+import { Agent } from './agents/agent.js';
+import { ConversationStore } from './conversations/conversation-store.js';
+import { HealthcheckManager } from './agents/healthcheck-manager.js';
+import { ProcessOutputParser } from './agents/process-output-parser.js';
+import type { ProcessAdapter } from './agents/process-adapter.js';
 import {
   parseEventPayload,
   parseReadyPayload,
@@ -14,17 +14,11 @@ import {
   type RequestPayload,
   type ResponsePayload,
   type SendToAgentRequestPayload,
-} from './protocol-payloads.js';
-import { PROTOCOL_PREFIX, serializeProtocolLine, splitProtocolLine, type OutboundProtocolPacketType } from './protocol.js';
-import type { AgentStatus, Conversation, TranscriptEntry } from './types.js';
-import { deriveConversationStatus } from './conversation-status.js';
-
-interface RegistryConfig {
-  readinessTimeoutMs: number;
-  conversationStorePath: string;
-  agentIdleTimeoutMs: number;
-  healthcheckTimeoutMs: number;
-}
+} from './protocol/protocol-payloads.js';
+import { PROTOCOL_PREFIX, serializeProtocolLine, splitProtocolLine, type OutboundProtocolPacketType } from './protocol/protocol.js';
+import type { AgentStatus, Conversation, TranscriptEntry } from './shared/types.js';
+import { ConversationCoordinator } from './registry/conversation-coordinator.js';
+import { extractLaunchMetadata, resolveRegistryConfig, type RegistryConfig } from './registry/config.js';
 
 export class Registry extends EventEmitter {
   private agents: Map<string, Agent> = new Map();
@@ -32,6 +26,7 @@ export class Registry extends EventEmitter {
   private readinessTimeouts: Map<string, NodeJS.Timeout> = new Map();
   private idleCheckInterval: NodeJS.Timeout | undefined;
   private readonly conversations: ConversationStore;
+  private readonly conversationCoordinator: ConversationCoordinator;
   private readonly healthchecks = new HealthcheckManager();
   private readonly config: RegistryConfig;
 
@@ -40,15 +35,17 @@ export class Registry extends EventEmitter {
     config: Partial<RegistryConfig> = {}
   ) {
     super();
-    this.config = {
-      readinessTimeoutMs: 60000,
-      conversationStorePath: './transcripts/conversations.json',
-      agentIdleTimeoutMs: 180000,
-      healthcheckTimeoutMs: 20000,
-      ...config,
-    };
+    this.config = resolveRegistryConfig(config);
     this.conversations = new ConversationStore(this.config.conversationStorePath);
     this.conversations.load();
+    this.conversationCoordinator = new ConversationCoordinator({
+      conversations: this.conversations,
+      getAgent: (id) => this.getAgent(id),
+      requestHealthCheck: (agentId) => this.requestHealthCheck(agentId),
+      sendProtocol: (id, type, payload) => this.sendProtocol(id, type, payload),
+      emitConversation: (conversation) => this.emit('conversation', conversation),
+      logError: (message, err) => console.error(message, err),
+    });
 
     this.idleCheckInterval = setInterval(() => this.checkIdleAgents(), 30000);
 
@@ -83,77 +80,7 @@ export class Registry extends EventEmitter {
   }
 
   async startConversation(agentIds: string[], topic: string, maxRepliesPerAgent: number): Promise<Conversation> {
-    if (agentIds.length < 2) {
-      throw new Error('Conversation requires at least two agents');
-    }
-
-    const uniqueAgentIds = [...new Set(agentIds)];
-    if (uniqueAgentIds.length !== agentIds.length) {
-      throw new Error('Conversation requires different agents');
-    }
-
-    const agents = agentIds.map(id => this.getAgent(id));
-
-    for (const agent of agents) {
-      if (agent.status !== 'ready' && agent.status !== 'busy') {
-        throw new Error(`Agent ${agent.id} must be ready before starting a conversation`);
-      }
-    }
-
-    await Promise.all(agentIds.map(id => this.requestHealthCheck(id)));
-
-    const existingConversation = this.findActiveConversationByAgents(agentIds);
-    if (existingConversation) {
-      return existingConversation;
-    }
-
-    const now = new Date().toISOString();
-    const replyCounts: Record<string, number> = {};
-    agentIds.forEach(id => { replyCounts[id] = 0; });
-
-    const conversation: Conversation = {
-      id: `conversation-${Date.now()}`,
-      agentIds,
-      topic,
-      maxRepliesPerAgent,
-      replyCounts,
-      status: 'active',
-      createdAt: now,
-      updatedAt: now,
-      transcript: [
-        {
-          kind: 'system',
-          timestamp: now,
-          from: 'system',
-          to: agentIds.join(','),
-          payload: `Conversation created with ${agentIds.length} agents: ${topic}`,
-        },
-      ],
-    };
-
-    this.conversations.add(conversation);
-    this.emit('conversation', conversation);
-
-    // Send conversation_start to all agents
-    for (const [i, id] of agentIds.entries()) {
-      const peerIds = agentIds.filter(pid => pid !== id);
-      const peerId = peerIds[0];
-      if (!peerId) {
-        throw new Error(`Conversation requires at least one peer for agent ${id}`);
-      }
-      
-      await this.sendProtocol(id, 'EVT', {
-        type: 'conversation_start',
-        conversationId: conversation.id,
-        peerIds, // plural for multi-agent support
-        peerId, // backward compatibility for V1 agents
-        topic,
-        maxReplies: maxRepliesPerAgent,
-        initiator: i === 0, // only the first agent is the initiator
-      });
-    }
-
-    return conversation;
+    return this.conversationCoordinator.startConversation(agentIds, topic, maxRepliesPerAgent);
   }
 
   private async sendErrorResponse(agentId: string, reqId: string, error: string): Promise<void> {
@@ -185,16 +112,14 @@ export class Registry extends EventEmitter {
     this.setAgentStatus(agent, 'starting');
     agent.launchCommand = launchCommand;
 
-    // Try to extract provider from command (e.g. node scripts/llm-agent.mjs gemini)
-    const providerMatch = launchCommand.match(/llm-agent\.mjs\s+([^\s]+)/);
-    if (providerMatch && providerMatch[1]) {
-      agent.provider = providerMatch[1].toLowerCase();
+    const { provider, model } = extractLaunchMetadata(launchCommand);
+    if (provider) {
+      agent.provider = provider;
       this.emit('provider', { id: agent.id, provider: agent.provider });
     }
 
-    const modelMatch = launchCommand.match(/--model\s+([^\s]+)/);
-    if (modelMatch && modelMatch[1]) {
-      agent.model = modelMatch[1];
+    if (model) {
+      agent.model = model;
       this.emit('model', { id: agent.id, model: agent.model });
     }
 
@@ -413,7 +338,7 @@ export class Registry extends EventEmitter {
       if (conversation) {
         const currentCount = conversation.replyCounts[agent.id] ?? 0;
         if (currentCount >= conversation.maxRepliesPerAgent) {
-          this.markConversationCompleted(conversation, `Reply cap reached by ${agent.id}`);
+          this.conversationCoordinator.markConversationCompleted(conversation, `Reply cap reached by ${agent.id}`);
           await this.sendErrorResponse(agent.id, request.id, `Conversation ${conversation.id} reply cap reached for ${agent.id}`);
           return;
         }
@@ -427,7 +352,7 @@ export class Registry extends EventEmitter {
       });
 
       if (conversation) {
-        this.recordConversationMessage(conversation, {
+        this.conversationCoordinator.recordConversationMessage(conversation, {
           kind: 'message',
           timestamp: new Date().toISOString(),
           from: agent.id,
@@ -556,50 +481,15 @@ export class Registry extends EventEmitter {
   }
 
   getConversations(): Conversation[] {
-    return this.conversations.list();
+    return this.conversationCoordinator.getConversations();
   }
 
   removeConversation(id: string): boolean {
-    return this.conversations.remove(id);
+    return this.conversationCoordinator.removeConversation(id);
   }
 
   private findActiveConversationByAgents(agentIds: string[] | string, maybeTo?: string): Conversation | undefined {
-    let ids: string[];
-    if (Array.isArray(agentIds)) {
-      ids = agentIds;
-    } else if (maybeTo) {
-      ids = [agentIds, maybeTo];
-    } else {
-      return undefined;
-    }
-
-    return this.conversations.findActiveByAgents(ids);
-  }
-
-  private recordConversationMessage(conversation: Conversation, entry: TranscriptEntry): void {
-    const result = this.conversations.recordMessage(conversation, entry);
-    if (result.completed) {
-      this.markConversationCompleted(conversation, 'All agents reached reply limit');
-      return;
-    }
-
-    this.emit('conversation', conversation);
-  }
-
-  private markConversationCompleted(conversation: Conversation, reason: string): void {
-    if (!this.conversations.markCompleted(conversation, reason)) {
-      return;
-    }
-    this.emit('conversation', conversation);
-
-    // Notify all agents that the conversation has ended
-    for (const id of conversation.agentIds) {
-      this.sendProtocol(id, 'EVT', {
-        type: 'conversation_end',
-        conversationId: conversation.id,
-        reason,
-      }).catch(err => console.error(`[Registry] Failed to send conversation_end to ${id}:`, err));
-    }
+    return this.conversationCoordinator.findActiveConversationByAgents(agentIds, maybeTo);
   }
 
   private clearReadinessTimeout(id: string): void {

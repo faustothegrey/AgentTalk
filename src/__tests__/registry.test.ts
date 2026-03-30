@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { Registry } from '../registry.js';
-import type { ProcessAdapter } from '../process-adapter.js';
+import type { ProcessAdapter } from '../agents/process-adapter.js';
 import { existsSync, rmSync } from 'fs';
-import { deriveConversationStatus } from '../conversation-status.js';
+import { deriveConversationStatus } from '../conversations/conversation-status.js';
 
 describe('Registry', () => {
   let adapter: ProcessAdapter;
