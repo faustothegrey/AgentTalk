@@ -31,6 +31,9 @@ export interface TeamTask {
   teamId: string;
   description: string;
   plan?: string;
+  plannerAgentId?: string;
+  planningComplete?: boolean;
+  planSubmittedAt?: string;
   planConfirmed?: boolean;
   workerAccepted?: boolean;
   workerRefusalReason?: string;

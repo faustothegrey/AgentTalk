@@ -12,6 +12,7 @@ interface TeamCoordinatorDeps {
   ) => Promise<void>;
   emitTeam: (team: Team) => void;
   emitTeamTask: (task: TeamTask) => void;
+  emitPlanningComplete: (payload: { team: Team; task: TeamTask; plannerAgentId: string }) => void;
   logError: (message: string, err: unknown) => void;
 }
 
@@ -80,6 +81,8 @@ export class TeamCoordinator {
       id: `task-${Date.now()}`,
       teamId,
       description,
+      plannerAgentId: planner.agentId,
+      planningComplete: false,
       status: 'planning',
       transcript: [
         {
@@ -122,8 +125,17 @@ export class TeamCoordinator {
 
     const now = new Date().toISOString();
     task.plan = plan;
+    task.planningComplete = true;
+    task.planSubmittedAt = now;
     task.status = 'awaiting_confirmation';
     task.updatedAt = now;
+    task.transcript.push({
+      kind: 'system',
+      timestamp: now,
+      from: agentId,
+      to: 'user',
+      payload: 'Planner finished and submitted the final plan.',
+    });
     task.transcript.push({
       kind: 'message',
       timestamp: now,
@@ -137,6 +149,7 @@ export class TeamCoordinator {
 
     this.deps.emitTeam(team);
     this.deps.emitTeamTask(task);
+    this.deps.emitPlanningComplete({ team, task, plannerAgentId: agentId });
   }
 
   async confirmPlan(taskId: string): Promise<void> {
@@ -189,7 +202,9 @@ export class TeamCoordinator {
 
     const now = new Date().toISOString();
     task.status = 'planning';
+    task.planningComplete = false;
     delete task.plan;
+    delete task.planSubmittedAt;
     task.updatedAt = now;
     task.transcript.push({
       kind: 'message',

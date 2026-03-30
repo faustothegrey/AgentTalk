@@ -54,6 +54,7 @@ export class Registry extends EventEmitter {
       sendProtocol: (id, type, payload) => this.sendProtocol(id, type, payload),
       emitTeam: (team) => this.emit('team', team),
       emitTeamTask: (task) => this.emit('team_task', task),
+      emitPlanningComplete: (payload) => this.emit('team_planning_complete', payload),
       logError: (message, err) => console.error(message, err),
     });
 

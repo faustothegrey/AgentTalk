@@ -340,6 +340,20 @@ export function startServer(registry: Registry, port: number = 3000) {
     broadcast({ type: 'team_task_updated', task });
   });
 
+  registry.on('team_planning_complete', ({ team, task, plannerAgentId }) => {
+    const sent = broadcast({
+      type: 'team_planning_complete',
+      teamId: team.id,
+      taskId: task.id,
+      plannerAgentId,
+      planSubmittedAt: task.planSubmittedAt,
+    });
+    console.log(
+      `[Server] Team planning complete ${team.id}/${task.id} by ${plannerAgentId}` +
+      `${task.planSubmittedAt ? ` at ${task.planSubmittedAt}` : ''} → ${sent} client(s)`
+    );
+  });
+
   server.listen(port, () => {
     const address = server.address();
     const actualPort = typeof address === 'object' && address ? address.port : port;

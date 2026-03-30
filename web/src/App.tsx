@@ -60,6 +60,9 @@ interface TeamTask {
   teamId: string;
   description: string;
   plan?: string;
+  plannerAgentId?: string;
+  planningComplete?: boolean;
+  planSubmittedAt?: string;
   planConfirmed?: boolean;
   workerAccepted?: boolean;
   workerRefusalReason?: string;
@@ -251,6 +254,7 @@ function App() {
   const [ws, setWs] = useState<WebSocket | null>(null);
   const [loading, setLoading] = useState(false);
   const [globalError, setGlobalError] = useState<string | null>(null);
+  const [globalNotice, setGlobalNotice] = useState<string | null>(null);
   const [messageInput, setMessageInput] = useState('');
   const [provider, setProvider] = useState<Provider>('gemini');
   const [selectedModel, setSelectedModel] = useState('');
@@ -302,6 +306,12 @@ function App() {
     console.error(msg, err);
     setGlobalError(`${msg} ${err?.message || ''}`);
   };
+
+  useEffect(() => {
+    if (!globalNotice) return;
+    const timer = setTimeout(() => setGlobalNotice(null), 4000);
+    return () => clearTimeout(timer);
+  }, [globalNotice]);
 
   const fetchAgents = useCallback(async () => {
     try {
@@ -410,6 +420,13 @@ function App() {
         } else if (message.type === 'team_task_updated') {
           setActiveTeamTask(prev =>
             prev?.id === message.task.id || prev === null ? message.task : prev
+          );
+        } else if (message.type === 'team_planning_complete') {
+          const submittedAt = typeof message.planSubmittedAt === 'string'
+            ? new Date(message.planSubmittedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+            : null;
+          setGlobalNotice(
+            `Planner ${message.plannerAgentId} finished the plan${submittedAt ? ` at ${submittedAt}` : ''}.`
           );
         }
       };
@@ -561,6 +578,26 @@ function App() {
           >
             <X size={18} />
           </button>
+        </div>
+      )}
+
+      {globalNotice && (
+        <div style={{
+          position: 'absolute',
+          top: globalError ? '76px' : '16px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          backgroundColor: '#1f5f3a',
+          color: theme.textBright,
+          padding: '10px 18px',
+          borderRadius: '6px',
+          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.5), 0 2px 4px -1px rgba(0, 0, 0, 0.25)',
+          zIndex: 9998,
+          maxWidth: '80%',
+          fontSize: '13px',
+          wordBreak: 'break-word',
+        }}>
+          {globalNotice}
         </div>
       )}
 
@@ -747,13 +784,22 @@ function App() {
                         {/* Planning state */}
                         {activeTeamTask.status === 'planning' && (
                           <div style={{ fontSize: '11px', color: theme.textMuted, fontStyle: 'italic' }}>
-                            Planner is working on a strategy...
+                            Planner is working on a strategy. Planning completes only when `submit_plan` arrives.
+                          </div>
+                        )}
+
+                        {activeTeamTask.planningComplete && (
+                          <div style={{ fontSize: '11px', color: theme.success }}>
+                            Final plan submitted by {activeTeamTask.plannerAgentId || 'planner'}{activeTeamTask.planSubmittedAt ? ` at ${new Date(activeTeamTask.planSubmittedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}` : ''}.
                           </div>
                         )}
 
                         {/* Plan review */}
                         {activeTeamTask.status === 'awaiting_confirmation' && activeTeamTask.plan && (
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                            <span style={{ fontSize: '10px', color: theme.success, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                              Planner finished{activeTeamTask.planSubmittedAt ? ` at ${new Date(activeTeamTask.planSubmittedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}` : ''}
+                            </span>
                             <span style={{ fontSize: '10px', color: theme.textMuted, textTransform: 'uppercase' }}>Plan</span>
                             <div style={{ fontSize: '11px', color: theme.textPrimary, whiteSpace: 'pre-wrap', padding: '8px', backgroundColor: theme.bgSurface, borderRadius: '4px', maxHeight: '200px', overflow: 'auto', wordBreak: 'break-word' }}>
                               {activeTeamTask.plan}

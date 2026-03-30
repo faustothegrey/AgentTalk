@@ -96,12 +96,14 @@ function handleTeamTaskAssign(evt) {
   console.error(`[llm-agent] Team task assigned (planner): ${evt.description}`);
   const prompt = [
     'You are the PLANNER in a two-agent team. Your job is to analyze a task and create a clear, actionable implementation strategy.',
+    'You may reason briefly while working, but planning is complete only when your final plan is ready.',
     'Be specific about what files to change, what approach to take, and any risks.',
     'Keep the plan concise but thorough enough for another agent (the worker) to execute it independently.',
     '',
     `Task: ${evt.description}`,
     '',
-    'Respond with your implementation plan only. No preamble.',
+    'Your final response will trigger the explicit submit_plan completion signal.',
+    'Only give your finished implementation plan in that final response. No preamble.',
   ].join('\n');
 
   enqueueTeamEvent(evt, prompt, (response) => ({
