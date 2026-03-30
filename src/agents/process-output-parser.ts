@@ -56,7 +56,7 @@ export class ProcessOutputParser {
       return;
     }
 
-    this.onPlainText(remaining);
+    this.onPlainText(normalized);
   }
 
   private drainLines(): void {

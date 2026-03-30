@@ -58,6 +58,15 @@ describe('ProcessOutputParser', () => {
     expect(onProtocolLine).toHaveBeenCalledWith('[AgentTalk]:READY:{"session":"123"}');
   });
 
+  it('should normalize a trailing carriage return when flushing plain text on EOF', () => {
+    const { parser, onPlainText, onProtocolLine } = createParser();
+    parser.feed('partial line\r');
+    parser.flush();
+
+    expect(onPlainText).toHaveBeenCalledWith('partial line');
+    expect(onProtocolLine).not.toHaveBeenCalled();
+  });
+
   it('should buffer split protocol packets across chunks', () => {
     const { parser, onProtocolLine, onPlainText } = createParser();
     parser.feed('[AgentTalk]:READY:{"sess');
