@@ -942,6 +942,49 @@ function App() {
             </div>
           </div>
 
+          <div style={{ padding: '12px 16px', borderBottom: `1px solid ${theme.border}`, display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <span style={{ fontSize: '11px', color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px' }}>
+              Working Directory
+            </span>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <input
+                type="text"
+                value={workingDirectory}
+                onChange={(e) => setWorkingDirectory(e.target.value)}
+                disabled={loading}
+                placeholder="."
+                spellCheck={false}
+                style={{
+                  flex: 1,
+                  backgroundColor: theme.bg,
+                  color: theme.textPrimary,
+                  border: `1px solid ${theme.borderInput}`,
+                  borderRadius: '6px',
+                  padding: '8px 10px',
+                  fontSize: '13px',
+                  outline: 'none',
+                }}
+              />
+              <button
+                type="button"
+                onClick={openDirectoryPicker}
+                disabled={loading}
+                style={{
+                  backgroundColor: theme.bg,
+                  color: theme.textPrimary,
+                  border: `1px solid ${theme.borderInput}`,
+                  borderRadius: '6px',
+                  padding: '8px 10px',
+                  fontSize: '13px',
+                  cursor: loading ? 'not-allowed' : 'pointer',
+                  opacity: loading ? 0.55 : 1,
+                }}
+              >
+                Browse
+              </button>
+            </div>
+          </div>
+
           <div style={{ padding: '12px 16px', borderBottom: `1px solid ${theme.border}` }}>
             <div style={{ display: 'flex', gap: '8px' }}>
               <button onClick={() => setActiveSidebarTab('new-agent')} style={sidebarTabButtonStyle('new-agent')}>
@@ -1359,49 +1402,6 @@ function App() {
                       </option>
                     ))}
                   </select>
-                </label>
-
-                <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <span style={{ fontSize: '11px', color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px' }}>
-                    Working Directory
-                  </span>
-                  <div style={{ display: 'flex', gap: '8px' }}>
-                    <input
-                      type="text"
-                      value={workingDirectory}
-                      onChange={(e) => setWorkingDirectory(e.target.value)}
-                      disabled={loading}
-                      placeholder="."
-                      spellCheck={false}
-                      style={{
-                        flex: 1,
-                        backgroundColor: theme.bg,
-                        color: theme.textPrimary,
-                        border: `1px solid ${theme.borderInput}`,
-                        borderRadius: '6px',
-                        padding: '8px 10px',
-                        fontSize: '13px',
-                        outline: 'none',
-                      }}
-                    />
-                    <button
-                      type="button"
-                      onClick={openDirectoryPicker}
-                      disabled={loading}
-                      style={{
-                        backgroundColor: theme.bg,
-                        color: theme.textPrimary,
-                        border: `1px solid ${theme.borderInput}`,
-                        borderRadius: '6px',
-                        padding: '8px 10px',
-                        fontSize: '13px',
-                        cursor: loading ? 'not-allowed' : 'pointer',
-                        opacity: loading ? 0.55 : 1,
-                      }}
-                    >
-                      Browse
-                    </button>
-                  </div>
                 </label>
 
                 <button 
