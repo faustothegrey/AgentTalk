@@ -896,7 +896,7 @@ function App() {
               <TerminalIcon size={14} /> Agents
             </button>
             <button onClick={() => setActiveTopTab('config')} style={topTabButtonStyle('config')}>
-              <Settings size={14} /> Config
+              <Settings size={14} /> Workflow
             </button>
           </div>
 
@@ -936,14 +936,19 @@ function App() {
                     <div style={{ fontSize: '13px', color: selectedAgentId === agent.id ? getAgentColor(agent.id).text : '#ddd' }}>
                       {agent.id}
                       {agent.provider && (
-                        <span style={{ marginLeft: '6px', fontSize: '11px', color: theme.textDim, fontWeight: 'normal' }}>
+                        <span style={{ marginLeft: '6px', fontSize: '11px', color: theme.textSubtle, fontWeight: 'normal' }}>
                           ({agent.provider.charAt(0).toUpperCase() + agent.provider.slice(1)}
                           {agent.model ? `: ${agent.model}` : ''})
                         </span>
                       )}
                     </div>
-                    <div style={{ fontSize: '11px', color: theme.textMuted, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <div style={{ fontSize: '11px', color: theme.textSubtle, display: 'flex', alignItems: 'center', gap: '4px' }}>
                       {getStatusIcon(agent.status)} {agent.status}
+                      {agent.workingDirectory && agent.workingDirectory !== '.' && (
+                        <span style={{ marginLeft: '4px', color: theme.textSubtle }}>
+                          · {agent.workingDirectory.split('/').filter(Boolean).pop()}
+                        </span>
+                      )}
                     </div>
                   </div>
                   <button
