@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { TerminalView } from './TerminalView';
 import { ErrorBoundary } from './ErrorBoundary';
-import { Plus, Terminal as TerminalIcon, Activity, AlertCircle, X, Send, MessagesSquare, Trash2, History, Clock, Copy, Check, Users } from 'lucide-react';
+import { Plus, Terminal as TerminalIcon, Activity, AlertCircle, X, Send, MessagesSquare, Trash2, History, Copy, Check, Users } from 'lucide-react';
 import { getAgentColor } from './agentColors';
 
 const theme = {
@@ -23,7 +23,7 @@ const theme = {
 } as const;
 
 type Provider = 'claude' | 'gemini' | 'codex';
-type SidebarTab = 'new-agent' | 'conversation' | 'history' | 'team';
+type SidebarTab = 'new-agent' | 'conversation' | 'team';
 
 interface Agent {
   id: string;
@@ -737,11 +737,8 @@ function App() {
               <button onClick={() => setActiveSidebarTab('new-agent')} style={sidebarTabButtonStyle('new-agent')}>
                 <Plus size={14} /> Agent
               </button>
-              <button onClick={() => setActiveSidebarTab('conversation')} style={sidebarTabButtonStyle('conversation')}>
+              <button onClick={() => { setActiveSidebarTab('conversation'); fetchConversationHistory(); }} style={sidebarTabButtonStyle('conversation')}>
                 <MessagesSquare size={14} /> Conv
-              </button>
-              <button onClick={() => { setActiveSidebarTab('history'); fetchConversationHistory(); }} style={sidebarTabButtonStyle('history')}>
-                <Clock size={14} /> History
               </button>
               <button onClick={() => setActiveSidebarTab('team')} style={sidebarTabButtonStyle('team')}>
                 <Users size={14} /> Team
@@ -1148,244 +1145,244 @@ function App() {
             )}
 
             {activeSidebarTab === 'conversation' && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <span style={{ fontSize: '11px', color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px' }}>
-                  Multi-Agent Conversation
-                </span>
-                <select
-                  value={conversationAgentA}
-                  onChange={(e) => setConversationAgentA(e.target.value)}
-                  style={getConversationSelectStyle(conversationAgentA)}
-                >
-                  <option value="">Agent A</option>
-                  {conversationCandidates.map((agent) => (
-                    <option key={`a-${agent.id}`} value={agent.id}>
-                      {agent.id}
-                    </option>
-                  ))}
-                </select>
-                <select
-                  value={conversationAgentB}
-                  onChange={(e) => setConversationAgentB(e.target.value)}
-                  style={getConversationSelectStyle(conversationAgentB)}
-                >
-                  <option value="">Agent B</option>
-                  {conversationCandidates.map((agent) => (
-                    <option key={`b-${agent.id}`} value={agent.id}>
-                      {agent.id}
-                    </option>
-                  ))}
-                </select>
-                <select
-                  value={conversationAgentC}
-                  onChange={(e) => setConversationAgentC(e.target.value)}
-                  style={getConversationSelectStyle(conversationAgentC)}
-                >
-                  <option value="">Agent C (Optional)</option>
-                  {conversationCandidates.map((agent) => (
-                    <option key={`c-${agent.id}`} value={agent.id}>
-                      {agent.id}
-                    </option>
-                  ))}
-                </select>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                  <span style={{ fontSize: '10px', color: theme.textDim, textTransform: 'uppercase' }}>Max replies per agent</span>
-                  <input
-                    type="number"
-                    min={1}
-                    max={20}
-                    value={maxReplies}
-                    onChange={(e) => setMaxReplies(parseInt(e.target.value) || 1)}
-                    style={{
-                      backgroundColor: theme.bg,
-                      color: theme.textPrimary,
-                      border: `1px solid ${theme.borderInput}`,
-                      borderRadius: '6px',
-                      padding: '6px 10px',
-                      fontSize: '13px',
-                      outline: 'none',
-                    }}
-                  />
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', position: 'relative' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: '10px', color: theme.textDim, textTransform: 'uppercase' }}>Discussion Topic</span>
-                    <button
-                      onClick={() => setShowHistory(!showHistory)}
-                      style={{ background: 'none', border: 'none', color: theme.textMuted, cursor: 'pointer', display: 'flex', alignItems: 'center', padding: '2px' }}
-                      title="Topic History"
-                    >
-                      <History size={14} />
-                    </button>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <span style={{ fontSize: '11px', color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px' }}>
+                    Multi-Agent Conversation
+                  </span>
+                  <select
+                    value={conversationAgentA}
+                    onChange={(e) => setConversationAgentA(e.target.value)}
+                    style={getConversationSelectStyle(conversationAgentA)}
+                  >
+                    <option value="">Agent A</option>
+                    {conversationCandidates.map((agent) => (
+                      <option key={`a-${agent.id}`} value={agent.id}>
+                        {agent.id}
+                      </option>
+                    ))}
+                  </select>
+                  <select
+                    value={conversationAgentB}
+                    onChange={(e) => setConversationAgentB(e.target.value)}
+                    style={getConversationSelectStyle(conversationAgentB)}
+                  >
+                    <option value="">Agent B</option>
+                    {conversationCandidates.map((agent) => (
+                      <option key={`b-${agent.id}`} value={agent.id}>
+                        {agent.id}
+                      </option>
+                    ))}
+                  </select>
+                  <select
+                    value={conversationAgentC}
+                    onChange={(e) => setConversationAgentC(e.target.value)}
+                    style={getConversationSelectStyle(conversationAgentC)}
+                  >
+                    <option value="">Agent C (Optional)</option>
+                    {conversationCandidates.map((agent) => (
+                      <option key={`c-${agent.id}`} value={agent.id}>
+                        {agent.id}
+                      </option>
+                    ))}
+                  </select>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <span style={{ fontSize: '10px', color: theme.textDim, textTransform: 'uppercase' }}>Max replies per agent</span>
+                    <input
+                      type="number"
+                      min={1}
+                      max={20}
+                      value={maxReplies}
+                      onChange={(e) => setMaxReplies(parseInt(e.target.value) || 1)}
+                      style={{
+                        backgroundColor: theme.bg,
+                        color: theme.textPrimary,
+                        border: `1px solid ${theme.borderInput}`,
+                        borderRadius: '6px',
+                        padding: '6px 10px',
+                        fontSize: '13px',
+                        outline: 'none',
+                      }}
+                    />
                   </div>
-                  <textarea
-                    value={topic}
-                    onChange={(e) => setTopic(e.target.value)}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', position: 'relative' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: '10px', color: theme.textDim, textTransform: 'uppercase' }}>Discussion Topic</span>
+                      <button
+                        onClick={() => setShowHistory(!showHistory)}
+                        style={{ background: 'none', border: 'none', color: theme.textMuted, cursor: 'pointer', display: 'flex', alignItems: 'center', padding: '2px' }}
+                        title="Topic History"
+                      >
+                        <History size={14} />
+                      </button>
+                    </div>
+                    <textarea
+                      value={topic}
+                      onChange={(e) => setTopic(e.target.value)}
+                      style={{
+                        backgroundColor: theme.bg,
+                        color: theme.textPrimary,
+                        border: `1px solid ${theme.borderInput}`,
+                        borderRadius: '6px',
+                        padding: '8px 10px',
+                        fontSize: '12px',
+                        outline: 'none',
+                        minHeight: '80px',
+                        maxHeight: '150px',
+                        resize: 'vertical',
+                        fontFamily: 'inherit',
+                        lineHeight: '1.4',
+                      }}
+                    />
+
+                    {showHistory && (
+                      <div style={{
+                        position: 'absolute',
+                        bottom: '100%',
+                        left: 0,
+                        right: 0,
+                        backgroundColor: theme.bgSurface,
+                        border: `1px solid ${theme.borderLight}`,
+                        borderRadius: '6px',
+                        boxShadow: '0 -4px 12px rgba(0, 0, 0, 0.5)',
+                        zIndex: 100,
+                        maxHeight: '200px',
+                        overflowY: 'auto',
+                        marginBottom: '8px',
+                      }}>
+                        <div style={{ padding: '8px 12px', fontSize: '11px', color: theme.textMuted, borderBottom: '1px solid #3d3d3d', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span>PAST TOPICS</span>
+                          <X size={12} style={{ cursor: 'pointer' }} onClick={() => setShowHistory(false)} />
+                        </div>
+                        {topicHistory.length === 0 ? (
+                          <div style={{ padding: '12px', fontSize: '12px', color: theme.textDim, textAlign: 'center' }}>No history yet</div>
+                        ) : (
+                          topicHistory.map((h, i) => (
+                            <div
+                              key={i}
+                              onClick={() => { setTopic(h); setShowHistory(false); }}
+                              style={{
+                                padding: '8px 12px',
+                                fontSize: '12px',
+                                color: theme.textSecondary,
+                                cursor: 'pointer',
+                                borderBottom: i === topicHistory.length - 1 ? 'none' : '1px solid #3d3d3d',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                display: '-webkit-box',
+                                WebkitLineClamp: 2,
+                                WebkitBoxOrient: 'vertical',
+                              }}
+                              onMouseOver={(e) => { e.currentTarget.style.backgroundColor = '#3d3d3d'; }}
+                              onMouseOut={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
+                              title={h}
+                            >
+                              {h}
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  <button
+                    onClick={startConversation}
+                    disabled={!ws || ws.readyState !== WebSocket.OPEN || [...new Set([conversationAgentA, conversationAgentB, conversationAgentC].filter(Boolean))].length < 2}
                     style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '8px',
                       backgroundColor: theme.bg,
                       color: theme.textPrimary,
                       border: `1px solid ${theme.borderInput}`,
                       borderRadius: '6px',
                       padding: '8px 10px',
-                      fontSize: '12px',
-                      outline: 'none',
-                      minHeight: '80px',
-                      maxHeight: '150px',
-                      resize: 'vertical',
-                      fontFamily: 'inherit',
-                      lineHeight: '1.4',
+                      fontSize: '13px',
+                      cursor: 'pointer',
+                      opacity: (!ws || ws.readyState !== WebSocket.OPEN || [...new Set([conversationAgentA, conversationAgentB, conversationAgentC].filter(Boolean))].length < 2) ? 0.5 : 1,
                     }}
-                  />
-                  
-                  {showHistory && (
-                    <div style={{
-                      position: 'absolute',
-                      bottom: '100%',
-                      left: 0,
-                      right: 0,
-                      backgroundColor: theme.bgSurface,
-                      border: `1px solid ${theme.borderLight}`,
-                      borderRadius: '6px',
-                      boxShadow: '0 -4px 12px rgba(0, 0, 0, 0.5)',
-                      zIndex: 100,
-                      maxHeight: '200px',
-                      overflowY: 'auto',
-                      marginBottom: '8px',
-                    }}>
-                      <div style={{ padding: '8px 12px', fontSize: '11px', color: theme.textMuted, borderBottom: '1px solid #3d3d3d', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span>PAST TOPICS</span>
-                        <X size={12} style={{ cursor: 'pointer' }} onClick={() => setShowHistory(false)} />
-                      </div>
-                      {topicHistory.length === 0 ? (
-                        <div style={{ padding: '12px', fontSize: '12px', color: theme.textDim, textAlign: 'center' }}>No history yet</div>
-                      ) : (
-                        topicHistory.map((h, i) => (
-                          <div
-                            key={i}
-                            onClick={() => { setTopic(h); setShowHistory(false); }}
-                            style={{
-                              padding: '8px 12px',
-                              fontSize: '12px',
-                              color: theme.textSecondary,
-                              cursor: 'pointer',
-                              borderBottom: i === topicHistory.length - 1 ? 'none' : '1px solid #3d3d3d',
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
-                              display: '-webkit-box',
-                              WebkitLineClamp: 2,
-                              WebkitBoxOrient: 'vertical',
-                            }}
-                            onMouseOver={(e) => { e.currentTarget.style.backgroundColor = '#3d3d3d'; }}
-                            onMouseOut={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
-                            title={h}
-                          >
-                            {h}
+                  >
+                    <MessagesSquare size={14} />
+                    Start Conversation
+                  </button>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <span style={{ fontSize: '11px', color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '4px' }}>
+                    Past Conversations
+                  </span>
+                  {conversationHistory.length === 0 ? (
+                    <div style={{ fontSize: '12px', color: theme.textDim, textAlign: 'center', padding: '20px 0' }}>No conversations yet</div>
+                  ) : (
+                    conversationHistory.map((conv) => {
+                      const msgCount = conv.transcript.filter(e => e.kind === 'message').length;
+                      const isActive = conv.id === activeConversationId;
+                      return (
+                        <div
+                          key={conv.id}
+                          onClick={() => { setActiveConversationId(conv.id); setActiveConversation(conv); setSelectedAgentId(null); }}
+                          style={{
+                            padding: '10px 12px',
+                            cursor: 'pointer',
+                            backgroundColor: isActive ? '#3a3d49' : '#252526',
+                            border: isActive ? '1px solid #555' : '1px solid #333',
+                            borderRadius: '6px',
+                            transition: 'background-color 0.15s',
+                          }}
+                          onMouseOver={(e) => { if (!isActive) e.currentTarget.style.backgroundColor = '#2d2d2d'; }}
+                          onMouseOut={(e) => { if (!isActive) e.currentTarget.style.backgroundColor = '#252526'; }}
+                        >
+                          <div style={{ fontSize: '11px', color: theme.textSubtle, marginBottom: '4px', display: 'flex', justifyContent: 'space-between' }}>
+                            <span>{new Date(conv.createdAt).toLocaleDateString([], { month: 'short', day: 'numeric' })} {new Date(conv.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                            <span style={{
+                              fontSize: '9px',
+                              padding: '1px 6px',
+                              borderRadius: '8px',
+                              backgroundColor: conv.status === 'completed' ? '#2d4a2d' : '#4a3d2d',
+                              color: conv.status === 'completed' ? '#4caf50' : '#e0a030',
+                            }}>
+                              {conv.status}
+                            </span>
                           </div>
-                        ))
-                      )}
-                    </div>
+                          <div style={{
+                            fontSize: '12px',
+                            color: theme.textSecondary,
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            display: '-webkit-box',
+                            WebkitLineClamp: 2,
+                            WebkitBoxOrient: 'vertical',
+                            lineHeight: '1.3',
+                            marginBottom: '6px',
+                          }}>
+                            {conv.topic}
+                          </div>
+                          <div style={{ fontSize: '10px', color: theme.textDim, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span>{conv.agentIds.join(', ')} · {msgCount} messages</span>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                fetch(`/api/conversations/${conv.id}`, { method: 'DELETE' }).then(() => {
+                                  if (activeConversationId === conv.id) {
+                                    setActiveConversationId(null);
+                                    setActiveConversation(null);
+                                  }
+                                  fetchConversationHistory();
+                                });
+                              }}
+                              style={{ background: 'none', border: 'none', color: theme.textDim, cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center' }}
+                              onMouseOver={(e) => { e.currentTarget.style.color = '#e06c75'; }}
+                              onMouseOut={(e) => { e.currentTarget.style.color = '#666'; }}
+                              title="Remove conversation"
+                            >
+                              <Trash2 size={12} />
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })
                   )}
                 </div>
-                <button
-                  onClick={startConversation}
-                  disabled={!ws || ws.readyState !== WebSocket.OPEN || [...new Set([conversationAgentA, conversationAgentB, conversationAgentC].filter(Boolean))].length < 2}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '8px',
-                    backgroundColor: theme.bg,
-                    color: theme.textPrimary,
-                    border: `1px solid ${theme.borderInput}`,
-                    borderRadius: '6px',
-                    padding: '8px 10px',
-                    fontSize: '13px',
-                    cursor: 'pointer',
-                    opacity: (!ws || ws.readyState !== WebSocket.OPEN || [...new Set([conversationAgentA, conversationAgentB, conversationAgentC].filter(Boolean))].length < 2) ? 0.5 : 1,
-                  }}
-                >
-                  <MessagesSquare size={14} />
-                  Start Conversation
-                </button>
-              </div>
-            )}
-
-            {activeSidebarTab === 'history' && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                <span style={{ fontSize: '11px', color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '4px' }}>
-                  Past Conversations
-                </span>
-                {conversationHistory.length === 0 ? (
-                  <div style={{ fontSize: '12px', color: theme.textDim, textAlign: 'center', padding: '20px 0' }}>No conversations yet</div>
-                ) : (
-                  conversationHistory.map((conv) => {
-                    const msgCount = conv.transcript.filter(e => e.kind === 'message').length;
-                    const isActive = conv.id === activeConversationId;
-                    return (
-                      <div
-                        key={conv.id}
-                        onClick={() => { setActiveConversationId(conv.id); setActiveConversation(conv); setSelectedAgentId(null); }}
-                        style={{
-                          padding: '10px 12px',
-                          cursor: 'pointer',
-                          backgroundColor: isActive ? '#3a3d49' : '#252526',
-                          border: isActive ? '1px solid #555' : '1px solid #333',
-                          borderRadius: '6px',
-                          transition: 'background-color 0.15s',
-                        }}
-                        onMouseOver={(e) => { if (!isActive) e.currentTarget.style.backgroundColor = '#2d2d2d'; }}
-                        onMouseOut={(e) => { if (!isActive) e.currentTarget.style.backgroundColor = '#252526'; }}
-                      >
-                        <div style={{ fontSize: '11px', color: theme.textSubtle, marginBottom: '4px', display: 'flex', justifyContent: 'space-between' }}>
-                          <span>{new Date(conv.createdAt).toLocaleDateString([], { month: 'short', day: 'numeric' })} {new Date(conv.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                          <span style={{
-                            fontSize: '9px',
-                            padding: '1px 6px',
-                            borderRadius: '8px',
-                            backgroundColor: conv.status === 'completed' ? '#2d4a2d' : '#4a3d2d',
-                            color: conv.status === 'completed' ? '#4caf50' : '#e0a030',
-                          }}>
-                            {conv.status}
-                          </span>
-                        </div>
-                        <div style={{
-                          fontSize: '12px',
-                          color: theme.textSecondary,
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          display: '-webkit-box',
-                          WebkitLineClamp: 2,
-                          WebkitBoxOrient: 'vertical',
-                          lineHeight: '1.3',
-                          marginBottom: '6px',
-                        }}>
-                          {conv.topic}
-                        </div>
-                        <div style={{ fontSize: '10px', color: theme.textDim, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <span>{conv.agentIds.join(', ')} · {msgCount} messages</span>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              fetch(`/api/conversations/${conv.id}`, { method: 'DELETE' }).then(() => {
-                                if (activeConversationId === conv.id) {
-                                  setActiveConversationId(null);
-                                  setActiveConversation(null);
-                                }
-                                fetchConversationHistory();
-                              });
-                            }}
-                            style={{ background: 'none', border: 'none', color: theme.textDim, cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center' }}
-                            onMouseOver={(e) => { e.currentTarget.style.color = '#e06c75'; }}
-                            onMouseOut={(e) => { e.currentTarget.style.color = '#666'; }}
-                            title="Remove conversation"
-                          >
-                            <Trash2 size={12} />
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })
-                )}
               </div>
             )}
           </div>
