@@ -19,6 +19,7 @@ export class Agent {
   processedRequestIds: string[] = [];
   lastProgressAt?: number;
   launchCommand?: string;
+  workingDirectory: string | undefined;
   usage?: { total: number; limit: number };
   provider?: string;
   model?: string;

@@ -1,8 +1,11 @@
 import express from 'express';
 import { createServer } from 'http';
+import { existsSync, statSync } from 'fs';
+import path from 'path';
 import { WebSocketServer, WebSocket } from 'ws';
 import { Registry } from './registry.js';
 import type { TeamMember, TeamRole } from './shared/types.js';
+import type { ProcessSpawnOptions } from './agents/process-adapter.js';
 
 type TerminalHistoryEvent =
   | { type: 'output'; text: string }
@@ -35,6 +38,46 @@ function getNonEmptyString(value: unknown): string | undefined {
 
   const trimmed = value.trim();
   return trimmed ? trimmed : undefined;
+}
+
+function resolveWorkingDirectory(value: unknown): string | undefined {
+  const candidate = getNonEmptyString(value);
+  if (!candidate) {
+    return undefined;
+  }
+
+  const resolved = path.resolve(candidate);
+  if (!existsSync(resolved)) {
+    throw new Error(`Working directory not found: ${resolved}`);
+  }
+
+  if (!statSync(resolved).isDirectory()) {
+    throw new Error(`Working directory is not a directory: ${resolved}`);
+  }
+
+  return resolved;
+}
+
+function isBundledLlmAgentCommand(command: string): boolean {
+  return command.trim().startsWith('node scripts/llm-agent.mjs');
+}
+
+function buildProcessOptions(command: string, workingDirectory?: string): ProcessSpawnOptions | undefined {
+  if (isBundledLlmAgentCommand(command)) {
+    return {
+      cwd: process.cwd(),
+      env: {
+        ...process.env,
+        ...(workingDirectory ? { AGENTTALK_WORKDIR: workingDirectory } : {}),
+      },
+    };
+  }
+
+  if (!workingDirectory) {
+    return undefined;
+  }
+
+  return { cwd: workingDirectory };
 }
 
 function normalizeCreateTeamMembers(body: unknown): TeamMember[] {
@@ -99,6 +142,7 @@ export function startServer(registry: Registry, port: number = 3000) {
       usage: a.usage,
       provider: a.provider,
       model: a.model,
+      workingDirectory: a.workingDirectory,
     }));
     console.log(`[Server] Returning ${agents.length} agents`);
     res.json(agents);
@@ -148,7 +192,7 @@ export function startServer(registry: Registry, port: number = 3000) {
   app.post('/api/agents/:id/start', async (req, res) => {
     const { id } = req.params;
     const { command } = req.body;
-    console.log(`[Server] POST /api/agents/${id}/start`, { command });
+    console.log(`[Server] POST /api/agents/${id}/start`, { command, workingDirectory: req.body?.workingDirectory });
     if (typeof command !== 'string' || command.trim() === '') {
       console.log('[Server] Missing or empty command');
       res.status(400).json({ error: 'command is required' });
@@ -156,9 +200,12 @@ export function startServer(registry: Registry, port: number = 3000) {
     }
 
     try {
+      const workingDirectory = resolveWorkingDirectory(req.body?.workingDirectory);
+      const launchCommand = command.trim();
+      const processOptions = buildProcessOptions(launchCommand, workingDirectory);
       const agent = registry.getAgent(id);
       console.log(`[Server] Starting agent ${id} (current status: ${agent.status})...`);
-      await registry.startAgent(id, command);
+      await registry.startAgent(id, launchCommand, workingDirectory, processOptions);
       console.log(`[Server] Agent ${id} successfully started`);
       res.json({ success: true });
     } catch (err) {

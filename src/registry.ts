@@ -3,7 +3,7 @@ import { Agent } from './agents/agent.js';
 import { ConversationStore } from './conversations/conversation-store.js';
 import { HealthcheckManager } from './agents/healthcheck-manager.js';
 import { ProcessOutputParser } from './agents/process-output-parser.js';
-import type { ProcessAdapter } from './agents/process-adapter.js';
+import type { ProcessAdapter, ProcessSpawnOptions } from './agents/process-adapter.js';
 import {
   parseEventPayload,
   parseReadyPayload,
@@ -114,7 +114,12 @@ export class Registry extends EventEmitter {
   /**
    * Spawns the agent process and starts the polling loop.
    */
-  async startAgent(id: string, launchCommand: string): Promise<void> {
+  async startAgent(
+    id: string,
+    launchCommand: string,
+    workingDirectory?: string,
+    processOptions?: ProcessSpawnOptions,
+  ): Promise<void> {
     const agent = this.getAgent(id);
     console.log(`[Registry] Starting agent ${id} with command: ${launchCommand}`);
     this.parsers.delete(id);
@@ -122,6 +127,7 @@ export class Registry extends EventEmitter {
 
     this.setAgentStatus(agent, 'starting');
     agent.launchCommand = launchCommand;
+    agent.workingDirectory = workingDirectory;
 
     const { provider, model } = extractLaunchMetadata(launchCommand);
     if (provider) {
@@ -135,8 +141,10 @@ export class Registry extends EventEmitter {
     }
 
     try {
-      console.log(`[Registry] Spawning process for agent ${id}: ${launchCommand}`);
-      this.adapter.spawn(id, launchCommand);
+      console.log(
+        `[Registry] Spawning process for agent ${id}: ${launchCommand}${processOptions?.cwd ? ` (cwd: ${processOptions.cwd})` : ''}`,
+      );
+      this.adapter.spawn(id, launchCommand, processOptions);
       console.log(`[Registry] Process spawned for agent ${id}`);
     } catch (err) {
       console.error(`[Registry] Failed to spawn process for agent ${id}:`, err);

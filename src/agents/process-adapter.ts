@@ -1,8 +1,13 @@
 import { spawn, ChildProcess } from 'child_process';
 import { EventEmitter } from 'events';
 
+export interface ProcessSpawnOptions {
+  cwd?: string;
+  env?: NodeJS.ProcessEnv;
+}
+
 export interface ProcessAdapter {
-  spawn(id: string, command: string): void;
+  spawn(id: string, command: string, options?: ProcessSpawnOptions): void;
   sendText(id: string, text: string): void;
   onData(id: string, callback: (chunk: string) => void): void;
   kill(id: string): void;
@@ -17,16 +22,19 @@ export class ProcessAdapterImpl extends EventEmitter implements ProcessAdapter {
   private processes: Map<string, ManagedProcess> = new Map();
   private dataCallbacks: Map<string, (chunk: string) => void> = new Map();
 
-  spawn(id: string, command: string): void {
+  spawn(id: string, command: string, options?: ProcessSpawnOptions): void {
     if (this.processes.has(id)) {
       throw new Error(`Process ${id} already exists`);
     }
 
-    console.log(`[ProcessAdapter] Spawning process for ${id}: ${command}`);
+    console.log(
+      `[ProcessAdapter] Spawning process for ${id}: ${command}${options?.cwd ? ` (cwd: ${options.cwd})` : ''}`,
+    );
     const proc = spawn(command, {
       shell: true,
       stdio: ['pipe', 'pipe', 'pipe'],
-      env: process.env,
+      cwd: options?.cwd,
+      env: options?.env ?? process.env,
     });
 
     const managed: ManagedProcess = { proc };

@@ -31,6 +31,7 @@ interface Agent {
   usage?: { total: number; limit: number };
   provider?: string;
   model?: string;
+  workingDirectory?: string;
 }
 
 interface TranscriptEntry {
@@ -270,6 +271,7 @@ function App() {
   const [messageInput, setMessageInput] = useState('');
   const [provider, setProvider] = useState<Provider>('gemini');
   const [selectedModel, setSelectedModel] = useState('');
+  const [workingDirectory, setWorkingDirectory] = useState('.');
   const [conversationAgentA, setConversationAgentA] = useState<string>('');
   const [conversationAgentB, setConversationAgentB] = useState<string>('');
   const [conversationAgentC, setConversationAgentC] = useState<string>('');
@@ -503,6 +505,7 @@ function App() {
     setLoading(true);
     setGlobalError(null);
     try {
+      const command = getAgentCommand(provider, selectedModel || modelOptions[provider][0].value);
       const res = await fetchWithTimeout('/api/agents', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -517,9 +520,13 @@ function App() {
       await fetchWithTimeout(`/api/agents/${data.id}/start`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ command: getAgentCommand(provider, selectedModel || modelOptions[provider][0].value) }),
+        body: JSON.stringify({ command, workingDirectory }),
       }, 10000);
-      pushSidebarEvent('out', 'Start Agent', `${data.id} with ${getAgentCommand(provider, selectedModel || modelOptions[provider][0].value)}`);
+      pushSidebarEvent(
+        'out',
+        'Start Agent',
+        `${data.id} with ${command}${workingDirectory.trim() ? ` @ ${workingDirectory.trim()}` : ''}`,
+      );
 
       await fetchAgents();
     } catch (err) {
@@ -1163,6 +1170,29 @@ function App() {
                       </option>
                     ))}
                   </select>
+                </label>
+
+                <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <span style={{ fontSize: '11px', color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px' }}>
+                    Working Directory
+                  </span>
+                  <input
+                    type="text"
+                    value={workingDirectory}
+                    onChange={(e) => setWorkingDirectory(e.target.value)}
+                    disabled={loading}
+                    placeholder="."
+                    spellCheck={false}
+                    style={{
+                      backgroundColor: theme.bg,
+                      color: theme.textPrimary,
+                      border: `1px solid ${theme.borderInput}`,
+                      borderRadius: '6px',
+                      padding: '8px 10px',
+                      fontSize: '13px',
+                      outline: 'none',
+                    }}
+                  />
                 </label>
 
                 <button 

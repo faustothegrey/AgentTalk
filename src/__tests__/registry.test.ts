@@ -71,7 +71,16 @@ describe('Registry', () => {
 
     const agent = registry.getAgent('agent-1');
     expect(agent.status).toBe('starting');
-    expect(adapter.spawn).toHaveBeenCalledWith('agent-1', 'echo hello');
+    expect(adapter.spawn).toHaveBeenCalledWith('agent-1', 'echo hello', undefined);
+  });
+
+  it('should pass the working directory through to the process adapter', async () => {
+    await registry.createAgent('agent-1');
+    await registry.startAgent('agent-1', 'echo hello', '/tmp', { cwd: '/tmp' });
+
+    const agent = registry.getAgent('agent-1');
+    expect(agent.workingDirectory).toBe('/tmp');
+    expect(adapter.spawn).toHaveBeenCalledWith('agent-1', 'echo hello', { cwd: '/tmp' });
   });
 
   it('should extract provider from launch command', async () => {

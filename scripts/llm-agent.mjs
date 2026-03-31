@@ -3,6 +3,7 @@
 // Speaks the [AgentTalk]: protocol and routes messages to a selected LLM CLI.
 
 import { createInterface } from 'readline';
+import path from 'path';
 import { createConversationRuntime } from './lib/conversation-runtime.mjs';
 import { emitEvent, emitReady, emitRequest, parseInboundProtocolLine } from './lib/protocol.mjs';
 import { callProvider, getProviderLimit, resolveProvider } from './lib/provider-runtime.mjs';
@@ -18,6 +19,13 @@ function parseArgs(argv) {
 const { provider: providerName, model: selectedModel } = parseArgs(process.argv);
 const provider = resolveProvider(providerName.toLowerCase());
 const limit = getProviderLimit(provider, selectedModel);
+const requestedWorkingDirectory = process.env.AGENTTALK_WORKDIR;
+
+if (requestedWorkingDirectory) {
+  const resolvedWorkingDirectory = path.resolve(requestedWorkingDirectory);
+  process.chdir(resolvedWorkingDirectory);
+  console.error(`[llm-agent] Working directory set to ${resolvedWorkingDirectory}`);
+}
 
 let currentUsage = 0;
 let busy = false;

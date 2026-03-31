@@ -72,6 +72,51 @@ describe('startServer', () => {
     await expect(response.json()).resolves.toEqual({ error: 'Agent missing not found' });
   });
 
+  it('should reject an invalid working directory when starting an agent', async () => {
+    await registry.createAgent('agent-1');
+
+    const response = await fetch(`${baseUrl}/api/agents/agent-1/start`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        command: 'agent-cli',
+        workingDirectory: './definitely-missing-directory',
+      }),
+    });
+
+    expect(response.status).toBe(404);
+    await expect(response.json()).resolves.toEqual({
+      error: `Working directory not found: ${process.cwd()}/definitely-missing-directory`,
+    });
+    expect(adapter.spawn).not.toHaveBeenCalled();
+  });
+
+  it('should resolve the bundled llm agent launcher path when starting in another directory', async () => {
+    await registry.createAgent('agent-1');
+
+    const response = await fetch(`${baseUrl}/api/agents/agent-1/start`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        command: 'node scripts/llm-agent.mjs claude --model sonnet',
+        workingDirectory: '..',
+      }),
+    });
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({ success: true });
+    expect(adapter.spawn).toHaveBeenCalledWith(
+      'agent-1',
+      'node scripts/llm-agent.mjs claude --model sonnet',
+      {
+        cwd: process.cwd(),
+        env: expect.objectContaining({
+          AGENTTALK_WORKDIR: process.cwd().replace(/\/AgentTalk$/, ''),
+        }),
+      },
+    );
+  });
+
   it('should return 409 when creating a duplicate agent', async () => {
     await registry.createAgent('agent-1');
 
