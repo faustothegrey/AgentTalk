@@ -12,25 +12,29 @@ AgentTalk is an orchestrator for LLM-based agents. It manages the lifecycle, com
 
 ## Process Management
 
-In the current version, the Node orchestrator owns the agent processes directly. It uses `child_process.spawn` to launch agents and manages their standard I/O streams (`stdin`, `stdout`, `stderr`).
+The Node orchestrator owns agent processes directly. It uses `child_process.spawn` to launch agents and manages their standard I/O streams (`stdin`, `stdout`, `stderr`). Each agent can be assigned a per-agent working directory at launch time.
 
 ### Process Adapter
 
 The `ProcessAdapter` abstracts the low-level process management:
-- **Spawning**: Launches the agent command in a shell.
+- **Spawning**: Launches the agent command in a shell, with optional working directory and environment overrides.
 - **Input**: Writes directly to the process's `stdin`.
-- **Output**: Buffers output from `stdout` and `stderr`.
+- **Output**: Streams output from `stdout` and `stderr` via push-based `onData` callbacks.
 - **Lifecycle**: Monitors process exit and allows killing processes.
 
-## Observation and Routing
+## Output Processing
 
-### Polling Model
+### Push-based Streaming
 
-The orchestrator uses a polling-based model to observe agent output:
-1. The `Registry` polls the `ProcessAdapter` at a regular interval (e.g., 250ms).
-2. New output is deduplicated against previously seen text.
-3. The orchestrator scans the output for protocol lines (prefixed with `[AgentTalk]:`).
-4. Raw terminal output is forwarded to the Web UI via WebSockets for real-time observation.
+The orchestrator uses a push-based streaming model (not polling) to observe agent output:
+1. The `ProcessAdapter` emits data chunks via `onData` callbacks as they arrive from the process.
+2. A `ProcessOutputParser` per agent splits incoming data into protocol lines and plain text.
+3. Protocol lines (prefixed with `[AgentTalk]:`) are routed to the Registry for handling.
+4. Plain text output is forwarded to the Web UI via WebSockets for real-time terminal rendering.
+
+### Echo Suppression
+
+When the orchestrator writes a protocol message to an agent's `stdin`, it may be echoed back in the output. The `ProcessOutputParser` tracks expected echoes and suppresses them to avoid double-processing.
 
 ### Protocol
 
@@ -38,25 +42,33 @@ Communication between the orchestrator and agents happens over the standard I/O 
 
 `[AgentTalk]:TYPE:JSON_PAYLOAD`
 
-- **REQ**: Request from agent to orchestrator (e.g., `list_agents`, `send_to_agent`).
+- **READY**: Signal from agent that initialization is complete.
+- **REQ**: Request from agent to orchestrator (e.g., `list_agents`, `send_to_agent`, `ack_healthcheck`, `submit_plan`, `submit_work_response`, `submit_work_result`).
 - **RES**: Response from orchestrator to agent (or vice versa).
-- **EVT**: Asynchronous events (e.g., `message_received`, `conversation_start`).
-- **READY**: Signal from agent that it has finished initialization.
+- **EVT**: Asynchronous events (e.g., `message_received`, `conversation_start`, `healthcheck`, `busy_state`).
 
 ## State and Persistence
 
-- **Agents**: Tracked in-memory by the `Registry`. Status transitions (`starting`, `ready`, `busy`, `error`, `terminated`) are managed based on process events and protocol signals.
+- **Agents**: Tracked in-memory by the `Registry`. Status transitions (`creating`, `starting`, `ready`, `busy`, `error`, `terminated`) are managed based on process events and protocol signals.
 - **Conversations**: Multi-agent conversations are tracked and persisted to `transcripts/conversations.json`.
+- **Teams**: Planner/worker team structures and task state are tracked in-memory by the `TeamCoordinator`.
 - **Transcripts**: Full terminal output and protocol exchanges can be captured for debugging and audit.
 
-## Comparison with previous models
+## Multi-Agent Workflows
 
-Historically, the project considered using `cmux` (a macOS terminal multiplexer) as the host for agent processes. That approach was deprecated in favor of direct process management:
+### Conversations
 
-| Feature | cmux-hosted (Deprecated) | AgentTalk (Current) |
-| :--- | :--- | :--- |
-| **Ownership** | `cmux` owned the PTY | Node owns the `child_process` |
-| **Control** | via `cmux` CLI commands | via direct `stdin`/`stdout` |
-| **Complexity** | High (syncing UI and Node state) | Low (direct process control) |
-| **Reliability** | Dependent on `cmux` app/socket | Native Node.js stability |
-| **GUI** | Native macOS `cmux` windows | Custom Web UI (React/Xterm.js) |
+Two or more agents can participate in a structured conversation with a topic and per-agent reply caps. The `ConversationCoordinator` manages message routing and transcript recording.
+
+### Teams
+
+Agents can be organized into teams with planner and worker roles. The `TeamCoordinator` manages a task lifecycle:
+1. A task is assigned to the team.
+2. The planner agent creates a strategy and submits a plan.
+3. The user confirms or rejects the plan (with optional feedback).
+4. On confirmation, the plan is delegated to the worker agent.
+5. The worker accepts or refuses, then executes and reports results.
+
+### Healthchecks
+
+The `HealthcheckManager` allows the orchestrator to verify agent responsiveness by sending a healthcheck event and waiting for an acknowledgement within a configurable timeout.
