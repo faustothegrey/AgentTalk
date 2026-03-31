@@ -57,7 +57,9 @@ async function processQueue() {
     }
 
     if (evt._teamPrompt) {
-      const { response, tokens } = await callProvider(provider, selectedModel, evt._teamPrompt);
+      const { response, tokens } = await callProvider(provider, selectedModel, evt._teamPrompt, {
+        onStderrChunk: (chunk) => process.stderr.write(chunk),
+      });
   
 
       if (!response) {
@@ -83,7 +85,9 @@ async function processQueue() {
       return;
     }
 
-    const { response, tokens } = await callProvider(provider, selectedModel, prompt);
+    const { response, tokens } = await callProvider(provider, selectedModel, prompt, {
+      onStderrChunk: (chunk) => process.stderr.write(chunk),
+    });
 
 
     if (!response) {
@@ -120,7 +124,9 @@ function handleTeamTaskAssign(evt) {
       `Task: ${evt.description}`,
     ].join('\n');
 
-    const { response: progressUpdate } = await callProvider(provider, selectedModel, progressPrompt);
+    const { response: progressUpdate } = await callProvider(provider, selectedModel, progressPrompt, {
+      onStderrChunk: (chunk) => process.stderr.write(chunk),
+    });
     if (progressUpdate) {
       progressUpdates.push(progressUpdate);
       console.error(`[llm-agent] Planner progress update (${progressUpdate.length} chars): ${progressUpdate.slice(0, 200)}`);
@@ -147,7 +153,9 @@ function handleTeamTaskAssign(evt) {
       progressUpdates.length > 0 ? `Earlier progress update:\n${progressUpdates.join('\n\n')}` : '',
     ].filter(Boolean).join('\n');
 
-    const { response: directionUpdate } = await callProvider(provider, selectedModel, directionPrompt);
+    const { response: directionUpdate } = await callProvider(provider, selectedModel, directionPrompt, {
+      onStderrChunk: (chunk) => process.stderr.write(chunk),
+    });
     if (directionUpdate) {
       progressUpdates.push(directionUpdate);
       console.error(`[llm-agent] Planner direction update (${directionUpdate.length} chars): ${directionUpdate.slice(0, 200)}`);
@@ -177,7 +185,9 @@ function handleTeamTaskAssign(evt) {
       'Only give your finished implementation plan in that final response. No preamble.',
     ].filter(Boolean).join('\n');
 
-    const { response: finalPlan } = await callProvider(provider, selectedModel, finalPlanPrompt);
+    const { response: finalPlan } = await callProvider(provider, selectedModel, finalPlanPrompt, {
+      onStderrChunk: (chunk) => process.stderr.write(chunk),
+    });
     if (!finalPlan) {
       console.error('[llm-agent] No final plan generated for team event; skipping');
       return;

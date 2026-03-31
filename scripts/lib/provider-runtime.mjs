@@ -54,8 +54,9 @@ function normalizeCliOutput(text) {
   return stripAnsi(text).replace(/\r/g, '');
 }
 
-export async function callProvider(providerName, selectedModel, userMessage) {
+export async function callProvider(providerName, selectedModel, userMessage, options = {}) {
   const { command, args, stdin } = getProviderCommand(providerName, selectedModel, userMessage);
+  const { onStderrChunk } = options;
 
   const safeArgs = args.map(a => (a === userMessage ? '<prompt>' : a));
   console.error(`[llm-agent] Running: ${command} ${safeArgs.join(' ')} (prompt via ${stdin ? 'stdin' : 'arg'}, ${userMessage.length} chars)`);
@@ -66,12 +67,13 @@ export async function callProvider(providerName, selectedModel, userMessage) {
     env: getSpawnEnv(providerName),
     stdin,
     keepStdinOpen: providerName === 'codex',
+    onStderrChunk,
   });
 
   const cleanStdout = normalizeCliOutput(stdout).trim();
   const cleanStderr = normalizeCliOutput(stderr).trim();
 
-  if (cleanStderr) {
+  if (cleanStderr && !onStderrChunk) {
     console.error(`[llm-agent] ${providerName} stderr: ${cleanStderr}`);
   }
 
@@ -260,7 +262,7 @@ function extractClaudeUsageOutput(rawOutput) {
 
 function spawnAndCollect(command, args, options = {}) {
   return new Promise((resolve, reject) => {
-    const { stdin, keepStdinOpen = false, ...spawnOptions } = options;
+    const { stdin, keepStdinOpen = false, onStdoutChunk, onStderrChunk, ...spawnOptions } = options;
     const proc = spawn(command, args, spawnOptions);
 
     let stdout = '';
@@ -268,10 +270,16 @@ function spawnAndCollect(command, args, options = {}) {
 
     proc.stdout?.on('data', (chunk) => {
       stdout += chunk;
+      if (onStdoutChunk) {
+        onStdoutChunk(chunk.toString());
+      }
     });
 
     proc.stderr?.on('data', (chunk) => {
       stderr += chunk;
+      if (onStderrChunk) {
+        onStderrChunk(chunk.toString());
+      }
     });
 
     if (stdin) {
