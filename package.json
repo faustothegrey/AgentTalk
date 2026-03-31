@@ -8,6 +8,8 @@
     "test": "vitest run",
     "build": "tsc",
     "dev": "concurrently \"npm run backend\" \"npm run frontend\"",
+    "dev:supervised": "node scripts/supervisor.mjs",
+    "restart-dev": "node scripts/restart-supervisor.mjs",
     "backend": "npm run build && node dist/index.js",
     "frontend": "cd web && npm run dev"
   },
