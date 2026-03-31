@@ -3,6 +3,10 @@ import { createServer } from 'http';
 import { WebSocketServer, WebSocket } from 'ws';
 import { Registry } from './registry.js';
 
+type TerminalHistoryEvent =
+  | { type: 'output'; text: string }
+  | { type: 'agent_message'; payload: string };
+
 function getErrorStatus(err: unknown): number {
   if (!(err instanceof Error)) {
     return 500;
@@ -167,6 +171,13 @@ export function startServer(registry: Registry, port: number = 3000) {
 
   // Map to track which client is attached to which agent
   const clientAttachments = new Map<WebSocket, string>();
+  const terminalHistory = new Map<string, TerminalHistoryEvent[]>();
+
+  function recordTerminalHistory(agentId: string, event: TerminalHistoryEvent): void {
+    const history = terminalHistory.get(agentId) ?? [];
+    history.push(event);
+    terminalHistory.set(agentId, history);
+  }
 
   wss.on('connection', (ws) => {
     console.log('[Server] New WebSocket connection');
@@ -177,9 +188,15 @@ export function startServer(registry: Registry, port: number = 3000) {
         console.log('[Server] WS message received:', message.type, message.type === 'input' ? `(${message.text?.length} chars)` : JSON.stringify(message));
 
         switch (message.type) {
-          case 'attach':
+          case 'attach': {
             clientAttachments.set(ws, message.agentId);
+            ws.send(JSON.stringify({
+              type: 'terminal_history',
+              agentId: message.agentId,
+              events: terminalHistory.get(message.agentId) ?? [],
+            }));
             break;
+          }
 
           case 'input': {
             const agentId = clientAttachments.get(ws);
@@ -298,11 +315,13 @@ export function startServer(registry: Registry, port: number = 3000) {
 
   // Listen to Registry events and broadcast to clients
   registry.on('output', ({ id, text }) => {
+    recordTerminalHistory(id, { type: 'output', text });
     const sent = broadcast({ type: 'output', id, text }, id);
     console.log(`[Server] Output from ${id} (${text.length} chars) → ${sent} client(s)`);
   });
 
   registry.on('user_message', ({ from, payload }) => {
+    recordTerminalHistory(from, { type: 'agent_message', payload: String(payload) });
     const sent = broadcast({ type: 'agent_message', from, payload }, from);
     console.log(`[Server] Agent message from ${from}: "${payload}" → ${sent} client(s)`);
   });

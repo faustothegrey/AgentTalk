@@ -101,6 +101,45 @@ describe('startServer', () => {
     await new Promise<void>((resolve) => socket.once('close', () => resolve()));
   });
 
+  it('should replay terminal history when attaching to an agent', async () => {
+    await registry.createAgent('agent-1');
+
+    registry.emit('output', { id: 'agent-1', text: 'startup\r\n' });
+    registry.emit('user_message', { from: 'agent-1', payload: 'hello\nworld' });
+
+    const socket = new WebSocket(baseUrl.replace('http', 'ws') + '/ws');
+    await new Promise<void>((resolve, reject) => {
+      socket.once('open', resolve);
+      socket.once('error', reject);
+    });
+
+    const historyMessage = new Promise<any>((resolve, reject) => {
+      const timeout = setTimeout(() => reject(new Error('Timed out waiting for terminal_history')), 1000);
+      socket.on('message', (raw) => {
+        const message = JSON.parse(raw.toString());
+        if (message.type === 'terminal_history') {
+          clearTimeout(timeout);
+          resolve(message);
+        }
+      });
+      socket.once('error', reject);
+    });
+
+    socket.send(JSON.stringify({ type: 'attach', agentId: 'agent-1' }));
+
+    await expect(historyMessage).resolves.toEqual({
+      type: 'terminal_history',
+      agentId: 'agent-1',
+      events: [
+        { type: 'output', text: 'startup\r\n' },
+        { type: 'agent_message', payload: 'hello\nworld' },
+      ],
+    });
+
+    socket.close();
+    await new Promise<void>((resolve) => socket.once('close', () => resolve()));
+  });
+
   it('should expose persisted conversations via the api', async () => {
     const agent1 = await registry.createAgent('agent-1');
     const agent2 = await registry.createAgent('agent-2');

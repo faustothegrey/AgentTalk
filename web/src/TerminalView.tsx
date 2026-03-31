@@ -17,6 +17,10 @@ function normalizeForXterm(text: string): string {
   return text.replace(/\r?\n/g, '\r\n');
 }
 
+function formatAgentMessage(agentId: string, accent: string, payload: string): string {
+  return `\r\n\x1b[38;2;${parseInt(accent.slice(1, 3), 16)};${parseInt(accent.slice(3, 5), 16)};${parseInt(accent.slice(5, 7), 16)}m[${agentId} → user]\x1b[0m ${normalizeForXterm(payload)}\r\n`;
+}
+
 export function TerminalView({ agentId, ws }: TerminalViewProps) {
   const terminalRef = useRef<HTMLDivElement>(null);
   const xtermRef = useRef<Terminal | null>(null);
@@ -69,11 +73,20 @@ export function TerminalView({ agentId, ws }: TerminalViewProps) {
 
     const handleMessage = (event: MessageEvent) => {
       const message = JSON.parse(event.data);
-      if (message.type === 'output' && message.id === agentId) {
+      if (message.type === 'terminal_history' && message.agentId === agentId) {
+        xtermRef.current?.clear();
+        for (const entry of message.events as Array<{ type: string; text?: string; payload?: string }>) {
+          if (entry.type === 'output' && entry.text) {
+            xtermRef.current?.write(entry.text);
+          } else if (entry.type === 'agent_message' && entry.payload) {
+            xtermRef.current?.write(formatAgentMessage(agentId, agentColor.accent, String(entry.payload)));
+          }
+        }
+      } else if (message.type === 'output' && message.id === agentId) {
         xtermRef.current?.write(message.text);
       } else if (message.type === 'agent_message' && message.from === agentId) {
         // Protocol response from agent — display with visual indicator
-        xtermRef.current?.write(`\r\n\x1b[38;2;${parseInt(agentColor.accent.slice(1, 3), 16)};${parseInt(agentColor.accent.slice(3, 5), 16)};${parseInt(agentColor.accent.slice(5, 7), 16)}m[${agentId} → user]\x1b[0m ${normalizeForXterm(String(message.payload))}\r\n`);
+        xtermRef.current?.write(formatAgentMessage(agentId, agentColor.accent, String(message.payload)));
       }
     };
 
