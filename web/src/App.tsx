@@ -95,6 +95,17 @@ interface SidebarEventEntry {
   detail: string;
 }
 
+interface DirectoryBrowserEntry {
+  name: string;
+  path: string;
+}
+
+interface DirectoryBrowserResponse {
+  path: string;
+  parentPath: string | null;
+  directories: DirectoryBrowserEntry[];
+}
+
 const providerOptions: { value: Provider; label: string }[] = [
   { value: 'claude', label: 'Claude' },
   { value: 'gemini', label: 'Gemini' },
@@ -272,6 +283,11 @@ function App() {
   const [provider, setProvider] = useState<Provider>('gemini');
   const [selectedModel, setSelectedModel] = useState('');
   const [workingDirectory, setWorkingDirectory] = useState('.');
+  const [directoryPickerOpen, setDirectoryPickerOpen] = useState(false);
+  const [directoryPickerPath, setDirectoryPickerPath] = useState('.');
+  const [directoryPickerParentPath, setDirectoryPickerParentPath] = useState<string | null>(null);
+  const [directoryPickerEntries, setDirectoryPickerEntries] = useState<DirectoryBrowserEntry[]>([]);
+  const [directoryPickerLoading, setDirectoryPickerLoading] = useState(false);
   const [conversationAgentA, setConversationAgentA] = useState<string>('');
   const [conversationAgentB, setConversationAgentB] = useState<string>('');
   const [conversationAgentC, setConversationAgentC] = useState<string>('');
@@ -379,6 +395,21 @@ function App() {
       setConversationHistory(data);
     } catch (err) {
       console.warn('Failed to fetch conversation history:', err);
+    }
+  }, []);
+
+  const loadDirectoryEntries = useCallback(async (targetPath: string) => {
+    setDirectoryPickerLoading(true);
+    try {
+      const res = await fetchWithTimeout(`/api/fs/directories?path=${encodeURIComponent(targetPath)}`);
+      const data = await res.json() as DirectoryBrowserResponse;
+      setDirectoryPickerPath(data.path);
+      setDirectoryPickerParentPath(data.parentPath);
+      setDirectoryPickerEntries(data.directories);
+    } catch (err) {
+      handleError('Failed to browse directories:', err);
+    } finally {
+      setDirectoryPickerLoading(false);
     }
   }, []);
 
@@ -536,6 +567,17 @@ function App() {
     }
   };
 
+  const openDirectoryPicker = async () => {
+    setGlobalError(null);
+    setDirectoryPickerOpen(true);
+    await loadDirectoryEntries(workingDirectory.trim() || '.');
+  };
+
+  const closeDirectoryPicker = () => {
+    setDirectoryPickerOpen(false);
+    setDirectoryPickerLoading(false);
+  };
+
   const removeAgent = async (id: string) => {
     setGlobalError(null);
     try {
@@ -669,6 +711,153 @@ function App() {
           wordBreak: 'break-word',
         }}>
           {globalNotice}
+        </div>
+      )}
+
+      {directoryPickerOpen && (
+        <div style={{
+          position: 'absolute',
+          inset: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.72)',
+          zIndex: 9997,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '24px',
+        }}>
+          <div style={{
+            width: 'min(760px, 100%)',
+            maxHeight: '80vh',
+            backgroundColor: theme.bgRaised,
+            border: `1px solid ${theme.borderLight}`,
+            borderRadius: '10px',
+            boxShadow: '0 20px 40px rgba(0, 0, 0, 0.45)',
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden',
+          }}>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '12px',
+              padding: '14px 16px',
+              borderBottom: `1px solid ${theme.border}`,
+            }}>
+              <div>
+                <div style={{ fontSize: '12px', color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px' }}>
+                  Choose Directory
+                </div>
+                <div style={{ fontSize: '13px', color: theme.textPrimary, wordBreak: 'break-all', marginTop: '4px' }}>
+                  {directoryPickerPath}
+                </div>
+              </div>
+              <button
+                onClick={closeDirectoryPicker}
+                style={{ background: 'none', border: 'none', color: theme.textPrimary, cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                title="Close"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div style={{
+              display: 'flex',
+              gap: '8px',
+              padding: '12px 16px',
+              borderBottom: `1px solid ${theme.border}`,
+            }}>
+              <button
+                onClick={() => directoryPickerParentPath && loadDirectoryEntries(directoryPickerParentPath)}
+                disabled={!directoryPickerParentPath || directoryPickerLoading}
+                style={{
+                  padding: '8px 10px',
+                  backgroundColor: theme.bg,
+                  color: theme.textPrimary,
+                  border: `1px solid ${theme.borderInput}`,
+                  borderRadius: '6px',
+                  cursor: !directoryPickerParentPath || directoryPickerLoading ? 'not-allowed' : 'pointer',
+                  opacity: !directoryPickerParentPath || directoryPickerLoading ? 0.55 : 1,
+                }}
+              >
+                Up
+              </button>
+              <button
+                onClick={() => loadDirectoryEntries(directoryPickerPath)}
+                disabled={directoryPickerLoading}
+                style={{
+                  padding: '8px 10px',
+                  backgroundColor: theme.bg,
+                  color: theme.textPrimary,
+                  border: `1px solid ${theme.borderInput}`,
+                  borderRadius: '6px',
+                  cursor: directoryPickerLoading ? 'not-allowed' : 'pointer',
+                  opacity: directoryPickerLoading ? 0.55 : 1,
+                }}
+              >
+                Refresh
+              </button>
+              <button
+                onClick={() => {
+                  setWorkingDirectory(directoryPickerPath);
+                  closeDirectoryPicker();
+                }}
+                disabled={directoryPickerLoading}
+                style={{
+                  marginLeft: 'auto',
+                  padding: '8px 12px',
+                  backgroundColor: theme.success,
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: directoryPickerLoading ? 'not-allowed' : 'pointer',
+                  opacity: directoryPickerLoading ? 0.55 : 1,
+                }}
+              >
+                Use This Folder
+              </button>
+            </div>
+
+            <div style={{
+              flex: 1,
+              overflowY: 'auto',
+              padding: '8px 0',
+              minHeight: '240px',
+            }}>
+              {directoryPickerLoading ? (
+                <div style={{ padding: '24px 16px', color: theme.textMuted, textAlign: 'center', fontSize: '13px' }}>
+                  Loading directories...
+                </div>
+              ) : directoryPickerEntries.length === 0 ? (
+                <div style={{ padding: '24px 16px', color: theme.textMuted, textAlign: 'center', fontSize: '13px' }}>
+                  No subdirectories found here.
+                </div>
+              ) : (
+                directoryPickerEntries.map((entry) => (
+                  <button
+                    key={entry.path}
+                    onClick={() => loadDirectoryEntries(entry.path)}
+                    style={{
+                      width: '100%',
+                      textAlign: 'left',
+                      background: 'transparent',
+                      border: 'none',
+                      borderBottom: `1px solid ${theme.border}`,
+                      color: theme.textPrimary,
+                      cursor: 'pointer',
+                      padding: '12px 16px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '4px',
+                    }}
+                  >
+                    <span style={{ fontSize: '13px' }}>{entry.name}</span>
+                    <span style={{ fontSize: '11px', color: theme.textDim, wordBreak: 'break-all' }}>{entry.path}</span>
+                  </button>
+                ))
+              )}
+            </div>
+          </div>
         </div>
       )}
 
@@ -1176,23 +1365,43 @@ function App() {
                   <span style={{ fontSize: '11px', color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px' }}>
                     Working Directory
                   </span>
-                  <input
-                    type="text"
-                    value={workingDirectory}
-                    onChange={(e) => setWorkingDirectory(e.target.value)}
-                    disabled={loading}
-                    placeholder="."
-                    spellCheck={false}
-                    style={{
-                      backgroundColor: theme.bg,
-                      color: theme.textPrimary,
-                      border: `1px solid ${theme.borderInput}`,
-                      borderRadius: '6px',
-                      padding: '8px 10px',
-                      fontSize: '13px',
-                      outline: 'none',
-                    }}
-                  />
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <input
+                      type="text"
+                      value={workingDirectory}
+                      onChange={(e) => setWorkingDirectory(e.target.value)}
+                      disabled={loading}
+                      placeholder="."
+                      spellCheck={false}
+                      style={{
+                        flex: 1,
+                        backgroundColor: theme.bg,
+                        color: theme.textPrimary,
+                        border: `1px solid ${theme.borderInput}`,
+                        borderRadius: '6px',
+                        padding: '8px 10px',
+                        fontSize: '13px',
+                        outline: 'none',
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={openDirectoryPicker}
+                      disabled={loading}
+                      style={{
+                        backgroundColor: theme.bg,
+                        color: theme.textPrimary,
+                        border: `1px solid ${theme.borderInput}`,
+                        borderRadius: '6px',
+                        padding: '8px 10px',
+                        fontSize: '13px',
+                        cursor: loading ? 'not-allowed' : 'pointer',
+                        opacity: loading ? 0.55 : 1,
+                      }}
+                    >
+                      Browse
+                    </button>
+                  </div>
                 </label>
 
                 <button 

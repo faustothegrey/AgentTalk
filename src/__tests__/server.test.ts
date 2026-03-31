@@ -91,6 +91,22 @@ describe('startServer', () => {
     expect(adapter.spawn).not.toHaveBeenCalled();
   });
 
+  it('should list directories for the directory browser api', async () => {
+    const response = await fetch(`${baseUrl}/api/fs/directories?path=..`);
+
+    expect(response.status).toBe(200);
+    const payload = await response.json();
+    expect(payload).toMatchObject({
+      path: expect.any(String),
+      directories: expect.any(Array),
+    });
+    expect(payload.directories).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ name: 'AgentTalk' }),
+      ]),
+    );
+  });
+
   it('should resolve the bundled llm agent launcher path when starting in another directory', async () => {
     await registry.createAgent('agent-1');
 

@@ -1,6 +1,6 @@
 import express from 'express';
 import { createServer } from 'http';
-import { existsSync, statSync } from 'fs';
+import { existsSync, readdirSync, statSync } from 'fs';
 import path from 'path';
 import { WebSocketServer, WebSocket } from 'ws';
 import { Registry } from './registry.js';
@@ -56,6 +56,36 @@ function resolveWorkingDirectory(value: unknown): string | undefined {
   }
 
   return resolved;
+}
+
+function resolveDirectoryBrowserPath(value: unknown): string {
+  const candidate = getNonEmptyString(value);
+  return path.resolve(candidate ?? process.cwd());
+}
+
+function listDirectories(targetPath: string): { path: string; parentPath: string | null; directories: Array<{ name: string; path: string }> } {
+  if (!existsSync(targetPath)) {
+    throw new Error(`Directory not found: ${targetPath}`);
+  }
+
+  if (!statSync(targetPath).isDirectory()) {
+    throw new Error(`Path is not a directory: ${targetPath}`);
+  }
+
+  const directories = readdirSync(targetPath, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => ({
+      name: entry.name,
+      path: path.join(targetPath, entry.name),
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+
+  const parentPath = path.dirname(targetPath);
+  return {
+    path: targetPath,
+    parentPath: parentPath === targetPath ? null : parentPath,
+    directories,
+  };
 }
 
 function isBundledLlmAgentCommand(command: string): boolean {
@@ -172,6 +202,16 @@ export function startServer(registry: Registry, port: number = 3000) {
     const topics = Array.from(new Set(conversations.map(s => s.topic))).filter(Boolean);
     console.log(`[Server] Returning ${topics.length} topics`);
     res.json(topics);
+  });
+
+  app.get('/api/fs/directories', (req, res) => {
+    try {
+      const targetPath = resolveDirectoryBrowserPath(req.query.path);
+      const result = listDirectories(targetPath);
+      res.json(result);
+    } catch (err) {
+      res.status(getErrorStatus(err)).json({ error: err instanceof Error ? err.message : String(err) });
+    }
   });
 
   app.post('/api/agents', async (req, res) => {
