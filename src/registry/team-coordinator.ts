@@ -3,6 +3,11 @@ import type { OutboundProtocolPacketType } from '../protocol/protocol.js';
 import type { Team, TeamTask, TeamMember, TeamRole, TranscriptEntry } from '../shared/types.js';
 import { Agent } from '../agents/agent.js';
 
+const GIT_WORKTREE_REQUIREMENT = [
+  'Execution requirement: use strictly `git worktree` for this task.',
+  'If you cannot or will not use a git worktree, refuse the assignment and abort the task.',
+].join(' ');
+
 interface TeamCoordinatorDeps {
   getAgent: (id: string) => Agent;
   sendProtocol: (
@@ -24,13 +29,21 @@ export class TeamCoordinator {
   constructor(private readonly deps: TeamCoordinatorDeps) {}
 
   createTeam(members: TeamMember[]): Team {
-    if (members.length !== 2) {
-      throw new Error('A team requires exactly 2 members (planner + worker)');
+    if (members.length < 1 || members.length > 2) {
+      throw new Error('A team requires either one worker or one planner plus one worker');
     }
 
     const roles = members.map((m) => m.role);
-    if (!roles.includes('planner') || !roles.includes('worker')) {
-      throw new Error('A team requires one planner and one worker');
+    const hasPlanner = roles.includes('planner');
+    const hasWorker = roles.includes('worker');
+    if (!hasWorker) {
+      throw new Error('A team requires a worker');
+    }
+    if (hasPlanner && members.length !== 2) {
+      throw new Error('A planner can only be used in a planner + worker team');
+    }
+    if (!hasPlanner && members.length !== 1) {
+      throw new Error('A worker-only team must contain exactly one worker');
     }
 
     for (const member of members) {
@@ -74,44 +87,65 @@ export class TeamCoordinator {
       throw new Error('Team is already working on a task');
     }
 
-    const planner = this.getMemberByRole(team, 'planner');
+    const planner = team.members.find((member) => member.role === 'planner');
+    const worker = this.getMemberByRole(team, 'worker');
 
     const now = new Date().toISOString();
     const task: TeamTask = {
       id: `task-${Date.now()}`,
       teamId,
       description,
-      plannerAgentId: planner.agentId,
       planningComplete: false,
-      status: 'planning',
+      status: planner ? 'planning' : 'delegated',
       transcript: [
         {
           kind: 'system',
           timestamp: now,
           from: 'user',
-          to: planner.agentId,
+          to: planner?.agentId ?? worker.agentId,
           payload: description,
         },
       ],
       createdAt: now,
       updatedAt: now,
+      ...(planner ? { plannerAgentId: planner.agentId } : {}),
     };
 
     this.tasks.set(task.id, task);
     team.currentTaskId = task.id;
-    team.status = 'planning';
+    team.status = planner ? 'planning' : 'working';
     team.updatedAt = now;
 
     this.deps.emitTeam(team);
     this.deps.emitTeamTask(task);
 
-    await this.deps.sendProtocol(planner.agentId, 'EVT', {
-      type: 'team_task_assign',
-      teamId,
-      taskId: task.id,
-      role: 'planner',
-      description,
-    });
+    if (planner) {
+      await this.deps.sendProtocol(planner.agentId, 'EVT', {
+        type: 'team_task_assign',
+        teamId,
+        taskId: task.id,
+        role: 'planner',
+        description,
+      });
+    } else {
+      task.transcript.push({
+        kind: 'system',
+        timestamp: now,
+        from: 'user',
+        to: worker.agentId,
+        payload: 'Task assigned directly to worker.',
+      });
+      this.deps.emitTeamTask(task);
+
+      await this.deps.sendProtocol(worker.agentId, 'EVT', {
+        type: 'team_work_assign',
+        teamId,
+        taskId: task.id,
+        role: 'worker',
+        plan: this.buildWorkerPlan(description),
+        description,
+      });
+    }
 
     return task;
   }
@@ -187,7 +221,7 @@ export class TeamCoordinator {
       teamId: team.id,
       taskId: task.id,
       role: 'worker',
-      plan: task.plan!,
+      plan: this.buildWorkerPlan(task.plan!),
       description: task.description,
     });
   }
@@ -330,6 +364,10 @@ export class TeamCoordinator {
       throw new Error(`Team ${teamId} not found`);
     }
     return team;
+  }
+
+  private buildWorkerPlan(plan: string): string {
+    return `${plan}\n\n${GIT_WORKTREE_REQUIREMENT}`;
   }
 
   getTask(taskId: string): TeamTask {

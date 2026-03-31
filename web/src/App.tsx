@@ -46,6 +46,8 @@ interface TeamMember {
   role: 'planner' | 'worker';
 }
 
+type TeamComposition = 'worker-only' | 'planner-worker';
+
 interface Team {
   id: string;
   members: TeamMember[];
@@ -281,6 +283,7 @@ function App() {
   const [_teams, setTeams] = useState<Team[]>([]);
   const [activeTeam, setActiveTeam] = useState<Team | null>(null);
   const [activeTeamTask, setActiveTeamTask] = useState<TeamTask | null>(null);
+  const [teamComposition, setTeamComposition] = useState<TeamComposition>('worker-only');
   const [teamPlannerAgent, setTeamPlannerAgent] = useState('');
   const [teamWorkerAgent, setTeamWorkerAgent] = useState('');
   const [teamTaskInput, setTeamTaskInput] = useState('');
@@ -310,6 +313,9 @@ function App() {
   });
 
   const selectedAgent = agents.find(a => a.id === selectedAgentId);
+  const activePlanner = activeTeam?.members.find(m => m.role === 'planner');
+  const activeWorker = activeTeam?.members.find(m => m.role === 'worker');
+  const availableTeamMessageRoles = activeTeam?.members.map(m => m.role) ?? [];
 
   const handleError = (msg: string, err: any) => {
     console.error(msg, err);
@@ -335,6 +341,13 @@ function App() {
     const timer = setTimeout(() => setGlobalNotice(null), 4000);
     return () => clearTimeout(timer);
   }, [globalNotice]);
+
+  useEffect(() => {
+    if (availableTeamMessageRoles.length === 0) return;
+    if (!availableTeamMessageRoles.includes(teamMessageRole)) {
+      setTeamMessageRole(availableTeamMessageRoles[0]);
+    }
+  }, [availableTeamMessageRoles, teamMessageRole]);
 
   const fetchAgents = useCallback(async () => {
     try {
@@ -757,6 +770,27 @@ function App() {
                       Create Team
                     </span>
                     <label style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <span style={{ fontSize: '10px', color: theme.textMuted }}>Composition</span>
+                      <select
+                        value={teamComposition}
+                        onChange={e => {
+                          const nextComposition = e.target.value as TeamComposition;
+                          setTeamComposition(nextComposition);
+                          if (nextComposition === 'worker-only') {
+                            setTeamPlannerAgent('');
+                            setTeamMessageRole('worker');
+                          } else if (teamMessageRole === 'worker') {
+                            setTeamMessageRole('planner');
+                          }
+                        }}
+                        style={{ backgroundColor: theme.bg, color: theme.textPrimary, border: `1px solid ${theme.borderInput}`, borderRadius: '6px', padding: '6px 8px', fontSize: '12px' }}
+                      >
+                        <option value="worker-only">Only Worker</option>
+                        <option value="planner-worker">Planner + Worker</option>
+                      </select>
+                    </label>
+                    {teamComposition === 'planner-worker' && (
+                    <label style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                       <span style={{ fontSize: '10px', color: theme.textMuted }}>Planner Agent</span>
                       <select
                         value={teamPlannerAgent}
@@ -769,6 +803,7 @@ function App() {
                         ))}
                       </select>
                     </label>
+                    )}
                     <label style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                       <span style={{ fontSize: '10px', color: theme.textMuted }}>Worker Agent</span>
                       <select
@@ -783,22 +818,31 @@ function App() {
                       </select>
                     </label>
                     <button
-                      disabled={!teamPlannerAgent || !teamWorkerAgent}
+                      disabled={!teamWorkerAgent || (teamComposition === 'planner-worker' && !teamPlannerAgent)}
                       onClick={async () => {
                         try {
+                          const members = teamComposition === 'planner-worker'
+                            ? [
+                                { agentId: teamPlannerAgent, role: 'planner' as const },
+                                { agentId: teamWorkerAgent, role: 'worker' as const },
+                              ]
+                            : [
+                                { agentId: teamWorkerAgent, role: 'worker' as const },
+                              ];
                           const res = await fetch('/api/teams', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                              members: [
-                                { agentId: teamPlannerAgent, role: 'planner' },
-                                { agentId: teamWorkerAgent, role: 'worker' },
-                              ],
-                            }),
+                            body: JSON.stringify({ members }),
                           });
                           const team = await res.json();
                           if (res.ok) {
-                            pushSidebarEvent('out', 'Create Team', `${teamPlannerAgent} + ${teamWorkerAgent}`);
+                            pushSidebarEvent(
+                              'out',
+                              'Create Team',
+                              teamComposition === 'planner-worker'
+                                ? `${teamPlannerAgent} + ${teamWorkerAgent}`
+                                : teamWorkerAgent
+                            );
                             setActiveTeam(team);
                             setTeams(prev => [...prev, team]);
                           } else {
@@ -810,11 +854,11 @@ function App() {
                       }}
                       style={{
                         padding: '8px',
-                        backgroundColor: teamPlannerAgent && teamWorkerAgent ? theme.success : theme.bgSurface,
+                        backgroundColor: teamWorkerAgent && (teamComposition === 'worker-only' || teamPlannerAgent) ? theme.success : theme.bgSurface,
                         color: '#fff',
                         border: 'none',
                         borderRadius: '6px',
-                        cursor: teamPlannerAgent && teamWorkerAgent ? 'pointer' : 'not-allowed',
+                        cursor: teamWorkerAgent && (teamComposition === 'worker-only' || teamPlannerAgent) ? 'pointer' : 'not-allowed',
                         fontSize: '12px',
                         fontWeight: 600,
                       }}
@@ -836,8 +880,8 @@ function App() {
                       </span>
                     </div>
                     <div style={{ fontSize: '11px', color: theme.textSecondary, display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                      <span>Planner: <strong>{activeTeam.members.find(m => m.role === 'planner')?.agentId}</strong></span>
-                      <span>Worker: <strong>{activeTeam.members.find(m => m.role === 'worker')?.agentId}</strong></span>
+                      {activePlanner && <span>Planner: <strong>{activePlanner.agentId}</strong></span>}
+                      {activeWorker && <span>Worker: <strong>{activeWorker.agentId}</strong></span>}
                     </div>
 
                     {/* Task input */}
@@ -980,7 +1024,7 @@ function App() {
                         {/* Delegated / in progress */}
                         {activeTeamTask.status === 'delegated' && (
                           <div style={{ fontSize: '11px', color: theme.textMuted, fontStyle: 'italic' }}>
-                            Worker is reviewing the plan...
+                            Worker is reviewing the assignment...
                           </div>
                         )}
                         {activeTeamTask.status === 'in_progress' && (
@@ -1024,8 +1068,8 @@ function App() {
                                 onChange={e => setTeamMessageRole(e.target.value as 'planner' | 'worker')}
                                 style={{ backgroundColor: theme.bg, color: theme.textPrimary, border: `1px solid ${theme.borderInput}`, borderRadius: '4px', padding: '4px', fontSize: '10px', width: '70px' }}
                               >
-                                <option value="planner">Planner</option>
-                                <option value="worker">Worker</option>
+                                {availableTeamMessageRoles.includes('planner') && <option value="planner">Planner</option>}
+                                {availableTeamMessageRoles.includes('worker') && <option value="worker">Worker</option>}
                               </select>
                               <input
                                 value={teamMessageInput}

@@ -107,4 +107,83 @@ describe('TeamCoordinator', () => {
 
     expect(emitPlanningComplete).not.toHaveBeenCalled();
   });
+
+  it('should require git worktree usage when assigning a worker-only team task', async () => {
+    const worker = new Agent('worker');
+    worker.setStatus('starting');
+    worker.setStatus('ready');
+
+    const sendProtocol = vi.fn().mockResolvedValue(undefined);
+    const coordinator = new TeamCoordinator({
+      getAgent: (id) => {
+        if (id === 'worker') return worker;
+        throw new Error(`Unknown agent: ${id}`);
+      },
+      sendProtocol,
+      emitTeam: vi.fn(),
+      emitTeamTask: vi.fn(),
+      emitPlanningComplete: vi.fn(),
+      logError: vi.fn(),
+    });
+
+    const team = coordinator.createTeam([
+      { agentId: 'worker', role: 'worker' },
+    ]);
+
+    await coordinator.assignTask(team.id, 'Ship the feature');
+
+    expect(sendProtocol).toHaveBeenCalledWith('worker', 'EVT', expect.objectContaining({
+      type: 'team_work_assign',
+      plan: expect.stringContaining('use strictly `git worktree`'),
+    }));
+    expect(sendProtocol).toHaveBeenCalledWith('worker', 'EVT', expect.objectContaining({
+      plan: expect.stringContaining('abort the task'),
+    }));
+  });
+
+  it('should keep the git worktree requirement when delegating a confirmed plan to the worker', async () => {
+    const planner = new Agent('planner');
+    planner.setStatus('starting');
+    planner.setStatus('ready');
+
+    const worker = new Agent('worker');
+    worker.setStatus('starting');
+    worker.setStatus('ready');
+
+    const sendProtocol = vi.fn().mockResolvedValue(undefined);
+    const coordinator = new TeamCoordinator({
+      getAgent: (id) => {
+        if (id === 'planner') return planner;
+        if (id === 'worker') return worker;
+        throw new Error(`Unknown agent: ${id}`);
+      },
+      sendProtocol,
+      emitTeam: vi.fn(),
+      emitTeamTask: vi.fn(),
+      emitPlanningComplete: vi.fn(),
+      logError: vi.fn(),
+    });
+
+    const team = coordinator.createTeam([
+      { agentId: 'planner', role: 'planner' },
+      { agentId: 'worker', role: 'worker' },
+    ]);
+
+    const task = await coordinator.assignTask(team.id, 'Ship the feature');
+    coordinator.handlePlanSubmitted('planner', [
+      '1. Update `scripts/llm-agent.mjs` to tighten the worker instructions.',
+      '2. Ensure the worker is told to use `git worktree` and abort otherwise.',
+      '3. Verify the resulting worker assignment payload.',
+    ].join('\n'));
+
+    await coordinator.confirmPlan(task.id);
+
+    expect(sendProtocol).toHaveBeenLastCalledWith('worker', 'EVT', expect.objectContaining({
+      type: 'team_work_assign',
+      plan: expect.stringContaining('use strictly `git worktree`'),
+    }));
+    expect(sendProtocol).toHaveBeenLastCalledWith('worker', 'EVT', expect.objectContaining({
+      plan: expect.stringContaining('abort the task'),
+    }));
+  });
 });
