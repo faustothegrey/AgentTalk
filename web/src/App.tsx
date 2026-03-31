@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { TerminalView } from './TerminalView';
 import { ErrorBoundary } from './ErrorBoundary';
-import { Plus, Terminal as TerminalIcon, Activity, AlertCircle, X, Send, MessagesSquare, Trash2, History, Copy, Check, Users } from 'lucide-react';
+import { Plus, Terminal as TerminalIcon, Activity, AlertCircle, X, Send, MessagesSquare, Trash2, History, Copy, Check, Users, Settings } from 'lucide-react';
 import { getAgentColor } from './agentColors';
 
 const theme = {
@@ -23,7 +23,8 @@ const theme = {
 } as const;
 
 type Provider = 'claude' | 'gemini' | 'codex';
-type SidebarTab = 'new-agent' | 'conversation' | 'team';
+type TopLevelTab = 'agents' | 'config';
+type SidebarTab = 'conversation' | 'team';
 
 interface Agent {
   id: string;
@@ -298,7 +299,8 @@ function App() {
   const [topicHistory, setTopicHistory] = useState<string[]>([]);
   const [showHistory, setShowHistory] = useState(false);
   const [conversationHistory, setConversationHistory] = useState<Conversation[]>([]);
-  const [activeSidebarTab, setActiveSidebarTab] = useState<SidebarTab>('new-agent');
+  const [activeTopTab, setActiveTopTab] = useState<TopLevelTab>('agents');
+  const [activeSidebarTab, setActiveSidebarTab] = useState<SidebarTab>('conversation');
   const [_teams, setTeams] = useState<Team[]>([]);
   const [activeTeam, setActiveTeam] = useState<Team | null>(null);
   const [activeTeamTask, setActiveTeamTask] = useState<TeamTask | null>(null);
@@ -312,6 +314,24 @@ function App() {
   const [showRejectInput, setShowRejectInput] = useState(false);
   const messageInputRef = useRef<HTMLInputElement>(null);
   const activeConversationIdRef = useRef(activeConversationId);
+
+  const topTabButtonStyle = (tab: TopLevelTab) => ({
+    padding: '10px 12px',
+    fontSize: '12px',
+    fontWeight: 700,
+    textTransform: 'uppercase' as const,
+    backgroundColor: activeTopTab === tab ? theme.bgActive : 'transparent',
+    color: activeTopTab === tab ? '#fff' : '#888',
+    border: 'none',
+    borderBottom: activeTopTab === tab ? '2px solid #fff' : '2px solid transparent',
+    cursor: 'pointer',
+    flex: 1,
+    transition: 'all 0.2s',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '6px',
+  });
 
   const sidebarTabButtonStyle = (tab: SidebarTab) => ({
     padding: '8px 12px',
@@ -870,17 +890,25 @@ function App() {
           flexDirection: 'column',
           backgroundColor: theme.bgRaised 
         }}>
-          <div style={{ borderBottom: `1px solid ${theme.border}`, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-            <div style={{ padding: '14px 16px 10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h2 style={{ margin: 0, fontSize: '14px', textTransform: 'uppercase', letterSpacing: '1px' }}>Agents</h2>
-            </div>
-            <div style={{ maxHeight: '260px', overflowY: 'auto', borderTop: `1px solid ${theme.border}` }}>
+          {/* Top-level tab bar */}
+          <div style={{ display: 'flex', borderBottom: `1px solid ${theme.border}` }}>
+            <button onClick={() => setActiveTopTab('agents')} style={topTabButtonStyle('agents')}>
+              <TerminalIcon size={14} /> Agents
+            </button>
+            <button onClick={() => setActiveTopTab('config')} style={topTabButtonStyle('config')}>
+              <Settings size={14} /> Config
+            </button>
+          </div>
+
+          {/* Agents tab content */}
+          {activeTopTab === 'agents' && (
+            <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
               {agents.map(agent => (
-                <div 
+                <div
                   key={agent.id}
                   onClick={() => { setSelectedAgentId(agent.id); setActiveConversationId(null); setActiveConversation(null); }}
-                  style={{ 
-                    padding: '12px 16px', 
+                  style={{
+                    padding: '12px 16px',
                     cursor: 'pointer',
                     backgroundColor: selectedAgentId === agent.id ? getAgentColor(agent.id).tint : 'transparent',
                     borderBottom: '1px solid #2d2d2d',
@@ -918,13 +946,13 @@ function App() {
                       {getStatusIcon(agent.status)} {agent.status}
                     </div>
                   </div>
-                  <button 
+                  <button
                     onClick={(e) => { e.stopPropagation(); removeAgent(agent.id); }}
                     title="Remove Agent"
-                    style={{ 
-                      background: 'none', 
-                      border: 'none', 
-                      color: theme.textMuted, 
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: theme.textMuted,
                       cursor: 'pointer',
                       display: 'flex',
                       alignItems: 'center',
@@ -939,59 +967,140 @@ function App() {
                   </button>
                 </div>
               ))}
-            </div>
-          </div>
 
-          <div style={{ padding: '12px 16px', borderBottom: `1px solid ${theme.border}`, display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            <span style={{ fontSize: '11px', color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px' }}>
-              Working Directory
-            </span>
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <input
-                type="text"
-                value={workingDirectory}
-                onChange={(e) => setWorkingDirectory(e.target.value)}
-                disabled={loading}
-                placeholder="."
-                spellCheck={false}
-                style={{
-                  flex: 1,
-                  backgroundColor: theme.bg,
-                  color: theme.textPrimary,
-                  border: `1px solid ${theme.borderInput}`,
-                  borderRadius: '6px',
-                  padding: '8px 10px',
-                  fontSize: '13px',
-                  outline: 'none',
-                }}
-              />
-              <button
-                type="button"
-                onClick={openDirectoryPicker}
-                disabled={loading}
-                style={{
-                  backgroundColor: theme.bg,
-                  color: theme.textPrimary,
-                  border: `1px solid ${theme.borderInput}`,
-                  borderRadius: '6px',
-                  padding: '8px 10px',
-                  fontSize: '13px',
-                  cursor: loading ? 'not-allowed' : 'pointer',
-                  opacity: loading ? 0.55 : 1,
-                }}
-              >
-                Browse
-              </button>
-            </div>
-          </div>
+              {/* Agent creation section */}
+              <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px', borderTop: agents.length > 0 ? `1px solid ${theme.border}` : 'none' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <span style={{ fontSize: '11px', color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px' }}>
+                    Working Directory
+                  </span>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <input
+                      type="text"
+                      value={workingDirectory}
+                      onChange={(e) => setWorkingDirectory(e.target.value)}
+                      disabled={loading}
+                      placeholder="."
+                      spellCheck={false}
+                      style={{
+                        flex: 1,
+                        backgroundColor: theme.bg,
+                        color: theme.textPrimary,
+                        border: `1px solid ${theme.borderInput}`,
+                        borderRadius: '6px',
+                        padding: '8px 10px',
+                        fontSize: '13px',
+                        outline: 'none',
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={openDirectoryPicker}
+                      disabled={loading}
+                      style={{
+                        backgroundColor: theme.bg,
+                        color: theme.textPrimary,
+                        border: `1px solid ${theme.borderInput}`,
+                        borderRadius: '6px',
+                        padding: '8px 10px',
+                        fontSize: '13px',
+                        cursor: loading ? 'not-allowed' : 'pointer',
+                        opacity: loading ? 0.55 : 1,
+                      }}
+                    >
+                      Browse
+                    </button>
+                  </div>
+                </div>
 
+                <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <span style={{ fontSize: '11px', color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px' }}>
+                    Provider
+                  </span>
+                  <select
+                    value={provider}
+                    onChange={(e) => {
+                      const newProvider = e.target.value as Provider;
+                      setProvider(newProvider);
+                      setSelectedModel(modelOptions[newProvider][0].value);
+                    }}
+                    disabled={loading}
+                    style={{
+                      backgroundColor: theme.bg,
+                      color: theme.textPrimary,
+                      border: `1px solid ${theme.borderInput}`,
+                      borderRadius: '6px',
+                      padding: '8px 10px',
+                      fontSize: '13px',
+                      outline: 'none',
+                    }}
+                  >
+                    {providerOptions.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <span style={{ fontSize: '11px', color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px' }}>
+                    Model
+                  </span>
+                  <select
+                    value={selectedModel}
+                    onChange={(e) => setSelectedModel(e.target.value)}
+                    disabled={loading}
+                    style={{
+                      backgroundColor: theme.bg,
+                      color: theme.textPrimary,
+                      border: `1px solid ${theme.borderInput}`,
+                      borderRadius: '6px',
+                      padding: '8px 10px',
+                      fontSize: '13px',
+                      outline: 'none',
+                    }}
+                  >
+                    {modelOptions[provider].map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <button
+                  onClick={createAgent}
+                  disabled={loading}
+                  title={`Create ${provider} agent`}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px',
+                    backgroundColor: theme.bg,
+                    border: `1px solid ${theme.borderInput}`,
+                    color: theme.textBright,
+                    borderRadius: '6px',
+                    padding: '9px 10px',
+                    cursor: 'pointer',
+                    opacity: loading ? 0.5 : 1
+                  }}
+                >
+                  <Plus size={16} />
+                  Create Agent
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Config tab content */}
+          {activeTopTab === 'config' && (
+            <>
           <div style={{ padding: '12px 16px', borderBottom: `1px solid ${theme.border}` }}>
             <div style={{ display: 'flex', gap: '8px' }}>
-              <button onClick={() => setActiveSidebarTab('new-agent')} style={sidebarTabButtonStyle('new-agent')}>
-                <Plus size={14} /> Agent
-              </button>
               <button onClick={() => { setActiveSidebarTab('conversation'); fetchConversationHistory(); }} style={sidebarTabButtonStyle('conversation')}>
-                <MessagesSquare size={14} /> Conv
+                <MessagesSquare size={14} /> Chat
               </button>
               <button onClick={() => setActiveSidebarTab('team')} style={sidebarTabButtonStyle('team')}>
                 <Users size={14} /> Team
@@ -1346,88 +1455,6 @@ function App() {
               </div>
             )}
 
-            {activeSidebarTab === 'new-agent' && (
-              <>
-                <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <span style={{ fontSize: '11px', color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px' }}>
-                    New Agent Provider
-                  </span>
-                  <select
-                    value={provider}
-                    onChange={(e) => {
-                      const newProvider = e.target.value as Provider;
-                      setProvider(newProvider);
-                      setSelectedModel(modelOptions[newProvider][0].value);
-                    }}
-                    disabled={loading}
-                    style={{
-                      backgroundColor: theme.bg,
-                      color: theme.textPrimary,
-                      border: `1px solid ${theme.borderInput}`,
-                      borderRadius: '6px',
-                      padding: '8px 10px',
-                      fontSize: '13px',
-                      outline: 'none',
-                    }}
-                  >
-                    {providerOptions.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-
-                <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <span style={{ fontSize: '11px', color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px' }}>
-                    Model
-                  </span>
-                  <select
-                    value={selectedModel}
-                    onChange={(e) => setSelectedModel(e.target.value)}
-                    disabled={loading}
-                    style={{
-                      backgroundColor: theme.bg,
-                      color: theme.textPrimary,
-                      border: `1px solid ${theme.borderInput}`,
-                      borderRadius: '6px',
-                      padding: '8px 10px',
-                      fontSize: '13px',
-                      outline: 'none',
-                    }}
-                  >
-                    {modelOptions[provider].map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-
-                <button 
-                  onClick={createAgent} 
-                  disabled={loading}
-                  title={`Create ${provider} agent`}
-                  style={{ 
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '8px',
-                    backgroundColor: theme.bg,
-                    border: `1px solid ${theme.borderInput}`,
-                    color: theme.textBright,
-                    borderRadius: '6px',
-                    padding: '9px 10px',
-                    cursor: 'pointer',
-                    opacity: loading ? 0.5 : 1
-                  }}
-                >
-                  <Plus size={16} />
-                  Create Agent
-                </button>
-              </>
-            )}
-
             {activeSidebarTab === 'conversation' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -1670,6 +1697,8 @@ function App() {
               </div>
             )}
           </div>
+            </>
+          )}
           <div style={{ borderTop: `1px solid ${theme.border}`, backgroundColor: theme.bgSurface, display: 'flex', flexDirection: 'column', minHeight: 0, ...(sidebarEventsCollapsed ? {} : { height: '128px' }) }}>
             <div
               onClick={() => setSidebarEventsCollapsed(c => !c)}
