@@ -2,6 +2,7 @@ import express from 'express';
 import { createServer } from 'http';
 import { WebSocketServer, WebSocket } from 'ws';
 import { Registry } from './registry.js';
+import type { TeamMember, TeamRole } from './shared/types.js';
 
 type TerminalHistoryEvent =
   | { type: 'output'; text: string }
@@ -21,6 +22,68 @@ function getErrorStatus(err: unknown): number {
   }
 
   return 500;
+}
+
+function isTeamRole(value: unknown): value is TeamRole {
+  return value === 'planner' || value === 'worker';
+}
+
+function getNonEmptyString(value: unknown): string | undefined {
+  if (typeof value !== 'string') {
+    return undefined;
+  }
+
+  const trimmed = value.trim();
+  return trimmed ? trimmed : undefined;
+}
+
+function normalizeCreateTeamMembers(body: unknown): TeamMember[] {
+  if (!body || typeof body !== 'object') {
+    return [];
+  }
+
+  const payload = body as Record<string, unknown>;
+  const members = Array.isArray(payload.members)
+    ? payload.members.flatMap((member): TeamMember[] => {
+        if (!member || typeof member !== 'object') {
+          return [];
+        }
+
+        const candidate = member as Record<string, unknown>;
+        const agentId = getNonEmptyString(candidate.agentId);
+        const role = candidate.role;
+        if (!agentId || !isTeamRole(role)) {
+          return [];
+        }
+
+        return [{ agentId, role }];
+      })
+    : [];
+
+  if (members.length > 0) {
+    return members;
+  }
+
+  const composition = getNonEmptyString(payload.teamComposition);
+  const plannerAgentId = getNonEmptyString(
+    payload.teamPlannerAgent ?? payload.plannerAgentId ?? payload.plannerId,
+  );
+  const workerAgentId = getNonEmptyString(
+    payload.teamWorkerAgent ?? payload.workerAgentId ?? payload.workerId,
+  );
+
+  if (!workerAgentId) {
+    return [];
+  }
+
+  if (composition === 'worker-only' || !plannerAgentId) {
+    return [{ agentId: workerAgentId, role: 'worker' }];
+  }
+
+  return [
+    { agentId: plannerAgentId, role: 'planner' },
+    { agentId: workerAgentId, role: 'worker' },
+  ];
 }
 
 export function startServer(registry: Registry, port: number = 3000) {
@@ -114,8 +177,12 @@ export function startServer(registry: Registry, port: number = 3000) {
   });
 
   app.post('/api/teams', (req, res) => {
-    const { members } = req.body;
     try {
+      const members = normalizeCreateTeamMembers(req.body);
+      if (members.length === 0) {
+        res.status(400).json({ error: 'A worker agent ID is required' });
+        return;
+      }
       const team = registry.createTeam(members);
       res.json(team);
     } catch (err) {

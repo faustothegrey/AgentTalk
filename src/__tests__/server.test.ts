@@ -183,4 +183,28 @@ describe('startServer', () => {
     await expect(response.json()).resolves.toEqual({ success: true });
     expect(removeSpy).toHaveBeenCalledWith('agent-1');
   });
+
+  it('should create a worker-only team from the raw team form payload', async () => {
+    const worker = await registry.createAgent('worker-1');
+    worker.setStatus('starting');
+    worker.setStatus('ready');
+
+    const response = await fetch(`${baseUrl}/api/teams`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        teamComposition: 'worker-only',
+        teamPlannerAgent: '',
+        teamWorkerAgent: 'worker-1',
+      }),
+    });
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      status: 'idle',
+      members: [
+        { agentId: 'worker-1', role: 'worker' },
+      ],
+    });
+  });
 });
