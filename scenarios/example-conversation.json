@@ -1,0 +1,25 @@
+{
+  "name": "Architecture Review",
+  "description": "Two agents discuss the AgentTalk architecture and propose improvements",
+  "agents": [
+    {
+      "id": "reviewer-gemini",
+      "provider": "gemini",
+      "model": "gemini-2.5-pro",
+      "executionMode": "auto"
+    },
+    {
+      "id": "reviewer-claude",
+      "provider": "claude",
+      "model": "sonnet",
+      "executionMode": "auto"
+    }
+  ],
+  "conversations": [
+    {
+      "agentIds": ["reviewer-gemini", "reviewer-claude"],
+      "topic": "Review the AgentTalk project architecture and suggest three concrete improvements.",
+      "maxRepliesPerAgent": 3
+    }
+  ]
+}

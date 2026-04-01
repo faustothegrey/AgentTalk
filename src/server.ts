@@ -5,8 +5,11 @@ import path from 'path';
 import { WebSocketServer, WebSocket } from 'ws';
 import { Registry } from './registry.js';
 import type { AgentExecutionMode, TeamMember, TeamRole } from './shared/types.js';
-import type { ProcessSpawnOptions } from './agents/process-adapter.js';
+import type { GoogleDriveIntegration } from './integrations/google-drive/types.js';
 import type { SessionRecorder } from './recordings/session-recorder.js';
+import { buildProcessOptions } from './scenarios/command-builder.js';
+import { ScenarioRunner } from './scenarios/scenario-runner.js';
+import type { ScenarioDefinition } from './scenarios/types.js';
 
 type TerminalHistoryEvent =
   | { type: 'output'; text: string }
@@ -93,33 +96,6 @@ function listDirectories(targetPath: string): { path: string; parentPath: string
   };
 }
 
-function isBundledLlmAgentCommand(command: string): boolean {
-  return command.trim().startsWith('node scripts/llm-agent.mjs');
-}
-
-function buildProcessOptions(
-  command: string,
-  workingDirectory?: string,
-  requestedExecutionMode?: AgentExecutionMode,
-): ProcessSpawnOptions | undefined {
-  if (isBundledLlmAgentCommand(command)) {
-    return {
-      cwd: process.cwd(),
-      env: {
-        ...process.env,
-        ...(workingDirectory ? { AGENTTALK_WORKDIR: workingDirectory } : {}),
-        ...(requestedExecutionMode ? { AGENTTALK_EXECUTION_MODE: requestedExecutionMode } : {}),
-      },
-    };
-  }
-
-  if (!workingDirectory) {
-    return undefined;
-  }
-
-  return { cwd: workingDirectory };
-}
-
 function normalizeCreateTeamMembers(body: unknown): TeamMember[] {
   if (!body || typeof body !== 'object') {
     return [];
@@ -172,11 +148,21 @@ function normalizeCreateTeamMembers(body: unknown): TeamMember[] {
 export function startServer(
   registry: Registry,
   port: number = 3000,
-  options: { recorder?: SessionRecorder } = {},
+  options: { recorder?: SessionRecorder; googleDrive?: GoogleDriveIntegration } = {},
 ) {
   const app = express();
   app.use(express.json());
   const recorder = options.recorder;
+  const googleDrive = options.googleDrive;
+
+  function getBaseUrl(req: express.Request): string {
+    const configured = getNonEmptyString(process.env.GOOGLE_DRIVE_REDIRECT_BASE_URL);
+    if (configured) {
+      return configured.replace(/\/$/, '');
+    }
+
+    return `${req.protocol}://${req.get('host')}`;
+  }
 
   // REST API
   app.get('/api/agents', (req, res) => {
@@ -228,6 +214,171 @@ export function startServer(
       const targetPath = resolveDirectoryBrowserPath(req.query.path);
       const result = listDirectories(targetPath);
       res.json(result);
+    } catch (err) {
+      res.status(getErrorStatus(err)).json({ error: err instanceof Error ? err.message : String(err) });
+    }
+  });
+
+  app.get('/api/integrations/google-drive/status', async (req, res) => {
+    if (!googleDrive) {
+      res.json({ configured: false, authenticated: false, scopes: [], hasRefreshToken: false });
+      return;
+    }
+
+    try {
+      res.json(await googleDrive.getStatus(getBaseUrl(req)));
+    } catch (err) {
+      res.status(getErrorStatus(err)).json({ error: err instanceof Error ? err.message : String(err) });
+    }
+  });
+
+  app.get('/api/integrations/google-drive/oauth/start', async (req, res) => {
+    if (!googleDrive) {
+      res.status(404).json({ error: 'Google Drive integration is not configured' });
+      return;
+    }
+
+    try {
+      const authUrl = await googleDrive.createAuthUrl(getBaseUrl(req));
+      res.json({ authUrl });
+    } catch (err) {
+      res.status(getErrorStatus(err)).json({ error: err instanceof Error ? err.message : String(err) });
+    }
+  });
+
+  app.get('/api/integrations/google-drive/oauth/callback', async (req, res) => {
+    if (!googleDrive) {
+      res.status(404).send('Google Drive integration is not configured.');
+      return;
+    }
+
+    const code = getNonEmptyString(req.query.code);
+    const state = getNonEmptyString(req.query.state);
+    if (!code || !state) {
+      res.status(400).send('Missing OAuth code or state.');
+      return;
+    }
+
+    try {
+      if ('assertValidOAuthState' in googleDrive && typeof (googleDrive as { assertValidOAuthState?: unknown }).assertValidOAuthState === 'function') {
+        (googleDrive as { assertValidOAuthState(state: string): void }).assertValidOAuthState(state);
+      }
+      await googleDrive.handleOAuthCallback(code, getBaseUrl(req));
+      res.type('html').send('<html><body><h1>Google Drive connected.</h1><p>You can close this tab.</p></body></html>');
+    } catch (err) {
+      res.status(getErrorStatus(err)).type('html').send(`<html><body><h1>Google Drive OAuth failed.</h1><pre>${err instanceof Error ? err.message : String(err)}</pre></body></html>`);
+    }
+  });
+
+  app.get('/api/integrations/google-drive/resources', (req, res) => {
+    if (!googleDrive) {
+      res.status(404).json({ error: 'Google Drive integration is not configured' });
+      return;
+    }
+
+    res.json(googleDrive.listResources());
+  });
+
+  app.post('/api/integrations/google-drive/resources', (req, res) => {
+    if (!googleDrive) {
+      res.status(404).json({ error: 'Google Drive integration is not configured' });
+      return;
+    }
+
+    const name = getNonEmptyString(req.body?.name);
+    const type = req.body?.type === 'file' || req.body?.type === 'folder' ? req.body.type : undefined;
+    const driveId = getNonEmptyString(req.body?.driveId);
+    if (!name || !type || !driveId) {
+      res.status(400).json({ error: 'name, type, and driveId are required' });
+      return;
+    }
+
+    try {
+      res.json(googleDrive.createResource({ name, type, driveId }));
+    } catch (err) {
+      res.status(getErrorStatus(err)).json({ error: err instanceof Error ? err.message : String(err) });
+    }
+  });
+
+  app.post('/api/integrations/google-drive/resources/:resourceId/grants', (req, res) => {
+    if (!googleDrive) {
+      res.status(404).json({ error: 'Google Drive integration is not configured' });
+      return;
+    }
+
+    const agentId = getNonEmptyString(req.body?.agentId);
+    if (!agentId) {
+      res.status(400).json({ error: 'agentId is required' });
+      return;
+    }
+
+    try {
+      registry.getAgent(agentId);
+      res.json(googleDrive.grantAgentAccess(req.params.resourceId, agentId));
+    } catch (err) {
+      res.status(getErrorStatus(err)).json({ error: err instanceof Error ? err.message : String(err) });
+    }
+  });
+
+  app.delete('/api/integrations/google-drive/resources/:resourceId/grants/:agentId', (req, res) => {
+    if (!googleDrive) {
+      res.status(404).json({ error: 'Google Drive integration is not configured' });
+      return;
+    }
+
+    res.json({ success: googleDrive.revokeAgentAccess(req.params.resourceId, req.params.agentId) });
+  });
+
+  app.get('/api/integrations/google-drive/agents/:agentId/resources', (req, res) => {
+    if (!googleDrive) {
+      res.status(404).json({ error: 'Google Drive integration is not configured' });
+      return;
+    }
+
+    try {
+      registry.getAgent(req.params.agentId);
+      res.json(googleDrive.listAgentResources(req.params.agentId));
+    } catch (err) {
+      res.status(getErrorStatus(err)).json({ error: err instanceof Error ? err.message : String(err) });
+    }
+  });
+
+  app.get('/api/integrations/google-drive/resources/:resourceId/files', async (req, res) => {
+    if (!googleDrive) {
+      res.status(404).json({ error: 'Google Drive integration is not configured' });
+      return;
+    }
+
+    const agentId = getNonEmptyString(req.query.agentId);
+    if (!agentId) {
+      res.status(400).json({ error: 'agentId is required' });
+      return;
+    }
+
+    try {
+      registry.getAgent(agentId);
+      res.json(await googleDrive.listFilesForAgent(agentId, req.params.resourceId));
+    } catch (err) {
+      res.status(getErrorStatus(err)).json({ error: err instanceof Error ? err.message : String(err) });
+    }
+  });
+
+  app.get('/api/integrations/google-drive/resources/:resourceId/read', async (req, res) => {
+    if (!googleDrive) {
+      res.status(404).json({ error: 'Google Drive integration is not configured' });
+      return;
+    }
+
+    const agentId = getNonEmptyString(req.query.agentId);
+    const fileId = getNonEmptyString(req.query.fileId);
+    if (!agentId) {
+      res.status(400).json({ error: 'agentId is required' });
+      return;
+    }
+
+    try {
+      registry.getAgent(agentId);
+      res.json(await googleDrive.readFileForAgent(agentId, req.params.resourceId, fileId));
     } catch (err) {
       res.status(getErrorStatus(err)).json({ error: err instanceof Error ? err.message : String(err) });
     }
@@ -358,6 +509,24 @@ export function startServer(
       await registry.rejectTeamPlan(req.params.taskId, feedback || 'No feedback provided');
       res.json({ success: true });
     } catch (err) {
+      res.status(getErrorStatus(err)).json({ error: err instanceof Error ? err.message : String(err) });
+    }
+  });
+
+  // ── Scenario endpoints ──────────────────────────────────────
+
+  app.post('/api/scenarios/launch', async (req, res) => {
+    const definition = req.body as ScenarioDefinition;
+    console.log(`[Server] POST /api/scenarios/launch: ${definition.name ?? '(unnamed)'}`);
+    recorder?.record('api', 'scenario_launch', { name: definition.name });
+
+    try {
+      const runner = new ScenarioRunner();
+      const result = await runner.run(definition, registry);
+      console.log(`[Server] Scenario "${result.scenarioName}" ${result.status}`);
+      res.json(result);
+    } catch (err) {
+      console.error('[Server] Failed to launch scenario:', err);
       res.status(getErrorStatus(err)).json({ error: err instanceof Error ? err.message : String(err) });
     }
   });
