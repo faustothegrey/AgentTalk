@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { TerminalView } from './TerminalView';
 import { ErrorBoundary } from './ErrorBoundary';
-import { Plus, Terminal as TerminalIcon, Activity, AlertCircle, X, Send, MessagesSquare, Trash2, History, Copy, Check, Users, Settings } from 'lucide-react';
+import { Plus, Terminal as TerminalIcon, Activity, AlertCircle, X, Send, MessagesSquare, Trash2, History, Copy, Check, Users, Settings, History as HistoryIcon } from 'lucide-react';
 import { getAgentColor } from './agentColors';
 
 const theme = {
@@ -25,6 +25,7 @@ const theme = {
 type Provider = 'claude' | 'gemini' | 'codex';
 type TopLevelTab = 'agents' | 'config';
 type SidebarTab = 'conversation' | 'team';
+type ConfigSubTab = 'usage';
 
 interface Agent {
   id: string;
@@ -394,7 +395,7 @@ function App() {
   const [activeTopTab, setActiveTopTab] = useState<TopLevelTab>('agents');
   const [activeSidebarTab, setActiveSidebarTab] = useState<SidebarTab>('conversation');
   const [activeConfigSubTab, setActiveConfigSubTab] = useState<ConfigSubTab>('usage');
-  const [_teams, setTeams] = useState<Team[]>([]);
+  const [teams, setTeams] = useState<Team[]>([]);
   const [activeTeam, setActiveTeam] = useState<Team | null>(null);
   const [activeTeamTask, setActiveTeamTask] = useState<TeamTask | null>(null);
   const [teamComposition, setTeamComposition] = useState<TeamComposition>('worker-only');
@@ -738,7 +739,7 @@ function App() {
     setGlobalError(null);
     pushSidebarEvent('out', 'Conversation Request', `${uniqueAgentIds.join(', ')} | ${topic.trim() || 'default topic'}`);
     ws.send(JSON.stringify({
-      type: 'start_pair_chat', // keeping the name for protocol compatibility
+      type: 'start_pair_chat', 
       agentIds: uniqueAgentIds,
       topic: topic.trim(),
       maxReplies: maxReplies,
@@ -1085,32 +1086,592 @@ function App() {
               </div>
 
               <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '12px', padding: '16px' }}>
+                {activeSidebarTab === 'team' && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    {/* Team creation */}
+                    {!activeTeam && (
+                      <>
+                        <span style={{ fontSize: '11px', color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px' }}>
+                          Create Team
+                        </span>
+                        <label style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                          <span style={{ fontSize: '10px', color: theme.textMuted }}>Composition</span>
+                          <select
+                            value={teamComposition}
+                            onChange={e => {
+                              const nextComposition = e.target.value as TeamComposition;
+                              setTeamComposition(nextComposition);
+                              if (nextComposition === 'worker-only') {
+                                setTeamPlannerAgent('');
+                                setTeamMessageRole('worker');
+                              } else if (teamMessageRole === 'worker') {
+                                setTeamMessageRole('planner');
+                              }
+                            }}
+                            style={{ backgroundColor: theme.bg, color: theme.textPrimary, border: `1px solid ${theme.borderInput}`, borderRadius: '6px', padding: '6px 8px', fontSize: '12px' }}
+                          >
+                            <option value="worker-only">Only Worker</option>
+                            <option value="planner-worker">Planner + Worker</option>
+                          </select>
+                        </label>
+                        {teamComposition === 'planner-worker' && (
+                        <label style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                          <span style={{ fontSize: '10px', color: theme.textMuted }}>Planner Agent</span>
+                          <select
+                            value={teamPlannerAgent}
+                            onChange={e => setTeamPlannerAgent(e.target.value)}
+                            style={{ backgroundColor: theme.bg, color: theme.textPrimary, border: `1px solid ${theme.borderInput}`, borderRadius: '6px', padding: '6px 8px', fontSize: '12px' }}
+                          >
+                            <option value="">Select...</option>
+                            {agents.filter(a => a.status === 'ready' || a.status === 'busy').map(a => (
+                              <option key={a.id} value={a.id} disabled={a.id === teamWorkerAgent}>{a.id}</option>
+                            ))}
+                          </select>
+                        </label>
+                        )}
+                        <label style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                          <span style={{ fontSize: '10px', color: theme.textMuted }}>Worker Agent</span>
+                          <select
+                            value={teamWorkerAgent}
+                            onChange={e => setTeamWorkerAgent(e.target.value)}
+                            style={{ backgroundColor: theme.bg, color: theme.textPrimary, border: `1px solid ${theme.borderInput}`, borderRadius: '6px', padding: '6px 8px', fontSize: '12px' }}
+                          >
+                            <option value="">Select...</option>
+                            {agents.filter(a => a.status === 'ready' || a.status === 'busy').map(a => (
+                              <option key={a.id} value={a.id} disabled={a.id === teamPlannerAgent}>{a.id}</option>
+                            ))}
+                          </select>
+                        </label>
+                        <button
+                          disabled={!teamWorkerAgent || (teamComposition === 'planner-worker' && !teamPlannerAgent)}
+                          onClick={async () => {
+                            try {
+                              const members = teamComposition === 'planner-worker'
+                                ? [
+                                    { agentId: teamPlannerAgent, role: 'planner' as const },
+                                    { agentId: teamWorkerAgent, role: 'worker' as const },
+                                  ]
+                                : [
+                                    { agentId: teamWorkerAgent, role: 'worker' as const },
+                                  ];
+                              const res = await fetch('/api/teams', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ members }),
+                              });
+                              const team = await res.json();
+                              if (res.ok) {
+                                pushSidebarEvent(
+                                  'out',
+                                  'Create Team',
+                                  teamComposition === 'planner-worker'
+                                    ? `${teamPlannerAgent} + ${teamWorkerAgent}`
+                                    : teamWorkerAgent
+                                );
+                                setActiveTeam(team);
+                                setTeams(prev => [...prev, team]);
+                              } else {
+                                setGlobalError(team.error || 'Failed to create team');
+                              }
+                            } catch (err: any) {
+                              setGlobalError(err.message);
+                            }
+                          }}
+                          style={{
+                            padding: '8px',
+                            backgroundColor: teamWorkerAgent && (teamComposition === 'worker-only' || teamPlannerAgent) ? theme.success : theme.bgSurface,
+                            color: '#fff',
+                            border: 'none',
+                            borderRadius: '6px',
+                            cursor: teamWorkerAgent && (teamComposition === 'worker-only' || teamPlannerAgent) ? 'pointer' : 'not-allowed',
+                            fontSize: '12px',
+                            fontWeight: 600,
+                          }}
+                        >
+                          Create Team
+                        </button>
+                      </>
+                    )}
+
+                    {/* Active team */}
+                    {activeTeam && (
+                      <>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span style={{ fontSize: '11px', color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px' }}>
+                            Team
+                          </span>
+                          <span style={{ fontSize: '10px', color: theme.textDim, padding: '2px 6px', backgroundColor: theme.bgSurface, borderRadius: '4px' }}>
+                            {activeTeam.status}
+                          </span>
+                        </div>
+                        <div style={{ fontSize: '11px', color: theme.textSecondary, display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                          {activePlanner && <span>Planner: <strong>{activePlanner.agentId}</strong></span>}
+                          {activeWorker && <span>Worker: <strong>{activeWorker.agentId}</strong></span>}
+                        </div>
+
+                        {/* Task input */}
+                        {(activeTeam.status === 'idle' || activeTeam.status === 'completed') && !activeTeamTask && (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '8px' }}>
+                            <span style={{ fontSize: '10px', color: theme.textMuted }}>Assign Task</span>
+                            <textarea
+                              value={teamTaskInput}
+                              onChange={e => setTeamTaskInput(e.target.value)}
+                              placeholder="Describe the task..."
+                              rows={3}
+                              style={{ backgroundColor: theme.bg, color: theme.textPrimary, border: `1px solid ${theme.borderInput}`, borderRadius: '6px', padding: '8px', fontSize: '12px', resize: 'vertical' }}
+                            />
+                            <button
+                              disabled={!teamTaskInput.trim()}
+                              onClick={async () => {
+                                try {
+                                  const res = await fetch(`/api/teams/${activeTeam.id}/task`, {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ description: teamTaskInput }),
+                                  });
+                                  const task = await res.json();
+                                  if (res.ok) {
+                                    pushSidebarEvent('out', 'Assign Task', teamTaskInput);
+                                    setActiveTeamTask(task);
+                                    setTeamTaskInput('');
+                                  } else {
+                                    setGlobalError(task.error || 'Failed to assign task');
+                                  }
+                                } catch (err: any) {
+                                  setGlobalError(err.message);
+                                }
+                              }}
+                              style={{
+                                padding: '8px',
+                                backgroundColor: teamTaskInput.trim() ? theme.success : theme.bgSurface,
+                                color: '#fff',
+                                border: 'none',
+                                borderRadius: '6px',
+                                cursor: teamTaskInput.trim() ? 'pointer' : 'not-allowed',
+                                fontSize: '12px',
+                                fontWeight: 600,
+                              }}
+                            >
+                              <Send size={12} /> Submit Task
+                            </button>
+                          </div>
+                        )}
+
+                        {/* Task status */}
+                        {activeTeamTask && (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '8px', padding: '8px', backgroundColor: theme.bg, borderRadius: '6px', border: `1px solid ${theme.border}` }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <span style={{ fontSize: '10px', color: theme.textMuted, textTransform: 'uppercase' }}>Task</span>
+                              <span style={{ fontSize: '10px', padding: '2px 6px', borderRadius: '4px', backgroundColor: activeTeamTask.status === 'completed' ? '#1a3a1a' : activeTeamTask.status === 'refused' ? '#3a1a1a' : theme.bgSurface, color: activeTeamTask.status === 'completed' ? theme.success : activeTeamTask.status === 'refused' ? theme.error : theme.textMuted }}>
+                                {activeTeamTask.status}
+                              </span>
+                            </div>
+                            <div style={{ fontSize: '11px', color: theme.textSecondary, wordBreak: 'break-word' }}>
+                              {activeTeamTask.description}
+                            </div>
+
+                            {/* Planning state */}
+                            {activeTeamTask.status === 'planning' && (
+                              <div style={{ fontSize: '11px', color: theme.textMuted, fontStyle: 'italic' }}>
+                                Planner is working on a strategy. Planning completes only when `submit_plan` arrives.
+                              </div>
+                            )}
+
+                            {activeTeamTask.planningComplete && (
+                              <div style={{ fontSize: '11px', color: theme.success }}>
+                                Final plan submitted by {activeTeamTask.plannerAgentId || 'planner'}{activeTeamTask.planSubmittedAt ? ` at ${new Date(activeTeamTask.planSubmittedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}` : ''}.
+                              </div>
+                            )}
+
+                            {/* Plan review */}
+                            {activeTeamTask.status === 'awaiting_confirmation' && activeTeamTask.plan && (
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                <span style={{ fontSize: '10px', color: theme.success, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                                  Planner finished{activeTeamTask.planSubmittedAt ? ` at ${new Date(activeTeamTask.planSubmittedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}` : ''}
+                                </span>
+                                <span style={{ fontSize: '10px', color: theme.textMuted, textTransform: 'uppercase' }}>Plan</span>
+                                <div style={{ fontSize: '11px', color: theme.textPrimary, whiteSpace: 'pre-wrap', padding: '8px', backgroundColor: theme.bgSurface, borderRadius: '4px', maxHeight: '200px', overflow: 'auto', wordBreak: 'break-word' }}>
+                                  {activeTeamTask.plan}
+                                </div>
+                                <div style={{ display: 'flex', gap: '6px' }}>
+                                  <button
+                                    onClick={async () => {
+                                      try {
+                                        await fetch(`/api/teams/${activeTeam.id}/tasks/${activeTeamTask.id}/confirm`, { method: 'POST' });
+                                        pushSidebarEvent('out', 'Confirm Plan', activeTeamTask.id);
+                                      } catch (err: any) {
+                                        setGlobalError(err.message);
+                                      }
+                                    }}
+                                    style={{ flex: 1, padding: '6px', backgroundColor: theme.success, color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '11px', fontWeight: 600 }}
+                                  >
+                                    Confirm
+                                  </button>
+                                  <button
+                                    onClick={() => setShowRejectInput(!showRejectInput)}
+                                    style={{ flex: 1, padding: '6px', backgroundColor: theme.error, color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '11px', fontWeight: 600 }}
+                                  >
+                                    Reject
+                                  </button>
+                                </div>
+                                {showRejectInput && (
+                                  <div style={{ display: 'flex', gap: '4px' }}>
+                                    <input
+                                      value={rejectFeedback}
+                                      onChange={e => setRejectFeedback(e.target.value)}
+                                      placeholder="Feedback..."
+                                      style={{ flex: 1, backgroundColor: theme.bg, color: theme.textPrimary, border: `1px solid ${theme.borderInput}`, borderRadius: '4px', padding: '4px 6px', fontSize: '11px' }}
+                                    />
+                                    <button
+                                      onClick={async () => {
+                                        try {
+                                          await fetch(`/api/teams/${activeTeam.id}/tasks/${activeTeamTask.id}/reject`, {
+                                            method: 'POST',
+                                            headers: { 'Content-Type': 'application/json' },
+                                            body: JSON.stringify({ feedback: rejectFeedback }),
+                                          });
+                                          pushSidebarEvent('out', 'Reject Plan', rejectFeedback || activeTeamTask.id);
+                                          setRejectFeedback('');
+                                          setShowRejectInput(false);
+                                        } catch (err: any) {
+                                          setGlobalError(err.message);
+                                        }
+                                      }}
+                                      style={{ padding: '4px 8px', backgroundColor: theme.error, color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '11px' }}
+                                    >
+                                      Send
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+
+                            {/* Delegated / in progress */}
+                            {activeTeamTask.status === 'delegated' && (
+                              <div style={{ fontSize: '11px', color: theme.textMuted, fontStyle: 'italic' }}>
+                                Worker is reviewing the assignment...
+                              </div>
+                            )}
+                            {activeTeamTask.status === 'in_progress' && (
+                              <div style={{ fontSize: '11px', color: theme.success }}>
+                                Worker accepted and is executing...
+                              </div>
+                            )}
+
+                            {/* Refused */}
+                            {activeTeamTask.status === 'refused' && (
+                              <div style={{ fontSize: '11px', color: theme.error }}>
+                                Worker refused: {activeTeamTask.workerRefusalReason || 'No reason given'}
+                              </div>
+                            )}
+
+                            {/* Completed */}
+                            {activeTeamTask.status === 'completed' && (
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                <span style={{ fontSize: '11px', color: theme.success, fontWeight: 600 }}>Completed</span>
+                                {activeTeamTask.transcript.length > 0 && (
+                                  <div style={{ fontSize: '11px', color: theme.textSecondary, whiteSpace: 'pre-wrap', padding: '6px', backgroundColor: theme.bgSurface, borderRadius: '4px', maxHeight: '150px', overflow: 'auto', wordBreak: 'break-word' }}>
+                                    {activeTeamTask.transcript[activeTeamTask.transcript.length - 1].payload}
+                                  </div>
+                                )}
+                                <button
+                                  onClick={() => { setActiveTeamTask(null); }}
+                                  style={{ padding: '6px', backgroundColor: theme.bgSurface, color: theme.textMuted, border: `1px solid ${theme.border}`, borderRadius: '4px', cursor: 'pointer', fontSize: '11px' }}
+                                >
+                                  New Task
+                                </button>
+                              </div>
+                            )}
+
+                            {/* Direct message to team member */}
+                            {activeTeamTask.status !== 'completed' && activeTeamTask.status !== 'planning' && activeTeamTask.status !== 'delegated' && (
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '4px', borderTop: `1px solid ${theme.border}`, paddingTop: '8px' }}>
+                                <span style={{ fontSize: '10px', color: theme.textMuted }}>Message team member</span>
+                                <div style={{ display: 'flex', gap: '4px' }}>
+                                  <select
+                                    value={teamMessageRole}
+                                    onChange={e => setTeamMessageRole(e.target.value as 'planner' | 'worker')}
+                                    style={{ backgroundColor: theme.bg, color: theme.textPrimary, border: `1px solid ${theme.borderInput}`, borderRadius: '4px', padding: '4px', fontSize: '10px', width: '70px' }}
+                                  >
+                                    {availableTeamMessageRoles.includes('planner') && <option value="planner">Planner</option>}
+                                    {availableTeamMessageRoles.includes('worker') && <option value="worker">Worker</option>}
+                                  </select>
+                                  <input
+                                    value={teamMessageInput}
+                                    onChange={e => setTeamMessageInput(e.target.value)}
+                                    placeholder="Type message..."
+                                    onKeyDown={e => {
+                                      if (e.key === 'Enter' && teamMessageInput.trim() && ws) {
+                                        sendTeamMessage();
+                                      }
+                                    }}
+                                    style={{ flex: 1, backgroundColor: theme.bg, color: theme.textPrimary, border: `1px solid ${theme.borderInput}`, borderRadius: '4px', padding: '4px 6px', fontSize: '11px' }}
+                                  />
+                                  <button
+                                    onClick={sendTeamMessage}
+                                    style={{ padding: '4px 8px', backgroundColor: theme.bgSurface, color: theme.textPrimary, border: `1px solid ${theme.border}`, borderRadius: '4px', cursor: 'pointer' }}
+                                  >
+                                    <Send size={10} />
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Disband team */}
+                        <button
+                          onClick={() => { setActiveTeam(null); setActiveTeamTask(null); }}
+                          style={{ padding: '6px', backgroundColor: 'transparent', color: theme.textDim, border: `1px solid ${theme.border}`, borderRadius: '4px', cursor: 'pointer', fontSize: '10px', marginTop: '4px' }}
+                        >
+                          Disband Team
+                        </button>
+                      </>
+                    )}
+                  </div>
+                )}
+
                 {activeSidebarTab === 'conversation' && (
-                  <>
-                    <span style={{ fontSize: '11px', color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px' }}>
-                      Conversation Topic
-                    </span>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', position: 'relative' }}>
-                      <textarea
-                        value={topic}
-                        onChange={(e) => setTopic(e.target.value)}
-                        placeholder="Enter conversation topic..."
-                        rows={3}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <span style={{ fontSize: '11px', color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px' }}>
+                        Multi-Agent Conversation
+                      </span>
+                      <select
+                        value={conversationAgentA}
+                        onChange={(e) => setConversationAgentA(e.target.value)}
+                        style={getConversationSelectStyle(conversationAgentA)}
+                      >
+                        <option value="">Agent A</option>
+                        {conversationCandidates.map((agent) => (
+                          <option key={`a-${agent.id}`} value={agent.id}>
+                            {agent.id}
+                          </option>
+                        ))}
+                      </select>
+                      <select
+                        value={conversationAgentB}
+                        onChange={(e) => setConversationAgentB(e.target.value)}
+                        style={getConversationSelectStyle(conversationAgentB)}
+                      >
+                        <option value="">Agent B</option>
+                        {conversationCandidates.map((agent) => (
+                          <option key={`b-${agent.id}`} value={agent.id}>
+                            {agent.id}
+                          </option>
+                        ))}
+                      </select>
+                      <select
+                        value={conversationAgentC}
+                        onChange={(e) => setConversationAgentC(e.target.value)}
+                        style={getConversationSelectStyle(conversationAgentC)}
+                      >
+                        <option value="">Agent C (Optional)</option>
+                        {conversationCandidates.map((agent) => (
+                          <option key={`c-${agent.id}`} value={agent.id}>
+                            {agent.id}
+                          </option>
+                        ))}
+                      </select>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        <span style={{ fontSize: '10px', color: theme.textDim, textTransform: 'uppercase' }}>Max replies per agent</span>
+                        <input
+                          type="number"
+                          min={1}
+                          max={20}
+                          value={maxReplies}
+                          onChange={(e) => setMaxReplies(parseInt(e.target.value) || 1)}
+                          style={{
+                            backgroundColor: theme.bg,
+                            color: theme.textPrimary,
+                            border: `1px solid ${theme.borderInput}`,
+                            borderRadius: '6px',
+                            padding: '6px 10px',
+                            fontSize: '13px',
+                            outline: 'none',
+                          }}
+                        />
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', position: 'relative' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span style={{ fontSize: '10px', color: theme.textDim, textTransform: 'uppercase' }}>Discussion Topic</span>
+                          <button
+                            onClick={() => setShowHistory(!showHistory)}
+                            style={{ background: 'none', border: 'none', color: theme.textMuted, cursor: 'pointer', display: 'flex', alignItems: 'center', padding: '2px' }}
+                            title="Topic History"
+                          >
+                            <HistoryIcon size={14} />
+                          </button>
+                        </div>
+                        <textarea
+                          value={topic}
+                          onChange={(e) => setTopic(e.target.value)}
+                          style={{
+                            backgroundColor: theme.bg,
+                            color: theme.textPrimary,
+                            border: `1px solid ${theme.borderInput}`,
+                            borderRadius: '6px',
+                            padding: '8px 10px',
+                            fontSize: '12px',
+                            outline: 'none',
+                            minHeight: '80px',
+                            maxHeight: '150px',
+                            resize: 'vertical',
+                            fontFamily: 'inherit',
+                            lineHeight: '1.4',
+                          }}
+                        />
+
+                        {showHistory && (
+                          <div style={{
+                            position: 'absolute',
+                            bottom: '100%',
+                            left: 0,
+                            right: 0,
+                            backgroundColor: theme.bgSurface,
+                            border: `1px solid ${theme.borderLight}`,
+                            borderRadius: '6px',
+                            boxShadow: '0 -4px 12px rgba(0, 0, 0, 0.5)',
+                            zIndex: 100,
+                            maxHeight: '200px',
+                            overflowY: 'auto',
+                            marginBottom: '8px',
+                          }}>
+                            <div style={{ padding: '8px 12px', fontSize: '11px', color: theme.textMuted, borderBottom: '1px solid #3d3d3d', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <span>PAST TOPICS</span>
+                              <X size={12} style={{ cursor: 'pointer' }} onClick={() => setShowHistory(false)} />
+                            </div>
+                            {topicHistory.length === 0 ? (
+                              <div style={{ padding: '12px', fontSize: '12px', color: theme.textDim, textAlign: 'center' }}>No history yet</div>
+                            ) : (
+                              topicHistory.map((h, i) => (
+                                <div
+                                  key={i}
+                                  onClick={() => { setTopic(h); setShowHistory(false); }}
+                                  style={{
+                                    padding: '8px 12px',
+                                    fontSize: '12px',
+                                    color: theme.textSecondary,
+                                    cursor: 'pointer',
+                                    borderBottom: i === topicHistory.length - 1 ? 'none' : '1px solid #3d3d3d',
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis',
+                                    display: '-webkit-box',
+                                    WebkitLineClamp: 2,
+                                    WebkitBoxOrient: 'vertical',
+                                  }}
+                                  onMouseOver={(e) => { e.currentTarget.style.backgroundColor = '#3d3d3d'; }}
+                                  onMouseOut={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
+                                  title={h}
+                                >
+                                  {h}
+                                </div>
+                              ))
+                            )}
+                          </div>
+                        )}
+                      </div>
+                      <button
+                        onClick={startConversation}
+                        disabled={!ws || ws.readyState !== WebSocket.OPEN || [...new Set([conversationAgentA, conversationAgentB, conversationAgentC].filter(Boolean))].length < 2}
                         style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '8px',
                           backgroundColor: theme.bg,
                           color: theme.textPrimary,
                           border: `1px solid ${theme.borderInput}`,
                           borderRadius: '6px',
-                          padding: '10px',
+                          padding: '8px 10px',
                           fontSize: '13px',
-                          resize: 'vertical',
-                          outline: 'none',
+                          cursor: 'pointer',
+                          opacity: (!ws || ws.readyState !== WebSocket.OPEN || [...new Set([conversationAgentA, conversationAgentB, conversationAgentC].filter(Boolean))].length < 2) ? 0.5 : 1,
                         }}
-                      />
+                      >
+                        <MessagesSquare size={14} />
+                        Start Conversation
+                      </button>
                     </div>
-                  </>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <span style={{ fontSize: '11px', color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '4px' }}>
+                        Past Conversations
+                      </span>
+                      {conversationHistory.length === 0 ? (
+                        <div style={{ fontSize: '12px', color: theme.textDim, textAlign: 'center', padding: '20px 0' }}>No conversations yet</div>
+                      ) : (
+                        conversationHistory.map((conv) => {
+                          const msgCount = conv.transcript.filter(e => e.kind === 'message').length;
+                          const isActive = conv.id === activeConversationId;
+                          return (
+                            <div
+                              key={conv.id}
+                              onClick={() => { setActiveConversationId(conv.id); setActiveConversation(conv); setSelectedAgentId(null); }}
+                              style={{
+                                padding: '10px 12px',
+                                cursor: 'pointer',
+                                backgroundColor: isActive ? '#3a3d49' : '#252526',
+                                border: isActive ? '1px solid #555' : '1px solid #333',
+                                borderRadius: '6px',
+                                transition: 'background-color 0.15s',
+                              }}
+                              onMouseOver={(e) => { if (!isActive) e.currentTarget.style.backgroundColor = '#2d2d2d'; }}
+                              onMouseOut={(e) => { if (!isActive) e.currentTarget.style.backgroundColor = '#252526'; }}
+                            >
+                              <div style={{ fontSize: '11px', color: theme.textSubtle, marginBottom: '4px', display: 'flex', justifyContent: 'space-between' }}>
+                                <span>{new Date(conv.createdAt).toLocaleDateString([], { month: 'short', day: 'numeric' })} {new Date(conv.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                <span style={{
+                                  fontSize: '9px',
+                                  padding: '1px 6px',
+                                  borderRadius: '8px',
+                                  backgroundColor: conv.status === 'completed' ? '#2d4a2d' : '#4a3d2d',
+                                  color: conv.status === 'completed' ? '#4caf50' : '#e0a030',
+                                }}>
+                                  {conv.status}
+                                </span>
+                              </div>
+                              <div style={{
+                                fontSize: '12px',
+                                color: theme.textSecondary,
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                display: '-webkit-box',
+                                WebkitLineClamp: 2,
+                                WebkitBoxOrient: 'vertical',
+                                lineHeight: '1.3',
+                                marginBottom: '6px',
+                              }}>
+                                {conv.topic}
+                              </div>
+                              <div style={{ fontSize: '10px', color: theme.textDim, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <span>{conv.agentIds.join(', ')} · {msgCount} messages</span>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    fetch(`/api/conversations/${conv.id}`, { method: 'DELETE' }).then(() => {
+                                      if (activeConversationId === conv.id) {
+                                        setActiveConversationId(null);
+                                        setActiveConversation(null);
+                                      }
+                                      fetchConversationHistory();
+                                    });
+                                  }}
+                                  style={{ background: 'none', border: 'none', color: theme.textDim, cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center' }}
+                                  onMouseOver={(e) => { e.currentTarget.style.color = '#e06c75'; }}
+                                  onMouseOut={(e) => { e.currentTarget.style.color = '#666'; }}
+                                  title="Remove conversation"
+                                >
+                                  <Trash2 size={12} />
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+                  </div>
                 )}
-                {/* (The rest of team/chat content should be here too, but I'll focus on the structure) */}
               </div>
 
               {/* Agent creation section */}
@@ -1250,7 +1811,7 @@ function App() {
                       padding: '8px 12px',
                       fontSize: '11px',
                       fontWeight: 700,
-                      textTransform: 'uppercase',
+                      textTransform: 'uppercase' as const,
                       backgroundColor: activeConfigSubTab === 'usage' ? theme.bgActive : 'transparent',
                       color: activeConfigSubTab === 'usage' ? '#fff' : '#888',
                       border: 'none',
@@ -1272,19 +1833,19 @@ function App() {
               <div style={{ padding: '16px', flex: 1, overflowY: 'auto' }}>
                 {activeConfigSubTab === 'usage' && (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                    <h3 style={{ margin: 0, fontSize: '12px', textTransform: 'uppercase', color: theme.textMuted, letterSpacing: '0.8px' }}>
+                    <h3 style={{ margin: 0, fontSize: '12px', textTransform: 'uppercase' as const, color: theme.textMuted, letterSpacing: '0.8px' }}>
                       Gemini Detailed Usage
                     </h3>
                     {!selectedAgentId ? (
-                      <div style={{ color: theme.textMuted, fontSize: '13px', textAlign: 'center', marginTop: '20px', padding: '20px', backgroundColor: theme.bgSurface, borderRadius: '8px', border: `1px dashed ${theme.border}` }}>
+                      <div style={{ color: theme.textMuted, fontSize: '13px', textAlign: 'center' as const, marginTop: '20px', padding: '20px', backgroundColor: theme.bgSurface, borderRadius: '8px', border: `1px dashed ${theme.border}` }}>
                         Select an agent to see detailed usage.
                       </div>
                     ) : selectedAgent?.provider !== 'gemini' ? (
-                      <div style={{ color: theme.textMuted, fontSize: '13px', textAlign: 'center', marginTop: '20px', padding: '20px', backgroundColor: theme.bgSurface, borderRadius: '8px', border: `1px dashed ${theme.border}` }}>
+                      <div style={{ color: theme.textMuted, fontSize: '13px', textAlign: 'center' as const, marginTop: '20px', padding: '20px', backgroundColor: theme.bgSurface, borderRadius: '8px', border: `1px dashed ${theme.border}` }}>
                         Detailed usage is only available for Gemini agents.
                       </div>
                     ) : !selectedAgent?.usageStats ? (
-                      <div style={{ color: theme.textMuted, fontSize: '13px', textAlign: 'center', marginTop: '20px', padding: '20px', backgroundColor: theme.bgSurface, borderRadius: '8px', border: `1px dashed ${theme.border}` }}>
+                      <div style={{ color: theme.textMuted, fontSize: '13px', textAlign: 'center' as const, marginTop: '20px', padding: '20px', backgroundColor: theme.bgSurface, borderRadius: '8px', border: `1px dashed ${theme.border}` }}>
                         <div style={{ marginBottom: '8px' }}><Activity size={24} className="animate-pulse" /></div>
                         Waiting for usage data from agent <strong>{selectedAgentId}</strong>...
                       </div>
@@ -1296,593 +1857,8 @@ function App() {
               </div>
             </div>
           )}
-                {/* Team creation */}
-                {!activeTeam && (
-                  <>
-                    <span style={{ fontSize: '11px', color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px' }}>
-                      Create Team
-                    </span>
-                    <label style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                      <span style={{ fontSize: '10px', color: theme.textMuted }}>Composition</span>
-                      <select
-                        value={teamComposition}
-                        onChange={e => {
-                          const nextComposition = e.target.value as TeamComposition;
-                          setTeamComposition(nextComposition);
-                          if (nextComposition === 'worker-only') {
-                            setTeamPlannerAgent('');
-                            setTeamMessageRole('worker');
-                          } else if (teamMessageRole === 'worker') {
-                            setTeamMessageRole('planner');
-                          }
-                        }}
-                        style={{ backgroundColor: theme.bg, color: theme.textPrimary, border: `1px solid ${theme.borderInput}`, borderRadius: '6px', padding: '6px 8px', fontSize: '12px' }}
-                      >
-                        <option value="worker-only">Only Worker</option>
-                        <option value="planner-worker">Planner + Worker</option>
-                      </select>
-                    </label>
-                    {teamComposition === 'planner-worker' && (
-                    <label style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                      <span style={{ fontSize: '10px', color: theme.textMuted }}>Planner Agent</span>
-                      <select
-                        value={teamPlannerAgent}
-                        onChange={e => setTeamPlannerAgent(e.target.value)}
-                        style={{ backgroundColor: theme.bg, color: theme.textPrimary, border: `1px solid ${theme.borderInput}`, borderRadius: '6px', padding: '6px 8px', fontSize: '12px' }}
-                      >
-                        <option value="">Select...</option>
-                        {agents.filter(a => a.status === 'ready' || a.status === 'busy').map(a => (
-                          <option key={a.id} value={a.id} disabled={a.id === teamWorkerAgent}>{a.id}</option>
-                        ))}
-                      </select>
-                    </label>
-                    )}
-                    <label style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                      <span style={{ fontSize: '10px', color: theme.textMuted }}>Worker Agent</span>
-                      <select
-                        value={teamWorkerAgent}
-                        onChange={e => setTeamWorkerAgent(e.target.value)}
-                        style={{ backgroundColor: theme.bg, color: theme.textPrimary, border: `1px solid ${theme.borderInput}`, borderRadius: '6px', padding: '6px 8px', fontSize: '12px' }}
-                      >
-                        <option value="">Select...</option>
-                        {agents.filter(a => a.status === 'ready' || a.status === 'busy').map(a => (
-                          <option key={a.id} value={a.id} disabled={a.id === teamPlannerAgent}>{a.id}</option>
-                        ))}
-                      </select>
-                    </label>
-                    <button
-                      disabled={!teamWorkerAgent || (teamComposition === 'planner-worker' && !teamPlannerAgent)}
-                      onClick={async () => {
-                        try {
-                          const members = teamComposition === 'planner-worker'
-                            ? [
-                                { agentId: teamPlannerAgent, role: 'planner' as const },
-                                { agentId: teamWorkerAgent, role: 'worker' as const },
-                              ]
-                            : [
-                                { agentId: teamWorkerAgent, role: 'worker' as const },
-                              ];
-                          const res = await fetch('/api/teams', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ members }),
-                          });
-                          const team = await res.json();
-                          if (res.ok) {
-                            pushSidebarEvent(
-                              'out',
-                              'Create Team',
-                              teamComposition === 'planner-worker'
-                                ? `${teamPlannerAgent} + ${teamWorkerAgent}`
-                                : teamWorkerAgent
-                            );
-                            setActiveTeam(team);
-                            setTeams(prev => [...prev, team]);
-                          } else {
-                            setGlobalError(team.error || 'Failed to create team');
-                          }
-                        } catch (err: any) {
-                          setGlobalError(err.message);
-                        }
-                      }}
-                      style={{
-                        padding: '8px',
-                        backgroundColor: teamWorkerAgent && (teamComposition === 'worker-only' || teamPlannerAgent) ? theme.success : theme.bgSurface,
-                        color: '#fff',
-                        border: 'none',
-                        borderRadius: '6px',
-                        cursor: teamWorkerAgent && (teamComposition === 'worker-only' || teamPlannerAgent) ? 'pointer' : 'not-allowed',
-                        fontSize: '12px',
-                        fontWeight: 600,
-                      }}
-                    >
-                      Create Team
-                    </button>
-                  </>
-                )}
 
-                {/* Active team */}
-                {activeTeam && (
-                  <>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ fontSize: '11px', color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px' }}>
-                        Team
-                      </span>
-                      <span style={{ fontSize: '10px', color: theme.textDim, padding: '2px 6px', backgroundColor: theme.bgSurface, borderRadius: '4px' }}>
-                        {activeTeam.status}
-                      </span>
-                    </div>
-                    <div style={{ fontSize: '11px', color: theme.textSecondary, display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                      {activePlanner && <span>Planner: <strong>{activePlanner.agentId}</strong></span>}
-                      {activeWorker && <span>Worker: <strong>{activeWorker.agentId}</strong></span>}
-                    </div>
-
-                    {/* Task input */}
-                    {(activeTeam.status === 'idle' || activeTeam.status === 'completed') && !activeTeamTask && (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '8px' }}>
-                        <span style={{ fontSize: '10px', color: theme.textMuted }}>Assign Task</span>
-                        <textarea
-                          value={teamTaskInput}
-                          onChange={e => setTeamTaskInput(e.target.value)}
-                          placeholder="Describe the task..."
-                          rows={3}
-                          style={{ backgroundColor: theme.bg, color: theme.textPrimary, border: `1px solid ${theme.borderInput}`, borderRadius: '6px', padding: '8px', fontSize: '12px', resize: 'vertical' }}
-                        />
-                        <button
-                          disabled={!teamTaskInput.trim()}
-                          onClick={async () => {
-                            try {
-                              const res = await fetch(`/api/teams/${activeTeam.id}/task`, {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ description: teamTaskInput }),
-                              });
-                              const task = await res.json();
-                              if (res.ok) {
-                                pushSidebarEvent('out', 'Assign Task', teamTaskInput);
-                                setActiveTeamTask(task);
-                                setTeamTaskInput('');
-                              } else {
-                                setGlobalError(task.error || 'Failed to assign task');
-                              }
-                            } catch (err: any) {
-                              setGlobalError(err.message);
-                            }
-                          }}
-                          style={{
-                            padding: '8px',
-                            backgroundColor: teamTaskInput.trim() ? theme.success : theme.bgSurface,
-                            color: '#fff',
-                            border: 'none',
-                            borderRadius: '6px',
-                            cursor: teamTaskInput.trim() ? 'pointer' : 'not-allowed',
-                            fontSize: '12px',
-                            fontWeight: 600,
-                          }}
-                        >
-                          <Send size={12} /> Submit Task
-                        </button>
-                      </div>
-                    )}
-
-                    {/* Task status */}
-                    {activeTeamTask && (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '8px', padding: '8px', backgroundColor: theme.bg, borderRadius: '6px', border: `1px solid ${theme.border}` }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <span style={{ fontSize: '10px', color: theme.textMuted, textTransform: 'uppercase' }}>Task</span>
-                          <span style={{ fontSize: '10px', padding: '2px 6px', borderRadius: '4px', backgroundColor: activeTeamTask.status === 'completed' ? '#1a3a1a' : activeTeamTask.status === 'refused' ? '#3a1a1a' : theme.bgSurface, color: activeTeamTask.status === 'completed' ? theme.success : activeTeamTask.status === 'refused' ? theme.error : theme.textMuted }}>
-                            {activeTeamTask.status}
-                          </span>
-                        </div>
-                        <div style={{ fontSize: '11px', color: theme.textSecondary, wordBreak: 'break-word' }}>
-                          {activeTeamTask.description}
-                        </div>
-
-                        {/* Planning state */}
-                        {activeTeamTask.status === 'planning' && (
-                          <div style={{ fontSize: '11px', color: theme.textMuted, fontStyle: 'italic' }}>
-                            Planner is working on a strategy. Planning completes only when `submit_plan` arrives.
-                          </div>
-                        )}
-
-                        {activeTeamTask.planningComplete && (
-                          <div style={{ fontSize: '11px', color: theme.success }}>
-                            Final plan submitted by {activeTeamTask.plannerAgentId || 'planner'}{activeTeamTask.planSubmittedAt ? ` at ${new Date(activeTeamTask.planSubmittedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}` : ''}.
-                          </div>
-                        )}
-
-                        {/* Plan review */}
-                        {activeTeamTask.status === 'awaiting_confirmation' && activeTeamTask.plan && (
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                            <span style={{ fontSize: '10px', color: theme.success, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                              Planner finished{activeTeamTask.planSubmittedAt ? ` at ${new Date(activeTeamTask.planSubmittedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}` : ''}
-                            </span>
-                            <span style={{ fontSize: '10px', color: theme.textMuted, textTransform: 'uppercase' }}>Plan</span>
-                            <div style={{ fontSize: '11px', color: theme.textPrimary, whiteSpace: 'pre-wrap', padding: '8px', backgroundColor: theme.bgSurface, borderRadius: '4px', maxHeight: '200px', overflow: 'auto', wordBreak: 'break-word' }}>
-                              {activeTeamTask.plan}
-                            </div>
-                            <div style={{ display: 'flex', gap: '6px' }}>
-                              <button
-                                onClick={async () => {
-                                  try {
-                                    await fetch(`/api/teams/${activeTeam.id}/tasks/${activeTeamTask.id}/confirm`, { method: 'POST' });
-                                    pushSidebarEvent('out', 'Confirm Plan', activeTeamTask.id);
-                                  } catch (err: any) {
-                                    setGlobalError(err.message);
-                                  }
-                                }}
-                                style={{ flex: 1, padding: '6px', backgroundColor: theme.success, color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '11px', fontWeight: 600 }}
-                              >
-                                Confirm
-                              </button>
-                              <button
-                                onClick={() => setShowRejectInput(!showRejectInput)}
-                                style={{ flex: 1, padding: '6px', backgroundColor: theme.error, color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '11px', fontWeight: 600 }}
-                              >
-                                Reject
-                              </button>
-                            </div>
-                            {showRejectInput && (
-                              <div style={{ display: 'flex', gap: '4px' }}>
-                                <input
-                                  value={rejectFeedback}
-                                  onChange={e => setRejectFeedback(e.target.value)}
-                                  placeholder="Feedback..."
-                                  style={{ flex: 1, backgroundColor: theme.bg, color: theme.textPrimary, border: `1px solid ${theme.borderInput}`, borderRadius: '4px', padding: '4px 6px', fontSize: '11px' }}
-                                />
-                                <button
-                                  onClick={async () => {
-                                    try {
-                                      await fetch(`/api/teams/${activeTeam.id}/tasks/${activeTeamTask.id}/reject`, {
-                                        method: 'POST',
-                                        headers: { 'Content-Type': 'application/json' },
-                                        body: JSON.stringify({ feedback: rejectFeedback }),
-                                      });
-                                      pushSidebarEvent('out', 'Reject Plan', rejectFeedback || activeTeamTask.id);
-                                      setRejectFeedback('');
-                                      setShowRejectInput(false);
-                                    } catch (err: any) {
-                                      setGlobalError(err.message);
-                                    }
-                                  }}
-                                  style={{ padding: '4px 8px', backgroundColor: theme.error, color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '11px' }}
-                                >
-                                  Send
-                                </button>
-                              </div>
-                            )}
-                          </div>
-                        )}
-
-                        {/* Delegated / in progress */}
-                        {activeTeamTask.status === 'delegated' && (
-                          <div style={{ fontSize: '11px', color: theme.textMuted, fontStyle: 'italic' }}>
-                            Worker is reviewing the assignment...
-                          </div>
-                        )}
-                        {activeTeamTask.status === 'in_progress' && (
-                          <div style={{ fontSize: '11px', color: theme.success }}>
-                            Worker accepted and is executing...
-                          </div>
-                        )}
-
-                        {/* Refused */}
-                        {activeTeamTask.status === 'refused' && (
-                          <div style={{ fontSize: '11px', color: theme.error }}>
-                            Worker refused: {activeTeamTask.workerRefusalReason || 'No reason given'}
-                          </div>
-                        )}
-
-                        {/* Completed */}
-                        {activeTeamTask.status === 'completed' && (
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                            <span style={{ fontSize: '11px', color: theme.success, fontWeight: 600 }}>Completed</span>
-                            {activeTeamTask.transcript.length > 0 && (
-                              <div style={{ fontSize: '11px', color: theme.textSecondary, whiteSpace: 'pre-wrap', padding: '6px', backgroundColor: theme.bgSurface, borderRadius: '4px', maxHeight: '150px', overflow: 'auto', wordBreak: 'break-word' }}>
-                                {activeTeamTask.transcript[activeTeamTask.transcript.length - 1].payload}
-                              </div>
-                            )}
-                            <button
-                              onClick={() => { setActiveTeamTask(null); }}
-                              style={{ padding: '6px', backgroundColor: theme.bgSurface, color: theme.textMuted, border: `1px solid ${theme.border}`, borderRadius: '4px', cursor: 'pointer', fontSize: '11px' }}
-                            >
-                              New Task
-                            </button>
-                          </div>
-                        )}
-
-                        {/* Direct message to team member */}
-                        {activeTeamTask.status !== 'completed' && activeTeamTask.status !== 'planning' && activeTeamTask.status !== 'delegated' && (
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '4px', borderTop: `1px solid ${theme.border}`, paddingTop: '8px' }}>
-                            <span style={{ fontSize: '10px', color: theme.textMuted }}>Message team member</span>
-                            <div style={{ display: 'flex', gap: '4px' }}>
-                              <select
-                                value={teamMessageRole}
-                                onChange={e => setTeamMessageRole(e.target.value as 'planner' | 'worker')}
-                                style={{ backgroundColor: theme.bg, color: theme.textPrimary, border: `1px solid ${theme.borderInput}`, borderRadius: '4px', padding: '4px', fontSize: '10px', width: '70px' }}
-                              >
-                                {availableTeamMessageRoles.includes('planner') && <option value="planner">Planner</option>}
-                                {availableTeamMessageRoles.includes('worker') && <option value="worker">Worker</option>}
-                              </select>
-                              <input
-                                value={teamMessageInput}
-                                onChange={e => setTeamMessageInput(e.target.value)}
-                                placeholder="Type message..."
-                                onKeyDown={e => {
-                                  if (e.key === 'Enter' && teamMessageInput.trim() && ws) {
-                                    sendTeamMessage();
-                                  }
-                                }}
-                                style={{ flex: 1, backgroundColor: theme.bg, color: theme.textPrimary, border: `1px solid ${theme.borderInput}`, borderRadius: '4px', padding: '4px 6px', fontSize: '11px' }}
-                              />
-                              <button
-                                onClick={sendTeamMessage}
-                                style={{ padding: '4px 8px', backgroundColor: theme.bgSurface, color: theme.textPrimary, border: `1px solid ${theme.border}`, borderRadius: '4px', cursor: 'pointer' }}
-                              >
-                                <Send size={10} />
-                              </button>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    {/* Disband team */}
-                    <button
-                      onClick={() => { setActiveTeam(null); setActiveTeamTask(null); }}
-                      style={{ padding: '6px', backgroundColor: 'transparent', color: theme.textDim, border: `1px solid ${theme.border}`, borderRadius: '4px', cursor: 'pointer', fontSize: '10px', marginTop: '4px' }}
-                    >
-                      Disband Team
-                    </button>
-                  </>
-                )}
-              </div>
-            )}
-
-            {activeSidebarTab === 'conversation' && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <span style={{ fontSize: '11px', color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px' }}>
-                    Multi-Agent Conversation
-                  </span>
-                  <select
-                    value={conversationAgentA}
-                    onChange={(e) => setConversationAgentA(e.target.value)}
-                    style={getConversationSelectStyle(conversationAgentA)}
-                  >
-                    <option value="">Agent A</option>
-                    {conversationCandidates.map((agent) => (
-                      <option key={`a-${agent.id}`} value={agent.id}>
-                        {agent.id}
-                      </option>
-                    ))}
-                  </select>
-                  <select
-                    value={conversationAgentB}
-                    onChange={(e) => setConversationAgentB(e.target.value)}
-                    style={getConversationSelectStyle(conversationAgentB)}
-                  >
-                    <option value="">Agent B</option>
-                    {conversationCandidates.map((agent) => (
-                      <option key={`b-${agent.id}`} value={agent.id}>
-                        {agent.id}
-                      </option>
-                    ))}
-                  </select>
-                  <select
-                    value={conversationAgentC}
-                    onChange={(e) => setConversationAgentC(e.target.value)}
-                    style={getConversationSelectStyle(conversationAgentC)}
-                  >
-                    <option value="">Agent C (Optional)</option>
-                    {conversationCandidates.map((agent) => (
-                      <option key={`c-${agent.id}`} value={agent.id}>
-                        {agent.id}
-                      </option>
-                    ))}
-                  </select>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                    <span style={{ fontSize: '10px', color: theme.textDim, textTransform: 'uppercase' }}>Max replies per agent</span>
-                    <input
-                      type="number"
-                      min={1}
-                      max={20}
-                      value={maxReplies}
-                      onChange={(e) => setMaxReplies(parseInt(e.target.value) || 1)}
-                      style={{
-                        backgroundColor: theme.bg,
-                        color: theme.textPrimary,
-                        border: `1px solid ${theme.borderInput}`,
-                        borderRadius: '6px',
-                        padding: '6px 10px',
-                        fontSize: '13px',
-                        outline: 'none',
-                      }}
-                    />
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', position: 'relative' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ fontSize: '10px', color: theme.textDim, textTransform: 'uppercase' }}>Discussion Topic</span>
-                      <button
-                        onClick={() => setShowHistory(!showHistory)}
-                        style={{ background: 'none', border: 'none', color: theme.textMuted, cursor: 'pointer', display: 'flex', alignItems: 'center', padding: '2px' }}
-                        title="Topic History"
-                      >
-                        <History size={14} />
-                      </button>
-                    </div>
-                    <textarea
-                      value={topic}
-                      onChange={(e) => setTopic(e.target.value)}
-                      style={{
-                        backgroundColor: theme.bg,
-                        color: theme.textPrimary,
-                        border: `1px solid ${theme.borderInput}`,
-                        borderRadius: '6px',
-                        padding: '8px 10px',
-                        fontSize: '12px',
-                        outline: 'none',
-                        minHeight: '80px',
-                        maxHeight: '150px',
-                        resize: 'vertical',
-                        fontFamily: 'inherit',
-                        lineHeight: '1.4',
-                      }}
-                    />
-
-                    {showHistory && (
-                      <div style={{
-                        position: 'absolute',
-                        bottom: '100%',
-                        left: 0,
-                        right: 0,
-                        backgroundColor: theme.bgSurface,
-                        border: `1px solid ${theme.borderLight}`,
-                        borderRadius: '6px',
-                        boxShadow: '0 -4px 12px rgba(0, 0, 0, 0.5)',
-                        zIndex: 100,
-                        maxHeight: '200px',
-                        overflowY: 'auto',
-                        marginBottom: '8px',
-                      }}>
-                        <div style={{ padding: '8px 12px', fontSize: '11px', color: theme.textMuted, borderBottom: '1px solid #3d3d3d', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <span>PAST TOPICS</span>
-                          <X size={12} style={{ cursor: 'pointer' }} onClick={() => setShowHistory(false)} />
-                        </div>
-                        {topicHistory.length === 0 ? (
-                          <div style={{ padding: '12px', fontSize: '12px', color: theme.textDim, textAlign: 'center' }}>No history yet</div>
-                        ) : (
-                          topicHistory.map((h, i) => (
-                            <div
-                              key={i}
-                              onClick={() => { setTopic(h); setShowHistory(false); }}
-                              style={{
-                                padding: '8px 12px',
-                                fontSize: '12px',
-                                color: theme.textSecondary,
-                                cursor: 'pointer',
-                                borderBottom: i === topicHistory.length - 1 ? 'none' : '1px solid #3d3d3d',
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                                display: '-webkit-box',
-                                WebkitLineClamp: 2,
-                                WebkitBoxOrient: 'vertical',
-                              }}
-                              onMouseOver={(e) => { e.currentTarget.style.backgroundColor = '#3d3d3d'; }}
-                              onMouseOut={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
-                              title={h}
-                            >
-                              {h}
-                            </div>
-                          ))
-                        )}
-                      </div>
-                    )}
-                  </div>
-                  <button
-                    onClick={startConversation}
-                    disabled={!ws || ws.readyState !== WebSocket.OPEN || [...new Set([conversationAgentA, conversationAgentB, conversationAgentC].filter(Boolean))].length < 2}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '8px',
-                      backgroundColor: theme.bg,
-                      color: theme.textPrimary,
-                      border: `1px solid ${theme.borderInput}`,
-                      borderRadius: '6px',
-                      padding: '8px 10px',
-                      fontSize: '13px',
-                      cursor: 'pointer',
-                      opacity: (!ws || ws.readyState !== WebSocket.OPEN || [...new Set([conversationAgentA, conversationAgentB, conversationAgentC].filter(Boolean))].length < 2) ? 0.5 : 1,
-                    }}
-                  >
-                    <MessagesSquare size={14} />
-                    Start Conversation
-                  </button>
-                </div>
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                  <span style={{ fontSize: '11px', color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '4px' }}>
-                    Past Conversations
-                  </span>
-                  {conversationHistory.length === 0 ? (
-                    <div style={{ fontSize: '12px', color: theme.textDim, textAlign: 'center', padding: '20px 0' }}>No conversations yet</div>
-                  ) : (
-                    conversationHistory.map((conv) => {
-                      const msgCount = conv.transcript.filter(e => e.kind === 'message').length;
-                      const isActive = conv.id === activeConversationId;
-                      return (
-                        <div
-                          key={conv.id}
-                          onClick={() => { setActiveConversationId(conv.id); setActiveConversation(conv); setSelectedAgentId(null); }}
-                          style={{
-                            padding: '10px 12px',
-                            cursor: 'pointer',
-                            backgroundColor: isActive ? '#3a3d49' : '#252526',
-                            border: isActive ? '1px solid #555' : '1px solid #333',
-                            borderRadius: '6px',
-                            transition: 'background-color 0.15s',
-                          }}
-                          onMouseOver={(e) => { if (!isActive) e.currentTarget.style.backgroundColor = '#2d2d2d'; }}
-                          onMouseOut={(e) => { if (!isActive) e.currentTarget.style.backgroundColor = '#252526'; }}
-                        >
-                          <div style={{ fontSize: '11px', color: theme.textSubtle, marginBottom: '4px', display: 'flex', justifyContent: 'space-between' }}>
-                            <span>{new Date(conv.createdAt).toLocaleDateString([], { month: 'short', day: 'numeric' })} {new Date(conv.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                            <span style={{
-                              fontSize: '9px',
-                              padding: '1px 6px',
-                              borderRadius: '8px',
-                              backgroundColor: conv.status === 'completed' ? '#2d4a2d' : '#4a3d2d',
-                              color: conv.status === 'completed' ? '#4caf50' : '#e0a030',
-                            }}>
-                              {conv.status}
-                            </span>
-                          </div>
-                          <div style={{
-                            fontSize: '12px',
-                            color: theme.textSecondary,
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            display: '-webkit-box',
-                            WebkitLineClamp: 2,
-                            WebkitBoxOrient: 'vertical',
-                            lineHeight: '1.3',
-                            marginBottom: '6px',
-                          }}>
-                            {conv.topic}
-                          </div>
-                          <div style={{ fontSize: '10px', color: theme.textDim, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <span>{conv.agentIds.join(', ')} · {msgCount} messages</span>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                fetch(`/api/conversations/${conv.id}`, { method: 'DELETE' }).then(() => {
-                                  if (activeConversationId === conv.id) {
-                                    setActiveConversationId(null);
-                                    setActiveConversation(null);
-                                  }
-                                  fetchConversationHistory();
-                                });
-                              }}
-                              style={{ background: 'none', border: 'none', color: theme.textDim, cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center' }}
-                              onMouseOver={(e) => { e.currentTarget.style.color = '#e06c75'; }}
-                              onMouseOut={(e) => { e.currentTarget.style.color = '#666'; }}
-                              title="Remove conversation"
-                            >
-                              <Trash2 size={12} />
-                            </button>
-                          </div>
-                        </div>
-                      );
-                    })
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
-            </>
-          )}
+          {/* Sidebar Events section - always at the bottom */}
           <div style={{ borderTop: `1px solid ${theme.border}`, backgroundColor: theme.bgSurface, display: 'flex', flexDirection: 'column', minHeight: 0, ...(sidebarEventsCollapsed ? {} : { height: '128px' }) }}>
             <div
               onClick={() => setSidebarEventsCollapsed(c => !c)}
@@ -1908,7 +1884,7 @@ function App() {
                     No agent events yet.
                   </div>
                 ) : (
-                  sidebarEvents.slice(0, 2).map((entry) => (
+                  sidebarEvents.map((entry) => (
                     <div
                       key={entry.id}
                       style={{
@@ -2063,7 +2039,7 @@ function App() {
             </>
           ) : (
             <div style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', color: theme.textDim }}>
-              <div style={{ textAlign: 'center' }}>
+              <div style={{ textAlign: 'center' as const }}>
                 <TerminalIcon size={48} style={{ marginBottom: '16px', opacity: 0.5 }} />
                 <div>Select an agent from the sidebar or spawn a new one.</div>
               </div>
