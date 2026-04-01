@@ -6,6 +6,7 @@ import { WebSocketServer, WebSocket } from 'ws';
 import { Registry } from './registry.js';
 import type { AgentExecutionMode, TeamMember, TeamRole } from './shared/types.js';
 import type { ProcessSpawnOptions } from './agents/process-adapter.js';
+import type { SessionRecorder } from './recordings/session-recorder.js';
 
 type TerminalHistoryEvent =
   | { type: 'output'; text: string }
@@ -168,9 +169,14 @@ function normalizeCreateTeamMembers(body: unknown): TeamMember[] {
   ];
 }
 
-export function startServer(registry: Registry, port: number = 3000) {
+export function startServer(
+  registry: Registry,
+  port: number = 3000,
+  options: { recorder?: SessionRecorder } = {},
+) {
   const app = express();
   app.use(express.json());
+  const recorder = options.recorder;
 
   // REST API
   app.get('/api/agents', (req, res) => {
@@ -231,11 +237,17 @@ export function startServer(registry: Registry, port: number = 3000) {
     console.log('[Server] POST /api/agents', req.body);
     const { id, provider } = req.body;
     const requestedExecutionMode = isExecutionMode(req.body?.executionMode) ? req.body.executionMode : 'auto';
+    recorder?.record('api', 'create_agent_request', { id, provider, requestedExecutionMode });
 
     try {
       const agentId = id || (provider ? `agent-${provider}-${Date.now()}` : `agent-${Date.now()}`);
       const agent = await registry.createAgent(agentId, { requestedExecutionMode });
       console.log(`[Server] Agent created: ${agent.id} (status: ${agent.status})`);
+      recorder?.record('runtime', 'agent_created', {
+        id: agent.id,
+        status: agent.status,
+        requestedExecutionMode: agent.requestedExecutionMode,
+      });
       res.json({
         id: agent.id,
         status: agent.status,
@@ -252,6 +264,12 @@ export function startServer(registry: Registry, port: number = 3000) {
     const { id } = req.params;
     const { command } = req.body;
     console.log(`[Server] POST /api/agents/${id}/start`, {
+      command,
+      workingDirectory: req.body?.workingDirectory,
+      executionMode: req.body?.executionMode,
+    });
+    recorder?.record('api', 'start_agent_request', {
+      id,
       command,
       workingDirectory: req.body?.workingDirectory,
       executionMode: req.body?.executionMode,
@@ -378,6 +396,7 @@ export function startServer(registry: Registry, port: number = 3000) {
       try {
         const message = JSON.parse(data.toString());
         console.log('[Server] WS message received:', message.type, message.type === 'input' ? `(${message.text?.length} chars)` : JSON.stringify(message));
+        recorder?.record('ws_in', message.type ?? 'unknown', message);
 
         switch (message.type) {
           case 'attach': {
@@ -507,66 +526,84 @@ export function startServer(registry: Registry, port: number = 3000) {
 
   // Listen to Registry events and broadcast to clients
   registry.on('output', ({ id, text }) => {
+    recorder?.record('runtime', 'output', { id, text });
     recordTerminalHistory(id, { type: 'output', text });
     const sent = broadcast({ type: 'output', id, text }, id);
     console.log(`[Server] Output from ${id} (${text.length} chars) → ${sent} client(s)`);
   });
 
   registry.on('user_message', ({ from, payload }) => {
+    recorder?.record('runtime', 'agent_message', { from, payload: String(payload) });
     recordTerminalHistory(from, { type: 'agent_message', payload: String(payload) });
     const sent = broadcast({ type: 'agent_message', from, payload }, from);
     console.log(`[Server] Agent message from ${from}: "${payload}" → ${sent} client(s)`);
   });
 
   registry.on('status', ({ id, status }) => {
+    recorder?.record('runtime', 'status', { id, status });
     const sent = broadcast({ type: 'status', id, status });
     console.log(`[Server] Status ${id}: ${status} → ${sent} client(s)`);
   });
 
   registry.on('usage', ({ id, usage }) => {
+    recorder?.record('runtime', 'usage', { id, usage });
     const sent = broadcast({ type: 'usage', id, usage });
     console.log(`[Server] Usage ${id}: ${JSON.stringify(usage)} → ${sent} client(s)`);
   });
 
   registry.on('usage_stats', ({ id, usageStats }) => {
+    recorder?.record('runtime', 'usage_stats', { id, usageStats });
     const sent = broadcast({ type: 'usage_stats', id, usageStats });
     console.log(`[Server] Usage Stats ${id} → ${sent} client(s)`);
   });
 
   registry.on('provider', ({ id, provider }) => {
+    recorder?.record('runtime', 'provider', { id, provider });
     const sent = broadcast({ type: 'provider', id, provider });
     console.log(`[Server] Provider ${id}: ${provider} → ${sent} client(s)`);
   });
 
   registry.on('model', ({ id, model }) => {
+    recorder?.record('runtime', 'model', { id, model });
     const sent = broadcast({ type: 'model', id, model });
     console.log(`[Server] Model ${id}: ${model} → ${sent} client(s)`);
   });
 
   registry.on('execution_mode', ({ id, requestedExecutionMode, resolvedExecutionMode }) => {
+    recorder?.record('runtime', 'execution_mode', { id, requestedExecutionMode, resolvedExecutionMode });
     const sent = broadcast({ type: 'execution_mode', id, requestedExecutionMode, resolvedExecutionMode });
     console.log(`[Server] Execution Mode ${id}: ${requestedExecutionMode} -> ${resolvedExecutionMode ?? 'pending'} → ${sent} client(s)`);
   });
 
   registry.on('session_status', ({ id, sessionStatus }) => {
+    recorder?.record('runtime', 'session_status', { id, sessionStatus });
     const sent = broadcast({ type: 'session_status', id, sessionStatus });
     console.log(`[Server] Session Status ${id}: ${sessionStatus} → ${sent} client(s)`);
   });
 
   registry.on('conversation', (conversation) => {
+    recorder?.record('runtime', 'conversation', { conversation });
     const sent = broadcast({ type: 'conversation', conversation });
     console.log(`[Server] Conversation ${conversation.id}: ${conversation.status} → ${sent} client(s)`);
   });
 
   registry.on('team', (team) => {
+    recorder?.record('runtime', 'team_updated', { team });
     broadcast({ type: 'team_updated', team });
   });
 
   registry.on('team_task', (task) => {
+    recorder?.record('runtime', 'team_task_updated', { task });
     broadcast({ type: 'team_task_updated', task });
   });
 
   registry.on('team_planning_complete', ({ team, task, plannerAgentId }) => {
+    recorder?.record('runtime', 'team_planning_complete', {
+      teamId: team.id,
+      taskId: task.id,
+      plannerAgentId,
+      planSubmittedAt: task.planSubmittedAt,
+    });
     const sent = broadcast({
       type: 'team_planning_complete',
       teamId: team.id,
@@ -584,6 +621,7 @@ export function startServer(registry: Registry, port: number = 3000) {
     const address = server.address();
     const actualPort = typeof address === 'object' && address ? address.port : port;
     console.log(`[Server] AgentTalk Web UI Backend listening on http://localhost:${actualPort}`);
+    recorder?.record('runtime', 'server_started', { port: actualPort });
   });
 
   return server;

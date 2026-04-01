@@ -7,6 +7,7 @@
   "scripts": {
     "test": "vitest run",
     "build": "tsc",
+    "play-recording": "npm run build && node dist/tools/play-recording.js",
     "dev": "concurrently \"npm run backend\" \"npm run frontend\"",
     "dev:supervised": "node scripts/supervisor.mjs",
     "restart-dev": "node scripts/restart-supervisor.mjs",
