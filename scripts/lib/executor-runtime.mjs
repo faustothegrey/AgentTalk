@@ -1,5 +1,9 @@
 import { spawn } from 'child_process';
+import { dirname, join } from 'path';
+import { fileURLToPath } from 'url';
 import { callProvider } from './provider-runtime.mjs';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
 export const EXECUTION_MODES = ['interactive', 'one_shot', 'auto'];
 
@@ -8,7 +12,7 @@ export function normalizeRequestedExecutionMode(value) {
 }
 
 export function supportsInteractiveExecution(providerName) {
-  return providerName === 'claude' || providerName === 'codex';
+  return providerName === 'claude' || providerName === 'codex' || providerName === 'gemini';
 }
 
 export function resolveExecutionMode(requestedExecutionMode, providerName) {
@@ -48,6 +52,15 @@ function getInteractiveProviderCommand(providerName, selectedModel) {
     return {
       command: 'codex',
       args: ['mcp-server'],
+      env: process.env,
+    };
+  }
+
+  if (providerName === 'gemini') {
+    const bridgePath = join(__dirname, 'gemini-bridge.mjs');
+    return {
+      command: 'node',
+      args: [bridgePath, '--model', selectedModel || 'gemini-2.5-pro'],
       env: process.env,
     };
   }
@@ -277,6 +290,98 @@ class ClaudeInteractiveExecutor extends BaseInteractiveExecutor {
 
     const payload = {
       type: 'user',
+      model: this._selectedModel,
+      message: {
+        role: 'user',
+        content: [
+          {
+            type: 'text',
+            text: request.prompt,
+          },
+        ],
+      },
+    };
+
+    return new Promise((resolve, reject) => {
+      this._currentRequest = {
+        ...request,
+        responseText: '',
+        resolve,
+        reject,
+      };
+
+      try {
+        this._sendToStdin(payload);
+      } catch (err) {
+        this._status = 'error';
+        this._clearCurrentRequest();
+        reject(err);
+      }
+    });
+  }
+
+  _handleEvent(event) {
+    if (!this._currentRequest) {
+      return;
+    }
+
+    if (event.type === 'assistant') {
+      const text = extractAssistantText(event);
+      if (text) {
+        this._currentRequest.responseText += text;
+        this._currentSink?.onReplyChunk?.({ id: this._currentRequest.id, text });
+      }
+      return;
+    }
+
+    if (event.type !== 'result') {
+      return;
+    }
+
+    const currentRequest = this._currentRequest;
+    const sink = this._currentSink;
+    const response = currentRequest.responseText || (typeof event.result === 'string' ? event.result : '');
+
+    this._clearCurrentRequest();
+    this._status = 'ready';
+
+    if (event.is_error) {
+      const error = new Error(response || `Interactive ${this._providerName} request failed`);
+      sink?.onReplyError?.({ id: currentRequest.id, error: error.message });
+      currentRequest.reject(error);
+      return;
+    }
+
+    const tokenDetails = {
+      input: event.usage?.input_tokens || 0,
+      output: event.usage?.output_tokens || 0,
+    };
+    const tokens = tokenDetails.input + tokenDetails.output;
+
+    sink?.onReplyDone?.({
+      id: currentRequest.id,
+      response,
+      tokens,
+      tokenDetails,
+    });
+    currentRequest.resolve({ response, tokens, tokenDetails });
+  }
+}
+
+class GeminiInteractiveExecutor extends BaseInteractiveExecutor {
+  async executeTurn(request, sink = {}) {
+    if (this._currentRequest) {
+      throw new Error(`Interactive ${this._providerName} session is already processing a request`);
+    }
+
+    this._status = 'busy';
+    this._currentSink = sink;
+    sink.onReplyStart?.({ id: request.id });
+
+    // Speak the same protocol as ClaudeInteractiveExecutor
+    const payload = {
+      type: 'user',
+      model: this._selectedModel,
       message: {
         role: 'user',
         content: [
@@ -380,6 +485,10 @@ class CodexInteractiveExecutor extends BaseInteractiveExecutor {
     const toolArgs = this.#threadId
       ? { threadId: this.#threadId, prompt: request.prompt }
       : { prompt: request.prompt };
+    
+    if (!this.#threadId && this._selectedModel) {
+      toolArgs.model = this._selectedModel;
+    }
 
     return new Promise((resolve, reject) => {
       this._currentRequest = {
@@ -485,6 +594,8 @@ export function createExecutor({
       executor = new ClaudeInteractiveExecutor(providerName, selectedModel, interactiveCommandOverride);
     } else if (providerName === 'codex') {
       executor = new CodexInteractiveExecutor(providerName, selectedModel, interactiveCommandOverride);
+    } else if (providerName === 'gemini') {
+      executor = new GeminiInteractiveExecutor(providerName, selectedModel, interactiveCommandOverride);
     } else {
       executor = new OneShotExecutor(providerName, selectedModel);
     }
@@ -498,4 +609,3 @@ export function createExecutor({
     executor,
   };
 }
-
