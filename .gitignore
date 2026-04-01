@@ -9,3 +9,4 @@ test-transcripts/
 /recordings/
 google-oauth-client.json
 google-drive-token.json
+credentials.json
