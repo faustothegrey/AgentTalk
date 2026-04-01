@@ -395,6 +395,8 @@ function App() {
   const [activeTopTab, setActiveTopTab] = useState<TopLevelTab>('agents');
   const [activeSidebarTab, setActiveSidebarTab] = useState<SidebarTab>('conversation');
   const [activeConfigSubTab, setActiveConfigSubTab] = useState<ConfigSubTab>('usage');
+  const [sidebarWidth, setSidebarWidth] = useState(390);
+  const [isResizing, setIsResizing] = useState(false);
   const [teams, setTeams] = useState<Team[]>([]);
   const [activeTeam, setActiveTeam] = useState<Team | null>(null);
   const [activeTeamTask, setActiveTeamTask] = useState<TeamTask | null>(null);
@@ -481,6 +483,36 @@ function App() {
       setTeamMessageRole(availableTeamMessageRoles[0]);
     }
   }, [availableTeamMessageRoles, teamMessageRole]);
+
+  useEffect(() => {
+    if (!isResizing) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const newWidth = Math.min(Math.max(e.clientX, 250), 800);
+      setSidebarWidth(newWidth);
+    };
+
+    const handleMouseUp = () => {
+      setIsResizing(false);
+      document.body.style.cursor = 'default';
+      document.body.style.userSelect = 'auto';
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isResizing]);
+
+  const startResizing = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsResizing(true);
+  };
 
   const fetchAgents = useCallback(async () => {
     try {
@@ -983,11 +1015,13 @@ function App() {
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
         {/* Sidebar */}
         <div style={{ 
-          width: '390px', 
-          borderRight: '1px solid #333', 
+          width: `${sidebarWidth}px`, 
+          minWidth: `${sidebarWidth}px`,
+          maxWidth: `${sidebarWidth}px`,
           display: 'flex', 
           flexDirection: 'column',
-          backgroundColor: theme.bgRaised 
+          backgroundColor: theme.bgRaised,
+          position: 'relative'
         }}>
           {/* Top-level tab bar */}
           <div style={{ display: 'flex', borderBottom: `1px solid ${theme.border}` }}>
@@ -1910,6 +1944,21 @@ function App() {
             )}
           </div>
         </div>
+
+        {/* Resize Handle */}
+        <div
+          onMouseDown={startResizing}
+          style={{
+            width: '4px',
+            cursor: 'col-resize',
+            backgroundColor: isResizing ? theme.bgActive : 'transparent',
+            borderLeft: `1px solid ${theme.border}`,
+            zIndex: 10,
+            transition: 'background-color 0.2s',
+          }}
+          onMouseOver={(e) => { if (!isResizing) e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.05)'; }}
+          onMouseOut={(e) => { if (!isResizing) e.currentTarget.style.backgroundColor = 'transparent'; }}
+        />
 
         {/* Main Area */}
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', backgroundColor: theme.bg }}>
