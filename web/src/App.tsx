@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { TerminalView } from './TerminalView';
 import { ErrorBoundary } from './ErrorBoundary';
-import { Plus, Terminal as TerminalIcon, Activity, AlertCircle, X, Send, MessagesSquare, Trash2, History, Copy, Check, Users, Settings, History as HistoryIcon } from 'lucide-react';
+import { Plus, Terminal as TerminalIcon, Activity, AlertCircle, X, Send, MessagesSquare, Trash2, History, Copy, Check, Users, Settings, History as HistoryIcon, RotateCcw } from 'lucide-react';
 import { getAgentColor } from './agentColors';
 
 const theme = {
@@ -1867,9 +1867,47 @@ function App() {
               <div style={{ padding: '16px', flex: 1, overflowY: 'auto' }}>
                 {activeConfigSubTab === 'usage' && (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                    <h3 style={{ margin: 0, fontSize: '12px', textTransform: 'uppercase' as const, color: theme.textMuted, letterSpacing: '0.8px' }}>
-                      Gemini Detailed Usage
-                    </h3>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <h3 style={{ margin: 0, fontSize: '12px', textTransform: 'uppercase' as const, color: theme.textMuted, letterSpacing: '0.8px' }}>
+                        Gemini Detailed Usage
+                      </h3>
+                      {selectedAgent?.provider === 'gemini' && (
+                        <button
+                          onClick={async () => {
+                            if (!selectedAgentId) return;
+                            setLoading(true);
+                            try {
+                              const res = await fetch(`/api/agents/${selectedAgentId}/usage-stats`, { method: 'POST' });
+                              if (!res.ok) throw new Error('Failed to request usage stats');
+                              pushSidebarEvent('out', 'Request Stats', selectedAgentId);
+                            } catch (err: any) {
+                              handleError('Reload failed:', err);
+                            } finally {
+                              setLoading(false);
+                            }
+                          }}
+                          disabled={loading || selectedAgent.status !== 'ready' && selectedAgent.status !== 'busy'}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            color: theme.textMuted,
+                            cursor: (loading || (selectedAgent.status !== 'ready' && selectedAgent.status !== 'busy')) ? 'not-allowed' : 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            fontSize: '10px',
+                            textTransform: 'uppercase',
+                            fontWeight: 'bold',
+                            opacity: loading ? 0.5 : 1
+                          }}
+                          onMouseOver={(e) => { if (!loading) e.currentTarget.style.color = theme.textBright; }}
+                          onMouseOut={(e) => { if (!loading) e.currentTarget.style.color = theme.textMuted; }}
+                        >
+                          <RotateCcw size={12} className={loading ? 'animate-spin' : ''} />
+                          Reload
+                        </button>
+                      )}
+                    </div>
                     {!selectedAgentId ? (
                       <div style={{ color: theme.textMuted, fontSize: '13px', textAlign: 'center' as const, marginTop: '20px', padding: '20px', backgroundColor: theme.bgSurface, borderRadius: '8px', border: `1px dashed ${theme.border}` }}>
                         Select an agent to see detailed usage.

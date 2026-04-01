@@ -146,11 +146,31 @@ export class Registry extends EventEmitter {
       );
       this.adapter.spawn(id, launchCommand, processOptions);
       console.log(`[Registry] Process spawned for agent ${id}`);
-    } catch (err) {
+      } catch (err) {
       console.error(`[Registry] Failed to spawn process for agent ${id}:`, err);
       this.setAgentStatus(agent, 'error');
       throw err;
-    }
+      }
+      }
+
+      /**
+      * Requests detailed usage statistics from a Gemini agent.
+      */
+      async requestUsageStats(id: string): Promise<void> {
+      const agent = this.getAgent(id);
+      if (agent.provider !== 'gemini') {
+      throw new Error('Usage stats are only available for Gemini agents');
+      }
+      if (agent.status !== 'ready' && agent.status !== 'busy') {
+      throw new Error(`Agent ${id} is not in a state to provide usage stats (status: ${agent.status})`);
+      }
+
+      console.log(`[Registry] Requesting detailed usage stats from agent ${id}`);
+      await this.sendProtocol(agent.id, 'EVT', {
+      id: `usage-${Date.now()}`,
+      type: 'get_usage_stats',
+      } as any);
+      }
 
     // Wire up push-based output processing
     const parser = new ProcessOutputParser({

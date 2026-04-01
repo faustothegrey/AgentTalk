@@ -258,6 +258,18 @@ export function startServer(registry: Registry, port: number = 3000) {
     }
   });
 
+  app.post('/api/agents/:id/usage-stats', async (req, res) => {
+    const { id } = req.params;
+    console.log(`[Server] POST /api/agents/${id}/usage-stats`);
+    try {
+      await registry.requestUsageStats(id);
+      res.json({ success: true });
+    } catch (err) {
+      console.error(`[Server] Failed to request usage stats for agent ${id}:`, err);
+      res.status(getErrorStatus(err)).json({ error: err instanceof Error ? err.message : String(err) });
+    }
+  });
+
   // ── Team endpoints ──────────────────────────────────────────
 
   app.get('/api/teams', (req, res) => {
