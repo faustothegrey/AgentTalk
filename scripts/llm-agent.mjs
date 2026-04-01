@@ -276,7 +276,7 @@ function handleUsageStatsRequest(evt) {
   if (providerName !== 'gemini') return;
   getGeminiStats().then(stats => {
     emitRequest({
-      id: evt.id,
+      id: evt.id || `usage-req-${Date.now()}`,
       call: 'submit_usage_stats',
       args: { stats, timestamp: new Date().toISOString() },
     });

@@ -261,6 +261,7 @@ export class Registry extends EventEmitter {
 
           if (agent.provider === 'gemini') {
             void this.sendProtocol(agent.id, 'EVT', {
+              id: `usage-${Date.now()}`,
               type: 'get_usage_stats',
             } as any);
           }

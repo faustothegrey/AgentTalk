@@ -99,7 +99,7 @@ export async function scrapeExternalUsage(providerName) {
   }
 
   if (providerName === 'gemini') {
-    const { stdout } = await spawnAndCollect('gemini', ['--prompt', '/stats model'], {
+    const { stdout } = await spawnAndCollect('gemini', ['-o', 'text', '--prompt', '/stats model'], {
       stdio: ['ignore', 'pipe', 'pipe'],
     });
     return stdout;
@@ -109,7 +109,7 @@ export async function scrapeExternalUsage(providerName) {
 }
 
 export async function getGeminiStats() {
-  const { stdout } = await spawnAndCollect('gemini', ['--prompt', '/stats'], {
+  const { stdout } = await spawnAndCollect('gemini', ['-o', 'text', '--prompt', '/stats'], {
     stdio: ['ignore', 'pipe', 'pipe'],
   });
   return stdout;
