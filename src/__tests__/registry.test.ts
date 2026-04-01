@@ -243,6 +243,24 @@ describe('Registry', () => {
     expect(agent.lastProgressAt).toBeTypeOf('number');
   });
 
+  it('should reconcile busy status when a session update reports ready', async () => {
+    await registry.createAgent('agent-1');
+    await registry.startAgent('agent-1', 'agent-cli');
+
+    pushOutput('agent-1', '[AgentTalk]:READY:{"session":"s1","sessionStatus":"ready"}\n');
+    expect(registry.getAgent('agent-1').status).toBe('ready');
+
+    pushOutput('agent-1', '[AgentTalk]:EVT:{"type":"busy_state","busy":true}\n');
+    expect(registry.getAgent('agent-1').status).toBe('busy');
+    expect(registry.getAgent('agent-1').sessionStatus).toBe('busy');
+
+    pushOutput('agent-1', '[AgentTalk]:EVT:{"type":"session_update","sessionStatus":"ready","requestedExecutionMode":"interactive","resolvedExecutionMode":"interactive"}\n');
+
+    const agent = registry.getAgent('agent-1');
+    expect(agent.status).toBe('ready');
+    expect(agent.sessionStatus).toBe('ready');
+  });
+
   it('should derive completed status when all agents reached the reply cap', () => {
     expect(deriveConversationStatus({
       id: 'conversation-1',

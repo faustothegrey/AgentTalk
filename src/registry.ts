@@ -493,6 +493,7 @@ export class Registry extends EventEmitter {
       case 'session_update':
         this.updateAgentExecutionMode(agent, payload.requestedExecutionMode, payload.resolvedExecutionMode);
         this.updateAgentSessionStatus(agent, payload.sessionStatus);
+        this.syncAgentStatusToSessionStatus(agent, payload.sessionStatus);
         return;
       default:
         return;
@@ -562,6 +563,17 @@ export class Registry extends EventEmitter {
       id: agent.id,
       sessionStatus,
     });
+  }
+
+  private syncAgentStatusToSessionStatus(agent: Agent, sessionStatus: AgentSessionStatus): void {
+    if (sessionStatus === 'busy' && agent.status === 'ready') {
+      this.setAgentStatus(agent, 'busy');
+      return;
+    }
+
+    if (sessionStatus === 'ready' && agent.status === 'busy') {
+      this.setAgentStatus(agent, 'ready');
+    }
   }
 
   private async requestHealthCheck(agentId: string): Promise<{ agentId: string; message: string }> {
