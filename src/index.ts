@@ -1,4 +1,5 @@
 import { ProcessAdapterImpl } from './agents/process-adapter.js';
+import { createGoogleDriveServiceFromEnv } from './integrations/google-drive/from-env.js';
 import { SessionRecorder } from './recordings/session-recorder.js';
 import { Registry } from './registry.js';
 import { startServer } from './server.js';
@@ -6,6 +7,7 @@ import { startServer } from './server.js';
 async function main() {
   const adapter = new ProcessAdapterImpl();
   const registry = new Registry(adapter);
+  const googleDrive = createGoogleDriveServiceFromEnv();
   const recorder = process.env.AGENTTALK_RECORDING_PATH
     ? new SessionRecorder(process.env.AGENTTALK_RECORDING_PATH)
     : undefined;
@@ -15,9 +17,15 @@ async function main() {
   if (recorder) {
     console.log(`Recording runtime events to ${process.env.AGENTTALK_RECORDING_PATH}`);
   }
+  if (googleDrive) {
+    console.log('Google Drive integration configured.');
+  }
 
   const port = Number(process.env.PORT) || 3000;
-  startServer(registry, port, recorder ? { recorder } : {});
+  startServer(registry, port, {
+    ...(recorder ? { recorder } : {}),
+    ...(googleDrive ? { googleDrive } : {}),
+  });
 
   console.log('Ready to manage agents.');
 

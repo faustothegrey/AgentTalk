@@ -26,7 +26,7 @@ type Provider = 'claude' | 'gemini' | 'codex';
 type ExecutionMode = 'interactive' | 'one_shot' | 'auto';
 type TopLevelTab = 'agents' | 'config';
 type SidebarTab = 'conversation' | 'team';
-type ConfigSubTab = 'usage';
+type ConfigSubTab = 'usage' | 'drive';
 
 interface Agent {
   id: string;
@@ -111,6 +111,37 @@ interface DirectoryBrowserResponse {
   path: string;
   parentPath: string | null;
   directories: DirectoryBrowserEntry[];
+}
+
+interface GoogleDriveStatus {
+  configured: boolean;
+  authenticated: boolean;
+  redirectUri?: string;
+  scopes: string[];
+  hasRefreshToken: boolean;
+}
+
+interface GoogleDriveResource {
+  id: string;
+  name: string;
+  type: 'file' | 'folder';
+  driveId: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface GoogleDriveFileEntry {
+  id: string;
+  name: string;
+  mimeType?: string;
+  webViewLink?: string;
+  modifiedTime?: string;
+  size?: string;
+}
+
+interface GoogleDriveReadResult {
+  file: GoogleDriveFileEntry;
+  text: string;
 }
 
 const providerOptions: { value: Provider; label: string }[] = [
@@ -391,6 +422,18 @@ function App() {
   const [activeTopTab, setActiveTopTab] = useState<TopLevelTab>('agents');
   const [activeSidebarTab, setActiveSidebarTab] = useState<SidebarTab>('conversation');
   const [activeConfigSubTab, setActiveConfigSubTab] = useState<ConfigSubTab>('usage');
+  const [driveStatus, setDriveStatus] = useState<GoogleDriveStatus | null>(null);
+  const [driveResources, setDriveResources] = useState<GoogleDriveResource[]>([]);
+  const [driveAgentResources, setDriveAgentResources] = useState<GoogleDriveResource[]>([]);
+  const [driveFiles, setDriveFiles] = useState<GoogleDriveFileEntry[]>([]);
+  const [driveReadResult, setDriveReadResult] = useState<GoogleDriveReadResult | null>(null);
+  const [driveLoading, setDriveLoading] = useState(false);
+  const [driveResourceName, setDriveResourceName] = useState('');
+  const [driveResourceType, setDriveResourceType] = useState<'file' | 'folder'>('folder');
+  const [driveResourceIdInput, setDriveResourceIdInput] = useState('');
+  const [driveSelectedResourceId, setDriveSelectedResourceId] = useState('');
+  const [driveGrantAgentId, setDriveGrantAgentId] = useState('');
+  const [driveReadFileId, setDriveReadFileId] = useState('');
   const [sidebarWidth, setSidebarWidth] = useState(390);
   const [isResizing, setIsResizing] = useState(false);
   const [, setTeams] = useState<Team[]>([]);
@@ -444,6 +487,7 @@ function App() {
   });
 
   const selectedAgent = agents.find(a => a.id === selectedAgentId);
+  const selectedDriveResource = driveResources.find(resource => resource.id === driveSelectedResourceId) ?? null;
   const activePlanner = activeTeam?.members.find(m => m.role === 'planner');
   const activeWorker = activeTeam?.members.find(m => m.role === 'worker');
   const availableTeamMessageRoles = activeTeam?.members.map(m => m.role) ?? [];
@@ -538,6 +582,47 @@ function App() {
     } catch (err) {
       console.warn('Failed to fetch conversation history:', err);
     }
+  }, []);
+
+  const fetchDriveStatus = useCallback(async () => {
+    const res = await fetchWithTimeout('/api/integrations/google-drive/status');
+    const data = await res.json() as GoogleDriveStatus;
+    setDriveStatus(data);
+    return data;
+  }, []);
+
+  const fetchDriveResources = useCallback(async () => {
+    const res = await fetchWithTimeout('/api/integrations/google-drive/resources');
+    const data = await res.json() as GoogleDriveResource[];
+    setDriveResources(data);
+    setDriveSelectedResourceId(prev => prev || data[0]?.id || '');
+  }, []);
+
+  const fetchDriveAgentResources = useCallback(async (agentId: string) => {
+    const trimmed = agentId.trim();
+    if (!trimmed) {
+      setDriveAgentResources([]);
+      return;
+    }
+
+    const res = await fetchWithTimeout(`/api/integrations/google-drive/agents/${encodeURIComponent(trimmed)}/resources`);
+    const data = await res.json() as GoogleDriveResource[];
+    setDriveAgentResources(data);
+  }, []);
+
+  const fetchDriveFiles = useCallback(async (resourceId: string, agentId: string) => {
+    const trimmedAgentId = agentId.trim();
+    if (!resourceId || !trimmedAgentId) {
+      setDriveFiles([]);
+      return;
+    }
+
+    const res = await fetchWithTimeout(
+      `/api/integrations/google-drive/resources/${encodeURIComponent(resourceId)}/files?agentId=${encodeURIComponent(trimmedAgentId)}`,
+    );
+    const data = await res.json() as GoogleDriveFileEntry[];
+    setDriveFiles(data);
+    setDriveReadFileId(prev => prev || data[0]?.id || '');
   }, []);
 
   const loadDirectoryEntries = useCallback(async (targetPath: string) => {
@@ -694,6 +779,25 @@ function App() {
       currentSocket?.close();
     };
   }, [fetchAgents, fetchTopicHistory, fetchConversationHistory, pushSidebarEvent]);
+
+  useEffect(() => {
+    if (activeTopTab !== 'config' || activeConfigSubTab !== 'drive') {
+      return;
+    }
+
+    fetchDriveStatus()
+      .then((status) => {
+        if (status.configured) {
+          return fetchDriveResources();
+        }
+
+        setDriveResources([]);
+        setDriveAgentResources([]);
+        setDriveFiles([]);
+        setDriveReadResult(null);
+      })
+      .catch((err) => handleError('Failed to fetch Google Drive status:', err));
+  }, [activeTopTab, activeConfigSubTab, fetchDriveResources, fetchDriveStatus]);
 
   const createAgent = async () => {
     setLoading(true);
@@ -1909,6 +2013,28 @@ function App() {
                   >
                     <Activity size={14} /> Usage
                   </button>
+                  <button 
+                    onClick={() => setActiveConfigSubTab('drive')} 
+                    style={{
+                      padding: '8px 12px',
+                      fontSize: '11px',
+                      fontWeight: 700,
+                      textTransform: 'uppercase' as const,
+                      backgroundColor: activeConfigSubTab === 'drive' ? theme.bgActive : 'transparent',
+                      color: activeConfigSubTab === 'drive' ? '#fff' : '#888',
+                      border: 'none',
+                      borderRadius: '4px',
+                      cursor: 'pointer',
+                      flex: 1,
+                      transition: 'all 0.2s',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '6px'
+                    }}
+                  >
+                    <Settings size={14} /> Google Drive
+                  </button>
                 </div>
               </div>
               
@@ -1968,6 +2094,323 @@ function App() {
                     ) : (
                       <AgentUsageStats stats={selectedAgent.usageStats.stats} timestamp={selectedAgent.usageStats.timestamp} />
                     )}
+                  </div>
+                )}
+                {activeConfigSubTab === 'drive' && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px' }}>
+                      <h3 style={{ margin: 0, fontSize: '12px', textTransform: 'uppercase' as const, color: theme.textMuted, letterSpacing: '0.8px' }}>
+                        Google Drive Test
+                      </h3>
+                      <button
+                        onClick={async () => {
+                          setDriveLoading(true);
+                          try {
+                            await Promise.all([fetchDriveStatus(), fetchDriveResources()]);
+                            if (driveGrantAgentId.trim()) {
+                              await fetchDriveAgentResources(driveGrantAgentId);
+                            }
+                          } catch (err) {
+                            handleError('Failed to refresh Google Drive state:', err);
+                          } finally {
+                            setDriveLoading(false);
+                          }
+                        }}
+                        disabled={driveLoading}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          color: theme.textMuted,
+                          cursor: driveLoading ? 'not-allowed' : 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                          fontSize: '10px',
+                          textTransform: 'uppercase',
+                          fontWeight: 'bold',
+                          opacity: driveLoading ? 0.5 : 1
+                        }}
+                      >
+                        <RotateCcw size={12} className={driveLoading ? 'animate-spin' : ''} />
+                        Reload
+                      </button>
+                    </div>
+
+                    <div style={{ backgroundColor: theme.bgSurface, border: `1px solid ${theme.border}`, borderRadius: '8px', padding: '14px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', marginBottom: '10px' }}>
+                        <div style={{ fontSize: '12px', color: theme.textSubtle, textTransform: 'uppercase' as const, letterSpacing: '0.8px' }}>
+                          OAuth Status
+                        </div>
+                        <button
+                          onClick={async () => {
+                            setDriveLoading(true);
+                            try {
+                              const res = await fetchWithTimeout('/api/integrations/google-drive/oauth/start');
+                              const data = await res.json() as { authUrl: string };
+                              window.open(data.authUrl, '_blank', 'noopener,noreferrer');
+                              setGlobalNotice('Opened Google Drive OAuth flow in a new tab.');
+                              pushSidebarEvent('out', 'Drive OAuth', 'Opened Google Drive consent flow');
+                            } catch (err) {
+                              handleError('Failed to start Google Drive OAuth:', err);
+                            } finally {
+                              setDriveLoading(false);
+                            }
+                          }}
+                          disabled={driveLoading || !driveStatus?.configured}
+                          style={{
+                            padding: '8px 12px',
+                            backgroundColor: driveStatus?.authenticated ? theme.bgActive : theme.success,
+                            color: '#fff',
+                            border: 'none',
+                            borderRadius: '6px',
+                            cursor: driveLoading || !driveStatus?.configured ? 'not-allowed' : 'pointer',
+                            opacity: driveLoading || !driveStatus?.configured ? 0.55 : 1,
+                          }}
+                        >
+                          {driveStatus?.authenticated ? 'Reconnect OAuth' : 'Connect OAuth'}
+                        </button>
+                      </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: '150px 1fr', gap: '6px 10px', fontSize: '13px' }}>
+                        <span style={{ color: theme.textMuted }}>Configured</span>
+                        <span style={{ color: driveStatus?.configured ? theme.success : theme.error }}>{driveStatus?.configured ? 'Yes' : 'No'}</span>
+                        <span style={{ color: theme.textMuted }}>Authenticated</span>
+                        <span style={{ color: driveStatus?.authenticated ? theme.success : theme.error }}>{driveStatus?.authenticated ? 'Yes' : 'No'}</span>
+                        <span style={{ color: theme.textMuted }}>Refresh Token</span>
+                        <span>{driveStatus?.hasRefreshToken ? 'Present' : 'Missing'}</span>
+                        <span style={{ color: theme.textMuted }}>Redirect URI</span>
+                        <span style={{ color: theme.textSubtle, wordBreak: 'break-all' }}>{driveStatus?.redirectUri ?? 'Unavailable'}</span>
+                      </div>
+                      {!driveStatus?.configured && (
+                        <div style={{ marginTop: '12px', padding: '10px 12px', borderRadius: '6px', backgroundColor: '#2f2a1f', border: '1px solid #6a5830', color: '#d9c089', fontSize: '12px', lineHeight: 1.45 }}>
+                          Google Drive expects an OAuth client JSON at <code>./credentials.json</code> in the project root. Restart the backend after adding or changing that file.
+                        </div>
+                      )}
+                    </div>
+
+                    <div style={{ backgroundColor: theme.bgSurface, border: `1px solid ${theme.border}`, borderRadius: '8px', padding: '14px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                      <div style={{ fontSize: '12px', color: theme.textSubtle, textTransform: 'uppercase' as const, letterSpacing: '0.8px' }}>
+                        Register Resource
+                      </div>
+                      <input
+                        value={driveResourceName}
+                        onChange={(e) => setDriveResourceName(e.target.value)}
+                        placeholder="Resource name"
+                        style={{ backgroundColor: theme.bg, color: theme.textPrimary, border: `1px solid ${theme.borderInput}`, borderRadius: '6px', padding: '10px 12px' }}
+                      />
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <select
+                          value={driveResourceType}
+                          onChange={(e) => setDriveResourceType(e.target.value as 'file' | 'folder')}
+                          style={{ flex: '0 0 140px', backgroundColor: theme.bg, color: theme.textPrimary, border: `1px solid ${theme.borderInput}`, borderRadius: '6px', padding: '10px 12px' }}
+                        >
+                          <option value="folder">Folder</option>
+                          <option value="file">File</option>
+                        </select>
+                        <input
+                          value={driveResourceIdInput}
+                          onChange={(e) => setDriveResourceIdInput(e.target.value)}
+                          placeholder="Drive file/folder ID"
+                          style={{ flex: 1, backgroundColor: theme.bg, color: theme.textPrimary, border: `1px solid ${theme.borderInput}`, borderRadius: '6px', padding: '10px 12px' }}
+                        />
+                        <button
+                          onClick={async () => {
+                            setDriveLoading(true);
+                            try {
+                              await fetchWithTimeout('/api/integrations/google-drive/resources', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                  name: driveResourceName.trim(),
+                                  type: driveResourceType,
+                                  driveId: driveResourceIdInput.trim(),
+                                }),
+                              });
+                              setGlobalNotice('Google Drive resource registered.');
+                              setDriveResourceName('');
+                              setDriveResourceIdInput('');
+                              await fetchDriveResources();
+                            } catch (err) {
+                              handleError('Failed to register Google Drive resource:', err);
+                            } finally {
+                              setDriveLoading(false);
+                            }
+                          }}
+                          disabled={driveLoading || !driveResourceName.trim() || !driveResourceIdInput.trim()}
+                          style={{ padding: '10px 12px', backgroundColor: theme.success, color: '#fff', border: 'none', borderRadius: '6px', cursor: driveLoading || !driveResourceName.trim() || !driveResourceIdInput.trim() ? 'not-allowed' : 'pointer', opacity: driveLoading || !driveResourceName.trim() || !driveResourceIdInput.trim() ? 0.55 : 1 }}
+                        >
+                          Save
+                        </button>
+                      </div>
+                    </div>
+
+                    <div style={{ backgroundColor: theme.bgSurface, border: `1px solid ${theme.border}`, borderRadius: '8px', padding: '14px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                      <div style={{ fontSize: '12px', color: theme.textSubtle, textTransform: 'uppercase' as const, letterSpacing: '0.8px' }}>
+                        Grant Access
+                      </div>
+                      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                        <select
+                          value={driveSelectedResourceId}
+                          onChange={(e) => {
+                            setDriveSelectedResourceId(e.target.value);
+                            setDriveFiles([]);
+                            setDriveReadResult(null);
+                            setDriveReadFileId('');
+                          }}
+                          style={{ flex: 1, minWidth: '220px', backgroundColor: theme.bg, color: theme.textPrimary, border: `1px solid ${theme.borderInput}`, borderRadius: '6px', padding: '10px 12px' }}
+                        >
+                          <option value="">Select Drive resource</option>
+                          {driveResources.map((resource) => (
+                            <option key={resource.id} value={resource.id}>
+                              {resource.name} [{resource.type}]
+                            </option>
+                          ))}
+                        </select>
+                        <select
+                          value={driveGrantAgentId}
+                          onChange={(e) => setDriveGrantAgentId(e.target.value)}
+                          style={{ flex: 1, minWidth: '220px', backgroundColor: theme.bg, color: theme.textPrimary, border: `1px solid ${theme.borderInput}`, borderRadius: '6px', padding: '10px 12px' }}
+                        >
+                          <option value="">Select agent</option>
+                          {agents.map((agent) => (
+                            <option key={agent.id} value={agent.id}>
+                              {agent.id}
+                            </option>
+                          ))}
+                        </select>
+                        <button
+                          onClick={async () => {
+                            if (!driveSelectedResourceId || !driveGrantAgentId) return;
+                            setDriveLoading(true);
+                            try {
+                              await fetchWithTimeout(`/api/integrations/google-drive/resources/${encodeURIComponent(driveSelectedResourceId)}/grants`, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ agentId: driveGrantAgentId }),
+                              });
+                              setGlobalNotice(`Granted ${driveGrantAgentId} access to Drive resource.`);
+                              await fetchDriveAgentResources(driveGrantAgentId);
+                            } catch (err) {
+                              handleError('Failed to grant Google Drive access:', err);
+                            } finally {
+                              setDriveLoading(false);
+                            }
+                          }}
+                          disabled={driveLoading || !driveSelectedResourceId || !driveGrantAgentId}
+                          style={{ padding: '10px 12px', backgroundColor: theme.success, color: '#fff', border: 'none', borderRadius: '6px', cursor: driveLoading || !driveSelectedResourceId || !driveGrantAgentId ? 'not-allowed' : 'pointer', opacity: driveLoading || !driveSelectedResourceId || !driveGrantAgentId ? 0.55 : 1 }}
+                        >
+                          Grant
+                        </button>
+                        <button
+                          onClick={async () => {
+                            setDriveLoading(true);
+                            try {
+                              await fetchDriveAgentResources(driveGrantAgentId);
+                            } catch (err) {
+                              handleError('Failed to load agent Drive resources:', err);
+                            } finally {
+                              setDriveLoading(false);
+                            }
+                          }}
+                          disabled={driveLoading || !driveGrantAgentId}
+                          style={{ padding: '10px 12px', backgroundColor: theme.bgActive, color: '#fff', border: 'none', borderRadius: '6px', cursor: driveLoading || !driveGrantAgentId ? 'not-allowed' : 'pointer', opacity: driveLoading || !driveGrantAgentId ? 0.55 : 1 }}
+                        >
+                          List Grants
+                        </button>
+                      </div>
+                      {driveGrantAgentId && (
+                        <div style={{ fontSize: '12px', color: theme.textSubtle }}>
+                          Agent resources: {driveAgentResources.length === 0 ? 'none' : driveAgentResources.map((resource) => resource.name).join(', ')}
+                        </div>
+                      )}
+                    </div>
+
+                    <div style={{ backgroundColor: theme.bgSurface, border: `1px solid ${theme.border}`, borderRadius: '8px', padding: '14px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                      <div style={{ fontSize: '12px', color: theme.textSubtle, textTransform: 'uppercase' as const, letterSpacing: '0.8px' }}>
+                        Read Files
+                      </div>
+                      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                        <button
+                          onClick={async () => {
+                            setDriveLoading(true);
+                            try {
+                              await fetchDriveFiles(driveSelectedResourceId, driveGrantAgentId);
+                            } catch (err) {
+                              handleError('Failed to list Google Drive files:', err);
+                            } finally {
+                              setDriveLoading(false);
+                            }
+                          }}
+                          disabled={driveLoading || !driveSelectedResourceId || !driveGrantAgentId}
+                          style={{ padding: '10px 12px', backgroundColor: theme.bgActive, color: '#fff', border: 'none', borderRadius: '6px', cursor: driveLoading || !driveSelectedResourceId || !driveGrantAgentId ? 'not-allowed' : 'pointer', opacity: driveLoading || !driveSelectedResourceId || !driveGrantAgentId ? 0.55 : 1 }}
+                        >
+                          List Files
+                        </button>
+                        <select
+                          value={driveReadFileId}
+                          onChange={(e) => setDriveReadFileId(e.target.value)}
+                          style={{ flex: 1, minWidth: '240px', backgroundColor: theme.bg, color: theme.textPrimary, border: `1px solid ${theme.borderInput}`, borderRadius: '6px', padding: '10px 12px' }}
+                        >
+                          <option value="">Select file to read</option>
+                          {driveFiles.map((file) => (
+                            <option key={file.id} value={file.id}>
+                              {file.name}
+                            </option>
+                          ))}
+                        </select>
+                        <button
+                          onClick={async () => {
+                            setDriveLoading(true);
+                            try {
+                              const query = new URLSearchParams({ agentId: driveGrantAgentId });
+                              if (driveReadFileId.trim()) {
+                                query.set('fileId', driveReadFileId.trim());
+                              }
+                              const res = await fetchWithTimeout(
+                                `/api/integrations/google-drive/resources/${encodeURIComponent(driveSelectedResourceId)}/read?${query.toString()}`,
+                                {},
+                                20000,
+                              );
+                              const data = await res.json() as GoogleDriveReadResult;
+                              setDriveReadResult(data);
+                              pushSidebarEvent('out', 'Drive Read', `${driveGrantAgentId} read ${data.file.name}`);
+                            } catch (err) {
+                              handleError('Failed to read Google Drive file:', err);
+                            } finally {
+                              setDriveLoading(false);
+                            }
+                          }}
+                          disabled={driveLoading || !driveSelectedResourceId || !driveGrantAgentId || (selectedDriveResource?.type === 'folder' && !driveReadFileId)}
+                          style={{ padding: '10px 12px', backgroundColor: theme.success, color: '#fff', border: 'none', borderRadius: '6px', cursor: driveLoading || !driveSelectedResourceId || !driveGrantAgentId || (selectedDriveResource?.type === 'folder' && !driveReadFileId) ? 'not-allowed' : 'pointer', opacity: driveLoading || !driveSelectedResourceId || !driveGrantAgentId || (selectedDriveResource?.type === 'folder' && !driveReadFileId) ? 0.55 : 1 }}
+                        >
+                          Read
+                        </button>
+                      </div>
+                      {selectedDriveResource && (
+                        <div style={{ fontSize: '12px', color: theme.textSubtle }}>
+                          Selected resource ID: <span style={{ color: theme.textPrimary }}>{selectedDriveResource.driveId}</span>
+                        </div>
+                      )}
+                      {driveFiles.length > 0 && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                          {driveFiles.map((file) => (
+                            <div key={file.id} style={{ fontSize: '12px', color: theme.textSubtle, padding: '8px 10px', borderRadius: '6px', backgroundColor: theme.bg, border: `1px solid ${theme.border}` }}>
+                              <div style={{ color: theme.textPrimary }}>{file.name}</div>
+                              <div>{file.mimeType ?? 'unknown type'}</div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      {driveReadResult && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                          <div style={{ fontSize: '12px', color: theme.textSubtle }}>
+                            Read file: <span style={{ color: theme.textPrimary }}>{driveReadResult.file.name}</span>
+                          </div>
+                          <pre style={{ margin: 0, padding: '14px', backgroundColor: theme.bg, color: theme.textPrimary, border: `1px solid ${theme.border}`, borderRadius: '8px', whiteSpace: 'pre-wrap', wordBreak: 'break-word', maxHeight: '320px', overflowY: 'auto', fontSize: '12px', lineHeight: 1.45 }}>
+                            {driveReadResult.text}
+                          </pre>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>

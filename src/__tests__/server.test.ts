@@ -6,13 +6,23 @@ import { WebSocket } from 'ws';
 import { Registry } from '../registry.js';
 import { startServer } from '../server.js';
 import type { ProcessAdapter } from '../agents/process-adapter.js';
+import type { GoogleDriveIntegration, GoogleDriveResource } from '../integrations/google-drive/types.js';
 
 describe('startServer', () => {
   let adapter: ProcessAdapter;
   let registry: Registry;
   let server: Server;
   let baseUrl: string;
+  let googleDrive: GoogleDriveIntegration;
   const conversationStorePath = './test-transcripts-server/conversations.json';
+  const grantedResource: GoogleDriveResource = {
+    id: 'resource-1',
+    name: 'Specs',
+    type: 'folder',
+    driveId: 'folder-123',
+    createdAt: '2026-01-01T00:00:00.000Z',
+    updatedAt: '2026-01-01T00:00:00.000Z',
+  };
 
   beforeEach(async () => {
     adapter = {
@@ -28,7 +38,40 @@ describe('startServer', () => {
       conversationStorePath,
     });
 
-    server = startServer(registry, 0);
+    googleDrive = {
+      getStatus: vi.fn().mockResolvedValue({
+        configured: true,
+        authenticated: false,
+        redirectUri: 'http://127.0.0.1/oauth/callback',
+        scopes: ['https://www.googleapis.com/auth/drive.readonly'],
+        hasRefreshToken: false,
+      }),
+      createAuthUrl: vi.fn().mockResolvedValue('https://accounts.google.com/o/oauth2/v2/auth?state=test'),
+      handleOAuthCallback: vi.fn().mockResolvedValue(undefined),
+      listResources: vi.fn().mockReturnValue([grantedResource]),
+      createResource: vi.fn().mockImplementation(({ name, type, driveId }) => ({
+        ...grantedResource,
+        name,
+        type,
+        driveId,
+      })),
+      grantAgentAccess: vi.fn().mockReturnValue({
+        resourceId: grantedResource.id,
+        agentId: 'agent-1',
+        createdAt: '2026-01-01T00:00:00.000Z',
+      }),
+      revokeAgentAccess: vi.fn().mockReturnValue(true),
+      listAgentResources: vi.fn().mockReturnValue([grantedResource]),
+      listFilesForAgent: vi.fn().mockResolvedValue([
+        { id: 'file-1', name: 'Spec Doc', mimeType: 'application/vnd.google-apps.document' },
+      ]),
+      readFileForAgent: vi.fn().mockResolvedValue({
+        file: { id: 'file-1', name: 'Spec Doc', mimeType: 'application/vnd.google-apps.document' },
+        text: 'Hello Drive',
+      }),
+    };
+
+    server = startServer(registry, 0, { googleDrive });
     await new Promise<void>((resolve) => server.once('listening', resolve));
 
     const { port } = server.address() as AddressInfo;
@@ -292,6 +335,64 @@ describe('startServer', () => {
       members: [
         { agentId: 'worker-1', role: 'worker' },
       ],
+    });
+  });
+
+  it('should expose google drive oauth status', async () => {
+    const response = await fetch(`${baseUrl}/api/integrations/google-drive/status`);
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      configured: true,
+      authenticated: false,
+    });
+  });
+
+  it('should create drive resources, grant an existing agent, and read allowed content', async () => {
+    await registry.createAgent('agent-1');
+
+    const createResourceResponse = await fetch(`${baseUrl}/api/integrations/google-drive/resources`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: 'Specs',
+        type: 'folder',
+        driveId: 'folder-123',
+      }),
+    });
+    expect(createResourceResponse.status).toBe(200);
+    await expect(createResourceResponse.json()).resolves.toMatchObject({
+      id: grantedResource.id,
+      name: 'Specs',
+    });
+
+    const grantResponse = await fetch(`${baseUrl}/api/integrations/google-drive/resources/${grantedResource.id}/grants`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ agentId: 'agent-1' }),
+    });
+    expect(grantResponse.status).toBe(200);
+    await expect(grantResponse.json()).resolves.toMatchObject({
+      agentId: 'agent-1',
+      resourceId: grantedResource.id,
+    });
+
+    const listFilesResponse = await fetch(`${baseUrl}/api/integrations/google-drive/resources/${grantedResource.id}/files?agentId=agent-1`);
+    expect(listFilesResponse.status).toBe(200);
+    await expect(listFilesResponse.json()).resolves.toEqual([
+      expect.objectContaining({
+        id: 'file-1',
+        name: 'Spec Doc',
+      }),
+    ]);
+
+    const readResponse = await fetch(`${baseUrl}/api/integrations/google-drive/resources/${grantedResource.id}/read?agentId=agent-1&fileId=file-1`);
+    expect(readResponse.status).toBe(200);
+    await expect(readResponse.json()).resolves.toMatchObject({
+      text: 'Hello Drive',
+      file: {
+        id: 'file-1',
+        name: 'Spec Doc',
+      },
     });
   });
 });

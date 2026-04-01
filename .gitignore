@@ -7,3 +7,5 @@ test-transcripts/
 .npm-cache/
 .agenttalk-supervisor.pid
 /recordings/
+google-oauth-client.json
+google-drive-token.json
