@@ -51,13 +51,23 @@ export interface SubmitWorkResultRequestPayload {
   };
 }
 
+export interface SubmitUsageStatsRequestPayload {
+  id: string;
+  call: 'submit_usage_stats';
+  args: {
+    stats: string;
+    timestamp: string;
+  };
+}
+
 export type RequestPayload =
   | ListAgentsRequestPayload
   | SendToAgentRequestPayload
   | AckHealthcheckRequestPayload
   | SubmitPlanRequestPayload
   | SubmitWorkResponseRequestPayload
-  | SubmitWorkResultRequestPayload;
+  | SubmitWorkResultRequestPayload
+  | SubmitUsageStatsRequestPayload;
 
 export interface ResponsePayload {
   id: string;
@@ -224,6 +234,20 @@ export function parseRequestPayload(value: unknown): RequestPayload | null {
         id: value.id,
         call: 'submit_work_result',
         args: { result: value.args.result },
+      };
+
+    case 'submit_usage_stats':
+      if (!isRecord(value.args) || typeof value.args.stats !== 'string' || typeof value.args.timestamp !== 'string') {
+        return null;
+      }
+
+      return {
+        id: value.id,
+        call: 'submit_usage_stats',
+        args: {
+          stats: value.args.stats,
+          timestamp: value.args.timestamp,
+        },
       };
 
     default:

@@ -21,6 +21,7 @@ export class Agent {
   launchCommand?: string;
   workingDirectory: string | undefined;
   usage?: { total: number; limit: number };
+  usageStats?: { stats: string; timestamp: string };
   provider?: string;
   model?: string;
 

@@ -170,6 +170,7 @@ export function startServer(registry: Registry, port: number = 3000) {
       id: a.id,
       status: a.status,
       usage: a.usage,
+      usageStats: a.usageStats,
       provider: a.provider,
       model: a.model,
       workingDirectory: a.workingDirectory,
@@ -488,6 +489,11 @@ export function startServer(registry: Registry, port: number = 3000) {
   registry.on('usage', ({ id, usage }) => {
     const sent = broadcast({ type: 'usage', id, usage });
     console.log(`[Server] Usage ${id}: ${JSON.stringify(usage)} → ${sent} client(s)`);
+  });
+
+  registry.on('usage_stats', ({ id, usageStats }) => {
+    const sent = broadcast({ type: 'usage_stats', id, usageStats });
+    console.log(`[Server] Usage Stats ${id} → ${sent} client(s)`);
   });
 
   registry.on('provider', ({ id, provider }) => {

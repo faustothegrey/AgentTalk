@@ -258,6 +258,12 @@ export class Registry extends EventEmitter {
 
         if (agent.status === 'starting') {
           this.setAgentStatus(agent, 'ready');
+
+          if (agent.provider === 'gemini') {
+            void this.sendProtocol(agent.id, 'EVT', {
+              type: 'get_usage_stats',
+            } as any);
+          }
           return;
         }
 
@@ -349,6 +355,15 @@ export class Registry extends EventEmitter {
         } catch (err) {
           await this.sendErrorResponse(agent.id, payload.id, err instanceof Error ? err.message : 'Failed to submit work result');
         }
+        return;
+
+      case 'submit_usage_stats':
+        agent.usageStats = {
+          stats: payload.args.stats,
+          timestamp: payload.args.timestamp,
+        };
+        this.emit('usage_stats', { id: agent.id, usageStats: agent.usageStats });
+        await this.sendSuccessResponse(agent.id, payload.id);
         return;
     }
   }

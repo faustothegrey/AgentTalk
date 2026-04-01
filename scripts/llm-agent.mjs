@@ -6,7 +6,7 @@ import { createInterface } from 'readline';
 import path from 'path';
 import { createConversationRuntime } from './lib/conversation-runtime.mjs';
 import { emitEvent, emitReady, emitRequest, parseInboundProtocolLine } from './lib/protocol.mjs';
-import { callProvider, getProviderLimit, resolveProvider } from './lib/provider-runtime.mjs';
+import { callProvider, getGeminiStats, getProviderLimit, resolveProvider } from './lib/provider-runtime.mjs';
 
 function parseArgs(argv) {
   const provider = argv[2] ?? 'gemini';
@@ -272,6 +272,19 @@ function enqueueTeamHandler(evt, teamHandler) {
   void processQueue();
 }
 
+function handleUsageStatsRequest(evt) {
+  if (providerName !== 'gemini') return;
+  getGeminiStats().then(stats => {
+    emitRequest({
+      id: evt.id,
+      call: 'submit_usage_stats',
+      args: { stats, timestamp: new Date().toISOString() },
+    });
+  }).catch(err => {
+    console.error(`[llm-agent] Failed to get Gemini stats: ${err.message}`);
+  });
+}
+
 function handleInboundEvent(evt) {
   if (evt.type === 'team_task_assign') {
     handleTeamTaskAssign(evt);
@@ -280,6 +293,11 @@ function handleInboundEvent(evt) {
 
   if (evt.type === 'team_work_assign') {
     handleTeamWorkAssign(evt);
+    return;
+  }
+
+  if (evt.type === 'get_usage_stats') {
+    handleUsageStatsRequest(evt);
     return;
   }
 

@@ -108,6 +108,13 @@ export async function scrapeExternalUsage(providerName) {
   return '';
 }
 
+export async function getGeminiStats() {
+  const { stdout } = await spawnAndCollect('gemini', ['--prompt', '/stats'], {
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
+  return stdout;
+}
+
 export function getProviderCommand(providerName, selectedModel, userMessage) {
   switch (providerName) {
     case 'claude':
