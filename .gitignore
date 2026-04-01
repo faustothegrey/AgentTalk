@@ -5,3 +5,4 @@ dist/
 coverage/
 test-transcripts/
 .npm-cache/
+.agenttalk-supervisor.pid
