@@ -685,6 +685,19 @@ export class Registry extends EventEmitter {
     return this.teamCoordinator.sendUserMessage(taskId, targetRole, message);
   }
 
+  async sendScheduledMessage(agentId: string, prompt: string): Promise<void> {
+    const agent = this.getAgent(agentId);
+    if (agent.status !== 'ready' && agent.status !== 'busy') {
+      throw new Error(`Agent ${agentId} is not ready for scheduled execution (status: ${agent.status})`);
+    }
+
+    await this.sendProtocol(agentId, 'EVT', {
+      type: 'message_received',
+      from: 'scheduler',
+      payload: prompt,
+    });
+  }
+
   getTeams(): Team[] {
     return this.teamCoordinator.getTeams();
   }

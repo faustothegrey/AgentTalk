@@ -26,7 +26,7 @@ type Provider = 'claude' | 'gemini' | 'codex';
 type ExecutionMode = 'interactive' | 'one_shot' | 'auto';
 type TopLevelTab = 'agents' | 'config';
 type SidebarTab = 'conversation' | 'team';
-type ConfigSubTab = 'usage' | 'drive';
+type ConfigSubTab = 'usage' | 'drive' | 'scheduler';
 
 interface Agent {
   id: string;
@@ -142,6 +142,20 @@ interface GoogleDriveFileEntry {
 interface GoogleDriveReadResult {
   file: GoogleDriveFileEntry;
   text: string;
+}
+
+interface SchedulerJob {
+  id: string;
+  name: string;
+  agentId: string;
+  prompt: string;
+  intervalSeconds: number;
+  enabled: boolean;
+  lastRunAt?: string;
+  nextRunAt?: string;
+  lastError?: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 const providerOptions: { value: Provider; label: string }[] = [
@@ -434,6 +448,12 @@ function App() {
   const [driveSelectedResourceId, setDriveSelectedResourceId] = useState('');
   const [driveGrantAgentId, setDriveGrantAgentId] = useState('');
   const [driveReadFileId, setDriveReadFileId] = useState('');
+  const [schedulerJobs, setSchedulerJobs] = useState<SchedulerJob[]>([]);
+  const [schedulerLoading, setSchedulerLoading] = useState(false);
+  const [schedulerJobName, setSchedulerJobName] = useState('');
+  const [schedulerAgentId, setSchedulerAgentId] = useState('');
+  const [schedulerPrompt, setSchedulerPrompt] = useState('');
+  const [schedulerIntervalSeconds, setSchedulerIntervalSeconds] = useState<number>(300);
   const [sidebarWidth, setSidebarWidth] = useState(390);
   const [isResizing, setIsResizing] = useState(false);
   const [, setTeams] = useState<Team[]>([]);
@@ -625,6 +645,12 @@ function App() {
     setDriveReadFileId(prev => prev || data[0]?.id || '');
   }, []);
 
+  const fetchSchedulerJobs = useCallback(async () => {
+    const res = await fetchWithTimeout('/api/scheduler/jobs');
+    const data = await res.json() as SchedulerJob[];
+    setSchedulerJobs(data);
+  }, []);
+
   const loadDirectoryEntries = useCallback(async (targetPath: string) => {
     setDirectoryPickerLoading(true);
     try {
@@ -798,6 +824,114 @@ function App() {
       })
       .catch((err) => handleError('Failed to fetch Google Drive status:', err));
   }, [activeTopTab, activeConfigSubTab, fetchDriveResources, fetchDriveStatus]);
+
+  useEffect(() => {
+    if (activeTopTab !== 'config' || activeConfigSubTab !== 'scheduler') {
+      return;
+    }
+
+    fetchSchedulerJobs().catch((err) => handleError('Failed to load scheduler jobs:', err));
+  }, [activeTopTab, activeConfigSubTab, fetchSchedulerJobs]);
+
+  useEffect(() => {
+    if (schedulerAgentId) {
+      return;
+    }
+
+    const available = agents.find((agent) => agent.status === 'ready' || agent.status === 'busy');
+    if (available) {
+      setSchedulerAgentId(available.id);
+    }
+  }, [agents, schedulerAgentId]);
+
+  const createSchedulerJob = async () => {
+    const name = schedulerJobName.trim();
+    const agentId = schedulerAgentId.trim();
+    const prompt = schedulerPrompt.trim();
+    const intervalSeconds = Math.floor(Number(schedulerIntervalSeconds));
+    if (!name || !agentId || !prompt || !Number.isFinite(intervalSeconds)) {
+      setGlobalError('Scheduler job requires name, agent, prompt, and a valid interval.');
+      return;
+    }
+
+    if (intervalSeconds < 5) {
+      setGlobalError('Scheduler interval must be at least 5 seconds.');
+      return;
+    }
+
+    setSchedulerLoading(true);
+    setGlobalError(null);
+    try {
+      await fetchWithTimeout('/api/scheduler/jobs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name,
+          agentId,
+          prompt,
+          intervalSeconds,
+          enabled: true,
+        }),
+      });
+      setSchedulerJobName('');
+      setSchedulerPrompt('');
+      await fetchSchedulerJobs();
+      pushSidebarEvent('out', 'Scheduler Create', `${name} -> ${agentId} every ${intervalSeconds}s`);
+    } catch (err) {
+      handleError('Failed to create scheduler job:', err);
+    } finally {
+      setSchedulerLoading(false);
+    }
+  };
+
+  const updateSchedulerJob = async (id: string, patch: Partial<Pick<SchedulerJob, 'enabled'>>) => {
+    setSchedulerLoading(true);
+    setGlobalError(null);
+    try {
+      await fetchWithTimeout(`/api/scheduler/jobs/${encodeURIComponent(id)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(patch),
+      });
+      await fetchSchedulerJobs();
+    } catch (err) {
+      handleError('Failed to update scheduler job:', err);
+    } finally {
+      setSchedulerLoading(false);
+    }
+  };
+
+  const runSchedulerJobNow = async (id: string) => {
+    setSchedulerLoading(true);
+    setGlobalError(null);
+    try {
+      await fetchWithTimeout(`/api/scheduler/jobs/${encodeURIComponent(id)}/run`, {
+        method: 'POST',
+      }, 15000);
+      await fetchSchedulerJobs();
+      pushSidebarEvent('out', 'Scheduler Run', id);
+    } catch (err) {
+      handleError('Failed to run scheduler job:', err);
+    } finally {
+      setSchedulerLoading(false);
+    }
+  };
+
+  const deleteSchedulerJob = async (id: string) => {
+    setSchedulerLoading(true);
+    setGlobalError(null);
+    try {
+      await fetchWithTimeout(`/api/scheduler/jobs/${encodeURIComponent(id)}`, {
+        method: 'DELETE',
+      });
+      await fetchSchedulerJobs();
+      pushSidebarEvent('out', 'Scheduler Delete', id);
+    } catch (err) {
+      handleError('Failed to delete scheduler job:', err);
+    } finally {
+      setSchedulerLoading(false);
+    }
+  };
 
   const createAgent = async () => {
     setLoading(true);
@@ -2035,6 +2169,28 @@ function App() {
                   >
                     <Settings size={14} /> Google Drive
                   </button>
+                  <button 
+                    onClick={() => setActiveConfigSubTab('scheduler')} 
+                    style={{
+                      padding: '8px 12px',
+                      fontSize: '11px',
+                      fontWeight: 700,
+                      textTransform: 'uppercase' as const,
+                      backgroundColor: activeConfigSubTab === 'scheduler' ? theme.bgActive : 'transparent',
+                      color: activeConfigSubTab === 'scheduler' ? '#fff' : '#888',
+                      border: 'none',
+                      borderRadius: '4px',
+                      cursor: 'pointer',
+                      flex: 1,
+                      transition: 'all 0.2s',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '6px'
+                    }}
+                  >
+                    <HistoryIcon size={14} /> Scheduler
+                  </button>
                 </div>
               </div>
               
@@ -2409,6 +2565,150 @@ function App() {
                             {driveReadResult.text}
                           </pre>
                         </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+                {activeConfigSubTab === 'scheduler' && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px' }}>
+                      <h3 style={{ margin: 0, fontSize: '12px', textTransform: 'uppercase' as const, color: theme.textMuted, letterSpacing: '0.8px' }}>
+                        Scheduler Configuration
+                      </h3>
+                      <button
+                        onClick={async () => {
+                          setSchedulerLoading(true);
+                          try {
+                            await fetchSchedulerJobs();
+                          } catch (err) {
+                            handleError('Failed to refresh scheduler jobs:', err);
+                          } finally {
+                            setSchedulerLoading(false);
+                          }
+                        }}
+                        disabled={schedulerLoading}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          color: theme.textMuted,
+                          cursor: schedulerLoading ? 'not-allowed' : 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                          fontSize: '10px',
+                          textTransform: 'uppercase',
+                          fontWeight: 'bold',
+                          opacity: schedulerLoading ? 0.5 : 1,
+                        }}
+                      >
+                        <RotateCcw size={12} className={schedulerLoading ? 'animate-spin' : ''} />
+                        Reload
+                      </button>
+                    </div>
+
+                    <div style={{ backgroundColor: theme.bgSurface, border: `1px solid ${theme.border}`, borderRadius: '8px', padding: '14px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                      <div style={{ fontSize: '12px', color: theme.textSubtle, textTransform: 'uppercase' as const, letterSpacing: '0.8px' }}>
+                        Create Job
+                      </div>
+                      <input
+                        value={schedulerJobName}
+                        onChange={(e) => setSchedulerJobName(e.target.value)}
+                        placeholder="Job name"
+                        style={{ backgroundColor: theme.bg, color: theme.textPrimary, border: `1px solid ${theme.borderInput}`, borderRadius: '6px', padding: '10px 12px' }}
+                      />
+                      <select
+                        value={schedulerAgentId}
+                        onChange={(e) => setSchedulerAgentId(e.target.value)}
+                        style={{ backgroundColor: theme.bg, color: theme.textPrimary, border: `1px solid ${theme.borderInput}`, borderRadius: '6px', padding: '10px 12px' }}
+                      >
+                        <option value="">Select agent</option>
+                        {agents
+                          .filter((agent) => agent.status === 'ready' || agent.status === 'busy')
+                          .map((agent) => (
+                            <option key={agent.id} value={agent.id}>
+                              {agent.id}
+                            </option>
+                          ))}
+                      </select>
+                      <textarea
+                        value={schedulerPrompt}
+                        onChange={(e) => setSchedulerPrompt(e.target.value)}
+                        rows={4}
+                        placeholder="Prompt to send on each schedule run"
+                        style={{ resize: 'vertical', backgroundColor: theme.bg, color: theme.textPrimary, border: `1px solid ${theme.borderInput}`, borderRadius: '6px', padding: '10px 12px', fontFamily: 'inherit' }}
+                      />
+                      <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                        <label style={{ fontSize: '12px', color: theme.textMuted, minWidth: '120px' }}>
+                          Interval (sec)
+                        </label>
+                        <input
+                          type="number"
+                          min={5}
+                          step={1}
+                          value={schedulerIntervalSeconds}
+                          onChange={(e) => setSchedulerIntervalSeconds(Number(e.target.value))}
+                          style={{ flex: 1, backgroundColor: theme.bg, color: theme.textPrimary, border: `1px solid ${theme.borderInput}`, borderRadius: '6px', padding: '10px 12px' }}
+                        />
+                        <button
+                          onClick={createSchedulerJob}
+                          disabled={schedulerLoading}
+                          style={{ padding: '10px 12px', backgroundColor: theme.success, color: '#fff', border: 'none', borderRadius: '6px', cursor: schedulerLoading ? 'not-allowed' : 'pointer', opacity: schedulerLoading ? 0.55 : 1 }}
+                        >
+                          Create
+                        </button>
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                      {schedulerJobs.length === 0 ? (
+                        <div style={{ color: theme.textMuted, fontSize: '13px', textAlign: 'center', padding: '20px', backgroundColor: theme.bgSurface, borderRadius: '8px', border: `1px dashed ${theme.border}` }}>
+                          No scheduler jobs yet.
+                        </div>
+                      ) : (
+                        schedulerJobs.map((job) => (
+                          <div key={job.id} style={{ backgroundColor: theme.bgSurface, border: `1px solid ${theme.border}`, borderRadius: '8px', padding: '14px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'center' }}>
+                              <div>
+                                <div style={{ color: theme.textPrimary, fontSize: '14px', fontWeight: 700 }}>{job.name}</div>
+                                <div style={{ color: theme.textSubtle, fontSize: '12px' }}>{job.agentId} every {job.intervalSeconds}s</div>
+                              </div>
+                              <div style={{ display: 'flex', gap: '8px' }}>
+                                <button
+                                  onClick={() => updateSchedulerJob(job.id, { enabled: !job.enabled })}
+                                  disabled={schedulerLoading}
+                                  style={{ padding: '8px 10px', backgroundColor: job.enabled ? '#8a2b2b' : theme.success, color: '#fff', border: 'none', borderRadius: '6px', cursor: schedulerLoading ? 'not-allowed' : 'pointer', opacity: schedulerLoading ? 0.55 : 1 }}
+                                >
+                                  {job.enabled ? 'Disable' : 'Enable'}
+                                </button>
+                                <button
+                                  onClick={() => runSchedulerJobNow(job.id)}
+                                  disabled={schedulerLoading}
+                                  style={{ padding: '8px 10px', backgroundColor: theme.bgActive, color: '#fff', border: 'none', borderRadius: '6px', cursor: schedulerLoading ? 'not-allowed' : 'pointer', opacity: schedulerLoading ? 0.55 : 1 }}
+                                >
+                                  Run now
+                                </button>
+                                <button
+                                  onClick={() => deleteSchedulerJob(job.id)}
+                                  disabled={schedulerLoading}
+                                  style={{ padding: '8px 10px', backgroundColor: theme.error, color: '#fff', border: 'none', borderRadius: '6px', cursor: schedulerLoading ? 'not-allowed' : 'pointer', opacity: schedulerLoading ? 0.55 : 1 }}
+                                >
+                                  Delete
+                                </button>
+                              </div>
+                            </div>
+                            <div style={{ color: theme.textMuted, fontSize: '12px', whiteSpace: 'pre-wrap' }}>{job.prompt}</div>
+                            <div style={{ display: 'grid', gridTemplateColumns: '140px 1fr', gap: '6px 10px', fontSize: '12px' }}>
+                              <span style={{ color: theme.textMuted }}>Status</span>
+                              <span style={{ color: job.enabled ? theme.success : theme.textDim }}>{job.enabled ? 'Enabled' : 'Disabled'}</span>
+                              <span style={{ color: theme.textMuted }}>Last run</span>
+                              <span style={{ color: theme.textSubtle }}>{job.lastRunAt ? new Date(job.lastRunAt).toLocaleString() : 'Never'}</span>
+                              <span style={{ color: theme.textMuted }}>Next run</span>
+                              <span style={{ color: theme.textSubtle }}>{job.nextRunAt ? new Date(job.nextRunAt).toLocaleString() : 'Not scheduled'}</span>
+                              <span style={{ color: theme.textMuted }}>Last error</span>
+                              <span style={{ color: job.lastError ? theme.error : theme.textSubtle }}>{job.lastError ?? 'None'}</span>
+                            </div>
+                          </div>
+                        ))
                       )}
                     </div>
                   </div>

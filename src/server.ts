@@ -10,6 +10,7 @@ import type { SessionRecorder } from './recordings/session-recorder.js';
 import { buildProcessOptions } from './scenarios/command-builder.js';
 import { ScenarioRunner } from './scenarios/scenario-runner.js';
 import type { ScenarioDefinition } from './scenarios/types.js';
+import { SchedulerService } from './scheduler/scheduler.js';
 
 type TerminalHistoryEvent =
   | { type: 'output'; text: string }
@@ -46,6 +47,22 @@ function getNonEmptyString(value: unknown): string | undefined {
 
   const trimmed = value.trim();
   return trimmed ? trimmed : undefined;
+}
+
+function getIntervalSeconds(value: unknown): number | undefined {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return Math.floor(value);
+  }
+
+  if (typeof value === 'string') {
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed)) {
+      return undefined;
+    }
+    return Math.floor(parsed);
+  }
+
+  return undefined;
 }
 
 function resolveWorkingDirectory(value: unknown): string | undefined {
@@ -154,6 +171,15 @@ export function startServer(
   app.use(express.json());
   const recorder = options.recorder;
   const googleDrive = options.googleDrive;
+  const scheduler = new SchedulerService({
+    onRun: async (job) => {
+      await registry.sendScheduledMessage(job.agentId, job.prompt);
+      recorder?.record('runtime', 'scheduler_job_run', {
+        jobId: job.id,
+        agentId: job.agentId,
+      });
+    },
+  });
 
   function getBaseUrl(req: express.Request): string {
     const configured = getNonEmptyString(process.env.GOOGLE_DRIVE_REDIRECT_BASE_URL);
@@ -207,6 +233,108 @@ export function startServer(
     const topics = Array.from(new Set(conversations.map(s => s.topic))).filter(Boolean);
     console.log(`[Server] Returning ${topics.length} topics`);
     res.json(topics);
+  });
+
+  app.get('/api/scheduler/jobs', (req, res) => {
+    res.json(scheduler.listJobs());
+  });
+
+  app.post('/api/scheduler/jobs', (req, res) => {
+    const name = getNonEmptyString(req.body?.name);
+    const agentId = getNonEmptyString(req.body?.agentId);
+    const prompt = getNonEmptyString(req.body?.prompt);
+    const intervalSeconds = getIntervalSeconds(req.body?.intervalSeconds);
+    const enabled = typeof req.body?.enabled === 'boolean' ? req.body.enabled : true;
+
+    if (!name || !agentId || !prompt || intervalSeconds === undefined) {
+      res.status(400).json({ error: 'name, agentId, prompt, and intervalSeconds are required' });
+      return;
+    }
+
+    if (intervalSeconds < 5) {
+      res.status(400).json({ error: 'intervalSeconds must be at least 5' });
+      return;
+    }
+
+    try {
+      registry.getAgent(agentId);
+      const job = scheduler.createJob({
+        name,
+        agentId,
+        prompt,
+        intervalSeconds,
+        enabled,
+      });
+      res.json(job);
+    } catch (err) {
+      res.status(getErrorStatus(err)).json({ error: err instanceof Error ? err.message : String(err) });
+    }
+  });
+
+  app.patch('/api/scheduler/jobs/:id', (req, res) => {
+    const intervalSeconds = req.body?.intervalSeconds === undefined
+      ? undefined
+      : getIntervalSeconds(req.body.intervalSeconds);
+    const name = req.body?.name === undefined ? undefined : getNonEmptyString(req.body.name);
+    const agentId = req.body?.agentId === undefined ? undefined : getNonEmptyString(req.body.agentId);
+    const prompt = req.body?.prompt === undefined ? undefined : getNonEmptyString(req.body.prompt);
+    const enabled = req.body?.enabled;
+
+    if (req.body?.intervalSeconds !== undefined && intervalSeconds === undefined) {
+      res.status(400).json({ error: 'intervalSeconds must be a number' });
+      return;
+    }
+
+    if (intervalSeconds !== undefined && intervalSeconds < 5) {
+      res.status(400).json({ error: 'intervalSeconds must be at least 5' });
+      return;
+    }
+
+    if (req.body?.enabled !== undefined && typeof enabled !== 'boolean') {
+      res.status(400).json({ error: 'enabled must be a boolean' });
+      return;
+    }
+
+    if (agentId) {
+      try {
+        registry.getAgent(agentId);
+      } catch (err) {
+        res.status(getErrorStatus(err)).json({ error: err instanceof Error ? err.message : String(err) });
+        return;
+      }
+    }
+
+    try {
+      const job = scheduler.updateJob(req.params.id, {
+        ...(name !== undefined ? { name } : {}),
+        ...(agentId !== undefined ? { agentId } : {}),
+        ...(prompt !== undefined ? { prompt } : {}),
+        ...(intervalSeconds !== undefined ? { intervalSeconds } : {}),
+        ...(typeof enabled === 'boolean' ? { enabled } : {}),
+      });
+      res.json(job);
+    } catch (err) {
+      res.status(getErrorStatus(err)).json({ error: err instanceof Error ? err.message : String(err) });
+    }
+  });
+
+  app.post('/api/scheduler/jobs/:id/run', async (req, res) => {
+    try {
+      const job = await scheduler.runNow(req.params.id);
+      res.json(job);
+    } catch (err) {
+      res.status(getErrorStatus(err)).json({ error: err instanceof Error ? err.message : String(err) });
+    }
+  });
+
+  app.delete('/api/scheduler/jobs/:id', (req, res) => {
+    const removed = scheduler.deleteJob(req.params.id);
+    if (!removed) {
+      res.status(404).json({ error: `Scheduler job ${req.params.id} not found` });
+      return;
+    }
+
+    res.json({ success: true });
   });
 
   app.get('/api/fs/directories', (req, res) => {
@@ -791,6 +919,10 @@ export function startServer(
     const actualPort = typeof address === 'object' && address ? address.port : port;
     console.log(`[Server] AgentTalk Web UI Backend listening on http://localhost:${actualPort}`);
     recorder?.record('runtime', 'server_started', { port: actualPort });
+  });
+
+  server.on('close', () => {
+    scheduler.destroy();
   });
 
   return server;

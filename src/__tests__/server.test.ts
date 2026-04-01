@@ -215,6 +215,45 @@ describe('startServer', () => {
     ]);
   });
 
+  it('should create, update, list, and delete scheduler jobs', async () => {
+    await registry.createAgent('agent-1');
+
+    const createResponse = await fetch(`${baseUrl}/api/scheduler/jobs`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: 'Heartbeat',
+        agentId: 'agent-1',
+        prompt: 'Send a short status update.',
+        intervalSeconds: 5,
+      }),
+    });
+
+    expect(createResponse.status).toBe(200);
+    const created = await createResponse.json() as { id: string; enabled: boolean };
+    expect(created.enabled).toBe(true);
+    expect(created.id).toMatch(/^job-/);
+
+    const listResponse = await fetch(`${baseUrl}/api/scheduler/jobs`);
+    expect(listResponse.status).toBe(200);
+    const jobs = await listResponse.json() as Array<{ id: string; enabled: boolean }>;
+    expect(jobs).toEqual(expect.arrayContaining([expect.objectContaining({ id: created.id })]));
+
+    const updateResponse = await fetch(`${baseUrl}/api/scheduler/jobs/${created.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ enabled: false }),
+    });
+    expect(updateResponse.status).toBe(200);
+    await expect(updateResponse.json()).resolves.toEqual(expect.objectContaining({ id: created.id, enabled: false }));
+
+    const deleteResponse = await fetch(`${baseUrl}/api/scheduler/jobs/${created.id}`, {
+      method: 'DELETE',
+    });
+    expect(deleteResponse.status).toBe(200);
+    await expect(deleteResponse.json()).resolves.toEqual({ success: true });
+  });
+
   it('should accept websocket connections on /ws and ignore input for unattached clients', async () => {
     const socket = new WebSocket(baseUrl.replace('http', 'ws') + '/ws');
     await new Promise<void>((resolve, reject) => {
