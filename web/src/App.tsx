@@ -273,16 +273,28 @@ async function fetchWithTimeout(url: string, options: RequestInit = {}, timeoutM
   }
 }
 
-function GeminiUsageStats({ stats, timestamp }: { stats: string, timestamp: string }) {
+function AgentUsageStats({ stats, timestamp }: { stats: string, timestamp: string }) {
   const lines = stats.split('\n');
-  
+
   const getLineValue = (label: string) => {
-    const line = lines.find(l => l.includes(label));
+    const line = lines.find(l => l.startsWith(label));
     if (!line) return '';
-    return line.split(':')[1]?.trim() || '';
+    return line.slice(label.length).trim();
   };
 
   const lastUpdate = new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+  // Parse model lines: "model-name  reqs  input:N output:N total:N"
+  const modelLines = lines.filter(l => l.includes('input:') && l.includes('output:'));
+  const models = modelLines.map(line => {
+    const parts = line.trim().split(/\s+/);
+    const model = parts[0];
+    const reqs = parts[1];
+    const input = parts.find(p => p.startsWith('input:'))?.split(':')[1] || '0';
+    const output = parts.find(p => p.startsWith('output:'))?.split(':')[1] || '0';
+    const total = parts.find(p => p.startsWith('total:'))?.split(':')[1] || '0';
+    return { model, reqs, input, output, total };
+  });
 
   return (
     <div style={{
@@ -295,68 +307,41 @@ function GeminiUsageStats({ stats, timestamp }: { stats: string, timestamp: stri
       borderRadius: '8px',
       border: '1px solid #333'
     }}>
-      <div style={{ color: '#ff79c6', fontWeight: 'bold', marginBottom: '16px', fontSize: '14px' }}>Session Stats</div>
-      
+      <div style={{ color: '#ff79c6', fontWeight: 'bold', marginBottom: '16px', fontSize: '14px' }}>Agent Stats</div>
+
       <div style={{ marginBottom: '16px' }}>
-        <div style={{ color: '#888', fontWeight: 'bold', marginBottom: '4px' }}>Interaction Summary</div>
-        <div style={{ display: 'grid', gridTemplateColumns: '160px 1fr', gap: '4px' }}>
-          <span style={{ color: '#8be9fd' }}>Auth Method:</span> <span>{getLineValue('Auth Method')}</span>
-          <span style={{ color: '#8be9fd' }}>Tier:</span> <span>{getLineValue('Tier')}</span>
-          <span style={{ color: '#8be9fd' }}>Tool Calls:</span> <span>{getLineValue('Tool Calls')}</span>
-          <span style={{ color: '#8be9fd' }}>Success Rate:</span> <span style={{ color: '#50fa7b' }}>{getLineValue('Success Rate')}</span>
-          <span style={{ color: '#8be9fd' }}>User Agreement:</span> <span style={{ color: '#50fa7b' }}>{getLineValue('User Agreement')}</span>
-          <span style={{ color: '#8be9fd' }}>Code Changes:</span> <span>
-            <span style={{ color: '#50fa7b' }}>{getLineValue('Code Changes').split(' ')[0]}</span>
-            {' '}
-            <span style={{ color: '#ff5555' }}>{getLineValue('Code Changes').split(' ')[1]}</span>
-          </span>
+        <div style={{ display: 'grid', gridTemplateColumns: '140px 1fr', gap: '4px' }}>
+          <span style={{ color: '#8be9fd' }}>Provider:</span> <span>{getLineValue('Provider:')}</span>
+          <span style={{ color: '#8be9fd' }}>Model:</span> <span>{getLineValue('Model:')}</span>
+          <span style={{ color: '#8be9fd' }}>Total Calls:</span> <span>{getLineValue('Total Calls:')}</span>
+          <span style={{ color: '#8be9fd' }}>Wall Time:</span> <span>{getLineValue('Wall Time:')}</span>
         </div>
       </div>
 
-      <div style={{ marginBottom: '16px' }}>
-        <div style={{ color: '#888', fontWeight: 'bold', marginBottom: '4px' }}>Performance</div>
-        <div style={{ display: 'grid', gridTemplateColumns: '160px 1fr', gap: '4px' }}>
-          <span style={{ color: '#8be9fd' }}>Wall Time:</span> <span>{getLineValue('Wall Time')}</span>
-          <span style={{ color: '#8be9fd' }}>Agent Active:</span> <span>{getLineValue('Agent Active')}</span>
-          <span style={{ color: '#888', paddingLeft: '12px' }}>» API Time:</span> <span>{getLineValue('API Time')}</span>
-          <span style={{ color: '#888', paddingLeft: '12px' }}>» Tool Time:</span> <span>{getLineValue('Tool Time')}</span>
-        </div>
-      </div>
-
-      <div>
-        <div style={{ display: 'grid', gridTemplateColumns: '180px 60px 140px 1fr', gap: '8px', borderBottom: '1px solid #444', paddingBottom: '4px', color: '#888', fontWeight: 'bold' }}>
-          <span>Model</span>
-          <span>Reqs</span>
-          <span>Model usage</span>
-          <span>Usage resets</span>
-        </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', marginTop: '8px' }}>
-          {lines.filter(l => l.includes('gemini-')).map((line, idx) => {
-            const parts = line.trim().split(/\s+/);
-            const model = parts[0];
-            const reqs = parts[1];
-            const usagePercent = parts[parts.length - 3];
-            const resets = parts.slice(parts.length - 2).join(' ');
-            
-            const usageNum = parseFloat(usagePercent) || 0;
-
-            return (
-              <div key={idx} style={{ display: 'grid', gridTemplateColumns: '180px 60px 140px 1fr', gap: '8px', alignItems: 'center' }}>
-                <span style={{ color: '#aaa' }}>{model}</span>
-                <span style={{ textAlign: 'right', paddingRight: '20px' }}>{reqs}</span>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <div style={{ width: '100px', height: '8px', backgroundColor: '#333', borderRadius: '4px', overflow: 'hidden' }}>
-                    <div style={{ width: `${Math.min(usageNum, 100)}%`, height: '100%', backgroundColor: '#6272a4' }} />
-                  </div>
-                  <span style={{ fontSize: '11px' }}>{usagePercent}</span>
-                </div>
-                <span style={{ color: '#888', fontSize: '11px' }}>{resets}</span>
+      {models.length > 0 && (
+        <div>
+          <div style={{ color: '#888', fontWeight: 'bold', marginBottom: '8px' }}>Token Usage by Model</div>
+          <div style={{ display: 'grid', gridTemplateColumns: '180px 50px 90px 90px 90px', gap: '8px', borderBottom: '1px solid #444', paddingBottom: '4px', color: '#888', fontWeight: 'bold', fontSize: '11px' }}>
+            <span>Model</span>
+            <span>Reqs</span>
+            <span>Input</span>
+            <span>Output</span>
+            <span>Total</span>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', marginTop: '6px' }}>
+            {models.map((m, idx) => (
+              <div key={idx} style={{ display: 'grid', gridTemplateColumns: '180px 50px 90px 90px 90px', gap: '8px', alignItems: 'center' }}>
+                <span style={{ color: '#aaa' }}>{m.model}</span>
+                <span>{m.reqs}</span>
+                <span style={{ color: '#8be9fd' }}>{Number(m.input).toLocaleString()}</span>
+                <span style={{ color: '#50fa7b' }}>{Number(m.output).toLocaleString()}</span>
+                <span style={{ fontWeight: 'bold' }}>{Number(m.total).toLocaleString()}</span>
               </div>
-            );
-          })}
+            ))}
+          </div>
         </div>
-      </div>
-      
+      )}
+
       <div style={{ marginTop: '20px', fontSize: '10px', color: '#555', textAlign: 'right' }}>
         Last updated: {lastUpdate}
       </div>
@@ -1869,9 +1854,9 @@ function App() {
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <h3 style={{ margin: 0, fontSize: '12px', textTransform: 'uppercase' as const, color: theme.textMuted, letterSpacing: '0.8px' }}>
-                        Gemini Detailed Usage
+                        Agent Usage
                       </h3>
-                      {selectedAgent?.provider === 'gemini' && (
+                      {selectedAgent && (selectedAgent.status === 'ready' || selectedAgent.status === 'busy') && (
                         <button
                           onClick={async () => {
                             if (!selectedAgentId) return;
@@ -1910,11 +1895,7 @@ function App() {
                     </div>
                     {!selectedAgentId ? (
                       <div style={{ color: theme.textMuted, fontSize: '13px', textAlign: 'center' as const, marginTop: '20px', padding: '20px', backgroundColor: theme.bgSurface, borderRadius: '8px', border: `1px dashed ${theme.border}` }}>
-                        Select an agent to see detailed usage.
-                      </div>
-                    ) : selectedAgent?.provider !== 'gemini' ? (
-                      <div style={{ color: theme.textMuted, fontSize: '13px', textAlign: 'center' as const, marginTop: '20px', padding: '20px', backgroundColor: theme.bgSurface, borderRadius: '8px', border: `1px dashed ${theme.border}` }}>
-                        Detailed usage is only available for Gemini agents.
+                        Select an agent to see usage stats.
                       </div>
                     ) : !selectedAgent?.usageStats ? (
                       <div style={{ color: theme.textMuted, fontSize: '13px', textAlign: 'center' as const, marginTop: '20px', padding: '20px', backgroundColor: theme.bgSurface, borderRadius: '8px', border: `1px dashed ${theme.border}` }}>
@@ -1922,7 +1903,7 @@ function App() {
                         Waiting for usage data from agent <strong>{selectedAgentId}</strong>...
                       </div>
                     ) : (
-                      <GeminiUsageStats stats={selectedAgent.usageStats.stats} timestamp={selectedAgent.usageStats.timestamp} />
+                      <AgentUsageStats stats={selectedAgent.usageStats.stats} timestamp={selectedAgent.usageStats.timestamp} />
                     )}
                   </div>
                 )}

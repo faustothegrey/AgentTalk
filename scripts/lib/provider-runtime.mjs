@@ -84,35 +84,14 @@ export async function callProvider(providerName, selectedModel, userMessage, opt
 
   const response = extractResponse(providerName, cleanStdout);
   const tokens = extractTokens(providerName, cleanStdout);
+  const tokenDetails = extractTokenDetails(providerName, cleanStdout);
 
   if (code !== 0 && !response) {
     const details = cleanStderr || cleanStdout || `exit code ${code}`;
     throw new Error(`${providerName} failed: ${details}`);
   }
 
-  return { response, tokens };
-}
-
-export async function scrapeExternalUsage(providerName) {
-  if (providerName === 'claude') {
-    return scrapeClaudeUsageViaSlashCommand();
-  }
-
-  if (providerName === 'gemini') {
-    const { stdout } = await spawnAndCollect('gemini', ['-o', 'text', '--prompt', '/stats model'], {
-      stdio: ['ignore', 'pipe', 'pipe'],
-    });
-    return stdout;
-  }
-
-  return '';
-}
-
-export async function getGeminiStats() {
-  const { stdout } = await spawnAndCollect('gemini', ['-o', 'text', '--prompt', '/stats'], {
-    stdio: ['ignore', 'pipe', 'pipe'],
-  });
-  return stdout;
+  return { response, tokens, tokenDetails };
 }
 
 export function getProviderCommand(providerName, selectedModel, userMessage) {
@@ -166,6 +145,38 @@ export function getProviderCommand(providerName, selectedModel, userMessage) {
       return { command: 'gemini', args, stdin: null };
     }
   }
+}
+
+export function extractTokenDetails(providerName, stdout) {
+  try {
+    if (providerName === 'codex') {
+      for (const line of stdout.split('\n')) {
+        if (!line.trim()) continue;
+        const json = JSON.parse(line);
+        if (json.type === 'turn.completed' && json.usage) {
+          return { input: json.usage.input_tokens || 0, output: json.usage.output_tokens || 0 };
+        }
+      }
+      return { input: 0, output: 0 };
+    }
+
+    const json = JSON.parse(stdout);
+    if (providerName === 'claude') {
+      return { input: json.usage?.input_tokens || 0, output: json.usage?.output_tokens || 0 };
+    }
+
+    if (providerName === 'gemini' && json.stats?.models) {
+      let input = 0, output = 0;
+      for (const model of Object.values(json.stats.models)) {
+        input += model.tokens?.input || 0;
+        output += model.tokens?.output || 0;
+      }
+      return { input, output };
+    }
+  } catch {
+    return { input: 0, output: 0 };
+  }
+  return { input: 0, output: 0 };
 }
 
 function extractTokens(providerName, stdout) {

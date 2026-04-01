@@ -194,9 +194,6 @@ export class Registry extends EventEmitter {
    */
   async requestUsageStats(id: string): Promise<void> {
     const agent = this.getAgent(id);
-    if (agent.provider !== 'gemini') {
-      throw new Error('Usage stats are only available for Gemini agents');
-    }
     if (agent.status !== 'ready' && agent.status !== 'busy') {
       throw new Error(`Agent ${id} is not in a state to provide usage stats (status: ${agent.status})`);
     }
@@ -280,12 +277,10 @@ export class Registry extends EventEmitter {
         if (agent.status === 'starting') {
           this.setAgentStatus(agent, 'ready');
 
-          if (agent.provider === 'gemini') {
-            void this.sendProtocol(agent.id, 'EVT', {
-              id: `usage-${Date.now()}`,
-              type: 'get_usage_stats',
-            } as any);
-          }
+          void this.sendProtocol(agent.id, 'EVT', {
+            id: `usage-${Date.now()}`,
+            type: 'get_usage_stats',
+          } as any);
           return;
         }
 
@@ -487,7 +482,9 @@ export class Registry extends EventEmitter {
     if (parser) parser.expectEcho(line);
 
     console.log(`[Registry] Sending ${type} to agent ${id}: ${JSON.stringify(payload)}`);
-    this.adapter.sendText(id, line);
+    const lineWithNewline = line.endsWith('\n') ? line : line + '\n';
+    console.log(`[Registry] RAW SEND to ${id}: ${JSON.stringify(lineWithNewline)}`);
+    this.adapter.sendText(id, lineWithNewline);
   }
 
   private setAgentBusyState(agent: Agent, busy: boolean): void {
