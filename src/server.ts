@@ -4,7 +4,7 @@ import { existsSync, readdirSync, statSync } from 'fs';
 import path from 'path';
 import { WebSocketServer, WebSocket } from 'ws';
 import { Registry } from './registry.js';
-import type { TeamMember, TeamRole } from './shared/types.js';
+import type { AgentExecutionMode, TeamMember, TeamRole } from './shared/types.js';
 import type { ProcessSpawnOptions } from './agents/process-adapter.js';
 
 type TerminalHistoryEvent =
@@ -29,6 +29,10 @@ function getErrorStatus(err: unknown): number {
 
 function isTeamRole(value: unknown): value is TeamRole {
   return value === 'planner' || value === 'worker';
+}
+
+function isExecutionMode(value: unknown): value is AgentExecutionMode {
+  return value === 'interactive' || value === 'one_shot' || value === 'auto';
 }
 
 function getNonEmptyString(value: unknown): string | undefined {
@@ -92,13 +96,18 @@ function isBundledLlmAgentCommand(command: string): boolean {
   return command.trim().startsWith('node scripts/llm-agent.mjs');
 }
 
-function buildProcessOptions(command: string, workingDirectory?: string): ProcessSpawnOptions | undefined {
+function buildProcessOptions(
+  command: string,
+  workingDirectory?: string,
+  requestedExecutionMode?: AgentExecutionMode,
+): ProcessSpawnOptions | undefined {
   if (isBundledLlmAgentCommand(command)) {
     return {
       cwd: process.cwd(),
       env: {
         ...process.env,
         ...(workingDirectory ? { AGENTTALK_WORKDIR: workingDirectory } : {}),
+        ...(requestedExecutionMode ? { AGENTTALK_EXECUTION_MODE: requestedExecutionMode } : {}),
       },
     };
   }
@@ -174,6 +183,9 @@ export function startServer(registry: Registry, port: number = 3000) {
       provider: a.provider,
       model: a.model,
       workingDirectory: a.workingDirectory,
+      requestedExecutionMode: a.requestedExecutionMode,
+      resolvedExecutionMode: a.resolvedExecutionMode,
+      sessionStatus: a.sessionStatus,
     }));
     console.log(`[Server] Returning ${agents.length} agents`);
     res.json(agents);
@@ -218,12 +230,18 @@ export function startServer(registry: Registry, port: number = 3000) {
   app.post('/api/agents', async (req, res) => {
     console.log('[Server] POST /api/agents', req.body);
     const { id, provider } = req.body;
+    const requestedExecutionMode = isExecutionMode(req.body?.executionMode) ? req.body.executionMode : 'auto';
 
     try {
       const agentId = id || (provider ? `agent-${provider}-${Date.now()}` : `agent-${Date.now()}`);
-      const agent = await registry.createAgent(agentId);
+      const agent = await registry.createAgent(agentId, { requestedExecutionMode });
       console.log(`[Server] Agent created: ${agent.id} (status: ${agent.status})`);
-      res.json({ id: agent.id, status: agent.status });
+      res.json({
+        id: agent.id,
+        status: agent.status,
+        requestedExecutionMode: agent.requestedExecutionMode,
+        resolvedExecutionMode: agent.resolvedExecutionMode,
+      });
     } catch (err) {
       console.error('[Server] Failed to create agent:', err);
       res.status(getErrorStatus(err)).json({ error: err instanceof Error ? err.message : String(err) });
@@ -233,7 +251,11 @@ export function startServer(registry: Registry, port: number = 3000) {
   app.post('/api/agents/:id/start', async (req, res) => {
     const { id } = req.params;
     const { command } = req.body;
-    console.log(`[Server] POST /api/agents/${id}/start`, { command, workingDirectory: req.body?.workingDirectory });
+    console.log(`[Server] POST /api/agents/${id}/start`, {
+      command,
+      workingDirectory: req.body?.workingDirectory,
+      executionMode: req.body?.executionMode,
+    });
     if (typeof command !== 'string' || command.trim() === '') {
       console.log('[Server] Missing or empty command');
       res.status(400).json({ error: 'command is required' });
@@ -242,11 +264,14 @@ export function startServer(registry: Registry, port: number = 3000) {
 
     try {
       const workingDirectory = resolveWorkingDirectory(req.body?.workingDirectory);
-      const launchCommand = command.trim();
-      const processOptions = buildProcessOptions(launchCommand, workingDirectory);
       const agent = registry.getAgent(id);
+      const requestedExecutionMode = isExecutionMode(req.body?.executionMode)
+        ? req.body.executionMode
+        : agent.requestedExecutionMode;
+      const launchCommand = command.trim();
+      const processOptions = buildProcessOptions(launchCommand, workingDirectory, requestedExecutionMode);
       console.log(`[Server] Starting agent ${id} (current status: ${agent.status})...`);
-      await registry.startAgent(id, launchCommand, workingDirectory, processOptions);
+      await registry.startAgent(id, launchCommand, workingDirectory, processOptions, requestedExecutionMode);
       console.log(`[Server] Agent ${id} successfully started`);
       res.json({ success: true });
     } catch (err) {
@@ -516,6 +541,16 @@ export function startServer(registry: Registry, port: number = 3000) {
   registry.on('model', ({ id, model }) => {
     const sent = broadcast({ type: 'model', id, model });
     console.log(`[Server] Model ${id}: ${model} → ${sent} client(s)`);
+  });
+
+  registry.on('execution_mode', ({ id, requestedExecutionMode, resolvedExecutionMode }) => {
+    const sent = broadcast({ type: 'execution_mode', id, requestedExecutionMode, resolvedExecutionMode });
+    console.log(`[Server] Execution Mode ${id}: ${requestedExecutionMode} -> ${resolvedExecutionMode ?? 'pending'} → ${sent} client(s)`);
+  });
+
+  registry.on('session_status', ({ id, sessionStatus }) => {
+    const sent = broadcast({ type: 'session_status', id, sessionStatus });
+    console.log(`[Server] Session Status ${id}: ${sessionStatus} → ${sent} client(s)`);
   });
 
   registry.on('conversation', (conversation) => {

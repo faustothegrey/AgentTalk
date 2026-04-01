@@ -108,7 +108,7 @@ describe('startServer', () => {
   });
 
   it('should resolve the bundled llm agent launcher path when starting in another directory', async () => {
-    await registry.createAgent('agent-1');
+    await registry.createAgent('agent-1', { requestedExecutionMode: 'interactive' });
 
     const response = await fetch(`${baseUrl}/api/agents/agent-1/start`, {
       method: 'POST',
@@ -116,6 +116,7 @@ describe('startServer', () => {
       body: JSON.stringify({
         command: 'node scripts/llm-agent.mjs claude --model sonnet',
         workingDirectory: '..',
+        executionMode: 'interactive',
       }),
     });
 
@@ -128,6 +129,7 @@ describe('startServer', () => {
         cwd: process.cwd(),
         env: expect.objectContaining({
           AGENTTALK_WORKDIR: process.cwd().replace(/\/AgentTalk$/, ''),
+          AGENTTALK_EXECUTION_MODE: 'interactive',
         }),
       },
     );
@@ -144,6 +146,30 @@ describe('startServer', () => {
 
     expect(response.status).toBe(409);
     await expect(response.json()).resolves.toEqual({ error: 'Agent agent-1 already exists' });
+  });
+
+  it('should include execution mode metadata when creating and listing agents', async () => {
+    const createResponse = await fetch(`${baseUrl}/api/agents`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: 'agent-mode', executionMode: 'interactive' }),
+    });
+
+    expect(createResponse.status).toBe(200);
+    await expect(createResponse.json()).resolves.toMatchObject({
+      id: 'agent-mode',
+      status: 'creating',
+      requestedExecutionMode: 'interactive',
+    });
+
+    const listResponse = await fetch(`${baseUrl}/api/agents`);
+    expect(listResponse.status).toBe(200);
+    await expect(listResponse.json()).resolves.toEqual([
+      expect.objectContaining({
+        id: 'agent-mode',
+        requestedExecutionMode: 'interactive',
+      }),
+    ]);
   });
 
   it('should accept websocket connections on /ws and ignore input for unattached clients', async () => {

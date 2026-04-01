@@ -23,6 +23,14 @@ describe('Agent', () => {
   });
 
   describe('state transitions', () => {
+    it('should default execution mode metadata to auto with no resolved mode', () => {
+      const agent = createAgent('mode-defaults');
+
+      expect(agent.requestedExecutionMode).toBe('auto');
+      expect(agent.resolvedExecutionMode).toBeUndefined();
+      expect(agent.sessionStatus).toBeUndefined();
+    });
+
     it('should allow valid transitions', () => {
       const agent = createAgent('t1');
       expect(agent.status).toBe('creating');

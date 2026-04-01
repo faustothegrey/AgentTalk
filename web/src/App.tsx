@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { TerminalView } from './TerminalView';
 import { ErrorBoundary } from './ErrorBoundary';
-import { Plus, Terminal as TerminalIcon, Activity, AlertCircle, X, Send, MessagesSquare, Trash2, History, Copy, Check, Users, Settings, History as HistoryIcon, RotateCcw } from 'lucide-react';
+import { Plus, Terminal as TerminalIcon, Activity, AlertCircle, X, Send, MessagesSquare, Trash2, Copy, Check, Users, Settings, History as HistoryIcon, RotateCcw } from 'lucide-react';
 import { getAgentColor } from './agentColors';
 
 const theme = {
@@ -23,6 +23,7 @@ const theme = {
 } as const;
 
 type Provider = 'claude' | 'gemini' | 'codex';
+type ExecutionMode = 'interactive' | 'one_shot' | 'auto';
 type TopLevelTab = 'agents' | 'config';
 type SidebarTab = 'conversation' | 'team';
 type ConfigSubTab = 'usage';
@@ -35,6 +36,9 @@ interface Agent {
   provider?: string;
   model?: string;
   workingDirectory?: string;
+  requestedExecutionMode?: ExecutionMode;
+  resolvedExecutionMode?: Exclude<ExecutionMode, 'auto'>;
+  sessionStatus?: 'starting' | 'ready' | 'busy' | 'restarting' | 'error';
 }
 
 interface TranscriptEntry {
@@ -113,6 +117,12 @@ const providerOptions: { value: Provider; label: string }[] = [
   { value: 'claude', label: 'Claude' },
   { value: 'gemini', label: 'Gemini' },
   { value: 'codex', label: 'Codex' },
+];
+
+const executionModeOptions: { value: ExecutionMode; label: string }[] = [
+  { value: 'auto', label: 'Auto' },
+  { value: 'interactive', label: 'Interactive' },
+  { value: 'one_shot', label: 'One-shot' },
 ];
 
 const modelOptions: Record<Provider, { value: string; label: string }[]> = {
@@ -361,6 +371,7 @@ function App() {
   const [messageInput, setMessageInput] = useState('');
   const [provider, setProvider] = useState<Provider>('gemini');
   const [selectedModel, setSelectedModel] = useState('');
+  const [executionMode, setExecutionMode] = useState<ExecutionMode>('auto');
   const [workingDirectory, setWorkingDirectory] = useState('.');
   const [directoryPickerOpen, setDirectoryPickerOpen] = useState(false);
   const [directoryPickerPath, setDirectoryPickerPath] = useState('.');
@@ -382,7 +393,7 @@ function App() {
   const [activeConfigSubTab, setActiveConfigSubTab] = useState<ConfigSubTab>('usage');
   const [sidebarWidth, setSidebarWidth] = useState(390);
   const [isResizing, setIsResizing] = useState(false);
-  const [teams, setTeams] = useState<Team[]>([]);
+  const [, setTeams] = useState<Team[]>([]);
   const [activeTeam, setActiveTeam] = useState<Team | null>(null);
   const [activeTeamTask, setActiveTeamTask] = useState<TeamTask | null>(null);
   const [teamComposition, setTeamComposition] = useState<TeamComposition>('worker-only');
@@ -600,6 +611,22 @@ function App() {
           setAgents(prev => prev.map(a =>
             a.id === message.id ? { ...a, model: message.model } : a
           ));
+        } else if (message.type === 'execution_mode') {
+          pushSidebarEvent('in', `Mode:${message.id}`, `${message.requestedExecutionMode} -> ${message.resolvedExecutionMode ?? 'pending'}`);
+          setAgents(prev => prev.map(a =>
+            a.id === message.id
+              ? {
+                  ...a,
+                  requestedExecutionMode: message.requestedExecutionMode,
+                  resolvedExecutionMode: message.resolvedExecutionMode,
+                }
+              : a
+          ));
+        } else if (message.type === 'session_status') {
+          pushSidebarEvent('in', `Session:${message.id}`, String(message.sessionStatus));
+          setAgents(prev => prev.map(a =>
+            a.id === message.id ? { ...a, sessionStatus: message.sessionStatus } : a
+          ));
         } else if (message.type === 'agent_message') {
           pushSidebarEvent('in', `Agent:${message.from}`, String(message.payload));
           console.log(`[App] Agent reply from ${message.from}: ${message.payload}`);
@@ -676,7 +703,7 @@ function App() {
       const res = await fetchWithTimeout('/api/agents', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ provider }),
+        body: JSON.stringify({ provider, executionMode }),
       }, 15000);
 
       const data = await res.json();
@@ -687,12 +714,12 @@ function App() {
       await fetchWithTimeout(`/api/agents/${data.id}/start`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ command, workingDirectory }),
+        body: JSON.stringify({ command, workingDirectory, executionMode }),
       }, 10000);
       pushSidebarEvent(
         'out',
         'Start Agent',
-        `${data.id} with ${command}${workingDirectory.trim() ? ` @ ${workingDirectory.trim()}` : ''}`,
+        `${data.id} with ${command} [${executionMode}]${workingDirectory.trim() ? ` @ ${workingDirectory.trim()}` : ''}`,
       );
 
       await fetchAgents();
@@ -1066,6 +1093,16 @@ function App() {
                         {agent.workingDirectory && agent.workingDirectory !== '.' && (
                           <span style={{ marginLeft: '4px', color: theme.textSubtle }}>
                             · {agent.workingDirectory.split('/').filter(Boolean).pop()}
+                          </span>
+                        )}
+                        {(agent.requestedExecutionMode || agent.resolvedExecutionMode) && (
+                          <span style={{ marginLeft: '4px', color: theme.textSubtle }}>
+                            · mode {agent.requestedExecutionMode ?? 'auto'}{agent.resolvedExecutionMode ? ` -> ${agent.resolvedExecutionMode}` : ''}
+                          </span>
+                        )}
+                        {agent.sessionStatus && agent.sessionStatus !== agent.status && (
+                          <span style={{ marginLeft: '4px', color: theme.textSubtle }}>
+                            · session {agent.sessionStatus}
                           </span>
                         )}
                       </div>
@@ -1761,6 +1798,32 @@ function App() {
                     }}
                   >
                     {providerOptions.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <span style={{ fontSize: '11px', color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px' }}>
+                    Execution Mode
+                  </span>
+                  <select
+                    value={executionMode}
+                    onChange={(e) => setExecutionMode(e.target.value as ExecutionMode)}
+                    disabled={loading}
+                    style={{
+                      backgroundColor: theme.bg,
+                      color: theme.textPrimary,
+                      border: `1px solid ${theme.borderInput}`,
+                      borderRadius: '6px',
+                      padding: '8px 10px',
+                      fontSize: '13px',
+                      outline: 'none',
+                    }}
+                  >
+                    {executionModeOptions.map((option) => (
                       <option key={option.value} value={option.value}>
                         {option.label}
                       </option>

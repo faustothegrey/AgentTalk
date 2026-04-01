@@ -1,4 +1,7 @@
 export type AgentStatus = 'creating' | 'starting' | 'ready' | 'busy' | 'error' | 'terminated';
+export type AgentExecutionMode = 'interactive' | 'one_shot' | 'auto';
+export type ResolvedExecutionMode = Exclude<AgentExecutionMode, 'auto'>;
+export type AgentSessionStatus = 'starting' | 'ready' | 'busy' | 'restarting' | 'error';
 
 export type TeamRole = 'planner' | 'worker';
 

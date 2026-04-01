@@ -16,7 +16,18 @@ import {
   type SendToAgentRequestPayload,
 } from './protocol/protocol-payloads.js';
 import { PROTOCOL_PREFIX, serializeProtocolLine, splitProtocolLine, type OutboundProtocolPacketType } from './protocol/protocol.js';
-import type { AgentStatus, Conversation, Team, TeamMember, TeamRole, TeamTask, TranscriptEntry } from './shared/types.js';
+import type {
+  AgentExecutionMode,
+  AgentSessionStatus,
+  AgentStatus,
+  Conversation,
+  ResolvedExecutionMode,
+  Team,
+  TeamMember,
+  TeamRole,
+  TeamTask,
+  TranscriptEntry,
+} from './shared/types.js';
 import { ConversationCoordinator } from './registry/conversation-coordinator.js';
 import { TeamCoordinator } from './registry/team-coordinator.js';
 import { extractLaunchMetadata, resolveRegistryConfig, type RegistryConfig } from './registry/config.js';
@@ -79,13 +90,16 @@ export class Registry extends EventEmitter {
   /**
    * Registers a new agent. No process is spawned yet — call startAgent for that.
    */
-  async createAgent(id: string): Promise<Agent> {
+  async createAgent(id: string, options: { requestedExecutionMode?: AgentExecutionMode } = {}): Promise<Agent> {
     if (this.agents.has(id)) {
       throw new Error(`Agent ${id} already exists`);
     }
 
     console.log(`[Registry] Creating agent ${id}...`);
     const agent = new Agent(id);
+    if (options.requestedExecutionMode) {
+      agent.requestedExecutionMode = options.requestedExecutionMode;
+    }
     this.agents.set(id, agent);
     return agent;
   }
@@ -119,6 +133,7 @@ export class Registry extends EventEmitter {
     launchCommand: string,
     workingDirectory?: string,
     processOptions?: ProcessSpawnOptions,
+    requestedExecutionMode?: AgentExecutionMode,
   ): Promise<void> {
     const agent = this.getAgent(id);
     console.log(`[Registry] Starting agent ${id} with command: ${launchCommand}`);
@@ -128,6 +143,18 @@ export class Registry extends EventEmitter {
     this.setAgentStatus(agent, 'starting');
     agent.launchCommand = launchCommand;
     agent.workingDirectory = workingDirectory;
+    agent.requestedExecutionMode = requestedExecutionMode ?? agent.requestedExecutionMode;
+    agent.sessionStatus = 'starting';
+    delete agent.resolvedExecutionMode;
+    this.emit('execution_mode', {
+      id: agent.id,
+      requestedExecutionMode: agent.requestedExecutionMode,
+      resolvedExecutionMode: agent.resolvedExecutionMode,
+    });
+    this.emit('session_status', {
+      id: agent.id,
+      sessionStatus: agent.sessionStatus,
+    });
 
     const { provider, model } = extractLaunchMetadata(launchCommand);
     if (provider) {
@@ -273,14 +300,11 @@ export class Registry extends EventEmitter {
 
         console.log(`[Registry] Agent ${agent.id} ready (session: ${payload.session})`);
         this.clearReadinessTimeout(agent.id);
+        this.updateAgentExecutionMode(agent, payload.requestedExecutionMode, payload.resolvedExecutionMode);
+        this.updateAgentSessionStatus(agent, payload.sessionStatus ?? 'ready');
 
         if (agent.status === 'starting') {
           this.setAgentStatus(agent, 'ready');
-
-          void this.sendProtocol(agent.id, 'EVT', {
-            id: `usage-${Date.now()}`,
-            type: 'get_usage_stats',
-          } as any);
           return;
         }
 
@@ -466,6 +490,10 @@ export class Registry extends EventEmitter {
       case 'busy_state':
         this.setAgentBusyState(agent, payload.busy);
         return;
+      case 'session_update':
+        this.updateAgentExecutionMode(agent, payload.requestedExecutionMode, payload.resolvedExecutionMode);
+        this.updateAgentSessionStatus(agent, payload.sessionStatus);
+        return;
       default:
         return;
     }
@@ -482,12 +510,12 @@ export class Registry extends EventEmitter {
     if (parser) parser.expectEcho(line);
 
     console.log(`[Registry] Sending ${type} to agent ${id}: ${JSON.stringify(payload)}`);
-    const lineWithNewline = line.endsWith('\n') ? line : line + '\n';
-    console.log(`[Registry] RAW SEND to ${id}: ${JSON.stringify(lineWithNewline)}`);
-    this.adapter.sendText(id, lineWithNewline);
+    this.adapter.sendText(id, line.endsWith('\n') ? line : line + '\n');
   }
 
   private setAgentBusyState(agent: Agent, busy: boolean): void {
+    this.updateAgentSessionStatus(agent, busy ? 'busy' : 'ready');
+
     if (busy && agent.status === 'ready') {
       this.setAgentStatus(agent, 'busy');
       return;
@@ -496,6 +524,44 @@ export class Registry extends EventEmitter {
     if (!busy && agent.status === 'busy') {
       this.setAgentStatus(agent, 'ready');
     }
+  }
+
+  private updateAgentExecutionMode(
+    agent: Agent,
+    requestedExecutionMode?: AgentExecutionMode,
+    resolvedExecutionMode?: ResolvedExecutionMode,
+  ): void {
+    let changed = false;
+
+    if (requestedExecutionMode && agent.requestedExecutionMode !== requestedExecutionMode) {
+      agent.requestedExecutionMode = requestedExecutionMode;
+      changed = true;
+    }
+
+    if (resolvedExecutionMode && agent.resolvedExecutionMode !== resolvedExecutionMode) {
+      agent.resolvedExecutionMode = resolvedExecutionMode;
+      changed = true;
+    }
+
+    if (changed) {
+      this.emit('execution_mode', {
+        id: agent.id,
+        requestedExecutionMode: agent.requestedExecutionMode,
+        resolvedExecutionMode: agent.resolvedExecutionMode,
+      });
+    }
+  }
+
+  private updateAgentSessionStatus(agent: Agent, sessionStatus: AgentSessionStatus): void {
+    if (agent.sessionStatus === sessionStatus) {
+      return;
+    }
+
+    agent.sessionStatus = sessionStatus;
+    this.emit('session_status', {
+      id: agent.id,
+      sessionStatus,
+    });
   }
 
   private async requestHealthCheck(agentId: string): Promise<{ agentId: string; message: string }> {

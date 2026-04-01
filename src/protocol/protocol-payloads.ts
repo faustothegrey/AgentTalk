@@ -1,5 +1,14 @@
+import type {
+  AgentExecutionMode,
+  AgentSessionStatus,
+  ResolvedExecutionMode,
+} from '../shared/types.js';
+
 export interface ReadyPayload {
   session: string;
+  requestedExecutionMode?: AgentExecutionMode;
+  resolvedExecutionMode?: ResolvedExecutionMode;
+  sessionStatus?: AgentSessionStatus;
 }
 
 export interface ListAgentsRequestPayload {
@@ -81,6 +90,13 @@ export interface BusyStateEventPayload {
   busy: boolean;
 }
 
+export interface SessionUpdateEventPayload {
+  type: 'session_update';
+  sessionStatus: AgentSessionStatus;
+  requestedExecutionMode?: AgentExecutionMode;
+  resolvedExecutionMode?: ResolvedExecutionMode;
+}
+
 export interface MessageReceivedEventPayload {
   type: 'message_received';
   from: string;
@@ -133,6 +149,7 @@ export interface TeamWorkAssignEventPayload {
 
 export type EventPayload =
   | BusyStateEventPayload
+  | SessionUpdateEventPayload
   | MessageReceivedEventPayload
   | UserInputEventPayload
   | HealthcheckEventPayload
@@ -146,7 +163,21 @@ export function parseReadyPayload(value: unknown): ReadyPayload | null {
     return null;
   }
 
-  return { session: value.session };
+  const payload: ReadyPayload = { session: value.session };
+
+  if (isAgentExecutionMode(value.requestedExecutionMode)) {
+    payload.requestedExecutionMode = value.requestedExecutionMode;
+  }
+
+  if (isResolvedExecutionMode(value.resolvedExecutionMode)) {
+    payload.resolvedExecutionMode = value.resolvedExecutionMode;
+  }
+
+  if (isAgentSessionStatus(value.sessionStatus)) {
+    payload.sessionStatus = value.sessionStatus;
+  }
+
+  return payload;
 }
 
 export function parseRequestPayload(value: unknown): RequestPayload | null {
@@ -287,6 +318,27 @@ export function parseEventPayload(value: unknown): EventPayload | null {
         ? { type: 'busy_state', busy: value.busy }
         : null;
 
+    case 'session_update': {
+      if (!isAgentSessionStatus(value.sessionStatus)) {
+        return null;
+      }
+
+      const payload: SessionUpdateEventPayload = {
+        type: 'session_update',
+        sessionStatus: value.sessionStatus,
+      };
+
+      if (isAgentExecutionMode(value.requestedExecutionMode)) {
+        payload.requestedExecutionMode = value.requestedExecutionMode;
+      }
+
+      if (isResolvedExecutionMode(value.resolvedExecutionMode)) {
+        payload.resolvedExecutionMode = value.resolvedExecutionMode;
+      }
+
+      return payload;
+    }
+
     case 'message_received':
       return typeof value.from === 'string' && 'payload' in value
         ? {
@@ -371,4 +423,16 @@ export function parseEventPayload(value: unknown): EventPayload | null {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
+}
+
+function isAgentExecutionMode(value: unknown): value is AgentExecutionMode {
+  return value === 'interactive' || value === 'one_shot' || value === 'auto';
+}
+
+function isResolvedExecutionMode(value: unknown): value is ResolvedExecutionMode {
+  return value === 'interactive' || value === 'one_shot';
+}
+
+function isAgentSessionStatus(value: unknown): value is AgentSessionStatus {
+  return value === 'starting' || value === 'ready' || value === 'busy' || value === 'restarting' || value === 'error';
 }

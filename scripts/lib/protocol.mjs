@@ -1,7 +1,8 @@
 export const PROTOCOL_PREFIX = '[AgentTalk]:';
 
-export function emitReady(sessionId) {
-  console.log(`${PROTOCOL_PREFIX}READY:${JSON.stringify({ session: sessionId })}`);
+export function emitReady(payload) {
+  const normalizedPayload = typeof payload === 'string' ? { session: payload } : payload;
+  console.log(`${PROTOCOL_PREFIX}READY:${JSON.stringify(normalizedPayload)}`);
 }
 
 export function emitEvent(payload) {

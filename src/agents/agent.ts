@@ -1,5 +1,10 @@
 import { createWriteStream, WriteStream, mkdirSync, existsSync } from 'fs';
-import type { AgentStatus } from '../shared/types.js';
+import type {
+  AgentExecutionMode,
+  AgentSessionStatus,
+  AgentStatus,
+  ResolvedExecutionMode,
+} from '../shared/types.js';
 import path from 'path';
 import { once } from 'events';
 
@@ -24,6 +29,9 @@ export class Agent {
   usageStats?: { stats: string; timestamp: string };
   provider?: string;
   model?: string;
+  requestedExecutionMode: AgentExecutionMode = 'auto';
+  resolvedExecutionMode?: ResolvedExecutionMode;
+  sessionStatus?: AgentSessionStatus;
 
   private transcriptStream: WriteStream;
   private destroyPromise?: Promise<void>;

@@ -63,6 +63,13 @@ describe('Registry', () => {
     const agent = await registry.createAgent('agent-1');
     expect(agent.id).toBe('agent-1');
     expect(agent.status).toBe('creating');
+    expect(agent.requestedExecutionMode).toBe('auto');
+  });
+
+  it('should persist the requested execution mode on agent creation', async () => {
+    const agent = await registry.createAgent('agent-1', { requestedExecutionMode: 'interactive' });
+
+    expect(agent.requestedExecutionMode).toBe('interactive');
   });
 
   it('should start an agent and transition to starting', async () => {
@@ -71,6 +78,7 @@ describe('Registry', () => {
 
     const agent = registry.getAgent('agent-1');
     expect(agent.status).toBe('starting');
+    expect(agent.sessionStatus).toBe('starting');
     expect(adapter.spawn).toHaveBeenCalledWith('agent-1', 'echo hello', undefined);
   });
 
@@ -95,13 +103,16 @@ describe('Registry', () => {
   });
 
   it('should transition to ready when READY protocol line is received', async () => {
-    await registry.createAgent('agent-1');
-    await registry.startAgent('agent-1', 'agent-cli');
+    await registry.createAgent('agent-1', { requestedExecutionMode: 'interactive' });
+    await registry.startAgent('agent-1', 'agent-cli', undefined, undefined, 'interactive');
 
-    pushOutput('agent-1', 'Starting...\n[AgentTalk]:READY:{"session":"123"}\n');
+    pushOutput('agent-1', 'Starting...\n[AgentTalk]:READY:{"session":"123","requestedExecutionMode":"interactive","resolvedExecutionMode":"one_shot","sessionStatus":"ready"}\n');
 
     const agent = registry.getAgent('agent-1');
     expect(agent.status).toBe('ready');
+    expect(agent.requestedExecutionMode).toBe('interactive');
+    expect(agent.resolvedExecutionMode).toBe('one_shot');
+    expect(agent.sessionStatus).toBe('ready');
   });
 
   it('should remove an agent and kill its process', async () => {

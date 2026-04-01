@@ -5,21 +5,31 @@
 import { createInterface } from 'readline';
 import path from 'path';
 import { createConversationRuntime } from './lib/conversation-runtime.mjs';
+import { createExecutor, normalizeRequestedExecutionMode } from './lib/executor-runtime.mjs';
 import { emitEvent, emitReady, emitRequest, parseInboundProtocolLine } from './lib/protocol.mjs';
-import { callProvider, getGeminiStats, getProviderLimit, resolveProvider } from './lib/provider-runtime.mjs';
+import { getProviderLimit, resolveProvider } from './lib/provider-runtime.mjs';
 
 function parseArgs(argv) {
   const provider = argv[2] ?? 'gemini';
   const modelIndex = argv.indexOf('--model');
   const model = modelIndex !== -1 && argv[modelIndex + 1] ? argv[modelIndex + 1] : null;
+  const executionModeIndex = argv.indexOf('--execution-mode');
+  const executionMode = executionModeIndex !== -1 && argv[executionModeIndex + 1]
+    ? argv[executionModeIndex + 1]
+    : process.env.AGENTTALK_EXECUTION_MODE;
 
-  return { provider, model };
+  return { provider, model, executionMode };
 }
 
-const { provider: providerName, model: selectedModel } = parseArgs(process.argv);
+const {
+  provider: providerName,
+  model: selectedModel,
+  executionMode: requestedExecutionModeInput,
+} = parseArgs(process.argv);
 const provider = resolveProvider(providerName.toLowerCase());
 const limit = getProviderLimit(provider, selectedModel);
 const requestedWorkingDirectory = process.env.AGENTTALK_WORKDIR;
+const requestedExecutionMode = normalizeRequestedExecutionMode(requestedExecutionModeInput);
 
 if (requestedWorkingDirectory) {
   const resolvedWorkingDirectory = path.resolve(requestedWorkingDirectory);
@@ -31,10 +41,36 @@ let currentUsage = 0;
 let busy = false;
 const messageQueue = [];
 const conversationRuntime = createConversationRuntime();
+const {
+  requestedExecutionMode: normalizedRequestedExecutionMode,
+  resolvedExecutionMode,
+  executor,
+} = createExecutor({
+  providerName: provider,
+  selectedModel,
+  requestedExecutionMode,
+});
 
 function enqueueEvent(evt) {
   messageQueue.push(evt);
   void processQueue();
+}
+
+function emitSessionUpdate() {
+  emitEvent({
+    type: 'session_update',
+    sessionStatus: executor.getStatus(),
+    requestedExecutionMode: normalizedRequestedExecutionMode,
+    resolvedExecutionMode,
+  });
+}
+
+async function executePrompt(idPrefix, prompt) {
+  return executor.executeTurn({
+    id: `${idPrefix}-${Date.now()}`,
+    prompt,
+    onStderrChunk: (chunk) => process.stderr.write(chunk),
+  });
 }
 
 
@@ -43,6 +79,7 @@ async function processQueue() {
   if (busy || messageQueue.length === 0) return;
   busy = true;
   emitEvent({ type: 'busy_state', busy: true });
+  emitSessionUpdate();
 
   const evt = messageQueue.shift();
   if (!evt) {
@@ -65,10 +102,7 @@ async function processQueue() {
     }
 
     if (evt._teamPrompt) {
-      const { response, tokens } = await callProvider(provider, selectedModel, evt._teamPrompt, {
-        onStderrChunk: (chunk) => process.stderr.write(chunk),
-      });
-  
+      const { response } = await executePrompt('team-turn', evt._teamPrompt);
 
       if (!response) {
         console.error(`[llm-agent] No reply generated for team event; skipping`);
@@ -93,10 +127,7 @@ async function processQueue() {
       return;
     }
 
-    const { response, tokens } = await callProvider(provider, selectedModel, prompt, {
-      onStderrChunk: (chunk) => process.stderr.write(chunk),
-    });
-
+    const { response } = await executePrompt('conversation-turn', prompt);
 
     if (!response) {
       console.error(`[llm-agent] No reply generated for ${evt.from}; skipping`);
@@ -108,9 +139,11 @@ async function processQueue() {
     emitRequest(conversationRuntime.buildProtocolRequest(evt, response));
   } catch (err) {
     console.error(`[llm-agent] Error: ${err.message}`);
+    emitSessionUpdate();
   } finally {
     busy = false;
     emitEvent({ type: 'busy_state', busy: false });
+    emitSessionUpdate();
     if (messageQueue.length > 0) {
       void processQueue();
     }
@@ -132,9 +165,7 @@ function handleTeamTaskAssign(evt) {
       `Task: ${evt.description}`,
     ].join('\n');
 
-    const { response: progressUpdate } = await callProvider(provider, selectedModel, progressPrompt, {
-      onStderrChunk: (chunk) => process.stderr.write(chunk),
-    });
+    const { response: progressUpdate } = await executePrompt('planner-progress', progressPrompt);
     if (progressUpdate) {
       progressUpdates.push(progressUpdate);
       console.error(`[llm-agent] Planner progress update (${progressUpdate.length} chars): ${progressUpdate.slice(0, 200)}`);
@@ -161,9 +192,7 @@ function handleTeamTaskAssign(evt) {
       progressUpdates.length > 0 ? `Earlier progress update:\n${progressUpdates.join('\n\n')}` : '',
     ].filter(Boolean).join('\n');
 
-    const { response: directionUpdate } = await callProvider(provider, selectedModel, directionPrompt, {
-      onStderrChunk: (chunk) => process.stderr.write(chunk),
-    });
+    const { response: directionUpdate } = await executePrompt('planner-direction', directionPrompt);
     if (directionUpdate) {
       progressUpdates.push(directionUpdate);
       console.error(`[llm-agent] Planner direction update (${directionUpdate.length} chars): ${directionUpdate.slice(0, 200)}`);
@@ -193,9 +222,7 @@ function handleTeamTaskAssign(evt) {
       'Only give your finished implementation plan in that final response. No preamble.',
     ].filter(Boolean).join('\n');
 
-    const { response: finalPlan } = await callProvider(provider, selectedModel, finalPlanPrompt, {
-      onStderrChunk: (chunk) => process.stderr.write(chunk),
-    });
+    const { response: finalPlan } = await executePrompt('planner-final', finalPlanPrompt);
     if (!finalPlan) {
       console.error('[llm-agent] No final plan generated for team event; skipping');
       return;
@@ -272,18 +299,6 @@ function enqueueTeamHandler(evt, teamHandler) {
   void processQueue();
 }
 
-function handleUsageStatsRequest(evt) {
-  if (providerName !== 'gemini') return;
-  getGeminiStats().then(stats => {
-    emitRequest({
-      id: evt.id || `usage-req-${Date.now()}`,
-      call: 'submit_usage_stats',
-      args: { stats, timestamp: new Date().toISOString() },
-    });
-  }).catch(err => {
-    console.error(`[llm-agent] Failed to get Gemini stats: ${err.message}`);
-  });
-}
 
 function handleInboundEvent(evt) {
   if (evt.type === 'team_task_assign') {
@@ -293,11 +308,6 @@ function handleInboundEvent(evt) {
 
   if (evt.type === 'team_work_assign') {
     handleTeamWorkAssign(evt);
-    return;
-  }
-
-  if (evt.type === 'get_usage_stats') {
-    handleUsageStatsRequest(evt);
     return;
   }
 
@@ -346,12 +356,28 @@ function handleInboundLine(line) {
   console.error(`[llm-agent] Unknown protocol: ${line}`);
 }
 
-emitReady(`agent-${provider}-${Date.now()}`);
-console.error(`[llm-agent] Provider: ${provider}, Model: ${selectedModel || 'default'}, Token Limit: ${limit}`);
+async function main() {
+  await executor.initialize();
 
-const rl = createInterface({ input: process.stdin, terminal: false });
-rl.on('line', (line) => {
-  const trimmed = line.trim();
-  if (!trimmed) return;
-  handleInboundLine(trimmed);
+  emitReady({
+    session: `agent-${provider}-${Date.now()}`,
+    requestedExecutionMode: normalizedRequestedExecutionMode,
+    resolvedExecutionMode,
+    sessionStatus: executor.getStatus(),
+  });
+  console.error(
+    `[llm-agent] Provider: ${provider}, Model: ${selectedModel || 'default'}, Token Limit: ${limit}, Execution Mode: ${normalizedRequestedExecutionMode} -> ${resolvedExecutionMode}`,
+  );
+
+  const rl = createInterface({ input: process.stdin, terminal: false });
+  rl.on('line', (line) => {
+    const trimmed = line.trim();
+    if (!trimmed) return;
+    handleInboundLine(trimmed);
+  });
+}
+
+main().catch((err) => {
+  console.error(`[llm-agent] Fatal error: ${err.message}`);
+  process.exit(1);
 });
