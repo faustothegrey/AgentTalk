@@ -14,12 +14,19 @@ import { buildProcessOptions } from './scenarios/command-builder.js';
 import { ScenarioRunner } from './scenarios/scenario-runner.js';
 import type { ScenarioDefinition } from './scenarios/types.js';
 import { SchedulerService } from './scheduler/scheduler.js';
+import {
+  UsageHistoryStore,
+  type UsageHistoryEntry,
+  type UsageHistoryProvider,
+} from './usage-history/store.js';
 
 type TerminalHistoryEvent =
   | { type: 'output'; text: string }
   | { type: 'agent_message'; payload: string };
 
 type UsageCaptureProvider = 'gemini' | 'claude' | 'codex';
+
+const usageHistoryStorePath = path.resolve(process.cwd(), 'transcripts', 'usage-stats-history.json');
 
 function getErrorStatus(err: unknown): number {
   if (!(err instanceof Error)) {
@@ -217,7 +224,8 @@ function spawnAndWait(command: string, args: string[], timeoutMs: number): Promi
 }
 
 function normalizeCapturedStatsText(provider: UsageCaptureProvider, raw: string): string {
-  const normalized = raw
+  const ansiStripped = raw.replace(/\u001b\[[0-9;?]*[ -/]*[@-~]/g, '');
+  const normalized = ansiStripped
     .replace(/\u0007/g, '')
     .replace(/\r/g, '\n')
     .replace(/[ \t]+\n/g, '\n')
@@ -236,7 +244,7 @@ function normalizeCapturedStatsText(provider: UsageCaptureProvider, raw: string)
   }
 
   if (provider === 'claude') {
-    const section = normalized.match(/Current session[\s\S]*?(?:Esc to cancel|$)/i);
+    const section = normalized.match(/Current session[\s\S]*?(?:Esc to cancel|Bypassing Permissions|$)/i);
     if (section?.[0]) {
       return section[0].trim();
     }
@@ -255,6 +263,91 @@ function normalizeCapturedStatsText(provider: UsageCaptureProvider, raw: string)
   }
 
   return normalized.trim();
+}
+
+function buildUsageHistoryEntry(
+  provider: UsageHistoryProvider,
+  stats: string,
+  timestamp: string,
+): UsageHistoryEntry {
+  if (provider === 'gemini') {
+    const lines = stats
+      .replace(/[│╭╮╰╯─]/g, '')
+      .split('\n')
+      .map((line) => line.trim())
+      .filter(Boolean);
+
+    const models = lines.flatMap((line) => {
+      const modelMatch = line.match(/^([a-z0-9][a-z0-9._-]+)\s+[-–]\s+.*?(\d{1,3}(?:\.\d+)?%)\s*(.*)$/i);
+      if (!modelMatch) {
+        return [];
+      }
+
+      const [, model, usagePercent, resetInfoRaw] = modelMatch;
+      if (!model || !usagePercent || !/[-.]/.test(model)) {
+        return [];
+      }
+
+      return [{
+        model,
+        usagePercent,
+        resetInfo: (resetInfoRaw ?? '').trim(),
+      }];
+    });
+
+    return {
+      provider,
+      timestamp,
+      snapshot: {
+        models,
+      },
+    };
+  }
+
+  if (provider === 'claude') {
+    const cleaned = stats
+      .replace(/\u001b\[[0-9;?]*[ -/]*[@-~]/g, '')
+      .replace(/[│╭╮╰╯─]/g, '')
+      .replace(/\r/g, '\n');
+    const extractSection = (label: 'Current session' | 'Current week') => {
+      const nextLabel = label === 'Current session' ? 'Current week' : '(?:$)';
+      const sectionMatch = cleaned.match(new RegExp(`${label}[\\s\\S]*?(?=${nextLabel})`, 'i'));
+      const sectionText = sectionMatch?.[0] ?? '';
+      const percentMatch = sectionText.match(/(\d{1,3}(?:\.\d+)?%)\s*(?:used)?/i);
+      const resetMatch = sectionText.match(/(Resets?[^\n]+)/i);
+      return {
+        usagePercentUsed: percentMatch?.[1] ?? 'N/A',
+        resetInfo: resetMatch?.[1]?.trim() ?? 'N/A',
+      };
+    };
+
+    return {
+      provider,
+      timestamp,
+      snapshot: {
+        currentSession: extractSection('Current session'),
+        currentWeek: extractSection('Current week'),
+      },
+    };
+  }
+
+  const cleaned = stats.replace(/[│╭╮╰╯─]/g, '').replace(/\r/g, '\n');
+  const extractLimit = (label: '5h limit' | 'Weekly limit') => {
+    const match = cleaned.match(new RegExp(`${label}:\\s*\\[[^\\]]*\\]\\s*(\\d{1,3}(?:\\.\\d+)?%)\\s*left\\s*\\(([^\\)]+)\\)`, 'i'));
+    return {
+      usagePercentLeft: match?.[1] ?? 'N/A',
+      resetInfo: match?.[2]?.trim() ?? 'N/A',
+    };
+  };
+
+  return {
+    provider,
+    timestamp,
+    snapshot: {
+      fiveHour: extractLimit('5h limit'),
+      weekly: extractLimit('Weekly limit'),
+    },
+  };
 }
 
 async function captureUsageStatsViaPtyScript(
@@ -302,6 +395,7 @@ export function startServer(
   app.use(express.json());
   const recorder = options.recorder;
   const googleDrive = options.googleDrive;
+  const usageHistoryStore = new UsageHistoryStore(usageHistoryStorePath);
   const scheduler = new SchedulerService({
     onRun: async (job) => {
       await registry.sendScheduledMessage(job.agentId, job.prompt);
@@ -738,10 +832,12 @@ export function startServer(
       }
 
       const stats = await captureUsageStatsViaPtyScript(provider, model);
+      const timestamp = new Date().toISOString();
       const usageStats = {
         stats,
-        timestamp: new Date().toISOString(),
+        timestamp,
       };
+      usageHistoryStore.add(buildUsageHistoryEntry(provider, stats, timestamp));
       agent.provider = provider;
       if (model) {
         agent.model = model;
@@ -766,16 +862,27 @@ export function startServer(
       }
 
       const stats = await captureUsageStatsViaPtyScript(provider, model);
+      const timestamp = new Date().toISOString();
       const usageStats = {
         stats,
-        timestamp: new Date().toISOString(),
+        timestamp,
       };
+      const historyEntry = usageHistoryStore.add(buildUsageHistoryEntry(provider, stats, timestamp));
 
-      res.json({ success: true, provider, model: model ?? null, usageStats });
+      res.json({ success: true, provider, model: model ?? null, usageStats, historyEntry });
     } catch (err) {
       console.error('[Server] Failed to capture usage stats:', err);
       res.status(getErrorStatus(err)).json({ error: err instanceof Error ? err.message : String(err) });
     }
+  });
+
+  app.get('/api/usage-stats/history', (req, res) => {
+    const rawLimit = typeof req.query.limit === 'string' ? Number(req.query.limit) : undefined;
+    const limit = Number.isFinite(rawLimit) ? Math.max(1, Math.floor(rawLimit as number)) : 24;
+    res.json({
+      success: true,
+      history: usageHistoryStore.list(limit),
+    });
   });
 
   // ── Team endpoints ──────────────────────────────────────────

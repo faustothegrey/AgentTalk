@@ -334,7 +334,8 @@ async function fetchWithTimeout(url: string, options: RequestInit = {}, timeoutM
   }
 }
 
-function AgentUsageStats({ stats, timestamp, provider, model }: { stats: string; timestamp: string; provider?: string; model?: string }) {
+function AgentUsageStats({ stats, timestamp }: { stats: string; timestamp: string }) {
+  const lastUpdate = new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
   const lines = stats
     .replace(/[│╭╮╰╯─]/g, '')
     .split('\n')
@@ -368,7 +369,7 @@ function AgentUsageStats({ stats, timestamp, provider, model }: { stats: string;
       gap: '10px',
     }}>
       <div style={{ color: '#888', textTransform: 'uppercase', letterSpacing: '0.5px', fontSize: '10px' }}>
-        Usage Percentages
+        Usage Percentages · Updated {lastUpdate}
       </div>
 
       {percentageRows.length > 0 ? (
@@ -409,49 +410,17 @@ function AgentUsageStats({ stats, timestamp, provider, model }: { stats: string;
   );
 }
 
-function RawUsageStats({ stats, timestamp }: { stats: string; timestamp: string }) {
-  const lastUpdate = new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-  return (
-    <div style={{
-      backgroundColor: '#1e1e1e',
-      color: '#ddd',
-      padding: '16px',
-      fontSize: '12px',
-      lineHeight: 1.45,
-      borderRadius: '8px',
-      border: '1px solid #333',
-      display: 'flex',
-      flexDirection: 'column',
-      gap: '10px',
-    }}>
-      <div style={{ color: '#888', textTransform: 'uppercase', letterSpacing: '0.5px', fontSize: '10px' }}>
-        Raw Output · Updated {lastUpdate}
-      </div>
-      <pre style={{
-        margin: 0,
-        whiteSpace: 'pre-wrap',
-        wordBreak: 'break-word',
-        backgroundColor: '#151515',
-        border: '1px solid #2b2b2b',
-        borderRadius: '6px',
-        padding: '10px',
-        color: '#d9d9d9',
-        maxHeight: '340px',
-        overflowY: 'auto',
-      }}>
-        {stats}
-      </pre>
-    </div>
-  );
-}
-
 function ClaudeUsageStats({ stats, timestamp }: { stats: string; timestamp: string }) {
   const lastUpdate = new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-  const cleaned = stats.replace(/[│╭╮╰╯─]/g, '').replace(/\r/g, '\n');
+  const ansiStripped = stats.replace(/\u001b\[[0-9;?]*[ -/]*[@-~]/g, '');
+  const cleaned = ansiStripped.replace(/[│╭╮╰╯─]/g, '').replace(/\r/g, '\n');
 
   const extractSection = (label: 'Current session' | 'Current week') => {
-    const percentMatch = cleaned.match(new RegExp(`${label}[\\s\\S]{0,160}?(\\d{1,3}(?:\\.\\d+)?%)\\s*used`, 'i'));
-    const resetMatch = cleaned.match(new RegExp(`${label}[\\s\\S]{0,260}?(Resets?[^\\n]+)`, 'i'));
+    const nextLabel = label === 'Current session' ? 'Current week' : '(?:$)';
+    const sectionMatch = cleaned.match(new RegExp(`${label}[\\s\\S]*?(?=${nextLabel})`, 'i'));
+    const sectionText = sectionMatch?.[0] ?? '';
+    const percentMatch = sectionText.match(/(\d{1,3}(?:\.\d+)?%)\s*(?:used)?/i);
+    const resetMatch = sectionText.match(/(Resets?[^\n]+)/i);
     return {
       usage: percentMatch?.[1] ?? 'N/A',
       reset: resetMatch?.[1]?.trim() ?? 'N/A',
@@ -665,6 +634,7 @@ function App() {
   const [showRejectInput, setShowRejectInput] = useState(false);
   const messageInputRef = useRef<HTMLInputElement>(null);
   const activeConversationIdRef = useRef(activeConversationId);
+  const usageCaptureInFlightRef = useRef(false);
 
   const topTabButtonStyle = (tab: TopLevelTab) => ({
     padding: '10px 12px',
@@ -703,17 +673,6 @@ function App() {
   });
 
   const selectedAgent = agents.find(a => a.id === selectedAgentId);
-  const agentsWithUsageStats = agents.filter(a => Boolean(a.usageStats));
-  const inferProviderForAgent = (agent: Agent): Provider | undefined => {
-    if (agent.provider === 'gemini' || agent.provider === 'claude' || agent.provider === 'codex') {
-      return agent.provider;
-    }
-    const id = agent.id.toLowerCase();
-    if (id.includes('gemini')) return 'gemini';
-    if (id.includes('claude')) return 'claude';
-    if (id.includes('codex')) return 'codex';
-    return undefined;
-  };
   const selectedDriveResource = driveResources.find(resource => resource.id === driveSelectedResourceId) ?? null;
   const activePlanner = activeTeam?.members.find(m => m.role === 'planner');
   const activeWorker = activeTeam?.members.find(m => m.role === 'worker');
@@ -858,6 +817,78 @@ function App() {
     setSchedulerJobs(data);
   }, []);
 
+  const captureUsageStats = useCallback(async () => {
+    if (usageCaptureInFlightRef.current) {
+      return;
+    }
+
+    usageCaptureInFlightRef.current = true;
+    setUsageLoading(true);
+    try {
+      const captureProvider = async (targetProvider: Provider): Promise<StandaloneUsageCapture | null> => {
+        const chosenModel = modelOptions[targetProvider]?.[0]?.value || '';
+        const response = await fetchWithTimeout(
+          '/api/usage-stats/capture',
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              provider: targetProvider,
+              model: chosenModel,
+            }),
+          },
+          80000,
+        );
+        const payload = await response.json();
+        if (!payload?.usageStats) {
+          return null;
+        }
+        return {
+          provider: targetProvider,
+          model: chosenModel,
+          usageStats: payload.usageStats,
+        };
+      };
+
+      const [geminiResult, claudeResult, codexResult] = await Promise.allSettled([
+        captureProvider('gemini'),
+        captureProvider('claude'),
+        captureProvider('codex'),
+      ]);
+
+      let failedCount = 0;
+
+      if (geminiResult.status === 'fulfilled' && geminiResult.value) {
+        setGeminiUsageCapture(geminiResult.value);
+      } else {
+        failedCount += 1;
+      }
+
+      if (claudeResult.status === 'fulfilled' && claudeResult.value) {
+        setClaudeUsageCapture(claudeResult.value);
+      } else {
+        failedCount += 1;
+      }
+
+      if (codexResult.status === 'fulfilled' && codexResult.value) {
+        setCodexUsageCapture(codexResult.value);
+      } else {
+        failedCount += 1;
+      }
+
+      pushSidebarEvent('out', 'Capture Usage', `gemini/claude/codex${failedCount ? ` (${failedCount} failed)` : ''}`);
+      if (failedCount > 0) {
+        setGlobalError(`Usage capture failed for ${failedCount} provider(s).`);
+      }
+    } catch (err: any) {
+      console.error('Usage capture failed:', err);
+      setGlobalError(`Usage capture failed: ${err?.message || 'unknown error'}`);
+    } finally {
+      usageCaptureInFlightRef.current = false;
+      setUsageLoading(false);
+    }
+  }, [pushSidebarEvent]);
+
   const loadDirectoryEntries = useCallback(async (targetPath: string) => {
     setDirectoryPickerLoading(true);
     try {
@@ -876,6 +907,14 @@ function App() {
   useEffect(() => {
     activeConversationIdRef.current = activeConversationId;
   }, [activeConversationId]);
+
+  useEffect(() => {
+    void captureUsageStats();
+    const timer = setInterval(() => {
+      void captureUsageStats();
+    }, 60 * 60 * 1000);
+    return () => clearInterval(timer);
+  }, [captureUsageStats]);
 
   useEffect(() => {
     fetchAgents();
@@ -2410,64 +2449,7 @@ function App() {
                         Agent Usage
                       </h3>
                       <button
-                        onClick={async () => {
-                          setUsageLoading(true);
-                          try {
-                            const captureProvider = async (targetProvider: Provider): Promise<StandaloneUsageCapture | null> => {
-                              const chosenModel =
-                                targetProvider === provider
-                                  ? (selectedModel || modelOptions[targetProvider]?.[0]?.value || '')
-                                  : (modelOptions[targetProvider]?.[0]?.value || '');
-                              const response = await fetchWithTimeout(
-                                '/api/usage-stats/capture',
-                                {
-                                  method: 'POST',
-                                  headers: { 'Content-Type': 'application/json' },
-                                  body: JSON.stringify({
-                                    provider: targetProvider,
-                                    model: chosenModel,
-                                  }),
-                                },
-                                80000,
-                              );
-                              const payload = await response.json();
-                              if (!payload?.usageStats) {
-                                return null;
-                              }
-                              return {
-                                provider: targetProvider,
-                                model: chosenModel,
-                                usageStats: payload.usageStats,
-                              };
-                            };
-
-                            const [geminiResult, claudeResult, codexResult] = await Promise.allSettled([
-                              captureProvider('gemini'),
-                              captureProvider('claude'),
-                              captureProvider('codex'),
-                            ]);
-
-                            if (geminiResult.status === 'fulfilled') {
-                              setGeminiUsageCapture(geminiResult.value);
-                            }
-                            if (claudeResult.status === 'fulfilled') {
-                              setClaudeUsageCapture(claudeResult.value);
-                            }
-                            if (codexResult.status === 'fulfilled') {
-                              setCodexUsageCapture(codexResult.value);
-                            }
-
-                            const failedCount = [geminiResult, claudeResult, codexResult].filter((result) => result.status === 'rejected').length;
-                            pushSidebarEvent('out', 'Capture Usage', `gemini/claude/codex${failedCount ? ` (${failedCount} failed)` : ''}`);
-                            if (failedCount > 0) {
-                              setGlobalError(`Usage capture failed for ${failedCount} provider(s).`);
-                            }
-                          } catch (err: any) {
-                            handleError('Usage capture failed:', err);
-                          } finally {
-                            setUsageLoading(false);
-                          }
-                        }}
+                        onClick={captureUsageStats}
                         disabled={usageLoading}
                         style={{
                           background: 'none',
@@ -2497,8 +2479,6 @@ function App() {
                         <AgentUsageStats
                           stats={geminiUsageCapture.usageStats.stats}
                           timestamp={geminiUsageCapture.usageStats.timestamp}
-                          provider={geminiUsageCapture.provider}
-                          model={geminiUsageCapture.model}
                         />
                       ) : (
                         <div style={{ color: theme.textMuted, fontSize: '13px', textAlign: 'center' as const, marginTop: '20px', padding: '20px', backgroundColor: theme.bgSurface, borderRadius: '8px', border: `1px dashed ${theme.border}` }}>
