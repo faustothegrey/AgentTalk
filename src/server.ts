@@ -1,7 +1,10 @@
 import express from 'express';
 import { createServer } from 'http';
 import { existsSync, readdirSync, statSync } from 'fs';
+import { mkdtemp, readFile, rm } from 'fs/promises';
 import path from 'path';
+import { tmpdir } from 'os';
+import { spawn } from 'child_process';
 import { WebSocketServer, WebSocket } from 'ws';
 import { Registry } from './registry.js';
 import type { AgentExecutionMode, TeamMember, TeamRole } from './shared/types.js';
@@ -15,6 +18,8 @@ import { SchedulerService } from './scheduler/scheduler.js';
 type TerminalHistoryEvent =
   | { type: 'output'; text: string }
   | { type: 'agent_message'; payload: string };
+
+type UsageCaptureProvider = 'gemini' | 'claude' | 'codex';
 
 function getErrorStatus(err: unknown): number {
   if (!(err instanceof Error)) {
@@ -160,6 +165,132 @@ function normalizeCreateTeamMembers(body: unknown): TeamMember[] {
     { agentId: plannerAgentId, role: 'planner' },
     { agentId: workerAgentId, role: 'worker' },
   ];
+}
+
+function isUsageCaptureProvider(value: unknown): value is UsageCaptureProvider {
+  return value === 'gemini' || value === 'claude' || value === 'codex';
+}
+
+function spawnAndWait(command: string, args: string[], timeoutMs: number): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const child = spawn(command, args, {
+      cwd: process.cwd(),
+      env: {
+        ...process.env,
+        TERM: process.env.TERM || 'xterm-256color',
+      },
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+
+    let stderr = '';
+    let settled = false;
+
+    const timeout = setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      child.kill('SIGTERM');
+      reject(new Error(`Usage capture timed out after ${timeoutMs}ms`));
+    }, timeoutMs);
+
+    child.stderr?.on('data', (chunk) => {
+      stderr += chunk.toString();
+    });
+
+    child.on('error', (err) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeout);
+      reject(err);
+    });
+
+    child.on('close', (code) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeout);
+      if (code === 0) {
+        resolve();
+        return;
+      }
+      reject(new Error(`Usage capture command failed with code ${code}: ${stderr.trim()}`));
+    });
+  });
+}
+
+function normalizeCapturedStatsText(provider: UsageCaptureProvider, raw: string): string {
+  const normalized = raw
+    .replace(/\u0007/g, '')
+    .replace(/\r/g, '\n')
+    .replace(/[ \t]+\n/g, '\n')
+    .replace(/\n{3,}/g, '\n\n');
+
+  if (provider === 'gemini') {
+    const boxed = normalized.match(/Session Stats[\s\S]*?╰[^\n]*╯/m);
+    if (boxed?.[0]) {
+      return boxed[0].trim();
+    }
+
+    const fromHeading = normalized.match(/Session Stats[\s\S]*$/m);
+    if (fromHeading?.[0]) {
+      return fromHeading[0].trim();
+    }
+  }
+
+  if (provider === 'claude') {
+    const section = normalized.match(/Current session[\s\S]*?(?:Esc to cancel|$)/i);
+    if (section?.[0]) {
+      return section[0].trim();
+    }
+  }
+
+  if (provider === 'codex') {
+    const boxed = normalized.match(/╭[\s\S]*?OpenAI Codex[\s\S]*?╰[^\n]*╯/m);
+    if (boxed?.[0]) {
+      return boxed[0].trim();
+    }
+
+    const core = normalized.match(/OpenAI Codex[\s\S]*?(?:Weekly limit:[^\n]*|$)/m);
+    if (core?.[0]) {
+      return core[0].trim();
+    }
+  }
+
+  return normalized.trim();
+}
+
+async function captureUsageStatsViaPtyScript(
+  provider: UsageCaptureProvider,
+  model?: string,
+): Promise<string> {
+  const tmpPrefix = path.join(tmpdir(), `agenttalk-${provider}-usage-`);
+  const tmpDir = await mkdtemp(tmpPrefix);
+  const outputPath = path.join(tmpDir, `${provider}-usage.txt`);
+
+  const scriptByProvider: Record<UsageCaptureProvider, string> = {
+    gemini: path.resolve(process.cwd(), 'scripts/gemini-pty.mjs'),
+    claude: path.resolve(process.cwd(), 'scripts/claude-pty.mjs'),
+    codex: path.resolve(process.cwd(), 'scripts/codex-pty.mjs'),
+  };
+
+  const argsByProvider: Record<UsageCaptureProvider, string[]> = {
+    gemini: ['--stats-out', outputPath, '--stats-wait-ms', '10000', '--stats-capture-ms', '9000'],
+    claude: ['--usage-out', outputPath, '--usage-wait-ms', '9000', '--usage-capture-ms', '7000'],
+    codex: ['--status-out', outputPath, '--status-wait-ms', '9000', '--status-capture-ms', '7000'],
+  };
+
+  const scriptPath = scriptByProvider[provider];
+  const scriptArgs = [...argsByProvider[provider]];
+
+  if (model) {
+    scriptArgs.push('--model', model);
+  }
+
+  try {
+    await spawnAndWait(process.execPath, [scriptPath, ...scriptArgs], 70000);
+    const stats = await readFile(outputPath, 'utf8');
+    return normalizeCapturedStatsText(provider, stats);
+  } finally {
+    await rm(tmpDir, { recursive: true, force: true });
+  }
 }
 
 export function startServer(
@@ -515,21 +646,32 @@ export function startServer(
   app.post('/api/agents', async (req, res) => {
     console.log('[Server] POST /api/agents', req.body);
     const { id, provider } = req.body;
+    const model = getNonEmptyString(req.body?.model);
     const requestedExecutionMode = isExecutionMode(req.body?.executionMode) ? req.body.executionMode : 'auto';
-    recorder?.record('api', 'create_agent_request', { id, provider, requestedExecutionMode });
+    recorder?.record('api', 'create_agent_request', { id, provider, model, requestedExecutionMode });
 
     try {
       const agentId = id || (provider ? `agent-${provider}-${Date.now()}` : `agent-${Date.now()}`);
       const agent = await registry.createAgent(agentId, { requestedExecutionMode });
+      if (isUsageCaptureProvider(provider)) {
+        agent.provider = provider;
+      }
+      if (model) {
+        agent.model = model;
+      }
       console.log(`[Server] Agent created: ${agent.id} (status: ${agent.status})`);
       recorder?.record('runtime', 'agent_created', {
         id: agent.id,
         status: agent.status,
+        provider: agent.provider,
+        model: agent.model,
         requestedExecutionMode: agent.requestedExecutionMode,
       });
       res.json({
         id: agent.id,
         status: agent.status,
+        provider: agent.provider,
+        model: agent.model,
         requestedExecutionMode: agent.requestedExecutionMode,
         resolvedExecutionMode: agent.resolvedExecutionMode,
       });
@@ -584,10 +726,54 @@ export function startServer(
     const { id } = req.params;
     console.log(`[Server] POST /api/agents/${id}/usage-stats`);
     try {
-      await registry.requestUsageStats(id);
-      res.json({ success: true });
+      const agent = registry.getAgent(id);
+      const requestedProvider = isUsageCaptureProvider(req.body?.provider) ? req.body.provider : undefined;
+      const provider = requestedProvider ?? (isUsageCaptureProvider(agent.provider) ? agent.provider : undefined);
+      const model = getNonEmptyString(req.body?.model) ?? agent.model;
+
+      if (!provider) {
+        throw new Error(
+          `Agent ${id} provider is not set. Pass { provider } in request body or create the agent with a provider.`,
+        );
+      }
+
+      const stats = await captureUsageStatsViaPtyScript(provider, model);
+      const usageStats = {
+        stats,
+        timestamp: new Date().toISOString(),
+      };
+      agent.provider = provider;
+      if (model) {
+        agent.model = model;
+      }
+      agent.usageStats = usageStats;
+      registry.emit('usage_stats', { id: agent.id, usageStats });
+
+      res.json({ success: true, usageStats });
     } catch (err) {
       console.error(`[Server] Failed to request usage stats for agent ${id}:`, err);
+      res.status(getErrorStatus(err)).json({ error: err instanceof Error ? err.message : String(err) });
+    }
+  });
+
+  app.post('/api/usage-stats/capture', async (req, res) => {
+    console.log('[Server] POST /api/usage-stats/capture');
+    try {
+      const provider = isUsageCaptureProvider(req.body?.provider) ? req.body.provider : undefined;
+      const model = getNonEmptyString(req.body?.model);
+      if (!provider) {
+        throw new Error('provider is required (gemini, claude, or codex)');
+      }
+
+      const stats = await captureUsageStatsViaPtyScript(provider, model);
+      const usageStats = {
+        stats,
+        timestamp: new Date().toISOString(),
+      };
+
+      res.json({ success: true, provider, model: model ?? null, usageStats });
+    } catch (err) {
+      console.error('[Server] Failed to capture usage stats:', err);
       res.status(getErrorStatus(err)).json({ error: err instanceof Error ? err.message : String(err) });
     }
   });

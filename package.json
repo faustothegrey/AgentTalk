@@ -13,7 +13,10 @@
     "restart-dev": "node scripts/restart-supervisor.mjs",
     "scenario": "npm run build && node dist/scenario-cli.js",
     "backend": "npm run build && node dist/index.js",
-    "frontend": "cd web && npm run dev"
+    "frontend": "cd web && npm run dev",
+    "gemini:pty": "node scripts/gemini-pty.mjs",
+    "claude:pty": "node scripts/claude-pty.mjs",
+    "codex:pty": "node scripts/codex-pty.mjs"
   },
   "keywords": [],
   "author": "",
@@ -31,6 +34,7 @@
   "dependencies": {
     "express": "^5.2.1",
     "googleapis": "^171.4.0",
+    "node-pty": "^1.1.0",
     "strip-ansi": "^7.2.0",
     "uuid": "^13.0.0",
     "ws": "^8.20.0"

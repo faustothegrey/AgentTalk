@@ -41,6 +41,12 @@ interface Agent {
   sessionStatus?: 'starting' | 'ready' | 'busy' | 'restarting' | 'error';
 }
 
+interface StandaloneUsageCapture {
+  provider: Provider;
+  model: string;
+  usageStats: { stats: string; timestamp: string };
+}
+
 interface TranscriptEntry {
   kind: 'system' | 'message';
   timestamp: string;
@@ -328,78 +334,77 @@ async function fetchWithTimeout(url: string, options: RequestInit = {}, timeoutM
   }
 }
 
-function AgentUsageStats({ stats, timestamp }: { stats: string, timestamp: string }) {
-  const lines = stats.split('\n');
+function AgentUsageStats({ stats, timestamp, provider, model }: { stats: string; timestamp: string; provider?: string; model?: string }) {
+  const lines = stats
+    .replace(/[│╭╮╰╯─]/g, '')
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean);
 
-  const getLineValue = (label: string) => {
-    const line = lines.find(l => l.startsWith(label));
-    if (!line) return '';
-    return line.slice(label.length).trim();
-  };
+  const percentageRows = lines.flatMap((line) => {
+    const modelMatch = line.match(/^([a-z0-9][a-z0-9._-]+)\s+[-–]\s+.*?(\d{1,3}(?:\.\d+)?%)\s*(.*)$/i);
+    if (modelMatch && /[-.]/.test(modelMatch[1])) {
+      return [{
+        label: modelMatch[1],
+        percent: modelMatch[2],
+        detail: modelMatch[3].trim(),
+      }];
+    }
 
-  const lastUpdate = new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-
-  // Parse model lines: "model-name  reqs  input:N output:N total:N"
-  const modelLines = lines.filter(l => l.includes('input:') && l.includes('output:'));
-  const models = modelLines.map(line => {
-    const parts = line.trim().split(/\s+/);
-    const model = parts[0];
-    const reqs = parts[1];
-    const input = parts.find(p => p.startsWith('input:'))?.split(':')[1] || '0';
-    const output = parts.find(p => p.startsWith('output:'))?.split(':')[1] || '0';
-    const total = parts.find(p => p.startsWith('total:'))?.split(':')[1] || '0';
-    return { model, reqs, input, output, total };
+    return [];
   });
 
   return (
     <div style={{
       backgroundColor: '#1e1e1e',
       color: '#ddd',
-      padding: '20px',
-      fontFamily: 'monospace',
-      fontSize: '13px',
-      lineHeight: '1.4',
+      padding: '16px',
+      fontSize: '12px',
+      lineHeight: 1.45,
       borderRadius: '8px',
-      border: '1px solid #333'
+      border: '1px solid #333',
+      display: 'flex',
+      flexDirection: 'column',
+      gap: '10px',
     }}>
-      <div style={{ color: '#ff79c6', fontWeight: 'bold', marginBottom: '16px', fontSize: '14px' }}>Agent Stats</div>
-
-      <div style={{ marginBottom: '16px' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '140px 1fr', gap: '4px' }}>
-          <span style={{ color: '#8be9fd' }}>Provider:</span> <span>{getLineValue('Provider:')}</span>
-          <span style={{ color: '#8be9fd' }}>Model:</span> <span>{getLineValue('Model:')}</span>
-          <span style={{ color: '#8be9fd' }}>Total Calls:</span> <span>{getLineValue('Total Calls:')}</span>
-          <span style={{ color: '#8be9fd' }}>Wall Time:</span> <span>{getLineValue('Wall Time:')}</span>
-        </div>
+      <div style={{ color: '#888', textTransform: 'uppercase', letterSpacing: '0.5px', fontSize: '10px' }}>
+        Usage Percentages
       </div>
 
-      {models.length > 0 && (
-        <div>
-          <div style={{ color: '#888', fontWeight: 'bold', marginBottom: '8px' }}>Token Usage by Model</div>
-          <div style={{ display: 'grid', gridTemplateColumns: '180px 50px 90px 90px 90px', gap: '8px', borderBottom: '1px solid #444', paddingBottom: '4px', color: '#888', fontWeight: 'bold', fontSize: '11px' }}>
-            <span>Model</span>
-            <span>Reqs</span>
-            <span>Input</span>
-            <span>Output</span>
-            <span>Total</span>
+      {percentageRows.length > 0 ? (
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'minmax(180px, 1fr) 80px minmax(160px, 1fr)',
+          border: '1px solid #2b2b2b',
+          borderRadius: '6px',
+          overflow: 'hidden',
+        }}>
+          <div style={{ padding: '8px 10px', backgroundColor: '#111', color: '#8be9fd', borderBottom: '1px solid #2b2b2b', fontWeight: 700, textTransform: 'uppercase', fontSize: '10px', letterSpacing: '0.5px' }}>
+            Model
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', marginTop: '6px' }}>
-            {models.map((m, idx) => (
-              <div key={idx} style={{ display: 'grid', gridTemplateColumns: '180px 50px 90px 90px 90px', gap: '8px', alignItems: 'center' }}>
-                <span style={{ color: '#aaa' }}>{m.model}</span>
-                <span>{m.reqs}</span>
-                <span style={{ color: '#8be9fd' }}>{Number(m.input).toLocaleString()}</span>
-                <span style={{ color: '#50fa7b' }}>{Number(m.output).toLocaleString()}</span>
-                <span style={{ fontWeight: 'bold' }}>{Number(m.total).toLocaleString()}</span>
+          <div style={{ padding: '8px 10px', backgroundColor: '#111', color: '#8be9fd', borderBottom: '1px solid #2b2b2b', fontWeight: 700, textTransform: 'uppercase', fontSize: '10px', letterSpacing: '0.5px' }}>
+            Model Usage
+          </div>
+          <div style={{ padding: '8px 10px', backgroundColor: '#111', color: '#8be9fd', borderBottom: '1px solid #2b2b2b', fontWeight: 700, textTransform: 'uppercase', fontSize: '10px', letterSpacing: '0.5px' }}>
+            Model resets
+          </div>
+          {percentageRows.map((row, index) => (
+            <div key={`${row.label}-${index}`} style={{ display: 'contents' }}>
+              <div style={{ padding: '8px 10px', backgroundColor: index % 2 === 0 ? '#171717' : '#1b1b1b', color: '#8be9fd', borderBottom: '1px solid #2b2b2b' }}>
+                {row.label}
               </div>
-            ))}
-          </div>
+              <div style={{ padding: '8px 10px', backgroundColor: index % 2 === 0 ? '#171717' : '#1b1b1b', color: '#50fa7b', borderBottom: '1px solid #2b2b2b', fontWeight: 700 }}>
+                {row.percent}
+              </div>
+              <div style={{ padding: '8px 10px', backgroundColor: index % 2 === 0 ? '#171717' : '#1b1b1b', color: '#bbb', borderBottom: '1px solid #2b2b2b', wordBreak: 'break-word' }}>
+                {row.detail}
+              </div>
+            </div>
+          ))}
         </div>
+      ) : (
+        <div style={{ color: '#aaa' }}>No model usage rows found.</div>
       )}
-
-      <div style={{ marginTop: '20px', fontSize: '10px', color: '#555', textAlign: 'right' }}>
-        Last updated: {lastUpdate}
-      </div>
     </div>
   );
 }
@@ -450,6 +455,8 @@ function App() {
   const [driveReadFileId, setDriveReadFileId] = useState('');
   const [schedulerJobs, setSchedulerJobs] = useState<SchedulerJob[]>([]);
   const [schedulerLoading, setSchedulerLoading] = useState(false);
+  const [usageLoading, setUsageLoading] = useState(false);
+  const [standaloneUsageCapture, setStandaloneUsageCapture] = useState<StandaloneUsageCapture | null>(null);
   const [schedulerJobName, setSchedulerJobName] = useState('');
   const [schedulerAgentId, setSchedulerAgentId] = useState('');
   const [schedulerPrompt, setSchedulerPrompt] = useState('');
@@ -937,11 +944,12 @@ function App() {
     setLoading(true);
     setGlobalError(null);
     try {
-      const command = getAgentCommand(provider, selectedModel || modelOptions[provider][0].value);
+      const chosenModel = selectedModel || modelOptions[provider][0].value;
+      const command = getAgentCommand(provider, chosenModel);
       const res = await fetchWithTimeout('/api/agents', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ provider, executionMode }),
+        body: JSON.stringify({ provider, model: chosenModel, executionMode }),
       }, 15000);
 
       const data = await res.json();
@@ -2201,54 +2209,122 @@ function App() {
                       <h3 style={{ margin: 0, fontSize: '12px', textTransform: 'uppercase' as const, color: theme.textMuted, letterSpacing: '0.8px' }}>
                         Agent Usage
                       </h3>
-                      {selectedAgent && (selectedAgent.status === 'ready' || selectedAgent.status === 'busy') && (
-                        <button
-                          onClick={async () => {
-                            if (!selectedAgentId) return;
-                            setLoading(true);
-                            try {
-                              const res = await fetch(`/api/agents/${selectedAgentId}/usage-stats`, { method: 'POST' });
-                              if (!res.ok) throw new Error('Failed to request usage stats');
-                              pushSidebarEvent('out', 'Request Stats', selectedAgentId);
-                            } catch (err: any) {
-                              handleError('Reload failed:', err);
-                            } finally {
-                              setLoading(false);
+                      <button
+                        onClick={async () => {
+                          setUsageLoading(true);
+                          try {
+                            const fallbackProvider = (selectedAgent?.provider as Provider | undefined) || provider;
+                            const fallbackModel = selectedAgent?.model || selectedModel || modelOptions[fallbackProvider]?.[0]?.value || '';
+
+                            if (selectedAgentId) {
+                              const response = await fetchWithTimeout(
+                                `/api/agents/${selectedAgentId}/usage-stats`,
+                                {
+                                  method: 'POST',
+                                  headers: { 'Content-Type': 'application/json' },
+                                  body: JSON.stringify({
+                                    provider: fallbackProvider,
+                                    model: fallbackModel,
+                                  }),
+                                },
+                                80000,
+                              );
+                              const payload = await response.json();
+                              if (payload?.usageStats) {
+                                setAgents(prev => prev.map(a =>
+                                  a.id === selectedAgentId
+                                    ? {
+                                        ...a,
+                                        provider: fallbackProvider,
+                                        model: fallbackModel || a.model,
+                                        usageStats: payload.usageStats,
+                                      }
+                                    : a,
+                                ));
+                                setStandaloneUsageCapture(null);
+                              }
+                              pushSidebarEvent('out', 'Capture Usage', selectedAgentId);
+                            } else {
+                              const response = await fetchWithTimeout(
+                                '/api/usage-stats/capture',
+                                {
+                                  method: 'POST',
+                                  headers: { 'Content-Type': 'application/json' },
+                                  body: JSON.stringify({
+                                    provider: fallbackProvider,
+                                    model: fallbackModel,
+                                  }),
+                                },
+                                80000,
+                              );
+                              const payload = await response.json();
+                              if (payload?.usageStats) {
+                                setStandaloneUsageCapture({
+                                  provider: fallbackProvider,
+                                  model: fallbackModel,
+                                  usageStats: payload.usageStats,
+                                });
+                              }
+                              pushSidebarEvent('out', 'Capture Usage', `${fallbackProvider}${fallbackModel ? `:${fallbackModel}` : ''}`);
                             }
-                          }}
-                          disabled={loading || selectedAgent.status !== 'ready' && selectedAgent.status !== 'busy'}
-                          style={{
-                            background: 'none',
-                            border: 'none',
-                            color: theme.textMuted,
-                            cursor: (loading || (selectedAgent.status !== 'ready' && selectedAgent.status !== 'busy')) ? 'not-allowed' : 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '4px',
-                            fontSize: '10px',
-                            textTransform: 'uppercase',
-                            fontWeight: 'bold',
-                            opacity: loading ? 0.5 : 1
-                          }}
-                          onMouseOver={(e) => { if (!loading) e.currentTarget.style.color = theme.textBright; }}
-                          onMouseOut={(e) => { if (!loading) e.currentTarget.style.color = theme.textMuted; }}
-                        >
-                          <RotateCcw size={12} className={loading ? 'animate-spin' : ''} />
-                          Reload
-                        </button>
-                      )}
+                          } catch (err: any) {
+                            handleError('Usage capture failed:', err);
+                          } finally {
+                            setUsageLoading(false);
+                          }
+                        }}
+                        disabled={usageLoading}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          color: theme.textMuted,
+                          cursor: usageLoading ? 'not-allowed' : 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                          fontSize: '10px',
+                          textTransform: 'uppercase',
+                          fontWeight: 'bold',
+                          opacity: usageLoading ? 0.5 : 1
+                        }}
+                        onMouseOver={(e) => { if (!usageLoading) e.currentTarget.style.color = theme.textBright; }}
+                        onMouseOut={(e) => { if (!usageLoading) e.currentTarget.style.color = theme.textMuted; }}
+                      >
+                        <RotateCcw size={12} className={usageLoading ? 'animate-spin' : ''} />
+                        Reload
+                      </button>
                     </div>
                     {!selectedAgentId ? (
-                      <div style={{ color: theme.textMuted, fontSize: '13px', textAlign: 'center' as const, marginTop: '20px', padding: '20px', backgroundColor: theme.bgSurface, borderRadius: '8px', border: `1px dashed ${theme.border}` }}>
-                        Select an agent to see usage stats.
-                      </div>
+                      standaloneUsageCapture ? (
+                        <AgentUsageStats
+                          stats={standaloneUsageCapture.usageStats.stats}
+                          timestamp={standaloneUsageCapture.usageStats.timestamp}
+                          provider={standaloneUsageCapture.provider}
+                          model={standaloneUsageCapture.model}
+                        />
+                      ) : (
+                        <div style={{ color: theme.textMuted, fontSize: '13px', textAlign: 'center' as const, marginTop: '20px', padding: '20px', backgroundColor: theme.bgSurface, borderRadius: '8px', border: `1px dashed ${theme.border}` }}>
+                          {usageLoading
+                            ? <>Capturing usage via <strong>{provider}</strong> CLI...</>
+                            : <>No agent selected. Click <strong>Reload</strong> to capture usage using current provider/model selectors.</>}
+                        </div>
+                      )
                     ) : !selectedAgent?.usageStats ? (
                       <div style={{ color: theme.textMuted, fontSize: '13px', textAlign: 'center' as const, marginTop: '20px', padding: '20px', backgroundColor: theme.bgSurface, borderRadius: '8px', border: `1px dashed ${theme.border}` }}>
                         <div style={{ marginBottom: '8px' }}><Activity size={24} className="animate-pulse" /></div>
-                        Waiting for usage data from agent <strong>{selectedAgentId}</strong>...
+                        {!selectedAgent?.provider
+                          ? <>Start the agent once to detect its provider, then capture usage.</>
+                          : usageLoading
+                          ? <>Capturing usage via <strong>{selectedAgent?.provider || 'provider'}</strong> CLI...</>
+                          : <>Click <strong>Reload</strong> to capture usage from agent <strong>{selectedAgentId}</strong>.</>}
                       </div>
                     ) : (
-                      <AgentUsageStats stats={selectedAgent.usageStats.stats} timestamp={selectedAgent.usageStats.timestamp} />
+                      <AgentUsageStats
+                        stats={selectedAgent.usageStats.stats}
+                        timestamp={selectedAgent.usageStats.timestamp}
+                        provider={selectedAgent.provider}
+                        model={selectedAgent.model}
+                      />
                     )}
                   </div>
                 )}
