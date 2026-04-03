@@ -409,6 +409,193 @@ function AgentUsageStats({ stats, timestamp, provider, model }: { stats: string;
   );
 }
 
+function RawUsageStats({ stats, timestamp }: { stats: string; timestamp: string }) {
+  const lastUpdate = new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  return (
+    <div style={{
+      backgroundColor: '#1e1e1e',
+      color: '#ddd',
+      padding: '16px',
+      fontSize: '12px',
+      lineHeight: 1.45,
+      borderRadius: '8px',
+      border: '1px solid #333',
+      display: 'flex',
+      flexDirection: 'column',
+      gap: '10px',
+    }}>
+      <div style={{ color: '#888', textTransform: 'uppercase', letterSpacing: '0.5px', fontSize: '10px' }}>
+        Raw Output · Updated {lastUpdate}
+      </div>
+      <pre style={{
+        margin: 0,
+        whiteSpace: 'pre-wrap',
+        wordBreak: 'break-word',
+        backgroundColor: '#151515',
+        border: '1px solid #2b2b2b',
+        borderRadius: '6px',
+        padding: '10px',
+        color: '#d9d9d9',
+        maxHeight: '340px',
+        overflowY: 'auto',
+      }}>
+        {stats}
+      </pre>
+    </div>
+  );
+}
+
+function ClaudeUsageStats({ stats, timestamp }: { stats: string; timestamp: string }) {
+  const lastUpdate = new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  const cleaned = stats.replace(/[│╭╮╰╯─]/g, '').replace(/\r/g, '\n');
+
+  const extractSection = (label: 'Current session' | 'Current week') => {
+    const percentMatch = cleaned.match(new RegExp(`${label}[\\s\\S]{0,160}?(\\d{1,3}(?:\\.\\d+)?%)\\s*used`, 'i'));
+    const resetMatch = cleaned.match(new RegExp(`${label}[\\s\\S]{0,260}?(Resets?[^\\n]+)`, 'i'));
+    return {
+      usage: percentMatch?.[1] ?? 'N/A',
+      reset: resetMatch?.[1]?.trim() ?? 'N/A',
+    };
+  };
+
+  const session = extractSection('Current session');
+  const week = extractSection('Current week');
+
+  const cardStyle: React.CSSProperties = {
+    backgroundColor: '#171717',
+    border: '1px solid #2b2b2b',
+    borderRadius: '8px',
+    padding: '12px',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '8px',
+  };
+
+  const labelStyle: React.CSSProperties = {
+    fontSize: '10px',
+    textTransform: 'uppercase',
+    letterSpacing: '0.5px',
+    color: '#8be9fd',
+    fontWeight: 700,
+  };
+
+  const valueStyle: React.CSSProperties = {
+    fontSize: '17px',
+    color: '#50fa7b',
+    fontWeight: 700,
+    lineHeight: 1.1,
+  };
+
+  const resetStyle: React.CSSProperties = {
+    fontSize: '11px',
+    color: '#b8b8b8',
+  };
+
+  return (
+    <div style={{
+      backgroundColor: '#1e1e1e',
+      color: '#ddd',
+      padding: '16px',
+      borderRadius: '8px',
+      border: '1px solid #333',
+      display: 'flex',
+      flexDirection: 'column',
+      gap: '10px',
+    }}>
+      <div style={{ color: '#888', textTransform: 'uppercase', letterSpacing: '0.5px', fontSize: '10px' }}>
+        Claude Plan Usage · Updated {lastUpdate}
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+        <div style={cardStyle}>
+          <div style={labelStyle}>Current Session</div>
+          <div style={valueStyle}>{session.usage} used</div>
+          <div style={resetStyle}>{session.reset}</div>
+        </div>
+        <div style={cardStyle}>
+          <div style={labelStyle}>Current Week</div>
+          <div style={valueStyle}>{week.usage} used</div>
+          <div style={resetStyle}>{week.reset}</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CodexUsageStats({ stats, timestamp }: { stats: string; timestamp: string }) {
+  const lastUpdate = new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  const cleaned = stats.replace(/[│╭╮╰╯─]/g, '').replace(/\r/g, '\n');
+
+  const extractLimit = (label: '5h limit' | 'Weekly limit') => {
+    const match = cleaned.match(new RegExp(`${label}:\\s*\\[[^\\]]*\\]\\s*(\\d{1,3}(?:\\.\\d+)?%)\\s*left\\s*\\(([^\\)]+)\\)`, 'i'));
+    return {
+      usageLeft: match?.[1] ?? 'N/A',
+      reset: match?.[2]?.trim() ?? 'N/A',
+    };
+  };
+
+  const fiveHour = extractLimit('5h limit');
+  const weekly = extractLimit('Weekly limit');
+
+  const cardStyle: React.CSSProperties = {
+    backgroundColor: '#171717',
+    border: '1px solid #2b2b2b',
+    borderRadius: '8px',
+    padding: '12px',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '8px',
+  };
+
+  const labelStyle: React.CSSProperties = {
+    fontSize: '10px',
+    textTransform: 'uppercase',
+    letterSpacing: '0.5px',
+    color: '#8be9fd',
+    fontWeight: 700,
+  };
+
+  const valueStyle: React.CSSProperties = {
+    fontSize: '17px',
+    color: '#50fa7b',
+    fontWeight: 700,
+    lineHeight: 1.1,
+  };
+
+  const resetStyle: React.CSSProperties = {
+    fontSize: '11px',
+    color: '#b8b8b8',
+  };
+
+  return (
+    <div style={{
+      backgroundColor: '#1e1e1e',
+      color: '#ddd',
+      padding: '16px',
+      borderRadius: '8px',
+      border: '1px solid #333',
+      display: 'flex',
+      flexDirection: 'column',
+      gap: '10px',
+    }}>
+      <div style={{ color: '#888', textTransform: 'uppercase', letterSpacing: '0.5px', fontSize: '10px' }}>
+        Codex Limits · Updated {lastUpdate}
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+        <div style={cardStyle}>
+          <div style={labelStyle}>5h limit</div>
+          <div style={valueStyle}>{fiveHour.usageLeft} left</div>
+          <div style={resetStyle}>{fiveHour.reset}</div>
+        </div>
+        <div style={cardStyle}>
+          <div style={labelStyle}>Weekly limit</div>
+          <div style={valueStyle}>{weekly.usageLeft} left</div>
+          <div style={resetStyle}>{weekly.reset}</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function App() {
   const [agents, setAgents] = useState<Agent[]>([]);
   const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
@@ -456,7 +643,9 @@ function App() {
   const [schedulerJobs, setSchedulerJobs] = useState<SchedulerJob[]>([]);
   const [schedulerLoading, setSchedulerLoading] = useState(false);
   const [usageLoading, setUsageLoading] = useState(false);
-  const [standaloneUsageCapture, setStandaloneUsageCapture] = useState<StandaloneUsageCapture | null>(null);
+  const [geminiUsageCapture, setGeminiUsageCapture] = useState<StandaloneUsageCapture | null>(null);
+  const [claudeUsageCapture, setClaudeUsageCapture] = useState<StandaloneUsageCapture | null>(null);
+  const [codexUsageCapture, setCodexUsageCapture] = useState<StandaloneUsageCapture | null>(null);
   const [schedulerJobName, setSchedulerJobName] = useState('');
   const [schedulerAgentId, setSchedulerAgentId] = useState('');
   const [schedulerPrompt, setSchedulerPrompt] = useState('');
@@ -514,6 +703,17 @@ function App() {
   });
 
   const selectedAgent = agents.find(a => a.id === selectedAgentId);
+  const agentsWithUsageStats = agents.filter(a => Boolean(a.usageStats));
+  const inferProviderForAgent = (agent: Agent): Provider | undefined => {
+    if (agent.provider === 'gemini' || agent.provider === 'claude' || agent.provider === 'codex') {
+      return agent.provider;
+    }
+    const id = agent.id.toLowerCase();
+    if (id.includes('gemini')) return 'gemini';
+    if (id.includes('claude')) return 'claude';
+    if (id.includes('codex')) return 'codex';
+    return undefined;
+  };
   const selectedDriveResource = driveResources.find(resource => resource.id === driveSelectedResourceId) ?? null;
   const activePlanner = activeTeam?.members.find(m => m.role === 'planner');
   const activeWorker = activeTeam?.members.find(m => m.role === 'worker');
@@ -2213,59 +2413,54 @@ function App() {
                         onClick={async () => {
                           setUsageLoading(true);
                           try {
-                            const fallbackProvider = (selectedAgent?.provider as Provider | undefined) || provider;
-                            const fallbackModel = selectedAgent?.model || selectedModel || modelOptions[fallbackProvider]?.[0]?.value || '';
-
-                            if (selectedAgentId) {
-                              const response = await fetchWithTimeout(
-                                `/api/agents/${selectedAgentId}/usage-stats`,
-                                {
-                                  method: 'POST',
-                                  headers: { 'Content-Type': 'application/json' },
-                                  body: JSON.stringify({
-                                    provider: fallbackProvider,
-                                    model: fallbackModel,
-                                  }),
-                                },
-                                80000,
-                              );
-                              const payload = await response.json();
-                              if (payload?.usageStats) {
-                                setAgents(prev => prev.map(a =>
-                                  a.id === selectedAgentId
-                                    ? {
-                                        ...a,
-                                        provider: fallbackProvider,
-                                        model: fallbackModel || a.model,
-                                        usageStats: payload.usageStats,
-                                      }
-                                    : a,
-                                ));
-                                setStandaloneUsageCapture(null);
-                              }
-                              pushSidebarEvent('out', 'Capture Usage', selectedAgentId);
-                            } else {
+                            const captureProvider = async (targetProvider: Provider): Promise<StandaloneUsageCapture | null> => {
+                              const chosenModel =
+                                targetProvider === provider
+                                  ? (selectedModel || modelOptions[targetProvider]?.[0]?.value || '')
+                                  : (modelOptions[targetProvider]?.[0]?.value || '');
                               const response = await fetchWithTimeout(
                                 '/api/usage-stats/capture',
                                 {
                                   method: 'POST',
                                   headers: { 'Content-Type': 'application/json' },
                                   body: JSON.stringify({
-                                    provider: fallbackProvider,
-                                    model: fallbackModel,
+                                    provider: targetProvider,
+                                    model: chosenModel,
                                   }),
                                 },
                                 80000,
                               );
                               const payload = await response.json();
-                              if (payload?.usageStats) {
-                                setStandaloneUsageCapture({
-                                  provider: fallbackProvider,
-                                  model: fallbackModel,
-                                  usageStats: payload.usageStats,
-                                });
+                              if (!payload?.usageStats) {
+                                return null;
                               }
-                              pushSidebarEvent('out', 'Capture Usage', `${fallbackProvider}${fallbackModel ? `:${fallbackModel}` : ''}`);
+                              return {
+                                provider: targetProvider,
+                                model: chosenModel,
+                                usageStats: payload.usageStats,
+                              };
+                            };
+
+                            const [geminiResult, claudeResult, codexResult] = await Promise.allSettled([
+                              captureProvider('gemini'),
+                              captureProvider('claude'),
+                              captureProvider('codex'),
+                            ]);
+
+                            if (geminiResult.status === 'fulfilled') {
+                              setGeminiUsageCapture(geminiResult.value);
+                            }
+                            if (claudeResult.status === 'fulfilled') {
+                              setClaudeUsageCapture(claudeResult.value);
+                            }
+                            if (codexResult.status === 'fulfilled') {
+                              setCodexUsageCapture(codexResult.value);
+                            }
+
+                            const failedCount = [geminiResult, claudeResult, codexResult].filter((result) => result.status === 'rejected').length;
+                            pushSidebarEvent('out', 'Capture Usage', `gemini/claude/codex${failedCount ? ` (${failedCount} failed)` : ''}`);
+                            if (failedCount > 0) {
+                              setGlobalError(`Usage capture failed for ${failedCount} provider(s).`);
                             }
                           } catch (err: any) {
                             handleError('Usage capture failed:', err);
@@ -2294,38 +2489,75 @@ function App() {
                         Reload
                       </button>
                     </div>
-                    {!selectedAgentId ? (
-                      standaloneUsageCapture ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <div style={{ fontSize: '11px', color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.6px' }}>
+                        Gemini Usage Stats
+                      </div>
+                      {geminiUsageCapture ? (
                         <AgentUsageStats
-                          stats={standaloneUsageCapture.usageStats.stats}
-                          timestamp={standaloneUsageCapture.usageStats.timestamp}
-                          provider={standaloneUsageCapture.provider}
-                          model={standaloneUsageCapture.model}
+                          stats={geminiUsageCapture.usageStats.stats}
+                          timestamp={geminiUsageCapture.usageStats.timestamp}
+                          provider={geminiUsageCapture.provider}
+                          model={geminiUsageCapture.model}
                         />
                       ) : (
                         <div style={{ color: theme.textMuted, fontSize: '13px', textAlign: 'center' as const, marginTop: '20px', padding: '20px', backgroundColor: theme.bgSurface, borderRadius: '8px', border: `1px dashed ${theme.border}` }}>
                           {usageLoading
-                            ? <>Capturing usage via <strong>{provider}</strong> CLI...</>
-                            : <>No agent selected. Click <strong>Reload</strong> to capture usage using current provider/model selectors.</>}
+                            ? <>Capturing usage via <strong>gemini</strong> CLI...</>
+                            : <>Click <strong>Reload</strong> to capture Gemini usage stats.</>}
                         </div>
-                      )
-                    ) : !selectedAgent?.usageStats ? (
-                      <div style={{ color: theme.textMuted, fontSize: '13px', textAlign: 'center' as const, marginTop: '20px', padding: '20px', backgroundColor: theme.bgSurface, borderRadius: '8px', border: `1px dashed ${theme.border}` }}>
-                        <div style={{ marginBottom: '8px' }}><Activity size={24} className="animate-pulse" /></div>
-                        {!selectedAgent?.provider
-                          ? <>Start the agent once to detect its provider, then capture usage.</>
-                          : usageLoading
-                          ? <>Capturing usage via <strong>{selectedAgent?.provider || 'provider'}</strong> CLI...</>
-                          : <>Click <strong>Reload</strong> to capture usage from agent <strong>{selectedAgentId}</strong>.</>}
+                      )}
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <div style={{ fontSize: '11px', color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.6px' }}>
+                        Claude Usage Stats
                       </div>
-                    ) : (
-                      <AgentUsageStats
-                        stats={selectedAgent.usageStats.stats}
-                        timestamp={selectedAgent.usageStats.timestamp}
-                        provider={selectedAgent.provider}
-                        model={selectedAgent.model}
-                      />
-                    )}
+                      {claudeUsageCapture ? (
+                        <ClaudeUsageStats
+                          stats={claudeUsageCapture.usageStats.stats}
+                          timestamp={claudeUsageCapture.usageStats.timestamp}
+                        />
+                      ) : (
+                        <div style={{
+                          color: theme.textMuted,
+                          fontSize: '12px',
+                          padding: '10px 12px',
+                          backgroundColor: theme.bgSurface,
+                          borderRadius: '6px',
+                          border: `1px dashed ${theme.border}`,
+                        }}>
+                          {usageLoading
+                            ? <>Capturing usage via <strong>claude</strong> CLI...</>
+                            : <>Click <strong>Reload</strong> to capture Claude usage stats.</>}
+                        </div>
+                      )}
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <div style={{ fontSize: '11px', color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.6px' }}>
+                        Codex Usage Stats
+                      </div>
+                      {codexUsageCapture ? (
+                        <CodexUsageStats
+                          stats={codexUsageCapture.usageStats.stats}
+                          timestamp={codexUsageCapture.usageStats.timestamp}
+                        />
+                      ) : (
+                        <div style={{
+                          color: theme.textMuted,
+                          fontSize: '12px',
+                          padding: '10px 12px',
+                          backgroundColor: theme.bgSurface,
+                          borderRadius: '6px',
+                          border: `1px dashed ${theme.border}`,
+                        }}>
+                          {usageLoading
+                            ? <>Capturing usage via <strong>codex</strong> CLI...</>
+                            : <>Click <strong>Reload</strong> to capture Codex usage stats.</>}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )}
                 {activeConfigSubTab === 'drive' && (
