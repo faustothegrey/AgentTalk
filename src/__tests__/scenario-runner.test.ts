@@ -221,7 +221,7 @@ describe('ScenarioRunner', () => {
     const result = await runPromise;
 
     expect(result.status).toBe('error');
-    expect(result.error).toContain('readiness timeout');
+    expect(result.error).toContain('No agents became ready for the scenario');
   });
 
   it('should fail when an agent enters error state', async () => {
@@ -238,7 +238,7 @@ describe('ScenarioRunner', () => {
     const result = await runPromise;
 
     expect(result.status).toBe('error');
-    expect(result.error).toContain('error state');
+    expect(result.error).toContain('No agents became ready for the scenario');
   });
 
   // ── Conversations ───────────────────────────────────────────

@@ -50,7 +50,7 @@ describe('provider-runtime', () => {
     expect(command).toEqual({
       command: 'gemini',
       args: [
-        '--prompt',
+        '-p',
         'overview the repo',
         '--output-format',
         'json',
@@ -71,7 +71,7 @@ describe('provider-runtime', () => {
     expect(command).toEqual({
       command: 'gemini',
       args: [
-        '--prompt',
+        '-p',
         'overview the repo',
         '--output-format',
         'json',
