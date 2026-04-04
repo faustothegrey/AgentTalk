@@ -3,7 +3,7 @@ import { existsSync, rmSync } from 'fs';
 import type { AddressInfo } from 'net';
 import type { Server } from 'http';
 import { WebSocket } from 'ws';
-import { Registry } from '../registry.js';
+import { Registry } from '../registry/registry.js';
 import { startServer } from '../server.js';
 import type { ProcessAdapter } from '../agents/process-adapter.js';
 import type { GoogleDriveIntegration, GoogleDriveResource } from '../integrations/google-drive/types.js';
@@ -372,6 +372,40 @@ describe('startServer', () => {
     await expect(response.json()).resolves.toMatchObject({
       status: 'idle',
       members: [
+        { agentId: 'worker-1', role: 'worker' },
+      ],
+    });
+  });
+
+  it('should create a 2-planners + 1-worker team from raw team form fields', async () => {
+    const plannerA = await registry.createAgent('planner-a');
+    const plannerB = await registry.createAgent('planner-b');
+    const worker = await registry.createAgent('worker-1');
+    plannerA.setStatus('starting');
+    plannerA.setStatus('ready');
+    plannerB.setStatus('starting');
+    plannerB.setStatus('ready');
+    worker.setStatus('starting');
+    worker.setStatus('ready');
+
+    const response = await fetch(`${baseUrl}/api/teams`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        teamComposition: 'planner-planner-worker',
+        teamPlannerAgent: 'planner-a',
+        teamPlannerAgentB: 'planner-b',
+        teamWorkerAgent: 'worker-1',
+      }),
+    });
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      composition: 'planner-planner-worker',
+      status: 'idle',
+      members: [
+        { agentId: 'planner-a', role: 'planner' },
+        { agentId: 'planner-b', role: 'planner' },
         { agentId: 'worker-1', role: 'worker' },
       ],
     });

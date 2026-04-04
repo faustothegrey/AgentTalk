@@ -101,7 +101,7 @@ rl.on('line', (line) => {
     writeFileSync(scriptPath, `
 const readline = require('readline');
 let turn = 0;
-console.log(JSON.stringify({ type: 'system', subtype: 'hook_started', session_id: 'test-session' }));
+
 const rl = readline.createInterface({ input: process.stdin, terminal: false });
 rl.on('line', (line) => {
   const parsed = JSON.parse(line);

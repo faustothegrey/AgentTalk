@@ -1,0 +1,38 @@
+{
+  "name": "Two Planners One Worker Team",
+  "description": "Two planners collaborate on a final implementation plan, then delegate execution to one worker.",
+  "agents": [
+    {
+      "id": "planner-claude",
+      "provider": "claude",
+      "model": "sonnet",
+      "executionMode": "auto"
+    },
+    {
+      "id": "planner-gemini",
+      "provider": "gemini",
+      "model": "gemini-2.5-pro",
+      "executionMode": "auto"
+    },
+    {
+      "id": "worker-codex",
+      "provider": "codex",
+      "model": "gpt-5-codex",
+      "executionMode": "auto"
+    }
+  ],
+  "teams": [
+    {
+      "members": [
+        { "agentId": "planner-claude", "role": "planner" },
+        { "agentId": "planner-gemini", "role": "planner" },
+        { "agentId": "worker-codex", "role": "worker" }
+      ],
+      "tasks": [
+        {
+          "description": "Produce one concrete implementation-ready plan for improving team-task orchestration, then hand execution to the worker."
+        }
+      ]
+    }
+  ]
+}

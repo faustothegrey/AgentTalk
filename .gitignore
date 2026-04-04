@@ -10,3 +10,7 @@ test-transcripts/
 google-oauth-client.json
 google-drive-token.json
 credentials.json
+
+# vite build artifacts
+web/vite.config.js
+web/vite.config.js.map

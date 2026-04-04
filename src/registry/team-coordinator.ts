@@ -8,6 +8,12 @@ const GIT_WORKTREE_REQUIREMENT = [
   'If you cannot or will not use a git worktree, refuse the assignment and abort the task.',
 ].join(' ');
 
+const PLANNER_NO_CODE_TOUCH_REQUIREMENT = [
+  'Planner role restriction: DO NOT touch code for any reason.',
+  'Do not run shell commands, do not edit files, and do not create commits.',
+  'Only discuss options and submit the final plan via submit_plan.',
+].join(' ');
+
 interface TeamCoordinatorDeps {
   getAgent: (id: string) => Agent;
   sendProtocol: (
@@ -179,7 +185,7 @@ export class TeamCoordinator {
         teamId,
         taskId: task.id,
         role: 'planner',
-        description,
+        description: `${description}\n\n${PLANNER_NO_CODE_TOUCH_REQUIREMENT}`,
       });
     } else {
       task.transcript.push({
@@ -250,7 +256,10 @@ export class TeamCoordinator {
         await this.deps.sendProtocol(id, 'EVT', {
           type: 'conversation_start',
           conversationId: task.id, // Overloading conversationId with taskId for context
-          topic: `Collaboratively draft an execution plan for: ${description}. Once you reach a resolution, one of you MUST call submit_plan with the final plan.`,
+          topic:
+            `Collaboratively draft an execution plan for: ${description}. ` +
+            `Once you reach a resolution, one of you MUST call submit_plan with the final plan. ` +
+            `${PLANNER_NO_CODE_TOUCH_REQUIREMENT}`,
           peerIds,
           peerId: peerIds[0] as string,
           maxReplies: maxRepliesPerAgent,

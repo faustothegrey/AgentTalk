@@ -2,7 +2,7 @@ import { readFileSync } from 'fs';
 import { ProcessAdapterImpl } from './agents/process-adapter.js';
 import { createGoogleDriveServiceFromEnv } from './integrations/google-drive/from-env.js';
 import { SessionRecorder } from './recordings/session-recorder.js';
-import { Registry } from './registry.js';
+import { Registry } from './registry/registry.js';
 import { ScenarioRunner } from './scenarios/scenario-runner.js';
 import type { ScenarioDefinition } from './scenarios/types.js';
 import { startServer } from './server.js';

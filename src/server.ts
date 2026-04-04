@@ -6,7 +6,7 @@ import path from 'path';
 import { tmpdir } from 'os';
 import { spawn } from 'child_process';
 import { WebSocketServer, WebSocket } from 'ws';
-import { Registry } from './registry.js';
+import { Registry } from './registry/registry.js';
 import type { AgentExecutionMode, TeamMember, TeamRole } from './shared/types.js';
 import type { GoogleDriveIntegration } from './integrations/google-drive/types.js';
 import type { SessionRecorder } from './recordings/session-recorder.js';
@@ -169,7 +169,16 @@ function normalizeCreateTeamMembers(body: unknown): TeamMember[] {
 
   // Multi-planner composition
   if (composition === 'multi-planner' || composition === 'planner-planner-worker') {
-    const planners = Array.isArray(payload.planners) ? payload.planners : [];
+    const planners = Array.isArray(payload.planners)
+      ? payload.planners
+      : [
+          payload.teamPlannerAgent,
+          payload.teamPlannerAgentB,
+          payload.plannerAgentId,
+          payload.plannerAgentIdB,
+          payload.plannerId,
+          payload.plannerIdB,
+        ];
     const workerId = getNonEmptyString(payload.workerId ?? payload.teamWorkerAgent);
     const result: TeamMember[] = [];
     for (const id of planners) {

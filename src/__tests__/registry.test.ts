@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { Registry } from '../registry.js';
+import { Registry } from '../registry/registry.js';
 import type { ProcessAdapter } from '../agents/process-adapter.js';
 import { existsSync, rmSync } from 'fs';
 import { deriveConversationStatus } from '../conversations/conversation-status.js';

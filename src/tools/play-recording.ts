@@ -1,10 +1,11 @@
 import { playSessionRecordingFromFile } from '../recordings/playback.js';
 
 async function main() {
+  const USAGE_MESSAGE = 'Usage: node dist/tools/play-recording.js <recording.ndjson> [--timed]';
   const args = process.argv.slice(2);
   const filePath = args.find((arg) => !arg.startsWith('--'));
   if (!filePath) {
-    console.error('Usage: node dist/tools/play-recording.js <recording.ndjson> [--timed]');
+    console.error(USAGE_MESSAGE);
     process.exit(1);
   }
 

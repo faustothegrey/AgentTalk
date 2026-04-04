@@ -1,4 +1,4 @@
-import type { Registry } from '../registry.js';
+import type { Registry } from '../registry/registry.js';
 import type { AgentStatus } from '../shared/types.js';
 import { buildAgentCommand, buildProcessOptions } from './command-builder.js';
 import type { ScenarioDefinition, ScenarioResult } from './types.js';

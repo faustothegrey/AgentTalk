@@ -1,9 +1,9 @@
 import { EventEmitter } from 'events';
-import { Agent } from './agents/agent.js';
-import { ConversationStore } from './conversations/conversation-store.js';
-import { HealthcheckManager } from './agents/healthcheck-manager.js';
-import { ProcessOutputParser } from './agents/process-output-parser.js';
-import type { ProcessAdapter, ProcessSpawnOptions } from './agents/process-adapter.js';
+import { Agent } from '../agents/agent.js';
+import { ConversationStore } from '../conversations/conversation-store.js';
+import { HealthcheckManager } from '../agents/healthcheck-manager.js';
+import { ProcessOutputParser } from '../agents/process-output-parser.js';
+import type { ProcessAdapter, ProcessSpawnOptions } from '../agents/process-adapter.js';
 import {
   parseEventPayload,
   parseReadyPayload,
@@ -14,8 +14,8 @@ import {
   type RequestPayload,
   type ResponsePayload,
   type SendToAgentRequestPayload,
-} from './protocol/protocol-payloads.js';
-import { PROTOCOL_PREFIX, serializeProtocolLine, splitProtocolLine, type OutboundProtocolPacketType } from './protocol/protocol.js';
+} from '../protocol/protocol-payloads.js';
+import { PROTOCOL_PREFIX, serializeProtocolLine, splitProtocolLine, type OutboundProtocolPacketType } from '../protocol/protocol.js';
 import type {
   AgentExecutionMode,
   AgentSessionStatus,
@@ -27,10 +27,10 @@ import type {
   TeamRole,
   TeamTask,
   TranscriptEntry,
-} from './shared/types.js';
-import { ConversationCoordinator } from './registry/conversation-coordinator.js';
-import { TeamCoordinator } from './registry/team-coordinator.js';
-import { extractLaunchMetadata, resolveRegistryConfig, type RegistryConfig } from './registry/config.js';
+} from '../shared/types.js';
+import { ConversationCoordinator } from './conversation-coordinator.js';
+import { TeamCoordinator } from './team-coordinator.js';
+import { extractLaunchMetadata, resolveRegistryConfig, type RegistryConfig } from './config.js';
 
 export class Registry extends EventEmitter {
   private agents: Map<string, Agent> = new Map();

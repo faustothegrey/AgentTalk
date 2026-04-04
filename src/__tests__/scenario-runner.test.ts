@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { existsSync, rmSync } from 'fs';
-import { Registry } from '../registry.js';
+import { Registry } from '../registry/registry.js';
 import type { ProcessAdapter } from '../agents/process-adapter.js';
 import { ScenarioRunner } from '../scenarios/scenario-runner.js';
 import type { ScenarioDefinition } from '../scenarios/types.js';
@@ -303,6 +303,65 @@ describe('ScenarioRunner', () => {
     expect(result.status).toBe('completed');
     expect(result.teamIds).toHaveLength(1);
     expect(registry.getTeams()).toHaveLength(1);
+  });
+
+  it('should run a planner-planner-worker team scenario', async () => {
+    const scenario: ScenarioDefinition = {
+      name: 'Planner Planner Worker Scenario',
+      agents: [
+        { id: 'planner-a', provider: 'claude', model: 'sonnet' },
+        { id: 'planner-b', provider: 'gemini', model: 'gemini-2.5-pro' },
+        { id: 'worker', provider: 'codex', model: 'gpt-5-codex' },
+      ],
+      teams: [
+        {
+          members: [
+            { agentId: 'planner-a', role: 'planner' },
+            { agentId: 'planner-b', role: 'planner' },
+            { agentId: 'worker', role: 'worker' },
+          ],
+          tasks: [{ description: 'Draft and execute a concrete implementation plan for team workflows.' }],
+        },
+      ],
+    };
+
+    const runner = new ScenarioRunner({ readinessTimeoutMs: 200 });
+    const runPromise = runner.run(scenario, registry);
+
+    await vi.advanceTimersByTimeAsync(10);
+    pushOutput('planner-a', makeReadyLine());
+    pushOutput('planner-b', makeReadyLine());
+    pushOutput('worker', makeReadyLine());
+
+    const result = await runPromise;
+
+    expect(result.status).toBe('completed');
+    expect(result.teamIds).toHaveLength(1);
+
+    const [team] = registry.getTeams();
+    expect(team?.composition).toBe('planner-planner-worker');
+    expect(team?.members).toEqual([
+      { agentId: 'planner-a', role: 'planner' },
+      { agentId: 'planner-b', role: 'planner' },
+      { agentId: 'worker', role: 'worker' },
+    ]);
+
+    expect(team?.currentTaskId).toMatch(/^task-/);
+    expect(team?.status).toBe('planning');
+
+    const sendTextCalls = vi.mocked(adapter.sendText).mock.calls;
+    expect(sendTextCalls).toEqual(
+      expect.arrayContaining([
+        [
+          'planner-a',
+          expect.stringContaining('"type":"conversation_start"'),
+        ],
+        [
+          'planner-b',
+          expect.stringContaining('"type":"conversation_start"'),
+        ],
+      ]),
+    );
   });
 
   // ── Result structure ────────────────────────────────────────

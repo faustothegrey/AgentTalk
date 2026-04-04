@@ -312,4 +312,90 @@ describe('TeamCoordinator', () => {
       vi.useRealTimers();
     }
   });
+
+  it('should include strict no-code-touch instruction when assigning planner task', async () => {
+    const planner = new Agent('planner');
+    planner.setStatus('starting');
+    planner.setStatus('ready');
+
+    const worker = new Agent('worker');
+    worker.setStatus('starting');
+    worker.setStatus('ready');
+
+    const sendProtocol = vi.fn().mockResolvedValue(undefined);
+    const coordinator = new TeamCoordinator({
+      getAgent: (id) => {
+        if (id === 'planner') return planner;
+        if (id === 'worker') return worker;
+        throw new Error(`Unknown agent: ${id}`);
+      },
+      sendProtocol,
+      emitTeam: vi.fn(),
+      emitTeamTask: vi.fn(),
+      emitPlanningComplete: vi.fn(),
+      logError: vi.fn(),
+    });
+
+    const team = coordinator.createTeam([
+      { agentId: 'planner', role: 'planner' },
+      { agentId: 'worker', role: 'worker' },
+    ]);
+
+    await coordinator.assignTask(team.id, 'Do a tiny cleanup');
+
+    expect(sendProtocol).toHaveBeenCalledWith('planner', 'EVT', expect.objectContaining({
+      type: 'team_task_assign',
+      role: 'planner',
+      description: expect.stringContaining('DO NOT touch code for any reason'),
+    }));
+  });
+
+  it('should include strict no-code-touch instruction in multi-planner planning topic', async () => {
+    const plannerA = new Agent('planner-a');
+    plannerA.setStatus('starting');
+    plannerA.setStatus('ready');
+
+    const plannerB = new Agent('planner-b');
+    plannerB.setStatus('starting');
+    plannerB.setStatus('ready');
+
+    const worker = new Agent('worker');
+    worker.setStatus('starting');
+    worker.setStatus('ready');
+
+    const sendProtocol = vi.fn().mockResolvedValue(undefined);
+    const coordinator = new TeamCoordinator({
+      getAgent: (id) => {
+        if (id === 'planner-a') return plannerA;
+        if (id === 'planner-b') return plannerB;
+        if (id === 'worker') return worker;
+        throw new Error(`Unknown agent: ${id}`);
+      },
+      sendProtocol,
+      emitTeam: vi.fn(),
+      emitTeamTask: vi.fn(),
+      emitPlanningComplete: vi.fn(),
+      logError: vi.fn(),
+    });
+
+    const team = coordinator.createTeam([
+      { agentId: 'planner-a', role: 'planner' },
+      { agentId: 'planner-b', role: 'planner' },
+      { agentId: 'worker', role: 'worker' },
+    ]);
+
+    await coordinator.assignTask(team.id, 'Do a tiny cleanup');
+
+    const topicCalls = sendProtocol.mock.calls.filter((call) =>
+      call[1] === 'EVT' &&
+      call[2] &&
+      typeof call[2] === 'object' &&
+      (call[2] as Record<string, unknown>).type === 'conversation_start',
+    );
+    expect(topicCalls.length).toBeGreaterThanOrEqual(2);
+    for (const call of topicCalls) {
+      const payload = call[2] as Record<string, unknown>;
+      expect(String(payload.topic ?? '')).toContain('DO NOT touch code for any reason');
+    }
+  });
 });
