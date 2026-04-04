@@ -186,4 +186,130 @@ describe('TeamCoordinator', () => {
       plan: expect.stringContaining('abort the task'),
     }));
   });
+
+  it('should interrupt planning when submit_plan is missing before timeout', async () => {
+    vi.useFakeTimers();
+    try {
+      const planner = new Agent('planner');
+      planner.setStatus('starting');
+      planner.setStatus('ready');
+
+      const worker = new Agent('worker');
+      worker.setStatus('starting');
+      worker.setStatus('ready');
+
+      const emitTeam = vi.fn();
+      const emitTeamTask = vi.fn();
+      const sendProtocol = vi.fn().mockResolvedValue(undefined);
+
+      const coordinator = new TeamCoordinator(
+        {
+          getAgent: (id) => {
+            if (id === 'planner') return planner;
+            if (id === 'worker') return worker;
+            throw new Error(`Unknown agent: ${id}`);
+          },
+          sendProtocol,
+          emitTeam,
+          emitTeamTask,
+          emitPlanningComplete: vi.fn(),
+          logError: vi.fn(),
+        },
+        { planningEventTimeoutMs: 50 },
+      );
+
+      const team = coordinator.createTeam([
+        { agentId: 'planner', role: 'planner' },
+        { agentId: 'worker', role: 'worker' },
+      ]);
+
+      const task = await coordinator.assignTask(team.id, 'Ship the feature');
+      await vi.advanceTimersByTimeAsync(60);
+
+      const latestTeam = emitTeam.mock.calls.at(-1)?.[0];
+      const latestTask = emitTeamTask.mock.calls.at(-1)?.[0] as TeamTask;
+
+      expect(latestTeam.status).toBe('interrupted');
+      expect(latestTask.id).toBe(task.id);
+      expect(latestTask.status).toBe('interrupted');
+      expect(latestTask.transcript.at(-1)?.payload).toContain('missing required event(s): submit_plan');
+      expect(sendProtocol).toHaveBeenCalledWith('planner', 'EVT', expect.objectContaining({
+        type: 'message_received',
+        from: 'system',
+      }));
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('should force reminder and quickly interrupt after planners signal agreement without submit_plan', async () => {
+    vi.useFakeTimers();
+    try {
+      const plannerA = new Agent('planner-a');
+      plannerA.setStatus('starting');
+      plannerA.setStatus('ready');
+
+      const plannerB = new Agent('planner-b');
+      plannerB.setStatus('starting');
+      plannerB.setStatus('ready');
+
+      const worker = new Agent('worker');
+      worker.setStatus('starting');
+      worker.setStatus('ready');
+
+      const emitTeam = vi.fn();
+      const emitTeamTask = vi.fn();
+      const sendProtocol = vi.fn().mockResolvedValue(undefined);
+
+      const coordinator = new TeamCoordinator(
+        {
+          getAgent: (id) => {
+            if (id === 'planner-a') return plannerA;
+            if (id === 'planner-b') return plannerB;
+            if (id === 'worker') return worker;
+            throw new Error(`Unknown agent: ${id}`);
+          },
+          sendProtocol,
+          emitTeam,
+          emitTeamTask,
+          emitPlanningComplete: vi.fn(),
+          logError: vi.fn(),
+        },
+        {
+          planningEventTimeoutMs: 5000,
+          submitPlanAfterAgreementTimeoutMs: 40,
+        },
+      );
+
+      const team = coordinator.createTeam([
+        { agentId: 'planner-a', role: 'planner' },
+        { agentId: 'planner-b', role: 'planner' },
+        { agentId: 'worker', role: 'worker' },
+      ]);
+      await coordinator.assignTask(team.id, 'Tiny cleanup');
+
+      await coordinator.handlePlanningMessage('planner-a', 'We agree and the plan is ready. Please submit the plan.');
+
+      expect(sendProtocol).toHaveBeenCalledWith('planner-a', 'EVT', expect.objectContaining({
+        type: 'message_received',
+        from: 'system',
+        payload: expect.stringContaining('Agreement detected'),
+      }));
+      expect(sendProtocol).toHaveBeenCalledWith('planner-b', 'EVT', expect.objectContaining({
+        type: 'message_received',
+        from: 'system',
+        payload: expect.stringContaining('Agreement detected'),
+      }));
+
+      await vi.advanceTimersByTimeAsync(50);
+
+      const latestTeam = emitTeam.mock.calls.at(-1)?.[0];
+      const latestTask = emitTeamTask.mock.calls.at(-1)?.[0] as TeamTask;
+      expect(latestTeam.status).toBe('interrupted');
+      expect(latestTask.status).toBe('interrupted');
+      expect(latestTask.transcript.at(-1)?.payload).toContain('missing required event(s): submit_plan');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });

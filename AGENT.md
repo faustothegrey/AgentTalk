@@ -7,3 +7,6 @@ This project has reached Milestone 01. From now on follow these rules:
 - From now on, any behavioral change in code handling, as governed by the rules above, must be explicitly written in this AGENT.md file.
 - Behavioral change approved on 2026-04-04: disabled automatic usage detection/capture at frontend startup; usage detection remains manual (Reload) and scheduled hourly thereafter.
 - Behavioral change approved on 2026-04-04: frontend autostart now launches only Gemini and Codex agents, waits for readiness, and automatically starts a conversation between those two agents.
+- Behavioral change approved on 2026-04-04: server team creation now supports raw 2-planner+1-worker form fields (`teamPlannerAgent`, `teamPlannerAgentB`, `teamWorkerAgent`) and includes a runnable planner-planner-worker scenario fixture.
+- Behavioral change approved on 2026-04-04: planning phases now auto-interrupt if required events are missing by timeout (currently `submit_plan`), and the task transcript explicitly records the missing event(s).
+- Behavioral change approved on 2026-04-04: for multi-planner planning, agreement-like planner messages trigger an immediate system reminder to submit `submit_plan` and start a short deadline; if `submit_plan` is still missing, planning is interrupted quickly with explicit missing-event reason.

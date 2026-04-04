@@ -21,12 +21,31 @@ interface TeamCoordinatorDeps {
   logError: (message: string, err: unknown) => void;
 }
 
+interface TeamCoordinatorOptions {
+  planningEventTimeoutMs?: number;
+  submitPlanAfterAgreementTimeoutMs?: number;
+}
+
+const DEFAULT_PLANNING_EVENT_TIMEOUT_MS = 180_000;
+const DEFAULT_SUBMIT_PLAN_AFTER_AGREEMENT_TIMEOUT_MS = 30_000;
+
 export class TeamCoordinator {
   private teams: Map<string, Team> = new Map();
   private tasks: Map<string, TeamTask> = new Map();
   private agentToTeam: Map<string, string> = new Map();
+  private readonly planningEventTimeoutMs: number;
+  private readonly submitPlanAfterAgreementTimeoutMs: number;
+  private readonly planningWatchdogs: Map<string, NodeJS.Timeout> = new Map();
+  private readonly submitPlanUrgencyWatchdogs: Map<string, NodeJS.Timeout> = new Map();
 
-  constructor(private readonly deps: TeamCoordinatorDeps) {}
+  constructor(
+    private readonly deps: TeamCoordinatorDeps,
+    options: TeamCoordinatorOptions = {},
+  ) {
+    this.planningEventTimeoutMs = options.planningEventTimeoutMs ?? DEFAULT_PLANNING_EVENT_TIMEOUT_MS;
+    this.submitPlanAfterAgreementTimeoutMs =
+      options.submitPlanAfterAgreementTimeoutMs ?? DEFAULT_SUBMIT_PLAN_AFTER_AGREEMENT_TIMEOUT_MS;
+  }
 
   createTeam(members: TeamMember[]): Team {
     const composition = this.inferComposition(members);
@@ -154,6 +173,7 @@ export class TeamCoordinator {
     this.deps.emitTeamTask(task);
 
     if (planner) {
+      this.armPlanningWatchdog(team, task, ['submit_plan']);
       await this.deps.sendProtocol(planner.agentId, 'EVT', {
         type: 'team_task_assign',
         teamId,
@@ -222,6 +242,7 @@ export class TeamCoordinator {
 
     this.deps.emitTeam(team);
     this.deps.emitTeamTask(task);
+    this.armPlanningWatchdog(team, task, ['submit_plan']);
 
     for (const [i, id] of plannerIds.entries()) {
       const peerIds = plannerIds.filter((pid) => pid !== id);
@@ -351,6 +372,10 @@ export class TeamCoordinator {
       }
     }
 
+    if (looksLikeAgreementForFinalPlan(messageText)) {
+      await this.armSubmitPlanUrgencyWatchdog(team, task, ['submit_plan']);
+    }
+
     this.deps.emitTeamTask(task);
     return true;
   }
@@ -467,6 +492,8 @@ export class TeamCoordinator {
     assertPlanIsImplementationReady(plan);
 
     const now = new Date().toISOString();
+    this.clearPlanningWatchdog(task.id);
+    this.clearSubmitPlanUrgencyWatchdog(task.id);
     task.plan = plan;
     task.planningComplete = true;
     task.planSubmittedAt = now;
@@ -562,6 +589,8 @@ export class TeamCoordinator {
 
     this.deps.emitTeam(team);
     this.deps.emitTeamTask(task);
+    this.clearSubmitPlanUrgencyWatchdog(task.id);
+    this.armPlanningWatchdog(team, task, ['submit_plan']);
 
     await this.deps.sendProtocol(planner.agentId, 'EVT', {
       type: 'message_received',
@@ -707,6 +736,11 @@ export class TeamCoordinator {
       return;
     }
 
+    if (team.currentTaskId) {
+      this.clearPlanningWatchdog(team.currentTaskId);
+      this.clearSubmitPlanUrgencyWatchdog(team.currentTaskId);
+    }
+
     team.status = 'error';
     team.updatedAt = new Date().toISOString();
     this.deps.emitTeam(team);
@@ -810,6 +844,131 @@ export class TeamCoordinator {
     const task = this.getTask(team.currentTaskId);
     return { team, task };
   }
+
+  private armPlanningWatchdog(team: Team, task: TeamTask, missingEvents: string[]): void {
+    if (task.status !== 'planning') {
+      return;
+    }
+
+    this.clearPlanningWatchdog(task.id);
+
+    const timer = setTimeout(() => {
+      const currentTask = this.tasks.get(task.id);
+      const currentTeam = this.teams.get(team.id);
+      if (!currentTask || !currentTeam || currentTask.status !== 'planning') {
+        return;
+      }
+
+      void this.interruptPlanningForMissingEvents(currentTeam, currentTask, missingEvents);
+    }, this.planningEventTimeoutMs);
+
+    this.planningWatchdogs.set(task.id, timer);
+  }
+
+  private clearPlanningWatchdog(taskId: string): void {
+    const timer = this.planningWatchdogs.get(taskId);
+    if (timer) {
+      clearTimeout(timer);
+      this.planningWatchdogs.delete(taskId);
+    }
+  }
+
+  private async armSubmitPlanUrgencyWatchdog(team: Team, task: TeamTask, missingEvents: string[]): Promise<void> {
+    if (task.status !== 'planning' || this.submitPlanUrgencyWatchdogs.has(task.id)) {
+      return;
+    }
+
+    const now = new Date().toISOString();
+    const timeoutSeconds = Math.max(1, Math.floor(this.submitPlanAfterAgreementTimeoutMs / 1000));
+    const missing = missingEvents.join(', ');
+    const planners = team.members.filter((m) => m.role === 'planner');
+    for (const planner of planners) {
+      try {
+        await this.deps.sendProtocol(planner.agentId, 'EVT', {
+          type: 'message_received',
+          from: 'system',
+          payload: `Agreement detected. One planner must call ${missing} within ${timeoutSeconds}s or planning will be interrupted.`,
+        });
+      } catch (err) {
+        this.deps.logError(`[TeamCoordinator] Failed to send submit_plan reminder to ${planner.agentId}:`, err);
+      }
+    }
+
+    task.transcript.push({
+      kind: 'system',
+      timestamp: now,
+      from: 'system',
+      to: planners.map((p) => p.agentId).join(','),
+      payload: `Agreement detected. Awaiting required event(s): ${missing} within ${timeoutSeconds}s.`,
+    });
+    task.updatedAt = now;
+    this.deps.emitTeamTask(task);
+
+    const timer = setTimeout(() => {
+      const currentTask = this.tasks.get(task.id);
+      const currentTeam = this.teams.get(team.id);
+      if (!currentTask || !currentTeam || currentTask.status !== 'planning') {
+        return;
+      }
+      void this.interruptPlanningForMissingEvents(currentTeam, currentTask, missingEvents);
+    }, this.submitPlanAfterAgreementTimeoutMs);
+
+    this.submitPlanUrgencyWatchdogs.set(task.id, timer);
+  }
+
+  private clearSubmitPlanUrgencyWatchdog(taskId: string): void {
+    const timer = this.submitPlanUrgencyWatchdogs.get(taskId);
+    if (timer) {
+      clearTimeout(timer);
+      this.submitPlanUrgencyWatchdogs.delete(taskId);
+    }
+  }
+
+  private async interruptPlanningForMissingEvents(team: Team, task: TeamTask, missingEvents: string[]): Promise<void> {
+    this.clearPlanningWatchdog(task.id);
+    this.clearSubmitPlanUrgencyWatchdog(task.id);
+
+    const now = new Date().toISOString();
+    const missing = missingEvents.join(', ');
+    task.status = 'interrupted';
+    task.updatedAt = now;
+    task.transcript.push({
+      kind: 'system',
+      timestamp: now,
+      from: 'system',
+      to: team.members.map((m) => m.agentId).join(','),
+      payload: `Planning stopped: missing required event(s): ${missing}.`,
+    });
+
+    team.status = 'interrupted';
+    delete team.currentTaskId;
+    team.updatedAt = now;
+
+    this.deps.emitTeam(team);
+    this.deps.emitTeamTask(task);
+
+    const planners = team.members.filter((m) => m.role === 'planner');
+    for (const planner of planners) {
+      try {
+        await this.deps.sendProtocol(planner.agentId, 'EVT', {
+          type: 'message_received',
+          from: 'system',
+          payload: `Planning interrupted because required event(s) were not received: ${missing}.`,
+        });
+      } catch (err) {
+        this.deps.logError(`[TeamCoordinator] Failed to notify ${planner.agentId} about missing planning events:`, err);
+      }
+    }
+  }
+}
+
+function looksLikeAgreementForFinalPlan(text: string): boolean {
+  const normalized = text.toLowerCase();
+  return (
+    /(i (?:agree|have no objections)|we (?:agree|have a plan|have our plan)|final plan|plan is (?:solid|ready)|ready to submit|please submit the plan|submit (?:the )?plan)/i.test(
+      normalized,
+    )
+  );
 }
 
 function assertPlanIsImplementationReady(plan: string): void {
