@@ -886,6 +886,20 @@ export class TeamCoordinator {
     this.deps.emitTeam(team);
     this.deps.emitTeamTask(task);
     this.deps.emitPlanningComplete({ team, task, plannerAgentId: agentId });
+
+    // End the planning conversation so planners stop discussing
+    const planners = team.members.filter((m) => m.role === 'planner');
+    for (const planner of planners) {
+      try {
+        void this.deps.sendProtocol(planner.agentId, 'EVT', {
+          type: 'conversation_end',
+          conversationId: task.id,
+          reason: 'Plan submitted — planning complete.',
+        });
+      } catch (err) {
+        this.deps.logError(`[TeamCoordinator] Failed to send conversation_end to ${planner.agentId}:`, err);
+      }
+    }
   }
 
   async confirmPlan(taskId: string): Promise<void> {
