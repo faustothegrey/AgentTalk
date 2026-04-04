@@ -354,6 +354,18 @@ describe('ScenarioRunner', () => {
       expect.arrayContaining([
         [
           'planner-a',
+          expect.stringContaining('"type":"custom_event_request","event":"ack_planning_protocol"'),
+        ],
+        [
+          'planner-b',
+          expect.stringContaining('"type":"custom_event_request","event":"ack_planning_protocol"'),
+        ],
+      ]),
+    );
+    expect(sendTextCalls).not.toEqual(
+      expect.arrayContaining([
+        [
+          'planner-a',
           expect.stringContaining('"type":"conversation_start"'),
         ],
         [

@@ -41,6 +41,7 @@ export class Registry extends EventEmitter {
   private readonly teamCoordinator: TeamCoordinator;
   private readonly healthchecks = new HealthcheckManager();
   private readonly config: RegistryConfig;
+  private outboundMessageSeq = 0;
 
   constructor(
     private readonly adapter: ProcessAdapter,
@@ -401,6 +402,19 @@ export class Registry extends EventEmitter {
         }
         return;
 
+      case 'ack_planning_protocol':
+        try {
+          await this.teamCoordinator.handlePlanningProtocolAck(agent.id);
+          await this.sendSuccessResponse(agent.id, payload.id);
+        } catch (err) {
+          await this.sendErrorResponse(
+            agent.id,
+            payload.id,
+            err instanceof Error ? err.message : 'Failed to handle planning protocol acknowledgement',
+          );
+        }
+        return;
+
       case 'submit_plan':
         try {
           this.teamCoordinator.handlePlanSubmitted(agent.id, payload.args.plan);
@@ -448,7 +462,7 @@ export class Registry extends EventEmitter {
   }
 
   private async handleSendToAgent(agent: Agent, request: SendToAgentRequestPayload): Promise<void> {
-    const { to, payload } = request.args;
+    const { to, payload, replyToMessageId } = request.args;
 
     // Special target: "user" routes back to the web UI
     if (to === 'user') {
@@ -460,13 +474,13 @@ export class Registry extends EventEmitter {
 
     // Brainstorm/Planning routing: broadcast to all peers instead of single target
     try {
-      const brainstormHandled = await this.teamCoordinator.handleBrainstormMessage(agent.id, payload);
+      const brainstormHandled = await this.teamCoordinator.handleBrainstormMessage(agent.id, payload, replyToMessageId);
       if (brainstormHandled) {
         await this.sendSuccessResponse(agent.id, request.id);
         return;
       }
 
-      const planningHandled = await this.teamCoordinator.handlePlanningMessage(agent.id, payload);
+      const planningHandled = await this.teamCoordinator.handlePlanningMessage(agent.id, payload, replyToMessageId);
       if (planningHandled) {
         await this.sendSuccessResponse(agent.id, request.id);
         return;
@@ -499,6 +513,7 @@ export class Registry extends EventEmitter {
         type: 'message_received',
         from: agent.id,
         payload: payload,
+        ...(replyToMessageId ? { replyToMessageId } : {}),
       });
 
       if (conversation) {
@@ -554,12 +569,36 @@ export class Registry extends EventEmitter {
    */
   async sendProtocol(id: string, type: OutboundProtocolPacketType, payload: EventPayload | ResponsePayload): Promise<void> {
     this.getAgent(id); // validates agent exists
-    const line = serializeProtocolLine(type, payload);
+    const normalizedPayload = this.normalizeOutboundPayload(type, payload);
+    const line = serializeProtocolLine(type, normalizedPayload);
     const parser = this.parsers.get(id);
     if (parser) parser.expectEcho(line);
 
-    console.log(`[Registry] Sending ${type} to agent ${id}: ${JSON.stringify(payload)}`);
+    console.log(`[Registry] Sending ${type} to agent ${id}: ${JSON.stringify(normalizedPayload)}`);
     this.adapter.sendText(id, line.endsWith('\n') ? line : line + '\n');
+  }
+
+  private normalizeOutboundPayload(
+    type: OutboundProtocolPacketType,
+    payload: EventPayload | ResponsePayload,
+  ): EventPayload | ResponsePayload {
+    if (type !== 'EVT' || !('type' in payload) || payload.type !== 'message_received') {
+      return payload;
+    }
+
+    if (typeof payload.messageId === 'string' && payload.messageId.length > 0) {
+      return payload;
+    }
+
+    return {
+      ...payload,
+      messageId: this.createOutboundMessageId(),
+    };
+  }
+
+  private createOutboundMessageId(): string {
+    this.outboundMessageSeq = (this.outboundMessageSeq + 1) % Number.MAX_SAFE_INTEGER;
+    return `msg-${Date.now()}-${this.outboundMessageSeq}`;
   }
 
   private setAgentBusyState(agent: Agent, busy: boolean): void {

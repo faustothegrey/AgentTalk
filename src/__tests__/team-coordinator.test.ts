@@ -288,15 +288,16 @@ describe('TeamCoordinator', () => {
       ]);
       // maxRepliesPerAgent = 3; agreement_proposal requested at count 2 (1 away from max)
       await coordinator.assignTask(team.id, 'Tiny cleanup', 3);
+      await coordinator.handlePlanningProtocolAck('planner-a');
+      await coordinator.handlePlanningProtocolAck('planner-b');
 
       await coordinator.handlePlanningMessage('planner-a', 'Idea A');
       // planner-a now at count 2 (maxReplies - 1) → system asks for agreement_proposal
       await coordinator.handlePlanningMessage('planner-a', 'Refined A');
 
       expect(sendProtocol).toHaveBeenCalledWith('planner-a', 'EVT', expect.objectContaining({
-        type: 'message_received',
-        from: 'system',
-        payload: expect.stringContaining('agreement_proposal'),
+        type: 'custom_event_request',
+        event: 'agreement_proposal',
       }));
 
       // planner-a complies with agreement_proposal
@@ -304,9 +305,8 @@ describe('TeamCoordinator', () => {
 
       // System should now ask planner-b for agreement_reached
       expect(sendProtocol).toHaveBeenCalledWith('planner-b', 'EVT', expect.objectContaining({
-        type: 'message_received',
-        from: 'system',
-        payload: expect.stringContaining('agreement_reached'),
+        type: 'custom_event_request',
+        event: 'agreement_reached',
       }));
 
       // planner-b complies with agreement_reached
@@ -380,6 +380,8 @@ describe('TeamCoordinator', () => {
         { agentId: 'worker', role: 'worker' },
       ]);
       await coordinator.assignTask(team.id, 'Tiny cleanup', 3);
+      await coordinator.handlePlanningProtocolAck('planner-a');
+      await coordinator.handlePlanningProtocolAck('planner-b');
 
       // planner-a reaches maxReplies - 1 → asked for agreement_proposal
       await coordinator.handlePlanningMessage('planner-a', 'Idea A');
@@ -389,9 +391,9 @@ describe('TeamCoordinator', () => {
       await coordinator.handlePlanningMessage('planner-a', 'Still talking');
 
       expect(sendProtocol).toHaveBeenCalledWith('planner-a', 'EVT', expect.objectContaining({
-        type: 'message_received',
-        from: 'system',
-        payload: expect.stringContaining('Reminder (2/2)'),
+        type: 'custom_event_request',
+        event: 'agreement_proposal',
+        prompt: expect.stringContaining('Reminder (2/2)'),
       }));
 
       // Compliance timer fires after 2nd ask → planning interrupted
@@ -451,6 +453,8 @@ describe('TeamCoordinator', () => {
         { agentId: 'worker', role: 'worker' },
       ]);
       await coordinator.assignTask(team.id, 'Tiny cleanup', 3);
+      await coordinator.handlePlanningProtocolAck('planner-a');
+      await coordinator.handlePlanningProtocolAck('planner-b');
 
       // planner-a reaches maxReplies - 1, gets asked, complies
       await coordinator.handlePlanningMessage('planner-a', 'Idea A');
@@ -461,9 +465,9 @@ describe('TeamCoordinator', () => {
       await coordinator.handlePlanningMessage('planner-b', 'I have more to say');
 
       expect(sendProtocol).toHaveBeenCalledWith('planner-b', 'EVT', expect.objectContaining({
-        type: 'message_received',
-        from: 'system',
-        payload: expect.stringContaining('Reminder (2/2)'),
+        type: 'custom_event_request',
+        event: 'agreement_reached',
+        prompt: expect.stringContaining('Reminder (2/2)'),
       }));
 
       // planner-b ignores again: sends another regular message → fail
@@ -552,6 +556,26 @@ describe('TeamCoordinator', () => {
 
     await coordinator.assignTask(team.id, 'Do a tiny cleanup');
 
+    expect(sendProtocol).toHaveBeenCalledWith('planner-a', 'EVT', expect.objectContaining({
+      type: 'custom_event_request',
+      event: 'ack_planning_protocol',
+    }));
+    expect(sendProtocol).toHaveBeenCalledWith('planner-b', 'EVT', expect.objectContaining({
+      type: 'custom_event_request',
+      event: 'ack_planning_protocol',
+    }));
+
+    const topicCallsBeforeAck = sendProtocol.mock.calls.filter((call) =>
+      call[1] === 'EVT' &&
+      call[2] &&
+      typeof call[2] === 'object' &&
+      (call[2] as Record<string, unknown>).type === 'conversation_start',
+    );
+    expect(topicCallsBeforeAck).toHaveLength(0);
+
+    await coordinator.handlePlanningProtocolAck('planner-a');
+    await coordinator.handlePlanningProtocolAck('planner-b');
+
     const topicCalls = sendProtocol.mock.calls.filter((call) =>
       call[1] === 'EVT' &&
       call[2] &&
@@ -564,5 +588,55 @@ describe('TeamCoordinator', () => {
       expect(String(payload.topic ?? '')).toContain('DO NOT touch code for any reason');
       expect(payload.maxReplies).toBe(10);
     }
+  });
+
+  it('should block planning discussion messages until both planners acknowledge protocol', async () => {
+    const plannerA = new Agent('planner-a');
+    plannerA.setStatus('starting');
+    plannerA.setStatus('ready');
+
+    const plannerB = new Agent('planner-b');
+    plannerB.setStatus('starting');
+    plannerB.setStatus('ready');
+
+    const worker = new Agent('worker');
+    worker.setStatus('starting');
+    worker.setStatus('ready');
+
+    const sendProtocol = vi.fn().mockResolvedValue(undefined);
+    const coordinator = new TeamCoordinator({
+      getAgent: (id) => {
+        if (id === 'planner-a') return plannerA;
+        if (id === 'planner-b') return plannerB;
+        if (id === 'worker') return worker;
+        throw new Error(`Unknown agent: ${id}`);
+      },
+      sendProtocol,
+      emitTeam: vi.fn(),
+      emitTeamTask: vi.fn(),
+      emitPlanningComplete: vi.fn(),
+      logError: vi.fn(),
+    });
+
+    const team = coordinator.createTeam([
+      { agentId: 'planner-a', role: 'planner' },
+      { agentId: 'planner-b', role: 'planner' },
+      { agentId: 'worker', role: 'worker' },
+    ]);
+
+    await coordinator.assignTask(team.id, 'Do a tiny cleanup');
+    sendProtocol.mockClear();
+
+    const handled = await coordinator.handlePlanningMessage('planner-a', 'Draft plan point');
+    expect(handled).toBe(true);
+    expect(sendProtocol).toHaveBeenCalledWith('planner-a', 'EVT', expect.objectContaining({
+      type: 'custom_event_request',
+      event: 'ack_planning_protocol',
+    }));
+    expect(sendProtocol).not.toHaveBeenCalledWith('planner-b', 'EVT', expect.objectContaining({
+      type: 'message_received',
+      from: 'planner-a',
+      payload: 'Draft plan point',
+    }));
   });
 });

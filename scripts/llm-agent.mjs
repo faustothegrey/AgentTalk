@@ -4,7 +4,8 @@
 
 import { createInterface } from 'readline';
 import path from 'path';
-import { createConversationRuntime } from './lib/conversation-runtime.mjs';
+import { createConversationRuntime, extractSystemRequiredCall } from './lib/conversation-runtime.mjs';
+import { createRequestIdGenerator } from './lib/request-id.mjs';
 import { createExecutor, normalizeRequestedExecutionMode } from './lib/executor-runtime.mjs';
 import { emitEvent, emitReady, emitRequest, parseInboundProtocolLine } from './lib/protocol.mjs';
 import { getProviderLimit, resolveProvider } from './lib/provider-runtime.mjs';
@@ -21,6 +22,35 @@ function parseArgs(argv) {
   return { provider, model, executionMode };
 }
 
+function parseInteractiveCommandOverrideFromEnv() {
+  const raw = process.env.AGENTTALK_INTERACTIVE_COMMAND_JSON;
+  if (!raw) {
+    return undefined;
+  }
+
+  try {
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== 'object') {
+      return undefined;
+    }
+
+    const command = typeof parsed.command === 'string' ? parsed.command : undefined;
+    const args = Array.isArray(parsed.args) ? parsed.args.filter((value) => typeof value === 'string') : [];
+    const env = parsed.env && typeof parsed.env === 'object'
+      ? { ...process.env, ...parsed.env }
+      : process.env;
+
+    if (!command) {
+      return undefined;
+    }
+
+    return { command, args, env };
+  } catch (err) {
+    console.error(`[llm-agent] Ignoring invalid AGENTTALK_INTERACTIVE_COMMAND_JSON: ${err.message}`);
+    return undefined;
+  }
+}
+
 const {
   provider: providerName,
   model: selectedModel,
@@ -30,6 +60,7 @@ const provider = resolveProvider(providerName.toLowerCase());
 const limit = getProviderLimit(provider, selectedModel);
 const requestedWorkingDirectory = process.env.AGENTTALK_WORKDIR;
 const requestedExecutionMode = normalizeRequestedExecutionMode(requestedExecutionModeInput);
+const interactiveCommandOverride = parseInteractiveCommandOverrideFromEnv();
 
 if (requestedWorkingDirectory) {
   const resolvedWorkingDirectory = path.resolve(requestedWorkingDirectory);
@@ -41,6 +72,10 @@ let currentUsage = 0;
 let busy = false;
 const messageQueue = [];
 const conversationRuntime = createConversationRuntime();
+const nextRequestId = createRequestIdGenerator();
+const CONTROL_CALLS = new Set(['agreement_proposal', 'agreement_reached', 'ack_planning_protocol']);
+const pendingControlCalls = new Set();
+const pendingControlRequestIds = new Map();
 const {
   requestedExecutionMode: normalizedRequestedExecutionMode,
   resolvedExecutionMode,
@@ -49,11 +84,55 @@ const {
   providerName: provider,
   selectedModel,
   requestedExecutionMode,
+  ...(interactiveCommandOverride ? { interactiveCommandOverride } : {}),
 });
 
 function enqueueEvent(evt) {
   messageQueue.push(evt);
   void processQueue();
+}
+
+function emitTrackedRequest(request) {
+  if (!request || typeof request !== 'object' || typeof request.call !== 'string' || typeof request.id !== 'string') {
+    emitRequest(request);
+    return true;
+  }
+
+  const call = request.call;
+  if (CONTROL_CALLS.has(call) && pendingControlCalls.has(call)) {
+    console.error(`[llm-agent] Suppressing duplicate in-flight control call: ${call}`);
+    return false;
+  }
+
+  emitRequest(request);
+
+  if (CONTROL_CALLS.has(call)) {
+    pendingControlCalls.add(call);
+    pendingControlRequestIds.set(request.id, call);
+  }
+
+  return true;
+}
+
+function handleResponseLine(payloadText) {
+  let payload;
+  try {
+    payload = JSON.parse(payloadText);
+  } catch {
+    return;
+  }
+
+  if (!payload || typeof payload !== 'object' || typeof payload.id !== 'string') {
+    return;
+  }
+
+  const call = pendingControlRequestIds.get(payload.id);
+  if (!call) {
+    return;
+  }
+
+  pendingControlRequestIds.delete(payload.id);
+  pendingControlCalls.delete(call);
 }
 
 function emitSessionUpdate() {
@@ -95,6 +174,29 @@ async function processQueue() {
   }
 
   try {
+    if (evt.type === 'custom_event_request' && typeof evt.event === 'string') {
+      const call = evt.event.trim();
+      if (call) {
+        console.error(`[llm-agent] Complying with custom_event_request: ${call}`);
+        emitTrackedRequest({
+          id: nextRequestId(),
+          call,
+          ...(evt.args && typeof evt.args === 'object' ? { args: evt.args } : {}),
+        });
+        return;
+      }
+    }
+
+    const requiredCall = extractSystemRequiredCall(evt);
+    if (requiredCall) {
+      console.error(`[llm-agent] Complying with required system event: ${requiredCall}`);
+      emitTrackedRequest({
+        id: nextRequestId(),
+        call: requiredCall,
+      });
+      return;
+    }
+
     // Team events carry their own prompt and request builder
     if (evt._teamHandler) {
       await evt._teamHandler();
@@ -113,10 +215,10 @@ async function processQueue() {
       const requests = evt._buildRequest(response);
       if (Array.isArray(requests)) {
         for (const req of requests) {
-          emitRequest(req);
+          emitTrackedRequest(req);
         }
       } else {
-        emitRequest(requests);
+        emitTrackedRequest(requests);
       }
       return;
     }
@@ -136,11 +238,13 @@ async function processQueue() {
 
     conversationRuntime.recordAssistantReply(response);
     console.error(`[llm-agent] Reply (${response.length} chars): ${response.slice(0, 200)}`);
-    emitRequest(conversationRuntime.buildProtocolRequest(evt, response));
+    const request = conversationRuntime.buildProtocolRequest(evt, response);
+    request.id = nextRequestId();
+    emitTrackedRequest(request);
   } catch (err) {
     console.error(`[llm-agent] Error: ${err.message}`);
-    emitRequest({
-      id: `req-${Date.now()}`,
+    emitTrackedRequest({
+      id: nextRequestId(),
       call: 'send_to_agent',
       args: { to: 'user', payload: `[Agent error] ${err.message}` },
     });
@@ -174,8 +278,8 @@ function handleTeamTaskAssign(evt) {
     if (progressUpdate) {
       progressUpdates.push(progressUpdate);
       console.error(`[llm-agent] Planner progress update (${progressUpdate.length} chars): ${progressUpdate.slice(0, 200)}`);
-      emitRequest({
-        id: `req-${Date.now()}`,
+      emitTrackedRequest({
+        id: nextRequestId(),
         call: 'send_to_agent',
         args: {
           to: 'user',
@@ -201,8 +305,8 @@ function handleTeamTaskAssign(evt) {
     if (directionUpdate) {
       progressUpdates.push(directionUpdate);
       console.error(`[llm-agent] Planner direction update (${directionUpdate.length} chars): ${directionUpdate.slice(0, 200)}`);
-      emitRequest({
-        id: `req-${Date.now()}`,
+      emitTrackedRequest({
+        id: nextRequestId(),
         call: 'send_to_agent',
         args: {
           to: 'user',
@@ -234,8 +338,8 @@ function handleTeamTaskAssign(evt) {
     }
 
     console.error(`[llm-agent] Final planner reply (${finalPlan.length} chars): ${finalPlan.slice(0, 200)}`);
-    emitRequest({
-      id: `req-${Date.now()}`,
+    emitTrackedRequest({
+      id: nextRequestId(),
       call: 'submit_plan',
       args: { plan: finalPlan },
     });
@@ -270,7 +374,7 @@ function handleTeamWorkAssign(evt) {
     if (firstLine.startsWith('REFUSE:') || firstLine === 'REFUSE') {
       const reason = firstLine.replace(/^REFUSE:?\s*/, '') || 'No specific reason given';
       return {
-        id: `req-${Date.now()}`,
+        id: nextRequestId(),
         call: 'submit_work_response',
         args: { accepted: false, reason },
       };
@@ -281,12 +385,12 @@ function handleTeamWorkAssign(evt) {
     const workOutput = response.replace(/^ACCEPT\s*\n?/, '').trim();
     return [
       {
-        id: `req-${Date.now()}`,
+        id: nextRequestId(),
         call: 'submit_work_response',
         args: { accepted: true },
       },
       {
-        id: `req-${Date.now() + 1}`,
+        id: nextRequestId(),
         call: 'submit_work_result',
         args: { result: workOutput || 'Task completed.' },
       },
@@ -329,7 +433,7 @@ function handleBrainstormStart(evt) {
     enqueueTeamEvent(evt, prompt, (response) => {
       brainstormContext.repliesSent++;
       return {
-        id: `req-${Date.now()}`,
+        id: nextRequestId(),
         call: 'send_to_agent',
         args: { to: evt.peerIds[0], payload: response },
       };
@@ -358,9 +462,13 @@ function handleBrainstormMessage(evt) {
   enqueueTeamEvent(evt, prompt, (response) => {
     brainstormContext.repliesSent++;
     return {
-      id: `req-${Date.now()}`,
+      id: nextRequestId(),
       call: 'send_to_agent',
-      args: { to: evt.from, payload: response },
+      args: {
+        to: evt.from,
+        payload: response,
+        ...(typeof evt.messageId === 'string' ? { replyToMessageId: evt.messageId } : {}),
+      },
     };
   });
 }
@@ -384,6 +492,11 @@ function handleInboundEvent(evt) {
   if (evt.type === 'brainstorm_end') {
     console.error(`[llm-agent] Brainstorm ended: ${evt.reason}`);
     brainstormContext = null;
+    return;
+  }
+
+  if (evt.type === 'custom_event_request') {
+    enqueueEvent(evt);
     return;
   }
 
@@ -429,6 +542,7 @@ function handleInboundLine(line) {
   }
 
   if (parsed.type === 'RES') {
+    handleResponseLine(parsed.json);
     console.error(`[llm-agent] Got RES: ${line}`);
     return;
   }

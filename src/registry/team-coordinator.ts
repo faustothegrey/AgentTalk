@@ -45,6 +45,13 @@ interface AgreementState {
   timer: NodeJS.Timeout;
 }
 
+interface PlanningProtocolState {
+  plannerIds: string[];
+  pendingAckPlannerIds: Set<string>;
+  maxRepliesPerAgent: number;
+  description: string;
+}
+
 export class TeamCoordinator {
   private teams: Map<string, Team> = new Map();
   private tasks: Map<string, TeamTask> = new Map();
@@ -55,6 +62,7 @@ export class TeamCoordinator {
   private readonly submitPlanUrgencyWatchdogs: Map<string, NodeJS.Timeout> = new Map();
   private readonly urgencyIgnoreCounts: Map<string, number> = new Map();
   private readonly agreementStates: Map<string, AgreementState> = new Map();
+  private readonly planningProtocolStates: Map<string, PlanningProtocolState> = new Map();
 
   constructor(
     private readonly deps: TeamCoordinatorDeps,
@@ -260,25 +268,33 @@ export class TeamCoordinator {
 
     this.deps.emitTeam(team);
     this.deps.emitTeamTask(task);
-    this.armPlanningWatchdog(team, task, ['submit_plan']);
+    this.armPlanningWatchdog(team, task, ['ack_planning_protocol']);
+    this.planningProtocolStates.set(task.id, {
+      plannerIds,
+      pendingAckPlannerIds: new Set(plannerIds),
+      maxRepliesPerAgent,
+      description,
+    });
 
-    for (const [i, id] of plannerIds.entries()) {
-      const peerIds = plannerIds.filter((pid) => pid !== id);
+    const protocolPrompt = [
+      'Planning protocol for this task:',
+      '1) Acknowledge this protocol now via ack_planning_protocol.',
+      '2) Start discussing only after both planners acknowledged.',
+      '3) When requested, call agreement_proposal first, then agreement_reached.',
+      '4) After agreement, one planner must call submit_plan.',
+      PLANNER_NO_CODE_TOUCH_REQUIREMENT,
+    ].join(' ');
+
+    for (const id of plannerIds) {
       try {
         await this.deps.sendProtocol(id, 'EVT', {
-          type: 'conversation_start',
-          conversationId: task.id, // Overloading conversationId with taskId for context
-          topic:
-            `Collaboratively draft an execution plan for: ${description}. ` +
-            `Once you reach a resolution, one of you MUST call submit_plan with the final plan. ` +
-            `${PLANNER_NO_CODE_TOUCH_REQUIREMENT}`,
-          peerIds,
-          peerId: peerIds[0] as string,
-          maxReplies: maxRepliesPerAgent,
-          initiator: i === 0,
+          type: 'custom_event_request',
+          event: 'ack_planning_protocol',
+          args: { taskId: task.id },
+          prompt: protocolPrompt,
         });
       } catch (err) {
-        this.deps.logError(`[TeamCoordinator] Failed to send conversation_start to ${id}:`, err);
+        this.deps.logError(`[TeamCoordinator] Failed to request planning protocol ack from ${id}:`, err);
       }
     }
 
@@ -344,7 +360,11 @@ export class TeamCoordinator {
   /**
    * Handles a message between planners in a multi-planner-worker team.
    */
-  async handlePlanningMessage(senderAgentId: string, payload: unknown): Promise<boolean> {
+  async handlePlanningMessage(
+    senderAgentId: string,
+    payload: unknown,
+    replyToMessageId?: string,
+  ): Promise<boolean> {
     const team = this.findTeamByAgent(senderAgentId);
     if (!team || team.composition !== 'planner-planner-worker' || !team.currentTaskId) {
       return false;
@@ -353,6 +373,23 @@ export class TeamCoordinator {
     const task = this.tasks.get(team.currentTaskId);
     if (!task || task.status !== 'planning') {
       return false;
+    }
+
+    const planningProtocolState = this.planningProtocolStates.get(task.id);
+    if (planningProtocolState && planningProtocolState.pendingAckPlannerIds.size > 0) {
+      if (planningProtocolState.pendingAckPlannerIds.has(senderAgentId)) {
+        try {
+          await this.deps.sendProtocol(senderAgentId, 'EVT', {
+            type: 'custom_event_request',
+            event: 'ack_planning_protocol',
+            args: { taskId: task.id },
+            prompt: 'Acknowledge planning protocol before discussing task content.',
+          });
+        } catch (err) {
+          this.deps.logError(`[TeamCoordinator] Failed to re-request planning protocol ack from ${senderAgentId}:`, err);
+        }
+      }
+      return true;
     }
 
     // Check reply cap
@@ -387,6 +424,7 @@ export class TeamCoordinator {
           type: 'message_received',
           from: senderAgentId,
           payload,
+          ...(replyToMessageId ? { replyToMessageId } : {}),
         });
       } catch (err) {
         this.deps.logError(`[TeamCoordinator] Failed to broadcast planning message to ${peerId}:`, err);
@@ -492,9 +530,9 @@ export class TeamCoordinator {
 
     try {
       await this.deps.sendProtocol(agentId, 'EVT', {
-        type: 'message_received',
-        from: 'system',
-        payload: message,
+        type: 'custom_event_request',
+        event: 'agreement_proposal',
+        prompt: message,
       });
     } catch (err) {
       this.deps.logError(`[TeamCoordinator] Failed to request agreement_proposal from ${agentId}:`, err);
@@ -533,9 +571,9 @@ export class TeamCoordinator {
 
     try {
       await this.deps.sendProtocol(agentId, 'EVT', {
-        type: 'message_received',
-        from: 'system',
-        payload: message,
+        type: 'custom_event_request',
+        event: 'agreement_reached',
+        prompt: message,
       });
     } catch (err) {
       this.deps.logError(`[TeamCoordinator] Failed to request agreement_reached from ${agentId}:`, err);
@@ -590,9 +628,9 @@ export class TeamCoordinator {
 
     try {
       await this.deps.sendProtocol(agreeState.targetAgentId, 'EVT', {
-        type: 'message_received',
-        from: 'system',
-        payload: message,
+        type: 'custom_event_request',
+        event: eventName,
+        prompt: message,
       });
     } catch (err) {
       this.deps.logError(`[TeamCoordinator] Failed to re-request ${eventName} from ${agreeState.targetAgentId}:`, err);
@@ -626,12 +664,77 @@ export class TeamCoordinator {
     }
   }
 
+  async handlePlanningProtocolAck(agentId: string): Promise<void> {
+    const team = this.findTeamByAgent(agentId);
+    if (!team || !team.currentTaskId) {
+      throw new Error(`Agent ${agentId} is not part of any active team`);
+    }
+
+    const task = this.tasks.get(team.currentTaskId);
+    if (!task || task.status !== 'planning') {
+      throw new Error('Cannot acknowledge planning protocol: task is not in planning status');
+    }
+
+    const state = this.planningProtocolStates.get(task.id);
+    if (!state) {
+      throw new Error('Unexpected ack_planning_protocol: no pending planning protocol acknowledgement');
+    }
+
+    if (!state.pendingAckPlannerIds.has(agentId)) {
+      throw new Error('Unexpected ack_planning_protocol: protocol already acknowledged by this agent');
+    }
+
+    state.pendingAckPlannerIds.delete(agentId);
+    const now = new Date().toISOString();
+    task.transcript.push({
+      kind: 'system',
+      timestamp: now,
+      from: agentId,
+      to: 'system',
+      payload: 'Planning protocol acknowledged.',
+    });
+    task.updatedAt = now;
+    this.deps.emitTeamTask(task);
+
+    if (state.pendingAckPlannerIds.size > 0) {
+      return;
+    }
+
+    this.planningProtocolStates.delete(task.id);
+    this.armPlanningWatchdog(team, task, ['submit_plan']);
+
+    for (const [i, id] of state.plannerIds.entries()) {
+      const peerIds = state.plannerIds.filter((pid) => pid !== id);
+      try {
+        await this.deps.sendProtocol(id, 'EVT', {
+          type: 'conversation_start',
+          conversationId: task.id,
+          topic:
+            `Collaboratively draft an execution plan for: ${state.description}. ` +
+            `Once you reach a resolution, one of you MUST call submit_plan with the final plan. ` +
+            `During planning control flow, follow required event order: agreement_proposal -> agreement_reached -> submit_plan. ` +
+            `${PLANNER_NO_CODE_TOUCH_REQUIREMENT}`,
+          peerIds,
+          peerId: peerIds[0] as string,
+          maxReplies: state.maxRepliesPerAgent,
+          initiator: i === 0,
+        });
+      } catch (err) {
+        this.deps.logError(`[TeamCoordinator] Failed to send conversation_start to ${id}:`, err);
+      }
+    }
+  }
+
   /**
    * Handles a brainstorm message from an agent: broadcasts to all other
    * brainstorm peers and tracks reply counts.
    * Returns true if the message was handled (caller should not do default routing).
    */
-  async handleBrainstormMessage(senderAgentId: string, payload: unknown): Promise<boolean> {
+  async handleBrainstormMessage(
+    senderAgentId: string,
+    payload: unknown,
+    replyToMessageId?: string,
+  ): Promise<boolean> {
     const team = this.findTeamByAgent(senderAgentId);
     if (!team || team.composition !== 'brainstorm' || !team.currentTaskId) {
       return false;
@@ -675,6 +778,7 @@ export class TeamCoordinator {
           type: 'message_received',
           from: senderAgentId,
           payload,
+          ...(replyToMessageId ? { replyToMessageId } : {}),
         });
       } catch (err) {
         this.deps.logError(`[TeamCoordinator] Failed to broadcast brainstorm message to ${peerId}:`, err);
@@ -1199,6 +1303,7 @@ export class TeamCoordinator {
     this.clearPlanningWatchdog(task.id);
     this.clearSubmitPlanUrgencyWatchdog(task.id);
     this.clearAgreementState(task.id);
+    this.planningProtocolStates.delete(task.id);
 
     const now = new Date().toISOString();
     const missing = missingEvents.join(', ');

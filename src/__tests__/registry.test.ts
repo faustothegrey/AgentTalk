@@ -159,6 +159,40 @@ describe('Registry', () => {
     );
   });
 
+  it('should include message ids and preserve replyToMessageId when forwarding agent messages', async () => {
+    await registry.createAgent('agent-1');
+    await registry.createAgent('agent-2');
+    await registry.startAgent('agent-1', 'agent-cli');
+    await registry.startAgent('agent-2', 'agent-cli');
+
+    pushOutput('agent-1', '[AgentTalk]:READY:{"session":"s1"}\n');
+    pushOutput('agent-2', '[AgentTalk]:READY:{"session":"s2"}\n');
+    vi.mocked(adapter.sendText).mockClear();
+
+    pushOutput(
+      'agent-1',
+      '[AgentTalk]:REQ:{"id":"q2","call":"send_to_agent","args":{"to":"agent-2","payload":"hello","replyToMessageId":"msg-in-1"}}\n',
+    );
+    await vi.advanceTimersByTimeAsync(0);
+
+    const forwardedCall = vi
+      .mocked(adapter.sendText)
+      .mock.calls.find(([id, text]) => id === 'agent-2' && text.includes('"type":"message_received"'));
+    expect(forwardedCall).toBeTruthy();
+    const [, forwardedLine] = forwardedCall as [string, string];
+    const forwardedPayload = JSON.parse(
+      forwardedLine.replace(/^\[AgentTalk\]:EVT:/, '').trim(),
+    ) as Record<string, unknown>;
+    expect(forwardedPayload).toMatchObject({
+      type: 'message_received',
+      from: 'agent-1',
+      payload: 'hello',
+      replyToMessageId: 'msg-in-1',
+    });
+    expect(typeof forwardedPayload.messageId).toBe('string');
+    expect(String(forwardedPayload.messageId)).toMatch(/^msg-/);
+  });
+
   it('should ignore duplicate READY packets for an already ready agent', async () => {
     await registry.createAgent('agent-1');
     await registry.startAgent('agent-1', 'agent-cli');

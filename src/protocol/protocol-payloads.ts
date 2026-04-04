@@ -23,6 +23,7 @@ export interface SendToAgentRequestPayload {
   args: {
     to: string;
     payload: unknown;
+    replyToMessageId?: string;
   };
 }
 
@@ -81,6 +82,12 @@ export interface AgreementReachedRequestPayload {
   args?: Record<string, unknown>;
 }
 
+export interface AckPlanningProtocolRequestPayload {
+  id: string;
+  call: 'ack_planning_protocol';
+  args?: Record<string, unknown>;
+}
+
 export type RequestPayload =
   | ListAgentsRequestPayload
   | SendToAgentRequestPayload
@@ -90,7 +97,8 @@ export type RequestPayload =
   | SubmitWorkResultRequestPayload
   | SubmitUsageStatsRequestPayload
   | AgreementProposalRequestPayload
-  | AgreementReachedRequestPayload;
+  | AgreementReachedRequestPayload
+  | AckPlanningProtocolRequestPayload;
 
 export interface ResponsePayload {
   id: string;
@@ -115,6 +123,8 @@ export interface MessageReceivedEventPayload {
   type: 'message_received';
   from: string;
   payload: unknown;
+  messageId?: string;
+  replyToMessageId?: string;
 }
 
 export interface UserInputEventPayload {
@@ -178,6 +188,13 @@ export interface BrainstormEndEventPayload {
   reason: string;
 }
 
+export interface CustomEventRequestEventPayload {
+  type: 'custom_event_request';
+  event: string;
+  args?: Record<string, unknown>;
+  prompt?: string;
+}
+
 export type EventPayload =
   | BusyStateEventPayload
   | SessionUpdateEventPayload
@@ -189,7 +206,8 @@ export type EventPayload =
   | TeamTaskAssignEventPayload
   | TeamWorkAssignEventPayload
   | BrainstormStartEventPayload
-  | BrainstormEndEventPayload;
+  | BrainstormEndEventPayload
+  | CustomEventRequestEventPayload;
 
 export function parseReadyPayload(value: unknown): ReadyPayload | null {
   if (!isRecord(value) || typeof value.session !== 'string' || value.session.length === 0) {
@@ -238,14 +256,20 @@ export function parseRequestPayload(value: unknown): RequestPayload | null {
         return null;
       }
 
-      return {
+      {
+        const payload: SendToAgentRequestPayload = {
         id: value.id,
         call: 'send_to_agent',
         args: {
           to: value.args.to,
           payload: value.args.payload,
         },
-      };
+        };
+        if (typeof value.args.replyToMessageId === 'string') {
+          payload.args.replyToMessageId = value.args.replyToMessageId;
+        }
+        return payload;
+      }
 
     case 'ack_healthcheck':
       if (!isRecord(value.args) || typeof value.args.token !== 'string' || !('message' in value.args)) {
@@ -328,6 +352,13 @@ export function parseRequestPayload(value: unknown): RequestPayload | null {
         ...(isRecord(value.args) ? { args: value.args } : {}),
       };
 
+    case 'ack_planning_protocol':
+      return {
+        id: value.id,
+        call: 'ack_planning_protocol',
+        ...(isRecord(value.args) ? { args: value.args } : {}),
+      };
+
     default:
       return null;
   }
@@ -387,13 +418,23 @@ export function parseEventPayload(value: unknown): EventPayload | null {
     }
 
     case 'message_received':
-      return typeof value.from === 'string' && 'payload' in value
-        ? {
+      if (typeof value.from !== 'string' || !('payload' in value)) {
+        return null;
+      }
+      {
+        const payload: MessageReceivedEventPayload = {
             type: 'message_received',
             from: value.from,
             payload: value.payload,
-          }
-        : null;
+        };
+        if (typeof value.messageId === 'string') {
+          payload.messageId = value.messageId;
+        }
+        if (typeof value.replyToMessageId === 'string') {
+          payload.replyToMessageId = value.replyToMessageId;
+        }
+        return payload;
+      }
 
     case 'user_input':
       return typeof value.text === 'string'
@@ -491,6 +532,16 @@ export function parseEventPayload(value: unknown): EventPayload | null {
             teamId: value.teamId,
             taskId: value.taskId,
             reason: value.reason,
+          }
+        : null;
+
+    case 'custom_event_request':
+      return typeof value.event === 'string' && value.event.trim().length > 0
+        ? {
+            type: 'custom_event_request',
+            event: value.event.trim(),
+            ...(isRecord(value.args) ? { args: value.args } : {}),
+            ...(typeof value.prompt === 'string' ? { prompt: value.prompt } : {}),
           }
         : null;
 

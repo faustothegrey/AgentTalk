@@ -103,7 +103,13 @@ export function createConversationRuntime() {
       return {
         id: reqId,
         call: 'send_to_agent',
-        args: { to, payload: reply },
+        args: {
+          to,
+          payload: reply,
+          ...(evt.type === 'message_received' && typeof evt.messageId === 'string'
+            ? { replyToMessageId: evt.messageId }
+            : {}),
+        },
       };
     },
   };
@@ -119,4 +125,21 @@ function buildPromptWithHistory(conversationHistory, latestMessage) {
   const latest = conversationHistory[conversationHistory.length - 1];
 
   return `Here is our conversation so far:\n\n${historyBlock}\n\nNow respond to the latest message:\n[${latest.role}]: ${latestMessage}`;
+}
+
+export function extractSystemRequiredCall(evt) {
+  if (!evt || evt.type !== 'message_received' || evt.from !== 'system' || typeof evt.payload !== 'string') {
+    return null;
+  }
+
+  const payload = evt.payload;
+  if (/\bcall\s+`?agreement_proposal`?\b/i.test(payload)) {
+    return 'agreement_proposal';
+  }
+
+  if (/\bcall\s+`?agreement_reached`?\b/i.test(payload)) {
+    return 'agreement_reached';
+  }
+
+  return null;
 }
