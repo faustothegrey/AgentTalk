@@ -562,6 +562,7 @@ describe('TeamCoordinator', () => {
     for (const call of topicCalls) {
       const payload = call[2] as Record<string, unknown>;
       expect(String(payload.topic ?? '')).toContain('DO NOT touch code for any reason');
+      expect(payload.maxReplies).toBe(10);
     }
   });
 });

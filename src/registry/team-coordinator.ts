@@ -155,7 +155,7 @@ export class TeamCoordinator {
     }
 
     if (team.composition === 'planner-planner-worker') {
-      return this.assignMultiPlannerTask(team, description, maxRepliesPerAgent ?? 5);
+      return this.assignMultiPlannerTask(team, description, maxRepliesPerAgent ?? 10);
     }
 
     const planner = team.members.find((member) => member.role === 'planner');
