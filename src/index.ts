@@ -1,8 +1,12 @@
+import { readFile } from 'fs/promises';
+import path from 'path';
 import { ProcessAdapterImpl } from './agents/process-adapter.js';
 import { createGoogleDriveServiceFromEnv } from './integrations/google-drive/from-env.js';
 import { SessionRecorder } from './recordings/session-recorder.js';
 import { Registry } from './registry.js';
 import { startServer } from './server.js';
+import { ScenarioRunner } from './scenarios/scenario-runner.js';
+import type { ScenarioDefinition } from './scenarios/types.js';
 
 async function main() {
   const adapter = new ProcessAdapterImpl();
@@ -28,6 +32,28 @@ async function main() {
   });
 
   console.log('Ready to manage agents.');
+
+  const autostartScenario = process.env.AGENTTALK_AUTOSTART_SCENARIO;
+  if (autostartScenario) {
+    console.log(`Autostarting scenario: ${autostartScenario}`);
+    const scenarioPath = path.resolve(process.cwd(), 'scenarios', `${autostartScenario}-conversation.json`);
+    try {
+      const content = await readFile(scenarioPath, 'utf8');
+      const definition = JSON.parse(content) as ScenarioDefinition;
+      const runner = new ScenarioRunner();
+      
+      // Run scenario in background so we don't block the main loop if it takes time
+      void runner.run(definition, registry).then(result => {
+        if (result.status === 'completed') {
+          console.log(`[Autostart] Scenario "${result.scenarioName}" completed successfully.`);
+        } else {
+          console.error(`[Autostart] Scenario "${result.scenarioName}" failed with status ${result.status}: ${result.error}`);
+        }
+      });
+    } catch (err) {
+      console.error(`[Autostart] Failed to load/run scenario from ${scenarioPath}:`, err);
+    }
+  }
 
   const shutdown = async (signal: NodeJS.Signals) => {
     if (shuttingDown) {

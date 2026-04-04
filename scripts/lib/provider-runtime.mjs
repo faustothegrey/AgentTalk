@@ -132,7 +132,7 @@ export function getProviderCommand(providerName, selectedModel, userMessage) {
     case 'gemini':
     default: {
       const args = [
-        '--prompt',
+        '-p',
         userMessage,
         '--output-format',
         'json',

@@ -1,6 +1,6 @@
 interface PendingHealthCheck {
   agentId: string;
-  resolve: (value: { agentId: string; message: string }) => void;
+  resolve: (value: { agentId: string; message: unknown }) => void;
   reject: (reason?: unknown) => void;
   timeout: NodeJS.Timeout;
 }
@@ -10,11 +10,11 @@ export class HealthcheckManager {
 
   create(agentId: string, timeoutMs: number): {
     token: string;
-    result: Promise<{ agentId: string; message: string }>;
+    result: Promise<{ agentId: string; message: unknown }>;
   } {
     const token = `health-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
-    const result = new Promise<{ agentId: string; message: string }>((resolve, reject) => {
+    const result = new Promise<{ agentId: string; message: unknown }>((resolve, reject) => {
       const timeout = setTimeout(() => {
         this.pending.delete(token);
         reject(new Error(`Agent ${agentId} did not respond to healthcheck within ${timeoutMs}ms`));
@@ -31,7 +31,7 @@ export class HealthcheckManager {
     return { token, result };
   }
 
-  resolve(token: string, agentId: string, message: string): boolean {
+  resolve(token: string, agentId: string, message: unknown): boolean {
     const pending = this.pending.get(token);
     if (!pending || pending.agentId !== agentId) {
       return false;

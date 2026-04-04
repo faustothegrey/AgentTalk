@@ -42,6 +42,7 @@ export type ScenarioStatus =
   | 'waiting_ready'
   | 'executing'
   | 'completed'
+  | 'partially_completed'
   | 'error';
 
 export interface ScenarioResult {

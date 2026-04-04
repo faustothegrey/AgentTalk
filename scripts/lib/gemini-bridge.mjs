@@ -45,7 +45,7 @@ rl.on('line', async (line) => {
   // However, we emit events in the persistent session format.
   
   const args = [
-    '--prompt', prompt,
+    '-p', prompt,
     '--output-format', 'stream-json',
     '--approval-mode', 'yolo',
     '--include-directories', '.git'

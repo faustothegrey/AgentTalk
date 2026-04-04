@@ -7,7 +7,7 @@ import { Agent } from '../agents/agent.js';
 interface ConversationCoordinatorDeps {
   conversations: ConversationStore;
   getAgent: (id: string) => Agent;
-  requestHealthCheck: (agentId: string) => Promise<{ agentId: string; message: string }>;
+  requestHealthCheck: (agentId: string) => Promise<{ agentId: string; message: unknown }>;
   sendProtocol: (
     id: string,
     type: OutboundProtocolPacketType,
@@ -25,8 +25,8 @@ export class ConversationCoordinator {
     topic: string,
     maxRepliesPerAgent: number,
   ): Promise<Conversation> {
-    if (agentIds.length < 2) {
-      throw new Error('Conversation requires at least two agents');
+    if (agentIds.length < 1) {
+      throw new Error('Conversation requires at least one agent');
     }
 
     const uniqueAgentIds = [...new Set(agentIds)];
@@ -80,10 +80,7 @@ export class ConversationCoordinator {
 
     for (const [i, id] of agentIds.entries()) {
       const peerIds = agentIds.filter((peerId) => peerId !== id);
-      const peerId = peerIds[0];
-      if (!peerId) {
-        throw new Error(`Conversation requires at least one peer for agent ${id}`);
-      }
+      const peerId = peerIds[0] || 'user'; // Fallback to 'user' if no peers
 
       await this.deps.sendProtocol(id, 'EVT', {
         type: 'conversation_start',

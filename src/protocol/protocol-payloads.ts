@@ -31,7 +31,7 @@ export interface AckHealthcheckRequestPayload {
   call: 'ack_healthcheck';
   args: {
     token: string;
-    message: string;
+    message: unknown;
   };
 }
 
@@ -234,7 +234,7 @@ export function parseRequestPayload(value: unknown): RequestPayload | null {
       };
 
     case 'ack_healthcheck':
-      if (!isRecord(value.args) || typeof value.args.token !== 'string' || typeof value.args.message !== 'string') {
+      if (!isRecord(value.args) || typeof value.args.token !== 'string' || !('message' in value.args)) {
         return null;
       }
 

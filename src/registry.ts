@@ -601,7 +601,7 @@ export class Registry extends EventEmitter {
     }
   }
 
-  private async requestHealthCheck(agentId: string): Promise<{ agentId: string; message: string }> {
+  private async requestHealthCheck(agentId: string): Promise<{ agentId: string; message: unknown }> {
     const { token, result } = this.healthchecks.create(agentId, this.config.healthcheckTimeoutMs);
 
     await this.sendProtocol(agentId, 'EVT', {
@@ -611,7 +611,7 @@ export class Registry extends EventEmitter {
     });
 
     const ack = await result;
-    console.log(`[Registry] Healthcheck ack from ${agentId}: ${ack.message}`);
+    console.log(`[Registry] Healthcheck ack from ${agentId}: ${JSON.stringify(ack.message)}`);
     return ack;
   }
 
