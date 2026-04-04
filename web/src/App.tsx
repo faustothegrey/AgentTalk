@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { TerminalView } from './TerminalView';
 import { ErrorBoundary } from './ErrorBoundary';
-import { Plus, Terminal as TerminalIcon, Activity, AlertCircle, X, Send, MessagesSquare, Trash2, Copy, Check, Users, Settings, History as HistoryIcon, RotateCcw, Rocket } from 'lucide-react';
+import { Plus, Terminal as TerminalIcon, Activity, AlertCircle, X, Send, MessagesSquare, Trash2, Copy, Check, Users, Settings, History as HistoryIcon, RotateCcw, Rocket, ChevronDown, ChevronRight } from 'lucide-react';
 import { getAgentColor } from './agentColors';
 
 const theme = {
@@ -600,6 +600,7 @@ function App() {
   const [activeTopTab, setActiveTopTab] = useState<TopLevelTab>('agents');
   const [activeSidebarTab, setActiveSidebarTab] = useState<SidebarTab>('conversation');
   const [activeConfigSubTab, setActiveConfigSubTab] = useState<ConfigSubTab>('usage');
+  const [agentCreationCollapsed, setAgentCreationCollapsed] = useState(true);
   const [driveStatus, setDriveStatus] = useState<GoogleDriveStatus | null>(null);
   const [driveResources, setDriveResources] = useState<GoogleDriveResource[]>([]);
   const [driveAgentResources, setDriveAgentResources] = useState<GoogleDriveResource[]>([]);
@@ -1339,6 +1340,72 @@ function App() {
     }
   };
 
+  const autostartPlannerPlannerWorkerTeam = async () => {
+    setLoading(true);
+    setGlobalError(null);
+    try {
+      const provider: Provider = 'codex';
+      const chosenModel = modelOptions[provider][0].value;
+      const executionMode: ExecutionMode = 'interactive';
+      const command = getAgentCommand(provider, chosenModel);
+      const createdIds: string[] = [];
+
+      for (let i = 0; i < 3; i += 1) {
+        const createRes = await fetchWithTimeout('/api/agents', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ provider, model: chosenModel, executionMode }),
+        }, 15000);
+        const created = await createRes.json();
+        createdIds.push(created.id);
+
+        await fetchWithTimeout(`/api/agents/${created.id}/start`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ command, workingDirectory, executionMode }),
+        }, 10000);
+        pushSidebarEvent('out', 'Autostart Agent', `${created.id} via codex [interactive]`);
+      }
+
+      await waitForAgentsReady(createdIds);
+
+      const [plannerA, plannerB, worker] = createdIds;
+      if (!plannerA || !plannerB || !worker) {
+        throw new Error('Autostart team failed: expected 3 created agents');
+      }
+
+      const teamRes = await fetchWithTimeout('/api/teams', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          members: [
+            { agentId: plannerA, role: 'planner' },
+            { agentId: plannerB, role: 'planner' },
+            { agentId: worker, role: 'worker' },
+          ],
+        }),
+      }, 15000);
+      const team = await teamRes.json();
+      if (!teamRes.ok) {
+        throw new Error(team.error || 'Failed to create planner-planner-worker team');
+      }
+
+      setActiveTopTab('agents');
+      setActiveSidebarTab('team');
+      setActiveTeam(team);
+      setActiveTeamTask(null);
+      setSelectedAgentId(plannerA);
+      setTeams((prev) => [...prev.filter((t) => t.id !== team.id), team]);
+      pushSidebarEvent('out', 'Autostart Team', `${plannerA} + ${plannerB} + ${worker}`);
+
+      await fetchAgents();
+    } catch (err) {
+      handleError('Failed to autostart planner-planner-worker Codex team:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const openDirectoryPicker = async () => {
     setGlobalError(null);
     setDirectoryPickerOpen(true);
@@ -1935,6 +2002,30 @@ function App() {
                         Create Team
                         </button>
 
+                        <button
+                          onClick={autostartPlannerPlannerWorkerTeam}
+                          disabled={loading}
+                          title="Create 2 planners + 1 worker team with interactive Codex agents"
+                          style={{
+                            padding: '8px',
+                            backgroundColor: theme.bg,
+                            color: theme.textBright,
+                            border: `1px solid ${theme.borderInput}`,
+                            borderRadius: '6px',
+                            cursor: loading ? 'not-allowed' : 'pointer',
+                            opacity: loading ? 0.5 : 1,
+                            fontSize: '12px',
+                            fontWeight: 600,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '8px',
+                          }}
+                        >
+                          <Users size={14} />
+                          Autostart 2P+1W Team
+                        </button>
+
                       </>
                     )}
 
@@ -2529,174 +2620,222 @@ function App() {
 
               {/* Agent creation section */}
               <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px', borderTop: `1px solid ${theme.border}` }}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <span style={{ fontSize: '11px', color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px' }}>
-                    Working Directory
-                  </span>
-                  <div style={{ display: 'flex', gap: '8px' }}>
-                    <input
-                      type="text"
-                      value={workingDirectory}
-                      onChange={(e) => setWorkingDirectory(e.target.value)}
-                      disabled={loading}
-                      placeholder="."
-                      spellCheck={false}
-                      style={{
-                        flex: 1,
-                        backgroundColor: theme.bg,
-                        color: theme.textPrimary,
-                        border: `1px solid ${theme.borderInput}`,
-                        borderRadius: '6px',
-                        padding: '8px 10px',
-                        fontSize: '13px',
-                        outline: 'none',
-                      }}
-                    />
+                <button
+                  type="button"
+                  onClick={() => setAgentCreationCollapsed((prev) => !prev)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    width: '100%',
+                    backgroundColor: 'transparent',
+                    border: 'none',
+                    color: theme.textMuted,
+                    padding: 0,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.8px',
+                    fontSize: '11px',
+                    cursor: 'pointer',
+                  }}
+                >
+                  {agentCreationCollapsed ? <ChevronRight size={14} /> : <ChevronDown size={14} />}
+                  Agent Creation
+                </button>
+
+                {!agentCreationCollapsed && (
+                  <>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <span style={{ fontSize: '11px', color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px' }}>
+                        Working Directory
+                      </span>
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <input
+                          type="text"
+                          value={workingDirectory}
+                          onChange={(e) => setWorkingDirectory(e.target.value)}
+                          disabled={loading}
+                          placeholder="."
+                          spellCheck={false}
+                          style={{
+                            flex: 1,
+                            backgroundColor: theme.bg,
+                            color: theme.textPrimary,
+                            border: `1px solid ${theme.borderInput}`,
+                            borderRadius: '6px',
+                            padding: '8px 10px',
+                            fontSize: '13px',
+                            outline: 'none',
+                          }}
+                        />
+                        <button
+                          type="button"
+                          onClick={openDirectoryPicker}
+                          disabled={loading}
+                          style={{
+                            backgroundColor: theme.bg,
+                            color: theme.textPrimary,
+                            border: `1px solid ${theme.borderInput}`,
+                            borderRadius: '6px',
+                            padding: '8px 10px',
+                            fontSize: '13px',
+                            cursor: loading ? 'not-allowed' : 'pointer',
+                            opacity: loading ? 0.55 : 1,
+                          }}
+                        >
+                          Browse
+                        </button>
+                      </div>
+                    </div>
+
+                    <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                      <span style={{ fontSize: '11px', color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px' }}>
+                        Provider
+                      </span>
+                      <select
+                        value={provider}
+                        onChange={(e) => {
+                          const newProvider = e.target.value as Provider;
+                          setProvider(newProvider);
+                          setSelectedModel(modelOptions[newProvider][0].value);
+                        }}
+                        disabled={loading}
+                        style={{
+                          backgroundColor: theme.bg,
+                          color: theme.textPrimary,
+                          border: `1px solid ${theme.borderInput}`,
+                          borderRadius: '6px',
+                          padding: '8px 10px',
+                          fontSize: '13px',
+                          outline: 'none',
+                        }}
+                      >
+                        {providerOptions.map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+
+                    <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                      <span style={{ fontSize: '11px', color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px' }}>
+                        Execution Mode
+                      </span>
+                      <select
+                        value={executionMode}
+                        onChange={(e) => setExecutionMode(e.target.value as ExecutionMode)}
+                        disabled={loading}
+                        style={{
+                          backgroundColor: theme.bg,
+                          color: theme.textPrimary,
+                          border: `1px solid ${theme.borderInput}`,
+                          borderRadius: '6px',
+                          padding: '8px 10px',
+                          fontSize: '13px',
+                          outline: 'none',
+                        }}
+                      >
+                        {executionModeOptions.map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+
+                    <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                      <span style={{ fontSize: '11px', color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px' }}>
+                        Model
+                      </span>
+                      <select
+                        value={selectedModel}
+                        onChange={(e) => setSelectedModel(e.target.value)}
+                        disabled={loading}
+                        style={{
+                          backgroundColor: theme.bg,
+                          color: theme.textPrimary,
+                          border: `1px solid ${theme.borderInput}`,
+                          borderRadius: '6px',
+                          padding: '8px 10px',
+                          fontSize: '13px',
+                          outline: 'none',
+                        }}
+                      >
+                        {modelOptions[provider].map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+
                     <button
-                      type="button"
-                      onClick={openDirectoryPicker}
+                      onClick={createAgent}
                       disabled={loading}
+                      title={`Create ${provider} agent`}
                       style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '8px',
                         backgroundColor: theme.bg,
-                        color: theme.textPrimary,
                         border: `1px solid ${theme.borderInput}`,
+                        color: theme.textBright,
                         borderRadius: '6px',
-                        padding: '8px 10px',
-                        fontSize: '13px',
-                        cursor: loading ? 'not-allowed' : 'pointer',
-                        opacity: loading ? 0.55 : 1,
+                        padding: '9px 10px',
+                        cursor: 'pointer',
+                        opacity: loading ? 0.5 : 1
                       }}
                     >
-                      Browse
+                      <Plus size={16} />
+                      Create Agent
                     </button>
-                  </div>
-                </div>
 
-                <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <span style={{ fontSize: '11px', color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px' }}>
-                    Provider
-                  </span>
-                  <select
-                    value={provider}
-                    onChange={(e) => {
-                      const newProvider = e.target.value as Provider;
-                      setProvider(newProvider);
-                      setSelectedModel(modelOptions[newProvider][0].value);
-                    }}
-                    disabled={loading}
-                    style={{
-                      backgroundColor: theme.bg,
-                      color: theme.textPrimary,
-                      border: `1px solid ${theme.borderInput}`,
-                      borderRadius: '6px',
-                      padding: '8px 10px',
-                      fontSize: '13px',
-                      outline: 'none',
-                    }}
-                  >
-                    {providerOptions.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
+                    <button
+                      onClick={autostartAgents}
+                      disabled={loading}
+                      title={`Autostart Gemini + Codex conversation`}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '8px',
+                        backgroundColor: theme.bg,
+                        border: `1px solid ${theme.borderInput}`,
+                        color: theme.textBright,
+                        borderRadius: '6px',
+                        padding: '9px 10px',
+                        cursor: 'pointer',
+                        opacity: loading ? 0.5 : 1
+                      }}
+                    >
+                      <Plus size={16} />
+                      Autostart Conversation
+                    </button>
 
-                <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <span style={{ fontSize: '11px', color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px' }}>
-                    Execution Mode
-                  </span>
-                  <select
-                    value={executionMode}
-                    onChange={(e) => setExecutionMode(e.target.value as ExecutionMode)}
-                    disabled={loading}
-                    style={{
-                      backgroundColor: theme.bg,
-                      color: theme.textPrimary,
-                      border: `1px solid ${theme.borderInput}`,
-                      borderRadius: '6px',
-                      padding: '8px 10px',
-                      fontSize: '13px',
-                      outline: 'none',
-                    }}
-                  >
-                    {executionModeOptions.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-
-                <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <span style={{ fontSize: '11px', color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px' }}>
-                    Model
-                  </span>
-                  <select
-                    value={selectedModel}
-                    onChange={(e) => setSelectedModel(e.target.value)}
-                    disabled={loading}
-                    style={{
-                      backgroundColor: theme.bg,
-                      color: theme.textPrimary,
-                      border: `1px solid ${theme.borderInput}`,
-                      borderRadius: '6px',
-                      padding: '8px 10px',
-                      fontSize: '13px',
-                      outline: 'none',
-                    }}
-                  >
-                    {modelOptions[provider].map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-
-                <button
-                  onClick={createAgent}
-                  disabled={loading}
-                  title={`Create ${provider} agent`}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '8px',
-                    backgroundColor: theme.bg,
-                    border: `1px solid ${theme.borderInput}`,
-                    color: theme.textBright,
-                    borderRadius: '6px',
-                    padding: '9px 10px',
-                    cursor: 'pointer',
-                    opacity: loading ? 0.5 : 1
-                  }}
-                >
-                  <Plus size={16} />
-                  Create Agent
-                </button>
-
-                <button
-                  onClick={autostartAgents}
-                  disabled={loading}
-                  title={`Autostart Gemini + Codex conversation`}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '8px',
-                    backgroundColor: theme.bg,
-                    border: `1px solid ${theme.borderInput}`,
-                    color: theme.textBright,
-                    borderRadius: '6px',
-                    padding: '9px 10px',
-                    cursor: 'pointer',
-                    opacity: loading ? 0.5 : 1
-                  }}
-                >
-                  <Plus size={16} />
-                  Autostart Conversation
-                </button>
+                    <button
+                      onClick={autostartPlannerPlannerWorkerTeam}
+                      disabled={loading}
+                      title="Create 2 planners + 1 worker team with interactive Codex agents"
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '8px',
+                        backgroundColor: theme.bg,
+                        border: `1px solid ${theme.borderInput}`,
+                        color: theme.textBright,
+                        borderRadius: '6px',
+                        padding: '9px 10px',
+                        cursor: 'pointer',
+                        opacity: loading ? 0.5 : 1
+                      }}
+                    >
+                      <Users size={16} />
+                      Autostart 2P+1W Team
+                    </button>
+                  </>
+                )}
               </div>
             </div>
           )}
