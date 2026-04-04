@@ -42,51 +42,141 @@ export class ScenarioRunner {
           agentDef.workingDirectory,
           processOptions,
           agentDef.executionMode,
-        );
+        ).catch(err => {
+          console.error(`[ScenarioRunner] Failed to start agent ${agentDef.id}:`, err);
+          throw err;
+        });
       });
-      await Promise.all(startPromises);
+      // We use allSettled to allow some agents to fail startup
+      await Promise.allSettled(startPromises);
 
       // 3. Wait for all agents to be ready
       result.status = 'waiting_ready';
       const readyPromises = definition.agents.map(agentDef =>
         this.waitForAgentReady(registry, agentDef.id),
       );
-      await Promise.all(readyPromises);
+      // Wait for all agents to settle (ready or error)
+      const readinessResults = await Promise.allSettled(readyPromises);
+      
+      const readyAgentIds = new Set<string>();
+      readinessResults.forEach((res, index) => {
+        const agentId = definition.agents[index]?.id;
+        if (!agentId) return;
+
+        if (res.status === 'fulfilled') {
+          readyAgentIds.add(agentId);
+        } else {
+          console.warn(`[ScenarioRunner] Agent ${agentId} failed to become ready: ${res.reason}`);
+        }
+      });
+
+      if (readyAgentIds.size === 0) {
+        throw new Error('No agents became ready for the scenario');
+      }
 
       // 4. Execute conversations and teams
       result.status = 'executing';
+      const executionErrors: string[] = [];
 
       if (definition.conversations) {
         for (const conv of definition.conversations) {
-          const conversation = await registry.startConversation(
-            conv.agentIds,
-            conv.topic,
-            conv.maxRepliesPerAgent,
-          );
-          result.conversationIds.push(conversation.id);
+          // Partial completion: only include agents that are actually ready
+          const activeAgentIds = conv.agentIds.filter((id) => readyAgentIds.has(id));
+
+          if (activeAgentIds.length > 1) {
+            try {
+              const conversation = await this.startConversationWithFallback(
+                registry,
+                activeAgentIds,
+                conv.topic,
+                conv.maxRepliesPerAgent,
+              );
+              result.conversationIds.push(conversation.id);
+            } catch (err) {
+              const reason = err instanceof Error ? err.message : String(err);
+              executionErrors.push(`Conversation "${conv.topic}" failed: ${reason}`);
+              console.warn(`[ScenarioRunner] Failed to start conversation "${conv.topic}": ${reason}`);
+            }
+          } else {
+            console.warn(`[ScenarioRunner] Skipping conversation because no requested agents are ready: ${conv.topic}`);
+          }
         }
       }
 
       if (definition.teams) {
         for (const teamDef of definition.teams) {
-          const team = registry.createTeam(
-            teamDef.members.map(m => ({ agentId: m.agentId, role: m.role })),
-          );
-          result.teamIds.push(team.id);
+          const activeMembers = teamDef.members.filter(m => readyAgentIds.has(m.agentId));
+          
+          if (activeMembers.length > 0) {
+            try {
+              const team = registry.createTeam(
+                activeMembers.map((m) => ({ agentId: m.agentId, role: m.role })),
+              );
+              result.teamIds.push(team.id);
 
-          for (const task of teamDef.tasks) {
-            await registry.assignTeamTask(team.id, task.description);
+              for (const task of teamDef.tasks) {
+                await registry.assignTeamTask(team.id, task.description);
+              }
+            } catch (err) {
+              const reason = err instanceof Error ? err.message : String(err);
+              executionErrors.push(`Team execution failed: ${reason}`);
+              console.warn(`[ScenarioRunner] Team execution failed: ${reason}`);
+            }
+          } else {
+            console.warn(`[ScenarioRunner] Skipping team because no requested members are ready`);
           }
         }
       }
 
       result.status = 'completed';
+      if (executionErrors.length > 0 || readyAgentIds.size < definition.agents.length) {
+        result.status = 'partially_completed';
+        const details = [`${readyAgentIds.size}/${definition.agents.length} agents ready`];
+        details.push(...executionErrors);
+        result.error = `Partial completion: ${details.join(' | ')}`;
+      }
     } catch (err) {
       result.status = 'error';
       result.error = err instanceof Error ? err.message : String(err);
     }
 
     return result;
+  }
+
+  private async startConversationWithFallback(
+    registry: Registry,
+    initialAgentIds: string[],
+    topic: string,
+    maxRepliesPerAgent: number,
+  ) {
+    let candidateAgentIds = [...initialAgentIds];
+    let lastError: unknown;
+
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        return await registry.startConversation(candidateAgentIds, topic, maxRepliesPerAgent);
+      } catch (err) {
+        lastError = err;
+        const message = err instanceof Error ? err.message : String(err);
+        const match = message.match(/Agent ([^\s]+) did not respond to healthcheck/i);
+        const failedAgentId = match?.[1];
+        if (!failedAgentId) {
+          break;
+        }
+
+        const reduced = candidateAgentIds.filter((id) => id !== failedAgentId);
+        if (reduced.length < 2 || reduced.length === candidateAgentIds.length) {
+          break;
+        }
+
+        console.warn(
+          `[ScenarioRunner] Healthcheck fallback: retrying conversation "${topic}" without ${failedAgentId}`,
+        );
+        candidateAgentIds = reduced;
+      }
+    }
+
+    throw lastError instanceof Error ? lastError : new Error(String(lastError));
   }
 
   private validate(definition: ScenarioDefinition): void {
@@ -117,8 +207,8 @@ export class ScenarioRunner {
 
     if (definition.conversations) {
       for (const conv of definition.conversations) {
-        if (conv.agentIds.length < 2) {
-          throw new Error('Conversations require at least 2 agents');
+        if (conv.agentIds.length < 1) {
+          throw new Error('Conversations require at least 1 agent');
         }
         for (const id of conv.agentIds) {
           if (!agentIds.has(id)) {

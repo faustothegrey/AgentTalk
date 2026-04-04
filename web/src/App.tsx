@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { TerminalView } from './TerminalView';
 import { ErrorBoundary } from './ErrorBoundary';
-import { Plus, Terminal as TerminalIcon, Activity, AlertCircle, X, Send, MessagesSquare, Trash2, Copy, Check, Users, Settings, History as HistoryIcon, RotateCcw } from 'lucide-react';
+import { Plus, Terminal as TerminalIcon, Activity, AlertCircle, X, Send, MessagesSquare, Trash2, Copy, Check, Users, Settings, History as HistoryIcon, RotateCcw, Rocket } from 'lucide-react';
 import { getAgentColor } from './agentColors';
 
 const theme = {
@@ -768,8 +768,18 @@ function App() {
   const fetchConversationHistory = useCallback(async () => {
     try {
       const res = await fetchWithTimeout('/api/conversations');
-      const data = await res.json();
+      const data = await res.json() as Conversation[];
       setConversationHistory(data);
+      
+      // Auto-select the first active conversation if nothing is currently selected
+      if (!activeConversationIdRef.current && data.length > 0) {
+        const mostRecentActive = data.find(c => c.status === 'active');
+        if (mostRecentActive) {
+          setActiveConversationId(mostRecentActive.id);
+          setActiveConversation(mostRecentActive);
+          setSelectedAgentId(null);
+        }
+      }
     } catch (err) {
       console.warn('Failed to fetch conversation history:', err);
     }
@@ -1002,9 +1012,16 @@ function App() {
         } else if (message.type === 'conversation') {
           pushSidebarEvent('in', 'Conversation Update', `${message.conversation?.id ?? 'unknown'} → ${message.conversation?.status ?? 'unknown'}`);
           console.log(`[App] Conversation update ${message.conversation?.id ?? 'unknown'}: ${message.conversation?.status ?? 'unknown'}`);
+          
           if (message.conversation?.id === activeConversationIdRef.current) {
             setActiveConversation(message.conversation);
+          } else if (!activeConversationIdRef.current && message.conversation?.status === 'active') {
+            // Auto-select if nothing else is active
+            setActiveConversationId(message.conversation.id);
+            setActiveConversation(message.conversation);
+            setSelectedAgentId(null);
           }
+          
           if (message.conversation?.status === 'completed') {
             fetchConversationHistory();
           }
@@ -1278,6 +1295,78 @@ function App() {
       topic: topic.trim(),
       maxReplies: maxReplies,
     }));
+  };
+
+  const launchAutostartTrio = async () => {
+    const trioTopic = topic.trim() || 'Discuss the current AgentTalk project and propose concrete next-step implementation ideas or simplifications.';
+    
+    const definition = {
+      name: "Trio Conversation (UI)",
+      description: "A conversation between three different types of agents: Gemini, Claude, and Codex.",
+      agents: [
+        {
+          id: `gemini-${Date.now()}`,
+          provider: "gemini",
+          model: "gemini-2.5-pro",
+          executionMode: "auto"
+        },
+        {
+          id: `claude-${Date.now()}`,
+          provider: "claude",
+          model: "sonnet",
+          executionMode: "auto"
+        },
+        {
+          id: `codex-${Date.now()}`,
+          provider: "codex",
+          model: "gpt-5-codex",
+          executionMode: "auto"
+        }
+      ],
+      conversations: [
+        {
+          agentIds: [] as string[], // Explicitly cast to avoid never[] inference
+          topic: trioTopic,
+          maxRepliesPerAgent: 2
+        }
+      ]
+    };
+
+    // Fix agentIds in conversation to match the ones we just created
+    definition.conversations[0].agentIds = definition.agents.map(a => a.id);
+
+    try {
+      setGlobalError(null);
+      pushSidebarEvent('out', 'Scenario Launch', `Trio Conversation | ${trioTopic}`);
+      
+      const response = await fetch('/api/scenarios/launch', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(definition),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || `Failed to launch scenario: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      console.log('[App] Scenario launch result:', result);
+      
+      if (result.status === 'error') {
+        setGlobalError(`Scenario failed: ${result.error}`);
+      } else {
+        pushSidebarEvent('in', 'Scenario Result', `Launched: ${result.status}`);
+      }
+      
+      // Refresh agents list to see the new ones
+      fetchAgents();
+    } catch (err) {
+      console.error('[App] Failed to launch autostart trio:', err);
+      setGlobalError(err instanceof Error ? err.message : String(err));
+    }
   };
 
   const conversationCandidates = agents.filter(agent => agent.status === 'ready' || agent.status === 'busy');
@@ -2257,27 +2346,55 @@ function App() {
                           </div>
                         )}
                       </div>
-                      <button
-                        onClick={startConversation}
-                        disabled={!ws || ws.readyState !== WebSocket.OPEN || [...new Set([conversationAgentA, conversationAgentB, conversationAgentC].filter(Boolean))].length < 2}
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          gap: '8px',
-                          backgroundColor: theme.bg,
-                          color: theme.textPrimary,
-                          border: `1px solid ${theme.borderInput}`,
-                          borderRadius: '6px',
-                          padding: '8px 10px',
-                          fontSize: '13px',
-                          cursor: 'pointer',
-                          opacity: (!ws || ws.readyState !== WebSocket.OPEN || [...new Set([conversationAgentA, conversationAgentB, conversationAgentC].filter(Boolean))].length < 2) ? 0.5 : 1,
-                        }}
-                      >
-                        <MessagesSquare size={14} />
-                        Start Conversation
-                      </button>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        <button
+                          onClick={startConversation}
+                          disabled={!ws || ws.readyState !== WebSocket.OPEN || [...new Set([conversationAgentA, conversationAgentB, conversationAgentC].filter(Boolean))].length < 2}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '8px',
+                            backgroundColor: theme.bg,
+                            color: theme.textPrimary,
+                            border: `1px solid ${theme.borderInput}`,
+                            borderRadius: '6px',
+                            padding: '8px 10px',
+                            fontSize: '13px',
+                            cursor: 'pointer',
+                            opacity: (!ws || ws.readyState !== WebSocket.OPEN || [...new Set([conversationAgentA, conversationAgentB, conversationAgentC].filter(Boolean))].length < 2) ? 0.5 : 1,
+                            transition: 'background-color 0.2s',
+                          }}
+                          onMouseOver={(e) => { if (ws && ws.readyState === WebSocket.OPEN) e.currentTarget.style.backgroundColor = '#2d2d2d'; }}
+                          onMouseOut={(e) => { e.currentTarget.style.backgroundColor = theme.bg; }}
+                        >
+                          <MessagesSquare size={14} />
+                          Start Conversation
+                        </button>
+                        <button
+                          onClick={launchAutostartTrio}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '8px',
+                            backgroundColor: '#2d3748',
+                            color: '#ebf8ff',
+                            border: '1px solid #4a5568',
+                            borderRadius: '6px',
+                            padding: '8px 10px',
+                            fontSize: '13px',
+                            cursor: 'pointer',
+                            transition: 'background-color 0.2s',
+                          }}
+                          onMouseOver={(e) => { e.currentTarget.style.backgroundColor = '#4a5568'; }}
+                          onMouseOut={(e) => { e.currentTarget.style.backgroundColor = '#2d3748'; }}
+                          title="Instantly create and start a 3-agent conversation (Gemini + Claude + Codex)"
+                        >
+                          <Rocket size={14} />
+                          Autostart Trio
+                        </button>
+                      </div>
                     </div>
 
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>

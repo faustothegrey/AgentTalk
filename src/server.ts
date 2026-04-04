@@ -959,7 +959,8 @@ export function startServer(
     try {
       const runner = new ScenarioRunner();
       const result = await runner.run(definition, registry);
-      console.log(`[Server] Scenario "${result.scenarioName}" ${result.status}`);
+      const suffix = result.error ? `: ${result.error}` : '';
+      console.log(`[Server] Scenario "${result.scenarioName}" ${result.status}${suffix}`);
       res.json(result);
     } catch (err) {
       console.error('[Server] Failed to launch scenario:', err);
