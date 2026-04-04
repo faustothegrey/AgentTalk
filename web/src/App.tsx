@@ -1881,7 +1881,7 @@ function App() {
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '8px', padding: '8px', backgroundColor: theme.bg, borderRadius: '6px', border: `1px solid ${theme.border}` }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                               <span style={{ fontSize: '10px', color: theme.textMuted, textTransform: 'uppercase' }}>Task</span>
-                              <span style={{ fontSize: '10px', padding: '2px 6px', borderRadius: '4px', backgroundColor: activeTeamTask.status === 'completed' ? '#1a3a1a' : activeTeamTask.status === 'refused' ? '#3a1a1a' : theme.bgSurface, color: activeTeamTask.status === 'completed' ? theme.success : activeTeamTask.status === 'refused' ? theme.error : theme.textMuted }}>
+                              <span style={{ fontSize: '10px', padding: '2px 6px', borderRadius: '4px', backgroundColor: activeTeamTask.status === 'completed' ? '#1a3a1a' : activeTeamTask.status === 'refused' ? '#3a1a1a' : activeTeamTask.status === 'interrupted' ? '#3a3a1a' : theme.bgSurface, color: activeTeamTask.status === 'completed' ? theme.success : activeTeamTask.status === 'refused' ? theme.error : activeTeamTask.status === 'interrupted' ? '#c9a227' : theme.textMuted }}>
                                 {activeTeamTask.status}
                               </span>
                             </div>
@@ -2014,11 +2014,48 @@ function App() {
                               </div>
                             )}
 
+                            {/* Interrupted */}
+                            {activeTeamTask.status === 'interrupted' && (
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                <span style={{ fontSize: '11px', color: '#c9a227', fontWeight: 600 }}>Interrupted</span>
+                                {activeTeamTask.transcript.filter(e => e.kind === 'message').length > 0 && (
+                                  <div style={{ maxHeight: '200px', overflow: 'auto', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                    {activeTeamTask.transcript.filter(e => e.kind === 'message').map((entry, i) => (
+                                      <div key={i} style={{ fontSize: '10px', padding: '4px 6px', backgroundColor: theme.bgSurface, borderRadius: '4px', wordBreak: 'break-word' }}>
+                                        <span style={{ color: theme.success, fontWeight: 600 }}>{entry.from}</span>
+                                        <span style={{ color: theme.textMuted }}> &rarr; </span>
+                                        <span style={{ color: theme.textSecondary }}>{entry.payload}</span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                                <div style={{ fontSize: '10px', color: theme.textMuted, fontStyle: 'italic' }}>
+                                  {activeTeamTask.transcript.filter(e => e.kind === 'system').slice(-1)[0]?.payload}
+                                </div>
+                                <button
+                                  onClick={() => { setActiveTeamTask(null); }}
+                                  style={{ padding: '6px', backgroundColor: theme.bgSurface, color: theme.textMuted, border: `1px solid ${theme.border}`, borderRadius: '4px', cursor: 'pointer', fontSize: '11px' }}
+                                >
+                                  New Task
+                                </button>
+                              </div>
+                            )}
+
                             {/* Completed */}
                             {activeTeamTask.status === 'completed' && (
                               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                                 <span style={{ fontSize: '11px', color: theme.success, fontWeight: 600 }}>Completed</span>
-                                {activeTeamTask.transcript.length > 0 && (
+                                {activeTeamTask.transcript.filter(e => e.kind === 'message').length > 0 && activeTeam?.composition === 'brainstorm' ? (
+                                  <div style={{ maxHeight: '200px', overflow: 'auto', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                    {activeTeamTask.transcript.filter(e => e.kind === 'message').map((entry, i) => (
+                                      <div key={i} style={{ fontSize: '10px', padding: '4px 6px', backgroundColor: theme.bgSurface, borderRadius: '4px', wordBreak: 'break-word' }}>
+                                        <span style={{ color: theme.success, fontWeight: 600 }}>{entry.from}</span>
+                                        <span style={{ color: theme.textMuted }}> &rarr; </span>
+                                        <span style={{ color: theme.textSecondary }}>{entry.payload}</span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                ) : activeTeamTask.transcript.length > 0 && (
                                   <div style={{ fontSize: '11px', color: theme.textSecondary, whiteSpace: 'pre-wrap', padding: '6px', backgroundColor: theme.bgSurface, borderRadius: '4px', maxHeight: '150px', overflow: 'auto', wordBreak: 'break-word' }}>
                                     {activeTeamTask.transcript[activeTeamTask.transcript.length - 1].payload}
                                   </div>
@@ -2033,7 +2070,7 @@ function App() {
                             )}
 
                             {/* Direct message to team member */}
-                            {activeTeamTask.status !== 'completed' && activeTeamTask.status !== 'planning' && activeTeamTask.status !== 'delegated' && activeTeamTask.status !== 'brainstorming' && (
+                            {activeTeamTask.status !== 'completed' && activeTeamTask.status !== 'interrupted' && activeTeamTask.status !== 'planning' && activeTeamTask.status !== 'delegated' && activeTeamTask.status !== 'brainstorming' && (
                               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '4px', borderTop: `1px solid ${theme.border}`, paddingTop: '8px' }}>
                                 <span style={{ fontSize: '10px', color: theme.textMuted }}>Message team member</span>
                                 <div style={{ display: 'flex', gap: '4px' }}>

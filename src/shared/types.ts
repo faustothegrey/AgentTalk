@@ -10,7 +10,7 @@ export interface TeamMember {
   role: TeamRole;
 }
 
-export type TeamStatus = 'idle' | 'planning' | 'awaiting_confirmation' | 'working' | 'brainstorming' | 'completed' | 'error';
+export type TeamStatus = 'idle' | 'planning' | 'awaiting_confirmation' | 'working' | 'brainstorming' | 'completed' | 'interrupted' | 'error';
 
 export type TeamComposition = 'worker-only' | 'planner-worker' | 'brainstorm';
 
@@ -31,7 +31,8 @@ export type TeamTaskStatus =
   | 'in_progress'
   | 'brainstorming'
   | 'refused'
-  | 'completed';
+  | 'completed'
+  | 'interrupted';
 
 export interface TeamTask {
   id: string;

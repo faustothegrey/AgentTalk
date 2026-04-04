@@ -207,15 +207,19 @@ export class TeamCoordinator {
     const agentIds = team.members.map((m) => m.agentId);
     for (const [i, member] of team.members.entries()) {
       const peerIds = agentIds.filter((id) => id !== member.agentId);
-      await this.deps.sendProtocol(member.agentId, 'EVT', {
-        type: 'brainstorm_start',
-        teamId: team.id,
-        taskId: task.id,
-        topic,
-        peerIds,
-        maxReplies: maxRepliesPerAgent,
-        initiator: i === 0,
-      });
+      try {
+        await this.deps.sendProtocol(member.agentId, 'EVT', {
+          type: 'brainstorm_start',
+          teamId: team.id,
+          taskId: task.id,
+          topic,
+          peerIds,
+          maxReplies: maxRepliesPerAgent,
+          initiator: i === 0,
+        });
+      } catch (err) {
+        this.deps.logError(`[TeamCoordinator] Failed to send brainstorm_start to ${member.agentId}:`, err);
+      }
     }
 
     return task;
@@ -562,13 +566,95 @@ export class TeamCoordinator {
 
   removeAgentFromTeams(agentId: string): void {
     const teamId = this.agentToTeam.get(agentId);
-    if (teamId) {
-      this.agentToTeam.delete(agentId);
-      const team = this.teams.get(teamId);
-      if (team) {
-        team.status = 'error';
-        team.updatedAt = new Date().toISOString();
-        this.deps.emitTeam(team);
+    if (!teamId) return;
+
+    this.agentToTeam.delete(agentId);
+    const team = this.teams.get(teamId);
+    if (!team) return;
+
+    if (team.composition === 'brainstorm' && team.currentTaskId) {
+      this.handleBrainstormAgentRemoval(team, agentId);
+      return;
+    }
+
+    team.status = 'error';
+    team.updatedAt = new Date().toISOString();
+    this.deps.emitTeam(team);
+  }
+
+  private handleBrainstormAgentRemoval(team: Team, removedAgentId: string): void {
+    const now = new Date().toISOString();
+    team.members = team.members.filter((m) => m.agentId !== removedAgentId);
+    team.updatedAt = now;
+
+    const task = team.currentTaskId ? this.tasks.get(team.currentTaskId) : undefined;
+
+    if (task && task.status === 'brainstorming') {
+      // Remove from reply counts
+      if (task.replyCounts) {
+        delete task.replyCounts[removedAgentId];
+      }
+
+      task.transcript.push({
+        kind: 'system',
+        timestamp: now,
+        from: 'system',
+        to: team.members.map((m) => m.agentId).join(','),
+        payload: `Agent ${removedAgentId} dropped out of the brainstorm.`,
+      });
+      task.updatedAt = now;
+
+      if (team.members.length >= 2) {
+        // Continue with remaining agents; check if all remaining hit the cap
+        const allDone = team.members.every(
+          (m) => (task.replyCounts![m.agentId] ?? 0) >= task.maxRepliesPerAgent!,
+        );
+        if (allDone) {
+          this.completeBrainstorm(team, task, 'All remaining agents reached reply limit');
+        } else {
+          this.deps.emitTeam(team);
+          this.deps.emitTeamTask(task);
+        }
+      } else {
+        // 0 or 1 agents left — interrupt
+        this.interruptBrainstorm(team, task, `Not enough agents remaining after ${removedAgentId} dropped out`);
+      }
+    } else {
+      // No active brainstorm task — just mark error
+      team.status = 'error';
+      this.deps.emitTeam(team);
+    }
+  }
+
+  private async interruptBrainstorm(team: Team, task: TeamTask, reason: string): Promise<void> {
+    const now = new Date().toISOString();
+    task.status = 'interrupted';
+    task.updatedAt = now;
+    task.transcript.push({
+      kind: 'system',
+      timestamp: now,
+      from: 'system',
+      to: team.members.map((m) => m.agentId).join(','),
+      payload: `Brainstorm interrupted: ${reason}`,
+    });
+
+    team.status = 'interrupted';
+    delete team.currentTaskId;
+    team.updatedAt = now;
+
+    this.deps.emitTeam(team);
+    this.deps.emitTeamTask(task);
+
+    for (const member of team.members) {
+      try {
+        await this.deps.sendProtocol(member.agentId, 'EVT', {
+          type: 'brainstorm_end',
+          teamId: team.id,
+          taskId: task.id,
+          reason,
+        });
+      } catch (err) {
+        this.deps.logError(`[TeamCoordinator] Failed to send brainstorm_end to ${member.agentId}:`, err);
       }
     }
   }

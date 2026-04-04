@@ -139,6 +139,11 @@ async function processQueue() {
     emitRequest(conversationRuntime.buildProtocolRequest(evt, response));
   } catch (err) {
     console.error(`[llm-agent] Error: ${err.message}`);
+    emitRequest({
+      id: `req-${Date.now()}`,
+      call: 'send_to_agent',
+      args: { to: 'user', payload: `[Agent error] ${err.message}` },
+    });
     emitSessionUpdate();
   } finally {
     busy = false;
@@ -300,6 +305,66 @@ function enqueueTeamHandler(evt, teamHandler) {
 }
 
 
+let brainstormContext = null;
+
+function handleBrainstormStart(evt) {
+  console.error(`[llm-agent] Brainstorm started: topic="${evt.topic}", peers=${evt.peerIds.join(',')}, initiator=${evt.initiator}`);
+  brainstormContext = {
+    teamId: evt.teamId,
+    taskId: evt.taskId,
+    topic: evt.topic,
+    peerIds: evt.peerIds,
+    maxReplies: evt.maxReplies,
+    repliesSent: 0,
+  };
+
+  if (evt.initiator) {
+    const prompt = [
+      `You are in a brainstorm session with ${evt.peerIds.length} other agents.`,
+      `Topic: ${evt.topic}`,
+      `You have up to ${evt.maxReplies} replies. You are the initiator — open the discussion.`,
+      'Be concise. Share your initial perspective and invite the others to respond.',
+    ].join('\n');
+
+    enqueueTeamEvent(evt, prompt, (response) => {
+      brainstormContext.repliesSent++;
+      return {
+        id: `req-${Date.now()}`,
+        call: 'send_to_agent',
+        args: { to: evt.peerIds[0], payload: response },
+      };
+    });
+  }
+}
+
+function handleBrainstormMessage(evt) {
+  if (!brainstormContext) {
+    enqueueEvent(evt);
+    return;
+  }
+
+  if (brainstormContext.repliesSent >= brainstormContext.maxReplies) {
+    console.error(`[llm-agent] Brainstorm reply cap reached, ignoring message from ${evt.from}`);
+    return;
+  }
+
+  const prompt = [
+    `You are in a brainstorm session on: ${brainstormContext.topic}`,
+    `You have ${brainstormContext.maxReplies - brainstormContext.repliesSent} replies left.`,
+    `${evt.from} says: ${evt.payload}`,
+    'Respond with your perspective. Build on ideas, challenge assumptions, or introduce new angles. Be concise.',
+  ].join('\n');
+
+  enqueueTeamEvent(evt, prompt, (response) => {
+    brainstormContext.repliesSent++;
+    return {
+      id: `req-${Date.now()}`,
+      call: 'send_to_agent',
+      args: { to: evt.from, payload: response },
+    };
+  });
+}
+
 function handleInboundEvent(evt) {
   if (evt.type === 'team_task_assign') {
     handleTeamTaskAssign(evt);
@@ -311,7 +376,22 @@ function handleInboundEvent(evt) {
     return;
   }
 
+  if (evt.type === 'brainstorm_start') {
+    handleBrainstormStart(evt);
+    return;
+  }
+
+  if (evt.type === 'brainstorm_end') {
+    console.error(`[llm-agent] Brainstorm ended: ${evt.reason}`);
+    brainstormContext = null;
+    return;
+  }
+
   if (evt.type === 'message_received' || evt.type === 'healthcheck') {
+    if (brainstormContext && evt.type === 'message_received' && evt.from !== 'user') {
+      handleBrainstormMessage(evt);
+      return;
+    }
     enqueueEvent(evt);
     return;
   }
