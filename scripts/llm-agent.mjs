@@ -4,7 +4,7 @@
 
 import { createInterface } from 'readline';
 import path from 'path';
-import { createConversationRuntime, extractSystemRequiredCall } from './lib/conversation-runtime.mjs';
+import { createConversationRuntime, extractCallMarkers, extractSystemRequiredCall } from './lib/conversation-runtime.mjs';
 import { createRequestIdGenerator } from './lib/request-id.mjs';
 import { createExecutor, normalizeRequestedExecutionMode } from './lib/executor-runtime.mjs';
 import { emitEvent, emitReady, emitRequest, parseInboundProtocolLine } from './lib/protocol.mjs';
@@ -238,9 +238,35 @@ async function processQueue() {
 
     conversationRuntime.recordAssistantReply(response);
     console.error(`[llm-agent] Reply (${response.length} chars): ${response.slice(0, 200)}`);
-    const request = conversationRuntime.buildProtocolRequest(evt, response);
-    request.id = nextRequestId();
-    emitTrackedRequest(request);
+
+    // Check for [CALL:...] protocol markers in the LLM response
+    const markers = extractCallMarkers(response);
+    if (markers.length > 0) {
+      const marker = markers[0]; // use first marker only
+      console.error(`[llm-agent] Detected protocol marker: [CALL:${marker.call}]`);
+
+      // Send the discussion text (with marker stripped) to the peer, if non-empty
+      if (marker.cleanedText) {
+        const messageRequest = conversationRuntime.buildProtocolRequest(evt, marker.cleanedText);
+        messageRequest.id = nextRequestId();
+        emitTrackedRequest(messageRequest);
+      }
+
+      // Emit the protocol call
+      const callArgs = marker.call === 'submit_plan'
+        ? { plan: marker.cleanedText || response }
+        : {};
+
+      emitTrackedRequest({
+        id: nextRequestId(),
+        call: marker.call,
+        args: callArgs,
+      });
+    } else {
+      const request = conversationRuntime.buildProtocolRequest(evt, response);
+      request.id = nextRequestId();
+      emitTrackedRequest(request);
+    }
   } catch (err) {
     console.error(`[llm-agent] Error: ${err.message}`);
     emitTrackedRequest({

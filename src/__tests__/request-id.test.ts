@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createRequestIdGenerator } from '../../scripts/lib/request-id.mjs';
+import { createRequestIdGenerator } from '../shared/request-id.js';
 
 describe('request-id generator', () => {
   it('generates unique IDs even when time source is constant', () => {

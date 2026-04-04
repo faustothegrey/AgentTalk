@@ -280,8 +280,7 @@ export class TeamCoordinator {
       'Planning protocol for this task:',
       '1) Acknowledge this protocol now via ack_planning_protocol.',
       '2) Start discussing only after both planners acknowledged.',
-      '3) When requested, call agreement_proposal first, then agreement_reached.',
-      '4) After agreement, one planner must call submit_plan.',
+      '3) During the discussion, use [CALL:...] markers as described in your conversation instructions to signal agreement and submit the plan.',
       PLANNER_NO_CODE_TOUCH_REQUIREMENT,
     ].join(' ');
 
@@ -711,8 +710,7 @@ export class TeamCoordinator {
           conversationId: task.id,
           topic:
             `Collaboratively draft an execution plan for: ${state.description}. ` +
-            `Once you reach a resolution, one of you MUST call submit_plan with the final plan. ` +
-            `During planning control flow, follow required event order: agreement_proposal -> agreement_reached -> submit_plan. ` +
+            `Once you reach a resolution, use the protocol markers described in your instructions to signal agreement and submit the final plan. ` +
             `${PLANNER_NO_CODE_TOUCH_REQUIREMENT}`,
           peerIds,
           peerId: peerIds[0] as string,

@@ -3,7 +3,7 @@ export const PROTOCOL_PREFIX = '[AgentTalk]:';
 export const PROTOCOL_PACKET_TYPES = ['READY', 'REQ', 'RES', 'EVT'] as const;
 
 export type ProtocolPacketType = (typeof PROTOCOL_PACKET_TYPES)[number];
-export type OutboundProtocolPacketType = Extract<ProtocolPacketType, 'RES' | 'EVT'>;
+export type OutboundProtocolPacketType = ProtocolPacketType;
 
 export interface ParsedProtocolLine {
   packetType: ProtocolPacketType;
@@ -36,10 +36,41 @@ export function splitProtocolLine(line: string): ParsedProtocolLine | null {
   };
 }
 
-export function serializeProtocolLine(type: OutboundProtocolPacketType, payload: unknown): string {
+export function serializeProtocolLine(type: ProtocolPacketType, payload: unknown): string {
   return `${PROTOCOL_PREFIX}${type}:${JSON.stringify(payload)}\n`;
 }
 
 function isProtocolPacketType(value: string): value is ProtocolPacketType {
   return (PROTOCOL_PACKET_TYPES as readonly string[]).includes(value);
+}
+
+/**
+ * Legacy support for scripts/lib/protocol.mjs helper functions
+ */
+
+export function emitReady(payload: string | Record<string, unknown>): void {
+  const normalizedPayload = typeof payload === 'string' ? { session: payload } : payload;
+  process.stdout.write(serializeProtocolLine('READY', normalizedPayload));
+}
+
+export function emitEvent(payload: unknown): void {
+  process.stdout.write(serializeProtocolLine('EVT', payload));
+}
+
+export function emitRequest(payload: unknown): void {
+  process.stdout.write(serializeProtocolLine('REQ', payload));
+}
+
+/**
+ * Parses a protocol line. Returns null if the line is not a valid AgentTalk protocol line.
+ */
+export function parseInboundProtocolLine(line: string): { type: string; json: string } | null {
+  const parsed = splitProtocolLine(line);
+  if (!parsed) {
+    return null;
+  }
+  return {
+    type: parsed.packetType,
+    json: parsed.payloadJson,
+  };
 }

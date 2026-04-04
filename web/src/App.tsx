@@ -1406,6 +1406,72 @@ function App() {
     }
   };
 
+  const autostartGeminiPlannerPlannerWorkerTeam = async () => {
+    setLoading(true);
+    setGlobalError(null);
+    try {
+      const provider: Provider = 'gemini';
+      const chosenModel = 'gemini-3-flash-preview';
+      const executionMode: ExecutionMode = 'interactive';
+      const command = getAgentCommand(provider, chosenModel);
+      const createdIds: string[] = [];
+
+      for (let i = 0; i < 3; i += 1) {
+        const createRes = await fetchWithTimeout('/api/agents', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ provider, model: chosenModel, executionMode }),
+        }, 15000);
+        const created = await createRes.json();
+        createdIds.push(created.id);
+
+        await fetchWithTimeout(`/api/agents/${created.id}/start`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ command, workingDirectory, executionMode }),
+        }, 10000);
+        pushSidebarEvent('out', 'Autostart Agent', `${created.id} via gemini [interactive]`);
+      }
+
+      await waitForAgentsReady(createdIds);
+
+      const [plannerA, plannerB, worker] = createdIds;
+      if (!plannerA || !plannerB || !worker) {
+        throw new Error('Autostart team failed: expected 3 created agents');
+      }
+
+      const teamRes = await fetchWithTimeout('/api/teams', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          members: [
+            { agentId: plannerA, role: 'planner' },
+            { agentId: plannerB, role: 'planner' },
+            { agentId: worker, role: 'worker' },
+          ],
+        }),
+      }, 15000);
+      const team = await teamRes.json();
+      if (!teamRes.ok) {
+        throw new Error(team.error || 'Failed to create planner-planner-worker Gemini team');
+      }
+
+      setActiveTopTab('agents');
+      setActiveSidebarTab('team');
+      setActiveTeam(team);
+      setActiveTeamTask(null);
+      setSelectedAgentId(plannerA);
+      setTeams((prev) => [...prev.filter((t) => t.id !== team.id), team]);
+      pushSidebarEvent('out', 'Autostart Team', `${plannerA} + ${plannerB} + ${worker} (Gemini)`);
+
+      await fetchAgents();
+    } catch (err) {
+      handleError('Failed to autostart planner-planner-worker Gemini team:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const openDirectoryPicker = async () => {
     setGlobalError(null);
     setDirectoryPickerOpen(true);
@@ -2024,6 +2090,30 @@ function App() {
                         >
                           <Users size={14} />
                           Autostart 2P+1W Team
+                        </button>
+
+                        <button
+                          onClick={autostartGeminiPlannerPlannerWorkerTeam}
+                          disabled={loading}
+                          title="Create 2 planners + 1 worker team with Gemini 3 Flash Preview agents"
+                          style={{
+                            padding: '8px',
+                            backgroundColor: theme.bg,
+                            color: theme.textBright,
+                            border: `1px solid ${theme.borderInput}`,
+                            borderRadius: '6px',
+                            cursor: loading ? 'not-allowed' : 'pointer',
+                            opacity: loading ? 0.5 : 1,
+                            fontSize: '12px',
+                            fontWeight: 600,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '8px',
+                          }}
+                        >
+                          <Users size={14} />
+                          Autostart 2P+1W Gemini
                         </button>
 
                       </>
@@ -2833,6 +2923,28 @@ function App() {
                     >
                       <Users size={16} />
                       Autostart 2P+1W Team
+                    </button>
+
+                    <button
+                      onClick={autostartGeminiPlannerPlannerWorkerTeam}
+                      disabled={loading}
+                      title="Create 2 planners + 1 worker team with Gemini 3 Flash Preview agents"
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '8px',
+                        backgroundColor: theme.bg,
+                        border: `1px solid ${theme.borderInput}`,
+                        color: theme.textBright,
+                        borderRadius: '6px',
+                        padding: '9px 10px',
+                        cursor: 'pointer',
+                        opacity: loading ? 0.5 : 1
+                      }}
+                    >
+                      <Users size={16} />
+                      Autostart 2P+1W Gemini
                     </button>
                   </>
                 )}

@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { mkdtempSync, rmSync, writeFileSync } from 'fs';
 import os from 'os';
 import path from 'path';
-import { createExecutor, normalizeRequestedExecutionMode, resolveExecutionMode } from '../../scripts/lib/executor-runtime.mjs';
+import { createExecutor, normalizeRequestedExecutionMode, resolveExecutionMode } from '../agents/executor-runtime.js';
 
 describe('executor-runtime', () => {
   const tempDirs: string[] = [];

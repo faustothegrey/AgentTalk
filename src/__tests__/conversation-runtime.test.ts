@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createConversationRuntime, extractSystemRequiredCall } from '../../scripts/lib/conversation-runtime.mjs';
+import { createConversationRuntime, extractSystemRequiredCall } from '../conversations/runtime.js';
 
 describe('conversation-runtime', () => {
   it('extracts agreement_proposal from system reminder payloads', () => {

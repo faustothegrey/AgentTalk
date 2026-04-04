@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { getProviderCommand, resolveProvider } from '../../scripts/lib/provider-runtime.mjs';
+import { getProviderCommand, resolveProvider } from '../agents/provider-runtime.js';
 
 describe('provider-runtime', () => {
   it('should build the Claude command with git access and non-interactive permissions', () => {

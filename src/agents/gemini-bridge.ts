@@ -7,7 +7,7 @@ const rl = createInterface({
   terminal: false
 });
 
-function parseArgs(argv) {
+function parseArgs(argv: string[]) {
   const modelIndex = argv.indexOf('--model');
   const model = modelIndex !== -1 && argv[modelIndex + 1] ? argv[modelIndex + 1] : null;
   return { defaultModel: model };
@@ -15,17 +15,17 @@ function parseArgs(argv) {
 
 const { defaultModel } = parseArgs(process.argv);
 
-function emit(payload) {
+function emit(payload: any) {
   process.stdout.write(JSON.stringify(payload) + '\n');
 }
 
 rl.on('line', async (line) => {
   if (!line.trim()) return;
 
-  let request;
+  let request: any;
   try {
     request = JSON.parse(line);
-  } catch (err) {
+  } catch (err: any) {
     console.error(`[gemini-bridge] Parse error: ${err.message}`);
     return;
   }
@@ -33,7 +33,6 @@ rl.on('line', async (line) => {
   // Handle the Claude-style internal protocol used by InteractiveExecutor
   const prompt = request.message?.content?.[0]?.text || request.prompt;
   const model = request.model || defaultModel;
-  const id = request.id || `req-${Date.now()}`;
 
   if (!prompt) {
     console.error(`[gemini-bridge] No prompt found in request: ${line}`);
@@ -55,7 +54,7 @@ rl.on('line', async (line) => {
   const proc = spawn('gemini', args, { stdio: ['ignore', 'pipe', 'pipe'] });
   
   const turnRl = createInterface({
-    input: proc.stdout,
+    input: proc.stdout!,
     terminal: false
   });
 
@@ -88,7 +87,7 @@ rl.on('line', async (line) => {
     }
   });
 
-  proc.stderr.on('data', (chunk) => {
+  proc.stderr!.on('data', (chunk) => {
     process.stderr.write(chunk);
   });
 
