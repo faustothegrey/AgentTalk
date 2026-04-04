@@ -35,6 +35,15 @@ interface TeamCoordinatorOptions {
 const DEFAULT_PLANNING_EVENT_TIMEOUT_MS = 300_000;
 const DEFAULT_SUBMIT_PLAN_URGENCY_TIMEOUT_MS = 120_000;
 const MAX_URGENCY_IGNORES = 2;
+const AGREEMENT_COMPLIANCE_TIMEOUT_MS = 60_000;
+const MAX_AGREEMENT_ASKS = 2;
+
+interface AgreementState {
+  phase: 'awaiting_proposal' | 'awaiting_reached';
+  targetAgentId: string;
+  asksIssued: number;
+  timer: NodeJS.Timeout;
+}
 
 export class TeamCoordinator {
   private teams: Map<string, Team> = new Map();
@@ -45,6 +54,7 @@ export class TeamCoordinator {
   private readonly planningWatchdogs: Map<string, NodeJS.Timeout> = new Map();
   private readonly submitPlanUrgencyWatchdogs: Map<string, NodeJS.Timeout> = new Map();
   private readonly urgencyIgnoreCounts: Map<string, number> = new Map();
+  private readonly agreementStates: Map<string, AgreementState> = new Map();
 
   constructor(
     private readonly deps: TeamCoordinatorDeps,
@@ -385,16 +395,235 @@ export class TeamCoordinator {
 
     this.deps.emitTeamTask(task);
 
-    // Check if all planners reached max replies → arm urgency for submit_plan
-    if (task.maxRepliesPerAgent) {
-      const plannerIds = team.members.filter((m) => m.role === 'planner').map((m) => m.agentId);
-      const allAtMax = plannerIds.every((id) => (task.replyCounts?.[id] ?? 0) >= task.maxRepliesPerAgent!);
-      if (allAtMax) {
-        await this.armSubmitPlanUrgencyWatchdog(team, task, ['submit_plan']);
+    // Check agreement non-compliance: target agent sent a regular message instead of the expected event
+    const agreeState = this.agreementStates.get(task.id);
+    if (agreeState && senderAgentId === agreeState.targetAgentId) {
+      await this.handleAgreementNonCompliance(team, task);
+      return true;
+    }
+
+    // Start agreement flow when a planner reaches maxReplies - 1 (1 message away from max)
+    if (!agreeState && task.maxRepliesPerAgent) {
+      const newCount = currentCount + 1;
+      if (newCount === task.maxRepliesPerAgent - 1) {
+        await this.requestAgreementProposal(team, task, senderAgentId);
       }
     }
 
     return true;
+  }
+
+  async handleAgreementProposal(agentId: string): Promise<void> {
+    const team = this.findTeamByAgent(agentId);
+    if (!team || !team.currentTaskId) {
+      throw new Error(`Agent ${agentId} is not part of any active team`);
+    }
+
+    const task = this.tasks.get(team.currentTaskId);
+    if (!task || task.status !== 'planning') {
+      throw new Error('Cannot submit agreement_proposal: task is not in planning status');
+    }
+
+    const agreeState = this.agreementStates.get(task.id);
+    if (!agreeState || agreeState.phase !== 'awaiting_proposal' || agreeState.targetAgentId !== agentId) {
+      throw new Error('Unexpected agreement_proposal: not awaiting proposal from this agent');
+    }
+
+    clearTimeout(agreeState.timer);
+    this.agreementStates.delete(task.id);
+
+    const now = new Date().toISOString();
+    task.transcript.push({
+      kind: 'system',
+      timestamp: now,
+      from: agentId,
+      to: 'system',
+      payload: 'Agreement proposed.',
+    });
+    task.updatedAt = now;
+    this.deps.emitTeamTask(task);
+
+    // Ask the other planner for agreement_reached
+    const otherPlanner = team.members.find((m) => m.role === 'planner' && m.agentId !== agentId);
+    if (!otherPlanner) {
+      throw new Error('No other planner found in team');
+    }
+
+    await this.requestAgreementReached(team, task, otherPlanner.agentId);
+  }
+
+  async handleAgreementReached(agentId: string): Promise<void> {
+    const team = this.findTeamByAgent(agentId);
+    if (!team || !team.currentTaskId) {
+      throw new Error(`Agent ${agentId} is not part of any active team`);
+    }
+
+    const task = this.tasks.get(team.currentTaskId);
+    if (!task || task.status !== 'planning') {
+      throw new Error('Cannot submit agreement_reached: task is not in planning status');
+    }
+
+    const agreeState = this.agreementStates.get(task.id);
+    if (!agreeState || agreeState.phase !== 'awaiting_reached' || agreeState.targetAgentId !== agentId) {
+      throw new Error('Unexpected agreement_reached: not awaiting confirmation from this agent');
+    }
+
+    clearTimeout(agreeState.timer);
+    this.agreementStates.delete(task.id);
+
+    const now = new Date().toISOString();
+    task.transcript.push({
+      kind: 'system',
+      timestamp: now,
+      from: agentId,
+      to: 'system',
+      payload: 'Agreement reached.',
+    });
+    task.updatedAt = now;
+    this.deps.emitTeamTask(task);
+
+    // Agreement complete — arm submit_plan urgency
+    await this.armSubmitPlanUrgencyWatchdog(team, task, ['submit_plan']);
+  }
+
+  private async requestAgreementProposal(team: Team, task: TeamTask, agentId: string): Promise<void> {
+    const now = new Date().toISOString();
+    const message = 'You are 1 message away from the reply limit. Please call agreement_proposal now to signal that you are ready to finalize the plan.';
+
+    try {
+      await this.deps.sendProtocol(agentId, 'EVT', {
+        type: 'message_received',
+        from: 'system',
+        payload: message,
+      });
+    } catch (err) {
+      this.deps.logError(`[TeamCoordinator] Failed to request agreement_proposal from ${agentId}:`, err);
+    }
+
+    task.transcript.push({
+      kind: 'system',
+      timestamp: now,
+      from: 'system',
+      to: agentId,
+      payload: message,
+    });
+    task.updatedAt = now;
+    this.deps.emitTeamTask(task);
+
+    const timer = setTimeout(() => {
+      const currentTask = this.tasks.get(task.id);
+      const currentTeam = this.teams.get(team.id);
+      if (!currentTask || !currentTeam || currentTask.status !== 'planning') {
+        return;
+      }
+      void this.handleAgreementNonCompliance(currentTeam, currentTask);
+    }, AGREEMENT_COMPLIANCE_TIMEOUT_MS);
+
+    this.agreementStates.set(task.id, {
+      phase: 'awaiting_proposal',
+      targetAgentId: agentId,
+      asksIssued: 1,
+      timer,
+    });
+  }
+
+  private async requestAgreementReached(team: Team, task: TeamTask, agentId: string): Promise<void> {
+    const now = new Date().toISOString();
+    const message = 'Your peer has proposed agreement. Please call agreement_reached to confirm, or continue discussing if you disagree.';
+
+    try {
+      await this.deps.sendProtocol(agentId, 'EVT', {
+        type: 'message_received',
+        from: 'system',
+        payload: message,
+      });
+    } catch (err) {
+      this.deps.logError(`[TeamCoordinator] Failed to request agreement_reached from ${agentId}:`, err);
+    }
+
+    task.transcript.push({
+      kind: 'system',
+      timestamp: now,
+      from: 'system',
+      to: agentId,
+      payload: message,
+    });
+    task.updatedAt = now;
+    this.deps.emitTeamTask(task);
+
+    const timer = setTimeout(() => {
+      const currentTask = this.tasks.get(task.id);
+      const currentTeam = this.teams.get(team.id);
+      if (!currentTask || !currentTeam || currentTask.status !== 'planning') {
+        return;
+      }
+      void this.handleAgreementNonCompliance(currentTeam, currentTask);
+    }, AGREEMENT_COMPLIANCE_TIMEOUT_MS);
+
+    this.agreementStates.set(task.id, {
+      phase: 'awaiting_reached',
+      targetAgentId: agentId,
+      asksIssued: 1,
+      timer,
+    });
+  }
+
+  private async handleAgreementNonCompliance(team: Team, task: TeamTask): Promise<void> {
+    const agreeState = this.agreementStates.get(task.id);
+    if (!agreeState) return;
+
+    clearTimeout(agreeState.timer);
+
+    if (agreeState.asksIssued >= MAX_AGREEMENT_ASKS) {
+      // Asked twice, no compliance — fail planning
+      this.agreementStates.delete(task.id);
+      const eventName = agreeState.phase === 'awaiting_proposal' ? 'agreement_proposal' : 'agreement_reached';
+      await this.interruptPlanningForMissingEvents(team, task, [eventName]);
+      return;
+    }
+
+    // Re-ask
+    agreeState.asksIssued++;
+    const eventName = agreeState.phase === 'awaiting_proposal' ? 'agreement_proposal' : 'agreement_reached';
+    const now = new Date().toISOString();
+    const message = `Reminder (${agreeState.asksIssued}/${MAX_AGREEMENT_ASKS}): please call ${eventName} now. Planning will be interrupted if you do not comply.`;
+
+    try {
+      await this.deps.sendProtocol(agreeState.targetAgentId, 'EVT', {
+        type: 'message_received',
+        from: 'system',
+        payload: message,
+      });
+    } catch (err) {
+      this.deps.logError(`[TeamCoordinator] Failed to re-request ${eventName} from ${agreeState.targetAgentId}:`, err);
+    }
+
+    task.transcript.push({
+      kind: 'system',
+      timestamp: now,
+      from: 'system',
+      to: agreeState.targetAgentId,
+      payload: message,
+    });
+    task.updatedAt = now;
+    this.deps.emitTeamTask(task);
+
+    agreeState.timer = setTimeout(() => {
+      const currentTask = this.tasks.get(task.id);
+      const currentTeam = this.teams.get(team.id);
+      if (!currentTask || !currentTeam || currentTask.status !== 'planning') {
+        return;
+      }
+      void this.handleAgreementNonCompliance(currentTeam, currentTask);
+    }, AGREEMENT_COMPLIANCE_TIMEOUT_MS);
+  }
+
+  private clearAgreementState(taskId: string): void {
+    const state = this.agreementStates.get(taskId);
+    if (state) {
+      clearTimeout(state.timer);
+      this.agreementStates.delete(taskId);
+    }
   }
 
   /**
@@ -511,6 +740,7 @@ export class TeamCoordinator {
     const now = new Date().toISOString();
     this.clearPlanningWatchdog(task.id);
     this.clearSubmitPlanUrgencyWatchdog(task.id);
+    this.clearAgreementState(task.id);
     task.plan = plan;
     task.planningComplete = true;
     task.planSubmittedAt = now;
@@ -607,6 +837,7 @@ export class TeamCoordinator {
     this.deps.emitTeam(team);
     this.deps.emitTeamTask(task);
     this.clearSubmitPlanUrgencyWatchdog(task.id);
+    this.clearAgreementState(task.id);
     this.armPlanningWatchdog(team, task, ['submit_plan']);
 
     await this.deps.sendProtocol(planner.agentId, 'EVT', {
@@ -756,6 +987,7 @@ export class TeamCoordinator {
     if (team.currentTaskId) {
       this.clearPlanningWatchdog(team.currentTaskId);
       this.clearSubmitPlanUrgencyWatchdog(team.currentTaskId);
+      this.clearAgreementState(team.currentTaskId);
     }
 
     team.status = 'error';
@@ -966,6 +1198,7 @@ export class TeamCoordinator {
   private async interruptPlanningForMissingEvents(team: Team, task: TeamTask, missingEvents: string[]): Promise<void> {
     this.clearPlanningWatchdog(task.id);
     this.clearSubmitPlanUrgencyWatchdog(task.id);
+    this.clearAgreementState(task.id);
 
     const now = new Date().toISOString();
     const missing = missingEvents.join(', ');

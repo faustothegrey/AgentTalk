@@ -69,6 +69,18 @@ export interface SubmitUsageStatsRequestPayload {
   };
 }
 
+export interface AgreementProposalRequestPayload {
+  id: string;
+  call: 'agreement_proposal';
+  args?: Record<string, unknown>;
+}
+
+export interface AgreementReachedRequestPayload {
+  id: string;
+  call: 'agreement_reached';
+  args?: Record<string, unknown>;
+}
+
 export type RequestPayload =
   | ListAgentsRequestPayload
   | SendToAgentRequestPayload
@@ -76,7 +88,9 @@ export type RequestPayload =
   | SubmitPlanRequestPayload
   | SubmitWorkResponseRequestPayload
   | SubmitWorkResultRequestPayload
-  | SubmitUsageStatsRequestPayload;
+  | SubmitUsageStatsRequestPayload
+  | AgreementProposalRequestPayload
+  | AgreementReachedRequestPayload;
 
 export interface ResponsePayload {
   id: string;
@@ -298,6 +312,20 @@ export function parseRequestPayload(value: unknown): RequestPayload | null {
           stats: value.args.stats,
           timestamp: value.args.timestamp,
         },
+      };
+
+    case 'agreement_proposal':
+      return {
+        id: value.id,
+        call: 'agreement_proposal',
+        ...(isRecord(value.args) ? { args: value.args } : {}),
+      };
+
+    case 'agreement_reached':
+      return {
+        id: value.id,
+        call: 'agreement_reached',
+        ...(isRecord(value.args) ? { args: value.args } : {}),
       };
 
     default:

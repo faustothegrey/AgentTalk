@@ -242,7 +242,7 @@ describe('TeamCoordinator', () => {
     }
   });
 
-  it('should arm urgency after all planners reach max replies, re-issue once, then interrupt', async () => {
+  it('should request agreement_proposal 1 message before max, then agreement_reached, then arm submit_plan urgency', async () => {
     vi.useFakeTimers();
     try {
       const plannerA = new Agent('planner-a');
@@ -286,49 +286,194 @@ describe('TeamCoordinator', () => {
         { agentId: 'planner-b', role: 'planner' },
         { agentId: 'worker', role: 'worker' },
       ]);
-      // Default maxRepliesPerAgent for multi-planner is 5
-      await coordinator.assignTask(team.id, 'Tiny cleanup', 2);
+      // maxRepliesPerAgent = 3; agreement_proposal requested at count 2 (1 away from max)
+      await coordinator.assignTask(team.id, 'Tiny cleanup', 3);
 
-      // Each planner sends 2 messages (reaching max)
       await coordinator.handlePlanningMessage('planner-a', 'Idea A');
-      await coordinator.handlePlanningMessage('planner-b', 'Idea B');
+      // planner-a now at count 2 (maxReplies - 1) → system asks for agreement_proposal
       await coordinator.handlePlanningMessage('planner-a', 'Refined A');
-      // planner-b's 2nd message triggers urgency (both now at max)
-      await coordinator.handlePlanningMessage('planner-b', 'Refined B');
 
-      // First urgency reminder should have been sent
       expect(sendProtocol).toHaveBeenCalledWith('planner-a', 'EVT', expect.objectContaining({
         type: 'message_received',
         from: 'system',
-        payload: expect.stringContaining('Reply limit reached'),
+        payload: expect.stringContaining('agreement_proposal'),
       }));
+
+      // planner-a complies with agreement_proposal
+      await coordinator.handleAgreementProposal('planner-a');
+
+      // System should now ask planner-b for agreement_reached
       expect(sendProtocol).toHaveBeenCalledWith('planner-b', 'EVT', expect.objectContaining({
         type: 'message_received',
         from: 'system',
-        payload: expect.stringContaining('Reply limit reached'),
+        payload: expect.stringContaining('agreement_reached'),
       }));
 
-      // First urgency timeout → re-issue (ignore count = 1)
-      await vi.advanceTimersByTimeAsync(50);
+      // planner-b complies with agreement_reached
+      await coordinator.handleAgreementReached('planner-b');
 
+      // submit_plan urgency should now be armed
       expect(sendProtocol).toHaveBeenCalledWith('planner-a', 'EVT', expect.objectContaining({
         type: 'message_received',
         from: 'system',
-        payload: expect.stringContaining('Urgency reminder ignored (1/2)'),
+        payload: expect.stringContaining('Reply limit reached'),
       }));
 
-      // Task should still be planning after first ignore
+      // Urgency timeout → re-issue
+      await vi.advanceTimersByTimeAsync(50);
       const midTask = emitTeamTask.mock.calls.at(-1)?.[0] as TeamTask;
       expect(midTask.status).toBe('planning');
 
-      // Second urgency timeout → interrupt (ignore count = 2)
+      // Second urgency timeout → interrupt
       await vi.advanceTimersByTimeAsync(50);
-
       const latestTeam = emitTeam.mock.calls.at(-1)?.[0];
       const latestTask = emitTeamTask.mock.calls.at(-1)?.[0] as TeamTask;
       expect(latestTeam.status).toBe('interrupted');
       expect(latestTask.status).toBe('interrupted');
       expect(latestTask.transcript.at(-1)?.payload).toContain('missing required event(s): submit_plan');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('should interrupt planning after 2 ignored agreement_proposal requests', async () => {
+    vi.useFakeTimers();
+    try {
+      const plannerA = new Agent('planner-a');
+      plannerA.setStatus('starting');
+      plannerA.setStatus('ready');
+
+      const plannerB = new Agent('planner-b');
+      plannerB.setStatus('starting');
+      plannerB.setStatus('ready');
+
+      const worker = new Agent('worker');
+      worker.setStatus('starting');
+      worker.setStatus('ready');
+
+      const emitTeam = vi.fn();
+      const emitTeamTask = vi.fn();
+      const sendProtocol = vi.fn().mockResolvedValue(undefined);
+
+      const coordinator = new TeamCoordinator(
+        {
+          getAgent: (id) => {
+            if (id === 'planner-a') return plannerA;
+            if (id === 'planner-b') return plannerB;
+            if (id === 'worker') return worker;
+            throw new Error(`Unknown agent: ${id}`);
+          },
+          sendProtocol,
+          emitTeam,
+          emitTeamTask,
+          emitPlanningComplete: vi.fn(),
+          logError: vi.fn(),
+        },
+        {
+          planningEventTimeoutMs: 500_000,
+        },
+      );
+
+      const team = coordinator.createTeam([
+        { agentId: 'planner-a', role: 'planner' },
+        { agentId: 'planner-b', role: 'planner' },
+        { agentId: 'worker', role: 'worker' },
+      ]);
+      await coordinator.assignTask(team.id, 'Tiny cleanup', 3);
+
+      // planner-a reaches maxReplies - 1 → asked for agreement_proposal
+      await coordinator.handlePlanningMessage('planner-a', 'Idea A');
+      await coordinator.handlePlanningMessage('planner-a', 'Refined A');
+
+      // planner-a ignores: sends regular message instead (reaches max) → re-asked (ask 2/2)
+      await coordinator.handlePlanningMessage('planner-a', 'Still talking');
+
+      expect(sendProtocol).toHaveBeenCalledWith('planner-a', 'EVT', expect.objectContaining({
+        type: 'message_received',
+        from: 'system',
+        payload: expect.stringContaining('Reminder (2/2)'),
+      }));
+
+      // Compliance timer fires after 2nd ask → planning interrupted
+      await vi.advanceTimersByTimeAsync(65_000);
+
+      const latestTeam = emitTeam.mock.calls.at(-1)?.[0];
+      const latestTask = emitTeamTask.mock.calls.at(-1)?.[0] as TeamTask;
+      expect(latestTeam.status).toBe('interrupted');
+      expect(latestTask.status).toBe('interrupted');
+      expect(latestTask.transcript.at(-1)?.payload).toContain('missing required event(s): agreement_proposal');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('should interrupt planning after 2 ignored agreement_reached requests', async () => {
+    vi.useFakeTimers();
+    try {
+      const plannerA = new Agent('planner-a');
+      plannerA.setStatus('starting');
+      plannerA.setStatus('ready');
+
+      const plannerB = new Agent('planner-b');
+      plannerB.setStatus('starting');
+      plannerB.setStatus('ready');
+
+      const worker = new Agent('worker');
+      worker.setStatus('starting');
+      worker.setStatus('ready');
+
+      const emitTeam = vi.fn();
+      const emitTeamTask = vi.fn();
+      const sendProtocol = vi.fn().mockResolvedValue(undefined);
+
+      const coordinator = new TeamCoordinator(
+        {
+          getAgent: (id) => {
+            if (id === 'planner-a') return plannerA;
+            if (id === 'planner-b') return plannerB;
+            if (id === 'worker') return worker;
+            throw new Error(`Unknown agent: ${id}`);
+          },
+          sendProtocol,
+          emitTeam,
+          emitTeamTask,
+          emitPlanningComplete: vi.fn(),
+          logError: vi.fn(),
+        },
+        {
+          planningEventTimeoutMs: 500_000,
+        },
+      );
+
+      const team = coordinator.createTeam([
+        { agentId: 'planner-a', role: 'planner' },
+        { agentId: 'planner-b', role: 'planner' },
+        { agentId: 'worker', role: 'worker' },
+      ]);
+      await coordinator.assignTask(team.id, 'Tiny cleanup', 3);
+
+      // planner-a reaches maxReplies - 1, gets asked, complies
+      await coordinator.handlePlanningMessage('planner-a', 'Idea A');
+      await coordinator.handlePlanningMessage('planner-a', 'Refined A');
+      await coordinator.handleAgreementProposal('planner-a');
+
+      // planner-b ignores agreement_reached: sends regular message → re-asked
+      await coordinator.handlePlanningMessage('planner-b', 'I have more to say');
+
+      expect(sendProtocol).toHaveBeenCalledWith('planner-b', 'EVT', expect.objectContaining({
+        type: 'message_received',
+        from: 'system',
+        payload: expect.stringContaining('Reminder (2/2)'),
+      }));
+
+      // planner-b ignores again: sends another regular message → fail
+      await coordinator.handlePlanningMessage('planner-b', 'Even more to say');
+
+      const latestTeam = emitTeam.mock.calls.at(-1)?.[0];
+      const latestTask = emitTeamTask.mock.calls.at(-1)?.[0] as TeamTask;
+      expect(latestTeam.status).toBe('interrupted');
+      expect(latestTask.status).toBe('interrupted');
+      expect(latestTask.transcript.at(-1)?.payload).toContain('missing required event(s): agreement_reached');
     } finally {
       vi.useRealTimers();
     }

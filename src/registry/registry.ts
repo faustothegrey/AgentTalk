@@ -384,6 +384,24 @@ export class Registry extends EventEmitter {
         await this.handleHealthcheckAck(agent, payload);
         return;
 
+      case 'agreement_proposal':
+        try {
+          await this.teamCoordinator.handleAgreementProposal(agent.id);
+          await this.sendSuccessResponse(agent.id, payload.id);
+        } catch (err) {
+          await this.sendErrorResponse(agent.id, payload.id, err instanceof Error ? err.message : 'Failed to handle agreement proposal');
+        }
+        return;
+
+      case 'agreement_reached':
+        try {
+          await this.teamCoordinator.handleAgreementReached(agent.id);
+          await this.sendSuccessResponse(agent.id, payload.id);
+        } catch (err) {
+          await this.sendErrorResponse(agent.id, payload.id, err instanceof Error ? err.message : 'Failed to handle agreement reached');
+        }
+        return;
+
       case 'submit_plan':
         try {
           this.teamCoordinator.handlePlanSubmitted(agent.id, payload.args.plan);
