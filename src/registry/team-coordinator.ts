@@ -462,12 +462,23 @@ export class TeamCoordinator {
     }
 
     const agreeState = this.agreementStates.get(task.id);
-    if (!agreeState || agreeState.phase !== 'awaiting_proposal' || agreeState.targetAgentId !== agentId) {
+
+    // If already awaiting_reached (proposal already accepted), ignore duplicate proposals
+    if (agreeState && agreeState.phase === 'awaiting_reached') {
+      console.log(`[TeamCoordinator] Ignoring duplicate agreement_proposal from ${agentId} — already awaiting agreement_reached`);
+      return;
+    }
+
+    // If orchestrator pre-armed the state, validate the target matches
+    if (agreeState && agreeState.phase === 'awaiting_proposal' && agreeState.targetAgentId !== agentId) {
       throw new Error('Unexpected agreement_proposal: not awaiting proposal from this agent');
     }
 
-    clearTimeout(agreeState.timer);
-    this.agreementStates.delete(task.id);
+    // Clear any existing timer (orchestrator-initiated or previous attempt)
+    if (agreeState) {
+      clearTimeout(agreeState.timer);
+      this.agreementStates.delete(task.id);
+    }
 
     const now = new Date().toISOString();
     task.transcript.push({
@@ -501,7 +512,13 @@ export class TeamCoordinator {
     }
 
     const agreeState = this.agreementStates.get(task.id);
-    if (!agreeState || agreeState.phase !== 'awaiting_reached' || agreeState.targetAgentId !== agentId) {
+    if (!agreeState || agreeState.phase !== 'awaiting_reached') {
+      throw new Error('Unexpected agreement_reached: no pending agreement proposal to confirm');
+    }
+
+    // Accept agreement_reached from the target agent, OR from the proposing agent's peer
+    // (the peer is the expected target, but we should be flexible about who confirms)
+    if (agreeState.targetAgentId !== agentId) {
       throw new Error('Unexpected agreement_reached: not awaiting confirmation from this agent');
     }
 

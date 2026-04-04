@@ -117,30 +117,39 @@ export function createConversationRuntime() {
           '',
           '## Protocol actions',
           'You can trigger protocol actions by placing a marker on its own line in your response.',
-          'Each marker MUST appear alone on its own line, exactly as shown. It is not decorative text — the system reads it and executes the corresponding action.',
-          'You may include normal discussion text before or after the marker line.',
+          'Each marker MUST appear alone on its own line, exactly as shown (no other text on that line).',
+          'It is not decorative text — the system reads it and executes a real, irreversible action.',
+          'You may include normal discussion text on lines before or after the marker.',
           '',
           'Available markers and their consequences:',
           '',
           '[CALL:agreement_proposal]',
-          '  When to use: you believe the discussion has converged and you are ready to finalize.',
+          '  When to use: ONLY when you believe the discussion has fully converged and you are ready to finalize. This should happen once in the entire conversation, not on every reply.',
           '  What happens: the system notifies your peer that you proposed agreement. Your peer will then decide whether to confirm or continue discussing.',
-          '  Do NOT use this if you still have open questions or disagreements.',
+          '  RULES:',
+          '    - Do NOT use this if you still have open questions or unresolved disagreements.',
+          '    - Do NOT use this on your first few replies — discuss and iterate first.',
+          '    - Do NOT repeat this marker if you already used it in a previous reply. The system will ignore duplicates.',
+          '    - After you send this, WAIT for your peer to respond. Do not send another marker until then.',
           '',
           '[CALL:agreement_reached]',
-          '  When to use: your peer proposed agreement (you will know because the system tells you), and you confirm you agree.',
+          '  When to use: ONLY after the system tells you that your peer proposed agreement, and you confirm you agree with the proposal.',
           '  What happens: the system locks the discussion. The next step is for one of you to submit the final plan.',
-          '  Do NOT use this if you disagree — instead, reply with your objections as normal text.',
+          '  RULES:',
+          '    - Do NOT use this unless you received a system notification that agreement was proposed.',
+          '    - Do NOT use this if you disagree — instead, reply with your objections as normal text.',
           '',
           '[CALL:submit_plan]',
-          '  When to use: agreement has been reached and you are ready to submit the final plan.',
-          '  What happens: everything you write in the same response (other than the marker line) becomes the plan sent to the worker agent for execution. Planning ends.',
+          '  When to use: ONLY after agreement has been reached (both agreement_proposal and agreement_reached have occurred).',
+          '  What happens: everything you write in the same response (other than the marker line) becomes the plan sent to the worker agent for execution. Planning ends permanently.',
           '  The plan must be concrete and implementation-ready: name files, describe exact changes, specify verification steps.',
           '',
-          'Important:',
+          'Critical rules:',
+          '- Most of your replies should be plain discussion with NO markers. Only use a marker when you are at the specific step that calls for it.',
           '- Without a marker, your response is just a discussion message to your peer. Writing the words "agreement_proposal" as prose does nothing.',
           '- You can include at most one marker per response.',
-          '- Follow the order: first agreement_proposal, then agreement_reached, then submit_plan.',
+          '- Follow the strict order: first one planner sends agreement_proposal, then the OTHER planner sends agreement_reached, then one planner sends submit_plan.',
+          '- If you are unsure whether to use a marker, do NOT use one — just discuss.',
         );
       }
 
@@ -224,22 +233,25 @@ const SUPPORTED_CALL_MARKERS = new Set([
   'submit_plan',
 ]);
 
-const CALL_MARKER_REGEX = /^\[CALL:(\w+)\]\s*$/gm;
+/**
+ * Matches [CALL:name] anywhere in the text — on its own line or inline.
+ * Captures the call name in group 1.
+ */
+const CALL_MARKER_REGEX = /\[CALL:(\w+)\]/g;
 
 export interface ExtractedCallMarker {
   call: string;
-  /** The response text with all marker lines stripped out and trimmed. */
+  /** The response text with all recognised markers stripped out and trimmed. */
   cleanedText: string;
 }
 
 /**
  * Scans an LLM response for [CALL:name] markers.
- * Returns the list of recognised calls and the response with marker lines removed.
+ * Returns the list of recognised calls and the response with markers removed.
  * Unknown marker names are left in the text untouched.
  */
 export function extractCallMarkers(response: string): ExtractedCallMarker[] {
   const calls: string[] = [];
-  let cleaned = response;
 
   // Collect all valid markers
   const matches = [...response.matchAll(CALL_MARKER_REGEX)];
@@ -254,10 +266,13 @@ export function extractCallMarkers(response: string): ExtractedCallMarker[] {
     return [];
   }
 
-  // Strip recognised marker lines from the text
-  cleaned = response.replace(CALL_MARKER_REGEX, (fullMatch, callName) => {
+  // Strip recognised markers from the text (whether on their own line or inline)
+  const cleaned = response.replace(CALL_MARKER_REGEX, (fullMatch, callName) => {
     return SUPPORTED_CALL_MARKERS.has(callName) ? '' : fullMatch;
-  }).trim();
+  })
+    // Clean up leftover blank lines from stripped markers
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
 
   return calls.map((call) => ({ call, cleanedText: cleaned }));
 }
