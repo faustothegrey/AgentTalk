@@ -57,13 +57,14 @@ interface TranscriptEntry {
 
 interface TeamMember {
   agentId: string;
-  role: 'planner' | 'worker';
+  role: 'planner' | 'worker' | 'brainstormer';
 }
 
-type TeamComposition = 'worker-only' | 'planner-worker';
+type TeamComposition = 'worker-only' | 'planner-worker' | 'brainstorm';
 
 interface Team {
   id: string;
+  composition?: TeamComposition;
   members: TeamMember[];
   status: string;
   currentTaskId?: string;
@@ -82,6 +83,8 @@ interface TeamTask {
   planConfirmed?: boolean;
   workerAccepted?: boolean;
   workerRefusalReason?: string;
+  maxRepliesPerAgent?: number;
+  replyCounts?: Record<string, number>;
   status: string;
   transcript: TranscriptEntry[];
   createdAt: string;
@@ -627,9 +630,11 @@ function App() {
   const [teamComposition, setTeamComposition] = useState<TeamComposition>('worker-only');
   const [teamPlannerAgent, setTeamPlannerAgent] = useState('');
   const [teamWorkerAgent, setTeamWorkerAgent] = useState('');
+  const [brainstormAgents, setBrainstormAgents] = useState<string[]>(['', '', '']);
+  const [brainstormMaxReplies, setBrainstormMaxReplies] = useState(3);
   const [teamTaskInput, setTeamTaskInput] = useState('');
   const [teamMessageInput, setTeamMessageInput] = useState('');
-  const [teamMessageRole, setTeamMessageRole] = useState<'planner' | 'worker'>('planner');
+  const [teamMessageRole, setTeamMessageRole] = useState<'planner' | 'worker' | 'brainstormer'>('planner');
   const [rejectFeedback, setRejectFeedback] = useState('');
   const [showRejectInput, setShowRejectInput] = useState(false);
   const messageInputRef = useRef<HTMLInputElement>(null);
@@ -1645,6 +1650,8 @@ function App() {
                               if (nextComposition === 'worker-only') {
                                 setTeamPlannerAgent('');
                                 setTeamMessageRole('worker');
+                              } else if (nextComposition === 'brainstorm') {
+                                setBrainstormAgents(['', '', '']);
                               } else if (teamMessageRole === 'worker') {
                                 setTeamMessageRole('planner');
                               }
@@ -1653,6 +1660,7 @@ function App() {
                           >
                             <option value="worker-only">Only Worker</option>
                             <option value="planner-worker">Planner + Worker</option>
+                            <option value="brainstorm">Brainstorm</option>
                           </select>
                         </label>
                         {teamComposition === 'planner-worker' && (
@@ -1670,6 +1678,41 @@ function App() {
                           </select>
                         </label>
                         )}
+                        {teamComposition === 'brainstorm' && (
+                          <>
+                            {brainstormAgents.map((agentId, idx) => (
+                              <label key={idx} style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                <span style={{ fontSize: '10px', color: theme.textMuted }}>Agent {idx + 1}</span>
+                                <select
+                                  value={agentId}
+                                  onChange={e => {
+                                    const next = [...brainstormAgents];
+                                    next[idx] = e.target.value;
+                                    setBrainstormAgents(next);
+                                  }}
+                                  style={{ backgroundColor: theme.bg, color: theme.textPrimary, border: `1px solid ${theme.borderInput}`, borderRadius: '6px', padding: '6px 8px', fontSize: '12px' }}
+                                >
+                                  <option value="">Select...</option>
+                                  {agents.filter(a => a.status === 'ready' || a.status === 'busy').map(a => (
+                                    <option key={a.id} value={a.id} disabled={brainstormAgents.some((sel, si) => si !== idx && sel === a.id)}>{a.id}</option>
+                                  ))}
+                                </select>
+                              </label>
+                            ))}
+                            <label style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                              <span style={{ fontSize: '10px', color: theme.textMuted }}>Max replies per agent</span>
+                              <input
+                                type="number"
+                                min={1}
+                                max={20}
+                                value={brainstormMaxReplies}
+                                onChange={e => setBrainstormMaxReplies(Math.max(1, Math.min(20, Number(e.target.value) || 1)))}
+                                style={{ backgroundColor: theme.bg, color: theme.textPrimary, border: `1px solid ${theme.borderInput}`, borderRadius: '6px', padding: '6px 8px', fontSize: '12px', width: '80px' }}
+                              />
+                            </label>
+                          </>
+                        )}
+                        {teamComposition !== 'brainstorm' && (
                         <label style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                           <span style={{ fontSize: '10px', color: theme.textMuted }}>Worker Agent</span>
                           <select
@@ -1683,31 +1726,47 @@ function App() {
                             ))}
                           </select>
                         </label>
+                        )}
                         <button
-                          disabled={!teamWorkerAgent || (teamComposition === 'planner-worker' && !teamPlannerAgent)}
+                          disabled={
+                            teamComposition === 'brainstorm'
+                              ? brainstormAgents.filter(a => a).length < 2
+                              : !teamWorkerAgent || (teamComposition === 'planner-worker' && !teamPlannerAgent)
+                          }
                           onClick={async () => {
                             try {
-                              const members = teamComposition === 'planner-worker'
-                                ? [
-                                    { agentId: teamPlannerAgent, role: 'planner' as const },
-                                    { agentId: teamWorkerAgent, role: 'worker' as const },
-                                  ]
-                                : [
-                                    { agentId: teamWorkerAgent, role: 'worker' as const },
-                                  ];
+                              let body: Record<string, unknown>;
+                              if (teamComposition === 'brainstorm') {
+                                body = {
+                                  teamComposition: 'brainstorm',
+                                  brainstormAgents: brainstormAgents.filter(a => a),
+                                };
+                              } else {
+                                const members = teamComposition === 'planner-worker'
+                                  ? [
+                                      { agentId: teamPlannerAgent, role: 'planner' as const },
+                                      { agentId: teamWorkerAgent, role: 'worker' as const },
+                                    ]
+                                  : [
+                                      { agentId: teamWorkerAgent, role: 'worker' as const },
+                                    ];
+                                body = { members };
+                              }
                               const res = await fetch('/api/teams', {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ members }),
+                                body: JSON.stringify(body),
                               });
                               const team = await res.json();
                               if (res.ok) {
                                 pushSidebarEvent(
                                   'out',
                                   'Create Team',
-                                  teamComposition === 'planner-worker'
-                                    ? `${teamPlannerAgent} + ${teamWorkerAgent}`
-                                    : teamWorkerAgent
+                                  teamComposition === 'brainstorm'
+                                    ? `Brainstorm: ${brainstormAgents.filter(a => a).join(', ')}`
+                                    : teamComposition === 'planner-worker'
+                                      ? `${teamPlannerAgent} + ${teamWorkerAgent}`
+                                      : teamWorkerAgent
                                 );
                                 setActiveTeam(team);
                                 setTeams(prev => [...prev, team]);
@@ -1720,11 +1779,17 @@ function App() {
                           }}
                           style={{
                             padding: '8px',
-                            backgroundColor: teamWorkerAgent && (teamComposition === 'worker-only' || teamPlannerAgent) ? theme.success : theme.bgSurface,
+                            backgroundColor: (teamComposition === 'brainstorm'
+                              ? brainstormAgents.filter(a => a).length >= 2
+                              : teamWorkerAgent && (teamComposition === 'worker-only' || teamPlannerAgent))
+                              ? theme.success : theme.bgSurface,
                             color: '#fff',
                             border: 'none',
                             borderRadius: '6px',
-                            cursor: teamWorkerAgent && (teamComposition === 'worker-only' || teamPlannerAgent) ? 'pointer' : 'not-allowed',
+                            cursor: (teamComposition === 'brainstorm'
+                              ? brainstormAgents.filter(a => a).length >= 2
+                              : teamWorkerAgent && (teamComposition === 'worker-only' || teamPlannerAgent))
+                              ? 'pointer' : 'not-allowed',
                             fontSize: '12px',
                             fontWeight: 600,
                           }}
@@ -1746,18 +1811,27 @@ function App() {
                           </span>
                         </div>
                         <div style={{ fontSize: '11px', color: theme.textSecondary, display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                          {activePlanner && <span>Planner: <strong>{activePlanner.agentId}</strong></span>}
-                          {activeWorker && <span>Worker: <strong>{activeWorker.agentId}</strong></span>}
+                          {activeTeam.composition === 'brainstorm'
+                            ? activeTeam.members.map((m, i) => (
+                                <span key={m.agentId}>Agent {i + 1}: <strong>{m.agentId}</strong></span>
+                              ))
+                            : <>
+                                {activePlanner && <span>Planner: <strong>{activePlanner.agentId}</strong></span>}
+                                {activeWorker && <span>Worker: <strong>{activeWorker.agentId}</strong></span>}
+                              </>
+                          }
                         </div>
 
                         {/* Task input */}
                         {(activeTeam.status === 'idle' || activeTeam.status === 'completed') && !activeTeamTask && (
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '8px' }}>
-                            <span style={{ fontSize: '10px', color: theme.textMuted }}>Assign Task</span>
+                            <span style={{ fontSize: '10px', color: theme.textMuted }}>
+                              {activeTeam.composition === 'brainstorm' ? 'Set Topic' : 'Assign Task'}
+                            </span>
                             <textarea
                               value={teamTaskInput}
                               onChange={e => setTeamTaskInput(e.target.value)}
-                              placeholder="Describe the task..."
+                              placeholder={activeTeam.composition === 'brainstorm' ? 'Brainstorm topic...' : 'Describe the task...'}
                               rows={3}
                               style={{ backgroundColor: theme.bg, color: theme.textPrimary, border: `1px solid ${theme.borderInput}`, borderRadius: '6px', padding: '8px', fontSize: '12px', resize: 'vertical' }}
                             />
@@ -1765,14 +1839,18 @@ function App() {
                               disabled={!teamTaskInput.trim()}
                               onClick={async () => {
                                 try {
+                                  const body: Record<string, unknown> = { description: teamTaskInput };
+                                  if (activeTeam.composition === 'brainstorm') {
+                                    body.maxRepliesPerAgent = brainstormMaxReplies;
+                                  }
                                   const res = await fetch(`/api/teams/${activeTeam.id}/task`, {
                                     method: 'POST',
                                     headers: { 'Content-Type': 'application/json' },
-                                    body: JSON.stringify({ description: teamTaskInput }),
+                                    body: JSON.stringify(body),
                                   });
                                   const task = await res.json();
                                   if (res.ok) {
-                                    pushSidebarEvent('out', 'Assign Task', teamTaskInput);
+                                    pushSidebarEvent('out', activeTeam.composition === 'brainstorm' ? 'Start Brainstorm' : 'Assign Task', teamTaskInput);
                                     setActiveTeamTask(task);
                                     setTeamTaskInput('');
                                   } else {
@@ -1793,7 +1871,7 @@ function App() {
                                 fontWeight: 600,
                               }}
                             >
-                              <Send size={12} /> Submit Task
+                              <Send size={12} /> {activeTeam.composition === 'brainstorm' ? 'Start Brainstorm' : 'Submit Task'}
                             </button>
                           </div>
                         )}
@@ -1899,6 +1977,36 @@ function App() {
                               </div>
                             )}
 
+                            {/* Brainstorming */}
+                            {activeTeamTask.status === 'brainstorming' && (
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                <div style={{ fontSize: '11px', color: theme.success, fontStyle: 'italic' }}>
+                                  Brainstorm in progress...
+                                </div>
+                                {activeTeamTask.replyCounts && (
+                                  <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                                    {Object.entries(activeTeamTask.replyCounts).map(([agentId, count]) => (
+                                      <div key={agentId} style={{ fontSize: '10px', color: theme.textMuted, display: 'flex', justifyContent: 'space-between' }}>
+                                        <span>{agentId}</span>
+                                        <span>{count} / {activeTeamTask.maxRepliesPerAgent ?? '?'}</span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                                {activeTeamTask.transcript.filter(e => e.kind === 'message').length > 0 && (
+                                  <div style={{ maxHeight: '200px', overflow: 'auto', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                    {activeTeamTask.transcript.filter(e => e.kind === 'message').map((entry, i) => (
+                                      <div key={i} style={{ fontSize: '10px', padding: '4px 6px', backgroundColor: theme.bgSurface, borderRadius: '4px', wordBreak: 'break-word' }}>
+                                        <span style={{ color: theme.success, fontWeight: 600 }}>{entry.from}</span>
+                                        <span style={{ color: theme.textMuted }}> &rarr; </span>
+                                        <span style={{ color: theme.textSecondary }}>{entry.payload}</span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            )}
+
                             {/* Refused */}
                             {activeTeamTask.status === 'refused' && (
                               <div style={{ fontSize: '11px', color: theme.error }}>
@@ -1925,13 +2033,13 @@ function App() {
                             )}
 
                             {/* Direct message to team member */}
-                            {activeTeamTask.status !== 'completed' && activeTeamTask.status !== 'planning' && activeTeamTask.status !== 'delegated' && (
+                            {activeTeamTask.status !== 'completed' && activeTeamTask.status !== 'planning' && activeTeamTask.status !== 'delegated' && activeTeamTask.status !== 'brainstorming' && (
                               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '4px', borderTop: `1px solid ${theme.border}`, paddingTop: '8px' }}>
                                 <span style={{ fontSize: '10px', color: theme.textMuted }}>Message team member</span>
                                 <div style={{ display: 'flex', gap: '4px' }}>
                                   <select
                                     value={teamMessageRole}
-                                    onChange={e => setTeamMessageRole(e.target.value as 'planner' | 'worker')}
+                                    onChange={e => setTeamMessageRole(e.target.value as 'planner' | 'worker' | 'brainstormer')}
                                     style={{ backgroundColor: theme.bg, color: theme.textPrimary, border: `1px solid ${theme.borderInput}`, borderRadius: '4px', padding: '4px', fontSize: '10px', width: '70px' }}
                                   >
                                     {availableTeamMessageRoles.includes('planner') && <option value="planner">Planner</option>}

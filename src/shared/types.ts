@@ -3,17 +3,20 @@ export type AgentExecutionMode = 'interactive' | 'one_shot' | 'auto';
 export type ResolvedExecutionMode = Exclude<AgentExecutionMode, 'auto'>;
 export type AgentSessionStatus = 'starting' | 'ready' | 'busy' | 'restarting' | 'error';
 
-export type TeamRole = 'planner' | 'worker';
+export type TeamRole = 'planner' | 'worker' | 'brainstormer';
 
 export interface TeamMember {
   agentId: string;
   role: TeamRole;
 }
 
-export type TeamStatus = 'idle' | 'planning' | 'awaiting_confirmation' | 'working' | 'completed' | 'error';
+export type TeamStatus = 'idle' | 'planning' | 'awaiting_confirmation' | 'working' | 'brainstorming' | 'completed' | 'error';
+
+export type TeamComposition = 'worker-only' | 'planner-worker' | 'brainstorm';
 
 export interface Team {
   id: string;
+  composition: TeamComposition;
   members: TeamMember[];
   status: TeamStatus;
   currentTaskId?: string;
@@ -26,6 +29,7 @@ export type TeamTaskStatus =
   | 'awaiting_confirmation'
   | 'delegated'
   | 'in_progress'
+  | 'brainstorming'
   | 'refused'
   | 'completed';
 
@@ -40,6 +44,8 @@ export interface TeamTask {
   planConfirmed?: boolean;
   workerAccepted?: boolean;
   workerRefusalReason?: string;
+  maxRepliesPerAgent?: number;
+  replyCounts?: Record<string, number>;
   status: TeamTaskStatus;
   transcript: TranscriptEntry[];
   createdAt: string;

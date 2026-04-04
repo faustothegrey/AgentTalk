@@ -45,7 +45,7 @@ function getErrorStatus(err: unknown): number {
 }
 
 function isTeamRole(value: unknown): value is TeamRole {
-  return value === 'planner' || value === 'worker';
+  return value === 'planner' || value === 'worker' || value === 'brainstormer';
 }
 
 function isExecutionMode(value: unknown): value is AgentExecutionMode {
@@ -153,6 +153,20 @@ function normalizeCreateTeamMembers(body: unknown): TeamMember[] {
   }
 
   const composition = getNonEmptyString(payload.teamComposition);
+
+  // Brainstorm composition: array of agent IDs
+  if (composition === 'brainstorm') {
+    const brainstormAgents = Array.isArray(payload.brainstormAgents) ? payload.brainstormAgents : [];
+    const result: TeamMember[] = [];
+    for (const id of brainstormAgents) {
+      const agentId = getNonEmptyString(id);
+      if (agentId) {
+        result.push({ agentId, role: 'brainstormer' });
+      }
+    }
+    return result;
+  }
+
   const plannerAgentId = getNonEmptyString(
     payload.teamPlannerAgent ?? payload.plannerAgentId ?? payload.plannerId,
   );
@@ -906,9 +920,10 @@ export function startServer(
   });
 
   app.post('/api/teams/:id/task', async (req, res) => {
-    const { description } = req.body;
+    const { description, maxRepliesPerAgent } = req.body;
     try {
-      const task = await registry.assignTeamTask(req.params.id, description);
+      const maxReplies = typeof maxRepliesPerAgent === 'number' ? maxRepliesPerAgent : undefined;
+      const task = await registry.assignTeamTask(req.params.id, description, maxReplies);
       res.json(task);
     } catch (err) {
       res.status(getErrorStatus(err)).json({ error: err instanceof Error ? err.message : String(err) });

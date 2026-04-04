@@ -147,6 +147,23 @@ export interface TeamWorkAssignEventPayload {
   description: string;
 }
 
+export interface BrainstormStartEventPayload {
+  type: 'brainstorm_start';
+  teamId: string;
+  taskId: string;
+  topic: string;
+  peerIds: string[];
+  maxReplies: number;
+  initiator: boolean;
+}
+
+export interface BrainstormEndEventPayload {
+  type: 'brainstorm_end';
+  teamId: string;
+  taskId: string;
+  reason: string;
+}
+
 export type EventPayload =
   | BusyStateEventPayload
   | SessionUpdateEventPayload
@@ -156,7 +173,9 @@ export type EventPayload =
   | ConversationStartEventPayload
   | ConversationEndEventPayload
   | TeamTaskAssignEventPayload
-  | TeamWorkAssignEventPayload;
+  | TeamWorkAssignEventPayload
+  | BrainstormStartEventPayload
+  | BrainstormEndEventPayload;
 
 export function parseReadyPayload(value: unknown): ReadyPayload | null {
   if (!isRecord(value) || typeof value.session !== 'string' || value.session.length === 0) {
@@ -413,6 +432,37 @@ export function parseEventPayload(value: unknown): EventPayload | null {
             role: value.role,
             plan: value.plan,
             description: value.description,
+          }
+        : null;
+
+    case 'brainstorm_start':
+      return typeof value.teamId === 'string' &&
+        typeof value.taskId === 'string' &&
+        typeof value.topic === 'string' &&
+        Array.isArray(value.peerIds) &&
+        value.peerIds.every((entry) => typeof entry === 'string') &&
+        typeof value.maxReplies === 'number' &&
+        typeof value.initiator === 'boolean'
+        ? {
+            type: 'brainstorm_start',
+            teamId: value.teamId,
+            taskId: value.taskId,
+            topic: value.topic,
+            peerIds: value.peerIds,
+            maxReplies: value.maxReplies,
+            initiator: value.initiator,
+          }
+        : null;
+
+    case 'brainstorm_end':
+      return typeof value.teamId === 'string' &&
+        typeof value.taskId === 'string' &&
+        typeof value.reason === 'string'
+        ? {
+            type: 'brainstorm_end',
+            teamId: value.teamId,
+            taskId: value.taskId,
+            reason: value.reason,
           }
         : null;
 

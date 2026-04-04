@@ -1,6 +1,6 @@
 import type { EventPayload } from '../protocol/protocol-payloads.js';
 import type { OutboundProtocolPacketType } from '../protocol/protocol.js';
-import type { Team, TeamTask, TeamMember, TeamRole, TranscriptEntry } from '../shared/types.js';
+import type { Team, TeamComposition, TeamTask, TeamMember, TeamRole, TranscriptEntry } from '../shared/types.js';
 import { Agent } from '../agents/agent.js';
 
 const GIT_WORKTREE_REQUIREMENT = [
@@ -29,42 +29,13 @@ export class TeamCoordinator {
   constructor(private readonly deps: TeamCoordinatorDeps) {}
 
   createTeam(members: TeamMember[]): Team {
-    if (members.length < 1 || members.length > 2) {
-      throw new Error('A team requires either one worker or one planner plus one worker');
-    }
-
-    const roles = members.map((m) => m.role);
-    const hasPlanner = roles.includes('planner');
-    const hasWorker = roles.includes('worker');
-    if (!hasWorker) {
-      throw new Error('A team requires a worker');
-    }
-    if (hasPlanner && members.length !== 2) {
-      throw new Error('A planner can only be used in a planner + worker team');
-    }
-    if (!hasPlanner && members.length !== 1) {
-      throw new Error('A worker-only team must contain exactly one worker');
-    }
-
-    for (const member of members) {
-      const agent = this.deps.getAgent(member.agentId);
-      if (agent.status !== 'ready' && agent.status !== 'busy') {
-        throw new Error(`Agent ${member.agentId} must be ready before joining a team`);
-      }
-
-      if (this.agentToTeam.has(member.agentId)) {
-        throw new Error(`Agent ${member.agentId} is already assigned to a team`);
-      }
-    }
-
-    const uniqueIds = new Set(members.map((m) => m.agentId));
-    if (uniqueIds.size !== members.length) {
-      throw new Error('A team requires different agents for each role');
-    }
+    const composition = this.inferComposition(members);
+    this.validateMembers(members, composition);
 
     const now = new Date().toISOString();
     const team: Team = {
       id: `team-${Date.now()}`,
+      composition,
       members,
       status: 'idle',
       createdAt: now,
@@ -80,11 +51,59 @@ export class TeamCoordinator {
     return team;
   }
 
-  async assignTask(teamId: string, description: string): Promise<TeamTask> {
+  private inferComposition(members: TeamMember[]): TeamComposition {
+    const roles = members.map((m) => m.role);
+    if (roles.every((r) => r === 'brainstormer')) return 'brainstorm';
+    if (roles.includes('planner')) return 'planner-worker';
+    return 'worker-only';
+  }
+
+  private validateMembers(members: TeamMember[], composition: TeamComposition): void {
+    if (composition === 'brainstorm') {
+      if (members.length < 2 || members.length > 5) {
+        throw new Error('A brainstorm team requires 2–5 brainstormer agents');
+      }
+    } else {
+      if (members.length < 1 || members.length > 2) {
+        throw new Error('A team requires either one worker or one planner plus one worker');
+      }
+      const roles = members.map((m) => m.role);
+      if (!roles.includes('worker')) {
+        throw new Error('A team requires a worker');
+      }
+      if (roles.includes('planner') && members.length !== 2) {
+        throw new Error('A planner can only be used in a planner + worker team');
+      }
+      if (!roles.includes('planner') && members.length !== 1) {
+        throw new Error('A worker-only team must contain exactly one worker');
+      }
+    }
+
+    for (const member of members) {
+      const agent = this.deps.getAgent(member.agentId);
+      if (agent.status !== 'ready' && agent.status !== 'busy') {
+        throw new Error(`Agent ${member.agentId} must be ready before joining a team`);
+      }
+      if (this.agentToTeam.has(member.agentId)) {
+        throw new Error(`Agent ${member.agentId} is already assigned to a team`);
+      }
+    }
+
+    const uniqueIds = new Set(members.map((m) => m.agentId));
+    if (uniqueIds.size !== members.length) {
+      throw new Error('A team requires different agents for each role');
+    }
+  }
+
+  async assignTask(teamId: string, description: string, maxRepliesPerAgent?: number): Promise<TeamTask> {
     const team = this.getTeam(teamId);
 
     if (team.status !== 'idle' && team.status !== 'completed') {
       throw new Error('Team is already working on a task');
+    }
+
+    if (team.composition === 'brainstorm') {
+      return this.assignBrainstormTask(team, description, maxRepliesPerAgent ?? 3);
     }
 
     const planner = team.members.find((member) => member.role === 'planner');
@@ -148,6 +167,160 @@ export class TeamCoordinator {
     }
 
     return task;
+  }
+
+  private async assignBrainstormTask(team: Team, topic: string, maxRepliesPerAgent: number): Promise<TeamTask> {
+    const now = new Date().toISOString();
+    const replyCounts: Record<string, number> = {};
+    for (const member of team.members) {
+      replyCounts[member.agentId] = 0;
+    }
+
+    const task: TeamTask = {
+      id: `task-${Date.now()}`,
+      teamId: team.id,
+      description: topic,
+      maxRepliesPerAgent,
+      replyCounts,
+      status: 'brainstorming',
+      transcript: [
+        {
+          kind: 'system',
+          timestamp: now,
+          from: 'user',
+          to: team.members.map((m) => m.agentId).join(','),
+          payload: `Brainstorm topic: ${topic}`,
+        },
+      ],
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    this.tasks.set(task.id, task);
+    team.currentTaskId = task.id;
+    team.status = 'brainstorming';
+    team.updatedAt = now;
+
+    this.deps.emitTeam(team);
+    this.deps.emitTeamTask(task);
+
+    const agentIds = team.members.map((m) => m.agentId);
+    for (const [i, member] of team.members.entries()) {
+      const peerIds = agentIds.filter((id) => id !== member.agentId);
+      await this.deps.sendProtocol(member.agentId, 'EVT', {
+        type: 'brainstorm_start',
+        teamId: team.id,
+        taskId: task.id,
+        topic,
+        peerIds,
+        maxReplies: maxRepliesPerAgent,
+        initiator: i === 0,
+      });
+    }
+
+    return task;
+  }
+
+  /**
+   * Handles a brainstorm message from an agent: broadcasts to all other
+   * brainstorm peers and tracks reply counts.
+   * Returns true if the message was handled (caller should not do default routing).
+   */
+  async handleBrainstormMessage(senderAgentId: string, payload: unknown): Promise<boolean> {
+    const team = this.findTeamByAgent(senderAgentId);
+    if (!team || team.composition !== 'brainstorm' || !team.currentTaskId) {
+      return false;
+    }
+
+    const task = this.tasks.get(team.currentTaskId);
+    if (!task || task.status !== 'brainstorming') {
+      return false;
+    }
+
+    // Check reply cap
+    const currentCount = task.replyCounts![senderAgentId] ?? 0;
+    if (currentCount >= task.maxRepliesPerAgent!) {
+      return true; // silently drop — agent already at cap
+    }
+
+    // Increment reply count
+    task.replyCounts![senderAgentId] = currentCount + 1;
+
+    const now = new Date().toISOString();
+    const messageText = typeof payload === 'string' ? payload : JSON.stringify(payload);
+
+    // Record in transcript
+    const peerIds = team.members
+      .map((m) => m.agentId)
+      .filter((id) => id !== senderAgentId);
+
+    task.transcript.push({
+      kind: 'message',
+      timestamp: now,
+      from: senderAgentId,
+      to: peerIds.join(','),
+      payload: messageText,
+    });
+    task.updatedAt = now;
+
+    // Broadcast to all other brainstorm members
+    for (const peerId of peerIds) {
+      try {
+        await this.deps.sendProtocol(peerId, 'EVT', {
+          type: 'message_received',
+          from: senderAgentId,
+          payload,
+        });
+      } catch (err) {
+        this.deps.logError(`[TeamCoordinator] Failed to broadcast brainstorm message to ${peerId}:`, err);
+      }
+    }
+
+    this.deps.emitTeamTask(task);
+
+    // Check if all agents have reached their reply cap
+    const allDone = team.members.every(
+      (m) => (task.replyCounts![m.agentId] ?? 0) >= task.maxRepliesPerAgent!,
+    );
+
+    if (allDone) {
+      await this.completeBrainstorm(team, task, 'All agents reached reply limit');
+    }
+
+    return true;
+  }
+
+  private async completeBrainstorm(team: Team, task: TeamTask, reason: string): Promise<void> {
+    const now = new Date().toISOString();
+    task.status = 'completed';
+    task.updatedAt = now;
+    task.transcript.push({
+      kind: 'system',
+      timestamp: now,
+      from: 'system',
+      to: team.members.map((m) => m.agentId).join(','),
+      payload: `Brainstorm ended: ${reason}`,
+    });
+
+    team.status = 'completed';
+    delete team.currentTaskId;
+    team.updatedAt = now;
+
+    this.deps.emitTeam(team);
+    this.deps.emitTeamTask(task);
+
+    for (const member of team.members) {
+      try {
+        await this.deps.sendProtocol(member.agentId, 'EVT', {
+          type: 'brainstorm_end',
+          teamId: team.id,
+          taskId: task.id,
+          reason,
+        });
+      } catch (err) {
+        this.deps.logError(`[TeamCoordinator] Failed to send brainstorm_end to ${member.agentId}:`, err);
+      }
+    }
   }
 
   handlePlanSubmitted(agentId: string, plan: string): void {

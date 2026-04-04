@@ -108,6 +108,16 @@ export class Registry extends EventEmitter {
     return this.conversationCoordinator.startConversation(agentIds, topic, maxRepliesPerAgent);
   }
 
+  private sendHello(agent: Agent): void {
+    this.sendProtocol(agent.id, 'EVT', {
+      type: 'message_received',
+      from: 'user',
+      payload: 'hello',
+    }).catch((err) => {
+      console.error(`[Registry] Failed to send hello to ${agent.id}:`, err);
+    });
+  }
+
   private async sendErrorResponse(agentId: string, reqId: string, error: string): Promise<void> {
     await this.sendProtocol(agentId, 'RES', { id: reqId, status: 'error', error });
   }
@@ -305,6 +315,9 @@ export class Registry extends EventEmitter {
 
         if (agent.status === 'starting') {
           this.setAgentStatus(agent, 'ready');
+          if (agent.resolvedExecutionMode === 'interactive') {
+            this.sendHello(agent);
+          }
           return;
         }
 
@@ -425,6 +438,18 @@ export class Registry extends EventEmitter {
       this.setAgentBusyState(agent, false);
       this.emit('user_message', { from: agent.id, payload });
       await this.sendSuccessResponse(agent.id, request.id);
+      return;
+    }
+
+    // Brainstorm routing: broadcast to all peers instead of single target
+    try {
+      const handled = await this.teamCoordinator.handleBrainstormMessage(agent.id, payload);
+      if (handled) {
+        await this.sendSuccessResponse(agent.id, request.id);
+        return;
+      }
+    } catch (err) {
+      await this.sendErrorResponse(agent.id, request.id, err instanceof Error ? err.message : 'Brainstorm message failed');
       return;
     }
 
@@ -669,8 +694,8 @@ export class Registry extends EventEmitter {
     return this.teamCoordinator.createTeam(members);
   }
 
-  async assignTeamTask(teamId: string, description: string): Promise<TeamTask> {
-    return this.teamCoordinator.assignTask(teamId, description);
+  async assignTeamTask(teamId: string, description: string, maxRepliesPerAgent?: number): Promise<TeamTask> {
+    return this.teamCoordinator.assignTask(teamId, description, maxRepliesPerAgent);
   }
 
   async confirmTeamPlan(taskId: string): Promise<void> {
