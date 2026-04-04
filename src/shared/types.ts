@@ -12,7 +12,7 @@ export interface TeamMember {
 
 export type TeamStatus = 'idle' | 'planning' | 'awaiting_confirmation' | 'working' | 'brainstorming' | 'completed' | 'interrupted' | 'error';
 
-export type TeamComposition = 'worker-only' | 'planner-worker' | 'brainstorm';
+export type TeamComposition = 'worker-only' | 'planner-worker' | 'planner-planner-worker' | 'brainstorm';
 
 export interface Team {
   id: string;

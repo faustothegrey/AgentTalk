@@ -441,15 +441,21 @@ export class Registry extends EventEmitter {
       return;
     }
 
-    // Brainstorm routing: broadcast to all peers instead of single target
+    // Brainstorm/Planning routing: broadcast to all peers instead of single target
     try {
-      const handled = await this.teamCoordinator.handleBrainstormMessage(agent.id, payload);
-      if (handled) {
+      const brainstormHandled = await this.teamCoordinator.handleBrainstormMessage(agent.id, payload);
+      if (brainstormHandled) {
+        await this.sendSuccessResponse(agent.id, request.id);
+        return;
+      }
+
+      const planningHandled = await this.teamCoordinator.handlePlanningMessage(agent.id, payload);
+      if (planningHandled) {
         await this.sendSuccessResponse(agent.id, request.id);
         return;
       }
     } catch (err) {
-      await this.sendErrorResponse(agent.id, request.id, err instanceof Error ? err.message : 'Brainstorm message failed');
+      await this.sendErrorResponse(agent.id, request.id, err instanceof Error ? err.message : 'Message routing failed');
       return;
     }
 

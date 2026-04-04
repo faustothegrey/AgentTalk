@@ -60,7 +60,7 @@ interface TeamMember {
   role: 'planner' | 'worker' | 'brainstormer';
 }
 
-type TeamComposition = 'worker-only' | 'planner-worker' | 'brainstorm';
+type TeamComposition = 'worker-only' | 'planner-worker' | 'planner-planner-worker' | 'brainstorm';
 
 interface Team {
   id: string;
@@ -629,6 +629,7 @@ function App() {
   const [activeTeamTask, setActiveTeamTask] = useState<TeamTask | null>(null);
   const [teamComposition, setTeamComposition] = useState<TeamComposition>('worker-only');
   const [teamPlannerAgent, setTeamPlannerAgent] = useState('');
+  const [teamPlannerAgentB, setTeamPlannerAgentB] = useState('');
   const [teamWorkerAgent, setTeamWorkerAgent] = useState('');
   const [brainstormAgents, setBrainstormAgents] = useState<string[]>(['', '', '']);
   const [brainstormMaxReplies, setBrainstormMaxReplies] = useState(3);
@@ -754,6 +755,37 @@ function App() {
       handleError('Failed to fetch agents:', err);
     }
   }, []);
+
+  const waitForAgentsReady = async (agentIds: string[], timeoutMs: number = 90000) => {
+    const deadline = Date.now() + timeoutMs;
+
+    while (Date.now() < deadline) {
+      const res = await fetchWithTimeout('/api/agents');
+      const snapshot = await res.json() as Agent[];
+      setAgents(snapshot);
+      const byId = new Map(snapshot.map((agent) => [agent.id, agent]));
+
+      let allReady = true;
+      for (const agentId of agentIds) {
+        const status = byId.get(agentId)?.status;
+        if (status === 'error' || status === 'terminated') {
+          throw new Error(`Autostart failed: agent ${agentId} is in ${status} state`);
+        }
+        if (status !== 'ready' && status !== 'busy') {
+          allReady = false;
+          break;
+        }
+      }
+
+      if (allReady) {
+        return;
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+    }
+
+    throw new Error('Timed out waiting for autostarted agents to become ready');
+  };
 
   const fetchTopicHistory = useCallback(async () => {
     try {
@@ -924,7 +956,6 @@ function App() {
   }, [activeConversationId]);
 
   useEffect(() => {
-    void captureUsageStats();
     const timer = setInterval(() => {
       void captureUsageStats();
     }, 60 * 60 * 1000);
@@ -1237,6 +1268,77 @@ function App() {
     }
   };
 
+  const autostartAgents = async () => {
+    setLoading(true);
+    setGlobalError(null);
+    try {
+      const providersToStart = ['gemini', 'codex'] as Provider[];
+      const createdByProvider: Partial<Record<Provider, string>> = {};
+      const createdIds: string[] = [];
+      for (const p of providersToStart) {
+        const chosenModel = modelOptions[p][0].value;
+        const command = getAgentCommand(p, chosenModel);
+        const res = await fetchWithTimeout('/api/agents', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ provider: p, model: chosenModel, executionMode }),
+        }, 15000);
+
+        const data = await res.json();
+        createdByProvider[p] = data.id;
+        createdIds.push(data.id);
+        
+        await fetchWithTimeout(`/api/agents/${data.id}/start`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ command, workingDirectory, executionMode }),
+        }, 10000);
+        pushSidebarEvent(
+          'out',
+          'Autostart Agent',
+          `${data.id} via ${p}`
+        );
+      }
+      await waitForAgentsReady(createdIds);
+
+      const geminiAgentId = createdByProvider.gemini;
+      const codexAgentId = createdByProvider.codex;
+      if (!geminiAgentId || !codexAgentId) {
+        throw new Error('Autostart failed: missing Gemini or Codex agent ID');
+      }
+
+      if (!ws || ws.readyState !== WebSocket.OPEN) {
+        throw new Error('Autostart conversation requires an open WebSocket connection');
+      }
+
+      const conversationAgentIds = [geminiAgentId, codexAgentId];
+      setConversationAgentA(geminiAgentId);
+      setConversationAgentB(codexAgentId);
+      setConversationAgentC('');
+      setSelectedAgentId(geminiAgentId);
+
+      const conversationTopic = topic.trim();
+      ws.send(JSON.stringify({
+        type: 'start_pair_chat',
+        agentIds: conversationAgentIds,
+        topic: conversationTopic,
+        maxReplies,
+      }));
+      pushSidebarEvent(
+        'out',
+        'Autostart Conversation',
+        `${conversationAgentIds.join(', ')} | ${conversationTopic || 'default topic'}`,
+      );
+
+      await fetchAgents();
+      await fetchConversationHistory();
+    } catch (err) {
+      handleError('Failed to autostart Gemini/Codex conversation:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const openDirectoryPicker = async () => {
     setGlobalError(null);
     setDirectoryPickerOpen(true);
@@ -1295,78 +1397,6 @@ function App() {
       topic: topic.trim(),
       maxReplies: maxReplies,
     }));
-  };
-
-  const launchAutostartTrio = async () => {
-    const trioTopic = topic.trim() || 'Discuss the current AgentTalk project and propose concrete next-step implementation ideas or simplifications.';
-    
-    const definition = {
-      name: "Trio Conversation (UI)",
-      description: "A conversation between three different types of agents: Gemini, Claude, and Codex.",
-      agents: [
-        {
-          id: `gemini-${Date.now()}`,
-          provider: "gemini",
-          model: "gemini-2.5-pro",
-          executionMode: "auto"
-        },
-        {
-          id: `claude-${Date.now()}`,
-          provider: "claude",
-          model: "sonnet",
-          executionMode: "auto"
-        },
-        {
-          id: `codex-${Date.now()}`,
-          provider: "codex",
-          model: "gpt-5-codex",
-          executionMode: "auto"
-        }
-      ],
-      conversations: [
-        {
-          agentIds: [] as string[], // Explicitly cast to avoid never[] inference
-          topic: trioTopic,
-          maxRepliesPerAgent: 2
-        }
-      ]
-    };
-
-    // Fix agentIds in conversation to match the ones we just created
-    definition.conversations[0].agentIds = definition.agents.map(a => a.id);
-
-    try {
-      setGlobalError(null);
-      pushSidebarEvent('out', 'Scenario Launch', `Trio Conversation | ${trioTopic}`);
-      
-      const response = await fetch('/api/scenarios/launch', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(definition),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || `Failed to launch scenario: ${response.statusText}`);
-      }
-
-      const result = await response.json();
-      console.log('[App] Scenario launch result:', result);
-      
-      if (result.status === 'error') {
-        setGlobalError(`Scenario failed: ${result.error}`);
-      } else {
-        pushSidebarEvent('in', 'Scenario Result', `Launched: ${result.status}`);
-      }
-      
-      // Refresh agents list to see the new ones
-      fetchAgents();
-    } catch (err) {
-      console.error('[App] Failed to launch autostart trio:', err);
-      setGlobalError(err instanceof Error ? err.message : String(err));
-    }
   };
 
   const conversationCandidates = agents.filter(agent => agent.status === 'ready' || agent.status === 'busy');
@@ -1738,6 +1768,7 @@ function App() {
                               setTeamComposition(nextComposition);
                               if (nextComposition === 'worker-only') {
                                 setTeamPlannerAgent('');
+                                setTeamPlannerAgentB('');
                                 setTeamMessageRole('worker');
                               } else if (nextComposition === 'brainstorm') {
                                 setBrainstormAgents(['', '', '']);
@@ -1749,12 +1780,13 @@ function App() {
                           >
                             <option value="worker-only">Only Worker</option>
                             <option value="planner-worker">Planner + Worker</option>
+                            <option value="planner-planner-worker">2 Planners + 1 Worker</option>
                             <option value="brainstorm">Brainstorm</option>
                           </select>
                         </label>
-                        {teamComposition === 'planner-worker' && (
+                        {(teamComposition === 'planner-worker' || teamComposition === 'planner-planner-worker') && (
                         <label style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                          <span style={{ fontSize: '10px', color: theme.textMuted }}>Planner Agent</span>
+                          <span style={{ fontSize: '10px', color: theme.textMuted }}>Planner Agent A</span>
                           <select
                             value={teamPlannerAgent}
                             onChange={e => setTeamPlannerAgent(e.target.value)}
@@ -1762,7 +1794,22 @@ function App() {
                           >
                             <option value="">Select...</option>
                             {agents.filter(a => a.status === 'ready' || a.status === 'busy').map(a => (
-                              <option key={a.id} value={a.id} disabled={a.id === teamWorkerAgent}>{a.id}</option>
+                              <option key={a.id} value={a.id} disabled={a.id === teamWorkerAgent || a.id === teamPlannerAgentB}>{a.id}</option>
+                            ))}
+                          </select>
+                        </label>
+                        )}
+                        {teamComposition === 'planner-planner-worker' && (
+                        <label style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                          <span style={{ fontSize: '10px', color: theme.textMuted }}>Planner Agent B</span>
+                          <select
+                            value={teamPlannerAgentB}
+                            onChange={e => setTeamPlannerAgentB(e.target.value)}
+                            style={{ backgroundColor: theme.bg, color: theme.textPrimary, border: `1px solid ${theme.borderInput}`, borderRadius: '6px', padding: '6px 8px', fontSize: '12px' }}
+                          >
+                            <option value="">Select...</option>
+                            {agents.filter(a => a.status === 'ready' || a.status === 'busy').map(a => (
+                              <option key={a.id} value={a.id} disabled={a.id === teamWorkerAgent || a.id === teamPlannerAgent}>{a.id}</option>
                             ))}
                           </select>
                         </label>
@@ -1817,74 +1864,77 @@ function App() {
                         </label>
                         )}
                         <button
-                          disabled={
-                            teamComposition === 'brainstorm'
-                              ? brainstormAgents.filter(a => a).length < 2
-                              : !teamWorkerAgent || (teamComposition === 'planner-worker' && !teamPlannerAgent)
-                          }
-                          onClick={async () => {
-                            try {
-                              let body: Record<string, unknown>;
-                              if (teamComposition === 'brainstorm') {
-                                body = {
-                                  teamComposition: 'brainstorm',
-                                  brainstormAgents: brainstormAgents.filter(a => a),
-                                };
-                              } else {
-                                const members = teamComposition === 'planner-worker'
-                                  ? [
-                                      { agentId: teamPlannerAgent, role: 'planner' as const },
-                                      { agentId: teamWorkerAgent, role: 'worker' as const },
-                                    ]
-                                  : [
-                                      { agentId: teamWorkerAgent, role: 'worker' as const },
-                                    ];
-                                body = { members };
+                        disabled={
+                          teamComposition === 'brainstorm'
+                            ? brainstormAgents.filter(a => a).length < 2
+                            : !teamWorkerAgent || (teamComposition === 'planner-worker' && !teamPlannerAgent) || (teamComposition === 'planner-planner-worker' && (!teamPlannerAgent || !teamPlannerAgentB))
+                        }
+                        onClick={async () => {
+                          try {
+                            let body: Record<string, unknown>;
+                            if (teamComposition === 'brainstorm') {
+                              body = {
+                                teamComposition: 'brainstorm',
+                                brainstormAgents: brainstormAgents.filter(a => a),
+                              };
+                            } else {
+                              const members: TeamMember[] = [];
+                              if (teamComposition === 'planner-worker') {
+                                members.push({ agentId: teamPlannerAgent, role: 'planner' });
+                              } else if (teamComposition === 'planner-planner-worker') {
+                                members.push({ agentId: teamPlannerAgent, role: 'planner' });
+                                members.push({ agentId: teamPlannerAgentB, role: 'planner' });
                               }
-                              const res = await fetch('/api/teams', {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify(body),
-                              });
-                              const team = await res.json();
-                              if (res.ok) {
-                                pushSidebarEvent(
-                                  'out',
-                                  'Create Team',
-                                  teamComposition === 'brainstorm'
-                                    ? `Brainstorm: ${brainstormAgents.filter(a => a).join(', ')}`
+                              members.push({ agentId: teamWorkerAgent, role: 'worker' });
+                              body = { members };
+                            }
+                            const res = await fetch('/api/teams', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify(body),
+                            });
+                            const team = await res.json();
+                            if (res.ok) {
+                              pushSidebarEvent(
+                                'out',
+                                'Create Team',
+                                teamComposition === 'brainstorm'
+                                  ? `Brainstorm: ${brainstormAgents.filter(a => a).join(', ')}`
+                                  : teamComposition === 'planner-planner-worker'
+                                    ? `${teamPlannerAgent} + ${teamPlannerAgentB} + ${teamWorkerAgent}`
                                     : teamComposition === 'planner-worker'
                                       ? `${teamPlannerAgent} + ${teamWorkerAgent}`
                                       : teamWorkerAgent
-                                );
-                                setActiveTeam(team);
-                                setTeams(prev => [...prev, team]);
-                              } else {
-                                setGlobalError(team.error || 'Failed to create team');
-                              }
-                            } catch (err: any) {
-                              setGlobalError(err.message);
+                              );
+                              setActiveTeam(team);
+                              setTeams(prev => [...prev, team]);
+                            } else {
+                              setGlobalError(team.error || 'Failed to create team');
                             }
-                          }}
-                          style={{
-                            padding: '8px',
-                            backgroundColor: (teamComposition === 'brainstorm'
-                              ? brainstormAgents.filter(a => a).length >= 2
-                              : teamWorkerAgent && (teamComposition === 'worker-only' || teamPlannerAgent))
-                              ? theme.success : theme.bgSurface,
-                            color: '#fff',
-                            border: 'none',
-                            borderRadius: '6px',
-                            cursor: (teamComposition === 'brainstorm'
-                              ? brainstormAgents.filter(a => a).length >= 2
-                              : teamWorkerAgent && (teamComposition === 'worker-only' || teamPlannerAgent))
-                              ? 'pointer' : 'not-allowed',
-                            fontSize: '12px',
-                            fontWeight: 600,
-                          }}
+                          } catch (err: any) {
+                            setGlobalError(err.message);
+                          }
+                        }}
+                        style={{
+                          padding: '8px',
+                          backgroundColor: (teamComposition === 'brainstorm'
+                            ? brainstormAgents.filter(a => a).length >= 2
+                            : teamWorkerAgent && (teamComposition === 'worker-only' || (teamComposition === 'planner-worker' && teamPlannerAgent) || (teamComposition === 'planner-planner-worker' && teamPlannerAgent && teamPlannerAgentB)))
+                            ? theme.success : theme.bgSurface,
+                          color: '#fff',
+                          border: 'none',
+                          borderRadius: '6px',
+                          cursor: (teamComposition === 'brainstorm'
+                            ? brainstormAgents.filter(a => a).length >= 2
+                            : teamWorkerAgent && (teamComposition === 'worker-only' || (teamComposition === 'planner-worker' && teamPlannerAgent) || (teamComposition === 'planner-planner-worker' && teamPlannerAgent && teamPlannerAgentB)))
+                            ? 'pointer' : 'not-allowed',
+                          fontSize: '12px',
+                          fontWeight: 600,
+                        }}
                         >
-                          Create Team
+                        Create Team
                         </button>
+
                       </>
                     )}
 
@@ -2372,7 +2422,7 @@ function App() {
                           Start Conversation
                         </button>
                         <button
-                          onClick={launchAutostartTrio}
+                          onClick={autostartAgents}
                           style={{
                             display: 'flex',
                             alignItems: 'center',
@@ -2389,10 +2439,10 @@ function App() {
                           }}
                           onMouseOver={(e) => { e.currentTarget.style.backgroundColor = '#4a5568'; }}
                           onMouseOut={(e) => { e.currentTarget.style.backgroundColor = '#2d3748'; }}
-                          title="Instantly create and start a 3-agent conversation (Gemini + Claude + Codex)"
+                          title="Instantly create Gemini + Codex agents and start their conversation"
                         >
                           <Rocket size={14} />
-                          Autostart Trio
+                          Autostart Gemini + Codex
                         </button>
                       </div>
                     </div>
@@ -2624,6 +2674,28 @@ function App() {
                 >
                   <Plus size={16} />
                   Create Agent
+                </button>
+
+                <button
+                  onClick={autostartAgents}
+                  disabled={loading}
+                  title={`Autostart Gemini + Codex conversation`}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px',
+                    backgroundColor: theme.bg,
+                    border: `1px solid ${theme.borderInput}`,
+                    color: theme.textBright,
+                    borderRadius: '6px',
+                    padding: '9px 10px',
+                    cursor: 'pointer',
+                    opacity: loading ? 0.5 : 1
+                  }}
+                >
+                  <Plus size={16} />
+                  Autostart Conversation
                 </button>
               </div>
             </div>

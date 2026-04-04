@@ -167,6 +167,23 @@ function normalizeCreateTeamMembers(body: unknown): TeamMember[] {
     return result;
   }
 
+  // Multi-planner composition
+  if (composition === 'multi-planner' || composition === 'planner-planner-worker') {
+    const planners = Array.isArray(payload.planners) ? payload.planners : [];
+    const workerId = getNonEmptyString(payload.workerId ?? payload.teamWorkerAgent);
+    const result: TeamMember[] = [];
+    for (const id of planners) {
+      const agentId = getNonEmptyString(id);
+      if (agentId) {
+        result.push({ agentId, role: 'planner' });
+      }
+    }
+    if (workerId) {
+      result.push({ agentId: workerId, role: 'worker' });
+    }
+    return result;
+  }
+
   const plannerAgentId = getNonEmptyString(
     payload.teamPlannerAgent ?? payload.plannerAgentId ?? payload.plannerId,
   );

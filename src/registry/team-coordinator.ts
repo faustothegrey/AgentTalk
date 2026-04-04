@@ -54,6 +54,9 @@ export class TeamCoordinator {
   private inferComposition(members: TeamMember[]): TeamComposition {
     const roles = members.map((m) => m.role);
     if (roles.every((r) => r === 'brainstormer')) return 'brainstorm';
+    const plannerCount = roles.filter((r) => r === 'planner').length;
+    const workerCount = roles.filter((r) => r === 'worker').length;
+    if (plannerCount === 2 && workerCount === 1) return 'planner-planner-worker';
     if (roles.includes('planner')) return 'planner-worker';
     return 'worker-only';
   }
@@ -62,6 +65,14 @@ export class TeamCoordinator {
     if (composition === 'brainstorm') {
       if (members.length < 2 || members.length > 5) {
         throw new Error('A brainstorm team requires 2–5 brainstormer agents');
+      }
+    } else if (composition === 'planner-planner-worker') {
+      if (members.length !== 3) {
+        throw new Error('A multi-planner team requires exactly two planners and one worker');
+      }
+      const roles = members.map((m) => m.role);
+      if (roles.filter((r) => r === 'planner').length !== 2 || roles.filter((r) => r === 'worker').length !== 1) {
+        throw new Error('A multi-planner team requires exactly two planners and one worker');
       }
     } else {
       if (members.length < 1 || members.length > 2) {
@@ -104,6 +115,10 @@ export class TeamCoordinator {
 
     if (team.composition === 'brainstorm') {
       return this.assignBrainstormTask(team, description, maxRepliesPerAgent ?? 3);
+    }
+
+    if (team.composition === 'planner-planner-worker') {
+      return this.assignMultiPlannerTask(team, description, maxRepliesPerAgent ?? 5);
     }
 
     const planner = team.members.find((member) => member.role === 'planner');
@@ -169,6 +184,65 @@ export class TeamCoordinator {
     return task;
   }
 
+  private async assignMultiPlannerTask(team: Team, description: string, maxRepliesPerAgent: number): Promise<TeamTask> {
+    const now = new Date().toISOString();
+    const planners = team.members.filter((m) => m.role === 'planner');
+    const plannerIds = planners.map((m) => m.agentId);
+
+    const replyCounts: Record<string, number> = {};
+    for (const id of plannerIds) {
+      replyCounts[id] = 0;
+    }
+
+    const task: TeamTask = {
+      id: `task-${Date.now()}`,
+      teamId: team.id,
+      description,
+      maxRepliesPerAgent,
+      replyCounts,
+      planningComplete: false,
+      status: 'planning',
+      transcript: [
+        {
+          kind: 'system',
+          timestamp: now,
+          from: 'user',
+          to: plannerIds.join(','),
+          payload: `Collaborative planning task: ${description}`,
+        },
+      ],
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    this.tasks.set(task.id, task);
+    team.currentTaskId = task.id;
+    team.status = 'planning';
+    team.updatedAt = now;
+
+    this.deps.emitTeam(team);
+    this.deps.emitTeamTask(task);
+
+    for (const [i, id] of plannerIds.entries()) {
+      const peerIds = plannerIds.filter((pid) => pid !== id);
+      try {
+        await this.deps.sendProtocol(id, 'EVT', {
+          type: 'conversation_start',
+          conversationId: task.id, // Overloading conversationId with taskId for context
+          topic: `Collaboratively draft an execution plan for: ${description}. Once you reach a resolution, one of you MUST call submit_plan with the final plan.`,
+          peerIds,
+          peerId: peerIds[0] as string,
+          maxReplies: maxRepliesPerAgent,
+          initiator: i === 0,
+        });
+      } catch (err) {
+        this.deps.logError(`[TeamCoordinator] Failed to send conversation_start to ${id}:`, err);
+      }
+    }
+
+    return task;
+  }
+
   private async assignBrainstormTask(team: Team, topic: string, maxRepliesPerAgent: number): Promise<TeamTask> {
     const now = new Date().toISOString();
     const replyCounts: Record<string, number> = {};
@@ -223,6 +297,62 @@ export class TeamCoordinator {
     }
 
     return task;
+  }
+
+  /**
+   * Handles a message between planners in a multi-planner-worker team.
+   */
+  async handlePlanningMessage(senderAgentId: string, payload: unknown): Promise<boolean> {
+    const team = this.findTeamByAgent(senderAgentId);
+    if (!team || team.composition !== 'planner-planner-worker' || !team.currentTaskId) {
+      return false;
+    }
+
+    const task = this.tasks.get(team.currentTaskId);
+    if (!task || task.status !== 'planning') {
+      return false;
+    }
+
+    // Check reply cap
+    const currentCount = task.replyCounts?.[senderAgentId] ?? 0;
+    if (task.maxRepliesPerAgent && currentCount >= task.maxRepliesPerAgent) {
+      return true; // drop
+    }
+
+    if (task.replyCounts) {
+      task.replyCounts[senderAgentId] = currentCount + 1;
+    }
+
+    const now = new Date().toISOString();
+    const messageText = typeof payload === 'string' ? payload : JSON.stringify(payload);
+
+    const peerIds = team.members
+      .filter((m) => m.role === 'planner' && m.agentId !== senderAgentId)
+      .map((m) => m.agentId);
+
+    task.transcript.push({
+      kind: 'message',
+      timestamp: now,
+      from: senderAgentId,
+      to: peerIds.join(','),
+      payload: messageText,
+    });
+    task.updatedAt = now;
+
+    for (const peerId of peerIds) {
+      try {
+        await this.deps.sendProtocol(peerId, 'EVT', {
+          type: 'message_received',
+          from: senderAgentId,
+          payload,
+        });
+      } catch (err) {
+        this.deps.logError(`[TeamCoordinator] Failed to broadcast planning message to ${peerId}:`, err);
+      }
+    }
+
+    this.deps.emitTeamTask(task);
+    return true;
   }
 
   /**
