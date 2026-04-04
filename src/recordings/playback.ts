@@ -1,6 +1,6 @@
 import { readFileSync } from 'fs';
 import type { Conversation, Team, TeamTask } from '../shared/types.js';
-import type { PlaybackAgentState, PlaybackState, SessionRecording, SessionRecordingEvent, SessionRecordingLine, SessionRecordingMeta } from './types.js';
+import type { PlaybackAgentState, PlaybackState, SessionRecording, SessionRecordingEvent, SessionRecordingLine } from './types.js';
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));

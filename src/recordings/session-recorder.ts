@@ -8,7 +8,7 @@ export class SessionRecorder {
   private readonly startedAt = Date.now();
   private closePromise?: Promise<void>;
 
-  constructor(private readonly filePath: string, cwd: string = process.cwd()) {
+  constructor(filePath: string, cwd: string = process.cwd()) {
     const directory = path.dirname(filePath);
     if (!existsSync(directory)) {
       mkdirSync(directory, { recursive: true });

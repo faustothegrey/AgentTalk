@@ -456,8 +456,8 @@ export function startServer(
   }
 
   // REST API
-  app.get('/api/agents', (req, res) => {
-    console.log('[Server] GET /api/agents');
+  app.get('/api/agents', (_req, res) => {
+
     const agents = registry.getAgents().map(a => ({
       id: a.id,
       status: a.status,
@@ -474,7 +474,7 @@ export function startServer(
     res.json(agents);
   });
 
-  app.get('/api/conversations', (req, res) => {
+  app.get('/api/conversations', (_req, res) => {
     console.log('[Server] GET /api/conversations');
     const conversations = registry.getConversations();
     console.log(`[Server] Returning ${conversations.length} conversations`);
@@ -492,7 +492,7 @@ export function startServer(
     }
   });
 
-  app.get('/api/topics', (req, res) => {
+  app.get('/api/topics', (_req, res) => {
     console.log('[Server] GET /api/topics');
     const conversations = registry.getConversations();
     const topics = Array.from(new Set(conversations.map(s => s.topic))).filter(Boolean);
@@ -500,7 +500,7 @@ export function startServer(
     res.json(topics);
   });
 
-  app.get('/api/scheduler/jobs', (req, res) => {
+  app.get('/api/scheduler/jobs', (_req, res) => {
     res.json(scheduler.listJobs());
   });
 
@@ -663,7 +663,7 @@ export function startServer(
     }
   });
 
-  app.get('/api/integrations/google-drive/resources', (req, res) => {
+  app.get('/api/integrations/google-drive/resources', (_req, res) => {
     if (!googleDrive) {
       res.status(404).json({ error: 'Google Drive integration is not configured' });
       return;
@@ -927,7 +927,7 @@ export function startServer(
 
   // ── Team endpoints ──────────────────────────────────────────
 
-  app.get('/api/teams', (req, res) => {
+  app.get('/api/teams', (_req, res) => {
     res.json(registry.getTeams());
   });
 

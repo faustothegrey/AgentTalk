@@ -26,7 +26,6 @@ import type {
   TeamMember,
   TeamRole,
   TeamTask,
-  TranscriptEntry,
 } from '../shared/types.js';
 import { ConversationCoordinator } from './conversation-coordinator.js';
 import { TeamCoordinator } from './team-coordinator.js';
@@ -554,7 +553,7 @@ export class Registry extends EventEmitter {
    * V1 Protocol Rule: [AgentTalk]:TYPE:JSON\n
    */
   async sendProtocol(id: string, type: OutboundProtocolPacketType, payload: EventPayload | ResponsePayload): Promise<void> {
-    const agent = this.getAgent(id);
+    this.getAgent(id); // validates agent exists
     const line = serializeProtocolLine(type, payload);
     const parser = this.parsers.get(id);
     if (parser) parser.expectEcho(line);

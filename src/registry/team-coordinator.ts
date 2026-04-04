@@ -1,6 +1,6 @@
 import type { EventPayload } from '../protocol/protocol-payloads.js';
 import type { OutboundProtocolPacketType } from '../protocol/protocol.js';
-import type { Team, TeamComposition, TeamTask, TeamMember, TeamRole, TranscriptEntry } from '../shared/types.js';
+import type { Team, TeamComposition, TeamTask, TeamMember, TeamRole } from '../shared/types.js';
 import { Agent } from '../agents/agent.js';
 
 const GIT_WORKTREE_REQUIREMENT = [
@@ -32,7 +32,7 @@ interface TeamCoordinatorOptions {
   submitPlanUrgencyTimeoutMs?: number;
 }
 
-const DEFAULT_PLANNING_EVENT_TIMEOUT_MS = 300_000;
+const DEFAULT_PLANNING_EVENT_TIMEOUT_MS = 900_000;
 const DEFAULT_SUBMIT_PLAN_URGENCY_TIMEOUT_MS = 120_000;
 const MAX_URGENCY_IGNORES = 2;
 const AGREEMENT_COMPLIANCE_TIMEOUT_MS = 60_000;
