@@ -133,6 +133,18 @@ function handleResponseLine(payloadText) {
 
   pendingControlRequestIds.delete(payload.id);
   pendingControlCalls.delete(call);
+
+  // If a protocol call was rejected, feed the error back into the conversation
+  // so the LLM can revise (e.g. submit_plan rejected for not being concrete enough)
+  if (payload.status === 'error' && typeof payload.error === 'string') {
+    const errorMessage = `[System] Your ${call} call was rejected: ${payload.error}. Please revise and try again.`;
+    console.error(`[llm-agent] Protocol call ${call} rejected: ${payload.error}`);
+    enqueueEvent({
+      type: 'message_received',
+      from: 'system',
+      payload: errorMessage,
+    });
+  }
 }
 
 function emitSessionUpdate() {
