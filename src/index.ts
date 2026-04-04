@@ -16,7 +16,6 @@ async function main() {
     ? new SessionRecorder(process.env.AGENTTALK_RECORDING_PATH)
     : undefined;
   let shuttingDown = false;
-
   console.log('AgentTalk Orchestrator V1 started.');
   if (recorder) {
     console.log(`Recording runtime events to ${process.env.AGENTTALK_RECORDING_PATH}`);

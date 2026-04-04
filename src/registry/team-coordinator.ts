@@ -29,28 +29,30 @@ interface TeamCoordinatorDeps {
 
 interface TeamCoordinatorOptions {
   planningEventTimeoutMs?: number;
-  submitPlanAfterAgreementTimeoutMs?: number;
+  submitPlanUrgencyTimeoutMs?: number;
 }
 
-const DEFAULT_PLANNING_EVENT_TIMEOUT_MS = 180_000;
-const DEFAULT_SUBMIT_PLAN_AFTER_AGREEMENT_TIMEOUT_MS = 30_000;
+const DEFAULT_PLANNING_EVENT_TIMEOUT_MS = 300_000;
+const DEFAULT_SUBMIT_PLAN_URGENCY_TIMEOUT_MS = 120_000;
+const MAX_URGENCY_IGNORES = 2;
 
 export class TeamCoordinator {
   private teams: Map<string, Team> = new Map();
   private tasks: Map<string, TeamTask> = new Map();
   private agentToTeam: Map<string, string> = new Map();
   private readonly planningEventTimeoutMs: number;
-  private readonly submitPlanAfterAgreementTimeoutMs: number;
+  private readonly submitPlanUrgencyTimeoutMs: number;
   private readonly planningWatchdogs: Map<string, NodeJS.Timeout> = new Map();
   private readonly submitPlanUrgencyWatchdogs: Map<string, NodeJS.Timeout> = new Map();
+  private readonly urgencyIgnoreCounts: Map<string, number> = new Map();
 
   constructor(
     private readonly deps: TeamCoordinatorDeps,
     options: TeamCoordinatorOptions = {},
   ) {
     this.planningEventTimeoutMs = options.planningEventTimeoutMs ?? DEFAULT_PLANNING_EVENT_TIMEOUT_MS;
-    this.submitPlanAfterAgreementTimeoutMs =
-      options.submitPlanAfterAgreementTimeoutMs ?? DEFAULT_SUBMIT_PLAN_AFTER_AGREEMENT_TIMEOUT_MS;
+    this.submitPlanUrgencyTimeoutMs =
+      options.submitPlanUrgencyTimeoutMs ?? DEFAULT_SUBMIT_PLAN_URGENCY_TIMEOUT_MS;
   }
 
   createTeam(members: TeamMember[]): Team {
@@ -381,11 +383,17 @@ export class TeamCoordinator {
       }
     }
 
-    if (looksLikeAgreementForFinalPlan(messageText)) {
-      await this.armSubmitPlanUrgencyWatchdog(team, task, ['submit_plan']);
+    this.deps.emitTeamTask(task);
+
+    // Check if all planners reached max replies → arm urgency for submit_plan
+    if (task.maxRepliesPerAgent) {
+      const plannerIds = team.members.filter((m) => m.role === 'planner').map((m) => m.agentId);
+      const allAtMax = plannerIds.every((id) => (task.replyCounts?.[id] ?? 0) >= task.maxRepliesPerAgent!);
+      if (allAtMax) {
+        await this.armSubmitPlanUrgencyWatchdog(team, task, ['submit_plan']);
+      }
     }
 
-    this.deps.emitTeamTask(task);
     return true;
   }
 
@@ -883,20 +891,31 @@ export class TeamCoordinator {
   }
 
   private async armSubmitPlanUrgencyWatchdog(team: Team, task: TeamTask, missingEvents: string[]): Promise<void> {
-    if (task.status !== 'planning' || this.submitPlanUrgencyWatchdogs.has(task.id)) {
+    if (task.status !== 'planning') {
+      return;
+    }
+
+    // Don't re-arm if already armed — re-issue is handled by the timeout handler
+    if (this.submitPlanUrgencyWatchdogs.has(task.id)) {
       return;
     }
 
     const now = new Date().toISOString();
-    const timeoutSeconds = Math.max(1, Math.floor(this.submitPlanAfterAgreementTimeoutMs / 1000));
+    const timeoutSeconds = Math.max(1, Math.floor(this.submitPlanUrgencyTimeoutMs / 1000));
     const missing = missingEvents.join(', ');
+    const ignoreCount = this.urgencyIgnoreCounts.get(task.id) ?? 0;
     const planners = team.members.filter((m) => m.role === 'planner');
+
+    const reminderText = ignoreCount === 0
+      ? `Reply limit reached. One planner must call ${missing} within ${timeoutSeconds}s or planning will be interrupted.`
+      : `Urgency reminder ignored (${ignoreCount}/${MAX_URGENCY_IGNORES}). One planner must call ${missing} within ${timeoutSeconds}s or planning will be interrupted.`;
+
     for (const planner of planners) {
       try {
         await this.deps.sendProtocol(planner.agentId, 'EVT', {
           type: 'message_received',
           from: 'system',
-          payload: `Agreement detected. One planner must call ${missing} within ${timeoutSeconds}s or planning will be interrupted.`,
+          payload: reminderText,
         });
       } catch (err) {
         this.deps.logError(`[TeamCoordinator] Failed to send submit_plan reminder to ${planner.agentId}:`, err);
@@ -908,7 +927,7 @@ export class TeamCoordinator {
       timestamp: now,
       from: 'system',
       to: planners.map((p) => p.agentId).join(','),
-      payload: `Agreement detected. Awaiting required event(s): ${missing} within ${timeoutSeconds}s.`,
+      payload: reminderText,
     });
     task.updatedAt = now;
     this.deps.emitTeamTask(task);
@@ -919,8 +938,18 @@ export class TeamCoordinator {
       if (!currentTask || !currentTeam || currentTask.status !== 'planning') {
         return;
       }
-      void this.interruptPlanningForMissingEvents(currentTeam, currentTask, missingEvents);
-    }, this.submitPlanAfterAgreementTimeoutMs);
+
+      this.submitPlanUrgencyWatchdogs.delete(task.id);
+      const currentIgnores = (this.urgencyIgnoreCounts.get(task.id) ?? 0) + 1;
+      this.urgencyIgnoreCounts.set(task.id, currentIgnores);
+
+      if (currentIgnores >= MAX_URGENCY_IGNORES) {
+        void this.interruptPlanningForMissingEvents(currentTeam, currentTask, missingEvents);
+      } else {
+        // Re-issue urgency
+        void this.armSubmitPlanUrgencyWatchdog(currentTeam, currentTask, missingEvents);
+      }
+    }, this.submitPlanUrgencyTimeoutMs);
 
     this.submitPlanUrgencyWatchdogs.set(task.id, timer);
   }
@@ -931,6 +960,7 @@ export class TeamCoordinator {
       clearTimeout(timer);
       this.submitPlanUrgencyWatchdogs.delete(taskId);
     }
+    this.urgencyIgnoreCounts.delete(taskId);
   }
 
   private async interruptPlanningForMissingEvents(team: Team, task: TeamTask, missingEvents: string[]): Promise<void> {
@@ -969,15 +999,6 @@ export class TeamCoordinator {
       }
     }
   }
-}
-
-function looksLikeAgreementForFinalPlan(text: string): boolean {
-  const normalized = text.toLowerCase();
-  return (
-    /(i (?:agree|have no objections)|we (?:agree|have a plan|have our plan)|final plan|plan is (?:solid|ready)|ready to submit|please submit the plan|submit (?:the )?plan)/i.test(
-      normalized,
-    )
-  );
 }
 
 function assertPlanIsImplementationReady(plan: string): void {

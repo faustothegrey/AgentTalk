@@ -242,7 +242,7 @@ describe('TeamCoordinator', () => {
     }
   });
 
-  it('should force reminder and quickly interrupt after planners signal agreement without submit_plan', async () => {
+  it('should arm urgency after all planners reach max replies, re-issue once, then interrupt', async () => {
     vi.useFakeTimers();
     try {
       const plannerA = new Agent('planner-a');
@@ -276,8 +276,8 @@ describe('TeamCoordinator', () => {
           logError: vi.fn(),
         },
         {
-          planningEventTimeoutMs: 5000,
-          submitPlanAfterAgreementTimeoutMs: 40,
+          planningEventTimeoutMs: 50_000,
+          submitPlanUrgencyTimeoutMs: 40,
         },
       );
 
@@ -286,21 +286,42 @@ describe('TeamCoordinator', () => {
         { agentId: 'planner-b', role: 'planner' },
         { agentId: 'worker', role: 'worker' },
       ]);
-      await coordinator.assignTask(team.id, 'Tiny cleanup');
+      // Default maxRepliesPerAgent for multi-planner is 5
+      await coordinator.assignTask(team.id, 'Tiny cleanup', 2);
 
-      await coordinator.handlePlanningMessage('planner-a', 'We agree and the plan is ready. Please submit the plan.');
+      // Each planner sends 2 messages (reaching max)
+      await coordinator.handlePlanningMessage('planner-a', 'Idea A');
+      await coordinator.handlePlanningMessage('planner-b', 'Idea B');
+      await coordinator.handlePlanningMessage('planner-a', 'Refined A');
+      // planner-b's 2nd message triggers urgency (both now at max)
+      await coordinator.handlePlanningMessage('planner-b', 'Refined B');
 
+      // First urgency reminder should have been sent
       expect(sendProtocol).toHaveBeenCalledWith('planner-a', 'EVT', expect.objectContaining({
         type: 'message_received',
         from: 'system',
-        payload: expect.stringContaining('Agreement detected'),
+        payload: expect.stringContaining('Reply limit reached'),
       }));
       expect(sendProtocol).toHaveBeenCalledWith('planner-b', 'EVT', expect.objectContaining({
         type: 'message_received',
         from: 'system',
-        payload: expect.stringContaining('Agreement detected'),
+        payload: expect.stringContaining('Reply limit reached'),
       }));
 
+      // First urgency timeout → re-issue (ignore count = 1)
+      await vi.advanceTimersByTimeAsync(50);
+
+      expect(sendProtocol).toHaveBeenCalledWith('planner-a', 'EVT', expect.objectContaining({
+        type: 'message_received',
+        from: 'system',
+        payload: expect.stringContaining('Urgency reminder ignored (1/2)'),
+      }));
+
+      // Task should still be planning after first ignore
+      const midTask = emitTeamTask.mock.calls.at(-1)?.[0] as TeamTask;
+      expect(midTask.status).toBe('planning');
+
+      // Second urgency timeout → interrupt (ignore count = 2)
       await vi.advanceTimersByTimeAsync(50);
 
       const latestTeam = emitTeam.mock.calls.at(-1)?.[0];
