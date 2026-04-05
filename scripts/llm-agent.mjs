@@ -9,6 +9,12 @@ import { createRequestIdGenerator } from './lib/request-id.mjs';
 import { createExecutor, normalizeRequestedExecutionMode } from './lib/executor-runtime.mjs';
 import { emitEvent, emitReady, emitRequest, parseInboundProtocolLine } from './lib/protocol.mjs';
 import { getProviderLimit, resolveProvider } from './lib/provider-runtime.mjs';
+import {
+  parseStructuredResponse,
+  buildRetryPrompt,
+  STRUCTURED_RESPONSE_INSTRUCTIONS,
+  WORKER_RESPONSE_INSTRUCTIONS,
+} from '../dist/agents/response-schema.js';
 
 function parseArgs(argv) {
   const provider = argv[2] ?? 'gemini';
@@ -164,6 +170,68 @@ async function executePrompt(idPrefix, prompt) {
   });
 }
 
+/**
+ * Dispatches a validated structured JSON response to the appropriate protocol calls.
+ */
+function dispatchStructuredResponse(evt, structured) {
+  switch (structured.message_type) {
+    case 'discussion': {
+      const request = conversationRuntime.buildProtocolRequest(evt, structured.message_payload.text);
+      request.id = nextRequestId();
+      emitTrackedRequest(request);
+      break;
+    }
+    case 'agreement_proposal': {
+      if (structured.message_payload.text) {
+        const messageRequest = conversationRuntime.buildProtocolRequest(evt, structured.message_payload.text);
+        messageRequest.id = nextRequestId();
+        emitTrackedRequest(messageRequest);
+      }
+      emitTrackedRequest({
+        id: nextRequestId(),
+        call: 'agreement_proposal',
+      });
+      break;
+    }
+    case 'agreement_reached': {
+      if (structured.message_payload.text) {
+        const messageRequest = conversationRuntime.buildProtocolRequest(evt, structured.message_payload.text);
+        messageRequest.id = nextRequestId();
+        emitTrackedRequest(messageRequest);
+      }
+      emitTrackedRequest({
+        id: nextRequestId(),
+        call: 'agreement_reached',
+      });
+      break;
+    }
+    case 'submit_plan': {
+      emitTrackedRequest({
+        id: nextRequestId(),
+        call: 'submit_plan',
+        args: { plan: structured.message_payload.plan },
+      });
+      break;
+    }
+    case 'healthcheck_ack': {
+      const request = conversationRuntime.buildProtocolRequest(evt, structured.message_payload.text);
+      request.id = nextRequestId();
+      emitTrackedRequest(request);
+      break;
+    }
+    default: {
+      // work_accept / work_refuse should not arrive here (handled in team handlers)
+      // but if they do, treat as discussion
+      const text = structured.message_payload.text || structured.message_payload.reason || '';
+      if (text) {
+        const request = conversationRuntime.buildProtocolRequest(evt, text);
+        request.id = nextRequestId();
+        emitTrackedRequest(request);
+      }
+      break;
+    }
+  }
+}
 
 
 async function processQueue() {
@@ -251,30 +319,37 @@ async function processQueue() {
     conversationRuntime.recordAssistantReply(response);
     console.error(`[llm-agent] Reply (${response.length} chars): ${response.slice(0, 200)}`);
 
-    // Check for [CALL:...] protocol markers in the LLM response
-    const markers = extractCallMarkers(response);
-    if (markers.length > 0) {
-      const marker = markers[0]; // use first marker only
-      console.error(`[llm-agent] Detected protocol marker: [CALL:${marker.call}]`);
+    // Only attempt structured JSON parsing when the prompt included structured instructions
+    const useStructured = conversationRuntime.expectsStructuredResponse(evt);
 
-      // Send the discussion text (with marker stripped) to the peer, if non-empty
-      if (marker.cleanedText) {
-        const messageRequest = conversationRuntime.buildProtocolRequest(evt, marker.cleanedText);
-        messageRequest.id = nextRequestId();
-        emitTrackedRequest(messageRequest);
+    if (useStructured) {
+      // Try structured JSON response parsing
+      let structured = parseStructuredResponse(response);
+      if (!structured) {
+        // Retry once with a correction prompt
+        console.error('[llm-agent] Structured response parse failed, retrying with correction prompt');
+        const retryPrompt = buildRetryPrompt(response);
+        const { response: retryResponse } = await executePrompt('structured-retry', retryPrompt);
+        if (retryResponse) {
+          structured = parseStructuredResponse(retryResponse);
+        }
       }
 
-      // Emit the protocol call
-      const callArgs = marker.call === 'submit_plan'
-        ? { plan: marker.cleanedText || response }
-        : {};
-
-      emitTrackedRequest({
-        id: nextRequestId(),
-        call: marker.call,
-        args: callArgs,
-      });
+      if (structured) {
+        console.error(`[llm-agent] Structured response: message_type=${structured.message_type}`);
+        dispatchStructuredResponse(evt, structured);
+      } else {
+        // Reject: structured response required but not received after retry
+        console.error('[llm-agent] Rejecting non-structured planning response; instructing agent to wait');
+        // Do not forward the response — discard it and tell the LLM to stand by
+        enqueueEvent({
+          type: 'message_received',
+          from: 'system',
+          payload: 'Your response was rejected because it was not a valid structured JSON message. Do not retry now. Wait for the next planning request from the system before responding.',
+        });
+      }
     } else {
+      // Non-structured context — send response as plain message
       const request = conversationRuntime.buildProtocolRequest(evt, response);
       request.id = nextRequestId();
       emitTrackedRequest(request);
@@ -365,17 +440,34 @@ function handleTeamTaskAssign(evt) {
       `Task: ${evt.description}`,
       progressUpdates.length > 0 ? `Earlier progress updates:\n${progressUpdates.join('\n\n')}` : '',
       '',
-      'Your final response will trigger the explicit submit_plan completion signal.',
-      'Only give your finished implementation plan in that final response. No preamble.',
+      '## Response format',
+      '',
+      'You MUST respond with a single JSON object:',
+      '',
+      '```json',
+      '{',
+      '  "message_type": "submit_plan",',
+      '  "message_payload": { "plan": "your complete implementation plan here" }',
+      '}',
+      '```',
+      '',
+      'Put your entire finished implementation plan inside the "plan" field. No preamble.',
     ].filter(Boolean).join('\n');
 
-    const { response: finalPlan } = await executePrompt('planner-final', finalPlanPrompt);
-    if (!finalPlan) {
+    const { response: finalPlanRaw } = await executePrompt('planner-final', finalPlanPrompt);
+    if (!finalPlanRaw) {
       console.error('[llm-agent] No final plan generated for team event; skipping');
       return;
     }
 
-    console.error(`[llm-agent] Final planner reply (${finalPlan.length} chars): ${finalPlan.slice(0, 200)}`);
+    console.error(`[llm-agent] Final planner reply (${finalPlanRaw.length} chars): ${finalPlanRaw.slice(0, 200)}`);
+
+    // Try structured parsing; fall back to using raw response as the plan
+    const structured = parseStructuredResponse(finalPlanRaw);
+    const finalPlan = (structured && structured.message_type === 'submit_plan')
+      ? structured.message_payload.plan
+      : finalPlanRaw;
+
     emitTrackedRequest({
       id: nextRequestId(),
       call: 'submit_plan',
@@ -401,26 +493,67 @@ function handleTeamWorkAssign(evt) {
     '',
     `Planner\'s plan:`,
     evt.plan,
-    '',
-    'Respond with EXACTLY one of these formats:',
-    'If you ACCEPT: Start your response with "ACCEPT" on the first line, then proceed to execute the task.',
-    'If you REFUSE: Start your response with "REFUSE:" followed by your reason on the same line.',
+    WORKER_RESPONSE_INSTRUCTIONS,
   ].join('\n');
 
   enqueueTeamEvent(evt, prompt, (response) => {
-    const firstLine = response.split('\n')[0].trim();
-    if (firstLine.startsWith('REFUSE:') || firstLine === 'REFUSE') {
-      const reason = firstLine.replace(/^REFUSE:?\s*/, '') || 'No specific reason given';
+    // Try structured JSON parsing first
+    let structured = parseStructuredResponse(response);
+    if (!structured) {
+      // Fallback to legacy ACCEPT/REFUSE parsing
+      console.error('[llm-agent] Worker structured parse failed, falling back to legacy ACCEPT/REFUSE');
+      const firstLine = response.split('\n')[0].trim();
+      if (firstLine.startsWith('REFUSE:') || firstLine === 'REFUSE') {
+        const reason = firstLine.replace(/^REFUSE:?\s*/, '') || 'No specific reason given';
+        return {
+          id: nextRequestId(),
+          call: 'submit_work_response',
+          args: { accepted: false, reason },
+        };
+      }
+
+      const workOutput = response.replace(/^ACCEPT\s*\n?/, '').trim();
+      return [
+        {
+          id: nextRequestId(),
+          call: 'submit_work_response',
+          args: { accepted: true },
+        },
+        {
+          id: nextRequestId(),
+          call: 'submit_work_result',
+          args: { result: workOutput || 'Task completed.' },
+        },
+      ];
+    }
+
+    console.error(`[llm-agent] Worker structured response: message_type=${structured.message_type}`);
+
+    if (structured.message_type === 'work_refuse') {
       return {
         id: nextRequestId(),
         call: 'submit_work_response',
-        args: { accepted: false, reason },
+        args: { accepted: false, reason: structured.message_payload.reason },
       };
     }
 
-    // Accepted — submit acceptance, then we'll submit the result
-    // The response after "ACCEPT\n" is the actual work output
-    const workOutput = response.replace(/^ACCEPT\s*\n?/, '').trim();
+    if (structured.message_type === 'work_accept') {
+      return [
+        {
+          id: nextRequestId(),
+          call: 'submit_work_response',
+          args: { accepted: true },
+        },
+        {
+          id: nextRequestId(),
+          call: 'submit_work_result',
+          args: { result: structured.message_payload.text || 'Task completed.' },
+        },
+      ];
+    }
+
+    // Unexpected type — treat as acceptance with text
+    const text = structured.message_payload.text || structured.message_payload.plan || structured.message_payload.reason || '';
     return [
       {
         id: nextRequestId(),
@@ -430,7 +563,7 @@ function handleTeamWorkAssign(evt) {
       {
         id: nextRequestId(),
         call: 'submit_work_result',
-        args: { result: workOutput || 'Task completed.' },
+        args: { result: text || 'Task completed.' },
       },
     ];
   });

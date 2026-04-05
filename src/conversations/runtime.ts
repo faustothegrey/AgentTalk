@@ -1,3 +1,8 @@
+import {
+  STRUCTURED_RESPONSE_INSTRUCTIONS,
+  HEALTHCHECK_RESPONSE_INSTRUCTIONS,
+} from '../agents/response-schema.js';
+
 export interface ConversationState {
   peerIds: string[];
   topic: string;
@@ -84,11 +89,23 @@ export function createConversationRuntime() {
       currentConversation = null;
     },
 
+    /**
+     * Returns true when the current conversation context expects structured JSON responses
+     * (i.e. planning conversations or healthchecks).
+     */
+    expectsStructuredResponse(evt: ConversationEvent): boolean {
+      if (evt.type === 'healthcheck') {
+        return true;
+      }
+      return currentConversation?.isPlanning ?? false;
+    },
+
     buildPrompt(evt: ConversationEvent): string | null {
       if (evt.type === 'healthcheck') {
-        return typeof evt.prompt === 'string' && evt.prompt.trim()
+        const base = typeof evt.prompt === 'string' && evt.prompt.trim()
           ? evt.prompt
           : 'Reply with a short greeting confirming you are responsive.';
+        return base + HEALTHCHECK_RESPONSE_INSTRUCTIONS;
       }
 
       if (evt.from && evt.payload) {
@@ -113,50 +130,13 @@ export function createConversationRuntime() {
       ];
 
       if (currentConversation.isPlanning) {
-        lines.push(
-          '',
-          '## Protocol actions',
-          'You can trigger protocol actions by placing a marker on its own line in your response.',
-          'Each marker MUST appear alone on its own line, exactly as shown (no other text on that line).',
-          'It is not decorative text — the system reads it and executes a real, irreversible action.',
-          'You may include normal discussion text on lines before or after the marker.',
-          '',
-          'Available markers and their consequences:',
-          '',
-          '[CALL:agreement_proposal]',
-          '  When to use: ONLY when you believe the discussion has fully converged and you are ready to finalize. This should happen once in the entire conversation, not on every reply.',
-          '  What happens: the system notifies your peer that you proposed agreement. Your peer will then decide whether to confirm or continue discussing.',
-          '  RULES:',
-          '    - Do NOT use this if you still have open questions or unresolved disagreements.',
-          '    - Do NOT use this on your first few replies — discuss and iterate first.',
-          '    - Do NOT repeat this marker if you already used it in a previous reply. The system will ignore duplicates.',
-          '    - After you send this, WAIT for your peer to respond. Do not send another marker until then.',
-          '',
-          '[CALL:agreement_reached]',
-          '  When to use: ONLY after the system tells you that your peer proposed agreement, and you confirm you agree with the proposal.',
-          '  What happens: the system locks the discussion. The next step is for one of you to submit the final plan.',
-          '  RULES:',
-          '    - Do NOT use this unless you received a system notification that agreement was proposed.',
-          '    - Do NOT use this if you disagree — instead, reply with your objections as normal text.',
-          '',
-          '[CALL:submit_plan]',
-          '  When to use: ONLY after agreement has been reached (both agreement_proposal and agreement_reached have occurred).',
-          '  What happens: everything you write in the same response (other than the marker line) becomes the plan sent to the worker agent for execution. Planning ends permanently.',
-          '  The plan must be concrete and implementation-ready: name files, describe exact changes, specify verification steps.',
-          '',
-          'Critical rules:',
-          '- Most of your replies should be plain discussion with NO markers. Only use a marker when you are at the specific step that calls for it.',
-          '- Without a marker, your response is just a discussion message to your peer. Writing the words "agreement_proposal" as prose does nothing.',
-          '- You can include at most one marker per response.',
-          '- Follow the strict order: first one planner sends agreement_proposal, then the OTHER planner sends agreement_reached, then one planner sends submit_plan.',
-          '- If you are unsure whether to use a marker, do NOT use one — just discuss.',
-        );
+        lines.push(STRUCTURED_RESPONSE_INSTRUCTIONS);
       }
 
       if (isLastReply) {
         lines.push('This is your FINAL reply. Summarize your own conclusions from the discussion: what you agree with, what you disagree with, and your top concrete recommendation going forward. Do not ask follow-up questions.');
         if (currentConversation.isPlanning) {
-          lines.push('If you have not yet submitted a plan, include [CALL:submit_plan] in this reply with your final plan.');
+          lines.push('If you have not yet submitted a plan, use message_type "submit_plan" in this reply with your final plan.');
         }
       } else {
         lines.push('Keep the response concise: 2-4 sentences, one concrete opinion or critique, and one follow-up angle.');
