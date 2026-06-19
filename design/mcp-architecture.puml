@@ -1,0 +1,51 @@
+@startuml AgentTalk-MCP-Topology
+title AgentTalk MCP Orchestration — Topology A (Node is the MCP server)
+
+skinparam componentStyle rectangle
+skinparam shadowing false
+
+actor "Reviewer\n(web UI)" as UI
+
+package "Node orchestrator (AgentTalk)" {
+  [Registry / TeamCoordinator\nhandleMcpToolCall()] as REG
+  [AgentTalk MCP Server\nWebSocket /mcp\ntools: send_to_agent, submit_plan,\nagreement_*, submit_work_*, ...] as MCP
+  REG <--> MCP : injects tool schemas + handlers
+}
+
+UI <--> REG : observability
+
+package "codex CLI process" {
+  [codex\n(MCP client)] as CODEX
+  [mcp-bridge\nstdio <-> WS] as BC
+  CODEX --> BC : stdio JSON-RPC
+}
+
+package "claude CLI process" {
+  [claude\n(MCP client)] as CLAUDE
+  [mcp-bridge\nstdio <-> WS] as BCL
+  CLAUDE --> BCL : stdio JSON-RPC
+}
+
+package "gemini CLI process" {
+  [gemini\n(MCP client)] as GEM
+  [mcp-bridge\nstdio <-> WS] as BG
+  GEM --> BG : stdio JSON-RPC
+}
+
+BC  --> MCP : WebSocket  ?agentId=codex
+BCL --> MCP : WebSocket  ?agentId=claude
+BG  --> MCP : WebSocket  ?agentId=gemini
+
+note bottom of MCP
+  **AgentTalk is the MCP server.** Each CLI connects IN as an MCP **client**
+  (via a stdio->WebSocket bridge). The model running inside the CLI **calls
+  AgentTalk's tools** instead of printing [AgentTalk]: lines on stdout.
+  Per-agent isolation: the agentId query param maps each socket to its session.
+end note
+
+legend right
+  Arrows point client -> server (direction of connection).
+  Transport: stdio (CLI<->bridge) then WebSocket (bridge<->AgentTalk).
+  See design/mcp-orchestration-proposal.md sections 4 and 11A.
+endlegend
+@enduml

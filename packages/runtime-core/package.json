@@ -1,0 +1,26 @@
+{
+  "name": "@agenttalk/runtime-core",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./agents/*": "./dist/agents/*.js",
+    "./agents/*.js": "./dist/agents/*.js",
+    "./conversations/*": "./dist/conversations/*.js",
+    "./conversations/*.js": "./dist/conversations/*.js",
+    "./protocol/*": "./dist/protocol/*.js",
+    "./protocol/*.js": "./dist/protocol/*.js",
+    "./registry/*": "./dist/registry/*.js",
+    "./registry/*.js": "./dist/registry/*.js",
+    "./shared/*": "./dist/shared/*.js",
+    "./shared/*.js": "./dist/shared/*.js"
+  },
+  "scripts": {
+    "build": "tsc -b"
+  },
+  "dependencies": {
+    "@agenttalk/contracts": "1.0.0",
+    "strip-ansi": "^7.2.0",
+    "ws": "^8.20.0"
+  }
+}

@@ -1,0 +1,18 @@
+.claude/
+transcripts/
+planning_runs/
+node_modules/
+dist/
+coverage/
+test-transcripts/
+.npm-cache/
+.agenttalk-supervisor.pid
+/recordings/
+google-oauth-client.json
+google-drive-token.json
+credentials.json
+
+# vite build artifacts
+apps/web/vite.config.js
+apps/web/vite.config.js.map
+persistence/

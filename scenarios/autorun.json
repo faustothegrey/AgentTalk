@@ -1,0 +1,5 @@
+{
+  "scenarioFile": "scenarios/planner-planner-worker.json",
+  "taskOverride": "Find a small refactoring or code cleanup and implement it.",
+  "intervalSeconds": 1800
+}

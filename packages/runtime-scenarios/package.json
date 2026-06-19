@@ -1,0 +1,19 @@
+{
+  "name": "@agenttalk/runtime-scenarios",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./scenarios/*": "./dist/scenarios/*.js",
+    "./scenarios/*.js": "./dist/scenarios/*.js",
+    "./scheduler/*": "./dist/scheduler/*.js",
+    "./scheduler/*.js": "./dist/scheduler/*.js"
+  },
+  "scripts": {
+    "build": "tsc -b"
+  },
+  "dependencies": {
+    "@agenttalk/contracts": "1.0.0",
+    "@agenttalk/runtime-core": "1.0.0"
+  }
+}

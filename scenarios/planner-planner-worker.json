@@ -1,0 +1,38 @@
+{
+  "name": "Two Planners One Worker Gemini Team",
+  "description": "Two Gemini planners collaborate on a final implementation plan, then delegate execution to one Gemini worker.",
+  "agents": [
+    {
+      "id": "planner-gemini-pro-a",
+      "provider": "gemini",
+      "model": "gemini-3.1-pro-preview",
+      "executionMode": "auto"
+    },
+    {
+      "id": "planner-gemini-pro-b",
+      "provider": "gemini",
+      "model": "gemini-3.1-pro-preview",
+      "executionMode": "auto"
+    },
+    {
+      "id": "worker-gemini-flash",
+      "provider": "gemini",
+      "model": "gemini-3-flash-preview",
+      "executionMode": "auto"
+    }
+  ],
+  "teams": [
+    {
+      "members": [
+        { "agentId": "planner-gemini-pro-a", "role": "planner" },
+        { "agentId": "planner-gemini-pro-b", "role": "planner" },
+        { "agentId": "worker-gemini-flash", "role": "worker" }
+      ],
+      "tasks": [
+        {
+          "description": "Produce one concrete implementation-ready plan for improving team-task orchestration, then hand execution to the worker."
+        }
+      ]
+    }
+  ]
+}

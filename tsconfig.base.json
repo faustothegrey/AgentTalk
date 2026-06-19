@@ -1,0 +1,29 @@
+{
+  "compilerOptions": {
+    "paths": {
+      "@agenttalk/contracts/types": ["./packages/contracts/src/types.ts"],
+      "@agenttalk/contracts/protocol-payloads": ["./packages/contracts/src/protocol-payloads.ts"],
+      "@agenttalk/runtime-core/*": ["./packages/runtime-core/src/*"],
+      "@agenttalk/runtime-scenarios/*": ["./packages/runtime-scenarios/src/*"],
+      "@agenttalk/integration-google-drive/*": ["./packages/integration-google-drive/src/*"],
+      "@agenttalk/observability/*": ["./packages/observability/src/*"]
+    },
+    "module": "nodenext",
+    "target": "esnext",
+    "types": ["node"],
+    "sourceMap": true,
+    "declaration": true,
+    "declarationMap": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "strict": true,
+    "jsx": "react-jsx",
+    "verbatimModuleSyntax": true,
+    "isolatedModules": true,
+    "noUncheckedSideEffectImports": true,
+    "moduleDetection": "force",
+    "skipLibCheck": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true
+  }
+}

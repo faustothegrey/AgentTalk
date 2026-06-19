@@ -1,0 +1,165 @@
+# Design Collaboration Workflow (multi-agent + human)
+
+**Status:** Draft for review (2026-06-18)
+**Author:** Claude (at Fausto's request)
+**Purpose:** Make explicit the working method we converged on while designing the MCP
+orchestration migration, so it can be reviewed, refined, and reused deliberately.
+
+> For the other agent reviewing this: critique the workflow itself. Where is it slow,
+> redundant, or fragile? What roles or steps are missing? Open questions are at the end.
+
+---
+
+## 1. The participants and a key constraint
+
+- **Human (Fausto)** — sets scope and goals, makes final decisions, decides what is
+  in/out of scope (e.g. parking HITL, removing the auth-tier discussion), and **relays
+  messages between the two agents.**
+- **Author agent** — drafts and revises the design (e.g. owns the proposal's decision
+  sections).
+- **Reviewer/Verifier agent** — critiques without deference, verifies claims empirically,
+  tracks caveats and their resolution.
+
+The roles are not fixed to a person — they **alternate by turn**. What matters is that on
+any given turn one side is *proposing* and the other is *challenging*.
+
+**Defining constraint:** the two agents do **not** share a conversation or memory. The
+only channel between them is the **shared design docs** plus what the human relays. This
+is why "write it down" is not a nicety here — **the durable artifacts *are* the
+inter-agent communication bus.** Anything not written down does not survive the handoff.
+
+---
+
+## 2. Core principles
+
+1. **Adversarial but constructive.** Reviews steelman the proposal, then attack it. No
+   sycophancy; disagreement is stated plainly with reasons. The goal is a stronger design,
+   not consensus theater.
+2. **Verify, don't assert.** Capability claims are settled by **running the actual tools**
+   and recording exact versions, commands, and outputs — not by citing memory or docs
+   alone. Where docs and reality conflict, reality wins, and the doc is corrected. Findings
+   are reproduced **independently** by the other side before being trusted.
+3. **Everything lives in durable docs.** Decisions, findings, and disagreements go into
+   versioned design docs with **dates, status, and sources** — never only in chat.
+   - **3a. Auto-persist — standing rule, no reminder required.** An agent **must write its
+     analysis into the project docs on its own initiative** (creating or updating the
+     relevant doc in `design/` in the same turn it produces the analysis) whenever its
+     output either:
+     1. **substantially changes the docs themselves** (a new decision, a revised
+        architecture, a resolved/added caveat, a capability finding, a readiness verdict,
+        a reordered plan), **or**
+     2. **writes code or tests, or greenlights writing code/tests** on the project
+        (e.g. an implementation plan, a spike design, a "ready to start" call, or the code
+        itself) — the rationale, scope, and verification approach are recorded *before or
+        alongside* the change, not left in chat.
+     - The user should **not** have to ask "write this down" each time. Persisting is the
+       default; ephemeral chat-only analysis is the exception (reserved for trivial
+       clarifications that change no doc and gate no code).
+     - When unsure which doc, prefer updating an existing one over a new file; keep
+       cross-references and status tags consistent (principle 6).
+4. **Severity- and status-tagged.** Open issues are tagged by how blocking they are
+   (**[BLOCK] / [RESOLVE] / [NOTE]**); after a revision each is marked
+   **RESOLVED / PARTIAL / OPEN** and mapped to the section that resolves it.
+   - **4a. Edit in place — but never delete an *unresolved* point.** To keep docs lean,
+     agents revise existing sections in place rather than appending endlessly, and may
+     prune items already marked **RESOLVED** once both sides have seen them. An agent must
+     **not delete or overwrite another agent's open/unresolved point**; instead it
+     downgrades it (mark **RESOLVED** with a one-line pointer to where, or fold it into the
+     revised text). The open set shrinks; nothing open vanishes silently. **Git history is
+     the backstop** — any overwrite is recoverable via `git diff`, so edit-in-place is safe
+     to default to.
+5. **Decide, park, or open — never silently drop.** Out-of-scope topics are explicitly
+   *parked* (with a one-line marker), so nothing disappears without a trace.
+6. **Internal consistency is maintained.** When sections are removed or reordered, headings
+   are renumbered and cross-references fixed in the same pass, across all affected docs.
+7. **A readiness gate precedes code.** We state explicitly whether we are ready to plan /
+   start, and what specifically gates the next step.
+8. **Step-by-step with smoke tests.** Implementation proceeds in small phases, each with a
+   concrete smoke checkpoint; the riskiest unknowns are validated first, in isolation,
+   before touching production paths.
+
+---
+
+## 3. The artifacts
+
+| Artifact | Role |
+|---|---|
+| **Proposal / spec** | The living design. Carries a status (Draft → Refined → Decisions Documented) and a decisions section that the Author agent revises. |
+| **Capability / verification note** | Empirical findings: per-target capability matrix, exact versions, commands, outputs, sources. The Reviewer's evidence base. |
+| **Caveats / discussion agenda** | Consolidated open issues, severity-tagged, with a resolution-status table after each revision and a readiness verdict. |
+| **(This) workflow doc** | The method itself, made explicit for reuse. |
+
+Each doc is self-describing: status, author, date, and "Related" links at the top.
+
+---
+
+## 4. The loop
+
+```
+   ┌─ Human sets scope/goal
+   │
+   ▼
+  DRAFT  ──►  REVIEW  ──►  VERIFY (run the tools, reproduce)
+ (Author)   (Reviewer)        │
+   ▲                          ▼
+   │                   CONSOLIDATE CAVEATS  (tag BLOCK/RESOLVE/NOTE)
+   │                          │
+   │                          ▼
+   └──────────  REVISE  ◄── human relays caveats to Author
+              (Author answers point-by-point in the doc)
+                              │
+                              ▼
+                   RE-ASSESS  (Reviewer maps each caveat → RESOLVED/OPEN)
+                              │
+                  ┌───────────┴───────────┐
+            BLOCK items open          all BLOCK resolved
+                  │                         │
+                  └──► iterate              ▼
+                                   READINESS VERDICT  ──►  PHASED IMPLEMENTATION
+                                                            (smoke test each phase)
+```
+
+Steps:
+1. **Draft** — Author writes/updates the proposal.
+2. **Review** — Reviewer critiques against the actual codebase and the design's own claims.
+3. **Verify** — Reviewer runs the tools, records versions/commands/output, and reproduces
+   the other side's experiments independently. Docs are corrected to match reality.
+4. **Consolidate** — All open issues collected into the caveats doc, severity-tagged, with
+   a suggested decision order.
+5. **Revise** — Human relays the caveats; Author answers each point in the design doc.
+6. **Re-assess** — Reviewer marks each caveat RESOLVED/PARTIAL/OPEN, mapped to sections,
+   and surfaces any *new* residuals the revision introduced.
+7. **Readiness gate** — Reviewer states explicitly whether we're ready to plan / start, and
+   what gates the next step.
+8. **Implement** — Small phases, riskiest-unknown-first, each with a smoke checkpoint;
+   production behavior preserved behind a flag until a phase is proven.
+
+---
+
+## 5. Why it has worked here
+
+- The **empirical-verification** step caught doc-vs-reality gaps (e.g. a doc-cited 60s
+  timeout that was not enforced in practice; a workspace-trust gate nobody had documented)
+  that pure review would have missed.
+- **Severity tagging + resolution mapping** turned a long list of objections into a short,
+  trackable set of decisions, and made "are we done?" answerable.
+- **Writing everything down** let two agents with no shared memory build on each other's
+  work across many turns without losing context.
+- The **readiness gate** prevents drifting into code before the load-bearing decisions are
+  made, while still allowing isolated, zero-risk spikes to start early.
+
+---
+
+## 6. Open questions for review
+
+1. **Role assignment.** Should Author/Reviewer roles be fixed per workstream, or keep
+   alternating? Fixed roles add consistency; alternating reduces blind spots.
+2. **Relay overhead.** The human is the sole channel between agents. Is that a feature
+   (human stays in control, curates signal) or a bottleneck we should reduce (e.g. a shared
+   "open questions" doc each agent reads/writes directly)?
+3. **When to stop reviewing.** What's the explicit exit criterion for the review loop
+   besides "all BLOCK items resolved"? Should PARTIAL items ever block?
+4. **Verification depth.** We reproduced spikes independently. Is that always worth the
+   cost, or only for [BLOCK]-class claims?
+5. **Doc sprawl.** We now have proposal + capability note + caveats + this. At what point do
+   these get merged or archived to avoid drift between them?
