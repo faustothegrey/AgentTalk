@@ -90,10 +90,18 @@ export class InProcessAgentDriver {
       return;
     }
 
-    const prompt = this.runtime.buildPrompt(evt);
-    if (!prompt) return;
+    let prompt: string | null = null;
+    let expectsStructured = false;
 
-    const expectsStructured = this.runtime.expectsStructuredResponse(evt);
+    if (evt.type === 'custom_event_request' && (evt as any).event === 'ack_planning_protocol') {
+      prompt = (evt as any).prompt || null;
+      expectsStructured = true;
+    } else {
+      prompt = this.runtime.buildPrompt(evt);
+      expectsStructured = this.runtime.expectsStructuredResponse(evt);
+    }
+
+    if (!prompt) return;
 
     const executePrompt = async (p: string) => {
       const text = await this.executeApiPrompt(p, expectsStructured);
@@ -158,7 +166,7 @@ export class InProcessAgentDriver {
     const prompt = [
       'You are the PLANNER in a two-agent team. Before discussion begins, you must collect facts about the codebase relevant to the task.',
       '',
-      `Task: ${evt.description}`,
+      `Task: ${(evt as any).description}`,
       '',
       'Your job now is to investigate the codebase: read files, search for patterns, identify relevant code areas, and build your understanding of the current state.',
       'Focus on gathering concrete facts — file paths, function signatures, existing patterns, dependencies — that will inform your planning discussion.',
@@ -207,10 +215,10 @@ export class InProcessAgentDriver {
       'You must use strictly `git worktree` for this task.',
       'If you cannot or will not use a git worktree, you must refuse and abort the task.',
       '',
-      `Original task: ${evt.description}`,
+      `Original task: ${(evt as any).description}`,
       '',
-      `Planner\\'s plan:`,
-      evt.plan,
+      `## Final Plan`,
+      `${(evt as any).plan}`,
       WORKER_RESPONSE_INSTRUCTIONS,
     ].join('\\n');
 
@@ -220,7 +228,7 @@ export class InProcessAgentDriver {
     const { structured } = await parseWithRetry(text, async (p) => this.executeApiPrompt(p, true));
     
     if (!structured) {
-      const firstLine = text.split('\\n')[0].trim();
+      const firstLine = (text.split('\\n')[0] || '').trim();
       if (firstLine.startsWith('REFUSE:') || firstLine === 'REFUSE') {
         const reason = firstLine.replace(/^REFUSE:?\\s*/, '') || 'No specific reason given';
         await this.registry.handleMcpToolCall(this.agent.id, 'submit_work_response', { accepted: false, reason });

@@ -22,6 +22,7 @@ export const STRUCTURED_MESSAGE_TYPES = [
   'work_accept',
   'work_refuse',
   'healthcheck_ack',
+  'ack_planning_protocol',
 ] as const;
 
 export type StructuredMessageType = (typeof STRUCTURED_MESSAGE_TYPES)[number];
@@ -66,6 +67,8 @@ export interface HealthcheckAckPayload {
   text: string;
 }
 
+export interface AckPlanningProtocolPayload {}
+
 export type StructuredResponse =
   | { message_type: 'opinion'; message_payload: OpinionPayload }
   | { message_type: 'agreement_proposal'; message_payload: AgreementProposalPayload }
@@ -74,7 +77,8 @@ export type StructuredResponse =
   | { message_type: 'fact_collection_end'; message_payload: FactCollectionEndPayload }
   | { message_type: 'work_accept'; message_payload: WorkAcceptPayload }
   | { message_type: 'work_refuse'; message_payload: WorkRefusePayload }
-  | { message_type: 'healthcheck_ack'; message_payload: HealthcheckAckPayload };
+  | { message_type: 'healthcheck_ack'; message_payload: HealthcheckAckPayload }
+  | { message_type: 'ack_planning_protocol'; message_payload: AckPlanningProtocolPayload };
 
 function isValidMessageType(value: unknown): value is StructuredMessageType {
   return typeof value === 'string' && (STRUCTURED_MESSAGE_TYPES as readonly string[]).includes(value);
@@ -123,6 +127,8 @@ function validatePayload(messageType: StructuredMessageType, payload: unknown): 
       return typeof payload.text === 'string';
     case 'work_refuse':
       return typeof payload.reason === 'string' && payload.reason.length > 0;
+    case 'ack_planning_protocol':
+      return true;
     default:
       return false;
   }
@@ -211,8 +217,9 @@ export function buildRetryPrompt(rawText: string): string {
     '}',
     '```',
     '',
-    'Valid message_type values: opinion, agreement_proposal, agreement_acceptance, submit_plan, fact_collection_end, work_accept, work_refuse, healthcheck_ack.',
+    'Valid message_type values: opinion, agreement_proposal, agreement_acceptance, submit_plan, fact_collection_end, work_accept, work_refuse, healthcheck_ack, ack_planning_protocol.',
     '',
+    '- For "ack_planning_protocol": message_payload must have {}',
     '- For "opinion": message_payload must have { "text": "...", "proposal": null, "expected_response_types": ["..."] }',
     '- For "agreement_proposal" and "agreement_acceptance": message_payload must have { "text": "...", "proposal": "...", "expected_response_types": ["..."] }',
     '- For "healthcheck_ack": message_payload must have { "text": "..." }',

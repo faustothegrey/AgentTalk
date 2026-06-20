@@ -1,0 +1,10 @@
+[TEST DEBUG] planner-a returned ack_planning_protocol
+[TEST DEBUG] planner-b returned ack_planning_protocol
+[TEST DEBUG] planner-a returned agreement_proposal
+[TEST DEBUG] planner-b returned agreement_acceptance
+[TEST DEBUG] planner-a returned submit_plan
+[TEST DEBUG] planner-a returned ack_planning_protocol
+[TEST DEBUG] planner-b returned ack_planning_protocol
+[TEST DEBUG] planner-a returned agreement_proposal
+[TEST DEBUG] planner-b returned agreement_acceptance
+[TEST DEBUG] planner-a returned submit_plan

@@ -980,9 +980,11 @@ export class TeamCoordinator {
     });
     this.deps.emitTeamTask(task);
 
+    console.log(`[TeamCoordinator] ack received from ${agentId}, pending: ${Array.from(state.pendingAckPlannerIds).join(',')}`);
     if (state.pendingAckPlannerIds.size > 0) {
       return;
     }
+    console.log(`[TeamCoordinator] all acks received, starting fact collection`);
 
     this.planningProtocolStates.delete(task.id);
 
@@ -1814,7 +1816,8 @@ export class TeamCoordinator {
     const timeoutSeconds = Math.max(1, Math.floor(this.submitPlanUrgencyTimeoutMs / 1000));
     const missing = missingEvents.join(', ');
     const ignoreCount = this.urgencyIgnoreCounts.get(task.id) ?? 0;
-    const planners = team.members.filter((m) => m.role === 'planner');
+    const agreementReachedAgent = this.taskAgreementReachedAgent.get(task.id);
+    const planners = team.members.filter((m) => m.role === 'planner' && (!agreementReachedAgent || m.agentId !== agreementReachedAgent));
 
     const reminderText = ignoreCount === 0
       ? `Reply limit reached. One planner must call ${missing} within ${timeoutSeconds}s. Planning is interrupted after ${MAX_URGENCY_IGNORES} ignored urgency checks. ${MESSAGE_TYPE_MOTIVATION_REQUIREMENT}`
