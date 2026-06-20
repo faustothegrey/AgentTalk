@@ -27,6 +27,7 @@ export class Agent {
   usage?: { total: number; limit: number };
   usageStats?: { stats: string; timestamp: string };
   provider?: string;
+  providerName?: string;
   model?: string;
   requestedExecutionMode: AgentExecutionMode = 'auto';
   resolvedExecutionMode?: ResolvedExecutionMode;

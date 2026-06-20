@@ -1,0 +1,11 @@
+{
+  "name": "send_to_agent",
+  "args": {
+    "to": "peer-b",
+    "payload": "To start, I think we should aim for a basic Express.js server. It's lightweight and widely used for handling API requests, which seems appropriate for our needs. What kind of endpoints do you envision us needing initially?",
+    "expected_response_types": [
+      "opinion",
+      "agreement_proposal"
+    ]
+  }
+}

@@ -2,6 +2,8 @@ import { EventEmitter } from 'events';
 import { Agent } from '../agents/agent.js';
 import { ConversationStore } from '../conversations/conversation-store.js';
 import { HealthcheckManager } from '../agents/healthcheck-manager.js';
+import { InProcessAgentDriver } from '../agents/in-process-driver.js';
+import type { ApiProvider } from '../agents/api-client.js';
 import type {
   EventPayload,
   ResponsePayload,
@@ -83,6 +85,7 @@ function getPlanningText(args: unknown): string | undefined {
 
 export class Registry extends EventEmitter {
   private agents: Map<string, Agent> = new Map();
+  private apiDrivers: Map<string, InProcessAgentDriver> = new Map();
   private readinessTimeouts: Map<string, NodeJS.Timeout> = new Map();
   private idleCheckInterval: NodeJS.Timeout | undefined;
   private readonly conversations: ConversationStore;
@@ -126,7 +129,15 @@ export class Registry extends EventEmitter {
   /**
    * Registers a new agent. Call activateAgent to mark it ready for an inbound MCP connection.
    */
-  async createAgent(id: string, options: { requestedExecutionMode?: AgentExecutionMode } = {}): Promise<Agent> {
+  async createAgent(
+    id: string,
+    options: {
+      requestedExecutionMode?: AgentExecutionMode;
+      provider?: string;
+      providerName?: string;
+      model?: string;
+    } = {}
+  ): Promise<Agent> {
     if (this.agents.has(id)) {
       throw new Error(`Agent ${id} already exists`);
     }
@@ -136,6 +147,10 @@ export class Registry extends EventEmitter {
     if (options.requestedExecutionMode) {
       agent.requestedExecutionMode = options.requestedExecutionMode;
     }
+    if (options.provider) agent.provider = options.provider;
+    if (options.providerName) agent.providerName = options.providerName;
+    if (options.model) agent.model = options.model;
+    
     this.agents.set(id, agent);
     return agent;
   }
@@ -191,6 +206,18 @@ export class Registry extends EventEmitter {
     if (provider) this.emit('provider', { id: agent.id, provider });
     if (model) this.emit('model', { id: agent.id, model });
 
+    if (agent.provider === 'api') {
+      console.log(`[Registry] Starting InProcessAgentDriver for API-backed agent ${id}`);
+      const apiProvider = (agent.providerName || 'google') as ApiProvider;
+      const driver = new InProcessAgentDriver(agent, this, {
+        provider: apiProvider,
+        ...(agent.model ? { model: agent.model } : {})
+      });
+      this.apiDrivers.set(agent.id, driver);
+      driver.start();
+      return;
+    }
+
     // Setup readiness timeout
     const timeout = setTimeout(() => {
       if (agent.status === 'starting') {
@@ -236,6 +263,11 @@ export class Registry extends EventEmitter {
     }
 
     this.agents.delete(id);
+    const driver = this.apiDrivers.get(id);
+    if (driver) {
+      driver.stop();
+      this.apiDrivers.delete(id);
+    }
     await agent.destroy();
   }
 
@@ -720,6 +752,11 @@ export class Registry extends EventEmitter {
     const teardowns: Promise<void>[] = [];
     for (const id of this.agents.keys()) {
       this.clearReadinessTimeout(id);
+      const driver = this.apiDrivers.get(id);
+      if (driver) {
+        driver.stop();
+        this.apiDrivers.delete(id);
+      }
       const agent = this.agents.get(id);
       if (agent) teardowns.push(agent.destroy());
     }
