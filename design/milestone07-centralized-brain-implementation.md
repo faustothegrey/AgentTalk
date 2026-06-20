@@ -15,8 +15,8 @@
 
 | Item (from plan)                                              | Implementer claim | Reviewer verdict | Evidence |
 |--------------------------------------------------------------|-------------------|------------------|----------|
-| **Spike** — orchestrator builds prompt → OpenRouter fetch → parse → 1 structured action, single agent, no CLI (plan §5) | —                 | not-checked      | —        |
-| Q1 structured-output reliability confirmed (response_format + retry) | —          | not-checked      | —        |
+| **Spike** — orchestrator builds prompt → OpenAI-compatible fetch → parse → structured `message_type`, single agent, no CLI (plan §5) | scaffolded | **PARTIAL ⚠️** | `spikes/m07-api-structured-probe.mjs` (isolated, zero impact on current code). Mechanism validated: it reaches the OpenAI-compatible `/chat/completions`, sends `response_format:json_object`, and handles the response/error path cleanly (got a well-formed HTTP 429 from OpenAI and reported it). **R1 itself NOT answered — blocked on a usable key** (OPENROUTER/NOUS unset; OPENAI_API_KEY = `insufficient_quota`). |
+| Q1 structured-output reliability confirmed (response_format + retry) | —          | **not-checked (BLOCKED on key)** | Needs OPENROUTER_API_KEY or NOUS_API_KEY (target: a Hermes / OpenRouter model). Spike is ready: `PROVIDER=openrouter MODEL=<id> node spikes/m07-api-structured-probe.mjs`. |
 | Q3 provider granularity decided (two named vs generic `api`) | —                 | not-checked      | —        |
 | Q4 Nous endpoint + Hermes model id confirmed                 | —                 | not-checked      | —        |
 | **Epic 1** — translation layer extracted server-side (move, tested) | —          | not-checked      | —        |
@@ -32,3 +32,8 @@
 ## Log (append-only, dated)
 - 2026-06-20 — Doc created as the M07 status ledger. No work started; M07 is parked behind M06
   closure (see `phase6-multi-agent-consensus-plan.md` §12 DoD).
+- 2026-06-20 — Spike `spikes/m07-api-structured-probe.mjs` written (isolated, no impact on
+  current code) and run. Mechanism validated (reaches an OpenAI-compatible endpoint, forces
+  `response_format:json_object`, parses, handles errors). **R1 blocked on a usable API key** —
+  OPENROUTER/NOUS unset, OPENAI_API_KEY out of quota (429). Awaiting a key from Fausto to run
+  the real R1 probe against a Hermes/OpenRouter model.
