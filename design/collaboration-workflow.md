@@ -136,9 +136,9 @@ smallest independently reviewable + mergeable unit; a.k.a. a "story"). Each task
   ideally one per DoD item. A commit records progress and makes the diff reviewable; it must **not
   self-close**: no ticking DoD boxes, no editing `CLAUDE.md`/`AGENT.md`, no "milestone complete".
 - The **reviewer** verifies the branch **by running it**, fills the *verdict* column, and **merges
-  to the mainline only when every row is VERIFIED** (the merge *is* the task's closure). REFUTED
-  work stays on the branch and is fixed there. **The reviewer's only branch action is the merge —
-  it never creates the branch.**
+  to the mainline only when every row is VERIFIED — or explicitly DEFERRED** (the merge *is* the
+  task's closure). REFUTED work stays on the branch and is fixed there. **The reviewer's only branch
+  action is the merge — it never creates the branch.**
 - **The mainline stays verified-only.** The branch is the claim; the merge is the verdict.
 
 **Refinements** are **not** a document type. A refinement is always one of three:
@@ -166,6 +166,22 @@ An impediment makes the affected verdict **BLOCKED ⛔** (not REFUTED) with a po
 closes only when its **unblock condition** is met (then the row is re-verified). This keeps "I
 couldn't check it, and it's not the implementer's fault" visible instead of buried in an evidence
 cell or laundered into a false "done".
+
+**BLOCKED ≠ BLOCKING — a BLOCKED row may be *deferred*.** A blocked verification does **not**
+automatically gate the task's closure. The human may **defer** a BLOCKED ⛔ row: the task closes on
+its remaining rows, and the deferred verification moves to `backlog.md`. Deferral is allowed **only**
+when *all* of these hold:
+1. the verdict is **BLOCKED ⛔** (external impediment, no code fault) — **never** REFUTED or a
+   defect-driven PARTIAL;
+2. another **VERIFIED** row already covers the same behavior by a different route (e.g. a deterministic
+   mocked test stands in for a quota-blocked *live* smoke), so closing doesn't ship something unproven;
+3. the **human explicitly signs off**, and the backlog item carries a **reopen condition** — the
+   concrete result that would force re-opening the task (e.g. "if the deferred live run fails or
+   surfaces a defect → reopen TX").
+
+A deferred row is recorded in `implementation.md` as **BLOCKED ⛔ → DEFERRED (backlog: …)** — it never
+becomes VERIFIED retroactively; the historical record shows it was parked, not proven. Reopening on
+the backlog's condition is normal, not a failure.
 
 **(b) Implementer notes & deviations** — *the doer's voice.* The symmetric counterpart to the
 reviewer's verdict column: the implementer's sanctioned channel to **dissent, deviate, or judge**,

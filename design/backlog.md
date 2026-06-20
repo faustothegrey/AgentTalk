@@ -41,4 +41,10 @@ promoted→X · absorbed→X · dropped}.
   hatch, log per-round token cost. **Defer:** revisit after M07-T3 (T3 likely needs the human in the
   loop). Document the baton protocol into `collaboration-workflow.md` before building the conductor.
 
+- [open] 2026-06-20 — **Re-run the M07-T2 live smoke** (`scripts/test-live-api-team.mjs`, all-Google
+  `gemini-2.5-flash`, 2 planners + worker in-process) **after the Google daily quota resets** — the
+  deferred T2.4 / IMP-1. T2 was allowed to close without it (T2.3 mocked proves the flow
+  deterministically). **Reopen condition:** if this live run fails or surfaces a defect → **reopen
+  M07-T2**. On green, note T2.4 as confirmed-live in the (frozen) ledger.
+
 *(add new items above this line)*
