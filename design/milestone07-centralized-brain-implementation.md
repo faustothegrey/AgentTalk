@@ -70,7 +70,9 @@ Spec: plan §9. Implementer fills *claim* (claim-only commits on the branch); re
 
 ## Refinements / follow-ups (in-scope tweaks discovered during M07)
 
-*(none yet — add rows here, same claim/verdict discipline)*
+| Item | Claim | Verdict | Notes |
+|---|---|---|---|
+| **R-1** `api-client.ts` `nous` provider `keyEnv` should be **`HERMES_API_KEY`** + default model **`deepseek-v4-flash`** (the env var/model Fausto actually provisioned), not `NOUS_API_KEY`/`Hermes-4-405B`. | — | open | Surfaced 2026-06-20 when Fausto provisioned the Nous key. Spike's `nous` provider already updated; implementer to wire the same into `api-client.ts`. |
 
 ## Log (append-only, dated)
 - 2026-06-20 — Doc created as the M07 status ledger. No work started; M07 is parked behind M06
