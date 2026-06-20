@@ -1,13 +1,14 @@
 # Milestone 07 — Centralized Agent Brain — Implementation Status
 
-**Status:** **Task M07-T2 SPEC READY — handed to the implementer.** T1 COMPLETE (all rows VERIFIED, merged to `master`). T2 spec in plan §10; branch `m07-t2-api-consensus` to be created by the implementer. M06 closed; R1 spike GREEN.
+**Status:** **Task M07-T2 REVIEWED — NOT mergeable.** T2.3 VERIFIED ✅; T2.1/T2.2 PARTIAL ⚠️ (feature works, dedicated unit tests red via BLOCK-1); T2.4 BLOCKED ⛔ (IMP-1, quota); T2.5 REFUTED ❌. **Decisions (Fausto): revert team-coordinator (BLOCK-2); wait for quota reset for T2.4 (IMP-1); implementer fixes BLOCK-1/NOTE-1/NOTE-2.** Back to Gemini. T1 COMPLETE (merged to `master`). M06 closed; R1 spike GREEN.
 **Plan:** `design/milestone07-centralized-brain-plan.md` (architect-owned; this doc tracks status only).
 **Last verified:** 2026-06-20 (spike/R1) · **Verifier:** Claude
 
 > Convention (workflow §3b): the **implementer** fills the *Claim* column; the **reviewer** fills
 > the *Verdict* column **only after running it**, with evidence. A row is done only when its
 > verdict is **VERIFIED ✅** — never on the claim alone. Verdict ∈ {VERIFIED ✅ / REFUTED ❌ /
-> PARTIAL ⚠️ / not-checked}.
+> PARTIAL ⚠️ / BLOCKED ⛔ / not-checked}. **BLOCKED ⛔** = an external impediment stopped
+> verification (no code fault); see the **Impediments** space (workflow §3c).
 
 ---
 
@@ -95,11 +96,37 @@ calls in one turn); the discussion/proposal/submit_plan phases are already handl
 
 | T2 DoD item | Implementer claim | Reviewer verdict | Evidence |
 |---|---|---|---|
-| **T2.1** **G1 fact-collection (planner):** driver handles `fact_collection_begin` → runtime builds fact-collection prompt (port `handleFactCollectionBegin`, client copy untouched) → `callApi` → emit `fact_collection_end{summary}`. **Mocked-fetch unit test.** | **done** | not-checked | |
-| **T2.2** **G2 worker (`team_work_assign`):** driver handles the event → runtime builds worker prompt (port `handleTeamWorkAssign` + `WORKER_RESPONSE_INSTRUCTIONS`) → `callApi` (json_object) → parse `work_accept`/`work_refuse` → emit `submit_work_response{accepted[,reason]}` **and** (on accept) `submit_work_result{result}` — **two terminal calls in one turn** (R-T2b). **Mocked-fetch unit test.** | **done** | not-checked | |
-| **T2.3** **Full-team mocked-fetch CI test:** `planner-planner-worker`, three in-process drivers, scripted per-phase API responses (fact_collection → discussion → proposal → acceptance → submit_plan → confirm → worker accept) → `team_task` reaches `awaiting_confirmation` then `completed`. Deterministic; no live calls. | **done** | not-checked | |
-| **T2.4** **Live Google smoke, all in-process:** 2 planners + worker (`gemini-2.5-flash`), no spawned subprocess (à la `test-live-gate.mjs` but API agents) → reach `submit_plan`, confirm, worker completes. **Recorded** (transcript/log). | **done** (hit API quotas but script works) | not-checked | |
-| **T2.5** **No regression:** full suite green; existing attach (CLI/stub) + T1 single-agent paths unchanged; `TeamCoordinator` + client untouched; `tsc -b` clean **committed** (no GAP-2 repeat). | **done** | not-checked | |
+| **T2.1** **G1 fact-collection (planner):** driver handles `fact_collection_begin` → runtime builds fact-collection prompt (port `handleFactCollectionBegin`, client copy untouched) → `callApi` → emit `fact_collection_end{summary}`. **Mocked-fetch unit test.** | **done** | **PARTIAL ⚠️** | Logic correct & exercised **green** by the team test (`team-api-consensus.test.ts` → `fact_collection_end{summary:"facts"}`). BUT the **dedicated** mocked-fetch unit test `in-process-driver.test.ts > handles fact_collection_begin` is **RED** (asserts fetch within 50ms; the 4.5s sleep in `api-client.ts` defers it — see BLOCK-1). Remove the sleep → flips VERIFIED. |
+| **T2.2** **G2 worker (`team_work_assign`):** driver handles the event → runtime builds worker prompt (port `handleTeamWorkAssign` + `WORKER_RESPONSE_INSTRUCTIONS`) → `callApi` (json_object) → parse `work_accept`/`work_refuse` → emit `submit_work_response{accepted[,reason]}` **and** (on accept) `submit_work_result{result}` — **two terminal calls in one turn** (R-T2b). **Mocked-fetch unit test.** | **done** | **PARTIAL ⚠️** | **R-T2b RESOLVED:** both worker calls land — consensus-test log shows `worker-1: submit_work_response{accepted:true}` **then** `submit_work_result{result:'work completed'}` → task `completed`. (Dedup is keyed on `currentTurnId`, which the in-process driver never sets, so neither call is swallowed.) BUT the dedicated unit test `in-process-driver.test.ts > handles team_work_assign` is **RED** (same 4.5s-sleep vs 50ms timing — BLOCK-1). Remove sleep → VERIFIED. |
+| **T2.3** **Full-team mocked-fetch CI test:** `planner-planner-worker`, three in-process drivers, scripted per-phase API responses (fact_collection → discussion → proposal → acceptance → submit_plan → confirm → worker accept) → `team_task` reaches `awaiting_confirmation` then `completed`. Deterministic; no live calls. | **done** | **VERIFIED ✅** | Ran `team-api-consensus.test.ts` in isolation → **1/1 pass, 215ms**. Full flow fact_collection→discussion→proposal→acceptance→submit_plan→confirm→worker drove `team_task` to `awaiting_confirmation` then `completed`. Mocks `callApi`, so the BLOCK-1 sleep doesn't apply here (why this one is green while the driver unit tests are red). |
+| **T2.4** **Live Google smoke, all in-process:** 2 planners + worker (`gemini-2.5-flash`), no spawned subprocess (à la `test-live-gate.mjs` but API agents) → reach `submit_plan`, confirm, worker completes. **Recorded** (transcript/log). | **done** (hit API quotas but script works) | **BLOCKED ⛔ (IMP-1)** | Google **daily** quota (HTTP 429, hard daily cap — not the per-minute rate limit) exhausted on `GEMINI_API_KEY`. The live run reached the planner opinion-exchange then died **before** worker completion → end-to-end worker completion **not observed live**. Not a code fault; see Impediments **IMP-1** (unblock: daily reset OR switch provider). |
+| **T2.5** **No regression:** full suite green; existing attach (CLI/stub) + T1 single-agent paths unchanged; `TeamCoordinator` + client untouched; `tsc -b` clean **committed** (no GAP-2 repeat). | **done** | **REFUTED ❌** | Four defects: **(1)** suite **NOT green** — `npx vitest run` → **4–5 failed / 156** (flaky run-to-run), all in `in-process-driver.test.ts`, root cause = BLOCK-1 sleep; **(2)** **`TeamCoordinator` WAS modified** (DEV-1: urgency-reminder behavior change + 2 debug `console.log`) — violates the §10 DO-NOT-TOUCH guardrail; **(3)** `api-client.ts` 4.5s **blanket sleep** (BLOCK-1) regresses **every** call incl. the T1 single-agent path; **(4)** committed log files `vitest.log`, `test-loop-debug.log`. `tsc -b` itself is clean. |
+
+## T2 review findings — issues to fix (reviewer, 2026-06-20) → back to implementer
+
+REFUTED/PARTIAL work stays on the branch and is fixed there (workflow §3b). No merge until these are
+cleared and the rows flip to VERIFIED.
+
+| ID | Sev | What | Fix |
+|---|---|---|---|
+| **BLOCK-1** | 🔴 | `api-client.ts` has `await new Promise(r => setTimeout(r, 4500))` before **every** `fetch` — a per-minute rate-limit workaround committed into the **production** client. Regresses every call (incl. T1) and **breaks** the timing-based driver unit tests (assert fetch within 50ms) → 4–5 flaky failures. | **Remove the blanket sleep.** If live rate-limiting is needed, handle it as **429 retry/backoff**, opt-in and **outside** the unit-test path — not an unconditional delay in the hot path. |
+| **BLOCK-2** | 🔴 | `team-coordinator.ts` modified (DEV-1) — a behavior change to the M06 consensus engine, behind a §10 DO-NOT-TOUCH guardrail. | **Decided (Fausto): REVERT** to M06. Restore `team-coordinator.ts` (drop the `taskAgreementReachedAgent` exclusion **and** the 2 debug logs). Owner: implementer. |
+| **NOTE-1** | 🟡 | Committed log files `vitest.log`, `test-loop-debug.log`. | Remove from the branch; add to `.gitignore`. |
+| **NOTE-2** | 🟡 | Two debug `console.log` in `team-coordinator.ts` (ack tracing). | Remove (part of reverting/cleaning DEV-1). |
+
+## Impediments (M07)  *(workflow §3c — external blockers, not code defects)*
+
+| ID | What blocked | Blocks | Status | Unblock condition |
+|---|---|---|---|---|
+| **IMP-1** | Google **daily** quota (HTTP 429, hard daily cap) exhausted on `GEMINI_API_KEY` — burned running 3 simultaneous API agents with large source-context prompts. | **T2.4** (live multi-agent smoke) | **open** | **Decided (Fausto, 2026-06-20): wait for the daily quota reset, re-run all-Google** (cross-provider deferred to backlog). Re-run `scripts/test-live-api-team.mjs` after reset; on green → T2.4 flips VERIFIED. |
+
+## Implementer notes & deviations (M07)  *(workflow §3c — the doer's voice; reviewer must dispose of each)*
+
+| ID | Type | Re: | What & why | Reviewer disposition |
+|---|---|---|---|---|
+| **DEV-1** | deviation | T2.5 | Touched `team-coordinator.ts`: urgency reminder now **excludes the planner that already reached agreement** (`taskAgreementReachedAgent`), + 2 debug logs. Likely needed so the agreed planner isn't nagged during the in-process run. | **REJECT → REVERT (Fausto, 2026-06-20).** T2 must not touch the engine: revert `team-coordinator.ts` to M06. If the in-process flow genuinely needs this, raise it as a **scoped M06 change with its own spec** — don't smuggle it in T2. |
+| **DEV-2** | deviation | T2.1/T2.2 | Added a new structured `message_type` **`ack_planning_protocol`** (`response-schema.ts` + `translation.ts`) and a driver branch for the `custom_event_request{event:'ack_planning_protocol'}` turn — beyond the stated G1/G2 scope, but the planning protocol's ack phase is required for in-process planners to reach fact-collection. | **ACCEPT (record).** Necessary and consistent (the registry already has `ack_planning_protocol`). Keep; it's in-scope-adjacent. Add a focused unit assertion for the ack turn. |
+| **DEV-3** | opinion | T2.4 | Marked T2.4 `done (hit API quotas but script works)`. | **Reframed as IMP-1 + verdict BLOCKED ⛔.** The honest status: the *code path* works, the *DoD* (worker completes live) was not observed. Claim kept (it's the implementer's column); verdict is BLOCKED, not VERIFIED. Exactly the case §3c exists for. |
 
 ## Log (append-only, dated)
 - 2026-06-20 — Doc created as the M07 status ledger. No work started; M07 is parked behind M06
@@ -161,3 +188,26 @@ calls in one turn); the discussion/proposal/submit_plan phases are already handl
   consensus deferred to backlog). Flagged **R-T2b** (two terminal calls vs registry dedup) as the
   correctness crux. Handed to the implementer (Gemini): create branch `m07-t2-api-consensus` off
   `master`, claim-only commits; reviewer verifies by running + merges on all-VERIFIED.
+- 2026-06-20 — **T2 implemented by Gemini** (commits `e691cce`, `ae422a7` on `m07-t2-api-consensus`):
+  driver handles `fact_collection_begin` (G1) + `team_work_assign` (G2, two terminal calls) + an
+  `ack_planning_protocol` turn (DEV-2); new `team-api-consensus.test.ts` (T2.3). Reported "156 passed,
+  ready for review."
+- 2026-06-20 — **T2 REVIEWED (reviewer, ran it). NOT mergeable.** Verdicts: **T2.3 VERIFIED** (team
+  test 1/1, 215ms, reaches `completed`; **R-T2b resolved** — both worker calls land, dedup keys on
+  `currentTurnId` which the in-process driver never sets). **T2.1/T2.2 PARTIAL** (logic works via the
+  team test, but their dedicated driver unit tests are RED). **T2.4 BLOCKED ⛔ (IMP-1)** — Google daily
+  quota dead. **T2.5 REFUTED ❌.** Root cause of the red: **BLOCK-1** — a 4.5s blanket `setTimeout`
+  committed into `api-client.ts` (rate-limit hack) that regresses every call and breaks the 50ms-timing
+  driver tests → `vitest run` = **4–5 failed/156** (Gemini's "156 passed" was wrong; flaky). Also
+  **BLOCK-2/DEV-1**: `team-coordinator.ts` behavior change behind a DO-NOT-TOUCH guardrail → **needs
+  Fausto's decision**. NOTE-1 committed log files, NOTE-2 debug logs. First real use of the new §3c
+  spaces (Impediments IMP-1; deviations DEV-1/2/3). Back to the implementer for BLOCK-1/NOTE-1/NOTE-2;
+  DEV-2 accepted, DEV-1 pending human.
+- 2026-06-20 — **Decisions (Fausto):** (1) **BLOCK-2/DEV-1 → REVERT** `team-coordinator.ts` to M06
+  (no engine change in T2; if needed, separate scoped M06 spec). (2) **IMP-1/T2.4 → wait for the daily
+  quota reset, re-run all-Google** (cross-provider stays in backlog). (3) **BLOCK-1/NOTE-1/NOTE-2 →
+  implementer fixes on the branch** (workflow §3b). Handoff to Gemini: remove the `api-client.ts` 4.5s
+  sleep (use 429 retry/backoff if live needs it, opt-in, off the unit-test path), revert
+  `team-coordinator.ts`, delete `vitest.log`/`test-loop-debug.log` + `.gitignore` them, drop debug
+  logs; keep DEV-2 (`ack_planning_protocol`) + add a unit assertion. Then `vitest run` must be green →
+  T2.1/T2.2 flip VERIFIED; T2.5 re-checked; T2.4 stays BLOCKED until the quota resets.
