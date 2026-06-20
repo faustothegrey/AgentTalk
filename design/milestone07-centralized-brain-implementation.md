@@ -22,8 +22,8 @@ You are the **implementer** for M07; the reviewer verifies. Read, in order:
    column for the reviewer.
 
 **How to work (per workflow §3b *Tasks & branches*):**
-- Work on the branch **`m07-t1-api-agent-driver`** (already created off `master`). Do **not**
-  commit to `master`.
+- **Create** the branch **`m07-t1-api-agent-driver`** off `master` yourself (branch creation is
+  the implementer's job), then work there. Do **not** commit to `master`.
 - Commit **claim-only**, small commits (ideally one per DoD row). A commit records progress and
   makes the diff reviewable — it must **not self-close**: do **not** tick DoD boxes, do **not**
   edit `CLAUDE.md`/`AGENT.md`, no "milestone complete".
@@ -91,5 +91,5 @@ Spec: plan §9. Implementer fills *claim* (claim-only commits on the branch); re
   Gemini for implementation; Claude verifies each I1 row by running.
 - 2026-06-20 — **Task model adopted** (workflow §3b *Tasks & branches*): epic → tasks T1–T4,
   one branch per task `<epic>-t<N>-<slug>`, claim-only commits, reviewer merges to `master` on
-  all-VERIFIED. Relabelled Increment 1 → **Task M07-T1**; branch `m07-t1-api-agent-driver` created
-  off `master`. Ready for the implementer.
+  all-VERIFIED. Relabelled Increment 1 → **Task M07-T1**. The implementer creates the branch
+  `m07-t1-api-agent-driver` (their responsibility) and works there. Ready for the implementer.

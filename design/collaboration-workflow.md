@@ -125,13 +125,15 @@ record. Merge/archive then to avoid drift (open question 5).
 **Tasks & branches** — how work is sliced and committed. An epic is broken into **tasks** (the
 smallest independently reviewable + mergeable unit; a.k.a. a "story"). Each task has an id
 `<EPIC>-T<N>` and its DoD as claim/verdict rows in the epic's `-implementation.md`.
-- The **implementer** works each task on a branch named **`<epic-lower>-t<N>-<slug>`**
-  (e.g. `m07-t1-api-agent-driver`), committing **claim-only** commits there — small, ideally one
-  per DoD item. A commit records progress and makes the diff reviewable; it must **not
+- The **implementer creates the branch** (off the current mainline) named
+  **`<epic-lower>-t<N>-<slug>`** (e.g. `m07-t1-api-agent-driver`) — **branch creation is the
+  implementer's responsibility, not the reviewer's** — and commits **claim-only** there: small,
+  ideally one per DoD item. A commit records progress and makes the diff reviewable; it must **not
   self-close**: no ticking DoD boxes, no editing `CLAUDE.md`/`AGENT.md`, no "milestone complete".
 - The **reviewer** verifies the branch **by running it**, fills the *verdict* column, and **merges
   to the mainline only when every row is VERIFIED** (the merge *is* the task's closure). REFUTED
-  work stays on the branch and is fixed there.
+  work stays on the branch and is fixed there. **The reviewer's only branch action is the merge —
+  it never creates the branch.**
 - **The mainline stays verified-only.** The branch is the claim; the merge is the verdict.
 
 **Refinements** are **not** a document type. A refinement is always one of three:
