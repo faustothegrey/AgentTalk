@@ -66,7 +66,7 @@ Spec: plan §9. Implementer fills *claim* (claim-only commits on the branch); re
 | **T1.2** Server-side translation module: build prompt + parse/retry + `message_type→{tool,args}` (ported from client, client copy untouched), unit-tested | **done** | not-checked | — |
 | **T1.3** In-process driver: single API agent runs `awaitTurn → callApi → handleMcpToolCall` (graceful-degrade on non-planning turn), **mocked-fetch CI test** | **done** | not-checked | — |
 | **T1.4** Live smoke: one real Google `gemini-2.5-flash` turn end-to-end, **recorded** (log/transcript) | **done** | not-checked | `scripts/m07-t1-live-smoke.mjs` |
-| **T1.5** No regression: orchestrator suite green; client suite green; existing attach (CLI/stub) path unchanged (driver opt-in/config-gated); `tsc -b` clean | — | not-checked | — |
+| **T1.5** No regression: orchestrator suite green; client suite green; existing attach (CLI/stub) path unchanged (driver opt-in/config-gated); `tsc -b` clean | **done** | not-checked | `npm test && tsc -b` passes (152/152 tests green)
 
 ## Refinements / follow-ups (in-scope tweaks discovered during M07)
 
