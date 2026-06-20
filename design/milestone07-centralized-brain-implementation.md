@@ -1,6 +1,6 @@
 # Milestone 07 — Centralized Agent Brain — Implementation Status
 
-**Status:** **OPEN — Increment 1 (M07-I1) active.** M06 closed; R1 spike GREEN. (First exemplar of the M07 doc-pair convention.)
+**Status:** **OPEN — Task M07-T1 active** (branch `m07-t1-api-agent-driver`). M06 closed; R1 spike GREEN. (First exemplar of the M07 doc-pair convention.)
 **Plan:** `design/milestone07-centralized-brain-plan.md` (architect-owned; this doc tracks status only).
 **Last verified:** 2026-06-20 (spike/R1) · **Verifier:** Claude
 
@@ -13,48 +13,60 @@
 
 ## ▶ START HERE (Gemini, fresh context)
 
-You are the **implementer** for M07; Claude is the architect/reviewer. Read, in order:
+You are the **implementer** for M07; the reviewer verifies. Read, in order:
 1. `design/collaboration-workflow.md` — the method (esp. §2 verify-don't-assert, §3b the
-   claim/verdict ledger you must fill, §4a don't overwrite open points).
+   claim/verdict ledger + **Tasks & branches**, §4a don't overwrite open points).
 2. `design/milestone07-centralized-brain-plan.md` — the epic plan. **§9 is your
-   implementation-ready spec for Increment 1 (M07-I1).** Honour the "DO NOT TOUCH" guardrails there.
+   implementation-ready spec for Task M07-T1.** Honour the "DO NOT TOUCH" guardrails there.
 3. This ledger — fill the **Implementer claim** column as you go; leave the **Reviewer verdict**
-   column for Claude. **Do not tick/close items yourself** and **do not edit
-   `CLAUDE.md`/`AGENT.md`** — closure happens only after Claude re-verifies by running.
-4. Reference implementation for the API call: `spikes/m07-api-structured-probe.mjs` (proven, Google).
+   column for the reviewer.
 
-**Scope right now = Increment 1 only** (single in-orchestrator API agent; mocked-fetch CI test +
-one live Google smoke). Multi-agent API consensus, CLI-harness inversion, and retiring the client
-logic are **later increments — out of scope now.** Use `gemini-2.5-flash` (budget). Key via env
-(`GEMINI_API_KEY`); never commit secrets.
+**How to work (per workflow §3b *Tasks & branches*):**
+- Work on the branch **`m07-t1-api-agent-driver`** (already created off `master`). Do **not**
+  commit to `master`.
+- Commit **claim-only**, small commits (ideally one per DoD row). A commit records progress and
+  makes the diff reviewable — it must **not self-close**: do **not** tick DoD boxes, do **not**
+  edit `CLAUDE.md`/`AGENT.md`, no "milestone complete".
+- The reviewer verifies the branch by running it, fills the verdict column, and **merges to
+  `master` only when every T1 row is VERIFIED**.
+
+**Scope right now = Task M07-T1 only** (single in-orchestrator API agent; mocked-fetch CI test +
+one live Google smoke). T2 (multi-agent API consensus), T3 (CLI-harness inversion), T4 (retire
+client logic) are **later tasks — out of scope now.** Use `gemini-2.5-flash` (budget). Key via env
+(`GEMINI_API_KEY`); never commit secrets. Reference API call: `spikes/m07-api-structured-probe.mjs`.
 
 ---
 
-## Status ledger (mirrors the plan's phasing / DoD)
+## Readiness gates (pre-task) — all green
 
-| Item (from plan)                                              | Implementer claim | Reviewer verdict | Evidence |
-|--------------------------------------------------------------|-------------------|------------------|----------|
-| **Spike** — orchestrator builds prompt → OpenAI-compatible fetch → parse → structured `message_type`, single agent, no CLI (plan §5) | done | **VERIFIED ✅** | `spikes/m07-api-structured-probe.mjs` (isolated, zero impact on current code). Ran `PROVIDER=google` → **3/3 PASS** with real `gemini-2.5-flash` via Google's OpenAI-compat endpoint: discussion→`opinion`, proposal→`agreement_proposal`, submit→`submit_plan`. Confirms the centralized-brain round-trip (orchestrator builds prompt → fetch → `response_format:json_object` → parse → legal `message_type`). |
-| Q1 structured-output reliability confirmed (response_format + retry) | done          | **VERIFIED ✅ (Google)** | Real Gemini emitted a **legal `message_type` for every protocol step** (3/3), tokens 414in/225out — cheap. Still TODO for the *target* Hermes/OpenRouter models when those keys arrive (`PROVIDER=openrouter\|nous MODEL=<id> node spikes/...`), but R1 is **answered** for the Google provider — enough to start the epic. |
-| Q3 provider granularity decided (two named vs generic `api`) | —                 | **RESOLVED ✅**   | Named providers (`google`/`openrouter`/`nous`), one OpenAI-compatible client. (Fausto + Claude, 2026-06-20.) |
-| Q4 Nous endpoint + Hermes model id confirmed                 | —                 | **deferred**     | Starting with Google; Nous/OpenRouter when those keys arrive (budget). Not blocking. |
-| **Epic 1** — translation layer extracted server-side (move, tested) | —          | not-checked      | —        |
-| **Epic 2** — API agents productionized in-orchestrator (OpenRouter + Nous) | —   | not-checked      | —        |
-| **Epic 3** — CLI harness inversion (exec-RPC) + reconnect/effect-fence + contract bump | — | not-checked  | —        |
-| **Epic 4** — client-side semantic logic retired; harness = transport + exec only | —  | not-checked   | —        |
-| Regression gates (tsc clean, suites green, M05 separation holds)            | —     | not-checked      | —        |
+| Gate | Verdict | Evidence |
+|---|---|---|
+| **Spike** — orchestrator builds prompt → OpenAI-compatible fetch → parse → structured `message_type` (plan §5) | **VERIFIED ✅** | `spikes/m07-api-structured-probe.mjs` — `PROVIDER=google` → **3/3 PASS** with `gemini-2.5-flash`: discussion→`opinion`, proposal→`agreement_proposal`, submit→`submit_plan`. |
+| **Q1** structured-output reliability (response_format + retry) | **VERIFIED ✅ (Google)** | Legal `message_type` for every step (3/3), 414in/225out tokens. TODO for Hermes/OpenRouter when those keys arrive. |
+| **Q3** provider granularity | **RESOLVED ✅** | Named providers (`google`/`openrouter`/`nous`), one OpenAI-compatible client. |
+| **Q4** Nous endpoint + Hermes model id | **deferred** | Google-first; Nous/OpenRouter when keys arrive. Not blocking. |
 
-## Increment 1 (M07-I1) — In-orchestrator API agent driver  *(ACTIVE — Gemini)*
+## Tasks (epic breakdown)
 
-Spec: plan §9. Fill the *claim* column as you implement; Claude fills *verdict* by running.
-
-| I1 DoD item | Implementer claim | Reviewer verdict | Evidence |
+| Task | Goal | Branch | Status |
 |---|---|---|---|
-| **I1.1** OpenAI-compatible API client module (named providers `google`/`openrouter`/`nous`, env keys, `response_format:json_object`), unit-tested with **mocked fetch** | — | not-checked | — |
-| **I1.2** Server-side translation module: build prompt + parse/retry + `message_type→{tool,args}` (ported from client, client copy untouched), unit-tested | — | not-checked | — |
-| **I1.3** In-process driver: single API agent runs `awaitTurn → callApi → handleMcpToolCall` (graceful-degrade on non-planning turn), **mocked-fetch CI test** | — | not-checked | — |
-| **I1.4** Live smoke: one real Google `gemini-2.5-flash` turn end-to-end, **recorded** (log/transcript) | — | not-checked | — |
-| **I1.5** No regression: orchestrator suite green; client suite green; existing attach (CLI/stub) path unchanged (driver opt-in/config-gated); `tsc -b` clean | — | not-checked | — |
+| **M07-T1** | API agent in-orchestrator, **single agent** (in-process driver, Google) | `m07-t1-api-agent-driver` | **ACTIVE** (DoD below) |
+| **M07-T2** | Multi-agent API **consensus** in-orchestrator (2 planners → submit_plan → worker) | `m07-t2-api-consensus` | not started |
+| **M07-T3** | **CLI harness inversion** (exec-RPC) + reconnect/effect-fence + contract bump | `m07-t3-harness-inversion` | not started |
+| **M07-T4** | Retire client-side semantic logic; harness = transport + exec only | `m07-t4-retire-client-brain` | not started |
+
+## Task M07-T1 — In-orchestrator API agent driver  *(ACTIVE — branch `m07-t1-api-agent-driver`)*
+
+Spec: plan §9. Implementer fills *claim* (claim-only commits on the branch); reviewer fills
+*verdict* by running and merges to `master` only when all rows are VERIFIED.
+
+| T1 DoD item | Implementer claim | Reviewer verdict | Evidence |
+|---|---|---|---|
+| **T1.1** OpenAI-compatible API client module (named providers `google`/`openrouter`/`nous`, env keys, `response_format:json_object`), unit-tested with **mocked fetch** | — | not-checked | — |
+| **T1.2** Server-side translation module: build prompt + parse/retry + `message_type→{tool,args}` (ported from client, client copy untouched), unit-tested | — | not-checked | — |
+| **T1.3** In-process driver: single API agent runs `awaitTurn → callApi → handleMcpToolCall` (graceful-degrade on non-planning turn), **mocked-fetch CI test** | — | not-checked | — |
+| **T1.4** Live smoke: one real Google `gemini-2.5-flash` turn end-to-end, **recorded** (log/transcript) | — | not-checked | — |
+| **T1.5** No regression: orchestrator suite green; client suite green; existing attach (CLI/stub) path unchanged (driver opt-in/config-gated); `tsc -b` clean | — | not-checked | — |
 
 ## Refinements / follow-ups (in-scope tweaks discovered during M07)
 
@@ -77,3 +89,7 @@ Spec: plan §9. Fill the *claim* column as you implement; Claude fills *verdict*
 - 2026-06-20 — **Increment 1 (M07-I1) sub-design written** (epic §9) + I1 DoD rows added above +
   START HERE block for fresh Gemini + Q3 RESOLVED (named providers) / Q4 deferred. Handed to
   Gemini for implementation; Claude verifies each I1 row by running.
+- 2026-06-20 — **Task model adopted** (workflow §3b *Tasks & branches*): epic → tasks T1–T4,
+  one branch per task `<epic>-t<N>-<slug>`, claim-only commits, reviewer merges to `master` on
+  all-VERIFIED. Relabelled Increment 1 → **Task M07-T1**; branch `m07-t1-api-agent-driver` created
+  off `master`. Ready for the implementer.

@@ -122,6 +122,18 @@ prior "not done" — the two columns coexist until the reviewer flips the verdic
 close, `implementation.md` freezes (it is the historical record); `plan.md` becomes the design
 record. Merge/archive then to avoid drift (open question 5).
 
+**Tasks & branches** — how work is sliced and committed. An epic is broken into **tasks** (the
+smallest independently reviewable + mergeable unit; a.k.a. a "story"). Each task has an id
+`<EPIC>-T<N>` and its DoD as claim/verdict rows in the epic's `-implementation.md`.
+- The **implementer** works each task on a branch named **`<epic-lower>-t<N>-<slug>`**
+  (e.g. `m07-t1-api-agent-driver`), committing **claim-only** commits there — small, ideally one
+  per DoD item. A commit records progress and makes the diff reviewable; it must **not
+  self-close**: no ticking DoD boxes, no editing `CLAUDE.md`/`AGENT.md`, no "milestone complete".
+- The **reviewer** verifies the branch **by running it**, fills the *verdict* column, and **merges
+  to the mainline only when every row is VERIFIED** (the merge *is* the task's closure). REFUTED
+  work stays on the branch and is fixed there.
+- **The mainline stays verified-only.** The branch is the claim; the merge is the verdict.
+
 **Refinements** are **not** a document type. A refinement is always one of three:
 1. **Design refinement** → edit `plan.md` in place (the *Revise* step) + a status-log line.
 2. **Work inside an open epic** → a row in that epic's `implementation.md` under a
@@ -174,6 +186,8 @@ Steps:
    implementer records each phase's outcome as a *claim* row in `<name>-implementation.md`; the
    reviewer then **runs it** and flips the *verdict* column (VERIFIED/REFUTED/PARTIAL) with
    evidence (§3b). A phase is "done" only when its verdict is VERIFIED — never on the claim alone.
+   Work is sliced into **tasks**, each on its own branch `<epic>-t<N>-<slug>`; the reviewer merges
+   to the mainline only when all of a task's rows are VERIFIED (§3b *Tasks & branches*).
 
 ---
 

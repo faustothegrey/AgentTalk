@@ -122,12 +122,13 @@ green and Fausto greenlights). Start from a clean base.
   pilot/spike. Parked pending M06 closure; awaiting Fausto's go + Q1/Q3/Q4 answers.
 - 2026-06-20 — **M06 closed; M07 OPEN.** R1 spike GREEN (Gemini 3/3 legal `message_type` via
   Google OpenAI-compat). **Q3 RESOLVED:** named providers (`google`/`openrouter`/`nous`), one
-  OpenAI-compatible client. **Q4 deferred** (start with Google; Nous later). Increment 1
-  sub-design below (§9) is implementation-ready. *Gemini implements; Claude verifies by running.*
+  OpenAI-compatible client. **Q4 deferred** (start with Google; Nous later). Task M07-T1
+  sub-design below (§9) is implementation-ready. *Implementer builds on branch
+  `m07-t1-api-agent-driver`; reviewer verifies by running and merges on all-VERIFIED.*
 
 ---
 
-## 9. Increment 1 (M07-I1) — In-orchestrator API agent driver  **(implementation-ready)**
+## 9. Task M07-T1 — In-orchestrator API agent driver  **(implementation-ready · branch `m07-t1-api-agent-driver`)**
 
 **Goal.** The orchestrator drives an **API-backed agent fully in-process** (Google via the
 OpenAI-compat endpoint), reusing the existing consensus engine — with **no change to the protocol
