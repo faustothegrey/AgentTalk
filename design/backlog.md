@@ -21,4 +21,10 @@ promoted→X · absorbed→X · dropped}.
   T2 is green and OpenRouter has credit / Hermes is live; proves the centralized brain mixes providers
   in a single consensus.
 
+- [open] 2026-06-20 — **Remove the `▶ START HERE` block** from
+  `milestone07-centralized-brain-implementation.md` — redundant now that the Tasks table + claim/verdict
+  rows drive where to start (an implementer infers the next task from state). **Do it at the next T2
+  merge** (don't churn the active branch now). Currently generalized as a stopgap; the agreed end state
+  is to delete it.
+
 *(add new items above this line)*
