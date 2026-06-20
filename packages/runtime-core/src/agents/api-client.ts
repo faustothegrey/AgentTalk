@@ -66,8 +66,6 @@ export async function callApi(args: ApiCallArgs, fetchFn = fetch): Promise<ApiCa
     body.response_format = args.response_format;
   }
 
-  await new Promise(r => setTimeout(r, 4500));
-
   const res = await fetchFn(`${providerDef.baseUrl}/chat/completions`, {
     method: 'POST',
     headers,
