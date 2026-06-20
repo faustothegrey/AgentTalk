@@ -193,3 +193,9 @@ cleared and the rows flip to VERIFIED.
   `tsc -b` clean; full suite **156/156 green in 3.84s** (was 4–5 red @16s) — incl. the two driver tests
   that were red. **T2.1/T2.2/T2.3/T2.5 → VERIFIED ✅**, **T2.4 → DEFERRED** (backlog). Gemini's report
   matched reality this time (honest count). **Merge gate (all VERIFIED or DEFERRED) met.**
+- 2026-06-20 — **Merged T2 → `master` (`--no-ff`)**; deleted dev branch; drained backlog (START HERE
+  removed). Added workflow **Backlog gate** (review backlog before each macro unit).
+- 2026-06-20 — **Q1 spikes for the other providers (keys now present).** Nous endpoint **GREEN 3/3**
+  (`google/gemini-3.1-flash-lite`) — it's an **aggregator** catalog. OpenRouter **`:free` not viable**
+  (empty turns + 429 rate-limits). 🐛 Found: `api-client.ts` `nous` `defaultModel: 'deepseek-v4-flash'`
+  is **404 (invalid)** — R-1 was wrong; fix to a real id. Details in `backlog.md` (cross-provider item).
