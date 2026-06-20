@@ -122,3 +122,9 @@ Spec: plan §9. Implementer fills *claim* (claim-only commits on the branch); re
   passed with real Google; suite **153/153**, committed branch builds (no GAP-2 repeat); R-1 done.
   **All of T1 (T1.1–T1.6) VERIFIED → reviewer merging `m07-t1-api-agent-driver` → `master`.**
   Minor nit logged (R-2, dead comments in the test).
+- 2026-06-20 — **Session paused.** Resume point: **M07-T2** (multi-agent API consensus) — write the
+  T2 spec (à la plan §9), then branch `m07-t2-api-consensus`. Foundations ready: in-process driver
+  + registry start-path (T1) + consensus engine (M06). **Keys note:** `GEMINI_API_KEY` works;
+  `OPENROUTER_API_KEY` + `HERMES_API_KEY` are in `~/.zshrc` but **Claude Code must be restarted**
+  to inherit them (it captured its env at launch, before they were added). OpenRouter = 0 credit →
+  `:free` models only; Nous/Hermes model = `deepseek-v4-flash`.
