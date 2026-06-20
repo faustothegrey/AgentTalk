@@ -36,17 +36,17 @@ async function run() {
   const llmAgentPath = path.join(__dirname, '../../agentalk-mcp-client/llm-agent.mjs');
 
   const harnessA = spawn('node', [llmAgentPath, '--agentId', 'planner-a', '--provider', 'gemini', '--execution-mode', 'persistent'],
-    { env: { ...process.env, AGENTTALK_PERSISTENT_MCP_URL: `ws://localhost:${port}/` }, stdio: ['ignore', 'pipe', 'pipe'] });
+    { env: { ...process.env, AGENTTALK_PERSISTENT_MCP: 'true', AGENTTALK_PERSISTENT_MCP_URL: `ws://localhost:${port}/` }, stdio: ['ignore', 'pipe', 'pipe'] });
   harnessA.stdout.on('data', d => process.stdout.write(`[llm-agent-a] ${d}`));
   harnessA.stderr.on('data', d => process.stderr.write(`[llm-agent-a-err] ${d}`));
 
   const harnessB = spawn('node', [llmAgentPath, '--agentId', 'planner-b', '--provider', 'gemini', '--execution-mode', 'persistent'],
-    { env: { ...process.env, AGENTTALK_PERSISTENT_MCP_URL: `ws://localhost:${port}/` }, stdio: ['ignore', 'pipe', 'pipe'] });
+    { env: { ...process.env, AGENTTALK_PERSISTENT_MCP: 'true', AGENTTALK_PERSISTENT_MCP_URL: `ws://localhost:${port}/` }, stdio: ['ignore', 'pipe', 'pipe'] });
   harnessB.stdout.on('data', d => process.stdout.write(`[llm-agent-b] ${d}`));
   harnessB.stderr.on('data', d => process.stderr.write(`[llm-agent-b-err] ${d}`));
 
   const harnessC = spawn('node', [llmAgentPath, '--agentId', 'worker-1', '--provider', 'gemini', '--execution-mode', 'persistent'],
-    { env: { ...process.env, AGENTTALK_PERSISTENT_MCP_URL: `ws://localhost:${port}/` }, stdio: ['ignore', 'pipe', 'pipe'] });
+    { env: { ...process.env, AGENTTALK_PERSISTENT_MCP: 'true', AGENTTALK_PERSISTENT_MCP_URL: `ws://localhost:${port}/` }, stdio: ['ignore', 'pipe', 'pipe'] });
   harnessC.stdout.on('data', d => process.stdout.write(`[llm-agent-w] ${d}`));
   harnessC.stderr.on('data', d => process.stderr.write(`[llm-agent-w-err] ${d}`));
 
@@ -60,7 +60,7 @@ async function run() {
   ]);
 
   console.log('[Test] Starting team...');
-  await registry.assignTeamTask(team.id, 'Let us build a plan.');
+  await registry.assignTeamTask(team.id, 'Let us build a plan. Please immediately agree on adding a file named plan.md with content "hello" and submit the plan. Make sure your submitted plan contains the exact text "add plan.md".');
 
   // Monitor events
   let planSubmitted = false;
@@ -76,8 +76,8 @@ async function run() {
   });
 
   // Wait for submit_plan
-  for (let i = 0; i < 200 && !planSubmitted; i++) {
-    await new Promise(r => setTimeout(r, 200));
+  for (let i = 0; i < 1200 && !planSubmitted; i++) {
+    await new Promise(r => setTimeout(r, 1000));
   }
 
   if (planSubmitted && capturedTaskId) {
@@ -85,8 +85,8 @@ async function run() {
     registry.confirmTeamPlan(capturedTaskId);
     
     // Wait for worker to complete
-    for (let i = 0; i < 200 && !workCompleted; i++) {
-      await new Promise(r => setTimeout(r, 200));
+    for (let i = 0; i < 1200 && !workCompleted; i++) {
+      await new Promise(r => setTimeout(r, 1000));
     }
   }
 
