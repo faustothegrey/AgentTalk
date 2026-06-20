@@ -90,6 +90,7 @@ inter-agent communication bus.** Anything not written down does not survive the 
 | **`<name>-plan.md`** *(from M07)* | The stable plan for one milestone/epic. Owned by the **architect**. Scope, decisions, acceptance criteria, **Definition of Done**. Changes only on a real design change — **no status churn here**. |
 | **`<name>-implementation.md`** *(from M07)* | The volatile **status ledger** for that epic. A claim/verdict table (below) + an append-only log. The **implementer** records claims; the **reviewer** records verified/refuted verdicts. |
 | **`backlog.md`** *(from M07)* | One rolling, append-only parking lot for work **not attached to an open epic/spike**. Each item leaves by being **promoted** (→ spike/epic), **absorbed** (→ folded-into-EpicN), or **dropped** (explicitly). |
+| **`logbook.md`** *(from M07)* | Append-only, dated log of cross-cutting **findings/gotchas** not tied to one task (environment, providers, real system behaviour). Backlog is *work to do*; the logbook is *facts we learned*. |
 | **(This) workflow doc** | The method itself, made explicit for reuse. |
 
 Each doc is self-describing: status, author, date, and "Related" links at the top.
@@ -210,6 +211,20 @@ Format — a table:
 
 **Symmetry rule.** Neither column may ignore the other: every REFUTED gets an implementer answer;
 every deviation/opinion gets a reviewer disposition. Nothing open vanishes silently (4a).
+
+### 3d. The logbook — cross-cutting findings (adopted 2026-06-20)
+
+`logbook.md` is an **append-only, dated** log of durable **findings/gotchas not tied to a single
+task** — facts about the environment, providers, or the system's *actual* behaviour that future work
+needs. It is the home for the *orphan finding* (mirror of the backlog, which is the home for the
+orphan *task*).
+
+- **One finding, one home.** A finding tied to an open task stays in that task's `implementation.md`;
+  only cross-cutting ones go to the logbook. Backlog = *work to do*; logbook = *facts learned*;
+  `plan.md` = *decisions*.
+- **Append-only.** Never rewrite an entry — mark it **SUPERSEDED** with a pointer (git is the backstop).
+- **Teeth (or it rots).** Skim the relevant entries **before starting related work**, and as part of
+  the **backlog gate** (§3b). A write-only logbook is worthless; the read is the point.
 
 ---
 

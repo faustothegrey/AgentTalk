@@ -24,16 +24,9 @@ promoted→X · absorbed→X · dropped}.
 - [open] 2026-06-20 — **Cross-provider consensus** (e.g. planner-a Google + planner-b Nous in one
   `planner-planner-worker` team) — deferred from M07-T2 (all-Google for budget). Proves the centralized
   brain mixes providers in a single consensus.
-  - **Spike findings (2026-06-20, `spikes/m07-api-structured-probe.mjs`, both keys present):**
-    - **Nous endpoint = GREEN, 3/3** with `google/gemini-3.1-flash-lite`. The endpoint
-      (`inference-api.nousresearch.com/v1`) is an **aggregator** (catalog: anthropic/claude-*,
-      google/gemini-*, qwen/*, x-ai/grok-*, …) — pick any valid id. **Viable cross-provider partner.**
-    - **OpenRouter `:free` = NOT viable** for multi-turn consensus: `gpt-oss-120b:free` 2/3 (one turn
-      returned empty), `qwen3-next-80b:free` → immediate **429 "rate-limited upstream"**. Needs paid
-      credit to be usable. Use **Nous**, not OpenRouter-free, for the pilot.
-    - 🐛 **`api-client.ts` `nous` `defaultModel: 'deepseek-v4-flash'` is INVALID (404 at the endpoint)** —
-      the R-1 finding was wrong. Fix to a real catalog id (e.g. `google/gemini-3.1-flash-lite`) when
-      promoting this item (or as a standalone refinement).
+  - **Readiness (facts in `logbook.md`, 2026-06-20):** pair **Google + Nous** (Nous = GREEN 3/3 with a
+    valid id; it's an aggregator). **Not** OpenRouter-`:free` (flaky/429). When promoting, **fix
+    `api-client.ts` `nous` defaultModel** (`deepseek-v4-flash` 404s).
 
 - [open] 2026-06-20 — **Auto-handoff between agents (remove the human as turn-scheduler)** — resolves
   workflow **open question #2** (relay overhead). Insight: the *channel* already exists (ledger +
