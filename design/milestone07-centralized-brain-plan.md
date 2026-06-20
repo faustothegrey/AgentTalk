@@ -211,3 +211,89 @@ API agent through the normal agent lifecycle.* (Was GAP-1; reviewer review 2026-
   fixes uncommitted, cf. GAP-2).
 
 **On green:** all of T1 (T1.1–T1.6) is VERIFIED → reviewer merges the branch to `master`.
+
+---
+
+## 10. Task M07-T2 — Multi-agent API consensus (in-orchestrator)  **(implementation-ready · branch `m07-t2-api-consensus`)**
+
+**Goal.** Two API-backed **planners** + one API-backed **worker**, all driven **fully in-process**
+(Google `gemini-2.5-flash`), complete the **whole `planner-planner-worker` consensus protocol
+end-to-end** — fact-collection → discussion → proposal → endorsement → `submit_plan` → (user)
+plan-confirm → worker accept → `submit_work_result` — with **no external harness** and **no change
+to `TeamCoordinator`**. This proves the centralized brain drives *multi-agent consensus*, not just a
+single agent (T1).
+
+**Key insight (grounded in code).** T1 already delivered (a) a per-agent `InProcessAgentDriver`
+(`packages/runtime-core/src/agents/in-process-driver.ts`) that runs
+`awaitTurn → buildPrompt → callApi → parse/retry → translate → handleMcpToolCall`, and (b) the
+registry start-path (`registry.ts` `activateAgent`: `provider:'api'` → starts a driver per agent).
+The `TeamCoordinator` already pilots the full multi-planner flow **unchanged** — it sends
+`fact_collection_begin` → `conversation_start{mode:'planning'}` → (`team_work_assign`) and consumes
+`fact_collection_end` / `opinion` / `agreement_proposal` / `agreement_acceptance` / `submit_plan` /
+`submit_work_response` / `submit_work_result`. So T2 is **not** new protocol — it is: (1) run three
+T1 drivers concurrently in one team, and (2) teach the driver/runtime the **two team-phase events it
+does not yet handle.** The driver already handles `conversation_start` + planning `message_received`
+(the discussion/proposal/submit_plan phases — verified in T1's single-planner smoke).
+
+**The two gaps to close (the only new driver/runtime work):**
+- **G1 — fact-collection (planner).** The driver does not handle `fact_collection_begin`. Port the
+  client's `handleFactCollectionBegin` (`agentalk-mcp-client/llm-agent.mjs`) into the server-side
+  runtime: build the fact-collection prompt → `callApi` (structured) → emit
+  `fact_collection_end{summary}`.
+- **G2 — worker (`team_work_assign`).** The driver does not handle `team_work_assign`. Port the
+  client's `handleTeamWorkAssign` + `WORKER_RESPONSE_INSTRUCTIONS`: build the worker prompt →
+  `callApi` (structured `json_object`) → parse `work_accept`/`work_refuse` → emit
+  `submit_work_response{accepted[,reason]}` and, on accept, **also** `submit_work_result{result}`.
+  This requires the driver to **emit more than one terminal tool call in a single turn** (today it
+  emits exactly one) — see R-T2b.
+
+**Scope — DO:**
+1. **G1 fact-collection handling** in the runtime + driver (planner path), as above. Port (move, not
+   rewrite) from the client; **client copy untouched.**
+2. **G2 worker handling** in the runtime + driver (worker path), as above; support the
+   two-terminal-calls-in-one-turn worker turn. Port from the client; client copy untouched.
+3. **Multi-driver concurrency** — three API agents in a `planner-planner-worker` team each get their
+   own driver via the **existing T1 registry start-path** (no new wiring expected; if the start-path
+   needs a tweak to support a team of API agents, keep it minimal and opt-in). Each driver keeps its
+   **own isolated `runtime`** state; verify the dedup / one-terminal-action-per-turn invariants still
+   hold across concurrent drivers.
+4. **Tests.** (a) **Deterministic mocked-fetch CI test** driving the full team flow — three drivers,
+   canned per-phase API responses scripted (fact_collection → discussion → proposal → acceptance →
+   submit_plan → confirm → worker accept) — asserting `team_task` reaches `awaiting_confirmation`
+   then `completed`. (b) **One live Google smoke** (`gemini-2.5-flash`), **all in-process**: 2
+   planners reach `submit_plan`, plan confirmed, worker completes — **recorded** (transcript/log).
+   Model the smoke on `scripts/test-live-gate.mjs` but with **API agents (no spawned subprocess)**.
+
+**Scope — DO NOT TOUCH (guardrails):**
+- `TeamCoordinator` / protocol determinism — **unchanged**; the driver only feeds it tool calls and
+  consumes its events. If a change there seems necessary, **stop and raise it** — do not edit it.
+- `agentalk-mcp-client` / the CLI harness — no edits; the client's translation/worker/fact copies
+  stay (retiring them is **T4**).
+- The existing **attach (CLI/stub) path** and the **single-agent** T1 path — byte-for-byte
+  preserved; the team-of-API-agents path is opt-in (all three marked `provider:'api'`).
+- **brainstorm** and single-planner **`planner-worker`** compositions — out of scope; T2 is
+  **`planner-planner-worker` only.** (The `team_task_assign` event is the single-planner path — not
+  needed for T2.)
+
+**Risks to de-risk (call out in the ledger as you hit them):**
+- **R-T2a — live consensus may loop / not converge** with `gemini-2.5-flash`. Mitigation: the
+  existing auto-propose + stale-discussion watchdog + `maxReplies`; the live smoke uses a **directive
+  task** (à la M06 `test-live-gate.mjs`: "immediately agree on adding `plan.md` … and submit the
+  plan"). The **mocked-fetch test is the deterministic gate**; the live smoke is the existence proof.
+- **R-T2b (load-bearing) — two terminal calls in one worker turn vs registry dedup.** The worker turn
+  emits `submit_work_response` *then* `submit_work_result`. Verify the registry's
+  `markTerminalActionComplete` / `isDuplicateTerminalAction` (keyed on `currentTurnId`) does **not**
+  swallow the second call. If it does, the driver must sequence them correctly (e.g. distinct turn
+  accounting) **without** changing `TeamCoordinator`. This is the correctness crux of T2.
+- **R-T2c — graceful-degrade / non-planning invariant** (M06 §P6-A) preserved for all three agents.
+
+**Smoke checkpoint.** (a) deterministic mocked-fetch full-team CI test (green in suite); (b) one live
+Google end-to-end recorded run reaching worker completion.
+
+**Invariants (carry-forward).** Protocol determinism stays in `TeamCoordinator`; budget =
+`gemini-2.5-flash`; **no secrets committed** (keys via env); existing paths unchanged.
+
+**DoD** — claim/verdict rows live in `milestone07-centralized-brain-implementation.md` (T2.1–T2.5);
+a row is done only when the reviewer's verdict is **VERIFIED** (ran it), per workflow §3b. Implementer
+creates branch `m07-t2-api-consensus` off `master`, claim-only commits; reviewer merges on
+all-VERIFIED.

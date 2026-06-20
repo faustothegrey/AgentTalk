@@ -66,6 +66,13 @@ export function translateStructuredResponse(
     case 'healthcheck_ack': {
       return buildProtocolRequest(evt, structured.message_payload.text);
     }
+    case 'ack_planning_protocol': {
+      return {
+        id: '',
+        call: 'ack_planning_protocol',
+        args: {},
+      };
+    }
     default: {
       // work_accept / work_refuse etc.
       const text = (structured.message_payload as any).text || (structured.message_payload as any).reason || '';

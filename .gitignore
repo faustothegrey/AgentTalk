@@ -16,3 +16,5 @@ credentials.json
 apps/web/vite.config.js
 apps/web/vite.config.js.map
 persistence/
+vitest.log
+test-loop-debug.log

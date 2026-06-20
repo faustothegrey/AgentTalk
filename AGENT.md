@@ -25,3 +25,9 @@ This project has reached Milestone 06. From now on follow these rules:
 - **Follow Collaboration Workflow**: Strictly adhere to the workflow defined in `design/collaboration-workflow.md`. That document is the source of truth for how we build things and must be followed at all times.
 - **Document Before Implementation**: Do not rush to the implementation phase. Always document proposed code changes beforehand so that another agent can review and approve the plan.
 - **Document Changes**: Always amend documentation to accurately reflect the code changes that have taken place.
+
+### Core Behavioral Rule: Honesty over Results
+- **Do not optimize for "passing" at all costs.** It is not the final result that matters most, but following instructions exactly and being completely honest about the state of the system.
+- **Report the actual command output, not a remembered or optimistic summary.** Never claim a test suite or command passed without actually running it and reading the final output. Do not hallucinate test results or assume that because it compiles, it passes.
+- **Never fix things silently.** If something is broken, doesn't add up, or requires an ugly hack (like a sleep in production) to work, **STOP AND RAISE IT**. Do not bury the problem to make a test pass.
+- **Transparency is the goal.** A failing test with a clear, honest explanation of the obstacle is immensely more valuable than a green test achieved through a dirty hack. Let the human and the Reviewer agent do their job to help resolve the blockers.

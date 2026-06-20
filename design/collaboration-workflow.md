@@ -115,7 +115,12 @@ DoD as rows, each carrying an explicit, separately-authored status:
 |                            |                   | PARTIAL ⚠️ / not-checked    | file:line           |
 ```
 
-Status ∈ {CLAIMED → VERIFIED ✅ / REFUTED ❌ / PARTIAL ⚠️ / not-checked}. The implementer fills the
+Status ∈ {CLAIMED → VERIFIED ✅ / REFUTED ❌ / PARTIAL ⚠️ / BLOCKED ⛔ / not-checked}.
+**BLOCKED ⛔** = verification could not be completed because of an **external** impediment (a dead
+API quota, a missing credential, a flaky upstream) — **no code fault**. It is *not* REFUTED (that
+means "the code is wrong"); it points to an entry in the **Impediments** space (§3c) carrying an
+*unblock condition*. A BLOCKED row does not merge, but it is parked on a fact about the world, not a
+defect. The implementer fills the
 *claim* column; the reviewer fills the *verdict* column **only after running it** (principle 2),
 with evidence. This structurally enforces rule 4a: a "done" claim cannot silently overwrite a
 prior "not done" — the two columns coexist until the reviewer flips the verdict. On milestone
@@ -131,9 +136,9 @@ smallest independently reviewable + mergeable unit; a.k.a. a "story"). Each task
   ideally one per DoD item. A commit records progress and makes the diff reviewable; it must **not
   self-close**: no ticking DoD boxes, no editing `CLAUDE.md`/`AGENT.md`, no "milestone complete".
 - The **reviewer** verifies the branch **by running it**, fills the *verdict* column, and **merges
-  to the mainline only when every row is VERIFIED** (the merge *is* the task's closure). REFUTED
-  work stays on the branch and is fixed there. **The reviewer's only branch action is the merge —
-  it never creates the branch.**
+  to the mainline only when every row is VERIFIED — or explicitly DEFERRED** (the merge *is* the
+  task's closure). REFUTED work stays on the branch and is fixed there. **The reviewer's only branch
+  action is the merge — it never creates the branch.**
 - **The mainline stays verified-only.** The branch is the claim; the merge is the verdict.
 
 **Refinements** are **not** a document type. A refinement is always one of three:
@@ -142,6 +147,62 @@ smallest independently reviewable + mergeable unit; a.k.a. a "story"). Each task
    *Refinements / follow-ups* section (same claim/verdict discipline).
 3. **Anything not tied to an open epic/spike** → a one-line entry in `backlog.md`, later
    promoted, absorbed, or dropped.
+
+### 3c. Two more institutional spaces — impediments & implementer dissent (adopted 2026-06-20)
+
+The claim/verdict table answers *"is the work done and correct?"* Two things it can't hold, and
+that must not silently vanish (principle 5), get their own named spaces — **both live in the epic's
+`implementation.md`** (volatile, per-epic; no new file — open question 5):
+
+**(a) Impediments** — *the world got in the way.* External blockers that stop verification but are
+**not** code defects (dead API quota, missing key, flaky upstream, sandbox limit). Format — a small
+table:
+
+```
+| ID    | What blocked | Blocks (DoD row) | Status {open/worked-around/resolved} | Unblock condition |
+```
+
+An impediment makes the affected verdict **BLOCKED ⛔** (not REFUTED) with a pointer to its ID. It
+closes only when its **unblock condition** is met (then the row is re-verified). This keeps "I
+couldn't check it, and it's not the implementer's fault" visible instead of buried in an evidence
+cell or laundered into a false "done".
+
+**BLOCKED ≠ BLOCKING — a BLOCKED row may be *deferred*.** A blocked verification does **not**
+automatically gate the task's closure. The human may **defer** a BLOCKED ⛔ row: the task closes on
+its remaining rows, and the deferred verification moves to `backlog.md`. Deferral is allowed **only**
+when *all* of these hold:
+1. the verdict is **BLOCKED ⛔** (external impediment, no code fault) — **never** REFUTED or a
+   defect-driven PARTIAL;
+2. another **VERIFIED** row already covers the same behavior by a different route (e.g. a deterministic
+   mocked test stands in for a quota-blocked *live* smoke), so closing doesn't ship something unproven;
+3. the **human explicitly signs off**, and the backlog item carries a **reopen condition** — the
+   concrete result that would force re-opening the task (e.g. "if the deferred live run fails or
+   surfaces a defect → reopen TX").
+
+A deferred row is recorded in `implementation.md` as **BLOCKED ⛔ → DEFERRED (backlog: …)** — it never
+becomes VERIFIED retroactively; the historical record shows it was parked, not proven. Reopening on
+the backlog's condition is normal, not a failure.
+
+**(b) Implementer notes & deviations** — *the doer's voice.* The symmetric counterpart to the
+reviewer's verdict column: the implementer's sanctioned channel to **dissent, deviate, or judge**,
+instead of obeying-in-silence or deviating-in-silence (the latter is what produces surprise diffs).
+Format — a table:
+
+```
+| ID    | Type {deviation/opinion/question} | Re: (DoD row) | What & why | Reviewer disposition |
+```
+
+- **deviation** — "spec said X, I did Y because Z." The reviewer **must** dispose of it
+  (accept / reject → code changes / fold-to-backlog). This is the mirror image of REFUTED: as the
+  implementer must answer every REFUTED, the reviewer must answer every deviation. A deviation that
+  touches a **DO-NOT-TOUCH guardrail or changes established behavior** is **[BLOCK]-class** and also
+  needs the human's confirmation (CLAUDE.md), regardless of merit.
+- **opinion** — "the spec is fine but I think Z is better / I have a concern" → becomes a refinement
+  row or a backlog item.
+- **question** — "did you mean X or Y?" → routes to the human.
+
+**Symmetry rule.** Neither column may ignore the other: every REFUTED gets an implementer answer;
+every deviation/opinion gets a reviewer disposition. Nothing open vanishes silently (4a).
 
 ---
 

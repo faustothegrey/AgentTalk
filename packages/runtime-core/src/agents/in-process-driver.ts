@@ -1,6 +1,7 @@
 import { Agent } from './agent.js';
 import { callApi, type ApiProvider } from './api-client.js';
 import { parseWithRetry, translateStructuredResponse } from './translation.js';
+import { WORKER_RESPONSE_INSTRUCTIONS } from './response-schema.js';
 import { createConversationRuntime, type ConversationEvent } from '../conversations/runtime.js';
 import type { Registry } from '../registry/registry.js';
 
@@ -79,23 +80,35 @@ export class InProcessAgentDriver {
       return;
     }
 
-    const prompt = this.runtime.buildPrompt(evt);
+    if (evt.type === 'fact_collection_begin') {
+      await this.handleFactCollectionBegin(evt);
+      return;
+    }
+
+    if (evt.type === 'team_work_assign') {
+      await this.handleTeamWorkAssign(evt);
+      return;
+    }
+
+    let prompt: string | null = null;
+    let expectsStructured = false;
+
+    if (evt.type === 'custom_event_request' && (evt as any).event === 'ack_planning_protocol') {
+      prompt = (evt as any).prompt || null;
+      expectsStructured = true;
+    } else {
+      prompt = this.runtime.buildPrompt(evt);
+      expectsStructured = this.runtime.expectsStructuredResponse(evt);
+    }
+
     if (!prompt) return;
 
-    const expectsStructured = this.runtime.expectsStructuredResponse(evt);
-
     const executePrompt = async (p: string) => {
-      const apiArgs: any = {
-        provider: this.provider,
-        messages: [{ role: 'user', content: p }],
-      };
-      if (this.model) apiArgs.model = this.model;
-      if (expectsStructured) apiArgs.response_format = { type: 'json_object' };
-
-      const res = await callApi(apiArgs, this.fetchFn);
-      
-      this.runtime.recordAssistantReply(res.text);
-      return res.text;
+      const text = await this.executeApiPrompt(p, expectsStructured);
+      if (text) {
+        this.runtime.recordAssistantReply(text);
+      }
+      return text;
     };
 
     const text = await executePrompt(prompt);
@@ -135,5 +148,112 @@ export class InProcessAgentDriver {
     if (request) {
       await this.registry.handleMcpToolCall(this.agent.id, request.call, request.args);
     }
+  }
+
+  private async executeApiPrompt(prompt: string, expectsStructured: boolean): Promise<string | null> {
+    const apiArgs: any = {
+      provider: this.provider,
+      messages: [{ role: 'user', content: prompt }],
+    };
+    if (this.model) apiArgs.model = this.model;
+    if (expectsStructured) apiArgs.response_format = { type: 'json_object' };
+
+    const res = await callApi(apiArgs, this.fetchFn);
+    return res.text;
+  }
+
+  private async handleFactCollectionBegin(evt: ConversationEvent): Promise<void> {
+    const prompt = [
+      'You are the PLANNER in a two-agent team. Before discussion begins, you must collect facts about the codebase relevant to the task.',
+      '',
+      `Task: ${(evt as any).description}`,
+      '',
+      'Your job now is to investigate the codebase: read files, search for patterns, identify relevant code areas, and build your understanding of the current state.',
+      'Focus on gathering concrete facts — file paths, function signatures, existing patterns, dependencies — that will inform your planning discussion.',
+      'Do NOT propose solutions yet. Just collect and organize the relevant facts.',
+      '',
+      'When you are done investigating, respond with a summary of what you found.',
+      '',
+      '## Response format',
+      '',
+      'You MUST respond with a single JSON object:',
+      '',
+      '```json',
+      '{',
+      '  "message_type": "fact_collection_end",',
+      '  "message_payload": { "summary": "your findings summary here" }',
+      '}',
+      '```',
+      '',
+      'Put your complete findings summary inside the "summary" field. No preamble.',
+    ].join('\\n');
+
+    const text = await this.executeApiPrompt(prompt, true);
+    if (!text) {
+      await this.registry.handleMcpToolCall(this.agent.id, 'fact_collection_end', { summary: 'No facts collected.' });
+      return;
+    }
+
+    const { structured } = await parseWithRetry(text, async (p) => this.executeApiPrompt(p, true));
+    
+    if (structured && structured.message_type === 'fact_collection_end') {
+      await this.registry.handleMcpToolCall(this.agent.id, 'fact_collection_end', { summary: structured.message_payload.summary });
+    } else {
+      await this.registry.handleMcpToolCall(this.agent.id, 'fact_collection_end', { summary: text });
+    }
+  }
+
+  private async handleTeamWorkAssign(evt: ConversationEvent): Promise<void> {
+    const prompt = [
+      'You are the WORKER in a two-agent team. The planner has created a plan for you to review.',
+      'Critically evaluate the plan. Consider:',
+      '- Is the approach sound?',
+      '- Are there risks or missing steps?',
+      '- Can you realistically execute this?',
+      '- Can you execute it strictly inside a `git worktree`?',
+      '',
+      'You must use strictly `git worktree` for this task.',
+      'If you cannot or will not use a git worktree, you must refuse and abort the task.',
+      '',
+      `Original task: ${(evt as any).description}`,
+      '',
+      `## Final Plan`,
+      `${(evt as any).plan}`,
+      WORKER_RESPONSE_INSTRUCTIONS,
+    ].join('\\n');
+
+    const text = await this.executeApiPrompt(prompt, true);
+    if (!text) return;
+
+    const { structured } = await parseWithRetry(text, async (p) => this.executeApiPrompt(p, true));
+    
+    if (!structured) {
+      const firstLine = (text.split('\\n')[0] || '').trim();
+      if (firstLine.startsWith('REFUSE:') || firstLine === 'REFUSE') {
+        const reason = firstLine.replace(/^REFUSE:?\\s*/, '') || 'No specific reason given';
+        await this.registry.handleMcpToolCall(this.agent.id, 'submit_work_response', { accepted: false, reason });
+        return;
+      }
+
+      const workOutput = text.replace(/^ACCEPT\\s*\\n?/, '').trim();
+      await this.registry.handleMcpToolCall(this.agent.id, 'submit_work_response', { accepted: true });
+      await this.registry.handleMcpToolCall(this.agent.id, 'submit_work_result', { result: workOutput || 'Task completed.' });
+      return;
+    }
+
+    if (structured.message_type === 'work_refuse') {
+      await this.registry.handleMcpToolCall(this.agent.id, 'submit_work_response', { accepted: false, reason: (structured.message_payload as any).reason });
+      return;
+    }
+
+    if (structured.message_type === 'work_accept') {
+      await this.registry.handleMcpToolCall(this.agent.id, 'submit_work_response', { accepted: true });
+      await this.registry.handleMcpToolCall(this.agent.id, 'submit_work_result', { result: (structured.message_payload as any).text || 'Task completed.' });
+      return;
+    }
+
+    const payloadText = (structured.message_payload as any).text || (structured.message_payload as any).plan || (structured.message_payload as any).reason || '';
+    await this.registry.handleMcpToolCall(this.agent.id, 'submit_work_response', { accepted: true });
+    await this.registry.handleMcpToolCall(this.agent.id, 'submit_work_result', { result: payloadText || 'Task completed.' });
   }
 }
