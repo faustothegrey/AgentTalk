@@ -1,6 +1,6 @@
 # Milestone 07 — Centralized Agent Brain — Implementation Status
 
-**Status:** **Task M07-T1 COMPLETE — all rows VERIFIED, merged to `master`.** Next: M07-T2 (multi-agent API consensus). M06 closed; R1 spike GREEN.
+**Status:** **Task M07-T2 SPEC READY — handed to the implementer.** T1 COMPLETE (all rows VERIFIED, merged to `master`). T2 spec in plan §10; branch `m07-t2-api-consensus` to be created by the implementer. M06 closed; R1 spike GREEN.
 **Plan:** `design/milestone07-centralized-brain-plan.md` (architect-owned; this doc tracks status only).
 **Last verified:** 2026-06-20 (spike/R1) · **Verifier:** Claude
 
@@ -16,24 +16,28 @@
 You are the **implementer** for M07; the reviewer verifies. Read, in order:
 1. `design/collaboration-workflow.md` — the method (esp. §2 verify-don't-assert, §3b the
    claim/verdict ledger + **Tasks & branches**, §4a don't overwrite open points).
-2. `design/milestone07-centralized-brain-plan.md` — the epic plan. **§9 is your
-   implementation-ready spec for Task M07-T1.** Honour the "DO NOT TOUCH" guardrails there.
-3. This ledger — fill the **Implementer claim** column as you go; leave the **Reviewer verdict**
-   column for the reviewer.
+2. `design/milestone07-centralized-brain-plan.md` — the epic plan; each task has an
+   implementation-ready spec section. Honour the "DO NOT TOUCH" guardrails there.
+3. This ledger — find your task and fill the **Implementer claim** column as you go; leave the
+   **Reviewer verdict** column for the reviewer.
+
+**Where to start:** read the **Tasks (epic breakdown)** table below and pick the **first task that is
+not DONE**; within it, work the **first DoD row whose Reviewer verdict is not VERIFIED**. Its spec is
+the matching plan section (T1 → §9, T2 → §10, …). Don't infer scope from chat — the ledger is the
+source of truth.
 
 **How to work (per workflow §3b *Tasks & branches*):**
-- **Create** the branch **`m07-t1-api-agent-driver`** off `master` yourself (branch creation is
-  the implementer's job), then work there. Do **not** commit to `master`.
+- **Create** the task branch **`<epic>-t<N>-<slug>`** off `master` yourself (branch creation is the
+  implementer's job), then work there. Do **not** commit to `master`.
 - Commit **claim-only**, small commits (ideally one per DoD row). A commit records progress and
   makes the diff reviewable — it must **not self-close**: do **not** tick DoD boxes, do **not**
   edit `CLAUDE.md`/`AGENT.md`, no "milestone complete".
 - The reviewer verifies the branch by running it, fills the verdict column, and **merges to
-  `master` only when every T1 row is VERIFIED**.
+  `master` only when every row of the task is VERIFIED**.
 
-**Scope right now = Task M07-T1 only** (single in-orchestrator API agent; mocked-fetch CI test +
-one live Google smoke). T2 (multi-agent API consensus), T3 (CLI-harness inversion), T4 (retire
-client logic) are **later tasks — out of scope now.** Use `gemini-2.5-flash` (budget). Key via env
-(`GEMINI_API_KEY`); never commit secrets. Reference API call: `spikes/m07-api-structured-probe.mjs`.
+**Standing constraints (all tasks):** use `gemini-2.5-flash` (budget); keys via env, **never commit
+secrets**; honour the per-task "DO NOT TOUCH" guardrails. Reference API call:
+`spikes/m07-api-structured-probe.mjs`.
 
 ---
 
@@ -51,7 +55,7 @@ client logic) are **later tasks — out of scope now.** Use `gemini-2.5-flash` (
 | Task | Goal | Branch | Status |
 |---|---|---|---|
 | **M07-T1** | API agent in-orchestrator, **single agent** (in-process driver, Google) | `m07-t1-api-agent-driver` | **DONE ✅** (T1.1–T1.6 VERIFIED, merged) |
-| **M07-T2** | Multi-agent API **consensus** in-orchestrator (2 planners → submit_plan → worker) | `m07-t2-api-consensus` | not started |
+| **M07-T2** | Multi-agent API **consensus** in-orchestrator (2 planners → submit_plan → worker) | `m07-t2-api-consensus` | **spec ready** (plan §10; T2.1–T2.5 below) |
 | **M07-T3** | **CLI harness inversion** (exec-RPC) + reconnect/effect-fence + contract bump | `m07-t3-harness-inversion` | not started |
 | **M07-T4** | Retire client-side semantic logic; harness = transport + exec only | `m07-t4-retire-client-brain` | not started |
 
@@ -77,6 +81,25 @@ Spec: plan §9. Implementer fills *claim* (claim-only commits on the branch); re
 | **R-2 (nit)** `api-agent-lifecycle.test.ts` has leftover dead comments (Gemini's thinking-out-loud, lines ~65–68). | — | open | Cosmetic; remove in a later pass. Non-blocking. |
 | **GAP-1 (T1 scope §9 item 4)** Registry start-path not done. | — | **RESOLVED → T1.6** | Decision (Fausto, 2026-06-20): add **T1.6** (registry start-path) and **keep T1 open** until it's VERIFIED. Now tracked as the T1.6 DoD row; spec in plan §9.1. |
 | **GAP-2 (BLOCKER)** Committed branch failed `tsc` (10 errors); build-fixes were uncommitted. | — | **RESOLVED ✅** | Decision (Fausto): reviewer commits. Done in `fcb4c64`; committed branch now builds + suite 152/152. |
+
+## Task M07-T2 — Multi-agent API consensus  *(SPEC READY — branch `m07-t2-api-consensus` to be created by the implementer)*
+
+Spec: **plan §10**. The whole `planner-planner-worker` flow runs in-process with **three API-backed
+agents** (all Google `gemini-2.5-flash`, per Fausto 2026-06-20). The two new pieces are **G1**
+(fact-collection, planner) and **G2** (worker `team_work_assign` → response **+** result, two terminal
+calls in one turn); the discussion/proposal/submit_plan phases are already handled (T1). **Do not touch
+`TeamCoordinator`, the CLI harness, or the attach/single-agent paths** (plan §10 guardrails).
+
+> Implementer fills the *claim* column (claim-only commits on the branch); reviewer fills the *verdict*
+> by running it, and merges to `master` only when **all T2 rows are VERIFIED**.
+
+| T2 DoD item | Implementer claim | Reviewer verdict | Evidence |
+|---|---|---|---|
+| **T2.1** **G1 fact-collection (planner):** driver handles `fact_collection_begin` → runtime builds fact-collection prompt (port `handleFactCollectionBegin`, client copy untouched) → `callApi` → emit `fact_collection_end{summary}`. **Mocked-fetch unit test.** | — | not-checked | |
+| **T2.2** **G2 worker (`team_work_assign`):** driver handles the event → runtime builds worker prompt (port `handleTeamWorkAssign` + `WORKER_RESPONSE_INSTRUCTIONS`) → `callApi` (json_object) → parse `work_accept`/`work_refuse` → emit `submit_work_response{accepted[,reason]}` **and** (on accept) `submit_work_result{result}` — **two terminal calls in one turn** (R-T2b). **Mocked-fetch unit test.** | — | not-checked | |
+| **T2.3** **Full-team mocked-fetch CI test:** `planner-planner-worker`, three in-process drivers, scripted per-phase API responses (fact_collection → discussion → proposal → acceptance → submit_plan → confirm → worker accept) → `team_task` reaches `awaiting_confirmation` then `completed`. Deterministic; no live calls. | — | not-checked | |
+| **T2.4** **Live Google smoke, all in-process:** 2 planners + worker (`gemini-2.5-flash`), no spawned subprocess (à la `test-live-gate.mjs` but API agents) → reach `submit_plan`, confirm, worker completes. **Recorded** (transcript/log). | — | not-checked | |
+| **T2.5** **No regression:** full suite green; existing attach (CLI/stub) + T1 single-agent paths unchanged; `TeamCoordinator` + client untouched; `tsc -b` clean **committed** (no GAP-2 repeat). | — | not-checked | |
 
 ## Log (append-only, dated)
 - 2026-06-20 — Doc created as the M07 status ledger. No work started; M07 is parked behind M06
@@ -128,3 +151,13 @@ Spec: plan §9. Implementer fills *claim* (claim-only commits on the branch); re
   `OPENROUTER_API_KEY` + `HERMES_API_KEY` are in `~/.zshrc` but **Claude Code must be restarted**
   to inherit them (it captured its env at launch, before they were added). OpenRouter = 0 credit →
   `:free` models only; Nous/Hermes model = `deepseek-v4-flash`.
+- 2026-06-20 — **Session resumed; T2 spec written (architect/reviewer).** All three keys now SET in
+  the env (restart happened). Grounded the spec by reading the driver, registry start-path, runtime,
+  translation, and the `TeamCoordinator` multi-planner flow. Found the **two real gaps** the driver
+  lacks for the team flow: **G1** `fact_collection_begin` (planner) and **G2** `team_work_assign`
+  (worker → `submit_work_response` + `submit_work_result`, two terminal calls/turn) — discussion/
+  proposal/submit_plan already work from T1. Spec = **plan §10**; DoD rows **T2.1–T2.5** added above.
+  **Decision (Fausto):** all three T2 agents on **Google `gemini-2.5-flash`** (budget; multi-provider
+  consensus deferred to backlog). Flagged **R-T2b** (two terminal calls vs registry dedup) as the
+  correctness crux. Handed to the implementer (Gemini): create branch `m07-t2-api-consensus` off
+  `master`, claim-only commits; reviewer verifies by running + merges on all-VERIFIED.

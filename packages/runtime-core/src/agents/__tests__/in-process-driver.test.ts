@@ -79,4 +79,53 @@ describe('InProcessAgentDriver', () => {
 
     driver.stop();
   });
+  it('handles fact_collection_begin', async () => {
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        choices: [{ message: { content: '{"message_type":"fact_collection_end","message_payload":{"summary":"Some facts here"}}' } }]
+      })
+    });
+
+    const driver = new InProcessAgentDriver(agent, registry, { fetchFn: mockFetch });
+    driver.start();
+
+    agent.queueTurn({
+      type: 'fact_collection_begin',
+      description: 'Find where login is'
+    });
+
+    await new Promise(r => setTimeout(r, 50));
+
+    expect(mockFetch).toHaveBeenCalled();
+    expect(registry.handleMcpToolCall).toHaveBeenCalledWith('agent-1', 'fact_collection_end', { summary: 'Some facts here' });
+
+    driver.stop();
+  });
+
+  it('handles team_work_assign', async () => {
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        choices: [{ message: { content: '{"message_type":"work_accept","message_payload":{"text":"I did the work."}}' } }]
+      })
+    });
+
+    const driver = new InProcessAgentDriver(agent, registry, { fetchFn: mockFetch });
+    driver.start();
+
+    agent.queueTurn({
+      type: 'team_work_assign',
+      description: 'Do the refactor',
+      plan: 'Refactor login'
+    });
+
+    await new Promise(r => setTimeout(r, 50));
+
+    expect(mockFetch).toHaveBeenCalled();
+    expect(registry.handleMcpToolCall).toHaveBeenCalledWith('agent-1', 'submit_work_response', { accepted: true });
+    expect(registry.handleMcpToolCall).toHaveBeenCalledWith('agent-1', 'submit_work_result', { result: 'I did the work.' });
+
+    driver.stop();
+  });
 });
