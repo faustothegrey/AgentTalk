@@ -1,9 +1,9 @@
 import {
-  StructuredResponse,
   parseStructuredResponse,
   buildRetryPrompt,
+  type StructuredResponse,
 } from './response-schema.js';
-import { ConversationEvent, ProtocolRequest } from '../conversations/runtime.js';
+import type { ConversationEvent, ProtocolRequest } from '../conversations/runtime.js';
 
 /**
  * Translates a valid structured response payload into an MCP tool call (ProtocolRequest).

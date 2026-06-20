@@ -1,7 +1,7 @@
 import { Agent } from './agent.js';
-import { callApi, ApiProvider } from './api-client.js';
+import { callApi, type ApiProvider } from './api-client.js';
 import { parseWithRetry, translateStructuredResponse } from './translation.js';
-import { createConversationRuntime, ConversationEvent } from '../conversations/runtime.js';
+import { createConversationRuntime, type ConversationEvent } from '../conversations/runtime.js';
 import type { Registry } from '../registry/registry.js';
 
 export interface InProcessDriverOptions {
@@ -23,7 +23,7 @@ export class InProcessAgentDriver {
     options: InProcessDriverOptions = {}
   ) {
     this.provider = options.provider || 'google';
-    this.model = options.model;
+    if (options.model) this.model = options.model;
     this.fetchFn = options.fetchFn || fetch;
   }
 
@@ -50,7 +50,7 @@ export class InProcessAgentDriver {
         if (!this.isRunning) break;
         
         this.agent.setStatus('busy');
-        await this.handleTurn(turn as ConversationEvent);
+        await this.handleTurn(turn as unknown as ConversationEvent);
         if (this.isRunning) {
           this.agent.setStatus('ready');
         }
@@ -85,12 +85,14 @@ export class InProcessAgentDriver {
     const expectsStructured = this.runtime.expectsStructuredResponse(evt);
 
     const executePrompt = async (p: string) => {
-      const res = await callApi({
+      const apiArgs: any = {
         provider: this.provider,
-        model: this.model,
         messages: [{ role: 'user', content: p }],
-        response_format: expectsStructured ? { type: 'json_object' } : undefined
-      }, this.fetchFn);
+      };
+      if (this.model) apiArgs.model = this.model;
+      if (expectsStructured) apiArgs.response_format = { type: 'json_object' };
+
+      const res = await callApi(apiArgs, this.fetchFn);
       
       this.runtime.recordAssistantReply(res.text);
       return res.text;

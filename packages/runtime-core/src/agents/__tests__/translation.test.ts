@@ -1,12 +1,12 @@
 import { describe, it, expect, vi } from 'vitest';
 import { translateStructuredResponse, parseWithRetry } from '../translation.js';
-import { StructuredResponse } from '../response-schema.js';
-import { ConversationEvent, ProtocolRequest } from '../../conversations/runtime.js';
+import type { StructuredResponse } from '../response-schema.js';
+import type { ConversationEvent } from '../../conversations/runtime.js';
 
 describe('translation module', () => {
   describe('translateStructuredResponse', () => {
-    const mockEvt: ConversationEvent = { type: 'message_received' };
-    const mockBuildProtocolRequest = vi.fn().mockImplementation((evt, reply) => ({
+    const mockEvt = { type: 'message_received' } as ConversationEvent;
+    const mockBuildProtocolRequest = vi.fn().mockImplementation((_evt, reply) => ({
       id: 'mock-id',
       call: 'send_to_agent',
       args: { payload: reply }
