@@ -1,7 +1,7 @@
 # Milestone 07 — Centralized Agent Brain — Implementation Status
 
 **Status:** **OPEN — Increment 1 (M07-I1) active.** M06 closed; R1 spike GREEN. (First exemplar of the M07 doc-pair convention.)
-**Plan:** `design/milestone07-centralized-brain-epic.md` (architect-owned; this doc tracks status only).
+**Plan:** `design/milestone07-centralized-brain-plan.md` (architect-owned; this doc tracks status only).
 **Last verified:** 2026-06-20 (spike/R1) · **Verifier:** Claude
 
 > Convention (workflow §3b): the **implementer** fills the *Claim* column; the **reviewer** fills
@@ -16,8 +16,8 @@
 You are the **implementer** for M07; Claude is the architect/reviewer. Read, in order:
 1. `design/collaboration-workflow.md` — the method (esp. §2 verify-don't-assert, §3b the
    claim/verdict ledger you must fill, §4a don't overwrite open points).
-2. `design/milestone07-centralized-brain-epic.md` — the epic. **§9 is your implementation-ready
-   spec for Increment 1 (M07-I1).** Honour the "DO NOT TOUCH" guardrails there.
+2. `design/milestone07-centralized-brain-plan.md` — the epic plan. **§9 is your
+   implementation-ready spec for Increment 1 (M07-I1).** Honour the "DO NOT TOUCH" guardrails there.
 3. This ledger — fill the **Implementer claim** column as you go; leave the **Reviewer verdict**
    column for Claude. **Do not tick/close items yourself** and **do not edit
    `CLAUDE.md`/`AGENT.md`** — closure happens only after Claude re-verifies by running.
@@ -46,7 +46,7 @@ logic are **later increments — out of scope now.** Use `gemini-2.5-flash` (bud
 
 ## Increment 1 (M07-I1) — In-orchestrator API agent driver  *(ACTIVE — Gemini)*
 
-Spec: epic §9. Fill the *claim* column as you implement; Claude fills *verdict* by running.
+Spec: plan §9. Fill the *claim* column as you implement; Claude fills *verdict* by running.
 
 | I1 DoD item | Implementer claim | Reviewer verdict | Evidence |
 |---|---|---|---|

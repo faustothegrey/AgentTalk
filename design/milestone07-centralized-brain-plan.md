@@ -1,4 +1,4 @@
-# Milestone 07 — Centralized Agent Brain (thin harness) + API-Backed Agents — Epic
+# Milestone 07 — Centralized Agent Brain (thin harness) + API-Backed Agents — Plan
 
 **Status:** Parked / planning — **blocked on M06 closure** (Phase 6 consensus). Start clean after.
 **Author:** Claude (architect), 2026-06-20 · **Implementer (proposed):** Gemini (bulk) · Claude reviews.

@@ -376,7 +376,7 @@ Orchestrator **139/139** (20 files); client (`agentalk-mcp-client`) **3/3**
 ## 12. M06 Definition of Done — close this cleanly before M07 (Fausto, 2026-06-20)
 
 Decision (Fausto): **close M06 properly and start M07 from a clean base.** The centralization
-+ API-agent work is parked into **M07** (`design/milestone07-centralized-brain-epic.md`) and
++ API-agent work is parked into **M07** (`design/milestone07-centralized-brain-plan.md`) and
 **must not** begin until every box below is checked. Implementer: Gemini; Claude verifies each
 by **running it**, not by report.
 

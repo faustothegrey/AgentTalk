@@ -87,8 +87,8 @@ inter-agent communication bus.** Anything not written down does not survive the 
 | **Proposal / spec** | The living design. Carries a status (Draft → Refined → Decisions Documented) and a decisions section that the Author agent revises. |
 | **Capability / verification note** | Empirical findings: per-target capability matrix, exact versions, commands, outputs, sources. The Reviewer's evidence base. |
 | **Caveats / discussion agenda** | Consolidated open issues, severity-tagged, with a resolution-status table after each revision and a readiness verdict. |
-| **`<epic>-plan.md`** *(from M07)* | The stable plan for one milestone/epic. Owned by the **architect**. Scope, decisions, acceptance criteria, **Definition of Done**. Changes only on a real design change — **no status churn here**. |
-| **`<epic>-implementation.md`** *(from M07)* | The volatile **status ledger** for that epic. A claim/verdict table (below) + an append-only log. The **implementer** records claims; the **reviewer** records verified/refuted verdicts. |
+| **`<name>-plan.md`** *(from M07)* | The stable plan for one milestone/epic. Owned by the **architect**. Scope, decisions, acceptance criteria, **Definition of Done**. Changes only on a real design change — **no status churn here**. |
+| **`<name>-implementation.md`** *(from M07)* | The volatile **status ledger** for that epic. A claim/verdict table (below) + an append-only log. The **implementer** records claims; the **reviewer** records verified/refuted verdicts. |
 | **`backlog.md`** *(from M07)* | One rolling, append-only parking lot for work **not attached to an open epic/spike**. Each item leaves by being **promoted** (→ spike/epic), **absorbed** (→ folded-into-EpicN), or **dropped** (explicitly). |
 | **(This) workflow doc** | The method itself, made explicit for reuse. |
 
@@ -96,10 +96,14 @@ Each doc is self-describing: status, author, date, and "Related" links at the to
 
 ### 3b. Per-epic document pair + refinements/backlog (adopted from Milestone 07 onward)
 
-**The pair.** Every **milestone/epic** (large unit) gets two docs: a stable `<epic>-plan.md`
-(architect-owned design + DoD) and a volatile `<epic>-implementation.md` (status). This keeps the
+**The pair.** Every **milestone/epic** (large unit) gets two docs: a stable `<name>-plan.md`
+(architect-owned design + DoD) and a volatile `<name>-implementation.md` (status). This keeps the
 plan clean instead of bloating it with review checkpoints. **Small units don't get the pair** —
 everything is either a **spike** or an **epic**; there are no standalone "small stories."
+
+**Naming (fixed).** The doc-type suffix is **always `-plan` / `-implementation`**, whatever the
+unit is called (`milestone07-…-plan.md`, not `-epic.md`). `<name>` identifies the unit; the suffix
+identifies the doc type — so the two always pair cleanly. Use `-plan`, never `-epic`, as the suffix.
 
 **Claim/verdict table** — the core anti-drift device. The `implementation.md` mirrors the plan's
 DoD as rows, each carrying an explicit, separately-authored status:
@@ -167,7 +171,7 @@ Steps:
    what gates the next step.
 8. **Implement** — Small phases, riskiest-unknown-first, each with a smoke checkpoint;
    production behavior preserved behind a flag until a phase is proven. **(From M07)** the
-   implementer records each phase's outcome as a *claim* row in `<epic>-implementation.md`; the
+   implementer records each phase's outcome as a *claim* row in `<name>-implementation.md`; the
    reviewer then **runs it** and flips the *verdict* column (VERIFIED/REFUTED/PARTIAL) with
    evidence (§3b). A phase is "done" only when its verdict is VERIFIED — never on the claim alone.
 
