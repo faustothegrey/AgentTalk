@@ -27,4 +27,18 @@ promoted→X · absorbed→X · dropped}.
   merge** (don't churn the active branch now). Currently generalized as a stopgap; the agreed end state
   is to delete it.
 
+- [open] 2026-06-20 — **Auto-handoff between agents (remove the human as turn-scheduler)** — resolves
+  workflow **open question #2** (relay overhead). Insight: the *channel* already exists (ledger +
+  branch); what the human supplies is the **scheduler** ("vai te" / "ha finito, vai te"). Replace it
+  with: (1) an explicit **3-state baton** at the top of `implementation.md` — `baton ∈ {impl, review,
+  human}` + one-line reason; impl does the first non-VERIFIED row → commit claim-only → `baton:review`;
+  reviewer runs it, fills verdicts → all VERIFIED → merge + next task → `baton:impl`, else REFUTED →
+  `baton:impl`, else scope/decision → `baton:human`; (2) a **sequential conductor script** that loops
+  `while baton != human && !done: invoke (headless) the agent named by the baton; re-read baton`. Human
+  is invoked **only on `baton:human`**. Stays turn-based/sequential — **not** parallel worktrees (Fausto
+  not ready for parallel agent orchestration yet). Guardrails: `max_rounds` per task (cap REFUTED↔fix
+  ping-pong), keep the reviewer's *run-it* verification (the circuit breaker), single human escape
+  hatch, log per-round token cost. **Defer:** revisit after M07-T3 (T3 likely needs the human in the
+  loop). Document the baton protocol into `collaboration-workflow.md` before building the conductor.
+
 *(add new items above this line)*
