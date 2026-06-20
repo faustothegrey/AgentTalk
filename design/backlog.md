@@ -24,7 +24,7 @@ promoted→X · absorbed→X · dropped}.
 - [open] 2026-06-20 — **Cross-provider consensus** (e.g. planner-a Google + planner-b Nous in one
   `planner-planner-worker` team) — deferred from M07-T2 (all-Google for budget). Proves the centralized
   brain mixes providers in a single consensus.
-  - **Readiness (facts in `logbook.md`, 2026-06-20):** pair **Google + Nous** (Nous = GREEN 3/3 with a
+  - **Readiness (facts: logbook LB-1/LB-2):** pair **Google + Nous** (Nous = GREEN 3/3 with a
     valid id; it's an aggregator). **Not** OpenRouter-`:free` (flaky/429). When promoting, **fix
     `api-client.ts` `nous` defaultModel** (`deepseek-v4-flash` 404s).
 

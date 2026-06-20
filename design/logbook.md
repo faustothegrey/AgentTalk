@@ -14,11 +14,12 @@ behaviour that future work needs to know.
 deleting (git is the backstop). **Teeth:** skim the relevant entries *before* starting related work,
 and as part of the **backlog gate** (workflow §3b).
 
-**Entry format:** `### YYYY-MM-DD — [area] title` then *finding · implication · source*.
+**Entry format:** `### LB-N · YYYY-MM-DD — [area] title` then *finding · implication · source*. Each
+entry carries a **stable `LB-N` id** — cite it from ledgers/backlog (titles may be reworded; ids don't).
 
 ---
 
-### 2026-06-20 — [providers] The "Nous" endpoint is a multi-vendor aggregator
+### LB-1 · 2026-06-20 — [providers] The "Nous" endpoint is a multi-vendor aggregator
 - **Finding:** `inference-api.nousresearch.com/v1` (key `HERMES_API_KEY`) exposes an **aggregator
   catalog** (e.g. `anthropic/claude-*`, `google/gemini-*`, `qwen/*`, `x-ai/grok-*`), not a single
   Hermes model. `deepseek-v4-flash` **does not exist there → HTTP 404**. Structured-output is **GREEN
@@ -27,14 +28,14 @@ and as part of the **backlog gate** (workflow §3b).
   is a latent bug** (the M07 R-1 id was wrong). Fix when promoting the cross-provider backlog item.
 - **Source:** `spikes/m07-api-structured-probe.mjs`; commit `dde52ba`.
 
-### 2026-06-20 — [providers] OpenRouter `:free` tier is not viable for multi-turn protocols
+### LB-2 · 2026-06-20 — [providers] OpenRouter `:free` tier is not viable for multi-turn protocols
 - **Finding:** `gpt-oss-120b:free` returned an **empty turn** (2/3); `qwen3-next-80b:free` hit an
   **immediate 429 "rate-limited upstream"** (3/3 error). Free models are throttled/flaky per request.
 - **Implication:** the cross-provider pilot should pair **Google + Nous**, not OpenRouter-free;
   OpenRouter needs **paid credit** to be usable in a consensus loop.
 - **Source:** `spikes/m07-api-structured-probe.mjs`; commit `dde52ba`.
 
-### 2026-06-20 — [orchestrator] Terminal-action dedup is keyed on `currentTurnId` (WS-only)
+### LB-3 · 2026-06-20 — [orchestrator] Terminal-action dedup is keyed on `currentTurnId` (WS-only)
 - **Finding:** `registry.ts` `isDuplicateTerminalAction` keys on `agent.currentTurnId`, which is set
   **only** by the WebSocket `await_turn` MCP handler. The **in-process driver calls `agent.awaitTurn()`
   directly and never sets it**, so in-process agents are **never deduped**.
