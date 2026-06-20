@@ -1,9 +1,3 @@
-// In-process attach-mode smoke test (no real CLI, no HTTP server).
-// Verifies the attach turn-delivery path end to end:
-//   register agent (spawn bypassed) → harness connects → await_turn delivers a queued turn
-//   → harness (provider "dummy") returns a placeholder → send_to_agent → user_message.
-//
-// Run: node scripts/test-attach-mode.mjs   (requires `npm run build` first — uses dist)
 import { Registry } from '../packages/runtime-core/dist/registry/registry.js';
 import { AGENTTALK_MCP_TOOLS } from '../packages/runtime-core/dist/registry/mcp-tools.js';
 import { McpServer } from '../apps/orchestrator/dist/mcp-server.js';
@@ -16,10 +10,8 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const wireContract = JSON.parse(fs.readFileSync(path.join(__dirname, '../packages/contracts/wire-contract.json'), 'utf8'));
 
 async function run() {
-  process.env.AGENTTALK_ATTACH_MODE = 'true';
-  console.log('Starting in-process attach-mode test...');
+  console.log('Starting in-process multi-agent attach-mode E2E test...');
 
-  // Minimal no-op ProcessAdapter — attach mode never spawns, so these are unused on the path.
   const adapter = { spawn() {}, sendText() {}, onData() {}, onExit() {}, kill() {} };
   const registry = new Registry(adapter, { readinessTimeoutMs: 5000 });
 
@@ -31,34 +23,70 @@ async function run() {
     onDisconnect: (agentId) => registry.handleMcpDisconnect(agentId),
   });
   const port = await mcpServer.start(0);
-  console.log(`MCP server on ws://localhost:${port}/`);
+  console.log(`[Server] MCP server on ws://localhost:${port}/`);
 
-  const agentId = 'test-agent';
-  await registry.createAgent(agentId);
-  await registry.startAgent(agentId, 'attach://test'); // attach mode → spawn bypassed → ready
+  await registry.createAgent('planner-a');
+  await registry.createAgent('planner-b');
+  await registry.createAgent('worker-1');
+  
+  await registry.activateAgent('planner-a', 'attach://test');
+  await registry.activateAgent('planner-b', 'attach://test');
+  await registry.activateAgent('worker-1', 'attach://test');
 
-  let received = null;
-  registry.on('user_message', (evt) => { received = evt.payload; console.log(`[Orchestrator] user_message: ${evt.payload}`); });
+  const llmAgentPath = path.join(__dirname, '../../agentalk-mcp-client/llm-agent.mjs');
 
-  const harness = spawn('npx', ['--no-install', 'attach-harness', '--agentId', agentId, '--provider', 'dummy'],
+  const harnessA = spawn('node', [llmAgentPath, '--agentId', 'planner-a', '--provider', 'stub', '--execution-mode', 'persistent'],
     { env: { ...process.env, AGENTTALK_PERSISTENT_MCP_URL: `ws://localhost:${port}/` }, stdio: ['ignore', 'pipe', 'pipe'] });
-  harness.stdout.on('data', d => process.stdout.write(`[harness] ${d}`));
-  harness.stderr.on('data', d => process.stderr.write(`[harness-err] ${d}`));
+  harnessA.stdout.on('data', d => process.stdout.write(`[llm-agent-a] ${d}`));
+  harnessA.stderr.on('data', d => process.stderr.write(`[llm-agent-a-err] ${d}`));
 
-  await new Promise(r => setTimeout(r, 2500)); // let the harness connect + block on await_turn
-  console.log('Injecting a turn...');
-  await registry.sendProtocol(agentId, 'EVT', { type: 'message_received', from: 'user', payload: 'Hello from the attach test', messageId: 'msg-1' });
+  const harnessB = spawn('node', [llmAgentPath, '--agentId', 'planner-b', '--provider', 'stub', '--execution-mode', 'persistent'],
+    { env: { ...process.env, AGENTTALK_PERSISTENT_MCP_URL: `ws://localhost:${port}/` }, stdio: ['ignore', 'pipe', 'pipe'] });
+  harnessB.stdout.on('data', d => process.stdout.write(`[llm-agent-b] ${d}`));
+  harnessB.stderr.on('data', d => process.stderr.write(`[llm-agent-b-err] ${d}`));
 
-  // Wait for the round-trip (await_turn → dummy → send_to_agent → user_message)
-  for (let i = 0; i < 50 && received === null; i++) await new Promise(r => setTimeout(r, 200));
+  const harnessC = spawn('node', [llmAgentPath, '--agentId', 'worker-1', '--provider', 'stub', '--execution-mode', 'persistent'],
+    { env: { ...process.env, AGENTTALK_PERSISTENT_MCP_URL: `ws://localhost:${port}/` }, stdio: ['ignore', 'pipe', 'pipe'] });
+  harnessC.stdout.on('data', d => process.stdout.write(`[llm-agent-w] ${d}`));
+  harnessC.stderr.on('data', d => process.stderr.write(`[llm-agent-w-err] ${d}`));
 
-  try { harness.kill('SIGKILL'); } catch {}
+  await new Promise(r => setTimeout(r, 2500)); // wait for attach
+
+  console.log('[Test] Creating team...');
+  const team = await registry.createTeam([
+    { agentId: 'planner-a', role: 'planner' },
+    { agentId: 'planner-b', role: 'planner' },
+    { agentId: 'worker-1', role: 'worker' }
+  ]);
+
+  console.log('[Test] Starting team...');
+  await registry.assignTeamTask(team.id, 'Let us build a plan.');
+
+  // Monitor events
+  let planSubmitted = false;
+  registry.on('team_task', (task) => {
+    if (task.status === 'awaiting_confirmation') {
+      planSubmitted = true;
+    }
+  });
+
+  // Wait for submit_plan
+  for (let i = 0; i < 200 && !planSubmitted; i++) {
+    await new Promise(r => setTimeout(r, 200));
+  }
+
+  try { harnessA.kill('SIGKILL'); } catch {}
+  try { harnessB.kill('SIGKILL'); } catch {}
+  try { harnessC.kill('SIGKILL'); } catch {}
   await mcpServer.close();
 
-  const ok = typeof received === 'string' && received.includes('does not support provider dummy');
-  if (ok) { console.log('TEST PASSED'); process.exit(0); }
-  console.error(`TEST FAILED — user_message was: ${JSON.stringify(received)}`);
-  process.exit(1);
+  if (planSubmitted) {
+    console.log('TEST PASSED: Consensus E2E reached submit_plan');
+    process.exit(0);
+  } else {
+    console.error('TEST FAILED: Did not reach submit_plan');
+    process.exit(1);
+  }
 }
 
 run().catch((e) => { console.error('TEST ERROR', e); process.exit(1); });

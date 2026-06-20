@@ -453,15 +453,22 @@ export class Registry extends EventEmitter {
     if (type === 'EVT') {
       const evtPayload = normalizedPayload as EventPayload;
       
-      if (evtPayload.type === 'message_received') {
-        agent.queueTurn({
-          type: 'message_received',
-          message: evtPayload.payload,
-          from: evtPayload.from,
-          replyToMessageId: evtPayload.replyToMessageId,
-          turnId: evtPayload.messageId,
-        });
+      // Enqueue the full event payload into the agent's turn queue.
+      // For legacy client compat (attach-harness.mjs), we alias payload -> message and messageId -> turnId
+      // However, the new client llm-agent.mjs expects the exact evtPayload fields.
+      const turnPayload: Record<string, unknown> = { ...evtPayload };
+      
+      if ('payload' in evtPayload && typeof evtPayload.payload === 'string') {
+        turnPayload.message = evtPayload.payload;
+      } else if ('prompt' in evtPayload && typeof evtPayload.prompt === 'string') {
+        turnPayload.message = evtPayload.prompt;
       }
+      
+      if ('messageId' in evtPayload) {
+        turnPayload.turnId = evtPayload.messageId;
+      }
+      
+      agent.queueTurn(turnPayload);
     }
   }
 

@@ -143,6 +143,7 @@ export interface MessageReceivedEventPayload {
   payload: unknown;
   messageId?: string;
   replyToMessageId?: string;
+  expected_response_types?: string[];
 }
 
 export interface HealthcheckEventPayload {

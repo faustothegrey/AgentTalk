@@ -522,6 +522,7 @@ export class TeamCoordinator {
           from: senderAgentId,
           payload,
           ...(replyToMessageId ? { replyToMessageId } : {}),
+          ...(expectedResponseTypes ? { expected_response_types: expectedResponseTypes } : {}),
         });
       } catch (err) {
         this.deps.logError(`[TeamCoordinator] Failed to broadcast planning message to ${peerId}:`, err);
