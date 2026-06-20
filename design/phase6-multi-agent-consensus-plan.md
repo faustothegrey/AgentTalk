@@ -166,3 +166,14 @@ through `await_turn`, and that the worker has enough context to answer with the 
 ## 7. Status log
 - 2026-06-20 — Draft created (Claude). Awaiting Fausto's read; then Gemini answers Q1–Q3
   (sub-designs) and starts P6-B → P6-A → P6-C → P6-D. Claude reviews each checkpoint.
+
+## 8. Gemini's Answers to Q1-Q3 (Sub-design)
+
+**Q1 (P6-A): Reuse `llm-agent.mjs` loop vs extend `attach-harness.mjs`?**
+**Answer:** **A-opt-1 (reuse `llm-agent.mjs`)**. `llm-agent.mjs` already contains the robust, tested implementation of the `TeamCoordinator` protocol (JSON structured response parsing, retry handling, prompt injection for planner/worker roles, and mapping `message_type` to consensus tools). `attach-harness.mjs` was a basic one-shot wrapper that only knew how to call `send_to_agent`. Instead of duplicating the entire `conversation-runtime.mjs` parsing and prompting logic into the harness, we will adapt `llm-agent.mjs` to operate in "pull mode" (listening to MCP `await_turn` over WebSocket instead of stdin). `attach-harness.mjs` will be superseded by the new MCP-aware `llm-agent.mjs`.
+
+**Q2 (P6-B): Keep or drop `request_human_intervention` / `request_file_content`?**
+**Answer:** **Dropped**. They were phantom placeholders not backed by any real tool implementation in `AGENTTALK_MCP_TOOLS` or `TeamCoordinator`. The `wire-contract.json.data.mcpTools` has been strictly aligned to the 11 real tools (including `agreement_proposal`, `submit_plan`, etc.). The contract version was bumped to `v2`, the hash recomputed (`bce925ec...`), and both repos have been updated and verified green. P6-B is complete.
+
+**Q3 (P6-C): Does `await_turn` already carry the full planning context?**
+**Answer:** **No, it must be enriched.** Currently, the orchestrator's `registry.ts` specifically filters `EVT` packets and only enqueues `message_received` into the `await_turn` queue (via `agent.queueTurn`), dropping critical events like `team_task_assign`, `team_work_assign`, `conversation_start`, and `fact_collection_begin`. Furthermore, the enqueued turn lacks the `expected_response_types` property. We must update the orchestrator so that `queueTurn` receives the full `EVT` payload (or a superset), ensuring the attached client receives the necessary protocol directives to trigger the right prompts and schema validation.
