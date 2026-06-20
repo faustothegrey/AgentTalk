@@ -48,4 +48,12 @@ promoted→X · absorbed→X · dropped}.
   deterministically). **Reopen condition:** if this live run fails or surfaces a defect → **reopen
   M07-T2**. On green, note T2.4 as confirmed-live in the (frozen) ledger.
 
+- [open] 2026-06-20 — **Dedicated "failure modes / resilience" milestone (candidate M08+)** — Fausto's
+  idea: there are *many* failure modes (agent crash mid-task, partial worktree writes, network drops,
+  mid-turn quota exhaustion, deadlocks, corrupted state, …) and bolting them all onto M07-T3 would bloat
+  it. Give them their own milestone that **consolidates + extends** what exists (M03 agent-failure
+  propagation; T3b's effect-fence is the *first* forced instance, R2). **Next step:** brain-dump the
+  modes Fausto already has in mind into this item (or the logbook), then promote to a milestone with
+  its own plan. Don't start until M07 closes.
+
 *(add new items above this line)*
