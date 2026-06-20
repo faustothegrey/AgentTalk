@@ -12,36 +12,6 @@
 
 ---
 
-## ▶ START HERE (Gemini, fresh context)
-
-You are the **implementer** for M07; the reviewer verifies. Read, in order:
-1. `design/collaboration-workflow.md` — the method (esp. §2 verify-don't-assert, §3b the
-   claim/verdict ledger + **Tasks & branches**, §4a don't overwrite open points).
-2. `design/milestone07-centralized-brain-plan.md` — the epic plan; each task has an
-   implementation-ready spec section. Honour the "DO NOT TOUCH" guardrails there.
-3. This ledger — find your task and fill the **Implementer claim** column as you go; leave the
-   **Reviewer verdict** column for the reviewer.
-
-**Where to start:** read the **Tasks (epic breakdown)** table below and pick the **first task that is
-not DONE**; within it, work the **first DoD row whose Reviewer verdict is not VERIFIED**. Its spec is
-the matching plan section (T1 → §9, T2 → §10, …). Don't infer scope from chat — the ledger is the
-source of truth.
-
-**How to work (per workflow §3b *Tasks & branches*):**
-- **Create** the task branch **`<epic>-t<N>-<slug>`** off `master` yourself (branch creation is the
-  implementer's job), then work there. Do **not** commit to `master`.
-- Commit **claim-only**, small commits (ideally one per DoD row). A commit records progress and
-  makes the diff reviewable — it must **not self-close**: do **not** tick DoD boxes, do **not**
-  edit `CLAUDE.md`/`AGENT.md`, no "milestone complete".
-- The reviewer verifies the branch by running it, fills the verdict column, and **merges to
-  `master` only when every row of the task is VERIFIED**.
-
-**Standing constraints (all tasks):** use `gemini-2.5-flash` (budget); keys via env, **never commit
-secrets**; honour the per-task "DO NOT TOUCH" guardrails. Reference API call:
-`spikes/m07-api-structured-probe.mjs`.
-
----
-
 ## Readiness gates (pre-task) — all green
 
 | Gate | Verdict | Evidence |
