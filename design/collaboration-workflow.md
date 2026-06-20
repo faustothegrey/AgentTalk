@@ -141,6 +141,13 @@ smallest independently reviewable + mergeable unit; a.k.a. a "story"). Each task
   action is the merge — it never creates the branch.**
 - **The mainline stays verified-only.** The branch is the claim; the merge is the verdict.
 
+**Backlog gate — before opening any new macro unit (epic/task).** The architect/reviewer **reviews
+`backlog.md` and dispositions every open item in the same pass**: promote (→ spike/epic), absorb (→
+fold into this unit), drop (explicitly), defer (keep, with a trigger), or — for a one-off chore now
+done — mark done and remove the line (git is the record). Rationale: an un-reviewed backlog is how
+parked work silently rots (it violates §5 by omission). The gate is anti-oblivion, not control —
+humans forget; the gate doesn't. A new macro unit doesn't start until its backlog pass is done.
+
 **Refinements** are **not** a document type. A refinement is always one of three:
 1. **Design refinement** → edit `plan.md` in place (the *Revise* step) + a status-log line.
 2. **Work inside an open epic** → a row in that epic's `implementation.md` under a

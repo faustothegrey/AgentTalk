@@ -1,9 +1,14 @@
 # Backlog — rolling parking lot
 
-**Purpose (workflow §3b):** one append-only home for work **not attached to an open epic/spike**.
-Every item leaves by being **promoted** (→ spike/epic), **absorbed** (→ folded-into-EpicN), or
-**dropped** (explicitly — never silently). A refinement that *does* belong to an open epic goes in
+**Purpose (workflow §3b):** one rolling home for work **not attached to an open epic/spike**.
+Every item leaves by being **promoted** (→ spike/epic), **absorbed** (→ folded-into-EpicN),
+**dropped** (explicitly — never silently), or **done** (a one-off chore that's been executed —
+remove the line; git history is the record). A refinement that *does* belong to an open epic goes in
 that epic's `implementation.md` instead, not here.
+
+**Backlog gate (workflow §3b):** before opening any new macro unit (epic/task), the
+architect/reviewer reviews this file and **dispositions every open item** in the same pass — so
+nothing rots by being forgotten.
 
 **Entry format:** `- [STATUS] YYYY-MM-DD — <what> — <why>` where STATUS ∈ {open · parked ·
 promoted→X · absorbed→X · dropped}.
@@ -20,11 +25,6 @@ promoted→X · absorbed→X · dropped}.
   in one `planner-planner-worker` team) — deferred from M07-T2 (all-Google for budget). Promote once
   T2 is green and OpenRouter has credit / Hermes is live; proves the centralized brain mixes providers
   in a single consensus.
-
-- [done] 2026-06-20 — **Remove the `▶ START HERE` block** from
-  `milestone07-centralized-brain-implementation.md` — redundant now that the Tasks table + claim/verdict
-  rows drive where to start. **Done** right after the T2 merge (its trigger): block deleted; the
-  operational guidance it duplicated lives in `collaboration-workflow.md` §3b + the plan guardrails.
 
 - [open] 2026-06-20 — **Auto-handoff between agents (remove the human as turn-scheduler)** — resolves
   workflow **open question #2** (relay overhead). Insight: the *channel* already exists (ledger +
