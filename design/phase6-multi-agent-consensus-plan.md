@@ -289,3 +289,84 @@ The worker crashes before answering, and the agy regression would break gemini c
 ### Status log
 - 2026-06-20 — Re-review: Gemini's P6-A/P6-C "implemented/works" claims are **not true** —
   worker crashes 3 ways, smoke broken, P6-D missing. *Back to Gemini with the fix list above.*
+
+---
+
+## 11. Re-review #2 of the fix round — VERIFIED BY RUNNING IT (Claude, 2026-06-20)
+
+> Verified empirically: `tsc -b` clean → ran `scripts/test-attach-mode.mjs` → ran both unit
+> suites → recomputed the contract hash → diffed both contract files. Evidence below.
+> **Verdict: the §10 fix list is genuinely cleared and the consensus core now works — but
+> P6-D is PARTIAL, not done. The worker hand-off and the live 2×CLI gate are still open.**
+
+### ✅ §10 fix list — all three crashes really fixed (each re-checked)
+1. **Arg parsing.** `llm-agent.mjs parseArgs` now reads `--provider` via `argv.indexOf('--provider')`
+   (defaults `gemini`). The documented `--agentId X --provider stub` invocation starts cleanly.
+2. **gemini → `agy` restored (M05 no-regression).** Both the one-shot path
+   (`provider-runtime.mjs:125`, `command: 'agy'`, model default `gemini-3.1-pro`) and the
+   persistent path (`executor-runtime.mjs:69`, `agy mcp`) use `agy`. The phantom
+   `gemini-bridge.js` reference is gone; only the **`stub`** provider loads `lib/stub-bridge.js`
+   (`executor-runtime.mjs:75`), which exists. Real providers are untouched.
+3. **Smoke fixed.** `test-attach-mode.mjs` now uses `registry.activateAgent` (not the removed
+   `startAgent`) and resolves `llm-agent.mjs` by **absolute path** (no `npx`). It is no longer
+   single-agent: it spawns **2 planners + 1 worker** over the stub provider.
+
+### ✅ P6-A / P6-C — now real (proven end-to-end, not by assertion)
+Running the E2E, the attached stub workers pulled turns over `await_turn` and emitted the
+**correct structured consensus action for each step**, driven by the orchestrator-supplied
+context: `ack_planning_protocol` → `fact_collection_end` → `opinion` → `agreement_proposal` →
+`agreement_acceptance` → `submit_plan`. That sequence only happens if (P6-C) the enriched turn
+carries `expected_response_types`/planning context and (P6-A) the worker maps `message_type` →
+the matching MCP tool. Both hold.
+
+### ✅ P6-B — re-confirmed
+Both `wire-contract.json` **byte-identical** (`diff` clean), `version: 2`, stored hash
+`bce925ec…` **== recomputed** `sha256(JSON.stringify(data, null, 2))`.
+
+### ✅ Suites green
+Orchestrator **139/139** (20 files); client (`agentalk-mcp-client`) **3/3**
+(`llm-agent-custom-events.test.ts`). `tsc -b` exit 0.
+
+### ⚠️ P6-D — PARTIAL (this is the remaining gate, do not mark Phase 6 done)
+- **Reached:** two attached planners reach consensus and **`submit_plan`** lands — the
+  M04-deferred core. `TEST PASSED: Consensus E2E reached submit_plan`, exit 0. This is real and
+  is the hard part.
+- **NOT reached — the worker hand-off.** §6 acceptance requires *"a worker completes
+  `submit_work_result`."* The test asserts only `planSubmitted` (task → `awaiting_confirmation`)
+  and then **kills all three workers**. It never calls `confirmPlan(taskId)`
+  (`team-coordinator.ts:1323`), so `team_work_assign` (`:1349`) never fires and the worker —
+  though spawned, attached, and with a ready `work_accept` branch in `stub-bridge.js` — stays
+  idle. `submit_work_result` is never exercised by any test. **Acceptance criterion unmet.**
+- **Live 2×real-CLI run** (codex/claude/`agy`) — the manual gate in §P6-D/§6 — not done; only
+  the stub E2E exists.
+
+### ⚠️ Still open (carried from §9 "Minor", not addressed)
+- `wire-contract.json.data.messageTypes` is **still half-reconciled**:
+  `[message_received, agreement_proposal, agreement_acceptance, plan_submission,
+  planning_phase_complete, turn_complete, turn_error]` — `plan_submission/
+  planning_phase_complete/turn_complete/turn_error` are **not** real protocol `message_type`s
+  (real set: `opinion/agreement_proposal/agreement_acceptance/submit_plan/fact_collection_end/
+  work_accept/work_refuse`). Hash-consistent → non-blocking, but it's a contract lie. Fix in a
+  v3 pass alongside the `mcpTools` reconciliation already done in v2.
+
+### Minor / NOTE
+- The losing planner's `submit_plan` is correctly rejected (`task status is awaiting_confirmation`)
+  and surfaced as a `[System] … rejected` message; it then receives `conversation_end` and
+  shuts down. Benign, but the rejected-call → system-message path is noisy; fine for now.
+
+### Back to Gemini — precise list to finish P6-D
+1. **Drive the worker phase in the E2E.** After `planSubmitted`, call
+   `registry.confirmPlan(team.<taskId>)`, then wait for the worker to emit `submit_work_result`
+   and assert the task reaches its completed/work-done status. Only then does the test meet §6.
+2. **Reconcile `messageTypes`** to the real protocol set and bump the contract to **v3**
+   (recompute the hash on both repos, byte-identical, per the M05 guard).
+3. **Live 2×real-CLI manual gate** (codex/claude/`agy`): two real planners reach `submit_plan`,
+   confirm, worker completes — record the run.
+4. (Carry-forward) keep single-agent attach (chat-to-user, no planning context) working — not
+   re-verified live this round; confirm in the live gate.
+
+### Status log
+- 2026-06-20 — Re-review #2: §10 fixes **verified cleared** by running it; P6-A/B/C green;
+  **P6-D PARTIAL** — `submit_plan` reached (stub E2E passes), but worker `submit_work_result`
+  and the live 2×CLI gate are not exercised; `messageTypes` contract still unreconciled.
+  *Back to Gemini with the 4-item list above.*
