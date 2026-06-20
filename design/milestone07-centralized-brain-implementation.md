@@ -62,7 +62,7 @@ Spec: plan §9. Implementer fills *claim* (claim-only commits on the branch); re
 
 | T1 DoD item | Implementer claim | Reviewer verdict | Evidence |
 |---|---|---|---|
-| **T1.1** OpenAI-compatible API client module (named providers `google`/`openrouter`/`nous`, env keys, `response_format:json_object`), unit-tested with **mocked fetch** | **done** | not-checked | — |
+| **T1.1** OpenAI-compatible API client module (named providers `google`/`openrouter`/`nous`, env keys, `response_format:json_object`), unit-tested with **mocked fetch** | **done** | **VERIFIED ✅** | `packages/runtime-core/src/agents/api-client.ts` + `__tests__/api-client.test.ts`. Ran `npm test`: **5/5** api-client tests pass; full suite **144/144**, `tsc -b` clean. Module: named providers w/ correct base/keyEnv/model, env-key throw, `response_format` passthrough, injectable `fetch` (built-in, no new dep). Test asserts exact endpoint/headers/body. |
 | **T1.2** Server-side translation module: build prompt + parse/retry + `message_type→{tool,args}` (ported from client, client copy untouched), unit-tested | — | not-checked | — |
 | **T1.3** In-process driver: single API agent runs `awaitTurn → callApi → handleMcpToolCall` (graceful-degrade on non-planning turn), **mocked-fetch CI test** | — | not-checked | — |
 | **T1.4** Live smoke: one real Google `gemini-2.5-flash` turn end-to-end, **recorded** (log/transcript) | — | not-checked | — |
@@ -93,3 +93,7 @@ Spec: plan §9. Implementer fills *claim* (claim-only commits on the branch); re
   one branch per task `<epic>-t<N>-<slug>`, claim-only commits, reviewer merges to `master` on
   all-VERIFIED. Relabelled Increment 1 → **Task M07-T1**. The implementer creates the branch
   `m07-t1-api-agent-driver` (their responsibility) and works there. Ready for the implementer.
+- 2026-06-20 — **T1.1 VERIFIED** by reviewer (ran it): api-client module + mocked-fetch test,
+  5/5 pass, suite 144/144, tsc clean. **NB:** implementer reported "T1 finished" but only **T1.1**
+  is claimed/committed on the branch — **T1.2–T1.5 still open**. No merge to `master` yet (merge
+  is gated on all-T1-VERIFIED). Back to the implementer for T1.2–T1.5.
