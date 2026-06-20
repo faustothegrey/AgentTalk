@@ -42,9 +42,27 @@ CLAUDE.md "preserve behaviour" rule. Therefore:
    completion, turn-by-turn in the consensus). The *worker* = "execute the plan" = a **long
    run-to-completion agentic session**. So the harness isn't only "prompt→text"; the worker needs a
    `run-to-completion → result` exec. Two RPC shapes.
-3. **🟢 Session state (R3).** `sessionId` (harness keeps the CLI session live) vs **stateless-resend**
-   (orchestrator resends full history). Plan leans sessionId. **Recommendation: start stateless** — the
-   dumbest possible harness, cleanest proof of the inversion; optimize to sessionId later. **[FAUSTO]**
+3. **🔴 Session state (R3) — BIG OPEN NODE (Fausto flagged, 2026-06-20).** *Not* a checkbox.
+   **Key reframe: "brain" ≠ "memory".** Centralized-brain means *semantics/decisions* live server-side
+   (prompt-build, protocol, translation) — it does **not** require the raw token history to live
+   server-side. So:
+   - **Brain** → orchestrator (centralized).
+   - **Memory** → the CLI's **native session** (`agy --continue`; claude/codex `--continue`/`--resume`,
+     sessions persisted to disk). The agents are **already stateful** — M06's `GeminiPersistentExecutor`
+     exploits exactly this.
+   Three options, not two: (1) **stateless-resend** (orchestrator rebuilds full history each turn —
+   most tokens, hits context limits); (2) **opaque `sessionId`** — harness passes a semantics-free id to
+   the CLI's native session → **no resend, harness stays dumb, brain stays central**; (3) orchestrator-
+   held session map.
+   - **Lean: option 2 (sessionId / native session) is likely the production choice** — Fausto's
+     instinct. "Stateless-first" is **only spike scaffolding** (prove the inversion without session
+     complexity), *not* the end state.
+   - **Residual tensions to resolve in its own spike:** (a) **determinism** — orchestrator can't see the
+     CLI's exact context (compaction); OK because protocol enforces on the *reply's* `message_type`, not
+     internal context; (b) **recovery (ties to R2/#4)** — `--resume <id>` from on-disk sessions can
+     survive a harness restart; (c) **cost** — native session wins decisively.
+   - **[FAUSTO] Decision: give R3 its own spike inside T3** (don't decide casually). Default direction:
+     sessionId.
 
 ## 4. Spike-first (workflow §8)
 Cheapest probe: **one CLI agent, one exec-RPC round-trip, no consensus, no reconnect** — prove the
@@ -59,7 +77,8 @@ holds. Then tackle the worker + effect-fence **separately** (the hard half).
 
 ## 6. Open decisions for Fausto (resolve before §11)
 - [FAUSTO] Coexistence-behind-flag vs cutover (recommend coexistence).
-- [FAUSTO] Session model: stateless-resend first vs sessionId (recommend stateless first).
+- [FAUSTO] Session model (**BIG NODE — give it its own spike**, see §3.3): lean **sessionId / native
+  CLI session** ("brain ≠ memory"); stateless-resend is only spike scaffolding, not the end state.
 - [FAUSTO] Which CLI to pilot T3a on (claude / codex / agy)?
 - [FAUSTO] Effect-fence policy for T3b: re-issue-and-dedup, or never-auto-reissue-ask-human?
 
