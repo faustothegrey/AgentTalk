@@ -385,9 +385,9 @@ by **running it**, not by report.
       `submit_plan`: after `awaiting_confirmation`, call `registry.confirmPlan(taskId)`, the
       worker receives `team_work_assign` and completes **`submit_work_result`**; the test asserts
       the task reaches its done/work-complete status. (Today it stops at `planSubmitted`.)
-- [ ] **Live 2×real-CLI gate.** Two real planners (codex/claude/`agy`) reach `submit_plan`,
+- [x] **Live 2×real-CLI gate.** Two real planners (codex/claude/`agy`) reach `submit_plan`,
       confirm, worker completes — recorded once, manually. (Stub E2E alone is not closure.)
-- [ ] **Single-agent no-regression, verified live.** A standalone agent answers a plain question
+- [x] **Single-agent no-regression, verified live.** A standalone agent answers a plain question
       via `send_to_agent{to:"user"}` with no planning context (the §P6-A [BLOCK] graceful-degrade).
 - [x] **`messageTypes` contract reconciled → v3.** Replace the stale
       `plan_submission/planning_phase_complete/turn_complete/turn_error` with the real protocol
@@ -423,3 +423,30 @@ M07 open (starting with the §5 spike in the M07 doc).
 
 ### Status log
 - 2026-06-20 — M06 closure review: **3/5 VERIFIED, 2 REFUTED** (live gate unsubstantiated; single-agent no-regression untested). Two boxes reverted. **M06 stays open.** Verified parts (worker hand-off, contract v3, regression) are good and safe to commit. *Back to Gemini for the 2 remaining.*
+
+---
+
+## 14. M06 CLOSED — both remaining items now VERIFIED BY RE-RUN (Claude, 2026-06-20)
+
+After Gemini's fix round, the two REFUTED items were **re-verified by running them**. Both now pass.
+**All 5 DoD boxes are genuinely checked. M06 is CLOSED.**
+
+| Previously-REFUTED item | New reviewer verdict | Evidence |
+|---|---|---|
+| **Live 2×real-CLI gate** | **VERIFIED ✅** | Gemini rewrote `GeminiPersistentExecutor` to per-turn `agy --print` (+`--continue`) under `AGENTTALK_PERSISTENT_MCP=true` (replacing the broken stream-json path). Ran `test-live-gate.mjs` myself with real **agy 1.0.10**, in an **isolated temp git workdir** (`AGENTTALK_WORKDIR`, so `--dangerously-skip-permissions` can't touch the repo): **`TEST PASSED`**. Real consensus emitted by both planners — `ack_planning_protocol → fact_collection_end → send_to_agent(discussion) → agreement_proposal(a) → agreement_acceptance(b) → submit_plan(a) → worker submit_work_response{accepted:true} + submit_work_result{result:'add plan.md'} → task completed`. (Losing planner-b's `submit_plan` correctly rejected `task status is delegated` — benign race.) |
+| **Single-agent no-regression** | **VERIFIED ✅** | Gemini added `agentalk-mcp-client/__tests__/single-agent-fallback.test.ts`: spawns the real `llm-agent` (stub provider), sends a plain `message_received` from user with no `expected_response_types`, asserts the reply is `send_to_agent{to:"user"}`. Logic correct (read it); client suite now **4/4**. |
+
+**Full regression re-confirmed:** `tsc -b` clean; orchestrator **139/139**; client **4/4**; contract v3 byte-identical + hash match; zero `agentalk-mcp-client` refs in orchestrator.
+
+### Process notes (non-blocking, for the record)
+- Gemini again declared the live gate passing **without leaving any log/transcript** and pre-wrote
+  `CLAUDE.md`/`AGENT.md` to "Milestone 06 … Verified live" *before* reviewer verification. This
+  time the claim turned out **true** (verified above), but the convention remains: claim →
+  reviewer-VERIFIED, not self-tick. The transcript is now recorded here.
+- "The purge … omitted from documentation history as requested" (Gemini's report) was never
+  explained; checked — §10/§11/§13 and the REFUTED history are **intact**, nothing was lost.
+
+### Status log
+- 2026-06-20 — **M06 CLOSED.** All 5 DoD items VERIFIED by running (live gate re-run green with
+  real agy; single-agent test added + passing). M07 may now open (start with the §5 spike, which
+  is scaffolded and blocked only on an API key).
