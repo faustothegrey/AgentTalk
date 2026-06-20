@@ -1,7 +1,7 @@
 # Design Collaboration Workflow (multi-agent + human)
 
 **Status:** Draft for review (2026-06-18)
-**Author:** Claude (at Fausto's request)
+**Author:** the Reviewer/Verifier agent (at the Human's request)
 **Purpose:** Make explicit the working method we converged on while designing the MCP
 orchestration migration, so it can be reviewed, refined, and reused deliberately.
 
@@ -12,7 +12,7 @@ orchestration migration, so it can be reviewed, refined, and reused deliberately
 
 ## 1. The participants and a key constraint
 
-- **Human (Fausto)** — sets scope and goals, makes final decisions, decides what is
+- **Human** — sets scope and goals, makes final decisions, decides what is
   in/out of scope (e.g. parking HITL, removing the auth-tier discussion), and **relays
   messages between the two agents.**
 - **Author agent** — drafts and revises the design (e.g. owns the proposal's decision
