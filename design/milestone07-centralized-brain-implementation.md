@@ -64,7 +64,7 @@ Spec: plan §9. Implementer fills *claim* (claim-only commits on the branch); re
 |---|---|---|---|
 | **T1.1** OpenAI-compatible API client module (named providers `google`/`openrouter`/`nous`, env keys, `response_format:json_object`), unit-tested with **mocked fetch** | **done** | **VERIFIED ✅** | `packages/runtime-core/src/agents/api-client.ts` + `__tests__/api-client.test.ts`. Ran `npm test`: **5/5** api-client tests pass; full suite **144/144**, `tsc -b` clean. Module: named providers w/ correct base/keyEnv/model, env-key throw, `response_format` passthrough, injectable `fetch` (built-in, no new dep). Test asserts exact endpoint/headers/body. |
 | **T1.2** Server-side translation module: build prompt + parse/retry + `message_type→{tool,args}` (ported from client, client copy untouched), unit-tested | **done** | not-checked | — |
-| **T1.3** In-process driver: single API agent runs `awaitTurn → callApi → handleMcpToolCall` (graceful-degrade on non-planning turn), **mocked-fetch CI test** | — | not-checked | — |
+| **T1.3** In-process driver: single API agent runs `awaitTurn → callApi → handleMcpToolCall` (graceful-degrade on non-planning turn), **mocked-fetch CI test** | **done** | not-checked | — |
 | **T1.4** Live smoke: one real Google `gemini-2.5-flash` turn end-to-end, **recorded** (log/transcript) | — | not-checked | — |
 | **T1.5** No regression: orchestrator suite green; client suite green; existing attach (CLI/stub) path unchanged (driver opt-in/config-gated); `tsc -b` clean | — | not-checked | — |
 
