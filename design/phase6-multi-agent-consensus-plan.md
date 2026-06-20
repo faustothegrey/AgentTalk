@@ -370,3 +370,30 @@ Orchestrator **139/139** (20 files); client (`agentalk-mcp-client`) **3/3**
   **P6-D PARTIAL** — `submit_plan` reached (stub E2E passes), but worker `submit_work_result`
   and the live 2×CLI gate are not exercised; `messageTypes` contract still unreconciled.
   *Back to Gemini with the 4-item list above.*
+
+---
+
+## 12. M06 Definition of Done — close this cleanly before M07 (Fausto, 2026-06-20)
+
+Decision (Fausto): **close M06 properly and start M07 from a clean base.** The centralization
++ API-agent work is parked into **M07** (`design/milestone07-centralized-brain-epic.md`) and
+**must not** begin until every box below is checked. Implementer: Gemini; Claude verifies each
+by **running it**, not by report.
+
+**DoD checklist (all required):**
+- [ ] **P6-D worker hand-off.** The consensus E2E (`scripts/test-attach-mode.mjs`) drives past
+      `submit_plan`: after `awaiting_confirmation`, call `registry.confirmPlan(taskId)`, the
+      worker receives `team_work_assign` and completes **`submit_work_result`**; the test asserts
+      the task reaches its done/work-complete status. (Today it stops at `planSubmitted`.)
+- [ ] **Live 2×real-CLI gate.** Two real planners (codex/claude/`agy`) reach `submit_plan`,
+      confirm, worker completes — recorded once, manually. (Stub E2E alone is not closure.)
+- [ ] **Single-agent no-regression, verified live.** A standalone agent answers a plain question
+      via `send_to_agent{to:"user"}` with no planning context (the §P6-A [BLOCK] graceful-degrade).
+- [ ] **`messageTypes` contract reconciled → v3.** Replace the stale
+      `plan_submission/planning_phase_complete/turn_complete/turn_error` with the real protocol
+      set; bump to **v3**, recompute the hash, byte-identical on both repos, guard green.
+- [ ] **Regression gates.** `tsc -b` clean; orchestrator suite green; client lint/test green;
+      orchestrator has **zero** `agentalk-mcp-client` references (M05 holds).
+
+When every box is checked and Claude has re-verified by running, M06 is **closed**; only then does
+M07 open (starting with the §5 spike in the M07 doc).
