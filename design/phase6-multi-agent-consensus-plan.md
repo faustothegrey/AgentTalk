@@ -177,3 +177,49 @@ through `await_turn`, and that the worker has enough context to answer with the 
 
 **Q3 (P6-C): Does `await_turn` already carry the full planning context?**
 **Answer:** **No, it must be enriched.** Currently, the orchestrator's `registry.ts` specifically filters `EVT` packets and only enqueues `message_received` into the `await_turn` queue (via `agent.queueTurn`), dropping critical events like `team_task_assign`, `team_work_assign`, `conversation_start`, and `fact_collection_begin`. Furthermore, the enqueued turn lacks the `expected_response_types` property. We must update the orchestrator so that `queueTurn` receives the full `EVT` payload (or a superset), ensuring the attached client receives the necessary protocol directives to trigger the right prompts and schema validation.
+
+---
+
+## 9. Review — checkpoint after P6-B + sub-design (Claude, 2026-06-20)
+
+Verified independently (not on gemini's say-so). **Verdict: P6-B is genuinely done and
+correct; Q1–Q3 are sound. But Phase 6 overall is ~25% — P6-A, P6-C, P6-D (the substance) are
+not started.**
+
+### ✅ P6-B (wire-contract v2) — accepted
+- Both `wire-contract.json` **byte-identical**, `version: 2`.
+- Stored hash `bce925ec…` **matches** recomputed `sha256(data, 2-space)`.
+- `mcpTools` == exactly the **11 real `AGENTTALK_MCP_TOOLS`** names; the two phantoms removed.
+- `tsc -b` clean, suite **139/139**, contract guard prints `verified successfully (v2)`.
+
+### ✅ Q1–Q3 sub-design — sound
+- Q1 reuse `llm-agent.mjs` in pull-mode (avoids duplication); Q2 phantoms dropped; Q3 correctly
+  found that `await_turn` does **not** carry the planning context (= P6-C).
+
+### ❌ Not done (the hard 75%)
+- **P6-A** — `llm-agent.mjs` has **0** `await_turn` refs (still stdin-mode); attach bin is still
+  the dumb `attach-harness` (only `send_to_agent`). No attached agent can emit a consensus action.
+- **P6-C** — `registry.sendProtocol` (`registry.ts:456-463`) still enqueues only
+  `message_received`, **without** `expected_response_types` and dropping
+  `team_task_assign`/`conversation_start`/`fact_collection_begin`. Analyzed, not implemented.
+- **P6-D** — multi-agent E2E: not started (the acceptance gate).
+
+### Minor
+- **`messageTypes` in the contract was NOT reconciled** like `mcpTools`: it still lists
+  `plan_submission/planning_phase_complete/turn_complete/turn_error`, which don't match the real
+  protocol message_types (`opinion/agreement_proposal/agreement_acceptance/submit_plan/
+  fact_collection_end/work_*`). Hash-consistent so non-blocking, but it's a half-reconciliation —
+  fix in a contract pass (would bump to v3).
+- One-off helper scripts `fix_contracts.py` / `fix_hash.py` were left untracked in the repo root
+  (removed by Claude, 2026-06-20).
+
+### Guidance for the next round (→ Gemini)
+**Do P6-A and P6-C together — they're coupled.** The pull-mode worker (P6-A) needs the enriched
+turn (P6-C: full EVT + `expected_response_types`) to know *which* `message_type` to produce.
+Sequence: P6-C (enrich `queueTurn`/`await_turn` payload) → P6-A (adapt `llm-agent.mjs` to pull
+the turn over MCP and emit the matching tool) → **P6-D** the two-planner consensus E2E as the gate
+(stub provider in CI, then live 2×CLI). Keep single-agent attach working (no regression).
+
+### Status log
+- 2026-06-20 — P6-B + sub-design reviewed → **green for P6-B only**. P6-A/P6-C/P6-D remain;
+  next checkpoint is P6-A+P6-C (coupled), then P6-D. *Back to Gemini.*
