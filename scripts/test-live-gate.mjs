@@ -35,17 +35,17 @@ async function run() {
 
   const llmAgentPath = path.join(__dirname, '../../agentalk-mcp-client/llm-agent.mjs');
 
-  const harnessA = spawn('node', [llmAgentPath, '--agentId', 'planner-a', '--provider', 'stub', '--execution-mode', 'persistent'],
+  const harnessA = spawn('node', [llmAgentPath, '--agentId', 'planner-a', '--provider', 'gemini', '--execution-mode', 'persistent'],
     { env: { ...process.env, AGENTTALK_PERSISTENT_MCP_URL: `ws://localhost:${port}/` }, stdio: ['ignore', 'pipe', 'pipe'] });
   harnessA.stdout.on('data', d => process.stdout.write(`[llm-agent-a] ${d}`));
   harnessA.stderr.on('data', d => process.stderr.write(`[llm-agent-a-err] ${d}`));
 
-  const harnessB = spawn('node', [llmAgentPath, '--agentId', 'planner-b', '--provider', 'stub', '--execution-mode', 'persistent'],
+  const harnessB = spawn('node', [llmAgentPath, '--agentId', 'planner-b', '--provider', 'gemini', '--execution-mode', 'persistent'],
     { env: { ...process.env, AGENTTALK_PERSISTENT_MCP_URL: `ws://localhost:${port}/` }, stdio: ['ignore', 'pipe', 'pipe'] });
   harnessB.stdout.on('data', d => process.stdout.write(`[llm-agent-b] ${d}`));
   harnessB.stderr.on('data', d => process.stderr.write(`[llm-agent-b-err] ${d}`));
 
-  const harnessC = spawn('node', [llmAgentPath, '--agentId', 'worker-1', '--provider', 'stub', '--execution-mode', 'persistent'],
+  const harnessC = spawn('node', [llmAgentPath, '--agentId', 'worker-1', '--provider', 'gemini', '--execution-mode', 'persistent'],
     { env: { ...process.env, AGENTTALK_PERSISTENT_MCP_URL: `ws://localhost:${port}/` }, stdio: ['ignore', 'pipe', 'pipe'] });
   harnessC.stdout.on('data', d => process.stdout.write(`[llm-agent-w] ${d}`));
   harnessC.stderr.on('data', d => process.stderr.write(`[llm-agent-w-err] ${d}`));
