@@ -120,3 +120,62 @@ green and Fausto greenlights). Start from a clean base.
 ## 8. Status log
 - 2026-06-20 — Epic drafted (Claude). Folds the API-agent proposal in as the centralization
   pilot/spike. Parked pending M06 closure; awaiting Fausto's go + Q1/Q3/Q4 answers.
+- 2026-06-20 — **M06 closed; M07 OPEN.** R1 spike GREEN (Gemini 3/3 legal `message_type` via
+  Google OpenAI-compat). **Q3 RESOLVED:** named providers (`google`/`openrouter`/`nous`), one
+  OpenAI-compatible client. **Q4 deferred** (start with Google; Nous later). Increment 1
+  sub-design below (§9) is implementation-ready. *Gemini implements; Claude verifies by running.*
+
+---
+
+## 9. Increment 1 (M07-I1) — In-orchestrator API agent driver  **(implementation-ready)**
+
+**Goal.** The orchestrator drives an **API-backed agent fully in-process** (Google via the
+OpenAI-compat endpoint), reusing the existing consensus engine — with **no change to the protocol
+engine** and **no CLI-harness inversion yet**. This is the cheapest productionization of the
+"centralized brain" (the easy case: API, no harness).
+
+**Key insight (grounded in code).** The external client's loop is
+`await_turn → build prompt → run model → emit the matching MCP tool`. The in-orchestrator driver
+is the **same loop**, but it calls `agent.awaitTurn()` (registry.ts:277) and
+`registry.handleMcpToolCall(agentId, tool, args)` (registry.ts:260) **directly in-process**
+instead of over WebSocket. `TeamCoordinator` cannot tell the difference → protocol determinism is
+untouched.
+
+**Scope — DO:**
+1. **Server-side OpenAI-compatible API client** (new module under `packages/runtime-core` or
+   `apps/orchestrator`). `callApi({provider, model, messages, response_format}) → {text, usage}`.
+   Named providers (Q3): `google` = `https://generativelanguage.googleapis.com/v1beta/openai`,
+   key `GEMINI_API_KEY`, default `gemini-2.5-flash`; `openrouter`/`nous` configured but inert
+   until keys arrive. Uses built-in `fetch` (Node ≥18, **no new dependency**). Unit-test with a
+   **mocked fetch** (deterministic, CI). Reference shape: `spikes/m07-api-structured-probe.mjs`.
+2. **Server-side translation module** — port the minimal consensus pieces from the client:
+   `llm-agent.mjs::dispatchStructuredResponse` (message_type→{tool,args}), `response-schema.mjs`
+   (parse + repair/retry), and the relevant prompt builders in `conversation-runtime.mjs`. Build
+   the prompt from a turn payload; parse the structured JSON; map `message_type → {tool, args}`.
+   **Copy as a NEW module — do NOT delete the client's copy** (the CLI harness still uses it until
+   I3). Unit-test the mapping + parse/retry.
+3. **In-process driver** — for an agent configured as API-backed, run:
+   `const turn = await agent.awaitTurn()` → build prompt → `callApi` → parse (retry once on
+   unparsable) → `registry.handleMcpToolCall(agentId, tool, args)` → loop. **Graceful-degrade
+   preserved:** a non-planning turn (no `expected_response_types`) yields `send_to_agent{to:"user"}`
+   (the M06 §P6-A no-regression rule).
+4. **Agent config + start path** — mark an agent as API-backed (e.g.
+   `createAgent(id, {provider:'api', providerName:'google', model})`) and have the registry start
+   the in-process driver for it **instead of** waiting for an external WebSocket attach.
+
+**Scope — DO NOT TOUCH (guardrails):**
+- `agentalk-mcp-client` / the CLI harness — no inversion, no edits (that is **I3**).
+- The client's translation logic — not retired yet (**I4**).
+- Multi-agent API **consensus** — that is **I2**; I1 is a **single** API agent.
+- `TeamCoordinator` / protocol determinism — unchanged; the driver only feeds it tool calls.
+- The existing **attach (CLI/stub) path** — must keep working unchanged; the driver is
+  **opt-in / config-gated** so default behavior is byte-for-byte preserved (M05/M06 invariants).
+
+**Smoke checkpoint.** One in-orchestrator API agent completes a turn: (a) deterministic test with
+**mocked fetch** (CI); (b) one **live Google call** (`gemini-2.5-flash`) recorded (manual).
+
+**Invariants (carry-forward).** Protocol determinism stays in `TeamCoordinator`; one terminal
+action per turn; **budget — use `gemini-2.5-flash`**; **no secrets committed** (key via env).
+
+**DoD** — the claim/verdict rows live in `milestone07-centralized-brain-implementation.md`; a row
+is done only when Claude's verdict is **VERIFIED** (ran it), per workflow §3b.
