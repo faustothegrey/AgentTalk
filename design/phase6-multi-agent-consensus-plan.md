@@ -79,6 +79,12 @@ Hard requirements either way:
 - **Response robustness:** structured output is parsed with a **repair/retry** path (the model
   re-prompted on unparsable/illegal output), reusing the client's existing response-schema —
   not a new bespoke parser.
+- **[BLOCK] Graceful degrade on non-planning turns (single-agent chat must not regress).** A
+  plain `message_received` with **no** `expected_response_types` (a standalone agent asked a
+  simple question — no team, no planning) must yield a **plain answer via
+  `send_to_agent{to:"user"}`**. The pull-mode worker must **not** demand structured-JSON /
+  consensus output when there is no planning context. Simple Q&A on a single agent stays
+  available without ever creating a team (acceptance criterion §6).
 
 ### P6-B — Reconcile + version-bump the wire-contract  **[BLOCK]**
 - Make `wire-contract.json.data.mcpTools` the **single source of truth equal to the advertised
