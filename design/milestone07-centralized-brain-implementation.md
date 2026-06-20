@@ -15,8 +15,8 @@
 
 | Item (from plan)                                              | Implementer claim | Reviewer verdict | Evidence |
 |--------------------------------------------------------------|-------------------|------------------|----------|
-| **Spike** — orchestrator builds prompt → OpenAI-compatible fetch → parse → structured `message_type`, single agent, no CLI (plan §5) | scaffolded | **PARTIAL ⚠️** | `spikes/m07-api-structured-probe.mjs` (isolated, zero impact on current code). Mechanism validated: it reaches the OpenAI-compatible `/chat/completions`, sends `response_format:json_object`, and handles the response/error path cleanly (got a well-formed HTTP 429 from OpenAI and reported it). **R1 itself NOT answered — blocked on a usable key** (OPENROUTER/NOUS unset; OPENAI_API_KEY = `insufficient_quota`). |
-| Q1 structured-output reliability confirmed (response_format + retry) | —          | **not-checked (BLOCKED on key)** | Needs OPENROUTER_API_KEY or NOUS_API_KEY (target: a Hermes / OpenRouter model). Spike is ready: `PROVIDER=openrouter MODEL=<id> node spikes/m07-api-structured-probe.mjs`. |
+| **Spike** — orchestrator builds prompt → OpenAI-compatible fetch → parse → structured `message_type`, single agent, no CLI (plan §5) | done | **VERIFIED ✅** | `spikes/m07-api-structured-probe.mjs` (isolated, zero impact on current code). Ran `PROVIDER=google` → **3/3 PASS** with real `gemini-2.5-flash` via Google's OpenAI-compat endpoint: discussion→`opinion`, proposal→`agreement_proposal`, submit→`submit_plan`. Confirms the centralized-brain round-trip (orchestrator builds prompt → fetch → `response_format:json_object` → parse → legal `message_type`). |
+| Q1 structured-output reliability confirmed (response_format + retry) | done          | **VERIFIED ✅ (Google)** | Real Gemini emitted a **legal `message_type` for every protocol step** (3/3), tokens 414in/225out — cheap. Still TODO for the *target* Hermes/OpenRouter models when those keys arrive (`PROVIDER=openrouter\|nous MODEL=<id> node spikes/...`), but R1 is **answered** for the Google provider — enough to start the epic. |
 | Q3 provider granularity decided (two named vs generic `api`) | —                 | not-checked      | —        |
 | Q4 Nous endpoint + Hermes model id confirmed                 | —                 | not-checked      | —        |
 | **Epic 1** — translation layer extracted server-side (move, tested) | —          | not-checked      | —        |
@@ -37,3 +37,9 @@
   `response_format:json_object`, parses, handles errors). **R1 blocked on a usable API key** —
   OPENROUTER/NOUS unset, OPENAI_API_KEY out of quota (429). Awaiting a key from Fausto to run
   the real R1 probe against a Hermes/OpenRouter model.
+- 2026-06-20 — Added `google` provider (Google's OpenAI-compat endpoint,
+  `generativelanguage.googleapis.com/v1beta/openai`, `GEMINI_API_KEY`). Ran the spike →
+  **R1 GREEN: 3/3 legal message_types** with `gemini-2.5-flash`. M07 epic is **unblocked** —
+  Google is the budget-friendly pilot provider; OpenRouter/Nous deferred until those keys arrive.
+  **Next:** epic step 1 — extract the translation layer (prompt-build + structured-parse +
+  message_type→tool) into a server-side module (move, not rewrite).

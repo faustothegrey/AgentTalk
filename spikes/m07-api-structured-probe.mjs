@@ -18,6 +18,7 @@ const PROVIDERS = {
   openai:     { baseUrl: 'https://api.openai.com/v1',                 keyEnv: 'OPENAI_API_KEY',     defaultModel: 'gpt-4o-mini' },
   openrouter: { baseUrl: 'https://openrouter.ai/api/v1',             keyEnv: 'OPENROUTER_API_KEY', defaultModel: 'openai/gpt-4o-mini' },
   nous:       { baseUrl: 'https://inference-api.nousresearch.com/v1', keyEnv: 'NOUS_API_KEY',       defaultModel: 'Hermes-4-405B' },
+  google:     { baseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai', keyEnv: 'GEMINI_API_KEY', defaultModel: 'gemini-2.5-flash' },
 };
 
 const providerName = (process.env.PROVIDER || 'openai').toLowerCase();
