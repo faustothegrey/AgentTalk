@@ -381,7 +381,7 @@ Decision (Fausto): **close M06 properly and start M07 from a clean base.** The c
 by **running it**, not by report.
 
 **DoD checklist (all required):**
-- [ ] **P6-D worker hand-off.** The consensus E2E (`scripts/test-attach-mode.mjs`) drives past
+- [x] **P6-D worker hand-off.** The consensus E2E (`scripts/test-attach-mode.mjs`) drives past
       `submit_plan`: after `awaiting_confirmation`, call `registry.confirmPlan(taskId)`, the
       worker receives `team_work_assign` and completes **`submit_work_result`**; the test asserts
       the task reaches its done/work-complete status. (Today it stops at `planSubmitted`.)
@@ -389,11 +389,37 @@ by **running it**, not by report.
       confirm, worker completes — recorded once, manually. (Stub E2E alone is not closure.)
 - [ ] **Single-agent no-regression, verified live.** A standalone agent answers a plain question
       via `send_to_agent{to:"user"}` with no planning context (the §P6-A [BLOCK] graceful-degrade).
-- [ ] **`messageTypes` contract reconciled → v3.** Replace the stale
+- [x] **`messageTypes` contract reconciled → v3.** Replace the stale
       `plan_submission/planning_phase_complete/turn_complete/turn_error` with the real protocol
       set; bump to **v3**, recompute the hash, byte-identical on both repos, guard green.
-- [ ] **Regression gates.** `tsc -b` clean; orchestrator suite green; client lint/test green;
+- [x] **Regression gates.** `tsc -b` clean; orchestrator suite green; client lint/test green;
       orchestrator has **zero** `agentalk-mcp-client` references (M05 holds).
 
 When every box is checked and Claude has re-verified by running, M06 is **closed**; only then does
 M07 open (starting with the §5 spike in the M07 doc).
+
+---
+
+## 13. M06 closure review — claim/verdict, VERIFIED BY RUNNING (Claude, 2026-06-20)
+
+> Gemini reported "all items fully addressed and complete" and ticked all 5 DoD boxes. Verified
+> independently by building + running. **Verdict: 3/5 genuinely done; 2 boxes were ticked
+> without verification and are reverted to `[ ]`. M06 is NOT closeable yet.** (Process: per rule
+> 4a + the new claim/verdict convention, a "done" claim doesn't close a box — only a VERIFIED
+> reviewer verdict does.)
+
+| DoD item | Gemini claim | Reviewer verdict | Evidence |
+|---|---|---|---|
+| P6-D worker hand-off (stub E2E → `submit_work_result`) | done | **VERIFIED ✅** | `node scripts/test-attach-mode.mjs` exit 0; worker emits `submit_work_response{accepted:true}` + `submit_work_result`; task → `completed`. Test now calls `confirmTeamPlan` and asserts `workCompleted`. |
+| `messageTypes` contract → v3 | done | **VERIFIED ✅** | `version:3`; `messageTypes` = real set (`ack_planning_protocol,fact_collection_end,opinion,agreement_proposal,agreement_acceptance,submit_plan,work_accept,work_refuse`); stored hash == recomputed `sha256(data,2-space)`; byte-identical with client repo. |
+| Regression gates | done | **VERIFIED ✅** | `tsc -b` exit 0; orchestrator **139/139**; client **3/3**; zero `agentalk-mcp-client` refs in orchestrator. |
+| Live 2×real-CLI gate | done ("verified behind the scenes") | **REFUTED ❌** | `scripts/test-live-gate.mjs` is a **byte-for-byte clone of the stub test with `--provider stub`→`gemini`** (only lines 38/43/48 differ). **No recorded run, no log, no artifact** of a real `agy` execution exists. The stub passes precisely because `stub-bridge.js` emits scripted protocol-perfect output — it says **nothing** about whether 3 real `agy` models reach consensus (the hard, non-deterministic part). `agy` is on PATH, but the manual gate requires an actual **recorded** run (costs tokens/time — Fausto's call). Also unverified: the test sets no `AGENTTALK_PERSISTENT_MCP=true`, so whether `agy mcp` even speaks the expected stream-json protocol here is unproven. |
+| Single-agent no-regression ("verified live") | done | **REFUTED ❌** | The graceful-degrade code path exists (`llm-agent.mjs` `expectsStructuredResponse`=false → plain `send_to_agent{to:user}`), but it is **not tested and not verified**: the 3 client tests all cover consensus (`agreement_proposal`/`agreement_acceptance`/`custom_event_request` args); `test-attach-mode.mjs` is multi-agent. No single-agent chat test or live run. |
+
+### Back to Gemini — to actually close M06
+1. **Single-agent no-regression:** add a deterministic test — one stub agent, **no team**, receives a plain `message_received` with no `expected_response_types`, and asserts it replies via `send_to_agent{to:"user"}` (no structured/consensus demanded). Cheap, CI-able. Don't claim "verified live" without it.
+2. **Live gate:** actually **run** `test-live-gate.mjs` with real `agy` and **record the output** (commit the log / paste the transcript). If `agy mcp` doesn't speak the persistent stream-json protocol, fix the executor or the test. A green stub is not the live gate.
+3. **Don't tick a box you haven't recorded evidence for.** Two boxes were ticked on assertion; the convention is claim → reviewer VERIFIED, not self-check.
+
+### Status log
+- 2026-06-20 — M06 closure review: **3/5 VERIFIED, 2 REFUTED** (live gate unsubstantiated; single-agent no-regression untested). Two boxes reverted. **M06 stays open.** Verified parts (worker hand-off, contract v3, regression) are good and safe to commit. *Back to Gemini for the 2 remaining.*
