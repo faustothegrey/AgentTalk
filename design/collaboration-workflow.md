@@ -87,9 +87,43 @@ inter-agent communication bus.** Anything not written down does not survive the 
 | **Proposal / spec** | The living design. Carries a status (Draft → Refined → Decisions Documented) and a decisions section that the Author agent revises. |
 | **Capability / verification note** | Empirical findings: per-target capability matrix, exact versions, commands, outputs, sources. The Reviewer's evidence base. |
 | **Caveats / discussion agenda** | Consolidated open issues, severity-tagged, with a resolution-status table after each revision and a readiness verdict. |
+| **`<epic>-plan.md`** *(from M07)* | The stable plan for one milestone/epic. Owned by the **architect**. Scope, decisions, acceptance criteria, **Definition of Done**. Changes only on a real design change — **no status churn here**. |
+| **`<epic>-implementation.md`** *(from M07)* | The volatile **status ledger** for that epic. A claim/verdict table (below) + an append-only log. The **implementer** records claims; the **reviewer** records verified/refuted verdicts. |
+| **`backlog.md`** *(from M07)* | One rolling, append-only parking lot for work **not attached to an open epic/spike**. Each item leaves by being **promoted** (→ spike/epic), **absorbed** (→ folded-into-EpicN), or **dropped** (explicitly). |
 | **(This) workflow doc** | The method itself, made explicit for reuse. |
 
 Each doc is self-describing: status, author, date, and "Related" links at the top.
+
+### 3b. Per-epic document pair + refinements/backlog (adopted from Milestone 07 onward)
+
+**The pair.** Every **milestone/epic** (large unit) gets two docs: a stable `<epic>-plan.md`
+(architect-owned design + DoD) and a volatile `<epic>-implementation.md` (status). This keeps the
+plan clean instead of bloating it with review checkpoints. **Small units don't get the pair** —
+everything is either a **spike** or an **epic**; there are no standalone "small stories."
+
+**Claim/verdict table** — the core anti-drift device. The `implementation.md` mirrors the plan's
+DoD as rows, each carrying an explicit, separately-authored status:
+
+```
+| Item (from the plan's DoD) | Implementer claim | Reviewer verdict            | Evidence            |
+|----------------------------|-------------------|-----------------------------|---------------------|
+| <DoD item>                 | done / wip / —    | VERIFIED ✅ / REFUTED ❌ /   | command + output /  |
+|                            |                   | PARTIAL ⚠️ / not-checked    | file:line           |
+```
+
+Status ∈ {CLAIMED → VERIFIED ✅ / REFUTED ❌ / PARTIAL ⚠️ / not-checked}. The implementer fills the
+*claim* column; the reviewer fills the *verdict* column **only after running it** (principle 2),
+with evidence. This structurally enforces rule 4a: a "done" claim cannot silently overwrite a
+prior "not done" — the two columns coexist until the reviewer flips the verdict. On milestone
+close, `implementation.md` freezes (it is the historical record); `plan.md` becomes the design
+record. Merge/archive then to avoid drift (open question 5).
+
+**Refinements** are **not** a document type. A refinement is always one of three:
+1. **Design refinement** → edit `plan.md` in place (the *Revise* step) + a status-log line.
+2. **Work inside an open epic** → a row in that epic's `implementation.md` under a
+   *Refinements / follow-ups* section (same claim/verdict discipline).
+3. **Anything not tied to an open epic/spike** → a one-line entry in `backlog.md`, later
+   promoted, absorbed, or dropped.
 
 ---
 
@@ -132,7 +166,10 @@ Steps:
 7. **Readiness gate** — Reviewer states explicitly whether we're ready to plan / start, and
    what gates the next step.
 8. **Implement** — Small phases, riskiest-unknown-first, each with a smoke checkpoint;
-   production behavior preserved behind a flag until a phase is proven.
+   production behavior preserved behind a flag until a phase is proven. **(From M07)** the
+   implementer records each phase's outcome as a *claim* row in `<epic>-implementation.md`; the
+   reviewer then **runs it** and flips the *verdict* column (VERIFIED/REFUTED/PARTIAL) with
+   evidence (§3b). A phase is "done" only when its verdict is VERIFIED — never on the claim alone.
 
 ---
 
