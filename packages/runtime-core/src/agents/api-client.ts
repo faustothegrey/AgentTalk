@@ -23,8 +23,8 @@ const PROVIDERS: Record<ApiProvider, { baseUrl: string; keyEnv: string; defaultM
   },
   nous: {
     baseUrl: 'https://inference-api.nousresearch.com/v1',
-    keyEnv: 'NOUS_API_KEY',
-    defaultModel: 'Hermes-4-405B',
+    keyEnv: 'HERMES_API_KEY',
+    defaultModel: 'deepseek-v4-flash',
   },
   google: {
     baseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai',

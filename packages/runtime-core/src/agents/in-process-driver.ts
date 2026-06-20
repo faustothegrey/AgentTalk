@@ -51,7 +51,7 @@ export class InProcessAgentDriver {
         
         this.agent.setStatus('busy');
         await this.handleTurn(turn as unknown as ConversationEvent);
-        if (this.isRunning) {
+        if (this.isRunning && this.agent.status === 'busy') {
           this.agent.setStatus('ready');
         }
       } catch (err) {
