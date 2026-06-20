@@ -1,6 +1,6 @@
 # Milestone 07 — Centralized Agent Brain — Implementation Status
 
-**Status:** **OPEN — Task M07-T1 active** (branch `m07-t1-api-agent-driver`). M06 closed; R1 spike GREEN. (First exemplar of the M07 doc-pair convention.)
+**Status:** **OPEN — Task M07-T1 active** (branch `m07-t1-api-agent-driver`). **T1.1–T1.5 VERIFIED; only T1.6 (registry start-path) remains** before merge. M06 closed; R1 spike GREEN.
 **Plan:** `design/milestone07-centralized-brain-plan.md` (architect-owned; this doc tracks status only).
 **Last verified:** 2026-06-20 (spike/R1) · **Verifier:** Claude
 
@@ -66,15 +66,16 @@ Spec: plan §9. Implementer fills *claim* (claim-only commits on the branch); re
 | **T1.2** Server-side translation module: build prompt + parse/retry + `message_type→{tool,args}` (ported from client, client copy untouched), unit-tested | **done** | **VERIFIED ✅** | `translation.ts` — faithful port of the client's `dispatchStructuredResponse` + retry; **reuses pre-existing server-side `conversations/runtime.ts` + `response-schema.ts`** (no new port needed). `translation.test.ts` **6/6**. Client repo untouched (no commits/changes). |
 | **T1.3** In-process driver: single API agent runs `awaitTurn → callApi → handleMcpToolCall` (graceful-degrade on non-planning turn), **mocked-fetch CI test** | **done** | **VERIFIED ✅ (with gap, see ⚠️)** | `in-process-driver.ts` loop = `awaitTurn → buildPrompt → callApi → parse/retry → translate → handleMcpToolCall`; non-structured turn → plain `buildProtocolRequest` (graceful degrade). `in-process-driver.test.ts` **2/2** (mocked fetch). **⚠️ Driver is a standalone class — not wired into the registry (see gap note below).** |
 | **T1.4** Live smoke: one real Google `gemini-2.5-flash` turn end-to-end, **recorded** (log/transcript) | **done** | **VERIFIED ✅** | Ran `scripts/m07-t1-live-smoke.mjs` myself with real `gemini-2.5-flash`: `conversation_start` → real Gemini → driver emits `send_to_agent{to:peer-b}` with a real opinion + `expected_response_types`. Exit 0; transcript `m07-smoke-transcript.log`. |
-| **T1.5** No regression: orchestrator suite green; client suite green; existing attach (CLI/stub) path unchanged (driver opt-in/config-gated); `tsc -b` clean | **done** | **PARTIAL ⚠️ (blocker GAP-2)** | **Working-tree** code: `tsc -b` clean, suite **152/152**, `registry.ts`+client **untouched** → attach path unchanged. **BUT the committed branch FAILS `tsc` — 10 errors** (verbatimModuleSyntax type-imports, exactOptionalPropertyTypes, unused vars). The build-fixing edits are **uncommitted in the working tree** (never committed by the implementer). My green run was against the working tree. **Not mergeable until those fixes are committed.** |
+| **T1.5** No regression: orchestrator suite green; client suite green; existing attach (CLI/stub) path unchanged (driver opt-in/config-gated); `tsc -b` clean | **done** | **VERIFIED ✅** | After the reviewer fixup `fcb4c64` (GAP-2 resolved), the **committed** branch builds: `tsc -b` clean, full suite **152/152**, `registry.ts`+client **untouched** → existing attach path unchanged. |
+| **T1.6** Registry start-path: `createAgent({provider:'api', providerName, model})` + on activate the registry **starts `InProcessAgentDriver`** (opt-in; non-API agents unchanged); a configured API agent completes a turn via the normal lifecycle — mocked-fetch CI test + one live Google turn through the registry path | — | not-checked | **NEW (GAP-1 → T1.6).** Spec in plan §9.1. For the implementer. |
 
 ## Refinements / follow-ups (in-scope tweaks discovered during M07)
 
 | Item | Claim | Verdict | Notes |
 |---|---|---|---|
 | **R-1** `api-client.ts` `nous` provider `keyEnv` should be **`HERMES_API_KEY`** + default model **`deepseek-v4-flash`** (the env var/model Fausto actually provisioned), not `NOUS_API_KEY`/`Hermes-4-405B`. | — | open | Surfaced 2026-06-20 when Fausto provisioned the Nous key. Spike's `nous` provider already updated; implementer to wire the same into `api-client.ts`. |
-| **GAP-1 (T1 scope §9 item 4)** Registry start-path not done: no `createAgent({provider:'api'})` and no registry wiring to **start `InProcessAgentDriver`** in the agent lifecycle. The driver only runs via manual instantiation (the smoke harness). So "the orchestrator drives an API agent" holds only via a test harness, not a real configured agent. | — | **OPEN — decision needed** | All 5 T1 DoD rows are VERIFIED as written, but the plan's scope item 4 is unmet. Options: (a) add **T1.6** (registry start-path) and hold T1 open; (b) fold the wiring into **T2** (multi-agent consensus needs the registry to start drivers anyway) and merge T1 now. Fausto/architect to decide. |
-| **GAP-2 (BLOCKER)** The committed branch does **not** compile — `tsc` fails with 10 errors in `translation.ts` / `in-process-driver.ts` / `translation.test.ts`. The fixes (type-only imports, `exactOptionalPropertyTypes`, unused-var removals) exist only as **uncommitted working-tree edits** the implementer never committed. T1.5's "tsc passes" claim was made against uncommitted work. | — | **OPEN — blocks merge** | Trivial fixes, already verified by the reviewer's run. Must be committed to the branch before merge. Decision: implementer commits them, or reviewer commits as a fixup (they're verified + at risk of loss on checkout). |
+| **GAP-1 (T1 scope §9 item 4)** Registry start-path not done. | — | **RESOLVED → T1.6** | Decision (Fausto, 2026-06-20): add **T1.6** (registry start-path) and **keep T1 open** until it's VERIFIED. Now tracked as the T1.6 DoD row; spec in plan §9.1. |
+| **GAP-2 (BLOCKER)** Committed branch failed `tsc` (10 errors); build-fixes were uncommitted. | — | **RESOLVED ✅** | Decision (Fausto): reviewer commits. Done in `fcb4c64`; committed branch now builds + suite 152/152. |
 
 ## Log (append-only, dated)
 - 2026-06-20 — Doc created as the M07 status ledger. No work started; M07 is parked behind M06
@@ -111,3 +112,7 @@ Spec: plan §9. Implementer fills *claim* (claim-only commits on the branch); re
   with 10 errors; the fixes are **uncommitted working-tree edits** the implementer never committed
   (verified by stashing them → committed version fails tsc). T1.5 downgraded to PARTIAL. My
   152/152 + smoke were on the working tree. **Branch not mergeable until the fixes are committed.**
+- 2026-06-20 — Decisions (Fausto): **GAP-2** → reviewer commits the fixes (done `fcb4c64`; branch
+  now builds, 152/152) → **T1.1–T1.5 all VERIFIED**. **GAP-1** → add **T1.6** (registry start-path),
+  keep T1 open. Spec for T1.6 written in plan §9.1; handed to the implementer (Gemini) on the
+  branch. T1 closes (merge to `master`) only when T1.6 is VERIFIED.

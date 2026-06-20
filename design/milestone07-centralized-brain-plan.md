@@ -180,3 +180,34 @@ action per turn; **budget — use `gemini-2.5-flash`**; **no secrets committed**
 
 **DoD** — the claim/verdict rows live in `milestone07-centralized-brain-implementation.md`; a row
 is done only when Claude's verdict is **VERIFIED** (ran it), per workflow §3b.
+
+### 9.1 T1.6 — Registry start-path (the wiring) *(remaining T1 item)*
+
+**Why.** T1.1–T1.5 delivered a verified `InProcessAgentDriver`, but it's only ever started by the
+smoke harness — `registry.ts` is untouched, so no *configured* agent in the running orchestrator is
+ever API-backed. T1.6 closes that gap so T1 actually delivers its goal: *the orchestrator drives an
+API agent through the normal agent lifecycle.* (Was GAP-1; reviewer review 2026-06-20.)
+
+**Scope — DO:**
+1. **Agent config.** Let an agent be created/marked as API-backed, e.g.
+   `registry.createAgent(id, { provider: 'api', providerName: 'google', model })` (shape your call;
+   keep it minimal and typed). Non-API agents keep their exact current shape.
+2. **Start path.** When an API-backed agent is **activated**, the registry instantiates and
+   `start()`s an `InProcessAgentDriver` for it **instead of** waiting for an external WebSocket
+   attach. When it's stopped/disconnected, `stop()` the driver and clean up.
+3. **Opt-in / no-regression.** Only agents explicitly marked `provider:'api'` take this path;
+   every existing attach (CLI/stub) agent path is **byte-for-byte unchanged**. This is the
+   load-bearing guardrail — prove it with the existing suite staying green.
+
+**Scope — DO NOT TOUCH:** the consensus engine / `TeamCoordinator`; the CLI harness
+(`agentalk-mcp-client`); multi-agent consensus (that's T2). Single API agent only.
+
+**DoD / checkpoints (T1.6 row):**
+- A **configured** API agent (`provider:'api'`) created via the registry **completes one turn
+  through the normal lifecycle** — deterministic **mocked-fetch CI test** (no smoke harness
+  hand-wiring; the registry starts the driver).
+- One **live Google** turn through the registry path (`gemini-2.5-flash`), recorded.
+- Full suite green; existing attach path unchanged; `tsc -b` clean (commit the build — don't leave
+  fixes uncommitted, cf. GAP-2).
+
+**On green:** all of T1 (T1.1–T1.6) is VERIFIED → reviewer merges the branch to `master`.
