@@ -63,16 +63,17 @@ Spec: plan §9. Implementer fills *claim* (claim-only commits on the branch); re
 | T1 DoD item | Implementer claim | Reviewer verdict | Evidence |
 |---|---|---|---|
 | **T1.1** OpenAI-compatible API client module (named providers `google`/`openrouter`/`nous`, env keys, `response_format:json_object`), unit-tested with **mocked fetch** | **done** | **VERIFIED ✅** | `packages/runtime-core/src/agents/api-client.ts` + `__tests__/api-client.test.ts`. Ran `npm test`: **5/5** api-client tests pass; full suite **144/144**, `tsc -b` clean. Module: named providers w/ correct base/keyEnv/model, env-key throw, `response_format` passthrough, injectable `fetch` (built-in, no new dep). Test asserts exact endpoint/headers/body. |
-| **T1.2** Server-side translation module: build prompt + parse/retry + `message_type→{tool,args}` (ported from client, client copy untouched), unit-tested | **done** | not-checked | — |
-| **T1.3** In-process driver: single API agent runs `awaitTurn → callApi → handleMcpToolCall` (graceful-degrade on non-planning turn), **mocked-fetch CI test** | **done** | not-checked | — |
-| **T1.4** Live smoke: one real Google `gemini-2.5-flash` turn end-to-end, **recorded** (log/transcript) | **done** | not-checked | `scripts/m07-t1-live-smoke.mjs` |
-| **T1.5** No regression: orchestrator suite green; client suite green; existing attach (CLI/stub) path unchanged (driver opt-in/config-gated); `tsc -b` clean | **done** | not-checked | `npm test && tsc -b` passes (152/152 tests green)
+| **T1.2** Server-side translation module: build prompt + parse/retry + `message_type→{tool,args}` (ported from client, client copy untouched), unit-tested | **done** | **VERIFIED ✅** | `translation.ts` — faithful port of the client's `dispatchStructuredResponse` + retry; **reuses pre-existing server-side `conversations/runtime.ts` + `response-schema.ts`** (no new port needed). `translation.test.ts` **6/6**. Client repo untouched (no commits/changes). |
+| **T1.3** In-process driver: single API agent runs `awaitTurn → callApi → handleMcpToolCall` (graceful-degrade on non-planning turn), **mocked-fetch CI test** | **done** | **VERIFIED ✅ (with gap, see ⚠️)** | `in-process-driver.ts` loop = `awaitTurn → buildPrompt → callApi → parse/retry → translate → handleMcpToolCall`; non-structured turn → plain `buildProtocolRequest` (graceful degrade). `in-process-driver.test.ts` **2/2** (mocked fetch). **⚠️ Driver is a standalone class — not wired into the registry (see gap note below).** |
+| **T1.4** Live smoke: one real Google `gemini-2.5-flash` turn end-to-end, **recorded** (log/transcript) | **done** | **VERIFIED ✅** | Ran `scripts/m07-t1-live-smoke.mjs` myself with real `gemini-2.5-flash`: `conversation_start` → real Gemini → driver emits `send_to_agent{to:peer-b}` with a real opinion + `expected_response_types`. Exit 0; transcript `m07-smoke-transcript.log`. |
+| **T1.5** No regression: orchestrator suite green; client suite green; existing attach (CLI/stub) path unchanged (driver opt-in/config-gated); `tsc -b` clean | **done** | **VERIFIED ✅** | `tsc -b` clean; full suite **152/152**; `registry.ts` **untouched** + client repo **untouched** → existing attach path unchanged. (Driver is not yet wired, so trivially no-regression — see gap.) |
 
 ## Refinements / follow-ups (in-scope tweaks discovered during M07)
 
 | Item | Claim | Verdict | Notes |
 |---|---|---|---|
 | **R-1** `api-client.ts` `nous` provider `keyEnv` should be **`HERMES_API_KEY`** + default model **`deepseek-v4-flash`** (the env var/model Fausto actually provisioned), not `NOUS_API_KEY`/`Hermes-4-405B`. | — | open | Surfaced 2026-06-20 when Fausto provisioned the Nous key. Spike's `nous` provider already updated; implementer to wire the same into `api-client.ts`. |
+| **GAP-1 (T1 scope §9 item 4)** Registry start-path not done: no `createAgent({provider:'api'})` and no registry wiring to **start `InProcessAgentDriver`** in the agent lifecycle. The driver only runs via manual instantiation (the smoke harness). So "the orchestrator drives an API agent" holds only via a test harness, not a real configured agent. | — | **OPEN — decision needed** | All 5 T1 DoD rows are VERIFIED as written, but the plan's scope item 4 is unmet. Options: (a) add **T1.6** (registry start-path) and hold T1 open; (b) fold the wiring into **T2** (multi-agent consensus needs the registry to start drivers anyway) and merge T1 now. Fausto/architect to decide. |
 
 ## Log (append-only, dated)
 - 2026-06-20 — Doc created as the M07 status ledger. No work started; M07 is parked behind M06
@@ -99,3 +100,9 @@ Spec: plan §9. Implementer fills *claim* (claim-only commits on the branch); re
   5/5 pass, suite 144/144, tsc clean. **NB:** implementer reported "T1 finished" but only **T1.1**
   is claimed/committed on the branch — **T1.2–T1.5 still open**. No merge to `master` yet (merge
   is gated on all-T1-VERIFIED). Back to the implementer for T1.2–T1.5.
+- 2026-06-20 — **Full T1 review (ran it):** T1.2 (translation, 6/6), T1.3 (driver, 2/2), T1.4
+  (live smoke re-run with real Google `gemini-2.5-flash`, exit 0), T1.5 (suite 152/152, tsc clean,
+  registry + client untouched) — **all 5 DoD rows VERIFIED.** Process clean (claim-only commits,
+  client untouched). **BUT GAP-1 raised:** registry start-path (plan §9 item 4) not done — the
+  driver is a standalone class, never started by the orchestrator's agent lifecycle. **Not merged
+  to `master`** pending Fausto's decision: add T1.6 (wire it) vs fold into T2.
