@@ -1,6 +1,6 @@
 # Milestone 07 — Centralized Agent Brain — Implementation Status
 
-**Status:** **OPEN — Task M07-T1 active** (branch `m07-t1-api-agent-driver`). **T1.1–T1.5 VERIFIED; only T1.6 (registry start-path) remains** before merge. M06 closed; R1 spike GREEN.
+**Status:** **Task M07-T1 COMPLETE — all rows VERIFIED, merged to `master`.** Next: M07-T2 (multi-agent API consensus). M06 closed; R1 spike GREEN.
 **Plan:** `design/milestone07-centralized-brain-plan.md` (architect-owned; this doc tracks status only).
 **Last verified:** 2026-06-20 (spike/R1) · **Verifier:** Claude
 
@@ -50,7 +50,7 @@ client logic) are **later tasks — out of scope now.** Use `gemini-2.5-flash` (
 
 | Task | Goal | Branch | Status |
 |---|---|---|---|
-| **M07-T1** | API agent in-orchestrator, **single agent** (in-process driver, Google) | `m07-t1-api-agent-driver` | **ACTIVE** (DoD below) |
+| **M07-T1** | API agent in-orchestrator, **single agent** (in-process driver, Google) | `m07-t1-api-agent-driver` | **DONE ✅** (T1.1–T1.6 VERIFIED, merged) |
 | **M07-T2** | Multi-agent API **consensus** in-orchestrator (2 planners → submit_plan → worker) | `m07-t2-api-consensus` | not started |
 | **M07-T3** | **CLI harness inversion** (exec-RPC) + reconnect/effect-fence + contract bump | `m07-t3-harness-inversion` | not started |
 | **M07-T4** | Retire client-side semantic logic; harness = transport + exec only | `m07-t4-retire-client-brain` | not started |
@@ -67,13 +67,14 @@ Spec: plan §9. Implementer fills *claim* (claim-only commits on the branch); re
 | **T1.3** In-process driver: single API agent runs `awaitTurn → callApi → handleMcpToolCall` (graceful-degrade on non-planning turn), **mocked-fetch CI test** | **done** | **VERIFIED ✅ (with gap, see ⚠️)** | `in-process-driver.ts` loop = `awaitTurn → buildPrompt → callApi → parse/retry → translate → handleMcpToolCall`; non-structured turn → plain `buildProtocolRequest` (graceful degrade). `in-process-driver.test.ts` **2/2** (mocked fetch). **⚠️ Driver is a standalone class — not wired into the registry (see gap note below).** |
 | **T1.4** Live smoke: one real Google `gemini-2.5-flash` turn end-to-end, **recorded** (log/transcript) | **done** | **VERIFIED ✅** | Ran `scripts/m07-t1-live-smoke.mjs` myself with real `gemini-2.5-flash`: `conversation_start` → real Gemini → driver emits `send_to_agent{to:peer-b}` with a real opinion + `expected_response_types`. Exit 0; transcript `m07-smoke-transcript.log`. |
 | **T1.5** No regression: orchestrator suite green; client suite green; existing attach (CLI/stub) path unchanged (driver opt-in/config-gated); `tsc -b` clean | **done** | **VERIFIED ✅** | After the reviewer fixup `fcb4c64` (GAP-2 resolved), the **committed** branch builds: `tsc -b` clean, full suite **152/152**, `registry.ts`+client **untouched** → existing attach path unchanged. |
-| **T1.6** Registry start-path: `createAgent({provider:'api', providerName, model})` + on activate the registry **starts `InProcessAgentDriver`** (opt-in; non-API agents unchanged); a configured API agent completes a turn via the normal lifecycle — mocked-fetch CI test + one live Google turn through the registry path | **done** | not-checked | **NEW (GAP-1 → T1.6).** Spec in plan §9.1. For the implementer. |
+| **T1.6** Registry start-path: `createAgent({provider:'api', providerName, model})` + on activate the registry **starts `InProcessAgentDriver`** (opt-in; non-API agents unchanged); a configured API agent completes a turn via the normal lifecycle — mocked-fetch CI test + one live Google turn through the registry path | **done** | **VERIFIED ✅** | `registry.ts` (+38): `createAgent` takes `provider/providerName/model`; `activateAgent` starts+`start()`s the driver when `provider==='api'` and returns early (opt-in — other agents unchanged); `removeAgent`/`destroy` `stop()` it. `api-agent-lifecycle.test.ts` **1/1** exercises the **registry path** (createAgent→activate→registry starts driver→callApi mocked), not hand-wired. Ran `scripts/m07-t1.6-live-smoke.mjs` myself: log shows `[Registry] Starting InProcessAgentDriver…` → real `gemini-2.5-flash` turn → `send_to_agent{to:peer-b}`, exit 0. Suite **153/153**, `tsc -b` clean (committed). |
 
 ## Refinements / follow-ups (in-scope tweaks discovered during M07)
 
 | Item | Claim | Verdict | Notes |
 |---|---|---|---|
-| **R-1** `api-client.ts` `nous` provider `keyEnv` should be **`HERMES_API_KEY`** + default model **`deepseek-v4-flash`** (the env var/model Fausto actually provisioned), not `NOUS_API_KEY`/`Hermes-4-405B`. | **done** | open | Surfaced 2026-06-20 when Fausto provisioned the Nous key. Spike's `nous` provider already updated; implementer to wire the same into `api-client.ts`. |
+| **R-1** `api-client.ts` `nous` provider `keyEnv` should be **`HERMES_API_KEY`** + default model **`deepseek-v4-flash`** (the env var/model Fausto actually provisioned), not `NOUS_API_KEY`/`Hermes-4-405B`. | **done** | **VERIFIED ✅** | `api-client.ts` `nous`: `keyEnv: 'HERMES_API_KEY'`, `defaultModel: 'deepseek-v4-flash'`. (Live Nous call still untested — no key in the orchestrator's inherited env; not blocking T1.) |
+| **R-2 (nit)** `api-agent-lifecycle.test.ts` has leftover dead comments (Gemini's thinking-out-loud, lines ~65–68). | — | open | Cosmetic; remove in a later pass. Non-blocking. |
 | **GAP-1 (T1 scope §9 item 4)** Registry start-path not done. | — | **RESOLVED → T1.6** | Decision (Fausto, 2026-06-20): add **T1.6** (registry start-path) and **keep T1 open** until it's VERIFIED. Now tracked as the T1.6 DoD row; spec in plan §9.1. |
 | **GAP-2 (BLOCKER)** Committed branch failed `tsc` (10 errors); build-fixes were uncommitted. | — | **RESOLVED ✅** | Decision (Fausto): reviewer commits. Done in `fcb4c64`; committed branch now builds + suite 152/152. |
 
@@ -116,3 +117,8 @@ Spec: plan §9. Implementer fills *claim* (claim-only commits on the branch); re
   now builds, 152/152) → **T1.1–T1.5 all VERIFIED**. **GAP-1** → add **T1.6** (registry start-path),
   keep T1 open. Spec for T1.6 written in plan §9.1; handed to the implementer (Gemini) on the
   branch. T1 closes (merge to `master`) only when T1.6 is VERIFIED.
+- 2026-06-20 — **T1.6 + R-1 VERIFIED (ran it):** registry start-path wired (opt-in, teardown);
+  `api-agent-lifecycle.test.ts` exercises the registry path; T1.6 live smoke through the registry
+  passed with real Google; suite **153/153**, committed branch builds (no GAP-2 repeat); R-1 done.
+  **All of T1 (T1.1–T1.6) VERIFIED → reviewer merging `m07-t1-api-agent-driver` → `master`.**
+  Minor nit logged (R-2, dead comments in the test).
