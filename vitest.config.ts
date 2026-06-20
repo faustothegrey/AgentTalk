@@ -13,7 +13,7 @@ export default defineConfig({
     },
   },
   test: {
-    include: ['apps/orchestrator/src/**/*.test.ts'],
+    include: ['apps/orchestrator/src/**/*.test.ts', 'packages/runtime-core/src/**/*.test.ts'],
     exclude: ['**/dist/**', 'apps/web/**'],
   },
 });
