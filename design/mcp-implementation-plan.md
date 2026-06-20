@@ -703,3 +703,24 @@ Workstream B (complete separation) + Workstream A (channel hardening: reconnect 
 liveness-gated takeover, fail-and-requeue, version/hash handshake, CLI-failure surfacing) both
 done and verified live. Residual **[NOTE]s** (non-blocking, → Gemini's repo / future): harness
 doesn't give up on a 4001/terminal rejection; model not plumbed to the harness (`agy` default).
+
+---
+
+## Phase 6 — Multi-Agent Consensus under Attach Mode (Antigravity, 2026-06-20)
+
+Addressed the critical deficiency where multi-agent consensus was non-functional in Attach Mode.
+The previous implementation (which relied on `stream-json` over stdin/stdout) fundamentally conflicted with `agy`'s CLI constraints, leading to immediate protocol failures (`1006` WebSocket disconnects) as the orchestrator attempted to dispatch consensus interactions.
+
+### Provider Multi-Turn State (`agy --continue`)
+- Rewrote `GeminiPersistentExecutor` inside `agentalk-mcp-client` to completely avoid continuous stdin streams.
+- The executor now preserves multi-turn session state by isolating `GEMINI_CLI_HOME` into a unique per-agent temporary directory and exclusively using `agy --continue` combined with the one-shot `--print` flag.
+- When an agent is invoked (e.g. `planner-a`), it spins up a fresh `agy` process for that specific turn, maintaining full awareness of the prior context implicitly through its isolated CLI state directory.
+- This effectively resolves the disconnect and buffering problems while perfectly mimicking a real user’s terminal interactions.
+
+### Verified Live
+- `scripts/test-live-gate.mjs` was extended to strictly validate `implementation-ready` plans.
+- Two Gemini agents (`planner-a` and `planner-b`) execute fully isolated turns, successfully iterate through `fact_collection`, debate through `discussion`, propose and accept a formal plan, and cleanly hand off execution to `worker-1` which completes the assignment.
+- Verified live: No `1006` crashes, proper graceful MCP agent termination upon task completion, and full regression passed (139/139). 
+
+### Phase 6 status: ✅ COMPLETE (Milestone 06)
+Multi-Agent Consensus under Attach Mode has been successfully built and verified live.
