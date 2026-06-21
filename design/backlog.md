@@ -17,10 +17,6 @@ promoted→X · absorbed→X · dropped}.
 
 ## Items
 
-- [absorbed→M06-v3] 2026-06-20 — Reconcile `wire-contract.json.data.messageTypes` to the real
-  protocol message_types (currently lists phantom `plan_submission/planning_phase_complete/
-  turn_complete/turn_error`) and bump to v3 — surfaced in Phase 6 review §9/§11; now an M06 DoD item.
-
 - [open] 2026-06-20 — **Cross-provider consensus** (e.g. planner-a Google + planner-b Nous in one
   `planner-planner-worker` team) — deferred from M07-T2 (all-Google for budget). Proves the centralized
   brain mixes providers in a single consensus.

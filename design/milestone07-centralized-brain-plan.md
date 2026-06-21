@@ -300,7 +300,7 @@ all-VERIFIED.
 
 ---
 
-## 11. Task M07-T3 — CLI harness inversion (exec-RPC)  **(T3a implementation-ready; T3b/T3c outlined)**
+## 11. Task M07-T3 — CLI harness inversion (exec-RPC)  **(T3a/T3b DONE+merged; T3c implementation-ready)**
 
 **Goal.** Turn the CLI harness (`agentalk-mcp-client`) from a *semantic* client (it builds prompts,
 parses, maps `message_type`→tool — the M05/M06 model) into a **dumb remote executor**:
@@ -495,8 +495,38 @@ because bundling crash-handling here contradicts that defer decision and would b
 > **D4 status:** the *policy* (stop-and-ask, no auto-reissue) stays decided, but its *implementation* is
 > **deferred to the M08+ failure-modes milestone** — not T3b-2.
 
-### 11d. T3c — contract bump
-- **T3c:** wire-contract bump for exec-RPC + **hash-guard re-bump**; flip nothing on by default yet.
+### 11d. T3c — wire-contract bump for exec-RPC + hash re-bump  **(IMPLEMENTATION-READY — T3c.1–T3c.5 in the ledger)**
+- **T3c:** wire-contract bump for exec-RPC + **hash-guard re-bump (both repos)**; flip nothing on by default.
+
+**How the guard works (grounded in code).** `wire-contract.json.hash = sha256(JSON.stringify(data, null, 2))`.
+There are **two byte-identical copies** — `packages/contracts/wire-contract.json` (orchestrator) and
+`agentalk-mcp-client/wire-contract.json` (harness). On attach, the harness sends `clientInfo.contractHash`
+(`lib/mcp-client.mjs`) and `McpServer` compares it to its own `expectedContractHash`
+(`apps/orchestrator/src/mcp-server.ts` ~L149) — **mismatch ⇒ the agent is rejected.** So a bump in one repo
+without the other breaks every connection. `verify-contract.js` is `packages/contracts`'s **test** script, so
+the hash must be recomputed or the suite goes red.
+
+**The drift (concrete).** The real registered tools (`AGENTTALK_MCP_TOOLS`) include **`submit_exec_result`**,
+which is **missing from the contract's `mcpTools`** — that single omission *is* the exec-RPC contract gap. T3a/T3b
+shipped the exec-RPC surface and live tests passed against the **un-bumped** v3 hash, i.e. the guard does not yet
+cover exec-RPC. T3c closes that.
+
+**Decisions.**
+1. **Surface added = only `submit_exec_result` → `data.mcpTools`.** `exec_rpc` is an inbound **EVT subtype** and the
+   contract **does not enumerate EVT subtypes** (`team_work_assign`, `message_received`, … are absent too) → not
+   added (inconsistent otherwise). The contract is a **name-list**; it never describes payload field shapes →
+   `cwd`/`timeoutMs` need no entry.
+2. **Hash re-bump procedure.** `version` 3→4; recompute `sha256(JSON.stringify(data, null, 2))`; write the
+   **byte-identical** file to **both** repos; assert `diff -q` IDENTICAL; `node scripts/verify-contract.js` prints
+   "verified … (v4)".
+3. **M06-v3 phantom `messageTypes`** (parked backlog item) is **already resolved** — contract is v3 with 0 phantom
+   entries; nothing to fold. Dispositioned in the T3c backlog gate.
+4. **"Flip nothing on by default" = contract-only.** No provider defaults change; cli-exec stays opt-in (D1).
+   **Compatibility (intended tightening):** a v4 orchestrator **rejects** any harness still shipping v3. The operator
+   controls both repos, so this is acceptable — but it is the one externally-visible effect, so it is stated, not hidden.
+
+**DoD** — rows **T3c.1–T3c.5** in `milestone07-centralized-brain-implementation.md`. Branch `m07-t3c-contract-bump`
+off `master` in **each** repo; implementer claim-only commits; reviewer merges both on all-VERIFIED.
 
 **DoD** — claim/verdict rows in `milestone07-centralized-brain-implementation.md` (T3a.x first). A row
 is done only when the reviewer's verdict is **VERIFIED** (ran it), per §3b. Implementer creates branch

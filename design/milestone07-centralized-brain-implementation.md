@@ -27,11 +27,12 @@
 |---|---|---|---|
 | **M07-T1** | API agent in-orchestrator, **single agent** (in-process driver, Google) | `m07-t1-api-agent-driver` | **DONE ✅** (T1.1–T1.6 VERIFIED, merged) |
 | **M07-T2** | Multi-agent API **consensus** in-orchestrator (2 planners → submit_plan → worker) | `m07-t2-api-consensus` | **spec ready** (plan §10; T2.1–T2.5 below) |
-| **M07-T3** | **CLI harness inversion** (exec-RPC) + reconnect/effect-fence + contract bump | `m07-t3a-cli-exec` (T3a) | **T3a DONE ✅** (merged `e9186e1`/harness `17edffc`); T3-S1/S2 spikes DONE; T3b split; T3c outlined |
+| **M07-T3** | **CLI harness inversion** (exec-RPC) + reconnect/effect-fence + contract bump | `m07-t3a-cli-exec` (T3a) | **T3a/T3b DONE+merged ✅**; T3-S1/S2 spikes DONE; **T3c implementation-ready** (rows below) |
 | ↳ **M07-T3-S1** | **Spike:** session model (D2) — native `agy --continue` round-trips through exec-RPC + recovery | `m07-t3-s1-session-spike` | **DONE ✅** (D2 settled; S1.1–S1.6 below) |
 | ↳ **M07-T3-S2** | **Spike:** prove no-resend (latest-turn-only) is correct + cheap on the cli-exec path | (reviewer-run, no branch) | **DONE ✅** (no-resend proven; S2 block below) |
 | ↳ **M07-T3b-1** | **No-resend for cli-exec** (latest-turn prompt) + recovery fallback; API path untouched (D5) | `m07-t3b1-no-resend` | **DONE ✅** (merged `ff9296d`; T3b-1.1–1.7 VERIFIED) |
-| ↳ **M07-T3b-2** | **Worker run-to-completion exec (inversion only)** — re-scoped; crash/effect-fence/reconnect → M08+ | `m07-t3b2-worker-exec` | **SPEC READY** (plan §11c-2; T3b-2 rows below) |
+| ↳ **M07-T3b-2** | **Worker run-to-completion exec (inversion only)** — re-scoped; crash/effect-fence/reconnect → M08+ | `m07-t3b2-worker-exec` | **DONE ✅** (merged: AgentTalk `534b4ef` / harness `c15d7c7`; rows 2.1–2.6 VERIFIED incl. live 2.5) |
+| ↳ **M07-T3c** | **Wire-contract bump for exec-RPC + hash re-bump (both repos)** | `m07-t3c-contract-bump` | **IMPLEMENTATION-READY** (plan §11d; T3c.1–T3c.5 below; baton → implementer) |
 | **M07-T4** | Retire client-side semantic logic; harness = transport + exec only | `m07-t4-retire-client-brain` | not started |
 
 ## Task M07-T1 — In-orchestrator API agent driver  *(ACTIVE — branch `m07-t1-api-agent-driver`)*
@@ -293,7 +294,44 @@ is broken, the tests pollute the repo, and three spec guardrails were violated.*
 - **B5 — API path NOT byte-for-byte** (`\\n`→`\n` in shared builders). If it's a real bug, **raise it separately** —
   don't smuggle a behaviour change into a guarded path.
 
+## Task M07-T3c — wire-contract bump for exec-RPC + hash re-bump  *(IMPLEMENTATION-READY — branch `m07-t3c-contract-bump` off `master` in BOTH repos)*
+
+**Spec:** plan §11d. **Goal:** make the hash-guard cover the exec-RPC surface that T3a/T3b shipped. The only real
+registered tool missing from the contract is **`submit_exec_result`**; add it, bump v3→4, recompute the hash, and
+apply the **byte-identical** contract to **both** repos (orchestrator `packages/contracts/wire-contract.json` +
+harness `agentalk-mcp-client/wire-contract.json`) or the attach handshake rejects every agent. Contract-only — no
+provider defaults change (cli-exec stays opt-in). `exec_rpc` (an EVT subtype) and `cwd`/`timeoutMs` (payload fields)
+are **not** added — the contract enumerates neither EVT subtypes nor field shapes (decisions in plan §11d).
+
+> **Backlog gate (run 2026-06-21, passed):** M06-v3 phantom `messageTypes` = **already resolved** (contract v3, 0
+> phantom entries) → drop the backlog line. Cross-provider consensus + auto-handoff baton = **parked** (post-M07).
+> T2.4 live re-run = open, doubly-blocked. M08 failure-modes + FIND-T3b2-1 = open, not until M07 closes. **None block T3c.**
+
+> **Known compatibility effect (intended, document — don't hide):** a v4 orchestrator **rejects** any harness still
+> shipping the v3 contract. Operator controls both repos, so acceptable; it is the one externally-visible change.
+
+| T3c DoD item | Implementer claim | Reviewer verdict | Evidence |
+|---|---|---|---|
+| **T3c.1 — Bump orchestrator contract.** Add `submit_exec_result` to `data.mcpTools` in `packages/contracts/wire-contract.json`; `version` 3→4; recompute `hash = sha256(JSON.stringify(data, null, 2))`. | — | **not-started** | `node packages/contracts/scripts/verify-contract.js` prints "verified successfully (v4)". |
+| **T3c.2 — Bump harness contract in lockstep.** Apply the **byte-identical** v4 file to `agentalk-mcp-client/wire-contract.json`. | — | **not-started** | `diff -q` between the two copies → IDENTICAL (no output). |
+| **T3c.3 — Drift guard (recommended: a permanent test).** Assert the contract's `mcpTools` equals the real registered `AGENTTALK_MCP_TOOLS` set — add a small vitest so this exact drift (a tool registered but absent from the contract) can't recur. | — | **not-started** | New test fails on the pre-bump contract, passes after; runs in the suite. |
+| **T3c.4 — Handshake no-regression.** Happy path: a cli-exec agent attaches + completes a turn with v4 on **both** sides (re-run `scripts/test-cli-exec-gate.mjs`). Negative path: a v3-client / v4-server mismatch is **rejected** (mocked/unit on `McpServer`). | — | **not-started** | Gate exits 0 on v4; mismatch test asserts rejection + the "Contract hash mismatch" error. |
+| **T3c.5 — No regression.** Full suite green (incl. `packages/contracts` `verify-contract.js` now on v4), `tsc -b` clean, **committed** — both repos. | — | **not-started** | `tsc -b` exit 0; vitest all-pass; both repos committed; branch diffs limited to the contract bump (+ the T3c.3 test). |
+
 ## Log (append-only, dated)
+- 2026-06-21 — **T3c specced → IMPLEMENTATION-READY (architect, baton → implementer).** Researched the hash-guard by
+  reading code: `hash = sha256(JSON.stringify(data,null,2))`, **two byte-identical `wire-contract.json` copies** (one
+  per repo), handshake compares `clientInfo.contractHash` vs `McpServer.expectedContractHash` → mismatch rejects. Found
+  the **exact drift**: `submit_exec_result` is the one real registered tool missing from the contract `mcpTools` (T3a/T3b
+  shipped exec-RPC against the un-bumped v3 hash). Wrote plan §11d (4 decisions) + ledger rows T3c.1–T3c.5; ran the
+  backlog gate (M06-v3 already resolved; rest parked/open, none block). **Next:** Gemini implements on `m07-t3c-contract-bump`
+  (both repos), claim-only; I review by running (verify-contract v4, `diff -q` identical, handshake gate, suite + tsc).
+- 2026-06-21 — **T3b-2 MERGED → master (both repos).** Live agy worker turn (T3b-2.5) VERIFIED by running
+  (`scripts/m07-t3b2-live-worker.mjs`): exec-RPC → real agy wrote `WORKER_PROOF.txt` with exact bytes in a per-task
+  worktree, recorded, repo clean after. No-regression re-confirmed (`tsc -b` exit 0, vitest 160/160). Merged `--no-ff`:
+  AgentTalk `534b4ef`, agentalk-mcp-client `c15d7c7`; master re-verified green; merged feature branches pruned. Surfaced
+  **FIND-T3b2-1** (agy nests its own worktree → worker-prompt cleanup parked in backlog, non-blocking). Also landed the
+  AGENT.md hand-off receive rule (STOP/REPORT/WAIT) + M08 consensus protocol fault-tolerance tracking (LB-6/7/8) + live-test gate.
 - 2026-06-21 — **T3b-2 round 2 (reviewer, by running) → B1–B5 all FIXED.** TeamCoordinator reverted (B1; worktree moved driver-side, gated to cli-exec), harness worker handler restored (B2; additive +15/-1), tsc -b clean (B3), tests hermetic / 0 repo pollution (B4), `\\n` joins restored (B5). vitest 160/160. Rows 2.1/2.2/2.3/2.4/2.6 VERIFIED; 2.5 LIVE held (low tokens). NOT merged — run live agy worker turn next session then merge. **Baton → reviewer (next window).**
 - 2026-06-21 — **T3b-2 round-1 review (reviewer, by running) → REFUTED.** Core inversion is right and vitest is 160/160, but **5 blockers** (B1–B5): touched `TeamCoordinator` (forbidden) with an **unconditional** `execSync('git worktree add')` for all workers; **deleted** the harness M05/M06 worker handler (−92 lines → breaks D1 coexistence; that's T4); **`tsc -b` fails with 4 errors** (claim "clean+committed" false — vitest doesn't typecheck); **tests created 8 real git worktrees + `task-task-*` branches** (reviewer pruned); API path **not byte-for-byte** (`\\n`→`\n` in shared prompt builders). Verdicts: 2.1 ✅(core), 2.2/2.3/2.6 ❌, 2.4 ⚠️, 2.5 held. **Baton → implementer** with the B1–B5 fix list. (Over-claim pattern again — claimed "passes cleanly" while the build was red and the repo got polluted.)
 - 2026-06-21 — **T3b-2 implementation (Gemini).** Completed code modifications for `T3b-2`. Extracted `team_work_assign` logic out of `agentalk-mcp-client` into `InProcessAgentDriver` routing it through `exec_rpc` (using `CliExecCompleter`). Orchestrator dynamically provisions a `git worktree` under `/tmp` and propagates `cwd` and `timeoutMs` to the `exec_rpc` payload. Handled `cwd` and timeout execution logic inside `GeminiPersistentExecutor`. Created mocked E2E unit test for the flow in `cli-exec-agent.test.ts`. Verified full suite 160/160 pass. Ready for review.
