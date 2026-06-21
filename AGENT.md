@@ -1,3 +1,7 @@
+> **Canonical file.** `AGENT.md` is the single source; **`AGENTS.md` and `CLAUDE.md` are symlinks to it**
+> (one file, three names for different tools — Claude Code reads `CLAUDE.md`, agent CLIs read `AGENTS.md`).
+> **Edit `AGENT.md` only.** Don't be fooled by the three names into thinking there are three files.
+
 This project has reached Milestone 06. From now on follow these rules:
 - Preserve all existing behavior by default.
 - Any behavior change requires explicit user confirmation first.
