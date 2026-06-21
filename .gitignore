@@ -18,3 +18,9 @@ apps/web/vite.config.js.map
 persistence/
 vitest.log
 test-loop-debug.log
+
+# TypeScript incremental build info
+*.tsbuildinfo
+
+# spike / smoke / live-probe run logs (evidence lives in the ledgers, not git)
+m07-*.log
