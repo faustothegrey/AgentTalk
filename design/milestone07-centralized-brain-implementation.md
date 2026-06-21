@@ -37,8 +37,8 @@
 | **M07-T4** | Retire client-side semantic logic; harness = transport + exec only | (split T4a/T4b) | **SPLIT** (plan §12; T4a verify → T4b delete) |
 | ↳ **M07-T4a** | **Verify cli-exec multi-agent consensus** (de-risk before deleting) | `m07-t4a-cli-exec-consensus` | **DONE ✅** (merged `87ebc52` + hotfix `14388cd` for FIND-T4a-2; all rows VERIFIED) |
 | ↳ **M07-T4b** | **Retire the semantic path** — RE-SCOPED (pre-flight): production UI rides the semantic harness → migrate all 3 providers to cli-exec first | (3 stages below) | **RE-SCOPED → 3 stages** (plan §12b) |
-| ↳ **M07-T4b-1** | **Verify cli-exec for claude + codex** (only gemini proven) | `m07-t4b1-cli-exec-providers` | **ALL ROWS VERIFIED ✅** (claude + codex live exec-RPC, real replies, 0 pollution; 163/163) — **ready to merge** (AgentTalk only) |
-| ↳ **M07-T4b-2** | **Migrate the production/UI path to cli-exec** (gemini/claude/codex → driver) | `m07-t4b2-migrate-production` | **SPEC READY** (T4b-2.x; after T4b-1) |
+| ↳ **M07-T4b-1** | **Verify cli-exec for claude + codex** (only gemini proven) | `m07-t4b1-cli-exec-providers` | **DONE ✅** (merged `8e5dfda`; claude + codex live exec-RPC VERIFIED, 0 pollution, 163/163) |
+| ↳ **M07-T4b-2** | **Migrate the production/UI path to cli-exec** (gemini/claude/codex → driver) | `m07-t4b2-migrate-production` | **IMPLEMENTATION-READY** (T4b-2.x; behavior-change stage — review extra-carefully) |
 | ↳ **M07-T4b-3** | **Delete semantic harness + retire brainstorm + migrate flagship** | `m07-t4b3-retire-semantics` (both repos) | **SPEC READY** (T4b-3.x; after T4b-2) |
 
 ## Task M07-T1 — In-orchestrator API agent driver  *(ACTIVE — branch `m07-t1-api-agent-driver`)*
