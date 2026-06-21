@@ -80,4 +80,13 @@ promoted→X · absorbed→X · dropped}.
     `gemini-*-flash-lite`) — they only re-confirm LB-6/7, zero new signal. **Worker / single-agent live runs
     are unaffected** (they don't exercise the consensus state machine).
 
+- [open] 2026-06-21 — **Worker-prompt worktree cleanup (FIND-T3b2-1)** — the worker prompt
+  (`in-process-driver.ts` `handleTeamWorkAssign`) still tells agy *"you must use strictly `git worktree`…
+  or refuse,"* but the orchestrator **already** runs the worker inside a per-task worktree (its `cwd`). So
+  agy creates a **nested** worktree (`./worker-worktree`) and the real change lands one level deeper than
+  where the orchestrator looks. Confirmed live in T3b-2.5 (change *is* inside a worktree → DoD met, but
+  nested). **Fix candidate:** drop/relax the redundant "create a worktree" instruction since isolation is
+  already provided; **behavior change → needs its own spec** before touching. Matters once the orchestrator
+  needs to *collect* worker output (M07-T4 / failure-modes), not before.
+
 *(add new items above this line)*
