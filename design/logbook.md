@@ -82,3 +82,8 @@ entry carries a **stable `LB-N` id** — cite it from ledgers/backlog (titles ma
   steady-state with a **resend recovery fallback** (the brain already holds history, see [[LB-4]]). Cost
   can't be measured quantitatively over agy — reason structurally (O(1) native vs O(n) resend).
 - **Source:** `spikes/m07-t3-s1-native-session-probe.mjs` (probe 2) + probe-1 restart leg; commit `5aedcaa`.
+
+### LB-6 · 2026-06-21 — [providers] Gemma-4-26b is prone to protocol hallucination under strict multi-turn consensus
+- **Finding:** Running `gemma-4-26b-a4b-it` on the live API team test bypassed the HTTP 429 quota limits, but the model failed to follow the rigid multi-agent consensus protocol (discussion → proposal → endorsement → submittal). During the `proposal` phase, `planner-b` sent an `opinion` instead of `agreement_acceptance`, which triggered the orchestrator's built-in fallback to the discussion phase. After re-discussing, `planner-a` successfully submitted an `agreement_proposal`. However, `planner-b` then submitted *another* `agreement_proposal` instead of calling `agreement_acceptance`. Since a proposal was already pending endorsement, this illegal action crashed both planners into the `error` state, triggering a forced shutdown (timeout) and failing the task.
+- **Implication:** While the API is technically working for Gemma, the model isn't coherent enough to navigate the strict multi-phase JSON protocol without hallucinating the state transitions. It will likely require explicit fine-tuning or heavily reinforced system prompting to maintain protocol compliance.
+- **Source:** `logs/m07-t2-gemma-26b-smoke.log` (live test using `scripts/test-live-api-team.mjs`).
