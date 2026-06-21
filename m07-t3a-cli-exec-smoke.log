@@ -1,0 +1,37 @@
+Starting live CLI exec-RPC smoke test...
+[Server] MCP server on ws://localhost:55308/
+[Registry] Creating agent cli-planner-1...
+[Registry] Activating agent cli-planner-1 (waiting for MCP connection)
+[Agent cli-planner-1] creating -> starting
+[Registry] Starting InProcessAgentDriver for cli-exec-backed agent cli-planner-1
+[Agent cli-planner-1] starting -> ready
+[llm-agent-err] [llm-agent] Provider: gemini, Model: default, Token Limit: 2097152, Execution Mode: persistent -> persistent
+[llm-agent-err] [McpClient] Connecting to ws://localhost:55308/?agentId=cli-planner-1
+[McpServer] Connection established for agentId=cli-planner-1
+[llm-agent-err] [McpClient] Connected.
+[llm-agent-err] [llm-agent] Waiting for turn...
+[Registry] MCP tool call from cli-planner-1: await_turn {}
+[Registry] await_turn called for cli-planner-1, provider=cli-exec, pendingTurns=0, pendingExecTurns=0
+[Test] Sending a test planning turn...
+[Registry] Sending EVT to agent cli-planner-1: {"type":"message_received","from":"user","payload":"Say hello","messageId":"msg-1782017458983-1"}
+[Agent cli-planner-1] ready -> busy
+[llm-agent-err] [llm-agent] Received turn: { type: 'exec_rpc', prompt: 'Say hello' }
+[Registry] MCP tool call from cli-planner-1: submit_exec_result {
+  text: 'Hello! How can I help you today?\n',
+  usage: { prompt_tokens: 0, completion_tokens: 0 }
+}
+[Registry] MCP tool call from cli-planner-1: send_to_agent {
+  to: 'user',
+  payload: 'Hello! How can I help you today?\n',
+  replyToMessageId: 'msg-1782017458983-1'
+}
+[Test] Received send_to_agent: {
+  to: 'user',
+  payload: 'Hello! How can I help you today?\n',
+  replyToMessageId: 'msg-1782017458983-1'
+}
+[Agent cli-planner-1] busy -> ready
+[llm-agent-err] [llm-agent] Waiting for turn...
+[Registry] MCP tool call from cli-planner-1: await_turn {}
+[Registry] await_turn called for cli-planner-1, provider=cli-exec, pendingTurns=0, pendingExecTurns=0
+TEST PASSED: Live CLI exec-RPC turn successfully completed.
