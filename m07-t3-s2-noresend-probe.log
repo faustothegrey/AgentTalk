@@ -1,0 +1,14 @@
+=== M07-T3-S2 no-resend spike (native memory, flat prompt) ===
+turn 1: no-resend=44B  resend-proj=52B   reply="OK"
+turn 2: no-resend=45B  resend-proj=160B   reply="OK"
+turn 3: no-resend=44B  resend-proj=231B   reply="OK"
+turn 4: no-resend=45B  resend-proj=303B   reply="OK"
+turn 5: no-resend=97B  resend-proj=427B   reply="apple, bridge, cloud, dragon"
+
+=== RESULTS ===
+correctness — final turn recalled all 4 facts via native memory? YES ✅
+no-resend prompt size — flat across turns? YES ✅  (bytes: 44, 45, 44, 45, 97)
+resend projection — grows every turn? YES ✅  (bytes: 52, 160, 231, 303, 427)
+final-turn blow-up — resend is 4.4x the no-resend prompt (and widening with task length)
+
+VERDICT: no-resend (native memory) keeps the prompt FLAT and stays correct ⇒ PROVEN ✅

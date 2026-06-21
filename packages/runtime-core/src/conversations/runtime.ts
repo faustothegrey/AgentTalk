@@ -142,6 +142,14 @@ export function createConversationRuntime() {
     },
 
     buildPrompt(evt: ConversationEvent): string | null {
+      return this._buildPromptCore(evt, true);
+    },
+
+    buildLatestTurnPrompt(evt: ConversationEvent): string | null {
+      return this._buildPromptCore(evt, false);
+    },
+
+    _buildPromptCore(evt: ConversationEvent, includeHistory: boolean): string | null {
       if (evt.type === 'healthcheck') {
         const base = typeof evt.prompt === 'string' && evt.prompt.trim()
           ? evt.prompt
@@ -154,7 +162,10 @@ export function createConversationRuntime() {
       }
 
       if (!currentConversation) {
-        return buildPromptWithHistory(conversationHistory, evt.payload || '');
+        const payload = evt.payload || '';
+        return includeHistory 
+          ? buildPromptWithHistory(conversationHistory, payload)
+          : (conversationHistory.length <= 1 ? payload : `Now respond to the latest message:\n[${evt.from}]: ${payload}`);
       }
 
       if (currentConversation.replyCount >= currentConversation.maxReplies) {
@@ -192,6 +203,16 @@ export function createConversationRuntime() {
         }
       } else {
         lines.push('Keep the response concise: 2-4 sentences, one concrete opinion or critique, and one follow-up angle.');
+      }
+
+      // If we need to inject history for planning conversations, we could do it here
+      // But currently, the instructions say "without the prior-message transcript" 
+      // which mainly targets the `!currentConversation` path where the history WAS being included.
+      if (includeHistory && conversationHistory.length > 1) {
+        // Wait, for planning, do we include history?
+        // LB-4 states "driver resends the full transcript every turn".
+        // In the legacy system, the driver DID resend it for `!currentConversation`.
+        // Let's just preserve the existing behavior for `currentConversation` exactly.
       }
 
       lines.push(

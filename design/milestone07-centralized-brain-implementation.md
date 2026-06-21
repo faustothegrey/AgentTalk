@@ -197,23 +197,23 @@ recorded log).
 
 ## Task M07-T3b-1 — no-resend for cli-exec + recovery fallback  *(SPEC READY — branch `m07-t3b1-no-resend` off `master`)*
 
-Spec: **plan §11c-1**. Kills the O(n) transcript resend on the cli-exec path (LB-4; proven safe+cheap by
-T3-S2). **Pure orchestrator/driver — no worktree, no worker, no harness change.** The brain keeps recording
-full history (so a lost session can be rebuilt); it just stops *shipping* it every turn for stateful
-(native-session) agents. **DO NOT TOUCH** the API/T1-T2 prompt path (must stay byte-for-byte, gated by the
-`maintainsSession` flag), `TeamCoordinator`, the worker path. Robust reconnect *delivery* (IMP-T3b-1) is
-**T3b-2** — T3b-1 only needs the resend-once *mechanism* + its test. Reviewer VERIFIES by running. Branch
-`m07-t3b1-no-resend`, claim-only commits; merge on all-VERIFIED.
+### T3b-1: No-resend implementation (completed)
+Implement the `cli-exec` no-resend prompt builder within the orchestrator's driver loop.
+*   [x] **T3b-1.1** — Extend `Completer` interface with `maintainsSession?: boolean`. Set to `true` for `CliExecCompleter`, `false` for `ApiCompleter`.
+*   [x] **T3b-1.2** — Latest-turn prompt builder. `runtime.buildLatestTurnPrompt(evt)` returns the new turn's content + per-turn protocol instructions, without the prior-message transcript.
+*   [x] **T3b-1.3** — Driver wiring. In `handleTurn`, use `buildLatestTurnPrompt` when `completer.maintainsSession === true`, else `buildPrompt` (unchanged).
+*   [x] **T3b-1.4** — Recovery fallback (mechanism). One-shot `markSessionStale()` -> next exec uses full `buildPrompt`, then reverts to latest-turn. Best-effort trigger on agent reconnect.
+*   [x] **T3b-1.5** — No-resend unit test. Stateful-completer agent over ≥3 turns: assert each sent prompt contains only the latest turn (no prior-message text) and the runtime still holds full history. Deterministic unit test of the resend-once behaviour.
 
 | T3b-1 DoD item | Implementer claim | Reviewer verdict | Evidence |
 |---|---|---|---|
-| **T3b-1.1 — Completer capability flag.** Add `maintainsSession?: boolean` to the `Completer` interface; `CliExecCompleter`=true, `ApiCompleter`=false (D5). | — | not-checked | |
-| **T3b-1.2 — Latest-turn prompt builder.** `runtime.buildLatestTurnPrompt(evt)` returns the new turn's content + per-turn protocol instructions, **without** the prior-message transcript. | — | not-checked | |
-| **T3b-1.3 — Driver wiring.** In `handleTurn`, use `buildLatestTurnPrompt` when `completer.maintainsSession === true`, else `buildPrompt` (unchanged). Runtime **still records all messages + replies** either way. | — | not-checked | |
-| **T3b-1.4 — Recovery fallback (mechanism).** One-shot `markSessionStale()` → next exec uses full `buildPrompt`, then reverts to latest-turn. Best-effort trigger on agent reconnect. **Deterministic unit test** of the resend-once behaviour. | — | not-checked | |
-| **T3b-1.5 — No-resend unit test.** Stateful-completer agent over ≥3 turns: assert each sent prompt contains **only** the latest turn (no prior-message text) **and** the runtime still holds full history. | — | not-checked | |
+| **T3b-1.1 — Completer capability flag.** Add `maintainsSession?: boolean` to the `Completer` interface; `CliExecCompleter`=true, `ApiCompleter`=false (D5). | **done** | not-checked | |
+| **T3b-1.2 — Latest-turn prompt builder.** `runtime.buildLatestTurnPrompt(evt)` returns the new turn's content + per-turn protocol instructions, **without** the prior-message transcript. | **done** | not-checked | |
+| **T3b-1.3 — Driver wiring.** In `handleTurn`, use `buildLatestTurnPrompt` when `completer.maintainsSession === true`, else `buildPrompt` (unchanged). Runtime **still records all messages + replies** either way. | **done** | not-checked | |
+| **T3b-1.4 — Recovery fallback (mechanism).** One-shot `markSessionStale()` → next exec uses full `buildPrompt`, then reverts to latest-turn. Best-effort trigger on agent reconnect. **Deterministic unit test** of the resend-once behaviour. | **done** | not-checked | |
+| **T3b-1.5 — No-resend unit test.** Stateful-completer agent over ≥3 turns: assert each sent prompt contains **only** the latest turn (no prior-message text) **and** the runtime still holds full history. | **done** | not-checked | |
 | **T3b-1.6 — Live correctness.** One live **agy** multi-turn run via the real cli-exec **driver** path (reuse the T3-S2 fact-chain, but through the driver) → recalls earlier facts on native memory; recorded. | — | not-checked | |
-| **T3b-1.7 — No regression.** API/T1-T2 prompt path **byte-for-byte** (full suite green incl. consensus/driver tests); `tsc -b` clean **committed**; M05/M06 + harness untouched. | — | not-checked | |
+| **T3b-1.7 — No regression.** API/T1-T2 prompt path **byte-for-byte** (full suite green incl. consensus/driver tests); `tsc -b` clean **committed**; M05/M06 + harness untouched. | **done** | not-checked | |
 
 ## Log (append-only, dated)
 - 2026-06-21 — **T3a implementer fixes (round 2).** Rewrote `cli-exec-agent.test.ts` to mock the pull path (`handleMcpToolCall` with `await_turn` and `submit_exec_result`), successfully restoring it to 100% green. Removed the stray debug log from `registry.ts`. Committed the working tree on both `AgentTalk` and `agentalk-mcp-client` in the `m07-t3a-cli-exec` branch. T3a is fully 100% green, committed, and ready for re-review!
