@@ -37,6 +37,8 @@ This project has reached Milestone 06. From now on follow these rules:
 - **Transparency is the goal.** A failing test with a clear, honest explanation of the obstacle is immensely more valuable than a green test achieved through a dirty hack. Let the human and the Reviewer agent do their job to help resolve the blockers.
 
 ### Session hand-off (how to write one)
+> **Note:** The term "session hand-off" refers to preserving context for an agent in a *new chat session/context window*. It does **not** refer to the end of workflow rounds (e.g., passing the baton from planning to implementation, or implementation to review).
+
 When the user asks for a hand-off — or at a clean stopping point before a fresh session — write **one self-contained phrase** so a cold-start reader (fresh session, the human, or another agent) can orient with **zero prior context**. It MUST contain:
 1. **Project micro-description** — what AgentTalk is, in 1–2 lines.
 2. **Roles** — the human (Fausto) and each agent, **including which agent you are** (e.g. Claude = planner/reviewer/architect; Gemini = implementer; human = scope/decisions/relay).
@@ -46,3 +48,12 @@ When the user asks for a hand-off — or at a clean stopping point before a fres
 6. **Op notes** — key/env gotchas, current blockers.
 
 Keep it tight; the ledger holds the detail.
+
+### Session hand-off (how to RECEIVE one) — STOP, REPORT, WAIT
+> **Critical rule.** When you are *given* a session hand-off (a cold-start brief at the top of a fresh session), you MUST NOT take any action. **No code, no edits, no builds, no test runs, no scripts, no commits — nothing.**
+>
+> Your only allowed output is a **report of your understanding of the project status**: what the project is, which epic/task is active, where it stands per the ledger, and what you believe the next step is. Strictly nothing more.
+>
+> Then **STOP and WAIT** for the human to explicitly tell you to proceed. Do not begin the "next step" just because the hand-off named one — naming the next step is context, not permission.
+>
+> **Why:** a hand-off may be delivered to more than one agent at once (e.g. Claude *and* Gemini). If each starts developing immediately, they collide — duplicate branches, racing live runs, stray worktrees/processes, lost work. The human is the relay and decides who acts. Reporting-only on receipt makes that safe.

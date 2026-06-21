@@ -47,6 +47,12 @@ promoted→X · absorbed→X · dropped}.
   deferred T2.4 / IMP-1. T2 was allowed to close without it (T2.3 mocked proves the flow
   deterministically). **Reopen condition:** if this live run fails or surfaces a defect → **reopen
   M07-T2**. On green, note T2.4 as confirmed-live in the (frozen) ledger.
+  - **DOUBLY blocked (updated 2026-06-21, facts LB-6/7/8):** not just quota. `gemini-2.5-flash` is the
+    only model observed to hold the protocol, and its quota is **family-wide** (2.5/2.0 all share one 429
+    cap; 3.0/gemma-4-31b 404 — LB-8). Every quota-*free* model (`gemma-4-26b`, `*-flash-lite`) **fails
+    protocol compliance** (LB-6/7). So T2.4 needs **quota relief AND consensus protocol-tolerance** (see
+    the M08 item), **or** a frontier-compliant model with available quota. **Do not burn live runs on
+    unfit models meanwhile** (live-test gate, M08 item).
 
 - [open] 2026-06-20 — **Dedicated "failure modes / resilience" milestone (candidate M08+)** — Fausto's
   idea: there are *many* failure modes (agent crash mid-task, partial worktree writes, network drops,
@@ -60,5 +66,27 @@ promoted→X · absorbed→X · dropped}.
     delivery gap** (**IMP-T3b-1** from the T3b-1 ledger); and **`CliExecCompleter` disconnect/timeout
     rejection** (today it never rejects → a mid-exec disconnect hangs the turn). These were re-scoped OUT
     of T3b-2 to keep it inversion-only.
+  - **Also absorbs (Fausto + Claude, 2026-06-21) — consensus protocol fault-tolerance:** the phase
+    state machine has **zero tolerance for a well-formed-but-illegal transition** — one planner emitting
+    the wrong `message_type` for the current phase (e.g. a 2nd `agreement_proposal`, or `agreement_acceptance`
+    with nothing pending) crashes **both** planners into `error` → forced shutdown (facts: **LB-6/LB-7**).
+    Q1's structured-output retry only catches *malformed JSON*, not *valid-but-wrong-phase* messages. The
+    centralized brain (it now owns lifecycle + `message_type→tool`) is the right place to add tolerance —
+    **detect the illegal transition → coerce / re-prompt / fail soft for that one agent**, instead of the
+    dual force-kill. *Open design call (spike when M08 opens):* bolt-on tolerance vs. rethink the strict
+    phase machine to be tolerant-by-design.
+  - **Live-test gate (Fausto, 2026-06-21):** until this tolerance lands (or a protocol-compliant model with
+    available quota exists), **do NOT spend live *consensus* runs on protocol-unfit models** (`gemma-4-26b`,
+    `gemini-*-flash-lite`) — they only re-confirm LB-6/7, zero new signal. **Worker / single-agent live runs
+    are unaffected** (they don't exercise the consensus state machine).
+
+- [open] 2026-06-21 — **Worker-prompt worktree cleanup (FIND-T3b2-1)** — the worker prompt
+  (`in-process-driver.ts` `handleTeamWorkAssign`) still tells agy *"you must use strictly `git worktree`…
+  or refuse,"* but the orchestrator **already** runs the worker inside a per-task worktree (its `cwd`). So
+  agy creates a **nested** worktree (`./worker-worktree`) and the real change lands one level deeper than
+  where the orchestrator looks. Confirmed live in T3b-2.5 (change *is* inside a worktree → DoD met, but
+  nested). **Fix candidate:** drop/relax the redundant "create a worktree" instruction since isolation is
+  already provided; **behavior change → needs its own spec** before touching. Matters once the orchestrator
+  needs to *collect* worker output (M07-T4 / failure-modes), not before.
 
 *(add new items above this line)*

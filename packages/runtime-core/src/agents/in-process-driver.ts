@@ -1,3 +1,5 @@
+import { existsSync } from 'fs';
+import { execSync } from 'child_process';
 import { Agent } from './agent.js';
 import type { ApiProvider } from './api-client.js';
 import { parseWithRetry, translateStructuredResponse } from './translation.js';
@@ -171,8 +173,11 @@ export class InProcessAgentDriver {
     }
   }
 
-  private async executeApiPrompt(prompt: string, expectsStructured: boolean): Promise<string | null> {
-    const res = await this.completer.complete(prompt, { expectsStructured });
+  private async executeApiPrompt(prompt: string, expectsStructured: boolean, opts?: { cwd?: string; timeoutMs?: number }): Promise<string | null> {
+    const completerOpts: any = { expectsStructured };
+    if (opts?.cwd !== undefined) completerOpts.cwd = opts.cwd;
+    if (opts?.timeoutMs !== undefined) completerOpts.timeoutMs = opts.timeoutMs;
+    const res = await this.completer.complete(prompt, completerOpts);
     return res.text;
   }
 
@@ -236,10 +241,24 @@ export class InProcessAgentDriver {
       WORKER_RESPONSE_INSTRUCTIONS,
     ].join('\\n');
 
-    const text = await this.executeApiPrompt(prompt, true);
+    let execOpts = undefined;
+    if (this.completer.maintainsSession) {
+      const taskId = (evt as any).taskId || 'unknown';
+      const cwd = `/tmp/agentalk-task-${taskId}`;
+      if (!existsSync(cwd)) {
+        try {
+          execSync(`git worktree add ${cwd} -b task-${taskId}`, { stdio: 'ignore' });
+        } catch (e) {
+          // best effort
+        }
+      }
+      execOpts = { cwd, timeoutMs: 600_000 };
+    }
+
+    const text = await this.executeApiPrompt(prompt, true, execOpts);
     if (!text) return;
 
-    const { structured } = await parseWithRetry(text, async (p) => this.executeApiPrompt(p, true));
+    const { structured } = await parseWithRetry(text, async (p) => this.executeApiPrompt(p, true, execOpts));
     
     if (!structured) {
       const firstLine = (text.split('\\n')[0] || '').trim();

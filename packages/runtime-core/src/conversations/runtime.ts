@@ -43,6 +43,8 @@ export interface ConversationEvent {
   token?: string;
   prompt?: string;
   messageId?: string;
+  cwd?: string;
+  timeoutMs?: number;
 }
 
 export interface ProtocolRequest {

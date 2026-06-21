@@ -9,6 +9,8 @@ export interface CompleterResult {
 
 export interface CompleterOptions {
   expectsStructured?: boolean;
+  cwd?: string;
+  timeoutMs?: number;
 }
 
 export interface Completer {
@@ -40,7 +42,7 @@ export class CliExecCompleter implements Completer {
   maintainsSession = true;
   constructor(private agent: Agent, private registry: Registry) {}
 
-  async complete(prompt: string, _opts?: CompleterOptions): Promise<CompleterResult> {
+  async complete(prompt: string, opts?: CompleterOptions): Promise<CompleterResult> {
     return new Promise((resolve) => {
       const onResult = (result: { agentId: string; text: string; usage?: any }) => {
         if (result.agentId === this.agent.id) {
@@ -51,10 +53,14 @@ export class CliExecCompleter implements Completer {
       
       this.registry.on('exec_result', onResult);
       
-      this.agent.queueExecTurn({
+      const turn: Record<string, unknown> = {
         type: 'exec_rpc',
         prompt,
-      });
+      };
+      if (opts?.cwd) turn.cwd = opts.cwd;
+      if (opts?.timeoutMs) turn.timeoutMs = opts.timeoutMs;
+      
+      this.agent.queueExecTurn(turn);
     });
   }
 }
