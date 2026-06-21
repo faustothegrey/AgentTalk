@@ -37,6 +37,9 @@ export class Agent {
   private pendingTurns: Array<Record<string, unknown>> = [];
   private turnResolvers: Array<(turn: Record<string, unknown>) => void> = [];
 
+  private pendingExecTurns: Array<Record<string, unknown>> = [];
+  private execTurnResolvers: Array<(turn: Record<string, unknown>) => void> = [];
+
   private transcriptStream: WriteStream;
   private destroyPromise?: Promise<void>;
 
@@ -93,6 +96,25 @@ export class Agent {
         this.activeTurn = turn;
         resolve(turn);
       });
+    });
+  }
+
+  queueExecTurn(turn: Record<string, unknown>): void {
+    if (this.execTurnResolvers.length > 0) {
+      const resolve = this.execTurnResolvers.shift()!;
+      resolve(turn);
+    } else {
+      this.pendingExecTurns.push(turn);
+    }
+  }
+
+  awaitExecTurn(): Promise<Record<string, unknown>> {
+    if (this.pendingExecTurns.length > 0) {
+      const turn = this.pendingExecTurns.shift()!;
+      return Promise.resolve(turn);
+    }
+    return new Promise((resolve) => {
+      this.execTurnResolvers.push(resolve);
     });
   }
 

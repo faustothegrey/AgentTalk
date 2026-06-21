@@ -174,6 +174,24 @@ export const AGENTTALK_MCP_TOOLS: McpToolDefinition[] = [
     },
   },
   {
+    name: 'submit_exec_result',
+    description: 'Submit raw execution output from the model (for exec-RPC).',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        text: {
+          type: 'string',
+          description: 'The raw text response from the model.',
+        },
+        usage: {
+          type: 'object',
+          description: 'Optional usage statistics.',
+        },
+      },
+      required: ['text'],
+    },
+  },
+  {
     name: 'await_turn',
     description: 'Block and wait until a new message/turn is assigned to this agent.',
     inputSchema: {

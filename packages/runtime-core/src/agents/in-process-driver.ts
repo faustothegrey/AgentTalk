@@ -1,31 +1,34 @@
 import { Agent } from './agent.js';
-import { callApi, type ApiProvider } from './api-client.js';
+import type { ApiProvider } from './api-client.js';
 import { parseWithRetry, translateStructuredResponse } from './translation.js';
 import { WORKER_RESPONSE_INSTRUCTIONS } from './response-schema.js';
 import { createConversationRuntime, type ConversationEvent } from '../conversations/runtime.js';
 import type { Registry } from '../registry/registry.js';
+import { type Completer, ApiCompleter } from './completer.js';
 
 export interface InProcessDriverOptions {
   provider?: ApiProvider;
   model?: string;
   fetchFn?: typeof fetch;
+  completer?: Completer;
 }
 
 export class InProcessAgentDriver {
   private runtime = createConversationRuntime();
   private isRunning = false;
-  private provider: ApiProvider;
-  private model?: string;
-  private fetchFn: typeof fetch;
+  private completer: Completer;
 
   constructor(
     private agent: Agent,
     private registry: Registry,
     options: InProcessDriverOptions = {}
   ) {
-    this.provider = options.provider || 'google';
-    if (options.model) this.model = options.model;
-    this.fetchFn = options.fetchFn || fetch;
+    if (options.completer) {
+      this.completer = options.completer;
+    } else {
+      const provider = options.provider || 'google';
+      this.completer = new ApiCompleter(provider, options.model, options.fetchFn);
+    }
   }
 
   start(): void {
@@ -49,6 +52,12 @@ export class InProcessAgentDriver {
       try {
         const turn = await this.agent.awaitTurn();
         if (!this.isRunning) break;
+        
+        if (turn.turnId) {
+          this.agent.currentTurnId = turn.turnId as string;
+        } else if (turn.messageId) {
+          this.agent.currentTurnId = turn.messageId as string;
+        }
         
         this.agent.setStatus('busy');
         await this.handleTurn(turn as unknown as ConversationEvent);
@@ -151,14 +160,7 @@ export class InProcessAgentDriver {
   }
 
   private async executeApiPrompt(prompt: string, expectsStructured: boolean): Promise<string | null> {
-    const apiArgs: any = {
-      provider: this.provider,
-      messages: [{ role: 'user', content: prompt }],
-    };
-    if (this.model) apiArgs.model = this.model;
-    if (expectsStructured) apiArgs.response_format = { type: 'json_object' };
-
-    const res = await callApi(apiArgs, this.fetchFn);
+    const res = await this.completer.complete(prompt, { expectsStructured });
     return res.text;
   }
 

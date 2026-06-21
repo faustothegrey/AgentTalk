@@ -4,6 +4,7 @@ import { ConversationStore } from '../conversations/conversation-store.js';
 import { HealthcheckManager } from '../agents/healthcheck-manager.js';
 import { InProcessAgentDriver } from '../agents/in-process-driver.js';
 import type { ApiProvider } from '../agents/api-client.js';
+import { type Completer, ApiCompleter, CliExecCompleter } from '../agents/completer.js';
 import type {
   EventPayload,
   ResponsePayload,
@@ -206,12 +207,18 @@ export class Registry extends EventEmitter {
     if (provider) this.emit('provider', { id: agent.id, provider });
     if (model) this.emit('model', { id: agent.id, model });
 
-    if (agent.provider === 'api') {
-      console.log(`[Registry] Starting InProcessAgentDriver for API-backed agent ${id}`);
-      const apiProvider = (agent.providerName || 'google') as ApiProvider;
+    if (agent.provider === 'api' || agent.provider === 'cli-exec') {
+      console.log(`[Registry] Starting InProcessAgentDriver for ${agent.provider}-backed agent ${id}`);
+      let completer: Completer;
+      if (agent.provider === 'api') {
+        const apiProvider = (agent.providerName || 'google') as ApiProvider;
+        completer = new ApiCompleter(apiProvider, agent.model);
+      } else {
+        completer = new CliExecCompleter(agent, this);
+      }
+      
       const driver = new InProcessAgentDriver(agent, this, {
-        provider: apiProvider,
-        ...(agent.model ? { model: agent.model } : {})
+        completer
       });
       this.apiDrivers.set(agent.id, driver);
       driver.start();
@@ -291,6 +298,7 @@ export class Registry extends EventEmitter {
 
   async handleMcpToolCall(agentId: string, name: string, args: any): Promise<any> {
     console.log(`[Registry] MCP tool call from ${agentId}: ${name}`, args);
+    this.emit('mcp_tool_call', { agentId, name, args });
     const agent = this.getAgent(agentId);
 
     switch (name) {
@@ -305,16 +313,13 @@ export class Registry extends EventEmitter {
       }
 
       case 'await_turn': {
-        // Block until there's a turn/message for this agent
-        const turn = await agent.awaitTurn();
+        const turn = agent.provider === 'cli-exec' ? await agent.awaitExecTurn() : await agent.awaitTurn();
         if (turn.turnId) {
           agent.currentTurnId = turn.turnId as string;
         } else if (turn.messageId) {
           agent.currentTurnId = turn.messageId as string;
         }
-        return {
-          content: [{ type: 'text', text: JSON.stringify(turn, null, 2) }]
-        };
+        return { content: [{ type: 'text', text: JSON.stringify(turn) }] };
       }
 
       case 'send_to_agent': {
@@ -453,6 +458,11 @@ export class Registry extends EventEmitter {
         this.teamCoordinator.handleWorkResult(agent.id, args.result);
         this.markTerminalActionComplete(agent);
         return { content: [{ type: 'text', text: 'Work result submitted successfully' }] };
+      }
+
+      case 'submit_exec_result': {
+        this.emit('exec_result', { agentId: agent.id, text: args.text, usage: args.usage });
+        return { content: [{ type: 'text', text: 'Exec result submitted successfully' }] };
       }
 
       case 'submit_usage_stats': {
