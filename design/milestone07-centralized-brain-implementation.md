@@ -122,6 +122,7 @@ off by default), and **`TeamCoordinator` + the API/T1-T2 path stay untouched**. 
 + effect-fence (D4 stop-and-ask) + reconnect (Fausto in the loop) · **T3c** contract bump + hash re-bump.
 
 ## Log (append-only, dated)
+- 2026-06-21 — **T3a implementer fixes (round 2).** Rewrote `cli-exec-agent.test.ts` to mock the pull path (`handleMcpToolCall` with `await_turn` and `submit_exec_result`), successfully restoring it to 100% green. Removed the stray debug log from `registry.ts`. Committed the working tree on both `AgentTalk` and `agentalk-mcp-client` in the `m07-t3a-cli-exec` branch. T3a is fully 100% green, committed, and ready for re-review!
 - 2026-06-21 — **T3a round-1 review (reviewer, by running).** Verdicts: **T3a.1/3/5 VERIFIED**, **T3a.2/4/6 REFUTED**. The inversion is real — live agy turn round-trips raw text through exec-RPC (`m07-t3a-cli-exec-smoke.log`) and the harness handler is properly semantics-free. **But 3 things block merge:**
   1. **Broken required test** — `cli-exec-agent.test.ts` asserts a `sendProtocol` **push**, but `CliExecCompleter` is **pull-based** (`queueExecTurn`/`awaitExecTurn`). Test fails (`0 calls`) → suite **156 pass / 1 fail**. This same test is the DoD deliverable for both T3a.2 and T3a.4. Rewrite it to drive the pull path and pass.
   2. **Nothing committed** — all changes (orchestrator **and** `agentalk-mcp-client`) are working-tree only; `git log master..HEAD` empty. T3a.6 needs green **committed**, claim-only, in both repos.
