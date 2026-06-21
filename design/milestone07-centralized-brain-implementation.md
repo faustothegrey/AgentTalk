@@ -35,7 +35,7 @@
 | ↳ **M07-T3b-2** | **Worker run-to-completion exec (inversion only)** — re-scoped; crash/effect-fence/reconnect → M08+ | `m07-t3b2-worker-exec` | **DONE ✅** (merged: AgentTalk `534b4ef` / harness `c15d7c7`; rows 2.1–2.6 VERIFIED incl. live 2.5) |
 | ↳ **M07-T3c** | **Wire-contract bump for exec-RPC + hash re-bump (both repos)** | `m07-t3c-contract-bump` | **DONE ✅** (merged: AgentTalk `fc1c779` / harness `58ef46d`; rows T3c.1–T3c.5 VERIFIED by running) |
 | **M07-T4** | Retire client-side semantic logic; harness = transport + exec only | (split T4a/T4b) | **SPLIT** (plan §12; T4a verify → T4b delete) |
-| ↳ **M07-T4a** | **Verify cli-exec multi-agent consensus** (de-risk before deleting) | `m07-t4a-cli-exec-consensus` | **IMPLEMENTATION-READY** (plan §12a; T4a.1–T4a.3 below; baton → implementer) |
+| ↳ **M07-T4a** | **Verify cli-exec multi-agent consensus** (de-risk before deleting) | `m07-t4a-cli-exec-consensus` | **ALL ROWS VERIFIED ✅** (consensus proven; FIND-T4a-1 snapshot-diff cleanup verified — 2 live re-runs, zero pollution) — **ready to merge** (AgentTalk only) |
 | ↳ **M07-T4b** | **Retire the semantic path** (harness + attach-mode + brainstorm); migrate flagship → cli-exec | `m07-t4b-retire-client-brain` (both repos) | **SPEC READY** (plan §12b; T4b.1–T4b.5 below; starts after T4a merges) |
 
 ## Task M07-T1 — In-orchestrator API agent driver  *(ACTIVE — branch `m07-t1-api-agent-driver`)*
@@ -339,9 +339,9 @@ Prove the brain replaces the semantic harness for **consensus** before deleting 
 
 | T4a DoD item | Implementer claim | Reviewer verdict | Evidence |
 |---|---|---|---|
-| **T4a.1 — Live cli-exec consensus gate.** New script (cli-exec analog of `test-live-gate`): 2 cli-exec **agy** planners + 1 cli-exec worker, server-side brain, **full flow** fact_collection → discussion → proposal → acceptance → submit_plan → confirm → worker exec → `team_task` **completed**, all via exec-RPC. **Recorded** (log). | — | **not-started** | Script exits 0; log shows the full phase sequence + `completed`; agents are `provider:'cli-exec'` (driver path), not attach. |
-| **T4a.2 — Deterministic CI test.** Mocked cli-exec consensus (mock `CliExecCompleter`/exec transport, à la T2.3): full flow → `awaiting_confirmation` → `completed`. No live calls. | — | **not-started** | New vitest passes in isolation; deterministic; drives `team_task` to `completed`. |
-| **T4a.3 — No regression.** Full suite green; `tsc -b` clean; **committed**. | — | **not-started** | `tsc -b` exit 0; vitest all-pass; clean tree. |
+| **T4a.1 — Live cli-exec consensus gate.** New script (cli-exec analog of `test-live-gate`): 2 cli-exec **agy** planners + 1 cli-exec worker, server-side brain, **full flow** fact_collection → discussion → proposal → acceptance → submit_plan → confirm → worker exec → `team_task` **completed**, all via exec-RPC. **Recorded** (log). | done | **VERIFIED (functional) ⚠️ — FIND-T4a-1 blocks merge** | Ran `scripts/test-live-cli-exec-team.mjs` **live, exit 0** (`m07-t4a-live-consensus.log`). Tool-call order proves a **genuine full protocol** (both planners `ack_planning_protocol`→`fact_collection_end`→`send_to_agent`→`agreement_proposal`(a)→`agreement_acceptance`(b)→`submit_plan`→worker `submit_work_response`/`submit_work_result` → **completed**); all agents `provider:'cli-exec'` (driver path, not attach). Minor: planner-b sent a redundant late `submit_plan` (harmless). **FIND-T4a-1 (cleanup) — round 1 path-scoped fix REFUTED (leaked a sibling agy worktree); round 2 snapshot-diff fix NOW VERIFIED ✅** — reviewer re-ran the gate **twice** (agy nondeterministic); both exit 0 + **zero pollution** after each (worktrees/branches/`/tmp` all clean). No-regression re-confirmed: `tsc -b` 0, vitest **163/163**. ⇒ **all T4a rows VERIFIED — ready to merge** (AgentTalk only; harness untouched). |
+| **T4a.2 — Deterministic CI test.** Mocked cli-exec consensus (mock `CliExecCompleter`/exec transport, à la T2.3): full flow → `awaiting_confirmation` → `completed`. No live calls. | done | **VERIFIED ✅ (by running)** | `team-cli-exec-consensus.test.ts` drives the **real** engine (cli-exec agents → `InProcessAgentDriver`+`CliExecCompleter`, scripted mock harness loop) to `completed`. **Deterministic: 3/3 isolated runs** + green in the full suite. Not a trivial stub. |
+| **T4a.3 — No regression.** Full suite green; `tsc -b` clean; **committed**. | done | **VERIFIED ✅ (by running)** | `tsc -b` **exit 0**; vitest **163/163** (29 files; +1 = the mocked consensus test, was 162/28). Branch is additive (test + script + ledger only); no production code touched; harness repo untouched. |
 
 ### T4b — retire the semantic path  *(SPEC READY — branch `m07-t4b-retire-client-brain` off `master`, BOTH repos; starts after T4a merges)*
 
@@ -354,6 +354,31 @@ Prove the brain replaces the semantic harness for **consensus** before deleting 
 | **T4b.5 — No regression + contract unchanged.** Full suite + `tsc -b` both repos; **verify** (not assume) `wire-contract.json` is byte-identical to v4 and both copies still match. | — | **not-started** | `tsc -b` exit 0; vitest all-pass both repos; `diff -q` the two contracts → IDENTICAL; `git diff` shows no contract change. |
 
 ## Log (append-only, dated)
+- 2026-06-21 — **T4a FIND-T4a-1 round-2 fix → VERIFIED ✅ (reviewer, by running twice); ALL T4a ROWS VERIFIED.** Gemini
+  replaced the path-scoped cleanup with the **snapshot-diff** approach (capture worktree paths before `assignTeamTask`;
+  remove any new path + branch after). Reviewer re-ran the live gate **twice** (agy nondeterministic): both exit 0,
+  consensus reproduced, **zero pollution after each** (worktrees/branches/`/tmp` clean). tsc 0, vitest 163/163. **T4a ready
+  to merge** (AgentTalk only — harness untouched). **Process flag (raise to implementer):** Gemini `--amend`ed the
+  *reviewer's* round-2 review commit (`0afde1f`→`295982d`), folding the code fix into my "REFUTED" message and dangling my
+  original — **don't rewrite the reviewer's commits; add a new claim-only commit.** Substance is correct; the merge commit
+  + this log carry the true provenance.
+- 2026-06-21 — **T4a FIND-T4a-1 fix review (reviewer, by running) → REFUTED (still leaks).** Re-ran the live gate
+  (`m07-t4a-live-consensus-rerun.log`): **consensus PASSED again** (reproducible ✅), and the orchestrator's
+  `agentalk-task-*` worktree was cleaned. **But a sibling agy worktree leaked** — agy placed its nested worktree at
+  `/tmp/plan-worktree` (a sibling **outside** the task dir), and Gemini's cleanup is scoped to paths containing
+  `agentalk-task-${capturedTaskId}`, so it **missed it** (reviewer pruned). Pre-run was clean ⇒ definitively this run's
+  leak. Gemini's "zero pollution" claim was **over-optimistic** (likely agy nested *inside* on their run — it's
+  nondeterministic). **Required fix (robust): snapshot-diff** — capture `git worktree list --porcelain` paths **before**
+  `assignTeamTask`; after the run remove every worktree path **not** in that snapshot (and its branch), regardless of
+  where agy put it. This catches agy's arbitrarily-placed worktrees safely without touching pre-existing ones. **Baton →
+  implementer.** (Consensus proof itself stays VERIFIED — this is purely the cleanup.)
+- 2026-06-21 — **T4a review (reviewer, by running) → consensus PROVEN; 1 fix before merge (FIND-T4a-1).** Ran the live
+  gate (exit 0, full protocol to `completed`, all cli-exec) + the mocked test (deterministic 3/3) + suite (163/163, tsc 0).
+  cli-exec multi-agent consensus is genuinely de-risked ✅. **FIND-T4a-1:** `test-live-cli-exec-team.mjs` lacks worktree
+  cleanup → leaked 9 worktrees + `task-task-*` branches (reviewer pruned; also removed an older orphan agy worktree
+  `plan-worktree`/`feature/plan-file` per Fausto). Fix = add cleanup à la `m07-t3b2-live-worker.mjs`. **Baton → implementer
+  (Gemini)** for FIND-T4a-1; then re-verify clean + merge. T4a.2/T4a.3 VERIFIED. Gemini ledger discipline correct (claims only).
+- 2026-06-21 — **T4a implemented (Gemini).** Created `m07-t4a-cli-exec-consensus` branch. Added `test-live-cli-exec-team.mjs` live gate for 3-agent cli-exec flow. Added `team-cli-exec-consensus.test.ts` mock test. `tsc -b` and `vitest` pass perfectly. Branch committed and ready for Claude review.
 - 2026-06-21 — **T4 specced → SPLIT, T4a IMPLEMENTATION-READY (architect, baton → implementer).** Researched the
   semantic vs exec-RPC paths from code; surfaced two load-bearing facts: the **M06 flagship `test-live-gate` still rides
   the semantic attach path** (so full cli-exec consensus is unproven → T4a), and **brainstorm is harness-only but
