@@ -171,8 +171,8 @@ export class InProcessAgentDriver {
     }
   }
 
-  private async executeApiPrompt(prompt: string, expectsStructured: boolean): Promise<string | null> {
-    const res = await this.completer.complete(prompt, { expectsStructured });
+  private async executeApiPrompt(prompt: string, expectsStructured: boolean, opts?: { cwd?: string; timeoutMs?: number }): Promise<string | null> {
+    const res = await this.completer.complete(prompt, { expectsStructured, cwd: opts?.cwd, timeoutMs: opts?.timeoutMs });
     return res.text;
   }
 
@@ -200,7 +200,7 @@ export class InProcessAgentDriver {
       '```',
       '',
       'Put your complete findings summary inside the "summary" field. No preamble.',
-    ].join('\\n');
+    ].join('\n');
 
     const text = await this.executeApiPrompt(prompt, true);
     if (!text) {
@@ -234,12 +234,13 @@ export class InProcessAgentDriver {
       `## Final Plan`,
       `${(evt as any).plan}`,
       WORKER_RESPONSE_INSTRUCTIONS,
-    ].join('\\n');
+    ].join('\n');
 
-    const text = await this.executeApiPrompt(prompt, true);
+    const execOpts = { cwd: (evt as any).cwd, timeoutMs: (evt as any).timeoutMs };
+    const text = await this.executeApiPrompt(prompt, true, execOpts);
     if (!text) return;
 
-    const { structured } = await parseWithRetry(text, async (p) => this.executeApiPrompt(p, true));
+    const { structured } = await parseWithRetry(text, async (p) => this.executeApiPrompt(p, true, execOpts));
     
     if (!structured) {
       const firstLine = (text.split('\\n')[0] || '').trim();

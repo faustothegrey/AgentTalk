@@ -1,5 +1,7 @@
 import { existsSync, mkdirSync, writeFileSync } from 'fs';
 import path from 'path';
+import os from 'os';
+import { execSync } from 'child_process';
 import type { EventPayload } from '@agenttalk/contracts/protocol-payloads';
 import type { OutboundProtocolPacketType } from '../protocol/protocol.js';
 import type { Team, TeamComposition, TeamTask, TeamMember, TeamRole, TranscriptEntry } from '@agenttalk/contracts/types';
@@ -1342,6 +1344,15 @@ export class TeamCoordinator {
     team.status = 'working';
     team.updatedAt = new Date().toISOString();
 
+    const worktreePath = path.join(os.tmpdir(), `agentalk-task-${task.id}`);
+    try {
+      if (!existsSync(worktreePath)) {
+        execSync(`git worktree add ${worktreePath} -b task-${task.id}`, { stdio: 'pipe' });
+      }
+    } catch (e: any) {
+      console.error(`[TeamCoordinator] Failed to create git worktree at ${worktreePath}:`, e.message);
+    }
+
     this.deps.emitTeam(team);
     this.deps.emitTeamTask(task);
 
@@ -1352,6 +1363,8 @@ export class TeamCoordinator {
       role: 'worker',
       plan: this.buildWorkerPlan(task.plan!),
       description: task.description,
+      cwd: worktreePath,
+      timeoutMs: 600000, // 10 minutes timeout for the worker
     });
   }
 
