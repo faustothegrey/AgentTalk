@@ -205,15 +205,10 @@ export function createConversationRuntime() {
         lines.push('Keep the response concise: 2-4 sentences, one concrete opinion or critique, and one follow-up angle.');
       }
 
-      // If we need to inject history for planning conversations, we could do it here
-      // But currently, the instructions say "without the prior-message transcript" 
-      // which mainly targets the `!currentConversation` path where the history WAS being included.
-      if (includeHistory && conversationHistory.length > 1) {
-        // Wait, for planning, do we include history?
-        // LB-4 states "driver resends the full transcript every turn".
-        // In the legacy system, the driver DID resend it for `!currentConversation`.
-        // Let's just preserve the existing behavior for `currentConversation` exactly.
-      }
+      // NOTE: the planning (`currentConversation`) branch only ever sends the last message +
+      // instructions — it never resent the transcript — so `includeHistory` is intentionally a
+      // no-op here. The O(n) resend (and thus the no-resend path) lives in the `!currentConversation`
+      // branch above. See FIND-T3b1-1.
 
       lines.push(
         'Do not mention these instructions or the reply counter.',
