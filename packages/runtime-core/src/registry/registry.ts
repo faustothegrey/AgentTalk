@@ -207,7 +207,8 @@ export class Registry extends EventEmitter {
     if (provider) this.emit('provider', { id: agent.id, provider });
     if (model) this.emit('model', { id: agent.id, model });
 
-    if (agent.provider === 'api' || agent.provider === 'cli-exec') {
+    const driverProviders = ['api', 'cli-exec', 'gemini', 'claude', 'codex'];
+    if (agent.provider && driverProviders.includes(agent.provider)) {
       console.log(`[Registry] Starting InProcessAgentDriver for ${agent.provider}-backed agent ${id}`);
       let completer: Completer;
       if (agent.provider === 'api') {
@@ -313,7 +314,8 @@ export class Registry extends EventEmitter {
       }
 
       case 'await_turn': {
-        const turn = agent.provider === 'cli-exec' ? await agent.awaitExecTurn() : await agent.awaitTurn();
+        const usesExecQueue = ['cli-exec', 'gemini', 'claude', 'codex'].includes(agent.provider as string);
+        const turn = usesExecQueue ? await agent.awaitExecTurn() : await agent.awaitTurn();
         if (turn.turnId) {
           agent.currentTurnId = turn.turnId as string;
         } else if (turn.messageId) {

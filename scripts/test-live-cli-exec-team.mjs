@@ -25,9 +25,9 @@ async function run() {
   const port = await mcpServer.start(0);
   console.log(`[Server] MCP server on ws://localhost:${port}/`);
 
-  await registry.createAgent('planner-a', { provider: 'cli-exec', providerName: 'gemini' });
-  await registry.createAgent('planner-b', { provider: 'cli-exec', providerName: 'gemini' });
-  await registry.createAgent('worker-1', { provider: 'cli-exec', providerName: 'gemini' });
+  await registry.createAgent('planner-a', { provider: 'gemini' });
+  await registry.createAgent('planner-b', { provider: 'gemini' });
+  await registry.createAgent('worker-1', { provider: 'gemini' });
   
   await registry.activateAgent('planner-a');
   await registry.activateAgent('planner-b');

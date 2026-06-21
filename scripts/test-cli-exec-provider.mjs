@@ -27,8 +27,7 @@ async function run() {
   console.log(`[Server] MCP server on ws://localhost:${port}/`);
 
   await registry.createAgent('cli-planner-1', {
-    provider: 'cli-exec',
-    providerName
+    provider: providerName
   });
 
   // For cli-exec, the driver runs immediately

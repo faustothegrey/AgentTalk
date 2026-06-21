@@ -43,14 +43,14 @@ describe('ScenarioRunner', () => {
 
   const minimalScenario: ScenarioDefinition = {
     name: 'Test Scenario',
-    agents: [{ id: 'agent-a', provider: 'gemini', model: 'gemini-2.5-pro' }],
+    agents: [{ id: 'agent-a', provider: 'custom', model: 'gemini-2.5-pro' }],
   };
 
   const twoAgentScenario: ScenarioDefinition = {
     name: 'Two Agent Chat',
     agents: [
-      { id: 'agent-a', provider: 'gemini', model: 'gemini-2.5-pro' },
-      { id: 'agent-b', provider: 'claude', model: 'sonnet' },
+      { id: 'agent-a', provider: 'custom', model: 'gemini-2.5-pro' },
+      { id: 'agent-b', provider: 'custom', model: 'sonnet' },
     ],
     conversations: [
       {

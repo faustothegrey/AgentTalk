@@ -44,11 +44,11 @@ describe('Registry', () => {
 
   it('should activate an agent and transition to starting', async () => {
     await registry.createAgent('agent-1');
-    await registry.activateAgent('agent-1', 'claude', 'sonnet', 'auto');
+    await registry.activateAgent('agent-1', 'custom', 'sonnet', 'auto');
 
     const agent = registry.getAgent('agent-1');
     expect(agent.status).toBe('starting');
-    expect(agent.provider).toBe('claude');
+    expect(agent.provider).toBe('custom');
     expect(agent.model).toBe('sonnet');
     expect(agent.requestedExecutionMode).toBe('auto');
   });
