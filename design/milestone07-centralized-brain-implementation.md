@@ -33,8 +33,10 @@
 | ↳ **M07-T3-S2** | **Spike:** prove no-resend (latest-turn-only) is correct + cheap on the cli-exec path | (reviewer-run, no branch) | **DONE ✅** (no-resend proven; S2 block below) |
 | ↳ **M07-T3b-1** | **No-resend for cli-exec** (latest-turn prompt) + recovery fallback; API path untouched (D5) | `m07-t3b1-no-resend` | **DONE ✅** (merged `ff9296d`; T3b-1.1–1.7 VERIFIED) |
 | ↳ **M07-T3b-2** | **Worker run-to-completion exec (inversion only)** — re-scoped; crash/effect-fence/reconnect → M08+ | `m07-t3b2-worker-exec` | **DONE ✅** (merged: AgentTalk `534b4ef` / harness `c15d7c7`; rows 2.1–2.6 VERIFIED incl. live 2.5) |
-| ↳ **M07-T3c** | **Wire-contract bump for exec-RPC + hash re-bump (both repos)** | `m07-t3c-contract-bump` | **ALL ROWS VERIFIED ✅** (reviewer, by running; T3c.1–T3c.5 below) — **ready to merge** (both repos) |
-| **M07-T4** | Retire client-side semantic logic; harness = transport + exec only | `m07-t4-retire-client-brain` | not started |
+| ↳ **M07-T3c** | **Wire-contract bump for exec-RPC + hash re-bump (both repos)** | `m07-t3c-contract-bump` | **DONE ✅** (merged: AgentTalk `fc1c779` / harness `58ef46d`; rows T3c.1–T3c.5 VERIFIED by running) |
+| **M07-T4** | Retire client-side semantic logic; harness = transport + exec only | (split T4a/T4b) | **SPLIT** (plan §12; T4a verify → T4b delete) |
+| ↳ **M07-T4a** | **Verify cli-exec multi-agent consensus** (de-risk before deleting) | `m07-t4a-cli-exec-consensus` | **IMPLEMENTATION-READY** (plan §12a; T4a.1–T4a.3 below; baton → implementer) |
+| ↳ **M07-T4b** | **Retire the semantic path** (harness + attach-mode + brainstorm); migrate flagship → cli-exec | `m07-t4b-retire-client-brain` (both repos) | **SPEC READY** (plan §12b; T4b.1–T4b.5 below; starts after T4a merges) |
 
 ## Task M07-T1 — In-orchestrator API agent driver  *(ACTIVE — branch `m07-t1-api-agent-driver`)*
 
@@ -319,7 +321,49 @@ are **not** added — the contract enumerates neither EVT subtypes nor field sha
 | **T3c.4 — Handshake no-regression.** Happy path: a cli-exec agent attaches + completes a turn with v4 on **both** sides (re-run `scripts/test-cli-exec-gate.mjs`). Negative path: a v3-client / v4-server mismatch is **rejected** (mocked/unit on `McpServer`). | done | **VERIFIED ✅ (by running)** | Ran `test-cli-exec-gate.mjs` **live** → exit 0: cli-exec agent attached (v4 handshake accepted — no rejection), agy ran, `submit_exec_result` + `send_to_agent` round-tripped. Negative: `mcp-server.test.ts` asserts error `-32000` + "Contract hash mismatch" + WS close `1008` — passes. |
 | **T3c.5 — No regression.** Full suite green (incl. `packages/contracts` `verify-contract.js` now on v4), `tsc -b` clean, **committed** — both repos. | done | **VERIFIED ✅ (by running)** | Orchestrator: `tsc -b` **exit 0** + vitest **162/162** (28 files; +2 = drift + mismatch, was 160). Harness: `eslint` clean + vitest **4/4**. Both repos committed (`0a549b1` / `b343771`), clean trees. Branch diffs minimal: contract + 2 tests (orchestrator), contract only (harness); **no provider defaults touched**. |
 
+## Task M07-T4 — retire client-side semantic logic  *(SPLIT — plan §12; T4a verify → T4b delete)*
+
+**Goal:** harness becomes **transport + exec only**; all semantic logic stays server-side (already true for API/T1-T2,
+cli-exec/T3). **Not dead-code removal:** the M06 flagship `test-live-gate.mjs` still rides the **semantic attach path**
+(provider-less agents, no driver — `registry.ts` ~L210), and **brainstorm** lives only in the harness yet is wired to the
+web UI. **Decisions (Fausto, 2026-06-21):** brainstorm **retired** (not migrated); attach-mode **fully removed**; T4 **split**.
+
+> **Backlog gate (run 2026-06-21, passed):** cross-provider consensus + auto-handoff baton = **parked** (baton now
+> *eligible* since T3 is done, but T4 is the last M07 code task → revisit at M07 close). T2.4 live re-run = open,
+> doubly-blocked. M08 failure-modes = open (after M07). **FIND-T3b2-1** (worker-prompt nested-worktree) = open, **distinct
+> from T4** — that prompt is built **server-side** (`in-process-driver.ts`), not in the harness handler T4b deletes. **None block T4.**
+
+### T4a — verify cli-exec multi-agent consensus  *(IMPLEMENTATION-READY — branch `m07-t4a-cli-exec-consensus` off `master`)*
+Prove the brain replaces the semantic harness for **consensus** before deleting it. Same `InProcessAgentDriver` as API/T2
+(only `CliExecCompleter` swapped) ⇒ low architectural risk, but **unproven live**. agy is protocol-fit ⇒ not frozen.
+
+| T4a DoD item | Implementer claim | Reviewer verdict | Evidence |
+|---|---|---|---|
+| **T4a.1 — Live cli-exec consensus gate.** New script (cli-exec analog of `test-live-gate`): 2 cli-exec **agy** planners + 1 cli-exec worker, server-side brain, **full flow** fact_collection → discussion → proposal → acceptance → submit_plan → confirm → worker exec → `team_task` **completed**, all via exec-RPC. **Recorded** (log). | — | **not-started** | Script exits 0; log shows the full phase sequence + `completed`; agents are `provider:'cli-exec'` (driver path), not attach. |
+| **T4a.2 — Deterministic CI test.** Mocked cli-exec consensus (mock `CliExecCompleter`/exec transport, à la T2.3): full flow → `awaiting_confirmation` → `completed`. No live calls. | — | **not-started** | New vitest passes in isolation; deterministic; drives `team_task` to `completed`. |
+| **T4a.3 — No regression.** Full suite green; `tsc -b` clean; **committed**. | — | **not-started** | `tsc -b` exit 0; vitest all-pass; clean tree. |
+
+### T4b — retire the semantic path  *(SPEC READY — branch `m07-t4b-retire-client-brain` off `master`, BOTH repos; starts after T4a merges)*
+
+| T4b DoD item | Implementer claim | Reviewer verdict | Evidence |
+|---|---|---|---|
+| **T4b.1 — Delete harness semantics.** Remove `handleFactCollectionBegin`/`handleTeamTaskAssign`/`handleTeamWorkAssign`/`handleBrainstormStart`/`handleBrainstormMessage`, the structured-response cases, semantic `conversation_start/end` + `message_received` prompt-building + `custom_event_request`; delete `lib/conversation-runtime.mjs` + `lib/response-schema.mjs`. **Keep** `handleExecRpc` + transport + `executor-runtime`. | — | **not-started** | Harness `eslint` clean + `vitest` green; `grep` finds 0 refs to deleted handlers/modules; `handleExecRpc` + transport intact. |
+| **T4b.2 — Retire orchestrator attach-mode.** Remove the provider-less no-driver wire path (`registry.ts`); every agent goes through a driver (api/cli-exec). | — | **not-started** | No code path sends a semantic EVT to a wire harness (proven by grep/test); creating a provider-less agent is rejected or unsupported; suite green. |
+| **T4b.3 — Retire brainstorm end-to-end.** Remove brainstorm from `team-coordinator`, `registry`, contracts payloads, `validation`, and the web UI (`PlanningView.tsx`). | — | **not-started** | `grep -ri brainstorm packages apps` → 0 (or only historical docs); web build passes; **`wire-contract.json` byte-unchanged** (brainstorm not in hashed lists → no bump). |
+| **T4b.4 — Migrate the flagship.** Rewrite `test-live-gate.mjs` onto `cli-exec` agents (or fold into the T4a gate) so M06-equivalent acceptance runs through the server-side brain. Retire dead `test-attach-mode.mjs` / `attach-harness.mjs`. | — | **not-started** | New/updated gate runs green (live or recorded); no script still uses `attach://`. |
+| **T4b.5 — No regression + contract unchanged.** Full suite + `tsc -b` both repos; **verify** (not assume) `wire-contract.json` is byte-identical to v4 and both copies still match. | — | **not-started** | `tsc -b` exit 0; vitest all-pass both repos; `diff -q` the two contracts → IDENTICAL; `git diff` shows no contract change. |
+
 ## Log (append-only, dated)
+- 2026-06-21 — **T4 specced → SPLIT, T4a IMPLEMENTATION-READY (architect, baton → implementer).** Researched the
+  semantic vs exec-RPC paths from code; surfaced two load-bearing facts: the **M06 flagship `test-live-gate` still rides
+  the semantic attach path** (so full cli-exec consensus is unproven → T4a), and **brainstorm is harness-only but
+  UI-wired** (→ retire decision). Fausto decided: retire brainstorm, fully remove attach-mode, split T4. Wrote plan §12
+  (§12a/§12b) + ledger rows T4a.1–3 / T4b.1–5; ran the backlog gate (none block; FIND-T3b2-1 noted as server-side, distinct
+  from T4). **Next:** Gemini implements **T4a** on `m07-t4a-cli-exec-consensus`, claim-only; I review by running, then T4b.
+- 2026-06-21 — **T3c MERGED → master (both repos).** All rows T3c.1–T3c.5 VERIFIED by running (hash independently
+  recomputed = `97abf6…`; copies byte-identical; drift guard fails-on-master/passes-on-v4; live cli-exec gate exit 0;
+  mismatch rejected; orchestrator vitest 162/162 + tsc 0; harness eslint + vitest 4/4). Merged `--no-ff`: AgentTalk
+  `fc1c779` / harness `58ef46d`; master re-verified green; branches pruned. Gemini's claims were accurate (no over-claim).
 - 2026-06-21 — **T3c review (reviewer, by running) → ALL ROWS VERIFIED ✅.** Verified each row by running, not on
   claim: contract diff = exactly `+submit_exec_result` + v3→4, **hash independently recomputed = `97abf6…` (match)**,
   `exec_rpc`/field-shapes correctly absent; both `wire-contract.json` copies **byte-identical** (`diff -q`);

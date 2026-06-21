@@ -531,3 +531,33 @@ off `master` in **each** repo; implementer claim-only commits; reviewer merges b
 **DoD** — claim/verdict rows in `milestone07-centralized-brain-implementation.md` (T3a.x first). A row
 is done only when the reviewer's verdict is **VERIFIED** (ran it), per §3b. Implementer creates branch
 `m07-t3a-cli-exec` off `master`, claim-only commits; reviewer merges on all-VERIFIED-or-DEFERRED.
+
+## 12. Task M07-T4 — retire client-side semantic logic (harness = transport + exec only)  **(SPLIT: T4a verify → T4b delete)**
+
+**Goal.** Complete the inversion: delete the harness's *semantic* path so the harness is **only** a dumb
+transport + executor (`exec_rpc → run CLI → submit raw {text}`). All prompt-building / parse / `message_type`→tool /
+lifecycle stays server-side in the brain (already true for API in T1/T2 and cli-exec in T3).
+
+**Why it's not just "delete dead code" (grounded in code).**
+- The **M06 flagship** `scripts/test-live-gate.mjs` still runs the **semantic attach path**: it creates *provider-less*
+  agents on `attach://test`, and only `api`/`cli-exec` agents get the server-side `InProcessAgentDriver`
+  (`registry.ts` ~L210). So full multi-agent **consensus** over cli-exec is **unproven** (T2 proved it for *API* only).
+- **Brainstorm** lives **only** in the harness (`handleBrainstormStart/Message`; 0 server-side) yet is wired through
+  `team-coordinator` (23 refs), contracts payloads, `validation`, and the **web UI** (`PlanningView.tsx`).
+
+**Decisions (Fausto, 2026-06-21).** **(a)** Brainstorm is **retired**, not migrated. **(b)** T4 is **split**: verify
+cli-exec consensus first (T4a), then delete (T4b). **(c)** Attach-mode is **fully removed** (not remapped to cli-exec).
+
+### 12a. T4a — verify cli-exec multi-agent consensus  *(de-risk; branch `m07-t4a-cli-exec-consensus`)*
+Prove the brain fully replaces the semantic harness for consensus **before** deleting it. Architecturally low-risk
+(same `InProcessAgentDriver` as API/T2, only `CliExecCompleter` swapped in) but **unproven live**. agy is protocol-fit
+⇒ **not** under the unfit-model live-test freeze. DoD rows **T4a.1–T4a.3** in the ledger.
+
+### 12b. T4b — retire the semantic path  *(branch `m07-t4b-retire-client-brain`, both repos)*
+Delete harness semantics + `conversation-runtime`/`response-schema` (harness); retire orchestrator attach-mode; retire
+brainstorm end-to-end (incl. UI); migrate `test-live-gate` → cli-exec. **No contract bump expected** (the harness only
+ever calls `await_turn`/`submit_exec_result`/`list_agents` — all stay; `messageTypes` remain, the *brain* still parses
+them) — but T4b **verifies** `wire-contract.json` is byte-unchanged rather than assuming. DoD rows **T4b.1–T4b.5**.
+
+**DoD** — rows in `milestone07-centralized-brain-implementation.md`; reviewer verdict **VERIFIED** (ran it) per §3b;
+implementer claim-only on the per-task branch; reviewer merges both repos on all-VERIFIED. T4a merges before T4b starts.
