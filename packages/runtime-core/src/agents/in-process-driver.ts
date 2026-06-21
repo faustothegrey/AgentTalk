@@ -1,3 +1,5 @@
+import { existsSync } from 'fs';
+import { execSync } from 'child_process';
 import { Agent } from './agent.js';
 import type { ApiProvider } from './api-client.js';
 import { parseWithRetry, translateStructuredResponse } from './translation.js';
@@ -172,7 +174,10 @@ export class InProcessAgentDriver {
   }
 
   private async executeApiPrompt(prompt: string, expectsStructured: boolean, opts?: { cwd?: string; timeoutMs?: number }): Promise<string | null> {
-    const res = await this.completer.complete(prompt, { expectsStructured, cwd: opts?.cwd, timeoutMs: opts?.timeoutMs });
+    const completerOpts: any = { expectsStructured };
+    if (opts?.cwd !== undefined) completerOpts.cwd = opts.cwd;
+    if (opts?.timeoutMs !== undefined) completerOpts.timeoutMs = opts.timeoutMs;
+    const res = await this.completer.complete(prompt, completerOpts);
     return res.text;
   }
 
@@ -200,7 +205,7 @@ export class InProcessAgentDriver {
       '```',
       '',
       'Put your complete findings summary inside the "summary" field. No preamble.',
-    ].join('\n');
+    ].join('\\n');
 
     const text = await this.executeApiPrompt(prompt, true);
     if (!text) {
@@ -234,9 +239,22 @@ export class InProcessAgentDriver {
       `## Final Plan`,
       `${(evt as any).plan}`,
       WORKER_RESPONSE_INSTRUCTIONS,
-    ].join('\n');
+    ].join('\\n');
 
-    const execOpts = { cwd: (evt as any).cwd, timeoutMs: (evt as any).timeoutMs };
+    let execOpts = undefined;
+    if (this.completer.maintainsSession) {
+      const taskId = (evt as any).taskId || 'unknown';
+      const cwd = `/tmp/agentalk-task-${taskId}`;
+      if (!existsSync(cwd)) {
+        try {
+          execSync(`git worktree add ${cwd} -b task-${taskId}`, { stdio: 'ignore' });
+        } catch (e) {
+          // best effort
+        }
+      }
+      execOpts = { cwd, timeoutMs: 600_000 };
+    }
+
     const text = await this.executeApiPrompt(prompt, true, execOpts);
     if (!text) return;
 

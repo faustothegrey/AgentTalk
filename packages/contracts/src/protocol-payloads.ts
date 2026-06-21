@@ -184,6 +184,8 @@ export interface TeamWorkAssignEventPayload {
   role: 'worker';
   plan: string;
   description: string;
+  cwd?: string;
+  timeoutMs?: number;
 }
 
 export interface BrainstormStartEventPayload {

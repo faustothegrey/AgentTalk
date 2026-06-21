@@ -1,6 +1,19 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { Registry } from '../registry.js';
 
+vi.mock('child_process', () => ({
+  default: { execSync: vi.fn() },
+  execSync: vi.fn(),
+}));
+
+vi.mock('fs', async (importOriginal) => {
+  const actual: any = await importOriginal();
+  return {
+    ...actual,
+    existsSync: vi.fn().mockReturnValue(false),
+  };
+});
+
 describe('Registry CLI-exec agent lifecycle', () => {
   let registry: Registry;
 
@@ -79,8 +92,8 @@ describe('Registry CLI-exec agent lifecycle', () => {
     });
 
     // Mock TeamCoordinator to prevent crash when it tries to find the agent's team
-    vi.spyOn(registry.teamCoordinator, 'handleWorkResponse').mockImplementation(() => {});
-    vi.spyOn(registry.teamCoordinator, 'handleWorkResult').mockImplementation(() => {});
+    vi.spyOn((registry as any).teamCoordinator, 'handleWorkResponse').mockImplementation(() => {});
+    vi.spyOn((registry as any).teamCoordinator, 'handleWorkResult').mockImplementation(() => {});
 
     // Simulate team_work_assign
     agent.queueTurn({
@@ -101,7 +114,7 @@ describe('Registry CLI-exec agent lifecycle', () => {
     expect(content.type).toBe('exec_rpc');
     expect(content.prompt).toContain('You are the WORKER');
     expect(content.prompt).toContain('My plan');
-    expect(content.cwd).toBe('/tmp/worktree');
+    expect(content.cwd).toBe('/tmp/agentalk-task-task-1');
     expect(content.timeoutMs).toBe(600000);
 
     // 2. Submit exec_result representing the worker's JSON response
