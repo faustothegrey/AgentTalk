@@ -425,11 +425,60 @@ explicit `sessionId` required, and if so, the exact shape). Reviewer verdict = V
 BLOCKED, not REFUTED). Implementer creates branch `m07-t3-s1-session-spike` off `master`, claim-only
 commits.
 
-### 11c. T3b — worker agentic-exec + effect-fence  ·  11d. T3c — contract bump
-Outlined now, detailed when T3-S1 / T3a close:
-- **T3b:** the **worker** run-to-completion agentic exec + **effect-fence = stop-and-ask** (D4) +
-  reconnect handling. The heavy, side-effecting half (worktree). **Fausto in the loop.** Consumes T3-S1's
-  session recommendation.
+### 11c. T3b — split into T3b-1 (no-resend, low risk) + T3b-2 (worker exec, side-effecting)
+
+T3b is sliced (Fausto, 2026-06-21) so the **proven, low-risk cost win lands first**, ahead of the
+side-effecting worktree work.
+
+#### 11c-1. T3b-1 — no-resend for cli-exec + recovery fallback  *(implementation-ready · branch `m07-t3b1-no-resend`)*
+
+**Goal.** Stop the O(n) transcript resend on the cli-exec path (LB-4), proven safe + worth it by T3-S2
+(flat prompt, correct on native memory, 4.4×+ saving). Pure **orchestrator/driver** — **no worktree, no
+worker, no side effects.** The server-side brain still **records the full history** (so it can rebuild a
+lost session); it just stops *shipping* it every turn for stateful (native-session) agents.
+
+**Key insight (grounded in code).** `in-process-driver.ts` `handleTurn` builds the prompt at
+`this.runtime.buildPrompt(evt)` (full transcript) and keeps server-side memory via
+`this.runtime.recordAssistantReply(text)`. T3b-1 adds a **latest-turn-only** path for stateful completers;
+the runtime keeps recording everything **unchanged**, so recovery = "send the full transcript once."
+
+**Scope — DO:**
+1. **Completer capability flag.** Add `maintainsSession?: boolean` (or `stateful`) to the `Completer`
+   interface. `CliExecCompleter` → `true`; `ApiCompleter` → `false` (per **D5**, API path stays resend).
+2. **Latest-turn prompt builder.** Add `runtime.buildLatestTurnPrompt(evt)` (or equivalent) returning the
+   **new turn's content + per-turn protocol instructions** but **not** the prior-message transcript. The
+   driver uses it when `completer.maintainsSession === true`; otherwise it calls `buildPrompt` exactly as
+   today. (Per-turn instructions stay — they're constant-size; the *transcript* is the O(n) cost.)
+3. **Keep server-side memory intact.** The runtime continues to record all incoming messages + replies
+   regardless of which prompt builder is used. (Brain ≠ memory, but brain *holds* memory.)
+4. **Recovery fallback (LB-5).** A one-shot **"resend full transcript next turn"** mechanism: a settable
+   flag (e.g. `driver.markSessionStale()`) that makes the *next* exec use `buildPrompt` (full) instead of
+   latest-turn, then clears. Wire a **best-effort trigger** on agent reconnect (registry already emits a
+   reconnect/`reconnecting→ready` transition). **Robust reconnect *delivery* (IMP-T3b-1) is T3b-2** — T3b-1
+   only needs the resend-once *mechanism* + a deterministic test of it.
+
+**Scope — DO NOT TOUCH:** the API/T1-T2 prompt path (must stay **byte-for-byte** — `buildPrompt` default
+unchanged; guarded by the `maintainsSession` flag); `TeamCoordinator`; the worker path; the harness
+(no harness change needed — it already runs `--continue`). No worktree, no effect-fence.
+
+**Smoke checkpoint:** (a) **mocked unit test** — a stateful-completer agent over ≥3 turns: assert each
+sent prompt contains only the latest turn (no prior-message text) and the runtime still holds full
+history; (b) **recovery unit test** — after `markSessionStale()`, the next prompt is the full transcript,
+then reverts; (c) **regression** — API-agent tests unchanged (full resend still byte-for-byte); (d)
+**one live agy** multi-turn run via the real cli-exec path confirming correctness on native memory
+(reuse the T3-S2 fact-chain through the *driver* this time, not direct-exec).
+
+**DoD:** claim/verdict rows in the ledger (T3b-1.x); reviewer VERIFIES by running. Branch
+`m07-t3b1-no-resend` off `master`, claim-only commits; merge on all-VERIFIED.
+
+#### 11c-2. T3b-2 — worker agentic-exec + effect-fence + reconnect  *(outlined; detailed when T3b-1 closes)*
+The heavy, **side-effecting** half (worktree). **Fausto in the loop.**
+- **Worker run-to-completion exec** — a second exec-RPC shape (`exec(prompt) → run-to-completion result`,
+  not single completion); the worker mutates a `git worktree`.
+- **Effect-fence (D4): STOP and ask the human** on a mid-exec crash — no auto-reissue.
+- **Reconnect handling (IMP-T3b-1):** close the exec-RPC + reconnect delivery gap surfaced in T3-S1.
+
+### 11d. T3c — contract bump
 - **T3c:** wire-contract bump for exec-RPC + **hash-guard re-bump**; flip nothing on by default yet.
 
 **DoD** — claim/verdict rows in `milestone07-centralized-brain-implementation.md` (T3a.x first). A row
