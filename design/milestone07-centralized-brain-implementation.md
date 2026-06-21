@@ -1,6 +1,6 @@
 # Milestone 07 — Centralized Agent Brain — Implementation Status
 
-**Status:** **T3b-1 DONE ✅ (all rows VERIFIED) → ready to merge; next = T3b-2 spec.** Reviewed by running: 159/159, tsc clean, API byte-for-byte, no-resend + recovery tests pass, live agy multi-turn confirms no-resend on native memory. **FIND-T3b1-1** (consensus path was already bounded → LB-4 overstated; T3b-1's win = direct-chat + `maintainsSession`/recovery plumbing) resolved: **kept + reframed** (LB-4 corrected, dead block removed). T3a MERGED; spikes T3-S1/S2 DONE; D5 set. **Next: T3b-2** (worker exec + effect-fence + reconnect, side-effecting, Fausto in loop). Findings: native `agy --continue` session **works** through exec-RPC (option 2 viable), **but** the driver currently **resends full history** (option 1) and native session **doesn't survive a harness restart** (ephemeral home). **D2 recommendation = hybrid: native session steady-state + resend-based recovery fallback** (see D2 block; T3b owns it). Reconnect+exec-RPC delivery gap surfaced → IMP-T3b-1. T3a MERGED (orchestrator `e9186e1`, harness `17edffc`; master 157/157). T1+T2 DONE/merged (T2.4 deferred). M06 closed; R1 GREEN.
+**Status:** **T3b-1 DONE/merged ✅ → T3b-2 SPEC READY (re-scoped: inversion only).** T3b-1 merged `ff9296d` (no-resend cli-exec + recovery plumbing; all rows VERIFIED; FIND-T3b1-1 = consensus was already bounded → LB-4 corrected). **T3b-2** = run the **worker** through exec-RPC (same `exec_rpc`, per-task worktree, no streaming) — **all crash/effect-fence/reconnect handling DEFERRED to the M08+ failure-modes milestone** (Fausto, 2026-06-21; D4 policy stands, impl deferred; IMP-T3b-1 moved). Branch `m07-t3b2-worker-exec`, rows T3b-2.1–2.6, spec plan §11c-2. **Green-lit for implementer.** Backlog gate passed. T3a + spikes T3-S1/S2 DONE; D5 set. T1+T2 DONE/merged (T2.4 deferred). M06 closed.
 **Plan:** `design/milestone07-centralized-brain-plan.md` (architect-owned; this doc tracks status only).
 **Last verified:** 2026-06-21 (T3a round 1) · **Verifier:** Claude
 
@@ -30,8 +30,8 @@
 | **M07-T3** | **CLI harness inversion** (exec-RPC) + reconnect/effect-fence + contract bump | `m07-t3a-cli-exec` (T3a) | **T3a DONE ✅** (merged `e9186e1`/harness `17edffc`); T3-S1/S2 spikes DONE; T3b split; T3c outlined |
 | ↳ **M07-T3-S1** | **Spike:** session model (D2) — native `agy --continue` round-trips through exec-RPC + recovery | `m07-t3-s1-session-spike` | **DONE ✅** (D2 settled; S1.1–S1.6 below) |
 | ↳ **M07-T3-S2** | **Spike:** prove no-resend (latest-turn-only) is correct + cheap on the cli-exec path | (reviewer-run, no branch) | **DONE ✅** (no-resend proven; S2 block below) |
-| ↳ **M07-T3b-1** | **No-resend for cli-exec** (latest-turn prompt) + recovery fallback; API path untouched (D5) | `m07-t3b1-no-resend` | **SPEC READY** (plan §11c-1; T3b-1 rows below) |
-| ↳ **M07-T3b-2** | Worker run-to-completion exec + effect-fence (D4) + reconnect (IMP-T3b-1) — side-effecting | `m07-t3b2-worker-exec` | **outlined** (plan §11c-2; after T3b-1) |
+| ↳ **M07-T3b-1** | **No-resend for cli-exec** (latest-turn prompt) + recovery fallback; API path untouched (D5) | `m07-t3b1-no-resend` | **DONE ✅** (merged `ff9296d`; T3b-1.1–1.7 VERIFIED) |
+| ↳ **M07-T3b-2** | **Worker run-to-completion exec (inversion only)** — re-scoped; crash/effect-fence/reconnect → M08+ | `m07-t3b2-worker-exec` | **SPEC READY** (plan §11c-2; T3b-2 rows below) |
 | **M07-T4** | Retire client-side semantic logic; harness = transport + exec only | `m07-t4-retire-client-brain` | not started |
 
 ## Task M07-T1 — In-orchestrator API agent driver  *(ACTIVE — branch `m07-t1-api-agent-driver`)*
@@ -191,9 +191,10 @@ recorded log).
 - **IMP-T3b-1 (reconnect+exec-RPC delivery gap).** In probe 1, the turn issued **after** a harness
   SIGKILL+relaunch **timed out** over the driver path: the connection dropped (1006), the agent
   reconnected within the 30s window, `await_turn` was re-issued and the EVT was sent — but no
-  `submit_exec_result` came back (exec turn not delivered/completed). Reconnect handling for exec-RPC is
-  **T3b-2 scope** (per plan §11c-2); recorded here so T3b-2 designs for it rather than rediscovering it.
-  Not a T3-S1 defect (the spike's job was the session question).
+  `submit_exec_result` came back (exec turn not delivered/completed). **MOVED (Fausto, 2026-06-21): →
+  M08+ failure-modes milestone**, NOT T3b-2. T3b-2 was re-scoped to worker-inversion-only; all crash/reconnect
+  handling (this gap + the effect-fence D4 + `CliExecCompleter` disconnect-rejection) is deferred to the
+  parked failure-modes milestone (see `backlog.md`). Not a T3-S1 defect (the spike's job was the session question).
 
 ## Task M07-T3b-1 — no-resend for cli-exec + recovery fallback  *(SPEC READY — branch `m07-t3b1-no-resend` off `master`)*
 
@@ -228,7 +229,33 @@ error, not an implementer fault.** **DECIDED (Fausto, 2026-06-21): keep + refram
 1:1 chat + the `maintainsSession`/recovery plumbing T3b-2 needs. Actions taken: **LB-4 corrected** (consensus was
 already bounded), dead no-op comment block removed, live 1.6 run (VERIFIED), merged.
 
+## Task M07-T3b-2 — worker run-to-completion exec (inversion only)  *(SPEC READY — branch `m07-t3b2-worker-exec` off `master`)*
+
+Spec: **plan §11c-2**. **RE-SCOPED (Fausto, 2026-06-21): inversion only.** Does the one M07 thing — run the
+**worker** through the centralized brain via exec-RPC, like the planner — and **nothing else**. All
+crash/failure handling (effect-fence D4, exec-RPC reconnect IMP-T3b-1, `CliExecCompleter` disconnect-rejection)
+is **deferred to the M08+ failure-modes milestone** (`backlog.md`), per the decision not to do failure-mode
+work inside M07-T3. Worker exec reuses the **same `exec_rpc`** (agy is already agentic → runs to completion in
+one exec) in a per-task `git worktree` (`AGENTTALK_WORKDIR`), longer timeout, **no streaming**. Harness stays
+semantics-free. **DO NOT TOUCH** `TeamCoordinator`, the API path, the planner path, M05/M06. Reviewer VERIFIES
+by running. Branch `m07-t3b2-worker-exec`, claim-only commits; merge on all-VERIFIED.
+
+> **Known limitation (intentional, documented):** a mid-exec harness disconnect hangs the worker turn
+> (`CliExecCompleter` never rejects). Acceptable because the exec path is **flag-gated / off by default** (D1);
+> the fix lives in the M08+ failure-modes milestone. T3b-2's only failure bar: **don't make the happy path
+> worse than M05/M06.**
+
+| T3b-2 DoD item | Implementer claim | Reviewer verdict | Evidence |
+|---|---|---|---|
+| **T3b-2.1 — Worker via exec-RPC.** Route the worker turn (`team_work_assign`) through the cli-exec completer path (same `exec_rpc`), so the worker is driven by the orchestrator brain — not the M05/M06 semantic harness. | — | not-checked | |
+| **T3b-2.2 — Worktree workdir.** The worker exec runs in a **per-task `git worktree`** via `AGENTTALK_WORKDIR`; orchestrator sets it; harness runs agy there. Define worktree create (cleanup is best-effort / out of scope failure-side). | — | not-checked | |
+| **T3b-2.3 — Run-to-completion + timeout.** One `exec_rpc` runs agy agentically to completion; a **longer timeout** suits real work. No new RPC shape, no streaming. | — | not-checked | |
+| **T3b-2.4 — Mocked CI test.** A cli-exec worker turn end-to-end (mocked transport/exec): `team_work_assign` → exec_rpc → `submit_exec_result` → `submit_work_response`/`submit_work_result`. Deterministic. | — | not-checked | |
+| **T3b-2.5 — Live.** One real **agy** worker turn via exec-RPC that makes a small, real change inside a worktree, recorded. | — | not-checked | |
+| **T3b-2.6 — No regression.** Full suite green; API + planner (T3a/T3b-1) + M05/M06 paths unchanged; `tsc -b` clean **committed**. **Known-limitation** (mid-exec disconnect hang) documented, not fixed (→ M08+). | — | not-checked | |
+
 ## Log (append-only, dated)
+- 2026-06-21 — **T3b-1 merged + T3b-2 re-scoped (Fausto).** Merged `m07-t3b1-no-resend` → master (`ff9296d`; 159/159, tsc clean). `.gitignore` cleanup (`98464aa`): `*.tsbuildinfo` + `m07-*.log` now ignored, prior tracked artifacts untracked. **Fausto flagged** that the effect-fence I was speccing into T3b-2 is failure-mode work we'd **deferred** — correct. **Re-scoped T3b-2 to worker-inversion-only**: worker via the same `exec_rpc` + per-task worktree + longer timeout, no streaming. **All crash handling deferred → M08+ failure-modes milestone**: effect-fence (D4 policy stands, impl deferred), exec-RPC reconnect (IMP-T3b-1 moved), `CliExecCompleter` disconnect-rejection. Docs updated: plan §11c-2 + D4, backlog (milestone absorbs the three), ledger (T3b-2 rows 2.1–2.6). Backlog gate passed. **Baton → implementer** (branch `m07-t3b2-worker-exec`).
 - 2026-06-21 — **T3a implementer fixes (round 2).** Rewrote `cli-exec-agent.test.ts` to mock the pull path (`handleMcpToolCall` with `await_turn` and `submit_exec_result`), successfully restoring it to 100% green. Removed the stray debug log from `registry.ts`. Committed the working tree on both `AgentTalk` and `agentalk-mcp-client` in the `m07-t3a-cli-exec` branch. T3a is fully 100% green, committed, and ready for re-review!
 - 2026-06-21 — **T3b sliced + T3b-1 spec'd.** Decision (Fausto): split T3b so the proven low-risk cost win lands first. **T3b-1** = no-resend cli-exec (latest-turn prompt via a `maintainsSession` completer flag + `runtime.buildLatestTurnPrompt`) + one-shot recovery resend; brain keeps recording full history; **API path byte-for-byte (D5)**; no worktree/harness change. **T3b-2** (worker run-to-completion exec + effect-fence D4 + reconnect IMP-T3b-1) outlined for after. **D5** recorded (plan): API path leans on provider-native caching, build nothing. Backlog gate re-run (4 items parked; failure-modes milestone adjacent to T3b-2 but stays M08+). Spec: plan §11c-1, rows T3b-1.1–1.7. **Baton → implementer** (branch `m07-t3b1-no-resend`).
 - 2026-06-21 — **T3-S2 no-resend spike run (reviewer, by running) → PROVEN.** Fausto flagged the LB-4 resend as too expensive long-run; ran `spikes/m07-t3-s2-noresend-probe.mjs` live: a cli-exec agent ran a 5-turn fact-chain sending **only the latest turn** each time and turn 5 recalled all four facts (`apple, bridge, cloud, dragon`) from native `--continue` memory. Prompt bytes **flat** (44,45,44,45,97) vs resend projection (52,160,231,303,427) — **4.4× by turn 5, widening**. ⇒ removing the resend is safe + worth it. Recorded as T3-S2 block; reinforces D2 #1. Recovery (LB-5) deferred to T3b. **Baton → architect: spec T3b (no-resend cli-exec branch is now a priority slice).**

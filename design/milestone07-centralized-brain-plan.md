@@ -325,6 +325,8 @@ prompt-build, translation, runtime: **all shared**. (Pre-spec reasoning: `milest
 - **D3 — Pilot on `gemini`/`agy`** (its persistent executor is proven in M06).
 - **D4 — Effect-fence (worker crash mid-exec): STOP and ask the human** — **no auto-reissue** to start.
   The orchestrator surfaces the interrupted exec and waits; auto-reissue+dedup is a later, separate add.
+  **Implementation deferred (Fausto, 2026-06-21):** the *policy* stands, but building it is **failure-mode
+  work → moved to the M08+ failure-modes/resilience milestone**, NOT T3b-2. T3b-2 is worker-inversion only.
 - **D5 — API path: exploit provider-native caching, build nothing (don't over-engineer).** The Chat
   Completions API is stateless, so API agents **must** resend history (LB-4) — but that cost is **already
   solved provider-side** (OpenAI/Google do automatic prompt-prefix caching). So we **do not** build any
@@ -471,12 +473,27 @@ then reverts; (c) **regression** — API-agent tests unchanged (full resend stil
 **DoD:** claim/verdict rows in the ledger (T3b-1.x); reviewer VERIFIES by running. Branch
 `m07-t3b1-no-resend` off `master`, claim-only commits; merge on all-VERIFIED.
 
-#### 11c-2. T3b-2 — worker agentic-exec + effect-fence + reconnect  *(outlined; detailed when T3b-1 closes)*
-The heavy, **side-effecting** half (worktree). **Fausto in the loop.**
-- **Worker run-to-completion exec** — a second exec-RPC shape (`exec(prompt) → run-to-completion result`,
-  not single completion); the worker mutates a `git worktree`.
-- **Effect-fence (D4): STOP and ask the human** on a mid-exec crash — no auto-reissue.
-- **Reconnect handling (IMP-T3b-1):** close the exec-RPC + reconnect delivery gap surfaced in T3-S1.
+#### 11c-2. T3b-2 — worker run-to-completion exec (inversion only)  *(outlined; detailed when T3b-1 closes)*
+
+**RE-SCOPED (Fausto, 2026-06-21): inversion only — all crash/failure handling deferred.** T3b-2 does the
+one M07 thing: **run the worker through the centralized brain via exec-RPC**, just like the planner. It does
+**not** build the effect-fence, reconnect-recovery, or any mid-crash handling — that is **failure-mode work**,
+which we deliberately parked into the dedicated **failure-modes / resilience milestone (M08+)**. (Decided
+because bundling crash-handling here contradicts that defer decision and would bloat T3b-2.)
+
+- **Worker run-to-completion exec** — the worker turn goes through the **same `exec_rpc`** (no new RPC shape):
+  agy is already agentic and runs to completion in one exec, inside a per-task `git worktree`
+  (`AGENTTALK_WORKDIR`), with a longer timeout. Harness stays dumb/semantics-free.
+- **No live progress streaming** (single result at the end) — simplest; revisit only if a real need appears.
+- **Known limitation (documented, intentional):** if the worker harness disconnects **mid-exec**,
+  `CliExecCompleter` currently never rejects → the turn hangs. T3b-2 ships with this known gap because the
+  path is **flag-gated / off by default** (D1) and crash-handling is deferred. **→ moved to the M08+
+  failure-modes milestone:** effect-fence (D4 = stop-and-ask), exec-RPC reconnect delivery (**IMP-T3b-1**),
+  and `CliExecCompleter` disconnect/timeout rejection. T3b-2's only failure requirement: **don't make the
+  happy path worse than M05/M06**; a crash on the off-by-default exec path is acceptable until M08+.
+
+> **D4 status:** the *policy* (stop-and-ask, no auto-reissue) stays decided, but its *implementation* is
+> **deferred to the M08+ failure-modes milestone** — not T3b-2.
 
 ### 11d. T3c — contract bump
 - **T3c:** wire-contract bump for exec-RPC + **hash-guard re-bump**; flip nothing on by default yet.

@@ -55,5 +55,10 @@ promoted→X · absorbed→X · dropped}.
   propagation; T3b's effect-fence is the *first* forced instance, R2). **Next step:** brain-dump the
   modes Fausto already has in mind into this item (or the logbook), then promote to a milestone with
   its own plan. Don't start until M07 closes.
+  - **Explicitly absorbs (Fausto, 2026-06-21):** the **effect-fence** (D4 = worker crash mid-exec →
+    stop-and-ask; *policy* decided, *implementation* lives here, not T3b-2); the **exec-RPC reconnect
+    delivery gap** (**IMP-T3b-1** from the T3b-1 ledger); and **`CliExecCompleter` disconnect/timeout
+    rejection** (today it never rejects → a mid-exec disconnect hangs the turn). These were re-scoped OUT
+    of T3b-2 to keep it inversion-only.
 
 *(add new items above this line)*
