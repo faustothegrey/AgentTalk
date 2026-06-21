@@ -92,3 +92,10 @@ entry carries a **stable `LB-N` id** — cite it from ledgers/backlog (titles ma
 - **Finding:** Running `gemini-3.1-flash-lite` on the live API team test succeeded in avoiding the HTTP 429 quota limit, confirming the model identifier is active and has a separate quota pool or isn't restricted by the same limits as the 2.5 series. However, the model failed protocol compliance: it completely skipped the `proposal` phase. Upon receiving an `opinion` suggesting a proposal, `planner-b` immediately replied with an `agreement_acceptance`. Since no `agreement_proposal` was actually pending, this illegal transition crashed the orchestration loop.
 - **Implication:** `gemini-3.1-flash-lite` is available for testing without immediate quota exhaustion, but like Gemma, it lacks the zero-shot instruction adherence required to navigate the strict multi-phase protocol without hallucinating phase transitions.
 - **Source:** `logs/m07-t2-gemini-3-1-flash-lite-smoke.log` (live test using `scripts/test-live-api-team.mjs`).
+
+### LB-8 · 2026-06-21 — [providers] Gemini API tier constraints: shared quotas and 404s
+- **Finding:** Successive tests on the Google API provider revealed the following constraints:
+  1. `gemini-2.5-pro` hits the exact same `HTTP 429 Quota Exceeded` error as `gemini-2.5-flash`, confirming that the free/tier quota is shared globally across the 2.5 family at the project/key level.
+  2. `gemini-3.0-flash` returns `HTTP 404 NOT_FOUND`, indicating the model identifier is either incorrect for this endpoint or not whitelisted for the current API key/tier.
+- **Implication:** We cannot easily swap to "Pro" or "3.0" models to overcome the 429 quota on the `google` provider under the current billing tier. To successfully run the multi-agent consensus test (T2.4), we either need a new API key/tier, or we must rely on models outside the 2.5 umbrella (like `gemini-3.1-flash-lite` or `gemma`, though those currently fail protocol compliance — see LB-6 and LB-7).
+- **Source:** Live tests on `scripts/test-live-api-team.mjs` (see conversation logs).
