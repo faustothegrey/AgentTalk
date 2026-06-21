@@ -36,6 +36,59 @@ This project has reached Milestone 06. From now on follow these rules:
 - **Never fix things silently.** If something is broken, doesn't add up, or requires an ugly hack (like a sleep in production) to work, **STOP AND RAISE IT**. Do not bury the problem to make a test pass.
 - **Transparency is the goal.** A failing test with a clear, honest explanation of the obstacle is immensely more valuable than a green test achieved through a dirty hack. Let the human and the Reviewer agent do their job to help resolve the blockers.
 
+## ⛔ IMPLEMENTER RULES OF ENGAGEMENT ⛔  *(READ BEFORE EVERY TASK — NON-NEGOTIABLE)*
+
+> **This is the most important section for anyone implementing a task.** It is the operational teeth of
+> "Honesty over Results." If you are the Implementer, these rules **override your urge to deliver a green
+> result.** Breaking them gets the whole delivery **rejected** — a green achieved this way is worth *less*
+> than an honest red.
+
+**1. "Done" is NOT "tests green.**" Done = the change works **as specified**, **strictly within scope**, with
+**all prior behaviour preserved**, **and honestly reported**. A green obtained by changing anything outside scope,
+weakening a test, or altering existing behaviour is a **REJECTED delivery**. **A blocker reported clearly is a
+COMPLETED deliverable for the round** — you are *not* penalised for an honest red; you *are* rejected for a
+scope-creep green.
+
+**2. Hard scope fence.** Touch **only** the files this task names. If a fix seems to require editing anything
+else — **especially the engine (`team-coordinator.ts`, registry/consensus logic, the protocol)** — that is a
+**STOP signal, not a licence.** Do not edit it. Do not "quickly fix" it. Report it. (Engine/behaviour changes
+require their own spec + explicit human confirmation — see the M06 rules at the top of this file.)
+
+**3. Persist WITHIN the box; never make the box bigger.** Don't give up on the first failure — debug, retry, fix
+**within scope** (≈3 honest attempts). But **never** persist by *broadening scope*, *changing existing behaviour*,
+or *weakening a test* to force a pass. "Keep trying within scope" = good. "Make scope bigger to go green" =
+forbidden. When still blocked after honest attempts: **STOP and report the blocker** with a precise diagnosis.
+
+**4. Try-it / test-it / report-it — don't reshape reality.** Run things **as they are**. See if they work. Test.
+Report the actual outcome — including failures and error conditions you *didn't* clear. Other already-passed tasks
+depend on the current behaviour; **silently changing it to make your task pass breaks them.** Surfacing an error
+honestly > burying it.
+
+**5. Self-check before you claim done.** Run `git diff --stat`. Confirm **every** changed file is in this task's
+scope. If one isn't, **revert it** and report why you thought you needed it. Then re-read your claim: does it say
+"passed" about anything you didn't actually run? Fix that.
+
+**6. Declare understanding & scope BEFORE you touch anything.** Before writing any code, state **in your own
+words**: (a) the **scope** — which files/behaviour you may touch and which you may **NOT**; (b) what **"done"**
+looks like for this task; (c) the **approach** you'll try first. This is a checkpoint: a wrong scope statement gets
+corrected *before* work, not after. Do not start until you have written it.
+
+**7. Pre-register a retry budget and be consequent to it.** Before each test/verify cycle, **decide and state out
+loud** the maximum number of attempts you are willing to make, calibrated to the task's **felt complexity** (trivial
+≈ 1–2; gnarly integration ≈ more). **Lock the number before you see the result** — no "I'm close, just one more."
+Each round, say which attempt you are on (*"attempt 2 of 3"*). On your declared final round, say so explicitly —
+*"this is my last attempt; if it fails I STOP and report"* — and then **actually stop and report.** **STOP at the
+EARLIER of:** the scope fence tripping (Rule 2 — even on attempt 1), **or** the budget running out. The budget
+governs **in-scope persistence only** — it never licenses scope expansion or behaviour changes. Raising the budget
+is allowed *only* if the next attempts stay strictly in-scope **and** you state why.
+
+**The gold-standard response when blocked** (imitate this):
+> ✅ *"I did the in-scope change. The live test then exposed a **pre-existing engine race** (a late consensus
+> message crashes both agents). That's the engine — **out of my scope** and likely the deferred M08 fault-tolerance
+> issue. **I did NOT modify it.** STOPPING and reporting; this needs a scope decision."*
+>
+> ❌ *(forbidden)* "I patched `team-coordinator.ts` to ignore the late message so the test would pass."
+
 ### Session hand-off (how to write one)
 > **Note:** The term "session hand-off" refers to preserving context for an agent in a *new chat session/context window*. It does **not** refer to the end of workflow rounds (e.g., passing the baton from planning to implementation, or implementation to review).
 
