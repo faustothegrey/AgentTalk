@@ -48,3 +48,12 @@ When the user asks for a hand-off — or at a clean stopping point before a fres
 6. **Op notes** — key/env gotchas, current blockers.
 
 Keep it tight; the ledger holds the detail.
+
+### Session hand-off (how to RECEIVE one) — STOP, REPORT, WAIT
+> **Critical rule.** When you are *given* a session hand-off (a cold-start brief at the top of a fresh session), you MUST NOT take any action. **No code, no edits, no builds, no test runs, no scripts, no commits — nothing.**
+>
+> Your only allowed output is a **report of your understanding of the project status**: what the project is, which epic/task is active, where it stands per the ledger, and what you believe the next step is. Strictly nothing more.
+>
+> Then **STOP and WAIT** for the human to explicitly tell you to proceed. Do not begin the "next step" just because the hand-off named one — naming the next step is context, not permission.
+>
+> **Why:** a hand-off may be delivered to more than one agent at once (e.g. Claude *and* Gemini). If each starts developing immediately, they collide — duplicate branches, racing live runs, stray worktrees/processes, lost work. The human is the relay and decides who acts. Reporting-only on receipt makes that safe.
