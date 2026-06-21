@@ -163,7 +163,8 @@ transcripts if quota-blocked → BLOCKED, not REFUTED). Implementer: claim-only 
    the persistent process, fallback covers loss).
 
 **Net:** D2 settled — **native session is viable and is the right steady state; pair it with a resend-based
-recovery fallback.** T3b implements #1 + #2; #3 is an optional hardening.
+recovery fallback.** T3b implements #1 + #2; #3 is an optional hardening. Cross-cutting facts recorded as
+**LB-4** (driver resends full transcript today) and **LB-5** (native session works / ephemeral home / no usage).
 
 **Impediments / carry-forward (→ T3b):**
 - **IMP-T3b-1 (reconnect+exec-RPC delivery gap).** In probe 1, the turn issued **after** a harness
