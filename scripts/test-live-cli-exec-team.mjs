@@ -60,6 +60,15 @@ async function run() {
   ]);
 
   console.log('[Test] Starting team...');
+  const repoRoot = path.join(__dirname, '..');
+  
+  const getWorktreePaths = () => execSync('git worktree list --porcelain', { cwd: repoRoot })
+    .toString().split('\n\n')
+    .map(b => b.split('\n').find(l => l.startsWith('worktree ')))
+    .filter(Boolean).map(l => l.slice('worktree '.length).trim());
+    
+  const beforePaths = new Set(getWorktreePaths());
+
   await registry.assignTeamTask(team.id, 'Let us build a plan. Please immediately agree on adding a file named plan.md with content "hello" and submit the plan. Make sure your submitted plan contains the exact text "add plan.md".');
 
   // Monitor events
@@ -95,26 +104,23 @@ async function run() {
   try { harnessC.kill('SIGKILL'); } catch {}
   await mcpServer.close();
 
-  // Best-effort cleanup AFTER recording: remove every worktree under our task root
-  // (orchestrator's + any agy nested inside it) and delete exactly the branches those
-  // worktrees were on — parsed from the porcelain blocks, never a guessed name list.
-  if (capturedTaskId) {
-    try {
-      const repoRoot = path.join(__dirname, '..');
-      const blocks = execSync('git worktree list --porcelain', { cwd: repoRoot }).toString().split('\n\n');
-      const branchesToDelete = [];
-      for (const block of blocks) {
-        const pathLine = block.split('\n').find(l => l.startsWith('worktree '));
-        if (!pathLine || !pathLine.includes(`agentalk-task-${capturedTaskId}`)) continue;
-        const p = pathLine.slice('worktree '.length).trim();
-        const branchLine = block.split('\n').find(l => l.startsWith('branch '));
-        if (branchLine) branchesToDelete.push(branchLine.slice('branch refs/heads/'.length).trim());
-        try { execSync(`git worktree remove --force ${p}`, { cwd: repoRoot, stdio: 'ignore' }); } catch {}
-      }
-      execSync('git worktree prune', { cwd: repoRoot, stdio: 'ignore' });
-      for (const b of branchesToDelete) { try { execSync(`git branch -D ${b}`, { cwd: repoRoot, stdio: 'ignore' }); } catch {} }
-    } catch {}
-  }
+  // Best-effort cleanup AFTER recording: remove every worktree not present
+  // before the run, avoiding path-name coupling since agy is nondeterministic.
+  try {
+    const afterBlocks = execSync('git worktree list --porcelain', { cwd: repoRoot }).toString().split('\n\n');
+    const branchesToDelete = [];
+    for (const block of afterBlocks) {
+      const pathLine = block.split('\n').find(l => l.startsWith('worktree '));
+      if (!pathLine) continue;
+      const p = pathLine.slice('worktree '.length).trim();
+      if (beforePaths.has(p) || p === repoRoot) continue;
+      const branchLine = block.split('\n').find(l => l.startsWith('branch '));
+      if (branchLine) branchesToDelete.push(branchLine.slice('branch refs/heads/'.length).trim());
+      try { execSync(`git worktree remove --force ${p}`, { cwd: repoRoot, stdio: 'ignore' }); } catch {}
+    }
+    execSync('git worktree prune', { cwd: repoRoot, stdio: 'ignore' });
+    for (const b of branchesToDelete) { try { execSync(`git branch -D ${b}`, { cwd: repoRoot, stdio: 'ignore' }); } catch {} }
+  } catch {}
 
   if (workCompleted) {
     console.log('TEST PASSED: CLI-exec Consensus E2E reached submit_plan and worker completed task');
