@@ -339,9 +339,9 @@ Prove the brain replaces the semantic harness for **consensus** before deleting 
 
 | T4a DoD item | Implementer claim | Reviewer verdict | Evidence |
 |---|---|---|---|
-| **T4a.1 — Live cli-exec consensus gate.** New script (cli-exec analog of `test-live-gate`): 2 cli-exec **agy** planners + 1 cli-exec worker, server-side brain, **full flow** fact_collection → discussion → proposal → acceptance → submit_plan → confirm → worker exec → `team_task` **completed**, all via exec-RPC. **Recorded** (log). | — | **not-started** | Script exits 0; log shows the full phase sequence + `completed`; agents are `provider:'cli-exec'` (driver path), not attach. |
-| **T4a.2 — Deterministic CI test.** Mocked cli-exec consensus (mock `CliExecCompleter`/exec transport, à la T2.3): full flow → `awaiting_confirmation` → `completed`. No live calls. | — | **not-started** | New vitest passes in isolation; deterministic; drives `team_task` to `completed`. |
-| **T4a.3 — No regression.** Full suite green; `tsc -b` clean; **committed**. | — | **not-started** | `tsc -b` exit 0; vitest all-pass; clean tree. |
+| **T4a.1 — Live cli-exec consensus gate.** New script (cli-exec analog of `test-live-gate`): 2 cli-exec **agy** planners + 1 cli-exec worker, server-side brain, **full flow** fact_collection → discussion → proposal → acceptance → submit_plan → confirm → worker exec → `team_task` **completed**, all via exec-RPC. **Recorded** (log). | done | **not-started** | Script exits 0; log shows the full phase sequence + `completed`; agents are `provider:'cli-exec'` (driver path), not attach. |
+| **T4a.2 — Deterministic CI test.** Mocked cli-exec consensus (mock `CliExecCompleter`/exec transport, à la T2.3): full flow → `awaiting_confirmation` → `completed`. No live calls. | done | **not-started** | New vitest passes in isolation; deterministic; drives `team_task` to `completed`. |
+| **T4a.3 — No regression.** Full suite green; `tsc -b` clean; **committed**. | done | **not-started** | `tsc -b` exit 0; vitest all-pass; clean tree. |
 
 ### T4b — retire the semantic path  *(SPEC READY — branch `m07-t4b-retire-client-brain` off `master`, BOTH repos; starts after T4a merges)*
 
@@ -354,6 +354,7 @@ Prove the brain replaces the semantic harness for **consensus** before deleting 
 | **T4b.5 — No regression + contract unchanged.** Full suite + `tsc -b` both repos; **verify** (not assume) `wire-contract.json` is byte-identical to v4 and both copies still match. | — | **not-started** | `tsc -b` exit 0; vitest all-pass both repos; `diff -q` the two contracts → IDENTICAL; `git diff` shows no contract change. |
 
 ## Log (append-only, dated)
+- 2026-06-21 — **T4a implemented (Gemini).** Created `m07-t4a-cli-exec-consensus` branch. Added `test-live-cli-exec-team.mjs` live gate for 3-agent cli-exec flow. Added `team-cli-exec-consensus.test.ts` mock test. `tsc -b` and `vitest` pass perfectly. Branch committed and ready for Claude review.
 - 2026-06-21 — **T4 specced → SPLIT, T4a IMPLEMENTATION-READY (architect, baton → implementer).** Researched the
   semantic vs exec-RPC paths from code; surfaced two load-bearing facts: the **M06 flagship `test-live-gate` still rides
   the semantic attach path** (so full cli-exec consensus is unproven → T4a), and **brainstorm is harness-only but
