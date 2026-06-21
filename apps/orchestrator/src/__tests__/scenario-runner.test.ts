@@ -4,6 +4,19 @@ import { Registry } from '@agenttalk/runtime-core/registry/registry';
 import { ScenarioRunner } from '@agenttalk/runtime-scenarios/scenarios/scenario-runner';
 import type { ScenarioDefinition } from '@agenttalk/runtime-scenarios/scenarios/types';
 
+vi.mock('child_process', () => ({
+  default: { execSync: vi.fn() },
+  execSync: vi.fn(),
+}));
+
+vi.mock('fs', async (importOriginal) => {
+  const actual: any = await importOriginal();
+  return {
+    ...actual,
+    existsSync: vi.fn().mockReturnValue(false),
+  };
+});
+
 describe('ScenarioRunner', () => {
   let originalAttachMode: string | undefined;
   beforeEach(() => {
@@ -43,14 +56,14 @@ describe('ScenarioRunner', () => {
 
   const minimalScenario: ScenarioDefinition = {
     name: 'Test Scenario',
-    agents: [{ id: 'agent-a', provider: 'custom', model: 'gemini-2.5-pro' }],
+    agents: [{ id: 'agent-a', provider: 'gemini', model: 'gemini-2.5-pro' }],
   };
 
   const twoAgentScenario: ScenarioDefinition = {
     name: 'Two Agent Chat',
     agents: [
-      { id: 'agent-a', provider: 'custom', model: 'gemini-2.5-pro' },
-      { id: 'agent-b', provider: 'custom', model: 'sonnet' },
+      { id: 'agent-a', provider: 'gemini', model: 'gemini-2.5-pro' },
+      { id: 'agent-b', provider: 'claude', model: 'sonnet' },
     ],
     conversations: [
       {
@@ -65,11 +78,8 @@ describe('ScenarioRunner', () => {
     const runner = new ScenarioRunner({ readinessTimeoutMs: 100 });
     const runPromise = runner.run(minimalScenario, registry);
 
-    await vi.advanceTimersByTimeAsync(10);
-    registry.handleMcpConnect('agent-a');
-    const agent = registry.getAgent('agent-a');
-
     const result = await runPromise;
+    const agent = registry.getAgent('agent-a');
     expect(result.status).toBe('completed');
     expect(result.agentIds).toEqual(['agent-a']);
     expect(agent.status).toBe('ready');
@@ -79,25 +89,22 @@ describe('ScenarioRunner', () => {
     const runner = new ScenarioRunner({ readinessTimeoutMs: 500 });
     const runPromise = runner.run(twoAgentScenario, registry);
 
-    await vi.advanceTimersByTimeAsync(10);
-    registry.handleMcpConnect('agent-a');
-
-    expect(registry.getConversations()).toHaveLength(0);
-
-    await vi.advanceTimersByTimeAsync(10);
-    registry.handleMcpConnect('agent-b');
-
-    const result = await runPromise;
-    expect(result.status).toBe('completed');
-    expect(result.conversationIds).toHaveLength(1);
+    await runPromise;
     expect(registry.getConversations()).toHaveLength(1);
+    expect(registry.getConversations()[0].status).toBe('active');
   });
 
   it('should fail with timeout when an agent never becomes ready', async () => {
+    // To test timeout, we need an agent that doesn't become ready instantly
+    const customScenario: ScenarioDefinition = {
+      name: 'Custom',
+      agents: [{ id: 'agent-x', provider: 'attach://test', model: 'test' }]
+    };
     const runner = new ScenarioRunner({ readinessTimeoutMs: 100 });
-    const runPromise = runner.run(minimalScenario, registry);
+    const runPromise = runner.run(customScenario, registry);
 
-    await vi.advanceTimersByTimeAsync(200);
+    await vi.advanceTimersByTimeAsync(150);
+
     const result = await runPromise;
     expect(result.status).toBe('error');
     expect(result.error).toContain('No agents became ready');

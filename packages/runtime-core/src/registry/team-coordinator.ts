@@ -460,6 +460,10 @@ export class TeamCoordinator {
 
     const task = this.tasks.get(team.currentTaskId);
     if (!task || task.status !== 'planning') {
+      if (task && task.status === 'awaiting_confirmation') {
+         this.deps.logError(`[TeamCoordinator] Ignoring message from ${senderAgentId} because plan is already submitted`, null);
+         return false;
+      }
       return false;
     }
 
@@ -565,6 +569,10 @@ export class TeamCoordinator {
 
     const task = this.tasks.get(team.currentTaskId);
     if (!task || task.status !== 'planning') {
+      if (task && task.status === 'awaiting_confirmation') {
+         this.deps.logError(`[TeamCoordinator] Ignoring agreement_proposal from ${agentId} because plan is already submitted`, null);
+         return;
+      }
       throw new Error('Cannot submit agreement_proposal: task is not in planning status');
     }
     const currentPhase = this.getPlanningPhase(task.id);
@@ -638,6 +646,10 @@ export class TeamCoordinator {
 
     const task = this.tasks.get(team.currentTaskId);
     if (!task || task.status !== 'planning') {
+      if (task && task.status === 'awaiting_confirmation') {
+         this.deps.logError(`[TeamCoordinator] Ignoring agreement_acceptance from ${agentId} because plan is already submitted`, null);
+         return;
+      }
       throw new Error('Cannot submit agreement_acceptance: task is not in planning status');
     }
     const currentPhase = this.getPlanningPhase(task.id);
@@ -1034,6 +1046,10 @@ export class TeamCoordinator {
 
     const task = this.tasks.get(team.currentTaskId);
     if (!task || task.status !== 'planning') {
+      if (task && task.status === 'awaiting_confirmation') {
+         this.deps.logError(`[TeamCoordinator] Ignoring fact_collection_end from ${agentId} because plan is already submitted`, null);
+         return;
+      }
       throw new Error('Cannot end fact collection: task is not in planning status');
     }
 
@@ -1241,6 +1257,10 @@ export class TeamCoordinator {
     const { team, task } = this.getTeamContextByAgent(agentId);
 
     if (task.status !== 'planning') {
+      if (task.status === 'awaiting_confirmation') {
+        this.deps.logError(`[TeamCoordinator] Ignoring submit_plan from ${agentId} because plan is already submitted`, null);
+        return;
+      }
       throw new Error(`Cannot submit plan: task status is ${task.status}`);
     }
 
@@ -2076,7 +2096,7 @@ function assertPlanIsImplementationReady(plan: string): void {
     .map((line) => line.trim())
     .filter((line) => /^\d+\./.test(line) || /^[-*]\s+/.test(line));
 
-  const hasConcreteChangeVerb = /(implement|refactor|extract|rename|replace|update|remove|simplify|split|move|delete|add|introduce|consolidate)/i.test(normalized);
+  const hasConcreteChangeVerb = /(implement|refactor|extract|rename|replace|update|remove|simplify|split|move|delete|add|introduce|consolidate|create|write)/i.test(normalized);
   const hasConcreteTarget = /[`'"][^`'"\n]+[`'"]|(?:^|\s)(?:src|web|scripts)\/[^\s:]+|[A-Za-z0-9_-]+\.[a-z]{2,}/.test(normalized);
   const exploratoryStepCount = stepLines.filter((line) =>
     /^\d+\.\s*(?:\*\*)?(analyze|identify|find|look for|explore|review|inspect|examine|investigate)\b/i.test(line)

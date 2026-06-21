@@ -1,6 +1,19 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { Registry } from '@agenttalk/runtime-core/registry/registry';
 import { existsSync, rmSync } from 'fs';
+
+vi.mock('child_process', () => ({
+  default: { execSync: vi.fn() },
+  execSync: vi.fn(),
+}));
+
+vi.mock('fs', async (importOriginal) => {
+  const actual: any = await importOriginal();
+  return {
+    ...actual,
+    existsSync: vi.fn().mockReturnValue(false),
+  };
+});
 import { deriveConversationStatus } from '@agenttalk/runtime-core/conversations/conversation-status';
 
 describe('Registry', () => {
@@ -42,13 +55,13 @@ describe('Registry', () => {
     expect(agent.requestedExecutionMode).toBe('interactive');
   });
 
-  it('should activate an agent and transition to starting', async () => {
+  it('should activate an agent and transition to ready', async () => {
     await registry.createAgent('agent-1');
-    await registry.activateAgent('agent-1', 'custom', 'sonnet', 'auto');
+    await registry.activateAgent('agent-1', 'claude', 'sonnet', 'auto');
 
     const agent = registry.getAgent('agent-1');
-    expect(agent.status).toBe('starting');
-    expect(agent.provider).toBe('custom');
+    expect(agent.status).toBe('ready');
+    expect(agent.provider).toBe('claude');
     expect(agent.model).toBe('sonnet');
     expect(agent.requestedExecutionMode).toBe('auto');
   });

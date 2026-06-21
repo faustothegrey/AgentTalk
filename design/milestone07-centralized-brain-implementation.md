@@ -386,6 +386,11 @@ Prove the brain replaces the semantic harness for **consensus** before deleting 
 | **T4b-3.5 — No regression + contract unchanged.** Full suite + `tsc -b` both repos; **verify** `wire-contract.json` byte-identical to v4, both copies match. | — | **not-started** | `tsc -b` 0; vitest all-pass both repos; `diff -q` contracts IDENTICAL; `git diff` shows no contract change; 0 pollution. |
 
 ## Log (append-only, dated)
+- 2026-06-21 — **T4b-2.2 implementation paused / report generated (Gemini).** Debugged the live test `test-live-server-api-team.mjs`:
+  1. The test lacked a call to the `/api/teams/:id/tasks/:taskId/confirm` endpoint when reaching `awaiting_confirmation`. Added this so the worker receives the task.
+  2. Fixed a race condition in `TeamCoordinator.ts` where late arriving `submit_plan` or agreement messages after `awaiting_confirmation` were causing throws that crashed the orchestrator. Updated to gracefully ignore and log them.
+  3. The worker refused the plan because `TeamCoordinator` appends a strict `git worktree` requirement, but the test instructed the planners to use the root directory. Updated the test prompt to explicitly ask planners to create a git worktree.
+  4. Ran the final test but was halted by the user midway. Logs showed planners reached consensus, the test confirmed the plan, and the worker was assigned. However, a lingering issue was observed where an agent that confirmed agreement occasionally still attempts to submit a plan, resulting in a caught exception (`Error: The agent that confirmed agreement_acceptance cannot submit the plan`), though the other planner successfully submitted it right after. **Baton → reviewer / human.**
 - 2026-06-21 — **T4b-2 review (reviewer, by running) → REFUTED (2 blockers).** Routing change is on the right track
   (`registry.ts`: gemini/claude/codex join `driverProviders` + use the exec queue). **But: (B1)** the suite is
   **non-hermetic** — leaked `task-task-1782048332236` (reviewer pruned); those providers now get the worktree-provisioning

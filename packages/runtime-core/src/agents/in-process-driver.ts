@@ -109,7 +109,7 @@ export class InProcessAgentDriver {
     let prompt: string | null = null;
     let expectsStructured = false;
 
-    if (evt.type === 'custom_event_request' && (evt as any).event === 'ack_planning_protocol') {
+    if (evt.type === 'custom_event_request') {
       prompt = (evt as any).prompt || null;
       expectsStructured = true;
     } else {
