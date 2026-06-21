@@ -1,6 +1,6 @@
 # Milestone 07 — Centralized Agent Brain — Implementation Status
 
-**Status:** **T3-S1 spike DONE ✅ (reviewer-run) → D2 settled; next = T3b spec.** Findings: native `agy --continue` session **works** through exec-RPC (option 2 viable), **but** the driver currently **resends full history** (option 1) and native session **doesn't survive a harness restart** (ephemeral home). **D2 recommendation = hybrid: native session steady-state + resend-based recovery fallback** (see D2 block; T3b owns it). Reconnect+exec-RPC delivery gap surfaced → IMP-T3b-1. T3a MERGED (orchestrator `e9186e1`, harness `17edffc`; master 157/157). T1+T2 DONE/merged (T2.4 deferred). M06 closed; R1 GREEN.
+**Status:** **T3-S1 + T3-S2 spikes DONE ✅ (reviewer-run) → next = T3b spec.** T3-S2 **proved no-resend works**: cli-exec agent ran a 5-turn fact-chain correct on **native memory only**, prompt **flat** vs resend's O(n) (4.4× by turn 5, widening) → removing the resend is safe + worth it; T3b implements the cli-exec no-resend branch as a priority (guard API path) + LB-5 recovery fallback. Findings: native `agy --continue` session **works** through exec-RPC (option 2 viable), **but** the driver currently **resends full history** (option 1) and native session **doesn't survive a harness restart** (ephemeral home). **D2 recommendation = hybrid: native session steady-state + resend-based recovery fallback** (see D2 block; T3b owns it). Reconnect+exec-RPC delivery gap surfaced → IMP-T3b-1. T3a MERGED (orchestrator `e9186e1`, harness `17edffc`; master 157/157). T1+T2 DONE/merged (T2.4 deferred). M06 closed; R1 GREEN.
 **Plan:** `design/milestone07-centralized-brain-plan.md` (architect-owned; this doc tracks status only).
 **Last verified:** 2026-06-21 (T3a round 1) · **Verifier:** Claude
 
@@ -166,6 +166,24 @@ transcripts if quota-blocked → BLOCKED, not REFUTED). Implementer: claim-only 
 recovery fallback.** T3b implements #1 + #2; #3 is an optional hardening. Cross-cutting facts recorded as
 **LB-4** (driver resends full transcript today) and **LB-5** (native session works / ephemeral home / no usage).
 
+## Task M07-T3-S2 — no-resend spike (kill the O(n) transcript resend)  *(SPIKE DONE ✅ — reviewer-run)*
+
+**Why now:** LB-4 (driver resends the full transcript every turn) is the long-run cost bomb — prompt grows
+O(n) → context blow-up on long tasks. **Goal:** prove a cli-exec agent can run with **no resend** (latest
+turn only, native `--continue` memory) and stay correct, and quantify the saving. **cli-exec only** (API
+agents can't drop resend — stateless). Recovery (LB-5) deliberately **out of scope** here → T3b.
+
+| S2 finding | Verdict | Evidence |
+|---|---|---|
+| **Correctness on native memory.** 5-turn fact-chain: plant A=apple,B=bridge,C=cloud,D=dragon (turns 1–4), then turn 5 "list all four" — each prompt carrying **only its own turn**. | **VERIFIED ✅** | Turn-5 reply = `apple, bridge, cloud, dragon` — all four recalled from native session, **zero transcript resent**. `spikes/m07-t3-s2-noresend-probe.mjs`, live agy. |
+| **Cost: no-resend prompt stays flat; resend grows O(n).** | **VERIFIED ✅** | Measured prompt bytes — no-resend: `44,45,44,45,97`; resend (projected from the same real replies, LB-4 format): `52,160,231,303,427`. **4.4× by turn 5 and widening** — and this is a toy; on a real consensus (dozens of turns + full plan text) it's catastrophic. |
+| **Approach for T3b.** | **RECOMMEND** | Confirms D2 #1: add a **cli-exec branch in the driver's prompt-building** that sends only the latest turn (native memory carries context). Guard it — API/T1-T2 resend path stays byte-for-byte. Pair with the LB-5 recovery fallback when productionised. |
+
+**Net:** removing the resend is **proven safe and worth it** — flat prompt, correct on native memory. T3b
+should implement the no-resend cli-exec path as a **priority** (it's the cost win), with the recovery
+fallback (LB-5) alongside. No production code shipped here (spike: `spikes/m07-t3-s2-noresend-probe.mjs` +
+recorded log).
+
 **Impediments / carry-forward (→ T3b):**
 - **IMP-T3b-1 (reconnect+exec-RPC delivery gap).** In probe 1, the turn issued **after** a harness
   SIGKILL+relaunch **timed out** over the driver path: the connection dropped (1006), the agent
@@ -176,6 +194,7 @@ recovery fallback.** T3b implements #1 + #2; #3 is an optional hardening. Cross-
 
 ## Log (append-only, dated)
 - 2026-06-21 — **T3a implementer fixes (round 2).** Rewrote `cli-exec-agent.test.ts` to mock the pull path (`handleMcpToolCall` with `await_turn` and `submit_exec_result`), successfully restoring it to 100% green. Removed the stray debug log from `registry.ts`. Committed the working tree on both `AgentTalk` and `agentalk-mcp-client` in the `m07-t3a-cli-exec` branch. T3a is fully 100% green, committed, and ready for re-review!
+- 2026-06-21 — **T3-S2 no-resend spike run (reviewer, by running) → PROVEN.** Fausto flagged the LB-4 resend as too expensive long-run; ran `spikes/m07-t3-s2-noresend-probe.mjs` live: a cli-exec agent ran a 5-turn fact-chain sending **only the latest turn** each time and turn 5 recalled all four facts (`apple, bridge, cloud, dragon`) from native `--continue` memory. Prompt bytes **flat** (44,45,44,45,97) vs resend projection (52,160,231,303,427) — **4.4× by turn 5, widening**. ⇒ removing the resend is safe + worth it. Recorded as T3-S2 block; reinforces D2 #1. Recovery (LB-5) deferred to T3b. **Baton → architect: spec T3b (no-resend cli-exec branch is now a priority slice).**
 - 2026-06-21 — **T3-S1 spike run (reviewer, by running) → D2 SETTLED.** Two live probes (`spikes/m07-t3-s1-session-probe.mjs`, `…-native-session-probe.mjs`). **Overturned my pre-spike assumption:** exec-RPC does NOT currently rely on native `--continue` — the driver **resends the full transcript** (captured in the turn-2 prompt), so we're on option 1 today. **But** the isolated probe (minimal prompt, no transcript) proved **native session genuinely persists** (agy recalled the codeword) ⇒ option 2 viable. **Recovery fails** (ephemeral mkdtemp home torn down on exit → relaunch = fresh session). agy surfaces **no token usage** (zeros) → cost is structural, not measured. **D2 recommendation = hybrid** (native steady-state + resend recovery fallback; optional sessionId-keyed stable home for durable native recovery) — written in the ledger D2 block for T3b. Verdicts: S1.1/2/3/4/6 ✅, S1.5 PARTIAL ⚠️. Surfaced **IMP-T3b-1** (reconnect+exec-RPC delivery gap). **Baton → architect: spec T3b.**
 - 2026-06-21 — **T3a MERGED + T3-S1 spec'd.** Merged `m07-t3a-cli-exec` → `master` in both repos (orchestrator `e9186e1`, harness `17edffc`); post-merge master = **157/157 green**, `tsc -b` clean. **Backlog gate run** (pre-T3-S1): 4 open items all stay parked, none fold into the spike. Wrote **T3-S1** spec (plan §11b, rows S1.1–S1.6) — session-model spike to settle D2; grounded in the pre-known fact that exec-RPC already rides `GeminiPersistentExecutor`'s `agy --continue` + isolated home, so the spike proves/refutes + probes recovery rather than building session support. **Baton → implementer** (branch `m07-t3-s1-session-spike`).
 - 2026-06-21 — **T3a round-2 review (reviewer, by running) → ALL VERIFIED.** All 3 round-1 refutations fixed and **committed** (orchestrator `3951db9`+`40dd419`, harness `782cbe7`): (1) `cli-exec-agent.test.ts` rewritten to drive the **pull** path (await_turn→exec_rpc→submit_exec_result→send_to_agent) — **passes**; (2) debug `console.log` removed from `await_turn`; (3) both repos committed, trees clean. Re-ran myself: **157/157 green**, `tsc -b` clean, and **live agy turn re-confirmed** via exec-RPC (`m07-t3a-cli-exec-smoke.log`). T3a.1/3/5 still ✅. Verdicts T3a.1–6 all VERIFIED. **Ready to merge `m07-t3a-cli-exec` → `master`.** Housekeeping nits (non-blocking): `m07-t3a-cli-exec-smoke.log` + `*.tsbuildinfo` are tracked (should be gitignored, as in T2). **Baton → human/merge.**
