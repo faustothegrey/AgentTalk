@@ -367,12 +367,61 @@ harness path (must keep working).
 mocked transport) → a planner turn yields the right tool call; (b) **one live agy planner turn via
 exec-RPC**, recorded.
 
-### 11b. T3-S1 — session-model spike (R3)  ·  11c. T3b — worker agentic-exec + effect-fence  ·  11d. T3c — contract bump
-Outlined now, detailed when T3a closes:
-- **T3-S1 (spike):** prove `sessionId`/`--continue` native-session round-trips through exec-RPC (no
-  resend); measure determinism + on-disk `--resume` recovery. Settles D2 concretely.
+### 11b. T3-S1 — session-model spike (R3)  *(implementation-ready · branch `m07-t3-s1-session-spike`)*
+
+**Type: spike (workflow §8).** Goal is **knowledge, not production code** — answer D2 with evidence so
+T3b's session handling isn't a guess. Output = a probe script + a written **findings + recommendation**
+that concretely settles D2 (lean: option 2, opaque `sessionId` / native CLI session — see prep §3.3).
+
+**What we already know (grounds the spike — don't re-discover):** the exec-RPC path
+(`handleExecRpc` → `executor.executeTurn`) **already routes through `GeminiPersistentExecutor`**, which
+runs **`agy --continue`** (executor-runtime.mjs ~L483) inside an **isolated per-agent home**
+(`GEMINI_CLI_HOME` = a `mkdtemp` dir, ~L395/499) with auth copied from the real `~/.gemini`. So native
+session continuity *may already work* through exec-RPC. The spike's job is to **prove or refute it**, and
+probe **recovery** — not to build session support from scratch.
+
+**Questions to answer (each with recorded evidence):**
+- **Q-S1a — No-resend continuity (the core claim).** Do **two consecutive exec-RPC turns** to the *same*
+  CLI agent share native memory **without the orchestrator resending turn-1 content**? Method: turn 1
+  plants a fact (e.g. "remember the codeword: BÉLIER"); turn 2 asks for it back. Assert turn-2 reply
+  contains the fact **and** that the turn-2 prompt the orchestrator sent did **not** include turn-1's
+  text. Green ⇒ option 2 viable, harness stays dumb, brain stays central.
+- **Q-S1b — Determinism / protocol-safety.** The orchestrator can't see the CLI's exact context
+  (compaction). Confirm this is OK because enforcement is on the **reply's `message_type`**, not internal
+  context: across ≥2 structured turns the reply still parses to a legal `message_type`. (Observation, not
+  a hard gate — record the finding.)
+- **Q-S1c — Recovery (ties to R2).** Does the on-disk session survive a **harness process restart**?
+  Method: plant a fact (turn 1) → kill the harness → relaunch against the **same** home → ask for the
+  fact. Does `--continue`/`--resume <id>` recover it? **Record whether an explicit `sessionId` is needed
+  for recovery** (this is the concrete D2 deliverable for T3b). If the isolated home is `mkdtemp` and
+  torn down on exit, note that recovery requires a **stable, non-ephemeral home/sessionId** — a finding
+  T3b must act on.
+- **Q-S1d — Cost.** Record token usage for native-session (no resend) vs. the stateless-resend
+  alternative for the same 2-turn exchange. Confirm native wins (expected: decisively).
+
+**Scope — DO:** add a spike script under `spikes/` (e.g. `m07-t3-s1-session-probe.mjs`) reusing the
+T3a live-smoke harness wiring (`scripts/test-cli-exec-gate.mjs` as the template); run it live with real
+**agy**; **record transcripts/logs**; write the findings + D2 recommendation into the ledger (T3-S1
+section) — and if recovery needs an explicit `sessionId`, specify the **exact** orchestrator/harness
+change for T3b (don't implement it here).
+
+**Scope — DO NOT:** ship production session code, change the `Completer` contract, touch
+`TeamCoordinator` / the API path / the M05/M06 semantic path. No worker, no effect-fence (that's T3b).
+A spike may leave throwaway scaffolding in `spikes/` — it does **not** need to be production-clean, but
+it must be **honestly reported** (what ran, what was observed, what's still unknown).
+
+**DoD (spike):** all four questions answered with **recorded live evidence**, and a written D2
+recommendation in the ledger that is concrete enough for T3b to implement against (esp. Q-S1c: is an
+explicit `sessionId` required, and if so, the exact shape). Reviewer verdict = VERIFIED only after
+**re-running the probe** (or inspecting the recorded transcripts if a live re-run is quota-blocked →
+BLOCKED, not REFUTED). Implementer creates branch `m07-t3-s1-session-spike` off `master`, claim-only
+commits.
+
+### 11c. T3b — worker agentic-exec + effect-fence  ·  11d. T3c — contract bump
+Outlined now, detailed when T3-S1 / T3a close:
 - **T3b:** the **worker** run-to-completion agentic exec + **effect-fence = stop-and-ask** (D4) +
-  reconnect handling. The heavy, side-effecting half (worktree). **Fausto in the loop.**
+  reconnect handling. The heavy, side-effecting half (worktree). **Fausto in the loop.** Consumes T3-S1's
+  session recommendation.
 - **T3c:** wire-contract bump for exec-RPC + **hash-guard re-bump**; flip nothing on by default yet.
 
 **DoD** — claim/verdict rows in `milestone07-centralized-brain-implementation.md` (T3a.x first). A row

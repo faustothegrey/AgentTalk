@@ -1,6 +1,6 @@
 # Milestone 07 — Centralized Agent Brain — Implementation Status
 
-**Status:** **Task M07-T3a — ROUND 2 ALL VERIFIED ✅ → ready to merge.** All 6 rows VERIFIED (round-1 ❌ on T3a.2/4/6 fixed: test rewritten to the pull path → passes, debug log removed, both repos committed). Reviewer re-ran: **157/157 green**, `tsc -b` clean, **live agy turn re-confirmed** via exec-RPC. Commits: orchestrator `3951db9`+`40dd419`, harness `782cbe7`. **Awaiting merge to `master`.** T1 + T2 **DONE/merged** (T2.4 deferred → backlog, Google `UNAVAILABLE` 2026-06-21). M06 closed; R1 GREEN.
+**Status:** **T3a MERGED ✅ (orchestrator `e9186e1`, harness `17edffc`; master 157/157 green, tsc clean) → next: T3-S1 SPEC READY.** Backlog gate passed (4 items stay parked, none fold in). **T3-S1** (session-model spike, D2) is implementation-ready → branch `m07-t3-s1-session-spike` off `master`, rows S1.1–S1.6 below; spec plan §11b. **Green-lit for the implementer.** T1 + T2 **DONE/merged** (T2.4 deferred → backlog, Google `UNAVAILABLE` 2026-06-21). M06 closed; R1 GREEN.
 **Plan:** `design/milestone07-centralized-brain-plan.md` (architect-owned; this doc tracks status only).
 **Last verified:** 2026-06-21 (T3a round 1) · **Verifier:** Claude
 
@@ -27,7 +27,8 @@
 |---|---|---|---|
 | **M07-T1** | API agent in-orchestrator, **single agent** (in-process driver, Google) | `m07-t1-api-agent-driver` | **DONE ✅** (T1.1–T1.6 VERIFIED, merged) |
 | **M07-T2** | Multi-agent API **consensus** in-orchestrator (2 planners → submit_plan → worker) | `m07-t2-api-consensus` | **spec ready** (plan §10; T2.1–T2.5 below) |
-| **M07-T3** | **CLI harness inversion** (exec-RPC) + reconnect/effect-fence + contract bump | `m07-t3a-cli-exec` (T3a) | **spec ready** (plan §11; T3a rows below) |
+| **M07-T3** | **CLI harness inversion** (exec-RPC) + reconnect/effect-fence + contract bump | `m07-t3a-cli-exec` (T3a) | **T3a DONE ✅** (merged `e9186e1`/harness `17edffc`); T3-S1 spec ready; T3b/T3c outlined |
+| ↳ **M07-T3-S1** | **Spike:** session model (D2) — native `agy --continue` round-trips through exec-RPC + recovery | `m07-t3-s1-session-spike` | **SPEC READY** (plan §11b; S1 rows below) |
 | **M07-T4** | Retire client-side semantic logic; harness = transport + exec only | `m07-t4-retire-client-brain` | not started |
 
 ## Task M07-T1 — In-orchestrator API agent driver  *(ACTIVE — branch `m07-t1-api-agent-driver`)*
@@ -118,11 +119,31 @@ off by default), and **`TeamCoordinator` + the API/T1-T2 path stay untouched**. 
 | **T3a.5** **Live:** one real **agy** planner turn via exec-RPC, recorded (log/transcript). | **done** | **VERIFIED ✅ (reviewer ran it)** | "Script exists" ≠ recorded run — so the reviewer **ran it**: `node scripts/test-cli-exec-gate.mjs` spawned the real harness → real **agy** → `exec_rpc{prompt:"Say hello"}` → agy returned `"Hello! How can I help you today?"` → `submit_exec_result` (raw) → driver translated → `send_to_agent` → **TEST PASSED**, exit 0. Recorded: **`m07-t3a-cli-exec-smoke.log`**. |
 | **T3a.6** **No regression:** full suite green; M05/M06 attach + API (T1/T2) paths unchanged; `tsc -b` clean **committed**. | **done** | **VERIFIED ✅ (round 2)** | Round-1 REFUTED (suite red + uncommitted). **Round 2:** ran `npx vitest run` → **157/157 green (26 files)**; `tsc -b` clean (exit 0). **Now committed** in both repos — orchestrator `3951db9`+`40dd419` on `m07-t3a-cli-exec`; harness `782cbe7` ("Handle exec-RPC in client"); both working trees clean. T1/T2 + M05/M06 attach paths unchanged (157 includes the full consensus/driver suite). |
 
-**Later (outlined, plan §11b–d):** **T3-S1** session-model spike (R3/D2) · **T3b** worker agentic-exec
-+ effect-fence (D4 stop-and-ask) + reconnect (Fausto in the loop) · **T3c** contract bump + hash re-bump.
+**Later (outlined, plan §11c–d):** **T3b** worker agentic-exec + effect-fence (D4 stop-and-ask) +
+reconnect (Fausto in the loop) · **T3c** contract bump + hash re-bump.
+
+## Task M07-T3-S1 — session-model spike (R3 / D2)  *(SPEC READY — branch `m07-t3-s1-session-spike` off `master`)*
+
+**Type: spike (workflow §8) — knowledge, not production code.** Settles **D2** (session model) with live
+evidence so T3b doesn't guess. Spec: **plan §11b**. Key pre-known fact: exec-RPC already routes through
+`GeminiPersistentExecutor` → `agy --continue` in an isolated per-agent home, so the spike **proves/refutes
+and probes recovery**, it doesn't build session support. **DO NOT** ship production session code or touch
+`Completer`/`TeamCoordinator`/API/M05-M06 paths. A spike may leave throwaway scaffolding in `spikes/` but
+**must be honestly reported**. Reviewer VERIFIES by re-running the probe (or inspecting recorded
+transcripts if quota-blocked → BLOCKED, not REFUTED). Implementer: claim-only commits on the branch.
+
+| S1 DoD item | Implementer claim | Reviewer verdict | Evidence |
+|---|---|---|---|
+| **S1.1 — Probe script.** Add `spikes/m07-t3-s1-session-probe.mjs` (reuse `scripts/test-cli-exec-gate.mjs` wiring): one cli-exec agent, drives **≥2 consecutive exec-RPC turns** to it, captures each turn's sent-prompt + reply + usage to a recorded log. | — | not-checked | |
+| **S1.2 — Q-S1a no-resend continuity.** Turn 1 plants a fact (codeword); turn 2 asks for it. **Assert** turn-2 reply recalls it **and** the turn-2 prompt did **not** contain turn-1's text. Recorded. | — | not-checked | |
+| **S1.3 — Q-S1b determinism/protocol-safety.** Across ≥2 structured turns the reply still parses to a legal `message_type` despite the orchestrator not seeing CLI context. Recorded observation. | — | not-checked | |
+| **S1.4 — Q-S1c recovery.** Plant fact → **kill harness** → relaunch against the **same** home → ask for the fact. Record whether `--continue`/`--resume <id>` recovers it, and **whether an explicit `sessionId` (stable, non-ephemeral home) is required** — the concrete D2 deliverable for T3b. | — | not-checked | |
+| **S1.5 — Q-S1d cost.** Record token usage native-session (no resend) vs. stateless-resend for the same 2-turn exchange. Confirm native wins. | — | not-checked | |
+| **S1.6 — Findings + D2 recommendation.** Write a concrete D2 recommendation in this ledger (which option; if recovery needs an explicit `sessionId`, the **exact** orchestrator/harness shape for T3b). No production code shipped. | — | not-checked | |
 
 ## Log (append-only, dated)
 - 2026-06-21 — **T3a implementer fixes (round 2).** Rewrote `cli-exec-agent.test.ts` to mock the pull path (`handleMcpToolCall` with `await_turn` and `submit_exec_result`), successfully restoring it to 100% green. Removed the stray debug log from `registry.ts`. Committed the working tree on both `AgentTalk` and `agentalk-mcp-client` in the `m07-t3a-cli-exec` branch. T3a is fully 100% green, committed, and ready for re-review!
+- 2026-06-21 — **T3a MERGED + T3-S1 spec'd.** Merged `m07-t3a-cli-exec` → `master` in both repos (orchestrator `e9186e1`, harness `17edffc`); post-merge master = **157/157 green**, `tsc -b` clean. **Backlog gate run** (pre-T3-S1): 4 open items all stay parked, none fold into the spike. Wrote **T3-S1** spec (plan §11b, rows S1.1–S1.6) — session-model spike to settle D2; grounded in the pre-known fact that exec-RPC already rides `GeminiPersistentExecutor`'s `agy --continue` + isolated home, so the spike proves/refutes + probes recovery rather than building session support. **Baton → implementer** (branch `m07-t3-s1-session-spike`).
 - 2026-06-21 — **T3a round-2 review (reviewer, by running) → ALL VERIFIED.** All 3 round-1 refutations fixed and **committed** (orchestrator `3951db9`+`40dd419`, harness `782cbe7`): (1) `cli-exec-agent.test.ts` rewritten to drive the **pull** path (await_turn→exec_rpc→submit_exec_result→send_to_agent) — **passes**; (2) debug `console.log` removed from `await_turn`; (3) both repos committed, trees clean. Re-ran myself: **157/157 green**, `tsc -b` clean, and **live agy turn re-confirmed** via exec-RPC (`m07-t3a-cli-exec-smoke.log`). T3a.1/3/5 still ✅. Verdicts T3a.1–6 all VERIFIED. **Ready to merge `m07-t3a-cli-exec` → `master`.** Housekeeping nits (non-blocking): `m07-t3a-cli-exec-smoke.log` + `*.tsbuildinfo` are tracked (should be gitignored, as in T2). **Baton → human/merge.**
 - 2026-06-21 — **T3a round-1 review (reviewer, by running).** Verdicts: **T3a.1/3/5 VERIFIED**, **T3a.2/4/6 REFUTED**. The inversion is real — live agy turn round-trips raw text through exec-RPC (`m07-t3a-cli-exec-smoke.log`) and the harness handler is properly semantics-free. **But 3 things block merge:**
   1. **Broken required test** — `cli-exec-agent.test.ts` asserts a `sendProtocol` **push**, but `CliExecCompleter` is **pull-based** (`queueExecTurn`/`awaitExecTurn`). Test fails (`0 calls`) → suite **156 pass / 1 fail**. This same test is the DoD deliverable for both T3a.2 and T3a.4. Rewrite it to drive the pull path and pass.
