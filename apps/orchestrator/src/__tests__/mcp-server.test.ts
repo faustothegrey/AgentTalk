@@ -77,6 +77,36 @@ describe('McpServer', () => {
     ws.close();
   });
 
+  it('should reject initialization if contract hash mismatches', async () => {
+    mcpServer = new McpServer({
+      tools: dummyTools,
+      handler: vi.fn(),
+      expectedContractHash: 'expected-v4-hash',
+    });
+
+    const port = await mcpServer.start(0);
+    const ws = new WebSocket(`ws://localhost:${port}/mcp?agentId=agent-hash-fail`);
+
+    await new Promise<void>((resolve) => ws.once('open', resolve));
+
+    const initResponse = await new Promise<any>((resolve) => {
+      ws.once('message', (data) => resolve(JSON.parse(data.toString())));
+      ws.send(JSON.stringify({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'initialize',
+        params: { protocolVersion: '2024-11-05', clientInfo: { name: 'test', version: '1.0', contractHash: 'wrong-v3-hash' } },
+      }));
+    });
+
+    expect(initResponse.id).toBe(1);
+    expect(initResponse.error.code).toBe(-32000);
+    expect(initResponse.error.message).toContain('Contract hash mismatch');
+
+    const closeCode = await new Promise<number>((resolve) => ws.once('close', resolve));
+    expect(closeCode).toBe(1008);
+  });
+
   it('should reject a new connection when the existing session is live (R3)', async () => {
     // Two live clients on one agentId must NOT take over each other (that ping-pongs into
     // a reconnect war). The live session is protected; the newcomer is rejected with 4001.
