@@ -1,6 +1,6 @@
 # Milestone 07 — Centralized Agent Brain — Implementation Status
 
-**Status:** **Task M07-T2 RE-REVIEWED — MERGEABLE ✅.** All rows VERIFIED **or DEFERRED**: T2.1/T2.2/T2.3/T2.5 **VERIFIED ✅** (fixes `1b6950e` verified by running — suite 156/156, `team-coordinator.ts` reverted to master, BLOCK-1 sleep gone); **T2.4 DEFERRED → backlog** (IMP-1 quota; non-blocking per Fausto). Merge gate met → reviewer to merge `m07-t2-api-consensus` → `master`. T1 COMPLETE (merged). M06 closed; R1 spike GREEN. **Backlog:** re-run T2.4 live after quota reset (reopen T2 if it fails).
+**Status:** **Task M07-T3 SPEC READY (T3a).** T1 + T2 **DONE/merged** (T2.4 deferred → backlog, still open — Google `UNAVAILABLE` on 2026-06-21 retry). T3 = CLI harness inversion (exec-RPC); spec in **plan §11**, 4 decisions resolved (coexistence-flag / sessionId-direction / pilot agy / effect-fence stop-and-ask). **T3a** (planner exec-RPC) is implementation-ready → branch `m07-t3a-cli-exec`. M06 closed; R1 GREEN.
 **Plan:** `design/milestone07-centralized-brain-plan.md` (architect-owned; this doc tracks status only).
 **Last verified:** 2026-06-20 (spike/R1) · **Verifier:** Claude
 
@@ -27,7 +27,7 @@
 |---|---|---|---|
 | **M07-T1** | API agent in-orchestrator, **single agent** (in-process driver, Google) | `m07-t1-api-agent-driver` | **DONE ✅** (T1.1–T1.6 VERIFIED, merged) |
 | **M07-T2** | Multi-agent API **consensus** in-orchestrator (2 planners → submit_plan → worker) | `m07-t2-api-consensus` | **spec ready** (plan §10; T2.1–T2.5 below) |
-| **M07-T3** | **CLI harness inversion** (exec-RPC) + reconnect/effect-fence + contract bump | `m07-t3-harness-inversion` | not started |
+| **M07-T3** | **CLI harness inversion** (exec-RPC) + reconnect/effect-fence + contract bump | `m07-t3a-cli-exec` (T3a) | **spec ready** (plan §11; T3a rows below) |
 | **M07-T4** | Retire client-side semantic logic; harness = transport + exec only | `m07-t4-retire-client-brain` | not started |
 
 ## Task M07-T1 — In-orchestrator API agent driver  *(ACTIVE — branch `m07-t1-api-agent-driver`)*
@@ -98,7 +98,36 @@ cleared and the rows flip to VERIFIED.
 | **DEV-2** | deviation | T2.1/T2.2 | Added a new structured `message_type` **`ack_planning_protocol`** (`response-schema.ts` + `translation.ts`) and a driver branch for the `custom_event_request{event:'ack_planning_protocol'}` turn — beyond the stated G1/G2 scope, but the planning protocol's ack phase is required for in-process planners to reach fact-collection. | **ACCEPT (record).** Necessary and consistent (the registry already has `ack_planning_protocol`). Keep; it's in-scope-adjacent. Add a focused unit assertion for the ack turn. |
 | **DEV-3** | opinion | T2.4 | Marked T2.4 `done (hit API quotas but script works)`. | **Reframed as IMP-1 + verdict BLOCKED ⛔.** The honest status: the *code path* works, the *DoD* (worker completes live) was not observed. Claim kept (it's the implementer's column); verdict is BLOCKED, not VERIFIED. Exactly the case §3c exists for. |
 
+## Task M07-T3 — CLI harness inversion (exec-RPC)  *(T3a SPEC READY — branch `m07-t3a-cli-exec`)*
+
+Spec: **plan §11**. **Guardrail flip:** T3 **may/must touch the harness** (`agentalk-mcp-client`) — but
+its exec path stays **semantics-free**, the **M05/M06 path keeps working** (coexistence, flag-gated,
+off by default), and **`TeamCoordinator` + the API/T1-T2 path stay untouched**. Decisions baked in
+(D1 coexistence-flag, D2 sessionId-direction, D3 pilot agy, D4 effect-fence stop-and-ask). Carry
+**LB-3** (in-process path never sets `currentTurnId` → no dedup) into the exec-RPC turn handling.
+
+> Implementer fills *claim* (claim-only commits); reviewer fills *verdict* by running; merge on
+> all-VERIFIED-or-DEFERRED. **T3a only is in scope now** — T3-S1/T3b/T3c are later.
+
+| T3a DoD item | Implementer claim | Reviewer verdict | Evidence |
+|---|---|---|---|
+| **T3a.1** **Completer abstraction:** `interface Completer { complete(prompt, opts) → {text,usage} }`; refactor `InProcessAgentDriver` to use an **injected** completer; `ApiCompleter` wraps `callApi`. **T1/T2 behaviour byte-for-byte** (existing suite stays green). | — | not-checked | |
+| **T3a.2** **`CliExecCompleter`** (orchestrator): exec-RPC over the existing WS/MCP transport → awaits `{text,usage}`; stateless single-shot (R3 scaffolding). **Mocked-transport unit test.** | — | not-checked | |
+| **T3a.3** **Harness exec handler** (`agentalk-mcp-client`): on exec-RPC, run **agy** once → return raw `{text,usage}`, **semantics-free**; M05/M06 semantic path untouched + still selectable. | — | not-checked | |
+| **T3a.4** **Flag/config (coexistence, D1):** `provider:'cli-exec', providerName:'gemini'` takes the exec-RPC path; default behaviour unchanged / off by default. **Mocked CI test** drives a planner turn end-to-end via the driver+CliExecCompleter. | — | not-checked | |
+| **T3a.5** **Live:** one real **agy** planner turn via exec-RPC, recorded (log/transcript). | — | not-checked | |
+| **T3a.6** **No regression:** full suite green; M05/M06 attach + API (T1/T2) paths unchanged; `tsc -b` clean **committed**. | — | not-checked | |
+
+**Later (outlined, plan §11b–d):** **T3-S1** session-model spike (R3/D2) · **T3b** worker agentic-exec
++ effect-fence (D4 stop-and-ask) + reconnect (Fausto in the loop) · **T3c** contract bump + hash re-bump.
+
 ## Log (append-only, dated)
+- 2026-06-21 — **T3 kicked off.** Backlog gate run (no item pulled into T3; all parked with reasons —
+  cross-provider/auto-handoff/failure-modes deferred, T2.4 still blocked: Google `UNAVAILABLE` on retry).
+  Logbook skim → **LB-3** carried into T3. **4 decisions resolved (Fausto):** coexistence-flag /
+  sessionId-direction (+own spike) / pilot agy / effect-fence stop-and-ask. **Spec written: plan §11**
+  (T3a implementation-ready; T3-S1/T3b/T3c outlined) + T3a.1–T3a.6 rows above. Promoted from
+  `milestone07-t3-prep.md`. Handoff to Gemini: branch `m07-t3a-cli-exec` off `master`.
 - 2026-06-20 — Doc created as the M07 status ledger. No work started; M07 is parked behind M06
   closure (see `phase6-multi-agent-consensus-plan.md` §12 DoD).
 - 2026-06-20 — Spike `spikes/m07-api-structured-probe.mjs` written (isolated, no impact on

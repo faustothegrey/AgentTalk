@@ -297,3 +297,84 @@ Google end-to-end recorded run reaching worker completion.
 a row is done only when the reviewer's verdict is **VERIFIED** (ran it), per workflow §3b. Implementer
 creates branch `m07-t2-api-consensus` off `master`, claim-only commits; reviewer merges on
 all-VERIFIED.
+
+---
+
+## 11. Task M07-T3 — CLI harness inversion (exec-RPC)  **(T3a implementation-ready; T3b/T3c outlined)**
+
+**Goal.** Turn the CLI harness (`agentalk-mcp-client`) from a *semantic* client (it builds prompts,
+parses, maps `message_type`→tool — the M05/M06 model) into a **dumb remote executor**:
+`exec(prompt[, sessionId]) → {text, usage}`. The **brain** (prompt-build, parse/retry, translation,
+protocol) moves server-side — **reusing the exact loop T1/T2 already built**. Afterward the harness is
+frozen; new behaviour is added server-side only.
+
+**Key insight (grounded in code).** T1/T2's `InProcessAgentDriver` loop is
+`awaitTurn → buildPrompt → [GET COMPLETION] → parse/retry → translate → handleMcpToolCall`. For API
+agents `[GET COMPLETION]` = `callApi`. **T3 generalizes that one step** into a pluggable **Completer**
+(`complete(prompt, opts) → {text, usage}`): `ApiCompleter` (wraps T1/T2's `callApi`, unchanged) and a
+new **`CliExecCompleter`** that sends an **exec-RPC** to the harness and awaits raw text. Loop,
+prompt-build, translation, runtime: **all shared**. (Pre-spec reasoning: `milestone07-t3-prep.md`.)
+
+**Decisions baked in (Fausto, 2026-06-21):**
+- **D1 — Coexistence behind a flag**, not cutover. The exec-RPC path is added **alongside** the M05/M06
+  semantic path (config-gated); T4 retires the old path. (This *is* a contract/behaviour change →
+  authorised here per CLAUDE.md; it ships **off by default** until proven.)
+- **D2 — Session: `sessionId` / native CLI session direction** ("brain ≠ memory" — semantics
+  server-side, raw history in the CLI's `--continue` session). **R3 gets its own spike** (T3-S1) to
+  settle determinism/recovery; T3a may use stateless single-shot exec as scaffolding.
+- **D3 — Pilot on `gemini`/`agy`** (its persistent executor is proven in M06).
+- **D4 — Effect-fence (worker crash mid-exec): STOP and ask the human** — **no auto-reissue** to start.
+  The orchestrator surfaces the interrupted exec and waits; auto-reissue+dedup is a later, separate add.
+
+**The guardrail flip (read carefully).** Unlike T1/T2, **T3 MAY and MUST touch the harness**
+(`../agentalk-mcp-client`) — the inversion is the task. But constrained:
+- The harness's new exec path stays **semantics-free** (no prompt-building, no `message_type` parsing —
+  it runs the CLI and returns raw text+usage). All semantics live server-side.
+- **The existing M05/M06 semantic path keeps working** (D1 coexistence) — the inversion is additive and
+  flag-gated; default behaviour byte-for-byte preserved. **Still DO NOT TOUCH:** `TeamCoordinator` /
+  protocol determinism; the API path (T1/T2).
+- Contract change is real → **hash-guard re-bump happens in T3c**, not piecemeal.
+
+**Risks (see §4 R2/R3/R4, refined in the prep doc).**
+- **R2 effect-fence** (worst — a CLI exec mutates a worktree → not idempotent). Resolved *for now* by D4
+  (stop-and-ask). Owned by **T3b**.
+- **R3 session state** — D2; settled by spike **T3-S1**.
+- **Exec granularity** — planner turn = single completion; **worker = run-to-completion agentic exec**.
+  Two RPC shapes; the worker shape is **T3b**.
+
+### 11a. T3a — exec-RPC for a planner turn  *(implementation-ready · branch `m07-t3a-cli-exec`)*
+
+The cheapest slice that proves the inversion: a **read-only planner turn** driven server-side, the CLI
+reached only as `exec(prompt) → text`. No consensus complexity beyond one turn, no worker, no reconnect.
+
+**Scope — DO:**
+1. **Completer abstraction** in `runtime-core`: `interface Completer { complete(prompt, opts) →
+   {text, usage} }`. Refactor `InProcessAgentDriver` to call an **injected** completer instead of
+   `callApi` directly. `ApiCompleter` wraps `callApi` — **T1/T2 behaviour must stay byte-for-byte**
+   (prove via the existing suite staying green).
+2. **`CliExecCompleter`** (orchestrator side): sends an **exec-RPC** to the harness over the existing
+   WS/MCP transport and awaits `{text, usage}`. Stateless single-shot for T3a (R3 scaffolding, D2).
+3. **Harness exec handler** (`agentalk-mcp-client`): on an exec-RPC, run the **agy** CLI once on the
+   given prompt and return raw text+usage. **Semantics-free.** The existing semantic path is untouched
+   and still selectable.
+4. **Flag/config** (D1): an agent marked e.g. `provider:'cli-exec', providerName:'gemini'` takes the
+   exec-RPC path via the driver; everything else unchanged / off by default.
+
+**Scope — DO NOT TOUCH:** `TeamCoordinator`; the API path (T1/T2) behaviour; the M05/M06 semantic
+harness path (must keep working).
+
+**Smoke checkpoint:** (a) deterministic **mocked exec-RPC** unit test (driver + CliExecCompleter,
+mocked transport) → a planner turn yields the right tool call; (b) **one live agy planner turn via
+exec-RPC**, recorded.
+
+### 11b. T3-S1 — session-model spike (R3)  ·  11c. T3b — worker agentic-exec + effect-fence  ·  11d. T3c — contract bump
+Outlined now, detailed when T3a closes:
+- **T3-S1 (spike):** prove `sessionId`/`--continue` native-session round-trips through exec-RPC (no
+  resend); measure determinism + on-disk `--resume` recovery. Settles D2 concretely.
+- **T3b:** the **worker** run-to-completion agentic exec + **effect-fence = stop-and-ask** (D4) +
+  reconnect handling. The heavy, side-effecting half (worktree). **Fausto in the loop.**
+- **T3c:** wire-contract bump for exec-RPC + **hash-guard re-bump**; flip nothing on by default yet.
+
+**DoD** — claim/verdict rows in `milestone07-centralized-brain-implementation.md` (T3a.x first). A row
+is done only when the reviewer's verdict is **VERIFIED** (ran it), per §3b. Implementer creates branch
+`m07-t3a-cli-exec` off `master`, claim-only commits; reviewer merges on all-VERIFIED-or-DEFERRED.
