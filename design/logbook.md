@@ -101,3 +101,18 @@ entry carries a **stable `LB-N` id** — cite it from ledgers/backlog (titles ma
   2. `gemini-3.0-flash` and `gemma-4-31b-a4b-it` return `HTTP 404 NOT_FOUND`, indicating the model identifiers are either incorrect for this endpoint or not whitelisted for the current API key/tier.
 - **Implication:** We cannot easily swap to "Pro", "2.0", "3.0", or alternative parameterized Gemma models to overcome the 429 quota on the `google` provider under the current billing tier. To successfully run the multi-agent consensus test (T2.4), we either need a new API key/tier, or we must rely on the limited models outside the 2.5/2.0 umbrella that are accessible (like `gemini-3.1-flash-lite` or `gemma-4-26b-a4b-it`, though those currently fail protocol compliance — see LB-6 and LB-7).
 - **Source:** Live tests on `scripts/test-live-api-team.mjs` (see conversation logs).
+
+### LB-9 · 2026-06-21 — [tests] Any test on the real worker/consensus path must mock the worktree `execSync` or it pollutes the repo
+- **Finding:** the orchestrator's `handleTeamWorkAssign` (`packages/runtime-core/src/agents/in-process-driver.ts`)
+  provisions a per-task worktree via **`execSync('git worktree add <cwd> -b task-<taskId>')`** whenever
+  `completer.maintainsSession` (i.e. **cli-exec**). Any vitest that drives a real cli-exec worker/consensus turn through
+  the real `InProcessAgentDriver` — even one that mocks the *exec transport* — therefore creates **real git worktrees +
+  `task-task-*` branches on every run** unless it also stubs the provisioning. This trap has now bitten **twice**: B4
+  (T3b-2 round 1, 8 leaked worktrees) and **FIND-T4a-2** (T4a's `team-cli-exec-consensus.test.ts`, which shipped to
+  master in `87ebc52` before the reviewer caught it on a post-merge suite run).
+- **Implication:** mocking the exec transport is **not** enough for hermeticity. Mirror the established pattern in
+  `packages/runtime-core/src/registry/__tests__/cli-exec-agent.test.ts`: `vi.mock('child_process', …execSync: vi.fn())`
+  **and** `vi.mock('fs', … existsSync → false)`. Check it by asserting `git worktree list` / `git branch` are unchanged
+  after the suite. **Reviewer lesson:** verifying a mocked test is *deterministic* ≠ verifying it's *hermetic* — check
+  for worktree/branch leaks explicitly. Skim this before adding or reviewing any worker/consensus test (backlog gate).
+- **Source:** post-merge suite run on `87ebc52` (3 `task-task-*` branches appeared); fix on `m07-t4a-hotfix-hermetic-test`.

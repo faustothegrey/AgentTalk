@@ -1,6 +1,23 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { Registry } from '../registry.js';
 
+// HERMETICITY (FIND-T4a-2 / B4): the real `handleTeamWorkAssign` provisions a git
+// worktree via `execSync('git worktree add …')` for cli-exec agents. Without these
+// mocks this test creates real worktrees + `task-task-*` branches on every run.
+// Mirror the cli-exec-agent.test.ts pattern: stub execSync + existsSync. See [[LB-9]].
+vi.mock('child_process', () => ({
+  default: { execSync: vi.fn() },
+  execSync: vi.fn(),
+}));
+
+vi.mock('fs', async (importOriginal) => {
+  const actual: any = await importOriginal();
+  return {
+    ...actual,
+    existsSync: vi.fn().mockReturnValue(false),
+  };
+});
+
 describe('Team CLI-exec Consensus (mocked)', () => {
   let registry: Registry;
 

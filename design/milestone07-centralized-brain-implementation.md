@@ -354,6 +354,14 @@ Prove the brain replaces the semantic harness for **consensus** before deleting 
 | **T4b.5 — No regression + contract unchanged.** Full suite + `tsc -b` both repos; **verify** (not assume) `wire-contract.json` is byte-identical to v4 and both copies still match. | — | **not-started** | `tsc -b` exit 0; vitest all-pass both repos; `diff -q` the two contracts → IDENTICAL; `git diff` shows no contract change. |
 
 ## Log (append-only, dated)
+- 2026-06-21 — **FIND-T4a-2 (post-merge): T4a.2 mocked test was NON-HERMETIC → reviewer miss, hotfixed.** After merging
+  T4a (`87ebc52`), a routine `vitest run` on master created **`task-task-*` branches + real worktrees**: the mocked
+  consensus test drives the real `InProcessAgentDriver`, whose `handleTeamWorkAssign` does `execSync('git worktree add')`
+  for cli-exec — the test mocked the exec *transport* but not the *provisioning* (the **B4 trap, recurred**). **My review
+  miss:** I verified T4a.2 *determinism* (3×) but never checked *hermeticity*. Fix on `m07-t4a-hotfix-hermetic-test`:
+  `vi.mock('child_process')` + `vi.mock('fs', existsSync→false)` (mirrors `cli-exec-agent.test.ts`). Verified by running:
+  mocked test 3× + full suite → **0 worktrees / 0 branches** after, **163/163**, tsc 0. Captured as **[[LB-9]]** so it
+  stops recurring. Reviewer lesson: *deterministic ≠ hermetic* — check for worktree/branch leaks explicitly.
 - 2026-06-21 — **T4a FIND-T4a-1 round-2 fix → VERIFIED ✅ (reviewer, by running twice); ALL T4a ROWS VERIFIED.** Gemini
   replaced the path-scoped cleanup with the **snapshot-diff** approach (capture worktree paths before `assignTeamTask`;
   remove any new path + branch after). Reviewer re-ran the live gate **twice** (agy nondeterministic): both exit 0,
