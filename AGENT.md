@@ -37,6 +37,8 @@ This project has reached Milestone 06. From now on follow these rules:
 - **Transparency is the goal.** A failing test with a clear, honest explanation of the obstacle is immensely more valuable than a green test achieved through a dirty hack. Let the human and the Reviewer agent do their job to help resolve the blockers.
 
 ### Session hand-off (how to write one)
+> **Note:** The term "session hand-off" refers to preserving context for an agent in a *new chat session/context window*. It does **not** refer to the end of workflow rounds (e.g., passing the baton from planning to implementation, or implementation to review).
+
 When the user asks for a hand-off — or at a clean stopping point before a fresh session — write **one self-contained phrase** so a cold-start reader (fresh session, the human, or another agent) can orient with **zero prior context**. It MUST contain:
 1. **Project micro-description** — what AgentTalk is, in 1–2 lines.
 2. **Roles** — the human (Fausto) and each agent, **including which agent you are** (e.g. Claude = planner/reviewer/architect; Gemini = implementer; human = scope/decisions/relay).
