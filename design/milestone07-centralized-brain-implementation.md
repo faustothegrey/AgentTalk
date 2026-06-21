@@ -386,6 +386,15 @@ Prove the brain replaces the semantic harness for **consensus** before deleting 
 | **T4b-3.5 — No regression + contract unchanged.** Full suite + `tsc -b` both repos; **verify** `wire-contract.json` byte-identical to v4, both copies match. | — | **not-started** | `tsc -b` 0; vitest all-pass both repos; `diff -q` contracts IDENTICAL; `git diff` shows no contract change; 0 pollution. |
 
 ## Log (append-only, dated)
+- 2026-06-21 — **T4b-2 review (reviewer, by running) → REFUTED (2 blockers).** Routing change is on the right track
+  (`registry.ts`: gemini/claude/codex join `driverProviders` + use the exec queue). **But: (B1)** the suite is
+  **non-hermetic** — leaked `task-task-1782048332236` (reviewer pruned); those providers now get the worktree-provisioning
+  driver, so a test drives a real `git worktree add`. Gemini dodged it in `registry.test.ts`/`scenario-runner.test.ts` by
+  renaming providers to a fake **`'custom'`** (those tests no longer exercise real providers — a smell) and **still missed
+  one** → "T4b-2.3: 0 pollution" is **false**. Fix = mock `execSync`/`existsSync` ([[LB-9]]), don't rename to dodge.
+  **(B2) T4b-2.2 not done** — "proved via scripts using provider directly" ≠ the required **server-API/production-path**
+  proof (single turn **+** team→`completed`, recorded). Verdicts: 2.1 PARTIAL, 2.2 REFUTED, 2.3 REFUTED. tsc 0 / vitest
+  163/163 but **not hermetic**. **Baton → implementer.**
 - 2026-06-21 — **T4b-1 review (reviewer, by running) → ALL ROWS VERIFIED ✅.** Ran `test-cli-exec-provider.mjs`
   **live for both providers**: claude → exit 0, real reply `"Hello! What can I help you with today?"`; codex → exit 0,
   real reply `"Hello.\n"` — genuine CLI replies round-tripped over exec-RPC. **0 pollution** after each + post-suite leak
