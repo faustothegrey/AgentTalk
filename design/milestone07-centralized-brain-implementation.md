@@ -362,9 +362,9 @@ Prove the brain replaces the semantic harness for **consensus** before deleting 
 
 | T4b-1 DoD item | Implementer claim | Reviewer verdict | Evidence |
 |---|---|---|---|
-| **T4b-1.1 — Live cli-exec claude turn.** Parameterize `test-cli-exec-gate.mjs` (or a sibling) for `provider:'cli-exec', providerName:'claude'`: one real **claude** CLI turn via exec-RPC round-trips (`exec_rpc`→`submit_exec_result`→`send_to_agent`). Recorded. **Clean up** any worktrees ([[LB-9]]). | — | **not-started** | Script exits 0; log shows a real claude reply over exec-RPC; 0 worktree/branch pollution after. |
-| **T4b-1.2 — Live cli-exec codex turn.** Same for `providerName:'codex'` — one real **codex** CLI turn via exec-RPC. Recorded. | — | **not-started** | Script exits 0; real codex reply over exec-RPC; 0 pollution after. |
-| **T4b-1.3 — No regression.** `tsc -b` clean; full suite green; **committed**. Any new mocked test is **hermetic** ([[LB-9]] — mock `execSync`/`existsSync`). | — | **not-started** | `tsc -b` exit 0; vitest all-pass; suite leaves 0 worktrees/branches. |
+| **T4b-1.1 — Live cli-exec claude turn.** Parameterize `test-cli-exec-gate.mjs` (or a sibling) for `provider:'cli-exec', providerName:'claude'`: one real **claude** CLI turn via exec-RPC round-trips (`exec_rpc`→`submit_exec_result`→`send_to_agent`). Recorded. **Clean up** any worktrees ([[LB-9]]). | done | **not-started** | Script exits 0; log shows a real claude reply over exec-RPC; 0 worktree/branch pollution after. |
+| **T4b-1.2 — Live cli-exec codex turn.** Same for `providerName:'codex'` — one real **codex** CLI turn via exec-RPC. Recorded. | done | **not-started** | Script exits 0; real codex reply over exec-RPC; 0 pollution after. |
+| **T4b-1.3 — No regression.** `tsc -b` clean; full suite green; **committed**. Any new mocked test is **hermetic** ([[LB-9]] — mock `execSync`/`existsSync`). | done | **not-started** | `tsc -b` exit 0; vitest all-pass; suite leaves 0 worktrees/branches. |
 
 **Stage T4b-2 — migrate the production/UI path to cli-exec**  *(SPEC READY — branch `m07-t4b2-migrate-production`; after T4b-1)*
 
@@ -385,6 +385,7 @@ Prove the brain replaces the semantic harness for **consensus** before deleting 
 | **T4b-3.5 — No regression + contract unchanged.** Full suite + `tsc -b` both repos; **verify** `wire-contract.json` byte-identical to v4, both copies match. | — | **not-started** | `tsc -b` 0; vitest all-pass both repos; `diff -q` contracts IDENTICAL; `git diff` shows no contract change; 0 pollution. |
 
 ## Log (append-only, dated)
+- 2026-06-21 — **T4b-1 implemented (Gemini).** Created `m07-t4b1-cli-exec-providers` branch. Cloned `test-cli-exec-gate.mjs` into `test-cli-exec-provider.mjs`, parameterized it for provider input, and added snapshot-diff worktree cleanup. Ran live gate for both `claude` and `codex` — both successfully completed an `exec_rpc` turn and left zero worktree pollution. `tsc -b` and full suite (163/163) pass cleanly. Branch committed.
 - 2026-06-21 — **T4b PRE-FLIGHT → RE-SCOPED into 3 stages (architect).** Pre-flight (reading the production path) found
   the spec materially understated T4b: the **web UI runs gemini/claude/codex agents on the semantic harness** (no
   server-side driver — `registry.ts:210` drives only api/cli-exec), so deleting it breaks the live product; and
