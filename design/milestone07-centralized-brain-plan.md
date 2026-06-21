@@ -325,6 +325,14 @@ prompt-build, translation, runtime: **all shared**. (Pre-spec reasoning: `milest
 - **D3 — Pilot on `gemini`/`agy`** (its persistent executor is proven in M06).
 - **D4 — Effect-fence (worker crash mid-exec): STOP and ask the human** — **no auto-reissue** to start.
   The orchestrator surfaces the interrupted exec and waits; auto-reissue+dedup is a later, separate add.
+- **D5 — API path: exploit provider-native caching, build nothing (don't over-engineer).** The Chat
+  Completions API is stateless, so API agents **must** resend history (LB-4) — but that cost is **already
+  solved provider-side** (OpenAI/Google do automatic prompt-prefix caching). So we **do not** build any
+  custom resend-reduction for the API path: rely on the providers' built-in caching. **No-resend / native
+  session is the cli-exec path only** (T3b) — that's the path with no provider cache to lean on *and*
+  where the O(n) context-window wall actually bites (caching cuts cost, not context growth). **Guardrail
+  (hygiene, not engineering):** keep the prompt **prefix byte-stable** (no volatile content prepended) so
+  automatic caching actually hits; our driver already does (transcript first, `Now respond:[latest]` last).
 
 **The guardrail flip (read carefully).** Unlike T1/T2, **T3 MAY and MUST touch the harness**
 (`../agentalk-mcp-client`) — the inversion is the task. But constrained:
