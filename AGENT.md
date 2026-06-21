@@ -31,3 +31,14 @@ This project has reached Milestone 06. From now on follow these rules:
 - **Report the actual command output, not a remembered or optimistic summary.** Never claim a test suite or command passed without actually running it and reading the final output. Do not hallucinate test results or assume that because it compiles, it passes.
 - **Never fix things silently.** If something is broken, doesn't add up, or requires an ugly hack (like a sleep in production) to work, **STOP AND RAISE IT**. Do not bury the problem to make a test pass.
 - **Transparency is the goal.** A failing test with a clear, honest explanation of the obstacle is immensely more valuable than a green test achieved through a dirty hack. Let the human and the Reviewer agent do their job to help resolve the blockers.
+
+### Session hand-off (how to write one)
+When the user asks for a hand-off — or at a clean stopping point before a fresh session — write **one self-contained phrase** so a cold-start reader (fresh session, the human, or another agent) can orient with **zero prior context**. It MUST contain:
+1. **Project micro-description** — what AgentTalk is, in 1–2 lines.
+2. **Roles** — the human (Fausto) and each agent, **including which agent you are** (e.g. Claude = planner/reviewer/architect; Gemini = implementer; human = scope/decisions/relay).
+3. **Workflow / source of truth** — `design/collaboration-workflow.md` (the method) + the artifacts: `*-plan.md` (spec+DoD), `*-implementation.md` (the **ledger**), `backlog.md`, `logbook.md`.
+4. **Which epic/task we're on** *(REQUIRED — always state the active milestone/epic/task)* + what's next.
+5. **Where state lives** — resume from the active epic's `*-implementation.md` ledger, **not from chat**.
+6. **Op notes** — key/env gotchas, current blockers.
+
+Keep it tight; the ledger holds the detail.
