@@ -546,18 +546,43 @@ lifecycle stays server-side in the brain (already true for API in T1/T2 and cli-
   `team-coordinator` (23 refs), contracts payloads, `validation`, and the **web UI** (`PlanningView.tsx`).
 
 **Decisions (Fausto, 2026-06-21).** **(a)** Brainstorm is **retired**, not migrated. **(b)** T4 is **split**: verify
-cli-exec consensus first (T4a), then delete (T4b). **(c)** Attach-mode is **fully removed** (not remapped to cli-exec).
+cli-exec consensus first (T4a), then delete (T4b). **(c)** ~~Attach-mode is removed, not remapped~~ → **OVERTURNED by the
+T4b pre-flight (below):** the production UI agents (gemini/claude/codex) *run on* the semantic harness, so attach-mode is
+**remapped to cli-exec** (all three providers migrated) — not just deleted. T4b re-scoped into 3 stages (§12b).
 
 ### 12a. T4a — verify cli-exec multi-agent consensus  *(de-risk; branch `m07-t4a-cli-exec-consensus`)*
 Prove the brain fully replaces the semantic harness for consensus **before** deleting it. Architecturally low-risk
 (same `InProcessAgentDriver` as API/T2, only `CliExecCompleter` swapped in) but **unproven live**. agy is protocol-fit
 ⇒ **not** under the unfit-model live-test freeze. DoD rows **T4a.1–T4a.3** in the ledger.
 
-### 12b. T4b — retire the semantic path  *(branch `m07-t4b-retire-client-brain`, both repos)*
-Delete harness semantics + `conversation-runtime`/`response-schema` (harness); retire orchestrator attach-mode; retire
-brainstorm end-to-end (incl. UI); migrate `test-live-gate` → cli-exec. **No contract bump expected** (the harness only
-ever calls `await_turn`/`submit_exec_result`/`list_agents` — all stay; `messageTypes` remain, the *brain* still parses
-them) — but T4b **verifies** `wire-contract.json` is byte-unchanged rather than assuming. DoD rows **T4b.1–T4b.5**.
+### 12b. T4b — retire the semantic path  *(RE-SCOPED 2026-06-21 after pre-flight → 3 stages)*
+
+> **Pre-flight finding (2026-06-21, grounded in code) — the semantic harness IS the production runtime.** The web UI
+> creates `gemini`/`claude`/`codex` agents (`App.tsx` → `server.ts:514` `agent.provider = <provider>`), and
+> `registry.activateAgent` starts a server-side driver **only** for `'api'|'cli-exec'` (`registry.ts:210`). So production
+> CLI agents get **no driver → they run on the semantic harness over the wire.** Deleting it therefore **breaks the live
+> product**, not just `test-live-gate`. Also: **cli-exec has only ever run with gemini (agy)** — claude/codex via exec-RPC
+> is **unproven**. ⇒ the harness can't be deleted until the production providers are **migrated to cli-exec** and cli-exec
+> is **proven for all three**. **Decisions (Fausto, 2026-06-21):** migrate **all three** providers; re-spec T4b into **3
+> stages**, each its own branch + review gate, merged in order.
+
+**12b-1. T4b-1 — verify cli-exec for claude + codex**  *(branch `m07-t4b1-cli-exec-providers`)*
+Prove exec-RPC drives a real **claude** CLI turn and a real **codex** CLI turn (analog of `test-cli-exec-gate.mjs`, which
+only ever ran gemini). Consensus itself is already provider-agnostic (T4a proved it; the provider-specific part is only
+whether the harness executor runs that CLI and returns text). Single-turn round-trip per provider suffices. DoD **T4b-1.x**.
+
+**12b-2. T4b-2 — migrate the production/UI path to cli-exec**  *(branch `m07-t4b2-migrate-production`)*
+Route UI-created `gemini`/`claude`/`codex` agents onto the **cli-exec driver** (server-side brain via exec-RPC) instead of
+the wire/semantic path — at `registry.activateAgent` and/or the server create/start path. **Behavior change:** prove the
+**web UI still works** (a real agent turn + a team/consensus turn through the migrated path). DoD **T4b-2.x**.
+
+**12b-3. T4b-3 — delete the semantic path + retire brainstorm + migrate flagship**  *(branch `m07-t4b3-retire-semantics`, both repos)*
+Only now safe: delete harness semantics + `conversation-runtime`/`response-schema`; remove the orchestrator wire/semantic
+path (nothing uses it post-migration); retire **brainstorm** end-to-end (incl. UI `PlanningView`); migrate `test-live-gate`
+→ cli-exec; retire dead `test-attach-mode.mjs`/`attach-harness.mjs`. **No contract bump expected** (harness only calls
+`await_turn`/`submit_exec_result`/`list_agents`; `messageTypes` stay — the brain still parses them) — but **verify**
+`wire-contract.json` is byte-unchanged. DoD **T4b-3.x**.
 
 **DoD** — rows in `milestone07-centralized-brain-implementation.md`; reviewer verdict **VERIFIED** (ran it) per §3b;
-implementer claim-only on the per-task branch; reviewer merges both repos on all-VERIFIED. T4a merges before T4b starts.
+implementer claim-only per stage branch; reviewer merges on all-VERIFIED. **Stages merge in order** (T4b-1 → T4b-2 → T4b-3);
+T4a already merged.

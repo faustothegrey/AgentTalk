@@ -35,8 +35,11 @@
 | ↳ **M07-T3b-2** | **Worker run-to-completion exec (inversion only)** — re-scoped; crash/effect-fence/reconnect → M08+ | `m07-t3b2-worker-exec` | **DONE ✅** (merged: AgentTalk `534b4ef` / harness `c15d7c7`; rows 2.1–2.6 VERIFIED incl. live 2.5) |
 | ↳ **M07-T3c** | **Wire-contract bump for exec-RPC + hash re-bump (both repos)** | `m07-t3c-contract-bump` | **DONE ✅** (merged: AgentTalk `fc1c779` / harness `58ef46d`; rows T3c.1–T3c.5 VERIFIED by running) |
 | **M07-T4** | Retire client-side semantic logic; harness = transport + exec only | (split T4a/T4b) | **SPLIT** (plan §12; T4a verify → T4b delete) |
-| ↳ **M07-T4a** | **Verify cli-exec multi-agent consensus** (de-risk before deleting) | `m07-t4a-cli-exec-consensus` | **ALL ROWS VERIFIED ✅** (consensus proven; FIND-T4a-1 snapshot-diff cleanup verified — 2 live re-runs, zero pollution) — **ready to merge** (AgentTalk only) |
-| ↳ **M07-T4b** | **Retire the semantic path** (harness + attach-mode + brainstorm); migrate flagship → cli-exec | `m07-t4b-retire-client-brain` (both repos) | **SPEC READY** (plan §12b; T4b.1–T4b.5 below; starts after T4a merges) |
+| ↳ **M07-T4a** | **Verify cli-exec multi-agent consensus** (de-risk before deleting) | `m07-t4a-cli-exec-consensus` | **DONE ✅** (merged `87ebc52` + hotfix `14388cd` for FIND-T4a-2; all rows VERIFIED) |
+| ↳ **M07-T4b** | **Retire the semantic path** — RE-SCOPED (pre-flight): production UI rides the semantic harness → migrate all 3 providers to cli-exec first | (3 stages below) | **RE-SCOPED → 3 stages** (plan §12b) |
+| ↳ **M07-T4b-1** | **Verify cli-exec for claude + codex** (only gemini proven) | `m07-t4b1-cli-exec-providers` | **IMPLEMENTATION-READY** (T4b-1.x below; baton → implementer) |
+| ↳ **M07-T4b-2** | **Migrate the production/UI path to cli-exec** (gemini/claude/codex → driver) | `m07-t4b2-migrate-production` | **SPEC READY** (T4b-2.x; after T4b-1) |
+| ↳ **M07-T4b-3** | **Delete semantic harness + retire brainstorm + migrate flagship** | `m07-t4b3-retire-semantics` (both repos) | **SPEC READY** (T4b-3.x; after T4b-2) |
 
 ## Task M07-T1 — In-orchestrator API agent driver  *(ACTIVE — branch `m07-t1-api-agent-driver`)*
 
@@ -343,17 +346,53 @@ Prove the brain replaces the semantic harness for **consensus** before deleting 
 | **T4a.2 — Deterministic CI test.** Mocked cli-exec consensus (mock `CliExecCompleter`/exec transport, à la T2.3): full flow → `awaiting_confirmation` → `completed`. No live calls. | done | **VERIFIED ✅ (by running)** | `team-cli-exec-consensus.test.ts` drives the **real** engine (cli-exec agents → `InProcessAgentDriver`+`CliExecCompleter`, scripted mock harness loop) to `completed`. **Deterministic: 3/3 isolated runs** + green in the full suite. Not a trivial stub. |
 | **T4a.3 — No regression.** Full suite green; `tsc -b` clean; **committed**. | done | **VERIFIED ✅ (by running)** | `tsc -b` **exit 0**; vitest **163/163** (29 files; +1 = the mocked consensus test, was 162/28). Branch is additive (test + script + ledger only); no production code touched; harness repo untouched. |
 
-### T4b — retire the semantic path  *(SPEC READY — branch `m07-t4b-retire-client-brain` off `master`, BOTH repos; starts after T4a merges)*
+### T4b — retire the semantic path  *(RE-SCOPED 2026-06-21 after pre-flight → 3 stages; plan §12b)*
 
-| T4b DoD item | Implementer claim | Reviewer verdict | Evidence |
+> **Pre-flight finding:** the production web UI creates `gemini`/`claude`/`codex` agents (`App.tsx` → `server.ts:514`),
+> and `registry.activateAgent` drives only `api`/`cli-exec` (`registry.ts:210`) — so **production CLI agents run on the
+> semantic harness over the wire.** Deleting it would break the live product. And **cli-exec is proven only for gemini
+> (agy)**; claude/codex via exec-RPC is unproven. ⇒ migrate **all three** providers to cli-exec (Fausto) **before** deleting,
+> in **3 stages** (verify → migrate → delete), each merged before the next.
+>
+> **Backlog gate (run 2026-06-21, passed):** cross-provider consensus, auto-handoff baton (now eligible — revisit at M07
+> close), T2.4 live re-run (doubly-blocked), M08 failure-modes, FIND-T3b2-1 — all open, none block T4b. New op dependency:
+> T4b-1/T4b-2 live gates need the **claude + codex CLIs authed locally** (see Op notes).
+
+**Stage T4b-1 — verify cli-exec for claude + codex**  *(IMPLEMENTATION-READY — branch `m07-t4b1-cli-exec-providers` off `master`)*
+
+| T4b-1 DoD item | Implementer claim | Reviewer verdict | Evidence |
 |---|---|---|---|
-| **T4b.1 — Delete harness semantics.** Remove `handleFactCollectionBegin`/`handleTeamTaskAssign`/`handleTeamWorkAssign`/`handleBrainstormStart`/`handleBrainstormMessage`, the structured-response cases, semantic `conversation_start/end` + `message_received` prompt-building + `custom_event_request`; delete `lib/conversation-runtime.mjs` + `lib/response-schema.mjs`. **Keep** `handleExecRpc` + transport + `executor-runtime`. | — | **not-started** | Harness `eslint` clean + `vitest` green; `grep` finds 0 refs to deleted handlers/modules; `handleExecRpc` + transport intact. |
-| **T4b.2 — Retire orchestrator attach-mode.** Remove the provider-less no-driver wire path (`registry.ts`); every agent goes through a driver (api/cli-exec). | — | **not-started** | No code path sends a semantic EVT to a wire harness (proven by grep/test); creating a provider-less agent is rejected or unsupported; suite green. |
-| **T4b.3 — Retire brainstorm end-to-end.** Remove brainstorm from `team-coordinator`, `registry`, contracts payloads, `validation`, and the web UI (`PlanningView.tsx`). | — | **not-started** | `grep -ri brainstorm packages apps` → 0 (or only historical docs); web build passes; **`wire-contract.json` byte-unchanged** (brainstorm not in hashed lists → no bump). |
-| **T4b.4 — Migrate the flagship.** Rewrite `test-live-gate.mjs` onto `cli-exec` agents (or fold into the T4a gate) so M06-equivalent acceptance runs through the server-side brain. Retire dead `test-attach-mode.mjs` / `attach-harness.mjs`. | — | **not-started** | New/updated gate runs green (live or recorded); no script still uses `attach://`. |
-| **T4b.5 — No regression + contract unchanged.** Full suite + `tsc -b` both repos; **verify** (not assume) `wire-contract.json` is byte-identical to v4 and both copies still match. | — | **not-started** | `tsc -b` exit 0; vitest all-pass both repos; `diff -q` the two contracts → IDENTICAL; `git diff` shows no contract change. |
+| **T4b-1.1 — Live cli-exec claude turn.** Parameterize `test-cli-exec-gate.mjs` (or a sibling) for `provider:'cli-exec', providerName:'claude'`: one real **claude** CLI turn via exec-RPC round-trips (`exec_rpc`→`submit_exec_result`→`send_to_agent`). Recorded. **Clean up** any worktrees ([[LB-9]]). | — | **not-started** | Script exits 0; log shows a real claude reply over exec-RPC; 0 worktree/branch pollution after. |
+| **T4b-1.2 — Live cli-exec codex turn.** Same for `providerName:'codex'` — one real **codex** CLI turn via exec-RPC. Recorded. | — | **not-started** | Script exits 0; real codex reply over exec-RPC; 0 pollution after. |
+| **T4b-1.3 — No regression.** `tsc -b` clean; full suite green; **committed**. Any new mocked test is **hermetic** ([[LB-9]] — mock `execSync`/`existsSync`). | — | **not-started** | `tsc -b` exit 0; vitest all-pass; suite leaves 0 worktrees/branches. |
+
+**Stage T4b-2 — migrate the production/UI path to cli-exec**  *(SPEC READY — branch `m07-t4b2-migrate-production`; after T4b-1)*
+
+| T4b-2 DoD item | Implementer claim | Reviewer verdict | Evidence |
+|---|---|---|---|
+| **T4b-2.1 — Route production providers to the driver.** UI-created `gemini`/`claude`/`codex` agents get the cli-exec `InProcessAgentDriver` (exec-RPC), not the wire/semantic path — at `registry.activateAgent` and/or the server create/start path. Define the mapping; keep `api` untouched. | — | **not-started** | A `gemini`/`claude`/`codex` agent created via the server API starts an `InProcessAgentDriver` (log) and completes a turn via `exec_rpc`, not semantic EVTs. |
+| **T4b-2.2 — UI still works (behavior preserved).** Prove a real agent turn **and** a team/consensus turn through the migrated path (the web UI / server API end-to-end). Recorded. | — | **not-started** | Live/recorded: single-agent turn + a 2-planner+worker team reaches `completed` through the migrated production path. |
+| **T4b-2.3 — No regression.** Full suite + `tsc -b` green, committed; existing api/cli-exec/attach tests still pass (attach not yet deleted). | — | **not-started** | `tsc -b` 0; vitest all-pass; 0 pollution. |
+
+**Stage T4b-3 — delete semantic path + retire brainstorm + migrate flagship**  *(SPEC READY — branch `m07-t4b3-retire-semantics`, BOTH repos; after T4b-2)*
+
+| T4b-3 DoD item | Implementer claim | Reviewer verdict | Evidence |
+|---|---|---|---|
+| **T4b-3.1 — Delete harness semantics.** Remove `handleFactCollectionBegin`/`handleTeamTaskAssign`/`handleTeamWorkAssign`/`handleBrainstormStart`/`handleBrainstormMessage`, the structured-response cases, semantic `conversation_start/end` + `message_received` prompt-building + `custom_event_request`; delete `lib/conversation-runtime.mjs` + `lib/response-schema.mjs`. **Keep** `handleExecRpc` + transport + `executor-runtime`. | — | **not-started** | Harness `eslint` clean + `vitest` green; `grep` finds 0 refs to deleted handlers/modules; `handleExecRpc` + transport intact. |
+| **T4b-3.2 — Remove the orchestrator wire/semantic path.** Now nothing produces it (post-migration): remove the no-driver provider path so every agent uses a driver. | — | **not-started** | No code sends a semantic EVT to a wire harness (grep/test); suite green; UI path (now cli-exec) unaffected. |
+| **T4b-3.3 — Retire brainstorm end-to-end.** Remove brainstorm from `team-coordinator`, `registry`, contracts payloads, `validation`, web UI (`PlanningView.tsx`). | — | **not-started** | `grep -ri brainstorm packages apps` → 0 (or only historical docs); web build passes; **`wire-contract.json` byte-unchanged**. |
+| **T4b-3.4 — Migrate the flagship.** Replace `test-live-gate.mjs` with the cli-exec consensus gate (fold into `test-live-cli-exec-team.mjs`); retire dead `test-attach-mode.mjs`/`attach-harness.mjs`. | — | **not-started** | M06-equivalent acceptance runs through the server-side brain; no script uses `attach://`. |
+| **T4b-3.5 — No regression + contract unchanged.** Full suite + `tsc -b` both repos; **verify** `wire-contract.json` byte-identical to v4, both copies match. | — | **not-started** | `tsc -b` 0; vitest all-pass both repos; `diff -q` contracts IDENTICAL; `git diff` shows no contract change; 0 pollution. |
 
 ## Log (append-only, dated)
+- 2026-06-21 — **T4b PRE-FLIGHT → RE-SCOPED into 3 stages (architect).** Pre-flight (reading the production path) found
+  the spec materially understated T4b: the **web UI runs gemini/claude/codex agents on the semantic harness** (no
+  server-side driver — `registry.ts:210` drives only api/cli-exec), so deleting it breaks the live product; and
+  **cli-exec is proven only for gemini (agy)** — claude/codex via exec-RPC unproven. Fausto: migrate **all three** to
+  cli-exec; re-spec into **T4b-1 (verify claude+codex) → T4b-2 (migrate production/UI to cli-exec) → T4b-3 (delete
+  semantics + brainstorm + flagship)**, each merged before the next. Overturned earlier decision "(c) attach-mode removed,
+  not remapped." Wrote plan §12b (3 stages) + ledger T4b-1.x/2.x/3.x; backlog gate run (none block); flagged op dep
+  (claude+codex CLIs must be authed). **Next:** Gemini implements **T4b-1** on `m07-t4b1-cli-exec-providers`. **Baton → implementer.**
 - 2026-06-21 — **FIND-T4a-2 (post-merge): T4a.2 mocked test was NON-HERMETIC → reviewer miss, hotfixed.** After merging
   T4a (`87ebc52`), a routine `vitest run` on master created **`task-task-*` branches + real worktrees**: the mocked
   consensus test drives the real `InProcessAgentDriver`, whose `handleTeamWorkAssign` does `execSync('git worktree add')`
