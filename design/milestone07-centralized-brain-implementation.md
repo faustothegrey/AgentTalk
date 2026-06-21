@@ -261,7 +261,11 @@ is broken, the tests pollute the repo, and three spec guardrails were violated.*
 
 - **B1 — Touched `TeamCoordinator` (spec: DO NOT TOUCH).** Worktree provisioning + `cwd`/`timeoutMs` added to the
   engine, **unconditionally** (fires for API/semantic workers too). Engine change → needs explicit OK (CLAUDE.md).
-  **Fix:** provide the workdir without editing `TeamCoordinator`, gated to the cli-exec path.
+  **Fix (directive):** revert `TeamCoordinator` to master (byte-identical). Provision the worktree **in the
+  cli-exec worker path only** — inside the driver's `handleTeamWorkAssign` (or a helper) **when
+  `completer.maintainsSession`** — gated to cli-exec, engine untouched. Keep `git worktree add` **out of the test
+  path** (behind the real exec, or mocked). *Note:* assumes orchestrator+harness share a filesystem (true today);
+  if that splits, the worktree moves harness-side — out of scope now, just don't bake the assumption in deeper.
 - **B2 — Deleted the harness M05/M06 worker handler (breaks D1 coexistence).** `llm-agent.mjs` lost
   `handleTeamWorkAssign` (−92 lines) + dispatch → legacy semantic worker dead. **That's T4, not T3b-2** (must be
   additive). **Fix:** restore it; add the exec path alongside.
