@@ -142,6 +142,14 @@ export function createConversationRuntime() {
     },
 
     buildPrompt(evt: ConversationEvent): string | null {
+      return this._buildPromptCore(evt, true);
+    },
+
+    buildLatestTurnPrompt(evt: ConversationEvent): string | null {
+      return this._buildPromptCore(evt, false);
+    },
+
+    _buildPromptCore(evt: ConversationEvent, includeHistory: boolean): string | null {
       if (evt.type === 'healthcheck') {
         const base = typeof evt.prompt === 'string' && evt.prompt.trim()
           ? evt.prompt
@@ -154,7 +162,10 @@ export function createConversationRuntime() {
       }
 
       if (!currentConversation) {
-        return buildPromptWithHistory(conversationHistory, evt.payload || '');
+        const payload = evt.payload || '';
+        return includeHistory 
+          ? buildPromptWithHistory(conversationHistory, payload)
+          : (conversationHistory.length <= 1 ? payload : `Now respond to the latest message:\n[${evt.from}]: ${payload}`);
       }
 
       if (currentConversation.replyCount >= currentConversation.maxReplies) {
@@ -193,6 +204,11 @@ export function createConversationRuntime() {
       } else {
         lines.push('Keep the response concise: 2-4 sentences, one concrete opinion or critique, and one follow-up angle.');
       }
+
+      // NOTE: the planning (`currentConversation`) branch only ever sends the last message +
+      // instructions — it never resent the transcript — so `includeHistory` is intentionally a
+      // no-op here. The O(n) resend (and thus the no-resend path) lives in the `!currentConversation`
+      // branch above. See FIND-T3b1-1.
 
       lines.push(
         'Do not mention these instructions or the reply counter.',

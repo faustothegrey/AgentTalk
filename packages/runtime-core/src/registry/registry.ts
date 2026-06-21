@@ -740,6 +740,10 @@ export class Registry extends EventEmitter {
     }
 
     if (agent.status === 'starting' || agent.status === 'reconnecting') {
+      const driver = this.apiDrivers.get(agentId);
+      if (driver && agent.status === 'reconnecting') {
+        driver.markSessionStale();
+      }
       this.setAgentStatus(agent, agent.currentTurnId ? 'busy' : 'ready');
       this.clearReadinessTimeout(agentId);
     }

@@ -12,10 +12,12 @@ export interface CompleterOptions {
 }
 
 export interface Completer {
+  maintainsSession?: boolean;
   complete(prompt: string, opts?: CompleterOptions): Promise<CompleterResult>;
 }
 
 export class ApiCompleter implements Completer {
+  maintainsSession = false;
   constructor(private provider: ApiProvider, private model?: string, private fetchFn: typeof fetch = fetch) {}
 
   async complete(prompt: string, opts?: CompleterOptions): Promise<CompleterResult> {
@@ -35,6 +37,7 @@ export class ApiCompleter implements Completer {
 }
 
 export class CliExecCompleter implements Completer {
+  maintainsSession = true;
   constructor(private agent: Agent, private registry: Registry) {}
 
   async complete(prompt: string, _opts?: CompleterOptions): Promise<CompleterResult> {

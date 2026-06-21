@@ -44,10 +44,12 @@ entry carries a **stable `LB-N` id** — cite it from ledgers/backlog (titles ma
   in-process path has *no* dedup protection if a turn ever double-fires. Revisit if T3/T4 add retries.
 - **Source:** review of `registry.ts` + `in-process-driver.ts` during T2 (commit `f249d9c`).
 
-### LB-4 · 2026-06-21 — [orchestrator] The in-process driver resends the FULL transcript every turn (option 1)
-- **Finding:** for **all** in-process driver agents (API T1/T2 **and** cli-exec T3a), the per-turn prompt
-  is rebuilt to contain the **entire conversation** as a `[user]/[assistant]` transcript — the model never
-  relies on its own memory. Captured verbatim (T3-S1 probe 1, the exec-RPC prompt for **turn 2**):
+### LB-4 · 2026-06-21 — [orchestrator] Full-transcript resend is on the `!currentConversation` path ONLY (not consensus)
+> **CORRECTED 2026-06-21 (T3b-1 review, FIND-T3b1-1).** The original claim ("resends every turn for **all**
+> in-process agents incl. consensus") was **overstated** — see the strikethrough + correction below.
+- **Original (overstated):** ~~for **all** in-process driver agents the per-turn prompt is rebuilt to contain the
+  entire conversation; consensus grows O(n).~~ Captured verbatim (T3-S1 probe 1, exec-RPC prompt for **turn 2**, on
+  the **no-conversation** path):
   ```
   [user]: Remember this codeword for later: BELIER-7731. Reply with only the word OK.
   [assistant]: OK
@@ -55,12 +57,17 @@ entry carries a **stable `LB-N` id** — cite it from ledgers/backlog (titles ma
   Now respond to the latest message:
   [user]: What was the codeword I told you earlier? Reply with ONLY the codeword.
   ```
-  i.e. multi-turn continuity is **stateless-resend**, inherited from the (necessarily stateless) API path.
-- **Implication:** prompt grows **O(n)** with turns → **context-window blowup on long tasks** (the cost
-  path prep §3.3 wanted to avoid). cli-exec **doubly pays** (resend *and* a redundant native `--continue`,
-  see [[LB-5]]). To move cli-exec to native session (option 2), a **cli-exec branch in `buildPrompt`** must
-  send only the latest turn — and the API/T1-T2 resend path must stay **byte-for-byte** (guard it). Owned by **T3b**.
-- **Source:** `spikes/m07-t3-s1-session-probe.mjs` (probe 1); commit `5aedcaa`.
+- **Corrected finding (measured, T3b-1):** the O(n) full-transcript resend happens **only on the
+  `!currentConversation` path** (non-planning / direct 1:1 messages): `buildPrompt` = `27→404 B` over 6 turns. The
+  **planning / consensus path** (`conversation_start mode:planning`, team-coordinator ~L1082) only ever sends the
+  **last message + instructions** — it is **flat at ~2881 B**, already bounded, and was **never** an O(n) problem.
+- **Implication:** moving cli-exec to native session (no-resend) helps the `!currentConversation` path **only**
+  (T3b-1: `buildLatestTurnPrompt` flattens `404→70`); consensus needs no change. The API/T1-T2 path stays
+  byte-for-byte (D5: lean on provider caching). cli-exec planners additionally gain *richer* memory than API ones
+  (full discussion in native `--continue`) even though each planning prompt is last-message-only — a quality, not
+  cost, effect. See [[LB-5]].
+- **Source:** `spikes/m07-t3-s1-session-probe.mjs` (probe 1, no-conversation path) + T3b-1 prompt-size measurement
+  (FIND-T3b1-1, ledger); commits `5aedcaa`, `1ad16f1`.
 
 ### LB-5 · 2026-06-21 — [harness/agy] Native `--continue` persists across exec-RPC, but the home is ephemeral; no usage surfaced
 - **Finding:** (a) **native session works** — a *minimal* 2nd exec-RPC prompt (no transcript) recalled a

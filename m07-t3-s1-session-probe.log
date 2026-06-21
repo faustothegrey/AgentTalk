@@ -1,0 +1,23 @@
+=== M07-T3-S1 session-model spike ===
+[server] ws://localhost:61417/
+
+--- TURN 1 (plant codeword) ---
+reply1: "OK\n"
+
+--- TURN 2 (recall, no resend) ---
+reply2: "BELIER-7731\n"
+
+[Q-S1a] turn-2 prompt contained the codeword? true  (sent prompt2 len=251)
+[Q-S1a] turn-2 reply recalled the codeword? true
+[Q-S1a] VERDICT: native session continuity w/o resend = NOT proven
+
+[Q-S1d] usage per turn: [{"prompt_tokens":0,"completion_tokens":0},{"prompt_tokens":0,"completion_tokens":0}]
+
+--- KILL harness A, relaunch as B (probe recovery) ---
+reply3 (after restart): "<none: no reply for: What was the codeword I told you earlier? Reply with ONLY the codeword.>"
+[Q-S1c] recovered codeword after harness restart? false
+
+=== SUMMARY ===
+Q-S1a no-resend continuity: NOT proven ❌
+Q-S1c recovery after restart: does NOT survive ❌ (ephemeral home)
+Q-S1d usage surfaced by agy: [{"prompt_tokens":0,"completion_tokens":0},{"prompt_tokens":0,"completion_tokens":0}]

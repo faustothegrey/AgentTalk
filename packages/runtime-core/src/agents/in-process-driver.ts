@@ -17,6 +17,7 @@ export class InProcessAgentDriver {
   private runtime = createConversationRuntime();
   private isRunning = false;
   private completer: Completer;
+  private isSessionStale = false;
 
   constructor(
     private agent: Agent,
@@ -29,6 +30,10 @@ export class InProcessAgentDriver {
       const provider = options.provider || 'google';
       this.completer = new ApiCompleter(provider, options.model, options.fetchFn);
     }
+  }
+
+  markSessionStale(): void {
+    this.isSessionStale = true;
   }
 
   start(): void {
@@ -106,7 +111,14 @@ export class InProcessAgentDriver {
       prompt = (evt as any).prompt || null;
       expectsStructured = true;
     } else {
-      prompt = this.runtime.buildPrompt(evt);
+      if (this.isSessionStale) {
+        this.isSessionStale = false;
+        prompt = this.runtime.buildPrompt(evt);
+      } else if (this.completer.maintainsSession) {
+        prompt = this.runtime.buildLatestTurnPrompt(evt);
+      } else {
+        prompt = this.runtime.buildPrompt(evt);
+      }
       expectsStructured = this.runtime.expectsStructuredResponse(evt);
     }
 

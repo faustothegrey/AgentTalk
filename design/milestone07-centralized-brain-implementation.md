@@ -1,6 +1,6 @@
 # Milestone 07 — Centralized Agent Brain — Implementation Status
 
-**Status:** **T3b sliced → T3b-1 SPEC READY (green-lit for implementer).** Spikes T3-S1/S2 DONE; D5 set (API path leans on provider caching, build nothing). **T3b-1** = no-resend for cli-exec (latest-turn prompt) + recovery fallback — pure orchestrator/driver, no worktree, API path byte-for-byte; branch `m07-t3b1-no-resend`, rows T3b-1.1–1.7 below, spec plan §11c-1. **T3b-2** (worker exec + effect-fence + reconnect, side-effecting, Fausto in loop) outlined, after T3b-1. Backlog gate passed (4 parked). Findings: native `agy --continue` session **works** through exec-RPC (option 2 viable), **but** the driver currently **resends full history** (option 1) and native session **doesn't survive a harness restart** (ephemeral home). **D2 recommendation = hybrid: native session steady-state + resend-based recovery fallback** (see D2 block; T3b owns it). Reconnect+exec-RPC delivery gap surfaced → IMP-T3b-1. T3a MERGED (orchestrator `e9186e1`, harness `17edffc`; master 157/157). T1+T2 DONE/merged (T2.4 deferred). M06 closed; R1 GREEN.
+**Status:** **T3b-1 DONE ✅ (all rows VERIFIED) → ready to merge; next = T3b-2 spec.** Reviewed by running: 159/159, tsc clean, API byte-for-byte, no-resend + recovery tests pass, live agy multi-turn confirms no-resend on native memory. **FIND-T3b1-1** (consensus path was already bounded → LB-4 overstated; T3b-1's win = direct-chat + `maintainsSession`/recovery plumbing) resolved: **kept + reframed** (LB-4 corrected, dead block removed). T3a MERGED; spikes T3-S1/S2 DONE; D5 set. **Next: T3b-2** (worker exec + effect-fence + reconnect, side-effecting, Fausto in loop). Findings: native `agy --continue` session **works** through exec-RPC (option 2 viable), **but** the driver currently **resends full history** (option 1) and native session **doesn't survive a harness restart** (ephemeral home). **D2 recommendation = hybrid: native session steady-state + resend-based recovery fallback** (see D2 block; T3b owns it). Reconnect+exec-RPC delivery gap surfaced → IMP-T3b-1. T3a MERGED (orchestrator `e9186e1`, harness `17edffc`; master 157/157). T1+T2 DONE/merged (T2.4 deferred). M06 closed; R1 GREEN.
 **Plan:** `design/milestone07-centralized-brain-plan.md` (architect-owned; this doc tracks status only).
 **Last verified:** 2026-06-21 (T3a round 1) · **Verifier:** Claude
 
@@ -197,23 +197,36 @@ recorded log).
 
 ## Task M07-T3b-1 — no-resend for cli-exec + recovery fallback  *(SPEC READY — branch `m07-t3b1-no-resend` off `master`)*
 
-Spec: **plan §11c-1**. Kills the O(n) transcript resend on the cli-exec path (LB-4; proven safe+cheap by
-T3-S2). **Pure orchestrator/driver — no worktree, no worker, no harness change.** The brain keeps recording
-full history (so a lost session can be rebuilt); it just stops *shipping* it every turn for stateful
-(native-session) agents. **DO NOT TOUCH** the API/T1-T2 prompt path (must stay byte-for-byte, gated by the
-`maintainsSession` flag), `TeamCoordinator`, the worker path. Robust reconnect *delivery* (IMP-T3b-1) is
-**T3b-2** — T3b-1 only needs the resend-once *mechanism* + its test. Reviewer VERIFIES by running. Branch
-`m07-t3b1-no-resend`, claim-only commits; merge on all-VERIFIED.
+### T3b-1: No-resend implementation (completed)
+Implement the `cli-exec` no-resend prompt builder within the orchestrator's driver loop.
+*   [x] **T3b-1.1** — Extend `Completer` interface with `maintainsSession?: boolean`. Set to `true` for `CliExecCompleter`, `false` for `ApiCompleter`.
+*   [x] **T3b-1.2** — Latest-turn prompt builder. `runtime.buildLatestTurnPrompt(evt)` returns the new turn's content + per-turn protocol instructions, without the prior-message transcript.
+*   [x] **T3b-1.3** — Driver wiring. In `handleTurn`, use `buildLatestTurnPrompt` when `completer.maintainsSession === true`, else `buildPrompt` (unchanged).
+*   [x] **T3b-1.4** — Recovery fallback (mechanism). One-shot `markSessionStale()` -> next exec uses full `buildPrompt`, then reverts to latest-turn. Best-effort trigger on agent reconnect.
+*   [x] **T3b-1.5** — No-resend unit test. Stateful-completer agent over ≥3 turns: assert each sent prompt contains only the latest turn (no prior-message text) and the runtime still holds full history. Deterministic unit test of the resend-once behaviour.
 
 | T3b-1 DoD item | Implementer claim | Reviewer verdict | Evidence |
 |---|---|---|---|
-| **T3b-1.1 — Completer capability flag.** Add `maintainsSession?: boolean` to the `Completer` interface; `CliExecCompleter`=true, `ApiCompleter`=false (D5). | — | not-checked | |
-| **T3b-1.2 — Latest-turn prompt builder.** `runtime.buildLatestTurnPrompt(evt)` returns the new turn's content + per-turn protocol instructions, **without** the prior-message transcript. | — | not-checked | |
-| **T3b-1.3 — Driver wiring.** In `handleTurn`, use `buildLatestTurnPrompt` when `completer.maintainsSession === true`, else `buildPrompt` (unchanged). Runtime **still records all messages + replies** either way. | — | not-checked | |
-| **T3b-1.4 — Recovery fallback (mechanism).** One-shot `markSessionStale()` → next exec uses full `buildPrompt`, then reverts to latest-turn. Best-effort trigger on agent reconnect. **Deterministic unit test** of the resend-once behaviour. | — | not-checked | |
-| **T3b-1.5 — No-resend unit test.** Stateful-completer agent over ≥3 turns: assert each sent prompt contains **only** the latest turn (no prior-message text) **and** the runtime still holds full history. | — | not-checked | |
-| **T3b-1.6 — Live correctness.** One live **agy** multi-turn run via the real cli-exec **driver** path (reuse the T3-S2 fact-chain, but through the driver) → recalls earlier facts on native memory; recorded. | — | not-checked | |
-| **T3b-1.7 — No regression.** API/T1-T2 prompt path **byte-for-byte** (full suite green incl. consensus/driver tests); `tsc -b` clean **committed**; M05/M06 + harness untouched. | — | not-checked | |
+| **T3b-1.1 — Completer capability flag.** Add `maintainsSession?: boolean` to the `Completer` interface; `CliExecCompleter`=true, `ApiCompleter`=false (D5). | **done** | **VERIFIED ✅** | `completer.ts`: flag on interface; `ApiCompleter=false`, `CliExecCompleter=true`. Correct per D5. |
+| **T3b-1.2 — Latest-turn prompt builder.** `runtime.buildLatestTurnPrompt(evt)` returns the new turn's content + per-turn protocol instructions, **without** the prior-message transcript. | **done** | **VERIFIED ✅ (works) — see FIND-T3b1-1** | `_buildPromptCore(evt, includeHistory)`. On the **!currentConversation** path it strips history (measured full `27,164,224,284,344,404` vs latest `27,70,70,70,70,70`). **⚠️ No effect on the planning/consensus path** (FIND-T3b1-1). **Nit:** no-op `if (includeHistory && …){/*comments*/}` block left in (~L208–216) — dead code, remove. |
+| **T3b-1.3 — Driver wiring.** In `handleTurn`, use `buildLatestTurnPrompt` when `completer.maintainsSession === true`, else `buildPrompt` (unchanged). Runtime **still records all messages + replies** either way. | **done** | **VERIFIED ✅** | `in-process-driver.ts`: `isSessionStale`→full-resend-once (priority); else `maintainsSession`→`buildLatestTurnPrompt`; else `buildPrompt`. Runtime recording unchanged (history retained, proven in 1.5). |
+| **T3b-1.4 — Recovery fallback (mechanism).** One-shot `markSessionStale()` → next exec uses full `buildPrompt`, then reverts to latest-turn. Best-effort trigger on agent reconnect. **Deterministic unit test** of the resend-once behaviour. | **done** | **VERIFIED ✅** | `markSessionStale()`+one-shot `isSessionStale` (cleared after use); registry calls it on `reconnecting`. `cli-exec-noresend.test.ts` T3b-1.4 passes (post-reconnect resends once, then reverts). 2/2. |
+| **T3b-1.5 — No-resend unit test.** Stateful-completer agent over ≥3 turns: assert each sent prompt contains **only** the latest turn (no prior-message text) **and** the runtime still holds full history. | **done** | **VERIFIED ✅** | `cli-exec-noresend.test.ts` T3b-1.5: 3 turns, each prompt latest-only, runtime still holds full history. Passes. (Exercises the `!currentConversation` path the change affects.) |
+| **T3b-1.6 — Live correctness.** One live **agy** multi-turn run via the real cli-exec **driver** path (reuse the T3-S2 fact-chain, but through the driver) → recalls earlier facts on native memory; recorded. | **done** | **VERIFIED ✅** | Ran `spikes/m07-t3b1-noresend-live.mjs` live: 4 facts planted + recall, all through the driver's `message_received` (no-resend) path. **No earlier fact leaked into any later prompt** (the no-resend proof) and real agy recalled all four (`apple, bridge, cloud, dragon`) from native memory. Prompt sizes `39,83,82,83,123 B` (varies by payload, **not** transcript — a resend would be ~400 B+ by turn 5). **Honesty note:** the script's first run printed "NOT proven" from a too-tight absolute byte threshold (false negative on payload-length variation); threshold fixed to baseline-relative; substantive checks (no-leak + full recall) were green on that run. Log `m07-t3b1-noresend-live.log`. |
+| **T3b-1.7 — No regression.** API/T1-T2 prompt path **byte-for-byte** (full suite green incl. consensus/driver tests); `tsc -b` clean **committed**; M05/M06 + harness untouched. | **done** | **VERIFIED ✅** | Ran `npx vitest run` → **159/159 (27 files)**; `tsc -b` clean. API/planning prompt unchanged (diff vs latest = 0; consensus/driver tests green). Harness untouched. Committed `a59556f`. |
+
+### FIND-T3b1-1 — the change doesn't touch the consensus path (architect spec-premise error)
+
+**Finding (measured):** the real planner **consensus** flow runs the **planning** branch (`conversation_start
+mode:planning`, team-coordinator ~L1082), which **only includes the last message + instructions — never the
+transcript**. Measured: planning prompt is **flat at 2881 B** every turn and `buildLatestTurnPrompt` is
+**byte-identical** to `buildPrompt` there (diff = 0). The O(n) resend exists **only** on the `!currentConversation`
+path (`27→404 B`/6 turns), which T3b-1 flattens to `27→70`. **So LB-4 was overstated** (consensus does *not*
+resend O(n)). T3b-1 is correct + safe, but its win lands on **non-planning / direct chat** + the
+**`maintainsSession`/recovery plumbing** for T3b-2 — **not** the flagship consensus flow. **Architect (my) premise
+error, not an implementer fault.** **DECIDED (Fausto, 2026-06-21): keep + reframe + merge** — value = direct
+1:1 chat + the `maintainsSession`/recovery plumbing T3b-2 needs. Actions taken: **LB-4 corrected** (consensus was
+already bounded), dead no-op comment block removed, live 1.6 run (VERIFIED), merged.
 
 ## Log (append-only, dated)
 - 2026-06-21 — **T3a implementer fixes (round 2).** Rewrote `cli-exec-agent.test.ts` to mock the pull path (`handleMcpToolCall` with `await_turn` and `submit_exec_result`), successfully restoring it to 100% green. Removed the stray debug log from `registry.ts`. Committed the working tree on both `AgentTalk` and `agentalk-mcp-client` in the `m07-t3a-cli-exec` branch. T3a is fully 100% green, committed, and ready for re-review!
