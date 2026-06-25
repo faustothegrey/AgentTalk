@@ -17,17 +17,16 @@ promoted→X · absorbed→X · dropped}.
 
 ## Items
 
-### 🔴 STANDING — REQUIRED at epic close (do not forget)
+### ✅ DONE — M09 epic-close squash (Fausto, 2026-06-25)
 
-- **[open] 2026-06-25 — SQUASH the M09 history at the end of the epic (Fausto, explicit).** M09 (MCP-vocabulary
-  removal) is merged to `master`, but the **pre-rename commit messages still carry the old provider token** in
-  `git log` (e.g. the T1–T3 commits + the rewrite/spike-deletion commits). The squash is the **final step of D6**
-  (no legacy token anywhere, including git history) and is **deferred to epic close by Fausto's call** — it is
-  *not* optional, just sequenced last. **At close:** `rebase -i` over `0fd98f7..HEAD` → collapse the M09 commits
-  into clean message(s) with **zero** legacy token; **force-push** (public repo); then **prune the now-dead
-  branches** (`m09-t1-provider-union`, `m09-t2-flip-mcp-value`, `m09-t3-rename-identifiers`, the `m08-*` set).
-  *Why standing/visible here: a cold-start session would otherwise never know this obligation exists — the ledger
-  Status + agent memory `m09-squash-at-epic-close` also carry it.* Leaves by **done** once squashed.
+- **[done] 2026-06-25 — SQUASHED the history at epic close (Fausto, explicit; confirmed scope = whole history).**
+  D6's "no legacy token anywhere, including git history" is now fully satisfied. Fausto chose to go **beyond** the
+  originally-recorded M09-only recipe: the whole 201-commit history was collapsed into a **single clean root
+  commit** (`565ad3d`), because the old provider token also lived in M07/M08 commit messages, not just M09.
+  Method: orphan branch with byte-identical tree → `push --force` (public repo) → pruned the dead `m09-t1/t2/t3`
+  and `m08-*` branches (local + remote). Gate at squash: tsc 0, suite 183/183. Known side effect: short-hash
+  citations in `design/*.md` no longer resolve (inherent to any history rewrite). Agent memory
+  `m09-squash-at-epic-close` deleted as satisfied.
 
 ### Backlog gate — 2026-06-22 (opening M08 · architect: Claude)
 

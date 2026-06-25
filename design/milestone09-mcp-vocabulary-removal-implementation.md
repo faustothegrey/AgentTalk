@@ -5,16 +5,18 @@
 > decision, this ledger is **legacy-token-free**: rows name the *target* (the old name is intentionally not shown).
 > The only surviving legacy string project-wide is the functional `google-gemini/gemini-cli` GitHub URL.
 
-**Status:** **DONE — all tasks MERGED to `master` (`accf4d6`, ff; pushed; gate green: tsc 0, 183/183).** The
-whole-project legacy-token sweep returns **only the `gemini-cli` URL** (by design).
+**Status:** **DONE + EPIC CLOSED — all tasks merged; history squashed (Fausto, 2026-06-25).** Gate at squash:
+tsc 0, suite 183/183 (32 files). The whole-project legacy-token sweep returns **only the `gemini-cli` URL** (by
+design).
 
-> ## 🔴 REQUIRED AT EPIC CLOSE — DO NOT FORGET (Fausto, explicit 2026-06-25)
-> **Squash the M09 git history.** The merged commits still carry the **old provider token in their messages**
-> (`git log`), so D6 ("no legacy token *anywhere*, including history") is **not fully satisfied until the squash**.
-> Deferred to epic close by Fausto — sequenced last, **not optional**. **Steps:** `rebase -i 0fd98f7..HEAD` →
-> collapse M09 commits into clean message(s) with zero legacy token → **force-push** (public repo) → **prune dead
-> branches** (`m09-t1-provider-union`, `m09-t2-flip-mcp-value`, `m09-t3-rename-identifiers`, `m08-*`). Also tracked
-> in `design/backlog.md` (🔴 STANDING) + agent memory `m09-squash-at-epic-close`.
+> ## ✅ EPIC-CLOSE SQUASH — DONE (Fausto, explicit 2026-06-25)
+> **Whole history squashed to a single root commit `565ad3d`.** D6 ("no legacy token *anywhere*, including
+> history") is now fully satisfied. Fausto confirmed going **beyond** the originally-recorded M09-only recipe
+> (`0fd98f7..HEAD`): the legacy provider token also lived in **M07/M08** commit messages, so all **201 commits**
+> were collapsed via an orphan branch (byte-identical tree) into one clean, token-free commit. Then **force-pushed**
+> (public repo) and **pruned** the dead `m09-t1/t2/t3` + `m08-*` branches (local + remote). Side effect: short-hash
+> citations in `design/*.md` (incl. the rows below) no longer resolve — inherent to a history rewrite; the ledger
+> prose remains the record of state. Agent memory `m09-squash-at-epic-close` deleted as satisfied.
 Plan: `design/milestone09-mcp-vocabulary-removal-plan.md`. Implementer = Claude (Gemini out of budget; delegated
 gate per LB-14, merge stays Fausto's call). Baseline before T1: `master` `35051c8`, `tsc -b` 0, **183/183** (32 files).
 
