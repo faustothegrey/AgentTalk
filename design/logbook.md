@@ -575,7 +575,7 @@ The other three were less "is it safe" and more "is this a small clean change or
   - task:        M10 DiagramTalk-bridge v1 (LB-21 follow-up)
   - wall-clock:  2026-06-25 ~21:18 → ~21:46 CEST (~28 min)
   - budget:      weekly 51%→53% (Δ ~2%), session 16%→… [per /usage, updated 21:44]
-  - gate:        tsc 0, suite 197/197 (185 + 12 new), pollution clean
-  - diff:        6 files (3 src +3 test) + this note; commit on branch `feat/m10-diagramtalk-bridge`
-  - outcome:     IMPLEMENTED ✅ + LIVE-VERIFIED — merge HUMAN-GATED (LB-14)
+  - gate:        tsc 0, suite 198/198 (185 + 13 new), pollution clean
+  - diff:        7 files (3 src +3 test +this note), +421/-6; commits `988b721` (v1 spine) + `0a2f7cc` (clear-on-start)
+  - outcome:     MERGED ✅ to master (ff at `0a2f7cc`) — LIVE-VERIFIED twice; gate 198/198 post-merge
 - **Source:** Claude, 2026-06-25. Continues [[LB-21]]; pairs with memory `diagramtalk-channel`.
