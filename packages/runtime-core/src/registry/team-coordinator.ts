@@ -36,6 +36,13 @@ interface TeamCoordinatorDeps {
   emitTeam: (team: Team) => void;
   emitTeamTask: (task: TeamTask) => void;
   emitPlanningComplete: (payload: { team: Team; task: TeamTask; plannerAgentId: string }) => void;
+  /**
+   * M10 observability hook (LB-21): fires on every planning-phase transition so an
+   * external surface (e.g. the DiagramTalk live-flow bridge) can watch the consensus
+   * protocol advance. Optional + best-effort — undefined in all non-bridge wiring, in
+   * which case the funnel is a strict no-op preserving prior behaviour.
+   */
+  onPhaseChange?: (evt: { taskId: string; phase: PlanningPhase; previous?: PlanningPhase | undefined }) => void;
   logError: (message: string, err: unknown) => void;
 }
 
@@ -323,7 +330,7 @@ export class TeamCoordinator {
     this.deps.emitTeam(team);
     this.deps.emitTeamTask(task);
     this.armPlanningWatchdog(team, task, ['ack_planning_protocol']);
-    this.planningPhases.set(task.id, 'protocol_ack_pending');
+    this.setPlanningPhase(task.id, 'protocol_ack_pending');
     this.planningProtocolStates.set(task.id, {
       plannerIds,
       pendingAckPlannerIds: new Set(plannerIds),
@@ -652,7 +659,7 @@ export class TeamCoordinator {
 
     // Agreement complete — record who confirmed and arm submit_plan urgency
     this.taskAgreementReachedAgent.set(task.id, agentId);
-    this.planningPhases.set(task.id, 'submittal_pending');
+    this.setPlanningPhase(task.id, 'submittal_pending');
     this.taskExpectedResponses.set(task.id, ['submit_plan']);
     await this.armSubmitPlanUrgencyWatchdog(team, task, ['submit_plan']);
   }
@@ -736,7 +743,7 @@ export class TeamCoordinator {
       asksIssued: 1,
       timer,
     });
-    this.planningPhases.set(task.id, 'proposal_pending_endorsement');
+    this.setPlanningPhase(task.id, 'proposal_pending_endorsement');
     this.taskExpectedResponses.set(task.id, ['agreement_acceptance', 'opinion']);
   }
 
@@ -814,7 +821,7 @@ export class TeamCoordinator {
     this.taskExpectedResponses.set(task.id, ['opinion', 'agreement_proposal']);
     this.taskMaxAdvancement.delete(task.id);
     this.clearRegressionRetries(task.id);
-    this.planningPhases.set(task.id, 'discussion');
+    this.setPlanningPhase(task.id, 'discussion');
     this.taskPendingProposal.delete(task.id);
 
     const message =
@@ -860,6 +867,24 @@ export class TeamCoordinator {
     if (state) {
       clearTimeout(state.timer);
       this.factCollectionStates.delete(taskId);
+    }
+  }
+
+  /**
+   * Single funnel for every planning-phase transition (M10 / LB-21). Records the
+   * new phase, then fires the optional onPhaseChange observability hook so an
+   * external surface (e.g. the DiagramTalk live-flow bridge) can visualise the
+   * protocol advancing. Best-effort: a throwing hook is logged and swallowed so
+   * visualisation can never perturb the protocol brain. Behaviour with the hook
+   * unset is identical to the prior bare `planningPhases.set(...)`.
+   */
+  private setPlanningPhase(taskId: string, phase: PlanningPhase): void {
+    const previous = this.planningPhases.get(taskId);
+    this.planningPhases.set(taskId, phase);
+    try {
+      this.deps.onPhaseChange?.({ taskId, phase, previous });
+    } catch (err) {
+      this.deps.logError('[TeamCoordinator] onPhaseChange hook threw (ignored)', err);
     }
   }
 
@@ -957,7 +982,7 @@ export class TeamCoordinator {
       description: state.description,
       timer: factCollectionTimer,
     });
-    this.planningPhases.set(task.id, 'fact_collection');
+    this.setPlanningPhase(task.id, 'fact_collection');
 
     this.recordTaskTranscript(task, {
       kind: 'system',
@@ -1032,7 +1057,7 @@ export class TeamCoordinator {
     });
     this.deps.emitTeamTask(task);
 
-    this.planningPhases.set(task.id, 'discussion');
+    this.setPlanningPhase(task.id, 'discussion');
     this.taskExpectedResponses.set(task.id, ['opinion', 'agreement_proposal']);
     this.armPlanningWatchdog(team, task, ['submit_plan']);
 

@@ -549,3 +549,33 @@ The other three were less "is it safe" and more "is this a small clean change or
 - **Status:** sketchy / to-be-designed; Fausto will shape it. Full how-to + the grammar in agent memory
   `diagramtalk-channel`. Continues [[LB-19]].
 - **Source:** Claude, 2026-06-25, after reading the new DiagramTalk version (read-only on that repo).
+
+### LB-22 · 2026-06-25 — [M10/DiagramTalk] The orchestrator→DiagramTalk bridge — built + live-verified (delivers LB-21's "missing piece")
+
+- **What shipped.** The bridge LB-21 named as the missing piece now exists, v1 = **forward spine only**. The
+  protocol brain stays **pure**: `team-coordinator.ts` gained one private `setPlanningPhase()` funnel (the 6
+  `planningPhases.set` sites route through it) firing an **optional** `onPhaseChange` dep; `registry.ts`
+  re-emits it as a `team_planning_phase` event (mirrors `emitTeamTask`); a new
+  `apps/orchestrator/src/diagramtalk-bridge.ts` maps each phase → box+edge and POSTs `setStateTag`/`highlight`
+  to `${DIAGRAMTALK_URL}/api/diagram/commands`. **Best-effort, never blocking, OFF unless
+  `AGENTTALK_DIAGRAM_BRIDGE` is set** (same discipline as the usage meter); a throwing hook / unreachable
+  diagram / closed tab never perturbs a run.
+- **Spine map:** `protocol_ack_pending`→`ack` · `fact_collection`→`facts`/`e1` · `discussion`→`disc`/`e2` ·
+  `proposal_pending_endorsement`→`prop`/`e3` · `submittal_pending`→`submit`/`e5`. The `endorse` box + `e4` and
+  the eject/correction overlay (`o1–o6`) are intentionally **v2**.
+- **🔑 Finding — live shape ids carry a `shape:` prefix.** DiagramTalk addresses shapes by their tldraw id =
+  the layout's logical id prefixed (`ack` → `shape:ack`, `e1` → `shape:e1`). The bridge emitted bare ids → a
+  **silent no-op** (best-effort = no error). Caught by reading the live `context` *before* driving; fixed with
+  a documented `shapeRef()` transport prefix (idempotent). **Lesson: a best-effort bridge fails *silently* —
+  verify ids against the live canvas, the green gate won't catch a wrong id.**
+- **Live proof (no LLM budget):** drove the real bridge (`attachDiagramTalkBridge` → registry event →
+  `bridge.onPhase` → HTTP) through all 5 phases against Fausto's loaded M10 diagram; command log shows all
+  `applied` in spine order (`ack → facts/e1 → disc/e2 → prop/e3 → submit/e5`), badge walked, edges pulsed.
+- **Telemetry (closure):**
+  - task:        M10 DiagramTalk-bridge v1 (LB-21 follow-up)
+  - wall-clock:  2026-06-25 ~21:18 → ~21:46 CEST (~28 min)
+  - budget:      weekly 51%→53% (Δ ~2%), session 16%→… [per /usage, updated 21:44]
+  - gate:        tsc 0, suite 197/197 (185 + 12 new), pollution clean
+  - diff:        6 files (3 src +3 test) + this note; commit on branch `feat/m10-diagramtalk-bridge`
+  - outcome:     IMPLEMENTED ✅ + LIVE-VERIFIED — merge HUMAN-GATED (LB-14)
+- **Source:** Claude, 2026-06-25. Continues [[LB-21]]; pairs with memory `diagramtalk-channel`.

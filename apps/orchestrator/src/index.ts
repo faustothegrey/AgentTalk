@@ -4,6 +4,7 @@ import { createGoogleDriveServiceFromEnv } from '@agenttalk/integration-google-d
 import { SessionRecorder } from '@agenttalk/observability/recordings/session-recorder';
 import { Registry } from '@agenttalk/runtime-core/registry/registry';
 import { startServer } from './server.js';
+import { attachDiagramTalkBridge } from './diagramtalk-bridge.js';
 import { ScenarioRunner } from '@agenttalk/runtime-scenarios/scenarios/scenario-runner';
 import type { ScenarioDefinition } from '@agenttalk/runtime-scenarios/scenarios/types';
 
@@ -11,6 +12,11 @@ async function main() {
   const registry = new Registry({
     readinessTimeoutMs: 30000,
   });
+  // LB-21: optional live protocol-flow visualization. Off unless AGENTTALK_DIAGRAM_BRIDGE
+  // is set; best-effort, never perturbs a run.
+  if (attachDiagramTalkBridge(registry)) {
+    console.log('DiagramTalk live-flow bridge attached.');
+  }
   const googleDrive = createGoogleDriveServiceFromEnv();
   const recorder = process.env.AGENTTALK_RECORDING_PATH
     ? new SessionRecorder(process.env.AGENTTALK_RECORDING_PATH)
