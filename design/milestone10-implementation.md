@@ -88,7 +88,7 @@ diff --stat` = the 2 declared files only.
 - wall-clock:  2026-06-25 ~20:40 → 21:08 CEST (~28 min)
 - budget:      weekly 48%→50% (Δ ~2%), session [unavailable — meter showed weekly only this read]
 - gate:        tsc 0, suite 185/185, pollution clean
-- diff:        2 files, +201/-49; commit <pending> (+ proposal doc commit on this branch)
+- diff:        2 files, +201/-49; commit `5fea20c` (+ proposal doc `8ceb1a6` on this branch)
 - outcome:     IMPLEMENTED ✅ — on branch `m10-t2-graded-loop`, merge HUMAN-GATED (LB-14); 2→3 contract correction flagged
 
 **Telemetry (task closure):**
