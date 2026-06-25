@@ -66,6 +66,75 @@ describe('TeamCoordinator Agent Failure Handling', () => {
     }));
   });
 
+  it('M10-T1: ejectPlanner removes ONLY the offender, keeps the peer alive, and freezes the round fail-soft', async () => {
+    // Dedicated coordinator: tiny shutdown timeout so the offender's scheduled
+    // removal fires quickly; large planning/urgency timeouts so no watchdog
+    // interferes during the test.
+    const ejectDeps: any = {
+      getAgent: vi.fn(),
+      sendProtocol: vi.fn().mockResolvedValue(undefined),
+      removeAgent: vi.fn().mockResolvedValue(undefined),
+      emitTeam: vi.fn(),
+      emitTeamTask: vi.fn(),
+      emitPlanningComplete: vi.fn(),
+      logError: vi.fn(),
+    };
+    const ejectCoordinator = new TeamCoordinator(ejectDeps, {
+      agentShutdownTimeoutMs: 1,
+      planningEventTimeoutMs: 100000,
+      submitPlanUrgencyTimeoutMs: 100000,
+    });
+
+    const planner1 = new Agent('p1');
+    const planner2 = new Agent('p2');
+    const worker = new Agent('w1');
+    for (const a of [planner1, planner2, worker]) {
+      a.setStatus('starting');
+      a.setStatus('ready');
+    }
+
+    ejectDeps.getAgent.mockImplementation((id: string) => {
+      if (id === 'p1') return planner1;
+      if (id === 'p2') return planner2;
+      if (id === 'w1') return worker;
+      throw new Error('Agent not found');
+    });
+
+    const team = ejectCoordinator.createTeam([
+      { agentId: 'p1', role: 'planner' },
+      { agentId: 'p2', role: 'planner' },
+      { agentId: 'w1', role: 'worker' },
+    ]);
+
+    await ejectCoordinator.assignTask(team.id, 'Test Task');
+    const task = ejectCoordinator.getTask(team.currentTaskId!);
+    expect(task.status).toBe('planning');
+    const teamStatusBefore = team.status;
+    const currentTaskIdBefore = team.currentTaskId;
+
+    // Eject the offending planner p1.
+    await ejectCoordinator.ejectPlanner('p1', 'persistent illegal move');
+
+    // Fail-soft: task frozen for the operator, team NOT killed, task still attached.
+    expect(task.status).toBe('awaiting_operator');
+    expect(team.status).toBe(teamStatusBefore); // not 'interrupted'/'error'
+    expect(team.currentTaskId).toBe(currentTaskIdBefore);
+    expect(task.transcript.some(e => e.payload.includes('Planner p1 ejected'))).toBe(true);
+
+    // The surviving planner p2 is notified — and kept alive.
+    expect(ejectDeps.sendProtocol).toHaveBeenCalledWith('p2', 'EVT', expect.objectContaining({
+      type: 'message_received',
+      payload: expect.stringContaining('You remain active'),
+    }));
+
+    // Let the offender's scheduled shutdown fire.
+    await new Promise((r) => setTimeout(r, 20));
+
+    // The inverse of dual-kill: ONLY the offender is removed; the peer survives.
+    expect(ejectDeps.removeAgent).toHaveBeenCalledWith('p1');
+    expect(ejectDeps.removeAgent).not.toHaveBeenCalledWith('p2');
+  });
+
   it('should interrupt in-progress task when worker fails', async () => {
     const worker = new Agent('w1');
     worker.setStatus('starting');

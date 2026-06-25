@@ -1546,6 +1546,73 @@ export class TeamCoordinator {
     this.deps.emitTeamTask(task);
   }
 
+  /**
+   * M10-T1 peer-safe planner eject (D1 fail-soft).
+   *
+   * The graded-loop terminal action for a planner that stays non-compliant past
+   * its correction budget. Deliberately a SEPARATE method from
+   * interruptPlanningForMissingEvents (the M03 dual-kill, which shuts down BOTH
+   * planners on any violation — the LB-7/8 bug): ejectPlanner quiesces ONLY the
+   * offender, keeps the surviving planner(s) alive, and ends the round fail-soft
+   * by freezing the task in 'awaiting_operator' (mirrors pauseTaskForOperator /
+   * M08-T3) — terminates nobody but the offender, surfaces to the operator, and
+   * leaves the task attached for inspection.
+   *
+   * Why freeze rather than continue: with <2 planners consensus cannot proceed
+   * (D1 — no continue-solo in v1), so the round is over; recovery is
+   * operator-driven (manual, like the M08-T3 fence).
+   *
+   * Additive in T1: this has NO callers yet. T2 rewires the validation site to
+   * call this (after a bounded correct/retry) instead of the dual-kill.
+   */
+  async ejectPlanner(agentId: string, reason: string): Promise<void> {
+    const team = this.findTeamByAgent(agentId);
+    if (!team || !team.currentTaskId) return;
+
+    const task = this.tasks.get(team.currentTaskId);
+    if (!task) return;
+
+    console.log(`[TeamCoordinator] Ejecting planner ${agentId} from task ${task.id} (${reason}); surviving planner(s) kept alive, round frozen for operator.`);
+
+    // Stop this task's planning watchdogs so a stray timer can't fire the
+    // dual-kill after the eject. (The timers also self-guard on task.status,
+    // but clearing is cleaner and is bounded to this task only.)
+    this.clearPlanningWatchdog(task.id);
+    this.clearSubmitPlanUrgencyWatchdog(task.id);
+
+    // Fail-soft terminal state: freeze the task for the operator. Team stays
+    // alive (NOT 'interrupted'/'error'); currentTaskId stays set so the task is
+    // attached for inspection — exactly as pauseTaskForOperator does.
+    task.status = 'awaiting_operator';
+    this.recordTaskTranscript(task, {
+      kind: 'system',
+      from: 'system',
+      to: team.members.map((m) => m.agentId).join(','),
+      payload: `Planner ${agentId} ejected: ${reason}. Surviving planner(s) kept alive; consensus needs 2 planners, so the round is frozen awaiting operator (no continue-solo in v1).`,
+    });
+
+    this.deps.emitTeamTask(task);
+
+    // Notify the surviving planner(s) — they remain active and are NOT shut down.
+    const survivingPlanners = team.members.filter(
+      (m) => m.role === 'planner' && m.agentId !== agentId,
+    );
+    for (const planner of survivingPlanners) {
+      try {
+        await this.deps.sendProtocol(planner.agentId, 'EVT', {
+          type: 'message_received',
+          from: 'system',
+          payload: `Planning paused: planner ${agentId} was ejected (${reason}). You remain active; the operator will decide how to proceed.`,
+        });
+      } catch (err) {
+        this.deps.logError(`[TeamCoordinator] Failed to notify ${planner.agentId} about planner eject:`, err);
+      }
+    }
+
+    // Quiesce ONLY the offender (the surviving planner is left running).
+    this.requestAgentShutdown(agentId);
+  }
+
   removeAgentFromTeams(agentId: string): void {
     const teamId = this.agentToTeam.get(agentId);
     
