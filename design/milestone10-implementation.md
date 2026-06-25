@@ -56,5 +56,5 @@ dual-kill contracts get rewritten — surfaced for approval first.
 - wall-clock:  2026-06-25 ~20:24 → 20:37 CEST (~13 min)
 - budget:      weekly 48%→49% (Δ ~1%), session ~43% (Δ ~0%) [per /usage, updated 20:34]
 - gate:        tsc 0, suite 184/184, pollution clean
-- diff:        2 files, +136/-0; commit <pending>
+- diff:        3 files (incl. this ledger), +136/-0 code; commit `76e5b34`
 - outcome:     IMPLEMENTED ✅ — on branch `m10-t1-eject-planner`, merge HUMAN-GATED (LB-14)
