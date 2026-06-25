@@ -149,5 +149,5 @@ step with a type-system footprint beyond pure renaming). Each task: `tsc -b` 0 +
 - **✅ DONE — file/identifier renames:** `mcp-capability-assessment.md`, the `mcp-*` test files + `test-mcp-*`
   scripts (T4), `scenario-runner.ts` (T5), the milestone docs themselves (`milestone09-mcp-vocabulary-removal-*`),
   and agent-name fixtures (`mcp-worker-1` etc.).
-- **Milestone numbering** — accept M09 = this, consensus/robustness → M10? (low-churn; confirm.) *(still open)*
+- **Milestone numbering** — **✅ RESOLVED (Fausto, 2026-06-25):** M09 = this; consensus/robustness = **M10** (`design/milestone10-protocol-compliance-plan.md`).
 - **✅ Union location** — settled at T1: lives in `@agenttalk/contracts` (`provider` crosses the package boundary).
