@@ -1,98 +1,115 @@
-# Milestone 10 — Protocol compliance via affordance-based tool exposure — Plan
+# Milestone 10 — Robust consensus via a graded, stateful protocol brain — Plan
 
-> **Spike-led epic.** M10 makes multi-agent consensus *robust* by attacking the root cause logged in
-> **LB-10**: agents don't reliably follow the multi-phase protocol, and **tolerance ≠ compliance**.
-> Phase 1 (this plan's focus) is a **feasibility spike** — read/research + small probes, **no
-> production changes** — that answers whether the production substrate can support an "affordance
-> protocol" before we commit to building one. Phase 2 (implementation) is deliberately left to be
-> *shaped by the spike's findings*.
+> **Spike-led epic.** M10 makes multi-agent consensus robust. The mechanism — settled in a design
+> exchange (Fausto ↔ Claude, 2026-06-25) — is **not** hard decode-time enforcement, but a **graded,
+> bounded, closed-loop protocol brain** that works on *any* transport. Phase 1 is a design spike
+> (read/research + small probes, **no production changes**); Phase 2 (implementation) is shaped by it.
 
-## 1. Thesis (from LB-10) — compliance, not tolerance
+## 1. Thesis — compliance via a closed feedback loop, not hard enforcement
 
-Across M06–M08 the recurring failure (LB-6/7/8) is agents not following the consensus phase machine
+The recurring failure across M06–M08 (LB-6/7/8) is agents not following the consensus phase machine
 (ack → fact_collection → discussion → proposal → endorsement → submit_plan); weak models hallucinate
-transitions. M08 made the engine **tolerant** (no dual-crash on an illegal move) — but a tolerant
-engine + a non-compliant agent **stalls/times out**. The cure is **compliance**.
+illegal transitions. M08 made the engine **tolerant** (don't dual-crash) — but LB-10's "tolerance ≠
+compliance" still bit: *passive* tolerance stalls.
 
-**The lever — "affordance protocol" vs "prose protocol":**
-- **Today (prose):** the brain *describes* the protocol in prose, the model **self-tracks its phase and
-  self-selects `message_type`**, and the brain **validates/rejects after the fact**.
-- **Proposed (affordance):** the brain (which already knows the phase) **exposes only the tool(s) legal
-  for the current phase** — an illegal move is never on the menu, like greyed-out buttons. Helps the
-  *weakest* models most; the natural next step of the M07 "centralized brain" thesis (brain owns
-  per-turn **affordances**, not just prompt/parse/lifecycle).
+**The cure is an *active, bounded* loop, owned by the brain.** Each turn:
 
-Visual — `M10 · Affordance Protocol` (phases spine → per-phase legal tool → prose-problem /
-affordance-solution / spike-fork annotations). Snapshot committed in-repo so it survives without the
-DiagramTalk server; the source layout spec is alongside it (regenerate via
-`diagramtalk.py layout … --post`).
+```
+agent responds  →  brain validates against the CURRENT phase-legal set  →
+    valid     → ack + advance state ("you're now in state XX")
+    invalid   → reject + correct + retry ("not valid here; your options are {agree, back_off}")
+    repeated  → eject the agent, peer-safe ("ejected — see you when you're sober")
+```
 
-![M10 Affordance Protocol](diagrams/m10-affordance-protocol.png)
+This is **not** the naive M08 tolerance LB-10 criticized. It is **closed-loop** (a precise correction,
+not the same prompt again) and **bounded** (the eject rung guarantees termination instead of an infinite
+stall). Active + bounded is the difference between *survives* and *succeeds*.
 
-*Source spec: [`diagrams/m10-affordance-protocol.layout.json`](diagrams/m10-affordance-protocol.layout.json).*
+## 2. The design (settled)
 
-## 2. Why spike-led — the feasibility fork (the heart of Phase 1)
+- **One tool, not twelve.** Collapse `submit_plan` / `agreement_proposal` / `agreement_acceptance` / …
+  into a single **`consensus_respond(action, payload)`**. With one tool the model *cannot call the wrong
+  tool* — a whole failure class (LB-7/8 "picked an illegal message_type") disappears for free.
+- **The legal-move map is deterministic and server-side.** "agreement phase → {agree, back_off}" is a
+  pure function of the phase; the brain already knows the phase, so the legal `action` set per turn is
+  fully scriptable ahead of time.
+- **Restate the *current* affordance each turn — don't re-send the whole protocol.** The attached agent
+  is **memory-capable** (already the implemented reality: M06 rewrote the executor for native persistent
+  multi-turn, `agy --continue`, to "reliably simulate MCP-based agent statefulness"). So the full
+  protocol rides in the agent's transcript memory; only the **current-turn legal set** goes in each turn
+  payload ("phase: agreement; valid: {agree, back_off}"). Cheap, and the single biggest lever for
+  first-try compliance — it counters instruction-drift over long context without re-sending the schema.
+- **Graded validation + bounded eject** is the brain's job, in *our* code (`team-coordinator.ts` +
+  the driver), on a path we fully control — independent of transport.
 
-The two execution paths have different **compliance ceilings**, and the production one is **unverified**:
+Visual (snapshot committed in-repo so it survives without the DiagramTalk server; source spec alongside):
 
-| Path | Can the brain constrain the per-turn tool set? |
-|---|---|
-| **API** (in-process) | We control the request → native function-calling, per-call tool sets, schema-enforced args. Affordance protocol **likely fully achievable**. |
-| **MCP** (agy/claude/codex — the *production* direction) | Raw prompt → raw text; the MCP runs its **own** internal tool loop → we may **not** be able to restrict its per-turn tools. Possibly irreducibly freeform → stuck with prose+parse+tolerance (weakest substrate). **UNKNOWN — this is the spike's core question.** |
+![M10 graded protocol brain](diagrams/m10-affordance-protocol.png)
 
-LB-10's open fork: **is the API path the better substrate for robust consensus, with MCP reserved for
-single-agent execution?** The implementation plan can't be written until this is resolved.
+*Phase spine → the per-phase legal `action` set the brain restates each turn → one-tool / graded-brain /
+enforcement-as-optimization framing. Source: [`diagrams/m10-affordance-protocol.layout.json`](diagrams/m10-affordance-protocol.layout.json).*
 
-## 3. Phase-1 spike — goal & boundaries
+## 3. Hard enforcement = an *opportunistic optimization*, not a gate
 
-**Goal:** produce an evidence-backed findings report that (a) answers the three LB-10 questions, (b)
-resolves the API-vs-MCP substrate fork with a recommendation, and (c) sketches the Phase-2
-implementation (or returns a no-go/alternative). **It is exploratory: read, research, and *small*
-probes only.**
+Where we own the model's request directly (the **API path**), native function-calling gives hard
+guarantees: `tool_choice` forces the call, `strict: true` guarantees the arg schema, an `enum` pins the
+`action` to the legal set — so the **first** answer is always legal and the retry round-trip is skipped.
+That's a token/latency win **on the API path only**. On the **MCP path** the provider's harness owns the
+model's request and MCP ships a tool's schema as a *description*, not a decode-time constraint — so the
+narrowed `enum` is a strong hint, not a guarantee. **That's fine:** the graded loop (§1) catches the
+miss and re-prompts. Enforcement, where available, just means fewer retries — it is **not** load-bearing
+for robustness. This demotes the old "API-vs-MCP substrate fork" from a blocking risk to a measurement.
 
-**STRICTLY out of scope (do NOT change):** the protocol engine (`team-coordinator.ts`), the brain
-(`in-process-driver.ts`, the MCP completer), the wire-contract, any provider wiring. No affordance
-implementation in Phase 1 — that's Phase 2. Also out of M10 entirely: **operator abort/recovery for
-`awaiting_operator` tasks** (M08-T3 shipped fence-only; explicitly its *own* future milestone).
+## 4. Named risk — the eject rung must be peer-safe
 
-## 4. Spike questions → concrete investigations
+The "see you when you're sober" rung is the one with real teeth. Ejecting a babbling planner is correct,
+but ejection is exactly the fault-tolerance surface that bit us before: the **LB-7/8 bug was that one
+planner's illegal move dual-killed the peer.** The eject path must drop the bad agent **without** taking
+down the consensus or the surviving planner — i.e. clean failure propagation (the M03/M08 work). The
+schema/affordance parts are easy; **graceful, peer-safe eject is where the engineering risk now lives.**
 
-- **SQ1 — API-path function-calling guarantees.** For each in-process API provider we use: can we
-  restrict the **offered tool set per call**? Is there **enforced arg-schema** / constrained decoding /
-  forced tool choice? *Method:* read each provider's current function-calling docs/SDK — **do not
-  answer from memory**; for Anthropic use the `claude-api` skill, for others their current API docs —
-  plus a minimal live probe if a doc is ambiguous.
-- **SQ2 — MCP-path per-turn tool constraint.** Does the MCP transport (agy/claude/codex MCP servers)
-  expose **any** hook to constrain which tools the agent may call **this turn**, or is it irreducibly
-  freeform-text with its own internal tool loop? *Method:* inspect the MCP server interfaces +
-  `mcp-server.ts`/the attach turn-loop; check each provider-MCP's documented options.
-- **SQ3 — substrate fork + injection map.** Given SQ1/SQ2: API-as-consensus-substrate vs MCP-for-
-  execution-only — recommend. *Method:* map the **current** per-turn affordance/validation points in the
-  code (where the brain builds the prompt and validates `message_type`) so Phase 2 has concrete
-  injection sites, and weigh the fork against them.
+## 5. Phase-1 design spike — goal & boundaries
 
-## 5. Definition of Done (Phase-1 spike)
+**Goal:** an evidence-backed design + go/no-go. **Read/research + small probes only; no production
+changes.** Deliverables:
+- **DQ1 — Injection map.** Where in the engine does protocol validation/correction happen today
+  (`team-coordinator.ts`, the driver, response parsing)? Pin the exact sites where the single-tool +
+  per-turn-affordance + graded-validate/correct/eject loop would slot in, **preserving all existing
+  behaviour** until deliberately changed.
+- **DQ2 — Peer-safe eject.** Trace the current failure-propagation path (`handleAgentFailure` and the
+  M03/M08 fences). Confirm an agent can be ejected mid-consensus without dual-killing the peer, and name
+  exactly what Phase 2 must add/change to make "eject one, keep the round alive" true.
+- **DQ3 — Enforcement-optimization reach (measurement, not a gate).** API path: which providers' native
+  function-calling supports per-call tool restriction + `strict` + `enum` (research current provider
+  docs — **not from memory**; `claude-api` skill for Anthropic). MCP path: does a single
+  `consensus_respond` tool whose `action` enum we narrow per `await_turn` get (a) re-read each turn and
+  (b) *bound* the model to the enum, or merely *suggested*? Per harness (`agy`/`claude`/`codex`).
 
-1. **Findings report** answering SQ1, SQ2, SQ3 with **cited evidence** (provider docs + code refs), not
-   assertions — recorded as a logbook `LB-N` entry (+ this plan updated).
-2. **Substrate-fork recommendation** (API-substrate vs hybrid vs MCP-also-works), with the reasoning.
-3. **Phase-2 sketch or go/no-go:** if affordances are feasible, a concrete injection-point list and a
-   proposed Phase-2 task breakdown; if not, the alternative (e.g. stronger post-hoc coercion).
-4. **No production code changed** (Rule 5 self-check clean); any probe code lives in `scratchpad/` or a
-   clearly-marked throwaway, not the repo.
+**OUT of scope (do NOT change in Phase 1):** the engine, the brain, the wire-contract, provider wiring.
+No implementation. Also out of M10 entirely: **operator abort/recovery for `awaiting_operator` tasks**
+(M08-T3 shipped fence-only; its own future milestone).
 
-## 6. Sequencing & notes
+## 6. Definition of Done (Phase 1)
 
-- Phase 1 is **research/feasibility**; Phase 2 (implementation) is a *separate* plan written **after**
-  the spike reports. Do not pre-commit Phase-2 scope here.
-- Implementer = Claude under LB-14 (Gemini out of budget); the spike is read/research-heavy → low token
-  burn relative to impl, but **serial-actor rule** still applies.
-- Honesty over results: a clear "MCP can't constrain per-turn tools, so the production path can't fully
-  comply" is a **valuable** spike result, not a failure.
+1. **Design doc** (logbook `LB-N` + this plan updated): the single-tool + restated-per-turn-affordance +
+   graded-bounded-loop design, with the **injection map** (DQ1) and the **peer-safe-eject analysis**
+   (DQ2) grounded in real code refs.
+2. **Enforcement-optimization measurement** (DQ3): per-path/per-provider, what hard enforcement buys and
+   where it's unavailable — framed as an optimization, with the graded loop as the floor everywhere.
+3. **Phase-2 task breakdown** (or no-go): concrete steps to build the graded brain + single tool + eject
+   safety, sequenced; the API-path enforcement optimization listed as a *separate, optional* follow-on.
+4. **No production code changed** (Rule 5 clean); probes live in `scratchpad/`, not the repo.
 
-## 7. Open items
+## 7. Sequencing & notes
 
-- **✅ Milestone numbering — ACCEPTED (Fausto, 2026-06-25): M10 = this epic** (consensus/protocol
-  robustness via affordance-based tool exposure), renumbered from the former M09.
-- **Spike depth bound** — cap Phase-1 at the three SQs above; resist expanding into Phase-2 design
-  mid-spike (LB-10 warns: "focused spike, not an open-ended dive").
+- Phase 1 = design/feasibility; Phase 2 (implementation) is a separate plan written **after** it. The
+  bulk of the work now lives in **our** code (the graded brain + peer-safe eject), not in betting on MCP
+  enforcement — a materially safer epic than the original affordance-hinges-on-MCP framing.
+- Implementer = Claude under LB-14 (Gemini out of budget); serial-actor rule applies.
+- Honesty over results: "MCP won't bind the enum" is a *measurement*, not a failure — the graded loop
+  already covers it.
+
+## 8. Open items
+
+- **✅ Milestone numbering — ACCEPTED (Fausto, 2026-06-25): M10 = this epic.**
+- **Diagram** (`design/diagrams/m10-…`) refreshed to the graded-brain thesis at scoping time.

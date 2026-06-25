@@ -53,37 +53,37 @@
       "nodes": [
         {
           "id": "l-ack",
-          "label": "ack_planning_protocol",
+          "label": "action: ack",
           "col": 0,
           "w": 270
         },
         {
           "id": "l-facts",
-          "label": "fact_collection_end",
+          "label": "action: facts_done",
           "col": 1,
           "w": 270
         },
         {
           "id": "l-disc",
-          "label": "opinion / send_to_agent",
+          "label": "action: opinion",
           "col": 2,
           "w": 270
         },
         {
           "id": "l-prop",
-          "label": "agreement_proposal",
+          "label": "action: propose",
           "col": 3,
           "w": 270
         },
         {
           "id": "l-endorse",
-          "label": "agreement_acceptance",
+          "label": "action: accept | reject",
           "col": 4,
           "w": 270
         },
         {
           "id": "l-submit",
-          "label": "submit_plan",
+          "label": "action: submit_plan",
           "col": 5,
           "w": 270
         }
@@ -92,25 +92,25 @@
   ],
   "annotations": [
     {
-      "id": "n-prose",
-      "label": "Prose protocol (today): ALL tools always offered. Model self-tracks the phase and self-selects message_type; illegal move caught AFTER the fact. M08 tolerance = survive, not comply -> stall / timeout.",
-      "color": "yellow",
+      "id": "n-tool",
+      "color": "light-blue",
       "fill": "semi",
-      "w": 460
+      "w": 460,
+      "label": "ONE tool: consensus_respond(action, payload). One tool -> the model can't call the WRONG tool. The brain restates the phase-legal action set each turn (memory holds the rest of the protocol)."
     },
     {
-      "id": "n-afford",
-      "label": "Affordance protocol (M10): the brain offers ONLY the phase-legal tool(s) (green). An illegal move is never on the menu -- greyed-out buttons. Helps the weakest models most.",
+      "id": "n-brain",
       "color": "light-green",
       "fill": "semi",
-      "w": 460
+      "w": 460,
+      "label": "Graded stateful brain (works on ANY transport): valid -> ack + advance state \u00b7 invalid -> correct + retry \u00b7 repeated -> EJECT. Closed-loop + bounded = compliance, not just tolerance."
     },
     {
-      "id": "n-fork",
-      "label": "Phase-1 spike fork: API path = per-call constrained tool set + schema args -> achievable. MCP path (agy/claude/codex) = per-turn tool constraint UNKNOWN -> the spike's core question.",
+      "id": "n-opt",
       "color": "orange",
       "fill": "semi",
-      "w": 460
+      "w": 460,
+      "label": "Hard enforcement (API tool_choice / strict / enum) = OPTIMIZATION: first answer always legal, skip retries. NOT a gate. MCP: enum is a hint; the loop covers the miss. RISK: eject must not dual-kill the peer."
     }
   ],
   "edges": [
