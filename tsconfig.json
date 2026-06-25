@@ -1,0 +1,11 @@
+{
+  "files": [],
+  "references": [
+    { "path": "./packages/contracts" },
+    { "path": "./packages/runtime-core" },
+    { "path": "./packages/runtime-scenarios" },
+    { "path": "./packages/integration-google-drive" },
+    { "path": "./packages/observability" },
+    { "path": "./apps/orchestrator" }
+  ]
+}

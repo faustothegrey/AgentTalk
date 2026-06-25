@@ -1,0 +1,591 @@
+# Milestone 07 — Centralized Agent Brain (thin harness) + API-Backed Agents — Plan
+
+**Status:** Parked / planning — **blocked on M06 closure** (Phase 6 consensus). Start clean after.
+**Author:** Claude (architect), 2026-06-20 · **Implementer (proposed):** Gemini (bulk) · Claude reviews.
+**Related:** `design/phase6-multi-agent-consensus-plan.md` (M06) · `CLAUDE.md` (M05) ·
+`design/phase5-client-extraction-proposal.md` · `design/collaboration-workflow.md`
+
+> This epic supersedes the standalone "API-backed agents" proposal — API agents are folded in
+> here as the **pilot/spike** of the broader centralization (see §5). Per the workflow:
+> *document before implementation, readiness gate precedes code*. Nothing here starts until M06
+> is green.
+
+---
+
+## 0. One-sentence vision
+
+Move **all protocol-translation / semantic logic into the orchestrator** ("agent brain") and
+reduce the external harness (`agentalk-mcp-client`) to **connection plumbing + a generic
+"run this prompt → raw text + usage" remote-exec** — so new providers and behavior changes are
+added **server-side, without ever touching the external harness again**.
+
+## 1. Problem (why M07 exists)
+
+Today the *translation* layer lives in the **client harness**: prompt building
+(planner/worker/fact-collection), structured-JSON parse + retry, **`message_type` → MCP tool
+mapping**, auto-propose, brainstorm, conversation lifecycle. So every new provider or protocol
+tweak means editing an **external repo** and re-pinning a contract. The goal is to never touch
+the harness again except transport (connect / reconnect / handshake / keepalive).
+
+## 2. Target architecture — the bifurcation
+
+```
+                 ┌──────────────────────────────────────────────┐
+                 │ ORCHESTRATOR = "agent brain"                  │
+                 │ state-machine (today) + build prompt + parse  │
+                 │ + message_type→tool + retry + lifecycle       │
+                 └───────┬───────────────────────────▲──────────┘
+        in-process fetch │                            │ exec(prompt,sessionId?)
+                         ▼                            │   → {text, usage}
+              ┌────────────────────┐      ┌───────────┴─────────────┐
+              │ API providers      │      │ THIN HARNESS (MCP only) │
+              │ OpenRouter / Nous  │      │ connect/reconnect/      │
+              │ (NO harness)       │      │ handshake/keepalive     │
+              └────────────────────┘      │ + launch MCP, return raw │
+                                          │ (claude / codex / agy)  │
+                                          └─────────────────────────┘
+```
+
+- **API agents (OpenRouter/Nous):** no MCP, no local auth → the orchestrator does the `fetch`
+  in-process. **No harness at all.** Full centralization is the natural design.
+- **MCP agents (claude/codex/agy):** the subprocess + operator auth must stay local, so the
+  harness remains — but becomes a **dumb remote executor**: `exec(prompt, sessionId?) →
+  {text, usage}`. Zero semantics.
+- **Both share one server-side brain.** Two ways to get a completion (local HTTP vs remote-exec).
+
+## 3. The contract inversion (the heart — and the real cost)
+
+Flip the wire-contract from **semantic events** (`await_turn` → rich planning event; client
+decides) to a **remote-exec RPC** (orchestrator sends a fully-rendered prompt; harness returns
+raw text + usage). One-time redesign; **afterward the harness is frozen** — exactly the goal.
+The M05 wins are preserved/strengthened: harness stays standalone, deps public-npm-only, **less**
+logic → less drift; the hash-guard still applies (re-bump on the inversion).
+
+## 4. Hard parts / risks (what a spike must de-risk)
+
+- **R1 — structured-output reliability** from hosted models (Hermes/OpenRouter) for the
+  consensus protocol (valid JSON `message_type` each turn). Mitigation: `response_format:
+  json_object` where supported + the existing retry/repair as backstop.
+- **R2 — mid-turn reconnect / effect-fence with a remote executor.** If the MCP is mid-exec and
+  the harness dies, who re-issues? Likely: orchestrator re-issues on reattach; the M05
+  fence/requeue logic *centralizes* (cleaner) but must be redefined for exec-RPC.
+- **R3 — session state:** stateless-per-turn (orchestrator resends full history → trivial
+  harness, more tokens) vs an **opaque `sessionId`** the harness uses to keep a live MCP session
+  (token-efficient, harness a touch more stateful but still semantics-free). Lean to `sessionId`.
+- **R4 — retry becomes multi-round-trip** (parse-fail → new exec over the wire). Latency cost;
+  acceptable on the pull model.
+
+## 5. Recommended start: a SPIKE, not the cold epic
+
+**Recommendation (my call, as asked): do a time-boxed spike first — and the spike *is* the
+API-agent vertical slice.** Rationale: the API path has **no subprocess and no
+reconnect-mid-exec**, so it is the cheapest probe of **R1** *and* of the centralized-brain
+pattern, with **zero risk to the existing MCP path**. We learn the load-bearing unknown (can a
+hosted model reliably drive the consensus protocol from a server-built prompt?) before paying
+for the hard part (R2/R3 contract inversion of the MCP harness).
+
+**Spike (throwaway, single vertical slice):** orchestrator builds the prompt → `fetch`
+OpenRouter `/chat/completions` → parse the structured response → emit **one** structured action,
+for a **single** agent, **no MCP touched, no harness changed**. Green ⇒ the centralized brain is
+viable; proceed to the epic. Red on R1 ⇒ we learned it cheaply and adjust (tool-calling instead
+of JSON, model choice, etc.).
+
+**Epic proper (after the spike):**
+1. Extract the translation layer into a server-side module (move, not rewrite — it's tested).
+2. Productionize **API agents in-orchestrator** (OpenRouter + Nous/Hermes).
+3. **MCP harness inversion** (exec-RPC) + reconnect/effect-fence semantics (R2/R3) + contract bump.
+4. Retire the client-side semantic logic; harness = transport + exec only.
+
+## 6. API technical detail (the pilot's concretes — carried from the API proposal)
+
+Both targets are **OpenAI-compatible** `POST /v1/chat/completions`, `Authorization: Bearer`:
+- **OpenRouter:** base `https://openrouter.ai/api/v1`, key `OPENROUTER_API_KEY`, optional
+  `HTTP-Referer` / `X-Title`.
+- **Nous Portal:** base `https://inference-api.nousresearch.com/v1`, key `NOUS_API_KEY`.
+  (⚠️ *Not* the separate local "Hermes Agent" server on `localhost:8642/v1` — we want hosted
+  Portal inference.)
+
+One executor with configurable `{baseUrl, apiKeyEnv, extraHeaders, model}` covers both. Parse
+`choices[0].message.content` + `usage{prompt_tokens, completion_tokens}`. No new dependency
+(`fetch` is built into Node ≥18). **Open items to confirm with Fausto:** Q1 structured-output
+reliability of the target Hermes model; Q3 two named providers (`openrouter`/`nous`) vs one
+generic `api --base-url` (recommend two); Q4 exact Nous endpoint + Hermes **model id** for his
+account.
+
+## 7. Explicitly NOT now
+
+Blocked on **M06 closure**. No M07 code (beyond the §5 zero-risk spike, and only once M06 is
+green and Fausto greenlights). Start from a clean base.
+
+## 8. Status log
+- 2026-06-20 — Epic drafted (Claude). Folds the API-agent proposal in as the centralization
+  pilot/spike. Parked pending M06 closure; awaiting Fausto's go + Q1/Q3/Q4 answers.
+- 2026-06-20 — **M06 closed; M07 OPEN.** R1 spike GREEN (Gemini 3/3 legal `message_type` via
+  Google OpenAI-compat). **Q3 RESOLVED:** named providers (`google`/`openrouter`/`nous`), one
+  OpenAI-compatible client. **Q4 deferred** (start with Google; Nous later). Task M07-T1
+  sub-design below (§9) is implementation-ready. *Implementer builds on branch
+  `m07-t1-api-agent-driver`; reviewer verifies by running and merges on all-VERIFIED.*
+
+---
+
+## 9. Task M07-T1 — In-orchestrator API agent driver  **(implementation-ready · branch `m07-t1-api-agent-driver`)**
+
+**Goal.** The orchestrator drives an **API-backed agent fully in-process** (Google via the
+OpenAI-compat endpoint), reusing the existing consensus engine — with **no change to the protocol
+engine** and **no MCP-harness inversion yet**. This is the cheapest productionization of the
+"centralized brain" (the easy case: API, no harness).
+
+**Key insight (grounded in code).** The external client's loop is
+`await_turn → build prompt → run model → emit the matching MCP tool`. The in-orchestrator driver
+is the **same loop**, but it calls `agent.awaitTurn()` (registry.ts:277) and
+`registry.handleMcpToolCall(agentId, tool, args)` (registry.ts:260) **directly in-process**
+instead of over WebSocket. `TeamCoordinator` cannot tell the difference → protocol determinism is
+untouched.
+
+**Scope — DO:**
+1. **Server-side OpenAI-compatible API client** (new module under `packages/runtime-core` or
+   `apps/orchestrator`). `callApi({provider, model, messages, response_format}) → {text, usage}`.
+   Named providers (Q3): `google` = `https://generativelanguage.googleapis.com/v1beta/openai`,
+   key `GEMINI_API_KEY`, default `gemini-2.5-flash`; `openrouter`/`nous` configured but inert
+   until keys arrive. Uses built-in `fetch` (Node ≥18, **no new dependency**). Unit-test with a
+   **mocked fetch** (deterministic, CI). Reference shape: `spikes/m07-api-structured-probe.mjs`.
+2. **Server-side translation module** — port the minimal consensus pieces from the client:
+   `llm-agent.mjs::dispatchStructuredResponse` (message_type→{tool,args}), `response-schema.mjs`
+   (parse + repair/retry), and the relevant prompt builders in `conversation-runtime.mjs`. Build
+   the prompt from a turn payload; parse the structured JSON; map `message_type → {tool, args}`.
+   **Copy as a NEW module — do NOT delete the client's copy** (the MCP harness still uses it until
+   I3). Unit-test the mapping + parse/retry.
+3. **In-process driver** — for an agent configured as API-backed, run:
+   `const turn = await agent.awaitTurn()` → build prompt → `callApi` → parse (retry once on
+   unparsable) → `registry.handleMcpToolCall(agentId, tool, args)` → loop. **Graceful-degrade
+   preserved:** a non-planning turn (no `expected_response_types`) yields `send_to_agent{to:"user"}`
+   (the M06 §P6-A no-regression rule).
+4. **Agent config + start path** — mark an agent as API-backed (e.g.
+   `createAgent(id, {provider:'api', providerName:'google', model})`) and have the registry start
+   the in-process driver for it **instead of** waiting for an external WebSocket attach.
+
+**Scope — DO NOT TOUCH (guardrails):**
+- `agentalk-mcp-client` / the MCP harness — no inversion, no edits (that is **I3**).
+- The client's translation logic — not retired yet (**I4**).
+- Multi-agent API **consensus** — that is **I2**; I1 is a **single** API agent.
+- `TeamCoordinator` / protocol determinism — unchanged; the driver only feeds it tool calls.
+- The existing **attach (MCP/stub) path** — must keep working unchanged; the driver is
+  **opt-in / config-gated** so default behavior is byte-for-byte preserved (M05/M06 invariants).
+
+**Smoke checkpoint.** One in-orchestrator API agent completes a turn: (a) deterministic test with
+**mocked fetch** (CI); (b) one **live Google call** (`gemini-2.5-flash`) recorded (manual).
+
+**Invariants (carry-forward).** Protocol determinism stays in `TeamCoordinator`; one terminal
+action per turn; **budget — use `gemini-2.5-flash`**; **no secrets committed** (key via env).
+
+**DoD** — the claim/verdict rows live in `milestone07-centralized-brain-implementation.md`; a row
+is done only when Claude's verdict is **VERIFIED** (ran it), per workflow §3b.
+
+### 9.1 T1.6 — Registry start-path (the wiring) *(remaining T1 item)*
+
+**Why.** T1.1–T1.5 delivered a verified `InProcessAgentDriver`, but it's only ever started by the
+smoke harness — `registry.ts` is untouched, so no *configured* agent in the running orchestrator is
+ever API-backed. T1.6 closes that gap so T1 actually delivers its goal: *the orchestrator drives an
+API agent through the normal agent lifecycle.* (Was GAP-1; reviewer review 2026-06-20.)
+
+**Scope — DO:**
+1. **Agent config.** Let an agent be created/marked as API-backed, e.g.
+   `registry.createAgent(id, { provider: 'api', providerName: 'google', model })` (shape your call;
+   keep it minimal and typed). Non-API agents keep their exact current shape.
+2. **Start path.** When an API-backed agent is **activated**, the registry instantiates and
+   `start()`s an `InProcessAgentDriver` for it **instead of** waiting for an external WebSocket
+   attach. When it's stopped/disconnected, `stop()` the driver and clean up.
+3. **Opt-in / no-regression.** Only agents explicitly marked `provider:'api'` take this path;
+   every existing attach (MCP/stub) agent path is **byte-for-byte unchanged**. This is the
+   load-bearing guardrail — prove it with the existing suite staying green.
+
+**Scope — DO NOT TOUCH:** the consensus engine / `TeamCoordinator`; the MCP harness
+(`agentalk-mcp-client`); multi-agent consensus (that's T2). Single API agent only.
+
+**DoD / checkpoints (T1.6 row):**
+- A **configured** API agent (`provider:'api'`) created via the registry **completes one turn
+  through the normal lifecycle** — deterministic **mocked-fetch CI test** (no smoke harness
+  hand-wiring; the registry starts the driver).
+- One **live Google** turn through the registry path (`gemini-2.5-flash`), recorded.
+- Full suite green; existing attach path unchanged; `tsc -b` clean (commit the build — don't leave
+  fixes uncommitted, cf. GAP-2).
+
+**On green:** all of T1 (T1.1–T1.6) is VERIFIED → reviewer merges the branch to `master`.
+
+---
+
+## 10. Task M07-T2 — Multi-agent API consensus (in-orchestrator)  **(implementation-ready · branch `m07-t2-api-consensus`)**
+
+**Goal.** Two API-backed **planners** + one API-backed **worker**, all driven **fully in-process**
+(Google `gemini-2.5-flash`), complete the **whole `planner-planner-worker` consensus protocol
+end-to-end** — fact-collection → discussion → proposal → endorsement → `submit_plan` → (user)
+plan-confirm → worker accept → `submit_work_result` — with **no external harness** and **no change
+to `TeamCoordinator`**. This proves the centralized brain drives *multi-agent consensus*, not just a
+single agent (T1).
+
+**Key insight (grounded in code).** T1 already delivered (a) a per-agent `InProcessAgentDriver`
+(`packages/runtime-core/src/agents/in-process-driver.ts`) that runs
+`awaitTurn → buildPrompt → callApi → parse/retry → translate → handleMcpToolCall`, and (b) the
+registry start-path (`registry.ts` `activateAgent`: `provider:'api'` → starts a driver per agent).
+The `TeamCoordinator` already pilots the full multi-planner flow **unchanged** — it sends
+`fact_collection_begin` → `conversation_start{mode:'planning'}` → (`team_work_assign`) and consumes
+`fact_collection_end` / `opinion` / `agreement_proposal` / `agreement_acceptance` / `submit_plan` /
+`submit_work_response` / `submit_work_result`. So T2 is **not** new protocol — it is: (1) run three
+T1 drivers concurrently in one team, and (2) teach the driver/runtime the **two team-phase events it
+does not yet handle.** The driver already handles `conversation_start` + planning `message_received`
+(the discussion/proposal/submit_plan phases — verified in T1's single-planner smoke).
+
+**The two gaps to close (the only new driver/runtime work):**
+- **G1 — fact-collection (planner).** The driver does not handle `fact_collection_begin`. Port the
+  client's `handleFactCollectionBegin` (`agentalk-mcp-client/llm-agent.mjs`) into the server-side
+  runtime: build the fact-collection prompt → `callApi` (structured) → emit
+  `fact_collection_end{summary}`.
+- **G2 — worker (`team_work_assign`).** The driver does not handle `team_work_assign`. Port the
+  client's `handleTeamWorkAssign` + `WORKER_RESPONSE_INSTRUCTIONS`: build the worker prompt →
+  `callApi` (structured `json_object`) → parse `work_accept`/`work_refuse` → emit
+  `submit_work_response{accepted[,reason]}` and, on accept, **also** `submit_work_result{result}`.
+  This requires the driver to **emit more than one terminal tool call in a single turn** (today it
+  emits exactly one) — see R-T2b.
+
+**Scope — DO:**
+1. **G1 fact-collection handling** in the runtime + driver (planner path), as above. Port (move, not
+   rewrite) from the client; **client copy untouched.**
+2. **G2 worker handling** in the runtime + driver (worker path), as above; support the
+   two-terminal-calls-in-one-turn worker turn. Port from the client; client copy untouched.
+3. **Multi-driver concurrency** — three API agents in a `planner-planner-worker` team each get their
+   own driver via the **existing T1 registry start-path** (no new wiring expected; if the start-path
+   needs a tweak to support a team of API agents, keep it minimal and opt-in). Each driver keeps its
+   **own isolated `runtime`** state; verify the dedup / one-terminal-action-per-turn invariants still
+   hold across concurrent drivers.
+4. **Tests.** (a) **Deterministic mocked-fetch CI test** driving the full team flow — three drivers,
+   canned per-phase API responses scripted (fact_collection → discussion → proposal → acceptance →
+   submit_plan → confirm → worker accept) — asserting `team_task` reaches `awaiting_confirmation`
+   then `completed`. (b) **One live Google smoke** (`gemini-2.5-flash`), **all in-process**: 2
+   planners reach `submit_plan`, plan confirmed, worker completes — **recorded** (transcript/log).
+   Model the smoke on `scripts/test-live-gate.mjs` but with **API agents (no launched subprocess)**.
+
+**Scope — DO NOT TOUCH (guardrails):**
+- `TeamCoordinator` / protocol determinism — **unchanged**; the driver only feeds it tool calls and
+  consumes its events. If a change there seems necessary, **stop and raise it** — do not edit it.
+- `agentalk-mcp-client` / the MCP harness — no edits; the client's translation/worker/fact copies
+  stay (retiring them is **T4**).
+- The existing **attach (MCP/stub) path** and the **single-agent** T1 path — byte-for-byte
+  preserved; the team-of-API-agents path is opt-in (all three marked `provider:'api'`).
+- **brainstorm** and single-planner **`planner-worker`** compositions — out of scope; T2 is
+  **`planner-planner-worker` only.** (The `team_task_assign` event is the single-planner path — not
+  needed for T2.)
+
+**Risks to de-risk (call out in the ledger as you hit them):**
+- **R-T2a — live consensus may loop / not converge** with `gemini-2.5-flash`. Mitigation: the
+  existing auto-propose + stale-discussion watchdog + `maxReplies`; the live smoke uses a **directive
+  task** (à la M06 `test-live-gate.mjs`: "immediately agree on adding `plan.md` … and submit the
+  plan"). The **mocked-fetch test is the deterministic gate**; the live smoke is the existence proof.
+- **R-T2b (load-bearing) — two terminal calls in one worker turn vs registry dedup.** The worker turn
+  emits `submit_work_response` *then* `submit_work_result`. Verify the registry's
+  `markTerminalActionComplete` / `isDuplicateTerminalAction` (keyed on `currentTurnId`) does **not**
+  swallow the second call. If it does, the driver must sequence them correctly (e.g. distinct turn
+  accounting) **without** changing `TeamCoordinator`. This is the correctness crux of T2.
+- **R-T2c — graceful-degrade / non-planning invariant** (M06 §P6-A) preserved for all three agents.
+
+**Smoke checkpoint.** (a) deterministic mocked-fetch full-team CI test (green in suite); (b) one live
+Google end-to-end recorded run reaching worker completion.
+
+**Invariants (carry-forward).** Protocol determinism stays in `TeamCoordinator`; budget =
+`gemini-2.5-flash`; **no secrets committed** (keys via env); existing paths unchanged.
+
+**DoD** — claim/verdict rows live in `milestone07-centralized-brain-implementation.md` (T2.1–T2.5);
+a row is done only when the reviewer's verdict is **VERIFIED** (ran it), per workflow §3b. Implementer
+creates branch `m07-t2-api-consensus` off `master`, claim-only commits; reviewer merges on
+all-VERIFIED.
+
+---
+
+## 11. Task M07-T3 — MCP harness inversion (exec-RPC)  **(T3a/T3b DONE+merged; T3c implementation-ready)**
+
+**Goal.** Turn the MCP harness (`agentalk-mcp-client`) from a *semantic* client (it builds prompts,
+parses, maps `message_type`→tool — the M05/M06 model) into a **dumb remote executor**:
+`exec(prompt[, sessionId]) → {text, usage}`. The **brain** (prompt-build, parse/retry, translation,
+protocol) moves server-side — **reusing the exact loop T1/T2 already built**. Afterward the harness is
+frozen; new behaviour is added server-side only.
+
+**Key insight (grounded in code).** T1/T2's `InProcessAgentDriver` loop is
+`awaitTurn → buildPrompt → [GET COMPLETION] → parse/retry → translate → handleMcpToolCall`. For API
+agents `[GET COMPLETION]` = `callApi`. **T3 generalizes that one step** into a pluggable **Completer**
+(`complete(prompt, opts) → {text, usage}`): `ApiCompleter` (wraps T1/T2's `callApi`, unchanged) and a
+new **`McpCompleter`** that sends an **exec-RPC** to the harness and awaits raw text. Loop,
+prompt-build, translation, runtime: **all shared**. (Pre-spec reasoning: `milestone07-t3-prep.md`.)
+
+**Decisions baked in (Fausto, 2026-06-21):**
+- **D1 — Coexistence behind a flag**, not cutover. The exec-RPC path is added **alongside** the M05/M06
+  semantic path (config-gated); T4 retires the old path. (This *is* a contract/behaviour change →
+  authorised here per CLAUDE.md; it ships **off by default** until proven.)
+- **D2 — Session: `sessionId` / native MCP session direction** ("brain ≠ memory" — semantics
+  server-side, raw history in the MCP's `--continue` session). **R3 gets its own spike** (T3-S1) to
+  settle determinism/recovery; T3a may use stateless single-shot exec as scaffolding.
+- **D3 — Pilot on `gemini`/`agy`** (its persistent executor is proven in M06).
+- **D4 — Effect-fence (worker crash mid-exec): STOP and ask the human** — **no auto-reissue** to start.
+  The orchestrator surfaces the interrupted exec and waits; auto-reissue+dedup is a later, separate add.
+  **Implementation deferred (Fausto, 2026-06-21):** the *policy* stands, but building it is **failure-mode
+  work → moved to the M08+ failure-modes/resilience milestone**, NOT T3b-2. T3b-2 is worker-inversion only.
+- **D5 — API path: exploit provider-native caching, build nothing (don't over-engineer).** The Chat
+  Completions API is stateless, so API agents **must** resend history (LB-4) — but that cost is **already
+  solved provider-side** (OpenAI/Google do automatic prompt-prefix caching). So we **do not** build any
+  custom resend-reduction for the API path: rely on the providers' built-in caching. **No-resend / native
+  session is the mcp path only** (T3b) — that's the path with no provider cache to lean on *and*
+  where the O(n) context-window wall actually bites (caching cuts cost, not context growth). **Guardrail
+  (hygiene, not engineering):** keep the prompt **prefix byte-stable** (no volatile content prepended) so
+  automatic caching actually hits; our driver already does (transcript first, `Now respond:[latest]` last).
+
+**The guardrail flip (read carefully).** Unlike T1/T2, **T3 MAY and MUST touch the harness**
+(`../agentalk-mcp-client`) — the inversion is the task. But constrained:
+- The harness's new exec path stays **semantics-free** (no prompt-building, no `message_type` parsing —
+  it runs the MCP and returns raw text+usage). All semantics live server-side.
+- **The existing M05/M06 semantic path keeps working** (D1 coexistence) — the inversion is additive and
+  flag-gated; default behaviour byte-for-byte preserved. **Still DO NOT TOUCH:** `TeamCoordinator` /
+  protocol determinism; the API path (T1/T2).
+- Contract change is real → **hash-guard re-bump happens in T3c**, not piecemeal.
+
+**Risks (see §4 R2/R3/R4, refined in the prep doc).**
+- **R2 effect-fence** (worst — a MCP exec mutates a worktree → not idempotent). Resolved *for now* by D4
+  (stop-and-ask). Owned by **T3b**.
+- **R3 session state** — D2; settled by spike **T3-S1**.
+- **Exec granularity** — planner turn = single completion; **worker = run-to-completion agentic exec**.
+  Two RPC shapes; the worker shape is **T3b**.
+
+### 11a. T3a — exec-RPC for a planner turn  *(implementation-ready · branch `m07-t3a-mcp`)*
+
+The cheapest slice that proves the inversion: a **read-only planner turn** driven server-side, the MCP
+reached only as `exec(prompt) → text`. No consensus complexity beyond one turn, no worker, no reconnect.
+
+**Scope — DO:**
+1. **Completer abstraction** in `runtime-core`: `interface Completer { complete(prompt, opts) →
+   {text, usage} }`. Refactor `InProcessAgentDriver` to call an **injected** completer instead of
+   `callApi` directly. `ApiCompleter` wraps `callApi` — **T1/T2 behaviour must stay byte-for-byte**
+   (prove via the existing suite staying green).
+2. **`McpCompleter`** (orchestrator side): sends an **exec-RPC** to the harness over the existing
+   WS/MCP transport and awaits `{text, usage}`. Stateless single-shot for T3a (R3 scaffolding, D2).
+3. **Harness exec handler** (`agentalk-mcp-client`): on an exec-RPC, run the **agy** MCP once on the
+   given prompt and return raw text+usage. **Semantics-free.** The existing semantic path is untouched
+   and still selectable.
+4. **Flag/config** (D1): an agent marked e.g. `provider:'mcp', providerName:'gemini'` takes the
+   exec-RPC path via the driver; everything else unchanged / off by default.
+
+**Scope — DO NOT TOUCH:** `TeamCoordinator`; the API path (T1/T2) behaviour; the M05/M06 semantic
+harness path (must keep working).
+
+**Smoke checkpoint:** (a) deterministic **mocked exec-RPC** unit test (driver + McpCompleter,
+mocked transport) → a planner turn yields the right tool call; (b) **one live agy planner turn via
+exec-RPC**, recorded.
+
+### 11b. T3-S1 — session-model spike (R3)  *(implementation-ready · branch `m07-t3-s1-session-spike`)*
+
+**Type: spike (workflow §8).** Goal is **knowledge, not production code** — answer D2 with evidence so
+T3b's session handling isn't a guess. Output = a probe script + a written **findings + recommendation**
+that concretely settles D2 (lean: option 2, opaque `sessionId` / native MCP session — see prep §3.3).
+
+**What we already know (grounds the spike — don't re-discover):** the exec-RPC path
+(`handleExecRpc` → `executor.executeTurn`) **already routes through `GeminiPersistentExecutor`**, which
+runs **`agy --continue`** (executor-runtime.mjs ~L483) inside an **isolated per-agent home**
+(`GEMINI_CLI_HOME` = a `mkdtemp` dir, ~L395/499) with auth copied from the real `~/.gemini`. So native
+session continuity *may already work* through exec-RPC. The spike's job is to **prove or refute it**, and
+probe **recovery** — not to build session support from scratch.
+
+**Questions to answer (each with recorded evidence):**
+- **Q-S1a — No-resend continuity (the core claim).** Do **two consecutive exec-RPC turns** to the *same*
+  MCP agent share native memory **without the orchestrator resending turn-1 content**? Method: turn 1
+  plants a fact (e.g. "remember the codeword: BÉLIER"); turn 2 asks for it back. Assert turn-2 reply
+  contains the fact **and** that the turn-2 prompt the orchestrator sent did **not** include turn-1's
+  text. Green ⇒ option 2 viable, harness stays dumb, brain stays central.
+- **Q-S1b — Determinism / protocol-safety.** The orchestrator can't see the MCP's exact context
+  (compaction). Confirm this is OK because enforcement is on the **reply's `message_type`**, not internal
+  context: across ≥2 structured turns the reply still parses to a legal `message_type`. (Observation, not
+  a hard gate — record the finding.)
+- **Q-S1c — Recovery (ties to R2).** Does the on-disk session survive a **harness process restart**?
+  Method: plant a fact (turn 1) → kill the harness → relaunch against the **same** home → ask for the
+  fact. Does `--continue`/`--resume <id>` recover it? **Record whether an explicit `sessionId` is needed
+  for recovery** (this is the concrete D2 deliverable for T3b). If the isolated home is `mkdtemp` and
+  torn down on exit, note that recovery requires a **stable, non-ephemeral home/sessionId** — a finding
+  T3b must act on.
+- **Q-S1d — Cost.** Record token usage for native-session (no resend) vs. the stateless-resend
+  alternative for the same 2-turn exchange. Confirm native wins (expected: decisively).
+
+**Scope — DO:** add a spike script under `spikes/` (e.g. `m07-t3-s1-session-probe.mjs`) reusing the
+T3a live-smoke harness wiring (`scripts/test-mcp-gate.mjs` as the template); run it live with real
+**agy**; **record transcripts/logs**; write the findings + D2 recommendation into the ledger (T3-S1
+section) — and if recovery needs an explicit `sessionId`, specify the **exact** orchestrator/harness
+change for T3b (don't implement it here).
+
+**Scope — DO NOT:** ship production session code, change the `Completer` contract, touch
+`TeamCoordinator` / the API path / the M05/M06 semantic path. No worker, no effect-fence (that's T3b).
+A spike may leave throwaway scaffolding in `spikes/` — it does **not** need to be production-clean, but
+it must be **honestly reported** (what ran, what was observed, what's still unknown).
+
+**DoD (spike):** all four questions answered with **recorded live evidence**, and a written D2
+recommendation in the ledger that is concrete enough for T3b to implement against (esp. Q-S1c: is an
+explicit `sessionId` required, and if so, the exact shape). Reviewer verdict = VERIFIED only after
+**re-running the probe** (or inspecting the recorded transcripts if a live re-run is quota-blocked →
+BLOCKED, not REFUTED). Implementer creates branch `m07-t3-s1-session-spike` off `master`, claim-only
+commits.
+
+### 11c. T3b — split into T3b-1 (no-resend, low risk) + T3b-2 (worker exec, side-effecting)
+
+T3b is sliced (Fausto, 2026-06-21) so the **proven, low-risk cost win lands first**, ahead of the
+side-effecting worktree work.
+
+#### 11c-1. T3b-1 — no-resend for mcp + recovery fallback  *(implementation-ready · branch `m07-t3b1-no-resend`)*
+
+**Goal.** Stop the O(n) transcript resend on the mcp path (LB-4), proven safe + worth it by T3-S2
+(flat prompt, correct on native memory, 4.4×+ saving). Pure **orchestrator/driver** — **no worktree, no
+worker, no side effects.** The server-side brain still **records the full history** (so it can rebuild a
+lost session); it just stops *shipping* it every turn for stateful (native-session) agents.
+
+**Key insight (grounded in code).** `in-process-driver.ts` `handleTurn` builds the prompt at
+`this.runtime.buildPrompt(evt)` (full transcript) and keeps server-side memory via
+`this.runtime.recordAssistantReply(text)`. T3b-1 adds a **latest-turn-only** path for stateful completers;
+the runtime keeps recording everything **unchanged**, so recovery = "send the full transcript once."
+
+**Scope — DO:**
+1. **Completer capability flag.** Add `maintainsSession?: boolean` (or `stateful`) to the `Completer`
+   interface. `McpCompleter` → `true`; `ApiCompleter` → `false` (per **D5**, API path stays resend).
+2. **Latest-turn prompt builder.** Add `runtime.buildLatestTurnPrompt(evt)` (or equivalent) returning the
+   **new turn's content + per-turn protocol instructions** but **not** the prior-message transcript. The
+   driver uses it when `completer.maintainsSession === true`; otherwise it calls `buildPrompt` exactly as
+   today. (Per-turn instructions stay — they're constant-size; the *transcript* is the O(n) cost.)
+3. **Keep server-side memory intact.** The runtime continues to record all incoming messages + replies
+   regardless of which prompt builder is used. (Brain ≠ memory, but brain *holds* memory.)
+4. **Recovery fallback (LB-5).** A one-shot **"resend full transcript next turn"** mechanism: a settable
+   flag (e.g. `driver.markSessionStale()`) that makes the *next* exec use `buildPrompt` (full) instead of
+   latest-turn, then clears. Wire a **best-effort trigger** on agent reconnect (registry already emits a
+   reconnect/`reconnecting→ready` transition). **Robust reconnect *delivery* (IMP-T3b-1) is T3b-2** — T3b-1
+   only needs the resend-once *mechanism* + a deterministic test of it.
+
+**Scope — DO NOT TOUCH:** the API/T1-T2 prompt path (must stay **byte-for-byte** — `buildPrompt` default
+unchanged; guarded by the `maintainsSession` flag); `TeamCoordinator`; the worker path; the harness
+(no harness change needed — it already runs `--continue`). No worktree, no effect-fence.
+
+**Smoke checkpoint:** (a) **mocked unit test** — a stateful-completer agent over ≥3 turns: assert each
+sent prompt contains only the latest turn (no prior-message text) and the runtime still holds full
+history; (b) **recovery unit test** — after `markSessionStale()`, the next prompt is the full transcript,
+then reverts; (c) **regression** — API-agent tests unchanged (full resend still byte-for-byte); (d)
+**one live agy** multi-turn run via the real mcp path confirming correctness on native memory
+(reuse the T3-S2 fact-chain through the *driver* this time, not direct-exec).
+
+**DoD:** claim/verdict rows in the ledger (T3b-1.x); reviewer VERIFIES by running. Branch
+`m07-t3b1-no-resend` off `master`, claim-only commits; merge on all-VERIFIED.
+
+#### 11c-2. T3b-2 — worker run-to-completion exec (inversion only)  *(outlined; detailed when T3b-1 closes)*
+
+**RE-SCOPED (Fausto, 2026-06-21): inversion only — all crash/failure handling deferred.** T3b-2 does the
+one M07 thing: **run the worker through the centralized brain via exec-RPC**, just like the planner. It does
+**not** build the effect-fence, reconnect-recovery, or any mid-crash handling — that is **failure-mode work**,
+which we deliberately parked into the dedicated **failure-modes / resilience milestone (M08+)**. (Decided
+because bundling crash-handling here contradicts that defer decision and would bloat T3b-2.)
+
+- **Worker run-to-completion exec** — the worker turn goes through the **same `exec_rpc`** (no new RPC shape):
+  agy is already agentic and runs to completion in one exec, inside a per-task `git worktree`
+  (`AGENTTALK_WORKDIR`), with a longer timeout. Harness stays dumb/semantics-free.
+- **No live progress streaming** (single result at the end) — simplest; revisit only if a real need appears.
+- **Known limitation (documented, intentional):** if the worker harness disconnects **mid-exec**,
+  `McpCompleter` currently never rejects → the turn hangs. T3b-2 ships with this known gap because the
+  path is **flag-gated / off by default** (D1) and crash-handling is deferred. **→ moved to the M08+
+  failure-modes milestone:** effect-fence (D4 = stop-and-ask), exec-RPC reconnect delivery (**IMP-T3b-1**),
+  and `McpCompleter` disconnect/timeout rejection. T3b-2's only failure requirement: **don't make the
+  happy path worse than M05/M06**; a crash on the off-by-default exec path is acceptable until M08+.
+
+> **D4 status:** the *policy* (stop-and-ask, no auto-reissue) stays decided, but its *implementation* is
+> **deferred to the M08+ failure-modes milestone** — not T3b-2.
+
+### 11d. T3c — wire-contract bump for exec-RPC + hash re-bump  **(IMPLEMENTATION-READY — T3c.1–T3c.5 in the ledger)**
+- **T3c:** wire-contract bump for exec-RPC + **hash-guard re-bump (both repos)**; flip nothing on by default.
+
+**How the guard works (grounded in code).** `wire-contract.json.hash = sha256(JSON.stringify(data, null, 2))`.
+There are **two byte-identical copies** — `packages/contracts/wire-contract.json` (orchestrator) and
+`agentalk-mcp-client/wire-contract.json` (harness). On attach, the harness sends `clientInfo.contractHash`
+(`lib/mcp-client.mjs`) and `McpServer` compares it to its own `expectedContractHash`
+(`apps/orchestrator/src/mcp-server.ts` ~L149) — **mismatch ⇒ the agent is rejected.** So a bump in one repo
+without the other breaks every connection. `verify-contract.js` is `packages/contracts`'s **test** script, so
+the hash must be recomputed or the suite goes red.
+
+**The drift (concrete).** The real registered tools (`AGENTTALK_MCP_TOOLS`) include **`submit_exec_result`**,
+which is **missing from the contract's `mcpTools`** — that single omission *is* the exec-RPC contract gap. T3a/T3b
+shipped the exec-RPC surface and live tests passed against the **un-bumped** v3 hash, i.e. the guard does not yet
+cover exec-RPC. T3c closes that.
+
+**Decisions.**
+1. **Surface added = only `submit_exec_result` → `data.mcpTools`.** `exec_rpc` is an inbound **EVT subtype** and the
+   contract **does not enumerate EVT subtypes** (`team_work_assign`, `message_received`, … are absent too) → not
+   added (inconsistent otherwise). The contract is a **name-list**; it never describes payload field shapes →
+   `cwd`/`timeoutMs` need no entry.
+2. **Hash re-bump procedure.** `version` 3→4; recompute `sha256(JSON.stringify(data, null, 2))`; write the
+   **byte-identical** file to **both** repos; assert `diff -q` IDENTICAL; `node scripts/verify-contract.js` prints
+   "verified … (v4)".
+3. **M06-v3 phantom `messageTypes`** (parked backlog item) is **already resolved** — contract is v3 with 0 phantom
+   entries; nothing to fold. Dispositioned in the T3c backlog gate.
+4. **"Flip nothing on by default" = contract-only.** No provider defaults change; mcp stays opt-in (D1).
+   **Compatibility (intended tightening):** a v4 orchestrator **rejects** any harness still shipping v3. The operator
+   controls both repos, so this is acceptable — but it is the one externally-visible effect, so it is stated, not hidden.
+
+**DoD** — rows **T3c.1–T3c.5** in `milestone07-centralized-brain-implementation.md`. Branch `m07-t3c-contract-bump`
+off `master` in **each** repo; implementer claim-only commits; reviewer merges both on all-VERIFIED.
+
+**DoD** — claim/verdict rows in `milestone07-centralized-brain-implementation.md` (T3a.x first). A row
+is done only when the reviewer's verdict is **VERIFIED** (ran it), per §3b. Implementer creates branch
+`m07-t3a-mcp` off `master`, claim-only commits; reviewer merges on all-VERIFIED-or-DEFERRED.
+
+## 12. Task M07-T4 — retire client-side semantic logic (harness = transport + exec only)  **(SPLIT: T4a verify → T4b delete)**
+
+**Goal.** Complete the inversion: delete the harness's *semantic* path so the harness is **only** a dumb
+transport + executor (`exec_rpc → run MCP → submit raw {text}`). All prompt-building / parse / `message_type`→tool /
+lifecycle stays server-side in the brain (already true for API in T1/T2 and mcp in T3).
+
+**Why it's not just "delete dead code" (grounded in code).**
+- The **M06 flagship** `scripts/test-live-gate.mjs` still runs the **semantic attach path**: it creates *provider-less*
+  agents on `attach://test`, and only `api`/`mcp` agents get the server-side `InProcessAgentDriver`
+  (`registry.ts` ~L210). So full multi-agent **consensus** over mcp is **unproven** (T2 proved it for *API* only).
+- **Brainstorm** lives **only** in the harness (`handleBrainstormStart/Message`; 0 server-side) yet is wired through
+  `team-coordinator` (23 refs), contracts payloads, `validation`, and the **web UI** (`PlanningView.tsx`).
+
+**Decisions (Fausto, 2026-06-21).** **(a)** Brainstorm is **retired**, not migrated. **(b)** T4 is **split**: verify
+mcp consensus first (T4a), then delete (T4b). **(c)** ~~Attach-mode is removed, not remapped~~ → **OVERTURNED by the
+T4b pre-flight (below):** the production UI agents (gemini/claude/codex) *run on* the semantic harness, so attach-mode is
+**remapped to mcp** (all three providers migrated) — not just deleted. T4b re-scoped into 3 stages (§12b).
+
+### 12a. T4a — verify mcp multi-agent consensus  *(de-risk; branch `m07-t4a-mcp-consensus`)*
+Prove the brain fully replaces the semantic harness for consensus **before** deleting it. Architecturally low-risk
+(same `InProcessAgentDriver` as API/T2, only `McpCompleter` swapped in) but **unproven live**. agy is protocol-fit
+⇒ **not** under the unfit-model live-test freeze. DoD rows **T4a.1–T4a.3** in the ledger.
+
+### 12b. T4b — retire the semantic path  *(RE-SCOPED 2026-06-21 after pre-flight → 3 stages)*
+
+> **Pre-flight finding (2026-06-21, grounded in code) — the semantic harness IS the production runtime.** The web UI
+> creates `gemini`/`claude`/`codex` agents (`App.tsx` → `server.ts:514` `agent.provider = <provider>`), and
+> `registry.activateAgent` starts a server-side driver **only** for `'api'|'mcp'` (`registry.ts:210`). So production
+> MCP agents get **no driver → they run on the semantic harness over the wire.** Deleting it therefore **breaks the live
+> product**, not just `test-live-gate`. Also: **mcp has only ever run with gemini (agy)** — claude/codex via exec-RPC
+> is **unproven**. ⇒ the harness can't be deleted until the production providers are **migrated to mcp** and mcp
+> is **proven for all three**. **Decisions (Fausto, 2026-06-21):** migrate **all three** providers; re-spec T4b into **3
+> stages**, each its own branch + review gate, merged in order.
+
+**12b-1. T4b-1 — verify mcp for claude + codex**  *(branch `m07-t4b1-mcp-providers`)*
+Prove exec-RPC drives a real **claude** MCP turn and a real **codex** MCP turn (analog of `test-mcp-gate.mjs`, which
+only ever ran gemini). Consensus itself is already provider-agnostic (T4a proved it; the provider-specific part is only
+whether the harness executor runs that MCP and returns text). Single-turn round-trip per provider suffices. DoD **T4b-1.x**.
+
+**12b-2. T4b-2 — migrate the production/UI path to mcp**  *(branch `m07-t4b2-migrate-production`)*
+Route UI-created `gemini`/`claude`/`codex` agents onto the **mcp driver** (server-side brain via exec-RPC) instead of
+the wire/semantic path — at `registry.activateAgent` and/or the server create/start path. **Behavior change:** prove the
+**web UI still works** (a real agent turn + a team/consensus turn through the migrated path). DoD **T4b-2.x**.
+
+**12b-3. T4b-3 — delete the semantic path + retire brainstorm + migrate flagship**  *(IMPLEMENTATION-READY — branch `m07-t4b3-retire-semantics`, both repos; the LAST M07 piece)*
+Only now safe (T4b-2 merged). Delete harness semantics + `conversation-runtime`/`response-schema`; remove the orchestrator
+no-driver/attach path (dead post-migration); retire **brainstorm** end-to-end (incl. UI `PlanningView`); migrate `test-live-gate`
+→ mcp; retire dead `test-attach-mode.mjs`/`attach-harness.mjs`. **No contract bump expected** (harness only calls
+`await_turn`/`submit_exec_result`/`list_agents`; `messageTypes` stay — the brain still parses them) — but **verify**
+`wire-contract.json` is byte-unchanged. **Pre-flight-grounded inventory + the surgical-excise constraint live in the ledger
+T4b-3.1–3.5** (the harness semantic code is interwoven L85–728; `handleExecRpc` L729+ survives; keep the orchestrator's event
+*emission* — the driver consumes it). **Regression bar:** the mcp consensus test + the T4b-2 production live test must
+still pass. DoD **T4b-3.x**.
+
+**DoD** — rows in `milestone07-centralized-brain-implementation.md`; reviewer verdict **VERIFIED** (ran it) per §3b;
+implementer claim-only per stage branch; reviewer merges on all-VERIFIED. **Stages merge in order** (T4b-1 → T4b-2 → T4b-3);
+T4a already merged.

@@ -1,0 +1,26 @@
+{
+  "name": "agenttalk",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "tsc -b && npm run build --workspace @agenttalk/web",
+    "test": "npm run test --workspace @agenttalk/contracts && vitest run",
+    "dev": "concurrently \"npm run backend\" \"npm run frontend\"",
+    "dev:supervised": "node scripts/supervisor.mjs",
+    "restart-dev": "node scripts/restart-supervisor.mjs",
+    "scenario": "npm run scenario --workspace @agenttalk/orchestrator",
+    "backend": "npm run start --workspace @agenttalk/orchestrator",
+    "frontend": "npm run dev --workspace @agenttalk/web",
+    "play-recording": "npm run play-recording --workspace @agenttalk/orchestrator"
+  },
+  "devDependencies": {
+    "@types/node": "^25.5.0",
+    "concurrently": "^9.2.1",
+    "typescript": "^6.0.2",
+    "vitest": "^2.1.8"
+  }
+}

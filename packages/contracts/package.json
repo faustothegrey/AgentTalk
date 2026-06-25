@@ -1,0 +1,17 @@
+{
+  "name": "@agenttalk/contracts",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./types": "./dist/types.js",
+    "./types.js": "./dist/types.js",
+    "./protocol-payloads": "./dist/protocol-payloads.js",
+    "./protocol-payloads.js": "./dist/protocol-payloads.js",
+    "./wire-contract.json": "./wire-contract.json"
+  },
+  "scripts": {
+    "build": "tsc -b",
+    "test": "node scripts/verify-contract.js"
+  }
+}

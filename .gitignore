@@ -1,0 +1,26 @@
+.claude/
+transcripts/
+planning_runs/
+node_modules/
+dist/
+coverage/
+test-transcripts/
+.npm-cache/
+.agenttalk-supervisor.pid
+/recordings/
+google-oauth-client.json
+google-drive-token.json
+credentials.json
+
+# vite build artifacts
+apps/web/vite.config.js
+apps/web/vite.config.js.map
+persistence/
+vitest.log
+test-loop-debug.log
+
+# TypeScript incremental build info
+*.tsbuildinfo
+
+# spike / smoke / live-probe run logs (evidence lives in the ledgers, not git)
+m07-*.log

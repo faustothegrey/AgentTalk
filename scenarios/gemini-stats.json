@@ -1,0 +1,22 @@
+{
+  "name": "Gemini Stats One-Shot Team",
+  "description": "A scenario where a single-agent team issues the /stats command.",
+  "agents": [
+    {
+      "id": "gemini-stats",
+      "provider": "gemini",
+      "model": "gemini-3.1-pro-preview",
+      "executionMode": "one_shot"
+    }
+  ],
+  "teams": [
+    {
+      "members": [
+        { "agentId": "gemini-stats", "role": "worker" }
+      ],
+      "tasks": [
+        { "description": "/stats" }
+      ]
+    }
+  ]
+}

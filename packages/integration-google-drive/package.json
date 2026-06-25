@@ -1,0 +1,16 @@
+{
+  "name": "@agenttalk/integration-google-drive",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./google-drive/*": "./dist/google-drive/*.js",
+    "./google-drive/*.js": "./dist/google-drive/*.js"
+  },
+  "scripts": {
+    "build": "tsc -b"
+  },
+  "dependencies": {
+    "googleapis": "^171.4.0"
+  }
+}

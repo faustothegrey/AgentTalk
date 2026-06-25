@@ -1,0 +1,25 @@
+{
+  "name": "Hello Gemini One-Shot Conversation",
+  "description": "Two Gemini one-shot agents greeting each other.",
+  "agents": [
+    {
+      "id": "gemini-a",
+      "provider": "gemini",
+      "model": "gemini-2.5-flash",
+      "executionMode": "one_shot"
+    },
+    {
+      "id": "gemini-b",
+      "provider": "gemini",
+      "model": "gemini-2.5-flash",
+      "executionMode": "one_shot"
+    }
+  ],
+  "conversations": [
+    {
+      "agentIds": ["gemini-a", "gemini-b"],
+      "topic": "Say 'Hello' to each other and mention you are in one-shot mode.",
+      "maxRepliesPerAgent": 1
+    }
+  ]
+}
