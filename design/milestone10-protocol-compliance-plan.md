@@ -89,7 +89,30 @@ changes.** Deliverables:
 No implementation. Also out of M10 entirely: **operator abort/recovery for `awaiting_operator` tasks**
 (M08-T3 shipped fence-only; its own future milestone).
 
-## 6. Definition of Done (Phase 1)
+## 5b. Phase-1 RESULT — ✅ DONE (2026-06-25, full detail in logbook **LB-20**)
+
+Read-only spike complete; no production code changed. Headlines:
+- **DQ1 — the affordance data already exists.** The brain owns phase truth (`getPlanningPhase`,
+  `team-coordinator.ts:862`), already *computes and sends* the legal set per turn (`expected_response_types`,
+  `:462`), already validates `message_type` (`:441`), and already has a *bounded* correct-and-retry for the
+  agreement step (`:788`). "Restate the affordance each turn" is **~half-built** (sent as advisory, not
+  enforced). Single-tool collapse point = `translation.ts:11-82`.
+- **DQ2 — peer-safe eject does NOT exist; the dual-kill is confirmed.** Every violation funnels into the single
+  sink `interruptPlanningForMissingEvents` (`:1702`), which kills the task + team and **shuts down every
+  planner** (`:1733-1742`). The only non-killing path (`pauseTaskForOperator`, `:1529`) is worker-exec-only.
+  **Phase 2 must add a new `ejectPlanner` path** — the load-bearing 🔴 risk — and decide degrade-vs-fail-soft
+  for the resulting 1-planner state.
+- **DQ3 — both paths are prompt-and-parse *today*.** `api-client.ts` sends only `response_format:json_object`
+  (no `tools`/`tool_choice`/`strict`/`enum`); the API-path optimization is **greenfield, not a retrofit**, and
+  reachable per-provider (verify deepseek/gemini). MCP per-turn enum-binding is unmeasured (live per-harness
+  probe deferred). **Verdict holds: enforcement = optimization, graded loop = floor.**
+
+**Phase-2 task breakdown (proposed — see LB-20):** ① single `consensus_respond(action,payload)` ·
+② generalise the bounded correct→retry loop (extend `parseWithRetry` from malformed → illegal-move) ·
+③ 🔴 peer-safe `ejectPlanner` + degrade/fail-soft decision · ④ *(optional, separate)* API-path
+`tools`+`tool_choice`+strict-`enum` optimization. Phase 2 gets its own plan, written next.
+
+## 6. Definition of Done (Phase 1)  — ✅ met (see §5b / LB-20)
 
 1. **Design doc** (logbook `LB-N` + this plan updated): the single-tool + restated-per-turn-affordance +
    graded-bounded-loop design, with the **injection map** (DQ1) and the **peer-safe-eject analysis**

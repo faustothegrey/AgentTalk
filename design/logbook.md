@@ -464,3 +464,64 @@ The other three were less "is it safe" and more "is this a small clean change or
   request if it matters: expose per-edge arrow-label placement.
 - **Source:** Claude, 2026-06-24, continued DiagramTalk session. Final banked spec:
   `consensus-sm-v3.json` (scratchpad); rendered to `sm-v3.png`. Continues [[LB-18]].
+
+
+### LB-20 · 2026-06-25 — [M10/protocol] Phase-1 spike findings — graded-brain injection map, the dual-kill, and "both paths are prompt-and-parse today"
+> **Nature:** read-only design-spike result for M10 (plan: `milestone10-protocol-compliance-plan.md`). No
+> production code changed. Answers the plan's DQ1/DQ2/DQ3.
+
+- **DQ1 — Injection map (the affordance data already exists; the loop is half-built).** The brain already
+  owns everything the graded design needs, server-side, in `team-coordinator.ts`:
+  - **Phase truth** — `planningPhases` map + `getPlanningPhase(taskId)` (`:862`). The legal set per phase is a
+    pure function of this (deterministic, scriptable — as argued).
+  - **Legal set already computed AND already sent** — `taskExpectedResponses` map; `expected_response_types`
+    is attached to the turn payload (`:462`) and echoed through `translation.ts` (`:17`). So "restate the
+    current affordance each turn" is **~half-implemented today** — it's sent, but as an advisory field, not an
+    enforced constraint.
+  - **Validation** — the brain reads the agent's `message_type` (`:441`) and guards it against the phase
+    (`throw 'Unexpected agreement_proposal: planning phase is …'`, `:514/:592`). The prose briefing
+    (`:335-359`) tells the model the orchestrator enforces on `message_type`, not text.
+  - **Partial graded loop already present** — `handleAgreementReachedFallbackToDiscussion` (`:788`) does a
+    **bounded** correct-and-retry (back to discussion, capped by `MAX_AGREEMENT_ENDORSEMENT_DISCUSSION_FALLBACKS`).
+    And `parseWithRetry` (`translation.ts:88`) is a one-shot retry — but **only on malformed JSON**, not on an
+    illegal-but-well-formed move.
+  - **Single-tool collapse point** = `translateStructuredResponse` (`translation.ts:11-82`): a `switch` mapping
+    each `message_type` → a distinct MCP `call`. Collapsing to one `consensus_respond(action,payload)` is a
+    change *here* + the `STRUCTURED_MESSAGE_TYPES` enum (`response-schema.ts:16-28`).
+- **DQ2 — Peer-safe eject: it does NOT exist today; the dual-kill is real and is a single shared sink.**
+  Every protocol-violation / agent-failure-during-planning path funnels into
+  **`interruptPlanningForMissingEvents` (`:1702-1747`)**, which sets `task.status='interrupted'` +
+  `team.status='interrupted'`, deletes `currentTaskId`, and **shuts down *every* planner** (loop `:1733-1742`).
+  Callers: `handleAgentFailure` during planning (`:1482`), agreement non-compliance, fallback exhaustion,
+  out-of-set `message_type`, fact-collection timeout. So one planner's bad move tears the whole round down and
+  kills the peer — exactly [[LB-7]]/[[LB-8]]. The **only** non-killing path is `pauseTaskForOperator` (`:1529`,
+  the M08-T3 fence) and it's worker-exec-crash-only. **Phase 2 must add a new `ejectPlanner(agentId)`** — a
+  separate path (mirroring how `pauseTaskForOperator` is separate from `handleAgentFailure`) that removes only
+  the offender and keeps the surviving planner alive. **Open product decision:** consensus needs 2 planners, so
+  "eject one" forces a choice — degrade to solo-submit, or fail-soft the round — but **either way the peer must
+  not be killed as a side effect.** This is where the real engineering risk lives, as predicted.
+- **DQ3 — Enforcement reach: BOTH paths are prompt-and-parse *today*; the hard levers are greenfield, not a
+  retrofit.** The API path (`api-client.ts`) is OpenAI-compatible `/chat/completions` over providers
+  openai/deepseek/gemini, and sends at most `response_format:{type:'json_object'}` (`:7/:65`) — loose "valid
+  JSON", **no** `tools`/`tool_choice`/`strict`/`enum`. The reply is free-text JSON run through
+  `parseStructuredResponse`. So the model-distrust intuition is **correct about the system as it stands** — we
+  parse text and hope, on every path. The optimization (per-call tool set + `tool_choice` + strict `enum`) is
+  *available* on the API path via the OpenAI-compatible tool API (per-provider: OpenAI strict yes; deepseek /
+  gemini-via-OpenRouter **verify**, don't assume) but is **not used yet**. MCP path: narrowing the
+  `consensus_respond` `action` enum per `await_turn` = update the tool's `inputSchema` + `tools/list_changed`;
+  whether each harness (`agy`/`claude`/`codex`) re-reads it and *binds* the model vs *suggests* is unmeasured
+  (live per-harness probe deferred — needs the harnesses + budget). **Verdict unchanged: enforcement is an
+  optimization, the graded loop is the floor on every path.**
+
+- **Phase-2 task breakdown (proposed; Phase-2 is its own plan, written after this):**
+  1. **Single tool.** Collapse `translateStructuredResponse` + the `message_type` set into one
+     `consensus_respond(action, payload)`; brain reads `action`, validates vs `taskExpectedResponses`.
+  2. **Generalised graded loop.** Promote the existing agreement-only bounded fallback into a *general*
+     per-turn ladder: out-of-set `action` → correct + retry (restate the current legal set), bounded N, then →
+     eject. Reuse `parseWithRetry`'s shape; extend from "malformed" to "illegal move".
+  3. **🔴 Peer-safe `ejectPlanner`.** New non-killing path; the load-bearing risk. Decide degrade-vs-fail-soft
+     for the 1-planner state. Regression-test that ejecting A leaves B alive and the round resolves.
+  4. **(Optional, separate) API-path enforcement optimization.** Add `tools`+`tool_choice`+strict `enum` on the
+     `api-client.ts` request so the API path skips the retry round-trip; per-provider verified. Not a gate.
+- **Source:** Claude, Phase-1 design spike, 2026-06-25 (read-only; weekly 46% / session 23% at run). Grounds
+  [[LB-10]]; feeds the M10 plan. No files changed except this entry + the plan.
