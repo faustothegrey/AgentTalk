@@ -816,7 +816,7 @@ describe('TeamCoordinator', () => {
     );
   });
 
-  it('should reject submit_plan before agreement in multi-planner flow', async () => {
+  it('M10-T2: corrects submit_plan-before-agreement (bounded), then ejects the offender on repeated illegal moves', async () => {
     const plannerA = new Agent('planner-a');
     plannerA.setStatus('starting');
     plannerA.setStatus('ready');
@@ -858,23 +858,115 @@ describe('TeamCoordinator', () => {
     await coordinator.handleFactCollectionEnd('planner-a', 'Found relevant code in src/');
     await coordinator.handleFactCollectionEnd('planner-b', 'Reviewed test patterns');
 
-    coordinator.handlePlanSubmitted('planner-a', [
+    const submitOnce = () => coordinator.handlePlanSubmitted('planner-a', [
       '1. Update `src/registry/team-coordinator.ts` to tighten validation.',
       '2. Add tests for protocol progression.',
       '3. Run test suite and confirm no regressions.',
     ].join('\n'), 'Adopt the tiny-cleanup plan.', 'Submitting final plan.');
 
-    // submit_plan without agreement is a regression — planning is interrupted
-    const currentTaskId = coordinator.getTeam(team.id).currentTaskId;
-    expect(currentTaskId).toBeUndefined();
+    // M10-T2: submit_plan before agreement is an illegal forward move. The graded
+    // loop now CORRECTS it (bounded) before ejecting — it no longer dual-kills.
+    // Attempt 1: correction sent, planning still alive.
+    submitOnce();
+    const correction1 = sendProtocol.mock.calls.find(
+      ([id, , payload]) => id === 'planner-a' && typeof payload === 'object' && (payload as any).payload?.includes?.('correction attempt 1/2'),
+    );
+    expect(correction1).toBeDefined();
+    expect(coordinator.getTeam(team.id).currentTaskId).toBeDefined();
     expect(emitPlanningComplete).not.toHaveBeenCalled();
 
+    // Attempt 2: still a correction, planning still alive.
+    submitOnce();
+    const correction2 = sendProtocol.mock.calls.find(
+      ([id, , payload]) => id === 'planner-a' && typeof payload === 'object' && (payload as any).payload?.includes?.('correction attempt 2/2'),
+    );
+    expect(correction2).toBeDefined();
+    expect(coordinator.getTeam(team.id).currentTaskId).toBeDefined();
+
+    // Attempt 3: budget exhausted → eject the offender (fail-soft, NOT dual-kill).
+    submitOnce();
+    await new Promise((r) => setTimeout(r, 0));
+
     const latestTask = emitTeamTask.mock.calls.at(-1)?.[0] as TeamTask;
-    expect(latestTask.status).toBe('interrupted');
-    expect(latestTask.transcript.at(-1)?.payload).toContain('Protocol regression');
+    expect(latestTask.status).toBe('awaiting_operator'); // frozen for operator, not 'interrupted'
+    expect(latestTask.transcript.some(e => e.payload.includes('Planner planner-a ejected'))).toBe(true);
+    expect(coordinator.getTeam(team.id).currentTaskId).toBeDefined(); // task stays attached for the operator
+    expect(emitPlanningComplete).not.toHaveBeenCalled();
+
+    // The surviving planner-b is kept alive and notified.
+    const peerNotice = sendProtocol.mock.calls.find(
+      ([id, , payload]) => id === 'planner-b' && typeof payload === 'object' && (payload as any).payload?.includes?.('You remain active'),
+    );
+    expect(peerNotice).toBeDefined();
   });
 
-  it('should ask for regression confirmation twice then interrupt planning on confirmed regression', async () => {
+  it('M10-T2: an illegal move is corrected and the planner RECOVERS within budget (no eject)', async () => {
+    const plannerA = new Agent('planner-a');
+    plannerA.setStatus('starting');
+    plannerA.setStatus('ready');
+
+    const plannerB = new Agent('planner-b');
+    plannerB.setStatus('starting');
+    plannerB.setStatus('ready');
+
+    const worker = new Agent('worker');
+    worker.setStatus('starting');
+    worker.setStatus('ready');
+
+    const emitTeamTask = vi.fn();
+    const sendProtocol = vi.fn().mockResolvedValue(undefined);
+    const coordinator = new TeamCoordinator({
+      getAgent: (id) => {
+        if (id === 'planner-a') return plannerA;
+        if (id === 'planner-b') return plannerB;
+        if (id === 'worker') return worker;
+        throw new Error(`Unknown agent: ${id}`);
+      },
+      sendProtocol,
+      emitTeam: vi.fn(),
+      emitTeamTask,
+      emitPlanningComplete: vi.fn(),
+      logError: vi.fn(),
+    }, { planningRunsDir: '' });
+
+    const team = coordinator.createTeam([
+      { agentId: 'planner-a', role: 'planner' },
+      { agentId: 'planner-b', role: 'planner' },
+      { agentId: 'worker', role: 'worker' },
+    ]);
+
+    await coordinator.assignTask(team.id, 'Do a tiny cleanup');
+    await coordinator.handlePlanningProtocolAck('planner-a');
+    await coordinator.handlePlanningProtocolAck('planner-b');
+    await coordinator.handleFactCollectionEnd('planner-a', 'Found relevant code in src/');
+    await coordinator.handleFactCollectionEnd('planner-b', 'Reviewed test patterns');
+
+    // One illegal forward move (submit_plan in discussion) → correction, planning alive.
+    coordinator.handlePlanSubmitted('planner-a', [
+      '1. Update `src/registry/team-coordinator.ts` to tighten validation.',
+      '2. Run test suite and confirm no regressions.',
+    ].join('\n'), 'Adopt the tiny-cleanup plan.', 'Submitting final plan.');
+    const correction = sendProtocol.mock.calls.find(
+      ([id, , payload]) => id === 'planner-a' && typeof payload === 'object' && (payload as any).payload?.includes?.('correction attempt 1/2'),
+    );
+    expect(correction).toBeDefined();
+    expect(coordinator.getTeam(team.id).currentTaskId).toBeDefined();
+
+    // The planner now sends a LEGAL move — it recovers, no eject.
+    await coordinator.handleAgreementProposal('planner-a', ['agreement_acceptance', 'opinion'], 'Adopt the tiny-cleanup plan.');
+
+    expect(coordinator.getTeam(team.id).currentTaskId).toBeDefined();
+    const ejected = emitTeamTask.mock.calls.some(
+      ([t]) => (t as TeamTask)?.status === 'awaiting_operator',
+    );
+    expect(ejected).toBe(false); // never ejected
+    const ejectNotice = sendProtocol.mock.calls.some(
+      ([, , payload]) => typeof payload === 'object' && (payload as any).payload?.includes?.('ejected'),
+    );
+    expect(ejectNotice).toBe(false);
+  });
+
+  it('M10-T2: asks for regression confirmation twice then EJECTS the offender on confirmed regression', async () => {
     const plannerA = new Agent('planner-a');
     plannerA.setStatus('starting');
     plannerA.setStatus('ready');
@@ -940,15 +1032,23 @@ describe('TeamCoordinator', () => {
     expect(confirmCall2).toBeDefined();
     expect(coordinator.getTeam(team.id).currentTaskId).toBeDefined();
 
-    // Third attempt: confirmed regression — planning should be interrupted
+    // Third attempt: budget exhausted — M10-T2 EJECTS the offender (fail-soft),
+    // it no longer dual-kills both planners.
     sendProtocol.mockClear();
     await coordinator.handleAgreementProposal('planner-a', ['agreement_proposal'], 'Adopt the tiny-cleanup plan.');
+    await new Promise((r) => setTimeout(r, 0));
 
-    expect(coordinator.getTeam(team.id).currentTaskId).toBeUndefined();
-    const interruptCalls = sendProtocol.mock.calls.filter(
-      ([, , payload]) => typeof payload === 'object' && (payload as any).payload?.includes?.('Protocol regression'),
+    // Task stays attached for the operator (peer + round survive), frozen.
+    expect(coordinator.getTeam(team.id).currentTaskId).toBeDefined();
+    const latestTask = emitTeamTask.mock.calls.at(-1)?.[0] as TeamTask;
+    expect(latestTask.status).toBe('awaiting_operator');
+    expect(latestTask.transcript.some(e => e.payload.includes('Planner planner-a ejected'))).toBe(true);
+
+    // The surviving planner-b is kept alive and notified (not shut down).
+    const peerNotice = sendProtocol.mock.calls.find(
+      ([id, , payload]) => id === 'planner-b' && typeof payload === 'object' && (payload as any).payload?.includes?.('You remain active'),
     );
-    expect(interruptCalls.length).toBeGreaterThanOrEqual(1);
+    expect(peerNotice).toBeDefined();
   });
 
   it('should ask for regression confirmation on discussion after agreement_acceptance', async () => {
@@ -1179,7 +1279,7 @@ describe('TeamCoordinator', () => {
     expect(task.status).toBe('awaiting_confirmation');
   });
 
-  it('should immediately interrupt planning on repeated agreement_acceptance when submit_plan is expected', async () => {
+  it('M10-T2: corrects then ejects the offender on repeated agreement_acceptance when submit_plan is expected', async () => {
     const plannerA = new Agent('planner-a');
     plannerA.setStatus('starting');
     plannerA.setStatus('ready');
@@ -1228,14 +1328,23 @@ describe('TeamCoordinator', () => {
     await coordinator.handleAgreementProposal('planner-a', ['agreement_proposal'], 'Adopt the tiny-cleanup plan.');
     await coordinator.handleAgreementReached('planner-b', ['agreement_acceptance'], 'Adopt the tiny-cleanup plan.');
 
-    // Re-sending agreement_acceptance after convergence is a regression — planning is interrupted.
-    await coordinator.handleAgreementReached('planner-b', ['agreement_acceptance'], 'Adopt the tiny-cleanup plan.');
+    // M10-T2: re-sending agreement_acceptance when submit_plan is expected is an
+    // illegal (lateral) move. The graded loop corrects it (bounded N=2) before
+    // ejecting the offender — it no longer dual-kills both planners.
+    const resend = () => coordinator.handleAgreementReached('planner-b', ['agreement_acceptance'], 'Adopt the tiny-cleanup plan.');
 
-    const currentTaskId = coordinator.getTeam(team.id).currentTaskId;
-    expect(currentTaskId).toBeUndefined();
+    await resend(); // correction 1
+    expect(coordinator.getTeam(team.id).currentTaskId).toBeDefined();
+    await resend(); // correction 2
+    expect(coordinator.getTeam(team.id).currentTaskId).toBeDefined();
+    await resend(); // budget exhausted → eject offender (fail-soft)
+    await new Promise((r) => setTimeout(r, 0));
+
+    // Fail-soft: task frozen for the operator, peer + round survive (NOT dual-kill).
+    expect(coordinator.getTeam(team.id).currentTaskId).toBeDefined();
     const latestTask = emitTeamTask.mock.calls.at(-1)?.[0] as TeamTask;
-    expect(latestTask.status).toBe('interrupted');
-    expect(latestTask.transcript.at(-1)?.payload).toContain('Protocol regression');
+    expect(latestTask.status).toBe('awaiting_operator');
+    expect(latestTask.transcript.some(e => e.payload.includes('Planner planner-b ejected'))).toBe(true);
   });
 
   it('should advance max rank even when agreement_acceptance is sent without expectedResponseTypes', async () => {

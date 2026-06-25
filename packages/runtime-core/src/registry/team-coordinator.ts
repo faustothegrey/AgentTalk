@@ -56,6 +56,10 @@ const MAX_AGREEMENT_ENDORSEMENT_DISCUSSION_FALLBACKS = 2;
 const DEFAULT_FACT_COLLECTION_TIMEOUT_MS = 480_000;
 const DEFAULT_GEMINI_FACT_COLLECTION_TIMEOUT_MS = 720_000;
 const MAX_AGREEMENT_ASKS = 2;
+// M10-T2 (D2): bounded correction budget for ANY illegal protocol move — a
+// regression OR a forward/lateral move out of the legal set. After this many
+// corrections the offender is ejected (peer-safe), not dual-killed. (Name kept
+// for low-churn continuity; meaning is now "protocol correction retries".)
 const MAX_REGRESSION_RETRIES = 2;
 
 interface AgreementState {
@@ -1841,22 +1845,35 @@ export class TeamCoordinator {
 
     // Server-side expected state is authoritative; agent-declared next states are advisory only.
     if (expected && !expected.includes(actualType)) {
-      // Regression: ask the agent to confirm before failing planning.
-      if (actualRank < currentMax) {
-        const retryKey = `${taskId}:${senderAgentId}`;
-        const retryCount = this.regressionRetryCounts.get(retryKey) ?? 0;
+      // M10-T2 graded loop: ANY illegal move (regression OR forward/lateral) gets
+      // a bounded correction before the offender is removed (D2, N=2). The two
+      // flavours share one budget (regressionRetryCounts) and differ only in the
+      // correction message: a regression asks the agent to confirm/resend; a
+      // forward/lateral illegal move restates the legal set. On budget exhaustion
+      // we call the peer-safe ejectPlanner (T1) — NOT the M03 dual-kill: the
+      // surviving planner stays alive and the round ends fail-soft (D1).
+      const isRegression = actualRank < currentMax;
+      const retryKey = `${taskId}:${senderAgentId}`;
+      const retryCount = this.regressionRetryCounts.get(retryKey) ?? 0;
 
-        if (retryCount < MAX_REGRESSION_RETRIES) {
-          this.regressionRetryCounts.set(retryKey, retryCount + 1);
+      if (retryCount < MAX_REGRESSION_RETRIES) {
+        this.regressionRetryCounts.set(retryKey, retryCount + 1);
+        if (isRegression) {
           void this.askRegressionConfirmation(taskId, senderAgentId, actualType, currentMax, retryCount + 1);
-          return false;
+        } else {
+          void this.askProtocolCorrection(taskId, senderAgentId, actualType, expected, retryCount + 1);
         }
-
-        // Agent confirmed the regression — fail planning.
-        this.regressionRetryCounts.delete(retryKey);
+        return false;
       }
 
-      void this.interruptPlanningForRegression(taskId, actualType, currentMax, expected);
+      // Budget exhausted — eject the offender (peer + round survive, fail-soft).
+      this.regressionRetryCounts.delete(retryKey);
+      const rankNames = Object.entries(ADVANCEMENT_RANK).find(([_, r]) => r === currentMax);
+      const maxRankName = rankNames ? rankNames[0] : 'unknown';
+      const reason = isRegression
+        ? `Protocol regression: confirmed "${actualType}" after planning advanced to "${maxRankName}" (expected one of [${expected.join(', ')}]).`
+        : `Illegal protocol move: repeated "${actualType}" not in the expected set [${expected.join(', ')}].`;
+      void this.ejectPlanner(senderAgentId, reason);
       return false;
     }
 
@@ -1927,6 +1944,49 @@ export class TeamCoordinator {
     }
   }
 
+  /**
+   * M10-T2: correction prompt for a forward/lateral illegal move (a message_type
+   * that is not in the current legal set but is NOT a regression). Mirrors
+   * askRegressionConfirmation but restates the legal set instead of asking the
+   * agent to confirm a regression. Bounded by the same budget — on exhaustion the
+   * caller (validateProtocolStep) ejects the offender.
+   */
+  private async askProtocolCorrection(
+    taskId: string,
+    senderAgentId: string,
+    actual: string,
+    expected: string[],
+    attempt: number,
+  ): Promise<void> {
+    const task = this.tasks.get(taskId);
+    if (!task) return;
+
+    const message =
+      `You sent "${actual}", which is not a valid move at the current protocol step. ` +
+      `The expected message_type is one of [${expected.join(', ')}]. ` +
+      `Please resend with a correct message_type. ` +
+      `${MESSAGE_TYPE_MOTIVATION_REQUIREMENT} ` +
+      `(correction attempt ${attempt}/${MAX_REGRESSION_RETRIES})`;
+
+    this.recordTaskTranscript(task, {
+      kind: 'system',
+      from: 'system',
+      to: senderAgentId,
+      payload: message,
+    });
+    this.deps.emitTeamTask(task);
+
+    try {
+      await this.deps.sendProtocol(senderAgentId, 'EVT', {
+        type: 'message_received',
+        from: 'system',
+        payload: message,
+      });
+    } catch (err) {
+      this.deps.logError(`[TeamCoordinator] Failed to ask ${senderAgentId} for protocol correction:`, err);
+    }
+  }
+
   private clearRegressionRetries(taskId: string): void {
     for (const key of this.regressionRetryCounts.keys()) {
       if (key.startsWith(`${taskId}:`)) {
@@ -1940,23 +2000,6 @@ export class TeamCoordinator {
     return !!expected && expected.includes('opinion') && expected.includes('agreement_proposal');
   }
 
-  private async interruptPlanningForRegression(
-    taskId: string,
-    actual: string,
-    currentMaxRank: number,
-    expected: string[],
-  ): Promise<void> {
-    const task = this.tasks.get(taskId);
-    if (!task) return;
-    const team = this.teams.get(task.teamId);
-    if (!team) return;
-
-    const rankNames = Object.entries(ADVANCEMENT_RANK).find(([_, r]) => r === currentMaxRank);
-    const maxRankName = rankNames ? rankNames[0] : 'unknown';
-
-    const reason = `Protocol regression: received "${actual}" but planning had advanced to "${maxRankName}" (expected one of [${expected.join(', ')}]).`;
-    await this.interruptPlanningForMissingEvents(team, task, [reason]);
-  }
 }
 
 function assertPlanIsImplementationReady(plan: string): void {
