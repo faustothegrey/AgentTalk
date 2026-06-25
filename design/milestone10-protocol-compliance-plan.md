@@ -22,8 +22,14 @@ engine + a non-compliant agent **stalls/times out**. The cure is **compliance**.
   *weakest* models most; the natural next step of the M07 "centralized brain" thesis (brain owns
   per-turn **affordances**, not just prompt/parse/lifecycle).
 
-Visual: `M10 · Affordance Protocol` diagram on DiagramTalk (phases spine → per-phase legal tool →
-prose-problem / affordance-solution / spike-fork annotations). Render archived at scoping time.
+Visual — `M10 · Affordance Protocol` (phases spine → per-phase legal tool → prose-problem /
+affordance-solution / spike-fork annotations). Snapshot committed in-repo so it survives without the
+DiagramTalk server; the source layout spec is alongside it (regenerate via
+`diagramtalk.py layout … --post`).
+
+![M10 Affordance Protocol](diagrams/m10-affordance-protocol.png)
+
+*Source spec: [`diagrams/m10-affordance-protocol.layout.json`](diagrams/m10-affordance-protocol.layout.json).*
 
 ## 2. Why spike-led — the feasibility fork (the heart of Phase 1)
 

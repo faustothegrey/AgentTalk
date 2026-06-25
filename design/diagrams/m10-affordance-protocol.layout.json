@@ -1,0 +1,190 @@
+{
+  "config": {
+    "originX": 80,
+    "originY": 120,
+    "colGap": 120,
+    "rowPitch": 180
+  },
+  "lanes": [
+    {
+      "id": "phases",
+      "type": "box",
+      "grid": true,
+      "color": "blue",
+      "fill": "semi",
+      "nodes": [
+        {
+          "id": "ack",
+          "label": "1 \u00b7 Ack",
+          "w": 230
+        },
+        {
+          "id": "facts",
+          "label": "2 \u00b7 Fact Collect",
+          "w": 230
+        },
+        {
+          "id": "disc",
+          "label": "3 \u00b7 Discussion",
+          "w": 230
+        },
+        {
+          "id": "prop",
+          "label": "4 \u00b7 Proposal",
+          "w": 230
+        },
+        {
+          "id": "endorse",
+          "label": "5 \u00b7 Endorsement",
+          "w": 230
+        },
+        {
+          "id": "submit",
+          "label": "6 \u00b7 Submit Plan",
+          "w": 230
+        }
+      ]
+    },
+    {
+      "id": "legal",
+      "type": "box",
+      "color": "green",
+      "fill": "semi",
+      "nodes": [
+        {
+          "id": "l-ack",
+          "label": "ack_planning_protocol",
+          "col": 0,
+          "w": 270
+        },
+        {
+          "id": "l-facts",
+          "label": "fact_collection_end",
+          "col": 1,
+          "w": 270
+        },
+        {
+          "id": "l-disc",
+          "label": "opinion / send_to_agent",
+          "col": 2,
+          "w": 270
+        },
+        {
+          "id": "l-prop",
+          "label": "agreement_proposal",
+          "col": 3,
+          "w": 270
+        },
+        {
+          "id": "l-endorse",
+          "label": "agreement_acceptance",
+          "col": 4,
+          "w": 270
+        },
+        {
+          "id": "l-submit",
+          "label": "submit_plan",
+          "col": 5,
+          "w": 270
+        }
+      ]
+    }
+  ],
+  "annotations": [
+    {
+      "id": "n-prose",
+      "label": "Prose protocol (today): ALL tools always offered. Model self-tracks the phase and self-selects message_type; illegal move caught AFTER the fact. M08 tolerance = survive, not comply -> stall / timeout.",
+      "color": "yellow",
+      "fill": "semi",
+      "w": 460
+    },
+    {
+      "id": "n-afford",
+      "label": "Affordance protocol (M10): the brain offers ONLY the phase-legal tool(s) (green). An illegal move is never on the menu -- greyed-out buttons. Helps the weakest models most.",
+      "color": "light-green",
+      "fill": "semi",
+      "w": 460
+    },
+    {
+      "id": "n-fork",
+      "label": "Phase-1 spike fork: API path = per-call constrained tool set + schema args -> achievable. MCP path (agy/claude/codex) = per-turn tool constraint UNKNOWN -> the spike's core question.",
+      "color": "orange",
+      "fill": "semi",
+      "w": 460
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "from": "ack",
+      "to": "facts",
+      "label": "acked"
+    },
+    {
+      "id": "e2",
+      "from": "facts",
+      "to": "disc",
+      "label": "facts"
+    },
+    {
+      "id": "e3",
+      "from": "disc",
+      "to": "prop",
+      "label": "ready"
+    },
+    {
+      "id": "e4",
+      "from": "prop",
+      "to": "endorse",
+      "label": "proposed"
+    },
+    {
+      "id": "e5",
+      "from": "endorse",
+      "to": "submit",
+      "label": "accepted"
+    },
+    {
+      "id": "o1",
+      "from": "ack",
+      "to": "l-ack",
+      "fromAnchor": "bottom",
+      "toAnchor": "top"
+    },
+    {
+      "id": "o2",
+      "from": "facts",
+      "to": "l-facts",
+      "fromAnchor": "bottom",
+      "toAnchor": "top"
+    },
+    {
+      "id": "o3",
+      "from": "disc",
+      "to": "l-disc",
+      "fromAnchor": "bottom",
+      "toAnchor": "top"
+    },
+    {
+      "id": "o4",
+      "from": "prop",
+      "to": "l-prop",
+      "fromAnchor": "bottom",
+      "toAnchor": "top"
+    },
+    {
+      "id": "o5",
+      "from": "endorse",
+      "to": "l-endorse",
+      "fromAnchor": "bottom",
+      "toAnchor": "top"
+    },
+    {
+      "id": "o6",
+      "from": "submit",
+      "to": "l-submit",
+      "fromAnchor": "bottom",
+      "toAnchor": "top"
+    }
+  ]
+}
