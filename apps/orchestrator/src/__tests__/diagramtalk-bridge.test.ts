@@ -47,11 +47,28 @@ describe('DiagramTalk bridge — dispatch (best-effort HTTP)', () => {
     });
   });
 
-  it('posts only the tag for the entry phase (no edge to pulse)', async () => {
+  it('clears the stale badge then tags ack on the entry phase (no edge to pulse)', async () => {
+    const f = okFetch();
+    const b = new DiagramTalkBridge({ fetchImpl: f as any, tagId: 'cur' });
+    await b.onPhase({ taskId: 't', phase: 'protocol_ack_pending' });
+
+    expect(f).toHaveBeenCalledTimes(2); // clear, then tag — no highlight (entry)
+    expect(JSON.parse((f.mock.calls[0]![1] as any).body)).toMatchObject({
+      type: 'setStateTag',
+      input: { tagId: 'cur', clear: true },
+    });
+    expect(JSON.parse((f.mock.calls[1]![1] as any).body)).toMatchObject({
+      type: 'setStateTag',
+      input: { tagId: 'cur', shapeId: 'shape:ack' },
+    });
+  });
+
+  it('does NOT clear on a mid-spine phase (clear is startup-only)', async () => {
     const f = okFetch();
     const b = new DiagramTalkBridge({ fetchImpl: f as any });
-    await b.onPhase({ taskId: 't', phase: 'protocol_ack_pending' });
-    expect(f).toHaveBeenCalledTimes(1);
+    await b.onPhase({ taskId: 't', phase: 'discussion' });
+    const bodies = f.mock.calls.map((c) => JSON.parse((c[1] as any).body));
+    expect(bodies.some((x) => x.input?.clear)).toBe(false);
   });
 
   it('includes diagramId when configured', async () => {

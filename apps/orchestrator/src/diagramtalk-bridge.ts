@@ -119,6 +119,15 @@ export class DiagramTalkBridge {
   async onPhase(evt: PhaseChangeEvent): Promise<void> {
     const visual = phaseToVisual(evt.phase);
     if (!visual) return; // phase not on the v1 forward spine
+    // Run startup = the spine entry (the edgeless root phase): wipe any stale badge
+    // left on the canvas by a prior run so each run — and any recording the human
+    // wraps around it (LB-21 discipline) — starts from a clean stage.
+    if (!visual.edge) {
+      await this.post({
+        type: 'setStateTag',
+        input: { tagId: this.tagId, clear: true },
+      });
+    }
     // Move the state badge onto the new box.
     await this.post({
       type: 'setStateTag',
