@@ -525,3 +525,27 @@ The other three were less "is it safe" and more "is this a small clean change or
      `api-client.ts` request so the API path skips the retry round-trip; per-provider verified. Not a gate.
 - **Source:** Claude, Phase-1 design spike, 2026-06-25 (read-only; weekly 46% / session 23% at run). Grounds
   [[LB-10]]; feeds the M10 plan. No files changed except this entry + the plan.
+
+
+### LB-21 · 2026-06-25 — [DiagramTalk/M10] Recording + state-tags facility → live protocol-flow visualization
+> **Nature:** capability finding + forward design intent (Fausto). Not yet built on the AgentTalk side.
+
+- **New DiagramTalk version** (`6020867`/`2682688`/`eaf2128`) adds two primitives that enable watching the
+  consensus protocol flow **live** on a diagram:
+  - **`tag` / `setStateTag`** — a **movable, view-only current-state badge** on **box shapes only**; reuse the
+    same `--tag-id` to move it (`tag shape:<box> "<label>" --tag-id <id> --color …`; `--clear` to remove).
+  - **`record start|end|list|show`** — a **timed run log** of bridge-applied `highlight`/`tag` events
+    (`occurredAt`/`elapsedMs`), persisted to `.diagramtalk/recordings/`, in visible-apply order. No
+    playback/replay endpoint yet.
+- **By design, not limitations (Fausto, 2026-06-25):** a recording **freezes base-diagram persistence** (a
+  fixed "stage" so the timeline has a stable coordinate system); the **open tab is the viewing surface**; and
+  **tags being box-only** enforces the right grammar — **`tag` = states (boxes), `highlight` = transitions
+  (arrows)**. Only genuine residual = replay not built (secondary when watching live).
+- **Intended use (feeds M10 Phase-2):** draw the agent **state-machine** (the M10 "Graded Protocol Brain"
+  phase boxes already are the states), then an **orchestrator→DiagramTalk bridge** fires `tag`/`highlight` as
+  `team-coordinator` advances phases — two badges (`planner-a`/`planner-b`) slide across the spine, transitions
+  pulse, the whole round wrapped in a `record`. **Missing piece = that bridge** (lives where the phase
+  transitions already are). Discipline: draw → `record start` → drive overlays → `record end` → re-edit.
+- **Status:** sketchy / to-be-designed; Fausto will shape it. Full how-to + the grammar in agent memory
+  `diagramtalk-channel`. Continues [[LB-19]].
+- **Source:** Claude, 2026-06-25, after reading the new DiagramTalk version (read-only on that repo).
