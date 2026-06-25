@@ -9,8 +9,17 @@ import fs from 'fs';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const wireContract = JSON.parse(fs.readFileSync(path.join(__dirname, '../packages/contracts/wire-contract.json'), 'utf8'));
 
+// Provider is selectable so the gate can run against whichever provider has budget.
+// Usage: `node scripts/test-mcp-gate.mjs [gemini|codex|claude]` (or MCP_GATE_PROVIDER env). Default: gemini.
+const SUPPORTED = ['gemini', 'codex', 'claude'];
+const provider = process.argv[2] || process.env.MCP_GATE_PROVIDER || 'gemini';
+if (!SUPPORTED.includes(provider)) {
+  console.error(`Unsupported provider '${provider}'. Choose one of: ${SUPPORTED.join(', ')}`);
+  process.exit(2);
+}
+
 async function run() {
-  console.log('Starting live MCP exec-RPC smoke test...');
+  console.log(`Starting live MCP exec-RPC smoke test (provider: ${provider})...`);
 
   const adapter = { spawn() {}, sendText() {}, onData() {}, onExit() {}, kill() {} };
   const registry = new Registry(adapter, { readinessTimeoutMs: 5000 });
@@ -27,7 +36,7 @@ async function run() {
 
   await registry.createAgent('mcp-planner-1', {
     provider: 'mcp',
-    providerName: 'gemini'
+    providerName: provider
   });
 
   // For mcp, the driver runs immediately
@@ -35,7 +44,7 @@ async function run() {
 
   const llmAgentPath = path.join(__dirname, '../../agentalk-mcp-client/llm-agent.mjs');
 
-  const harness = spawn('node', [llmAgentPath, '--agentId', 'mcp-planner-1', '--provider', 'gemini', '--execution-mode', 'persistent'],
+  const harness = spawn('node', [llmAgentPath, '--agentId', 'mcp-planner-1', '--provider', provider, '--execution-mode', 'persistent'],
     { env: { ...process.env, AGENTTALK_PERSISTENT_MCP: 'true', AGENTTALK_PERSISTENT_MCP_URL: `ws://localhost:${port}/` }, stdio: ['ignore', 'pipe', 'pipe'] });
   harness.stdout.on('data', d => process.stdout.write(`[llm-agent] ${d}`));
   harness.stderr.on('data', d => process.stderr.write(`[llm-agent-err] ${d}`));

@@ -302,6 +302,9 @@ The worker crashes before answering, and the agy regression would break gemini c
 ### ✅ §10 fix list — all three crashes really fixed (each re-checked)
 1. **Arg parsing.** `llm-agent.mjs parseArgs` now reads `--provider` via `argv.indexOf('--provider')`
    (defaults `gemini`). The documented `--agentId X --provider stub` invocation starts cleanly.
+   *(Historical: the `stub` provider + its consensus-aware `stub-bridge.js` were removed in the
+   harness-division spike, 2026-06-25 — the harness is now a pure relay; see
+   `design/spike-harness-division-plan.md`.)*
 2. **gemini → `agy` restored (M05 no-regression).** Both the one-shot path
    (`provider-runtime.mjs:125`, `command: 'agy'`, model default `gemini-3.1-pro`) and the
    persistent path (`executor-runtime.mjs:69`, `agy mcp`) use `agy`. The phantom
