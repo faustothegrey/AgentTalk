@@ -1,7 +1,10 @@
 import { Agent } from './agent.js';
-import { callApi, type ApiProvider } from './api-client.js';
-import { buildProtocolToolSchema } from './response-schema.js';
 import type { Registry } from '../registry/registry.js';
+import type { Completer, CompleterResult, CompleterOptions } from '@agenttalk/llm-client';
+
+// The chat plug (`Completer`) + the direct-HTTP `ApiCompleter` now live in `@agenttalk/llm-client`
+// (extraction spike, 2026-06-26). This module keeps only the Registry-coupled MCP orchestration
+// adapter, which depends on the engine and is NOT part of the standalone chat package.
 
 /** Default wall-clock guard for an mcp exec turn when the caller passes no timeout (D1, M08-T1). */
 export const DEFAULT_EXEC_TIMEOUT_MS = 120_000;
@@ -27,53 +30,6 @@ export class McpError extends Error {
   ) {
     super(message);
     this.name = 'McpError';
-  }
-}
-
-export interface CompleterResult {
-  text: string;
-  usage?: { prompt_tokens: number; completion_tokens: number };
-}
-
-export interface CompleterOptions {
-  expectsStructured?: boolean;
-  cwd?: string;
-  timeoutMs?: number;
-}
-
-export interface Completer {
-  maintainsSession?: boolean;
-  complete(prompt: string, opts?: CompleterOptions): Promise<CompleterResult>;
-}
-
-export class ApiCompleter implements Completer {
-  maintainsSession = false;
-  constructor(private provider: ApiProvider, private model?: string, private fetchFn: typeof fetch = fetch) {}
-
-  async complete(prompt: string, opts?: CompleterOptions): Promise<CompleterResult> {
-    const args: any = {
-      provider: this.provider,
-      messages: [{ role: 'user', content: prompt }],
-    };
-    if (this.model) args.model = this.model;
-    if (opts?.expectsStructured) {
-      // M10-T4: constrain the structural action set at generation time. The `respond` tool's strict
-      // `message_type` enum makes an off-list action unrepresentable; `tool_choice: 'required'` forces
-      // the call. `response_format` is kept alongside the tool (D-T4-3) — a provider that rejects the
-      // combination is treated as unfit for the API path for now (D-T4-2), not silently fallen back.
-      // The tool-call arguments decode into the same envelope the parser already accepts (api-client),
-      // so downstream grading is unchanged. The parser + retry remain the universal net for any
-      // provider that ignores the directive.
-      args.response_format = { type: 'json_object' };
-      args.tools = [buildProtocolToolSchema()];
-      args.tool_choice = 'required';
-    }
-
-    const result = await callApi(args, this.fetchFn);
-    
-    const ret: CompleterResult = { text: result.text || '' };
-    if (result.usage) ret.usage = result.usage;
-    return ret;
   }
 }
 

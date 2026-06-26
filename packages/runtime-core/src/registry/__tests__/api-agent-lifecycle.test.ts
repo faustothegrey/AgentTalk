@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { Registry } from '../registry.js';
-import * as apiClient from '../../agents/api-client.js';
+import * as apiClient from '@agenttalk/llm-client/api-client.js';
 
-vi.mock('../../agents/api-client.js', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../agents/api-client.js')>();
+vi.mock('@agenttalk/llm-client/api-client.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@agenttalk/llm-client/api-client.js')>();
   return {
     ...actual,
     callApi: vi.fn(),

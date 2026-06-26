@@ -3,8 +3,8 @@ import { Agent } from '../agents/agent.js';
 import { ConversationStore } from '../conversations/conversation-store.js';
 import { HealthcheckManager } from '../agents/healthcheck-manager.js';
 import { InProcessAgentDriver } from '../agents/in-process-driver.js';
-import type { ApiProvider } from '../agents/api-client.js';
-import { type Completer, ApiCompleter, McpCompleter } from '../agents/completer.js';
+import { type Completer, type ApiProvider, ApiCompleter } from '@agenttalk/llm-client';
+import { McpCompleter } from '../agents/completer.js';
 import type {
   EventPayload,
   ResponsePayload,
@@ -24,7 +24,7 @@ import type {
 import { ConversationCoordinator } from './conversation-coordinator.js';
 import { TeamCoordinator } from './team-coordinator.js';
 import { resolveRegistryConfig, type RegistryConfig } from './config.js';
-import type { StructuredMessageType } from '../agents/response-schema.js';
+import { type StructuredMessageType, buildProtocolToolSchema } from '../agents/response-schema.js';
 
 function getExpectedResponseTypes(args: unknown): StructuredMessageType[] | undefined {
   if (!args || typeof args !== 'object') {
@@ -215,7 +215,9 @@ export class Registry extends EventEmitter {
       let completer: Completer;
       if (agent.provider === 'api') {
         const apiProvider = (agent.providerName || 'google') as ApiProvider;
-        completer = new ApiCompleter(apiProvider, agent.model);
+        // Inject the consensus protocol tool builder so structured turns are constrained exactly as
+        // before the llm-client extraction (the package itself stays consensus-agnostic).
+        completer = new ApiCompleter(apiProvider, agent.model, undefined, buildProtocolToolSchema);
       } else {
         completer = new McpCompleter(agent, this);
       }

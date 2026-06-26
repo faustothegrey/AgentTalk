@@ -1,12 +1,12 @@
 import { existsSync } from 'fs';
 import { execSync } from 'child_process';
 import { Agent } from './agent.js';
-import type { ApiProvider } from './api-client.js';
 import { parseWithRetry, translateStructuredResponse } from './translation.js';
-import { WORKER_RESPONSE_INSTRUCTIONS } from './response-schema.js';
+import { WORKER_RESPONSE_INSTRUCTIONS, buildProtocolToolSchema } from './response-schema.js';
 import { createConversationRuntime, type ConversationEvent } from '../conversations/runtime.js';
 import type { Registry } from '../registry/registry.js';
-import { type Completer, ApiCompleter, McpError } from './completer.js';
+import { McpError } from './completer.js';
+import { type Completer, type ApiProvider, ApiCompleter } from '@agenttalk/llm-client';
 
 export interface InProcessDriverOptions {
   provider?: ApiProvider;
@@ -30,7 +30,9 @@ export class InProcessAgentDriver {
       this.completer = options.completer;
     } else {
       const provider = options.provider || 'google';
-      this.completer = new ApiCompleter(provider, options.model, options.fetchFn);
+      // Inject the consensus protocol tool builder (llm-client stays consensus-agnostic; the
+      // structured-turn behaviour is identical to before the extraction).
+      this.completer = new ApiCompleter(provider, options.model, options.fetchFn, buildProtocolToolSchema);
     }
   }
 

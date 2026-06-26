@@ -1,7 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { InProcessAgentDriver } from '../in-process-driver.js';
 import { Agent } from '../agent.js';
-import { McpError, type Completer } from '../completer.js';
+import { McpError } from '../completer.js';
+import type { Completer } from '@agenttalk/llm-client';
 import type { Registry } from '../../registry/registry.js';
 
 describe('InProcessAgentDriver', () => {

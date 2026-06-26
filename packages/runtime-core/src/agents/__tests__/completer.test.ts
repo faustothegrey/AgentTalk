@@ -1,7 +1,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { EventEmitter } from 'events';
-import { ApiCompleter, McpCompleter, McpError, DEFAULT_EXEC_TIMEOUT_MS, EXEC_TIMEOUT_BACKSTOP_GRACE_MS } from '../completer.js';
-import { parseStructuredResponse } from '../response-schema.js';
+import { McpCompleter, McpError, DEFAULT_EXEC_TIMEOUT_MS, EXEC_TIMEOUT_BACKSTOP_GRACE_MS } from '../completer.js';
+import { ApiCompleter } from '@agenttalk/llm-client';
+import { parseStructuredResponse, buildProtocolToolSchema } from '../response-schema.js';
 import type { Agent } from '../agent.js';
 import type { Registry } from '../../registry/registry.js';
 
@@ -31,7 +32,9 @@ describe('ApiCompleter (M10-T4 tool enforcement)', () => {
       choices: [{ message: { content: null, tool_calls: [{ function: { name: 'respond', arguments: envelope } }] } }],
     });
 
-    const completer = new ApiCompleter('google', 'gemini-2.5-flash', fetchFn as any);
+    // The protocol tool builder is injected by runtime-core (llm-client stays consensus-agnostic);
+    // this pins the unchanged T4 wire contract — the real `respond`/`submit_plan` schema reaches the body.
+    const completer = new ApiCompleter('google', 'gemini-2.5-flash', fetchFn as any, buildProtocolToolSchema);
     const result = await completer.complete('do planning', { expectsStructured: true });
 
     const body = bodyOf();

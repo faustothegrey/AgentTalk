@@ -277,4 +277,12 @@ fault tolerance, plan at `design/milestone08-transport-fault-tolerance-plan.md`.
   **Low priority / not blocking;** revisit if a third emission site appears or the two shapes start drifting.
   **Source:** Fausto ↔ Claude, 2026-06-26 (overlay-plan session).
 
+- [open · SPIKE/proposed, 2026-06-26] — **`@agenttalk/llm-client` — standalone chat-with-LLM package (API + MCP plug)**
+  — extract the reusable LLM-calling core out of `runtime-core` so third-party apps get plain chat without the
+  consensus stack. The `Completer` plug + zero-dep `api-client.ts` already exist; only 2 src importers
+  (`registry.ts`, `in-process-driver.ts`) → low-risk move. Phase 1 = interface + `ApiCompleter` + multi-turn
+  `ChatSession`; Phase 2 = registry-free `McpChatCompleter` (exec subset of the wire-contract, no consensus).
+  Steps ahead of M10-T3 by Fausto's call (immediate value). **Full design:** `design/llm-client-extraction-spike.md`
+  (open decisions Q1–Q4 await Fausto). **Source:** Fausto ↔ Claude, 2026-06-26.
+
 *(add new items above this line)*
