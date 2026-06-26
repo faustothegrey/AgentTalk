@@ -601,9 +601,10 @@ The other three were less "is it safe" and more "is this a small clean change or
   Claude **verified the shipped contract by reading their code** (not the spec) and rewired the bridge to
   it. The "don't trust, verify" rule applied across repos: confirmed `command.result.recordingId` /
   `input.id` / the 409 guard from `app/api/diagram/commands/route.ts` before touching the bridge.
-- **⚠️ NOT live-verified yet** (unlike v1). The unit gate is green but a real drive against a loaded
-  diagram — `record` on, confirm a recording appears + replays the spine — is still **pending** (no LLM
-  budget needed; just the bridge). Honest status: code-complete + unit-proven, live-smoke owed.
+- **⚠️ Live smoke RUN 2026-06-26 → exposed a real defect; see [[LB-24]].** Emission is correct (the live
+  badge-walk works, same as v1), **but record-for-replay capture is lossy/non-deterministic** (4–8 of ~11
+  events; submit frame always lost). The earlier claim here that "the replay ends on the same frame the
+  live run does" is **RETRACTED** — disproven twice. Fix belongs DiagramTalk-side (capture-timing race).
 - **Still pending (the original LB-22 "v2" basket, minus record):** the `endorse` box + edge `e4` and
   the eject/correction overlay (`o1–o6`) — both need **new brain-emitted phases**, a separate scope
   decision (out of "changes on the bridge alone").
@@ -613,6 +614,35 @@ The other three were less "is it safe" and more "is this a small clean change or
   - budget:      weekly 54%→57% (Δ ~3%), session 0%→27% [per /usage, updated 06:57]
   - gate:        tsc 0, suite 204/204 (198 + 6 new), pollution clean
   - diff:        2 files, +182/-11; commit `d3db0d0`
-  - outcome:     COMMITTED ✅ to master (`d3db0d0`, unpushed — master ahead of origin by 6); **live smoke owed**
+  - outcome:     COMMITTED ✅ to master (`d3db0d0`, unpushed); emission OK but replay-capture defective → [[LB-24]]
 - **Source:** Claude, 2026-06-26. Continues [[LB-22]]; pairs with memory `diagramtalk-channel`. T4 plan
   (`design/milestone10-t4-api-enforcement-plan.md`, commit `bf36d62`) drafted same session, awaiting go.
+
+### LB-24 · 2026-06-26 — [M10/DiagramTalk] Live smoke of bridge-v2 record-for-replay → capture-timing race (real defect)
+
+- **Method (non-polluting).** Drove the REAL bridge (`dist/diagramtalk-bridge.js`, `record` on) against a
+  **disposable scratch diagram cloned from M10's snapshot** (exact `shape:*` ids), paced so the badge-walk
+  is watchable; deleted the scratch + reactivated M10 after. **M10 itself was never targeted.** Two runs:
+  (1) my curl standing in for the browser's apply step (synchronous), (2) the real browser as sole renderer.
+- **Result — emission ✅, capture ✗.** The bridge emits the right commands in the right order; the live
+  badge-walk renders correctly (Fausto watched it on the cloned stage). **But the recording is lossy:**
+  - run 1 (synchronous apply): `eventCount=8` — `ack…prop`, **submit frame dropped**.
+  - run 2 (real async browser): `eventCount=4` — `[setStateTag:ack, highlight:e1, e2, e3]` only; most
+    `setStateTag` frames + `e5` dropped. **Same feature, different capture purely by apply timing.**
+- **🔑 Root cause — async-apply vs sync-close race.** DiagramTalk captures a command into a recording ONLY
+  when the browser posts its `applied` result *while the recording is open*
+  (`recordAppliedCommand`, `app/api/diagram/commands/[id]/result/route.ts`). `startRecording`/`endRecording`
+  apply **server-side synchronously**; tag/highlight apply **asynchronously** (browser poll). The bridge
+  emits then closes on its own clock, so anything the browser hasn't applied by close-time is silently lost
+  — **not just the terminal frame; lossy and non-deterministic throughout.**
+- **Consequence.** **Record-for-replay is NOT reliable as wired.** Unit tests pass only because they mock a
+  synchronous `fetch`; the real async browser breaks it. Bridge *emission* is sound and unaffected.
+- **Fix belongs DiagramTalk-side** (the bridge can't fix it without a forbidden sleep-hack): capture should
+  be tied to the command being enqueued-for-an-open-recording, OR `endRecording` should drain/await pending
+  commands for the diagram before closing. Written up as a finding for the DiagramTalk agent (relayed via
+  Fausto), same cross-repo pattern as the `startRecording`/`endRecording` command work.
+- **Corrections made (honesty).** Retracted the false "replay mirrors the live run" claim in the bridge
+  header + `onPhase` comment and in [[LB-23]]; both now point here.
+- **Open decision (for Fausto).** Keep `AGENTTALK_DIAGRAM_RECORD` available (emission fine, replay
+  untrustworthy) vs gate it OFF until the capture race is fixed. **Undecided — parked pending Fausto.**
+- **Source:** Claude, 2026-06-26. Continues [[LB-23]]; pairs with memory `diagramtalk-channel`.

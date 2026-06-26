@@ -20,9 +20,12 @@
  *
  * v2 adds OPTIONAL record-for-replay (env AGENTTALK_DIAGRAM_RECORD, default OFF):
  * wrap each run in a DiagramTalk recording — start it as the run enters the root
- * phase, end it at submittal. A recording auto-captures exactly the `highlight` +
- * `setStateTag` events the bridge already emits (RecordingEventType), so no extra
- * per-phase wiring is needed; the bridge only opens and closes the recording.
+ * phase, end it at submittal. A recording is *meant* to capture the `highlight` +
+ * `setStateTag` events the bridge emits (RecordingEventType), so the bridge only
+ * opens and closes it with no extra per-phase wiring. ⚠️ In practice capture is
+ * LOSSY — DiagramTalk records a command only when the browser posts its `applied`
+ * result while the recording is open, which races the bridge's close; replay
+ * fidelity is NOT yet guaranteed (see the limitation note in onPhase + LB-24).
  * Record start/stop are first-class COMMANDS on the same command stream
  * (`startRecording`/`endRecording` — DiagramTalk added them so the bridge drives
  * everything through ONE endpoint, `POST ${baseUrl}/api/diagram/commands`).
@@ -177,8 +180,15 @@ export class DiagramTalkBridge {
         input: { ids: [shapeRef(visual.edge)], color: this.highlightColor },
       });
     }
-    // v2: submittal is the terminal forward phase — close the recording after its
-    // final tag+pulse so the replay ends on the same frame the live run does.
+    // v2: submittal is the terminal forward phase — close the recording here.
+    // ⚠️ KNOWN LIMITATION (LB-24, live-verified 2026-06-26): capture is DiagramTalk-side
+    // and fires only when the browser posts an `applied` result for a tag/highlight
+    // *while the recording is open*. This close runs on the bridge's clock and races
+    // ahead of the browser's async apply, so commands not yet applied are dropped from
+    // the recording — lossy and non-deterministic (observed 4–8 of ~11 events; the
+    // submit frame is always lost). EMISSION is correct; REPLAY fidelity is NOT
+    // guaranteed until the capture race is fixed DiagramTalk-side. Do not claim the
+    // recording mirrors the live run.
     if (this.record && evt.phase === 'submittal_pending') {
       await this.endRecording();
     }
