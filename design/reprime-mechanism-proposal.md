@@ -1,5 +1,12 @@
 # Proposal — Re-priming from an older primer (human-gated, soft)
 
+> ⚠️ **SUPERSEDED (2026-06-26, [[LB-29]]).** This doc describes the OLD **agent-keyed**, `{active,consumed}`,
+> three-branch handshake (`== active` / `∈ consumed` / mismatch). The primer system is now **role-keyed**: the
+> key lives in the *shared* role-primer header, the private store is just `{ consumed: [] }`, and the handshake is
+> two-branch (key ∉ consumed = fresh / ∈ consumed = benign). Re-priming still holds (mint a fresh key on the
+> recovered body) but reads against the new model — see `AGENT.md → Re-priming` for the canonical version. Kept
+> for historical rationale only.
+
 **Status:** PROPOSAL — awaiting Fausto's review. No edits applied to `AGENT.md` or `logbook.md` yet.
 **Author:** Claude (architect), 2026-06-22.
 **Decision already taken (this session):** gate strength = **soft** (Claude mints the fresh key *after* Fausto's verbal approval; not technically enforced).
