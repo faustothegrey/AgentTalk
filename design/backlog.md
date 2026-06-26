@@ -28,6 +28,18 @@ promoted→X · absorbed→X · dropped}.
   citations in `design/*.md` no longer resolve (inherent to any history rewrite). Agent memory
   `m09-squash-at-epic-close` deleted as satisfied.
 
+### M10 follow-ons (post DiagramTalk bridge-v2)
+
+- **[open] 2026-06-26 — M10-T4 API-path protocol enforcement — plan drafted, awaiting go.** Switch
+  API-path planners to OpenAI-compat tool-calling with `tool_choice:"required"` + a strict `enum` on
+  `message_type`, so an off-protocol *structural* action is unrepresentable at generation time
+  (today: `response_format:json_object` + after-the-fact parse/grade only). **Pure optimization —
+  brain & grading loop untouched; the JSON parser stays as the universal fallback.** Spec, DoD, and 3
+  open decisions (enum granularity · provider `tool_choice` capability · drop `response_format` when
+  tools are sent) live in `design/milestone10-t4-api-enforcement-plan.md`. Top risk = per-provider
+  `tool_choice` support → gate + fallback; live-verify parked while budgets are tight. **Sibling
+  T3 (single-tool `consensus_respond`, wire-contract v5→v6, cross-repo lockstep) stays deferred per D3.**
+
 ### Backlog gate — 2026-06-22 (opening M08 · architect: Claude)
 
 Per §3b, every open item was dispositioned **before** opening the M08 epic. M08 = transport/lifecycle
