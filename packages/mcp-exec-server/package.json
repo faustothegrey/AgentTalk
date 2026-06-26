@@ -1,0 +1,17 @@
+{
+  "name": "@agenttalk/mcp-exec-server",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./dist/index.js",
+    "./index.js": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc -b"
+  },
+  "dependencies": {
+    "@agenttalk/llm-client": "1.0.0",
+    "@agenttalk/mcp-transport": "1.0.0"
+  }
+}

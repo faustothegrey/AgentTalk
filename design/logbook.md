@@ -719,3 +719,42 @@ The other three were less "is it safe" and more "is this a small clean change or
 - **Source:** Claude, 2026-06-26. Implements `design/milestone10-diagramtalk-overlay-plan.md`; ledger §Bridge-v3
   in `design/milestone10-implementation.md`. Continues [[LB-22]]/[[LB-23]]/[[LB-24]]; pairs with memory
   `diagramtalk-channel`.
+
+### LB-27 · 2026-06-26 — [llm-client] Standalone exec-only MCP attach server (`@agenttalk/mcp-exec-server`)
+
+- **What shipped.** The consensus-free "third-party app chats via an MCP CLI executor" path — Option B of the
+  Phase-2 fork. Two new packages: **`@agenttalk/mcp-transport`** (the generic `McpServer`, `git mv`'d out of
+  `apps/orchestrator`; a pure `ws` leaf — sockets/JSON-RPC/ping/hijack, zero domain knowledge) and
+  **`@agenttalk/mcp-exec-server`** (deps: `mcp-transport` + `llm-client` types only) which injects the EXEC
+  SUBSET (`await_turn` + `submit_exec_result`) into `McpServer`, backed by one `ExecTurnQueue` per agentId, and
+  exposes `McpExecServer.transport(agentId): ExecTransport` for an `McpChatCompleter` to complete turns over.
+- **🔑 The finding that shrank it.** `McpServer` was ALREADY generic and consensus-free — parameterised by
+  injected `tools` + `handler`; ALL consensus lived in the orchestrator's injected `AGENTTALK_MCP_TOOLS` +
+  `registry.handleMcpToolCall`. So Option B was NOT "write a WS server" — it was reuse `McpServer` + inject a
+  lean exec tool-set + a minimal queue. The orchestrator's consensus server is untouched (only its `McpServer`
+  *import path* moved: 1 line).
+- **Decisions (Fausto).** D1 extract `McpServer` → shared `mcp-transport` (vs duplicate). D2 names. D3 v1 queue
+  = minimal single-flight, NO M08 reconnect/re-delivery (a chat turn is short; `McpServer`'s ping layer already
+  reaps dead sockets). D4 contract-hash UNSET for v1 (the exec subset is a strict subset → a full
+  agentalk-mcp-client still attaches).
+- **Verification.** Unit tests for `ExecTurnQueue` (both dispatch/await orders, result fan-out, disconnect) + an
+  **end-to-end test over a REAL WebSocket**: an in-test echo executor (real MCP wire protocol) connects,
+  long-polls `await_turn`, returns `submit_exec_result`; `McpChatCompleter` resolves the echoed text. Plus the
+  no-executor → typed timeout case. Gate: tsc 0, suite **245/245** (239 +6).
+- **Bug caught (honesty).** My first integration-test client sent tool calls as bare `method:'await_turn'`
+  instead of the MCP `tools/call` envelope (`params.name`) — server correctly returned `-32601 Method not found`.
+  Fixed the TEST harness (added a `callTool` wrapper); the server code was right. Real agentalk-mcp-client uses
+  `callTool()`, which does the correct envelope.
+- **⚠️ OWED (honest gap).** NO live smoke against a real `agentalk-mcp-client` CLI executor. The e2e test uses an
+  in-test echo executor — real socket + real wire protocol, so strong evidence the loop is correct, but the real
+  CLI's behaviour is unproven here (parked; same posture as the other transport live-smokes — gated on a
+  provider/CLI being available).
+- **Telemetry (closure):**
+  - task:        llm-client Phase 2 — mcp-exec-server (Option B)
+  - wall-clock:  2026-06-26 ~14:40 → ~14:55 CEST (~55 min incl. McpServer extraction + e2e test debug)
+  - budget:      weekly 67%→70% (Δ ~3%), session 51%→84% (Δ ~33%, multi-package + e2e heavy)
+  - gate:        tsc 0, suite 245/245 (239 +6), pollution clean
+  - diff:        6 mod + 2 new packages (mcp-transport, mcp-exec-server) + 2 git-mv renames; UNCOMMITTED
+  - outcome:     IMPLEMENTED ✅ — live CLI smoke owed; merge HUMAN-GATED ([[LB-14]])
+- **Source:** Claude, 2026-06-26. Implements `design/mcp-exec-server-plan.md`. Continues the llm-client
+  extraction ([[LB-14]] gating); pairs with `design/llm-client-architecture.md`.

@@ -9,7 +9,7 @@ const require = createRequire(import.meta.url);
 const wireContract = require('@agenttalk/contracts/wire-contract.json');
 
 import { Registry } from '@agenttalk/runtime-core/registry/registry';
-import { McpServer } from './mcp-server.js';
+import { McpServer } from '@agenttalk/mcp-transport';
 import { AGENTTALK_MCP_TOOLS } from '@agenttalk/runtime-core/registry/mcp-tools';
 import type { AgentProvider } from '@agenttalk/contracts/types';
 import type { ScenarioDefinition } from '@agenttalk/runtime-scenarios/scenarios/types';

@@ -3,6 +3,8 @@
   "references": [
     { "path": "./packages/contracts" },
     { "path": "./packages/llm-client" },
+    { "path": "./packages/mcp-transport" },
+    { "path": "./packages/mcp-exec-server" },
     { "path": "./packages/runtime-core" },
     { "path": "./packages/runtime-scenarios" },
     { "path": "./packages/integration-google-drive" },

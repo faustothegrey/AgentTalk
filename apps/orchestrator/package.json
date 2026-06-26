@@ -13,6 +13,7 @@
   "dependencies": {
     "@agenttalk/contracts": "1.0.0",
     "@agenttalk/integration-google-drive": "1.0.0",
+    "@agenttalk/mcp-transport": "1.0.0",
     "@agenttalk/observability": "1.0.0",
     "@agenttalk/runtime-core": "1.0.0",
     "@agenttalk/runtime-scenarios": "1.0.0",
