@@ -30,8 +30,17 @@
  * everything through ONE endpoint, `POST ${baseUrl}/api/diagram/commands`).
  * `startRecording` returns the new recording id at `command.result.recordingId`;
  * `endRecording` closes it via `input.id`.
- * The `endorse` box / edge `e4` and the correction/eject overlay remain out (they
- * need new brain-emitted phases — a later iteration).
+ *
+ * v3 lights the off-forward-spine features via a SECOND brain hook, `onProtocolEvent`
+ * (re-emitted by the Registry as `team_protocol_event`), kept separate from the phase
+ * funnel so it never touches consensus validation:
+ *  - `endorsed`   -> badge stops on the `endorse` box + pulse `e4` (before the existing
+ *                    submittal phase moves it on to `submit`/`e5`).
+ *  - `correction` -> pulse the eject/correction lane (`oN` edge + `l-*` node) for the
+ *                    current phase, in the correction colour (T2 graded loop).
+ *  - `eject`      -> same lane, in the eject colour (T1 peer-safe eject).
+ * All commands (phase + protocol-event) are serialised through one tail-promise queue
+ * so back-to-back emissions (e.g. endorsed then submittal) can't interleave on the wire.
  */
 
 import type { EventEmitter } from 'events';
@@ -79,6 +88,44 @@ export function phaseToVisual(phase: PlanningPhase): PhaseVisual | undefined {
   return FORWARD_SPINE[phase];
 }
 
+/** Off-forward-spine protocol moments the brain reports via `team_protocol_event`. */
+export type ProtocolEventKind = 'endorsed' | 'correction' | 'eject';
+
+/** The shape the Registry re-emits on `team_protocol_event`. */
+export interface ProtocolEvent {
+  taskId: string;
+  kind: ProtocolEventKind;
+  /** Phase the event occurred at — selects the eject/correction lane (`oN`+`l-*`). */
+  phase?: PlanningPhase;
+  agentId?: string;
+  reason?: string;
+}
+
+/** The eject/correction lane a phase drops into: its `oN` edge + `l-*` lane node. */
+export interface OverlayTarget {
+  edge: string;
+  lane: string;
+}
+
+/**
+ * Phase -> its eject/correction lane (`oN` edge box->l-node + the `l-*` node).
+ * Ids match design/diagrams/m10-affordance-protocol.layout.json. There is no
+ * PlanningPhase that resolves to the transient `endorse` box, so its lane (o5/l-endorse)
+ * has no entry here — only the five funnel phases can host a correction/eject.
+ */
+export const PHASE_OVERLAY: Readonly<Record<PlanningPhase, OverlayTarget>> = {
+  protocol_ack_pending: { edge: 'o1', lane: 'l-ack' },
+  fact_collection: { edge: 'o2', lane: 'l-facts' },
+  discussion: { edge: 'o3', lane: 'l-disc' },
+  proposal_pending_endorsement: { edge: 'o4', lane: 'l-prop' },
+  submittal_pending: { edge: 'o6', lane: 'l-submit' },
+};
+
+/** Pure mapping — exported for unit testing without any I/O. */
+export function phaseToOverlay(phase: PlanningPhase | undefined): OverlayTarget | undefined {
+  return phase ? PHASE_OVERLAY[phase] : undefined;
+}
+
 /**
  * DiagramTalk addresses shapes by their tldraw id, which is the layout's logical id
  * prefixed with `shape:` (e.g. layout `ack` -> live `shape:ack`). The map keeps the
@@ -99,6 +146,14 @@ export interface DiagramTalkBridgeOptions {
   tagColor?: string;
   /** Transition pulse colour. */
   highlightColor?: string;
+  /**
+   * Pulse colour for a graded-loop correction lane (`oN`+`l-*`). Defaults to violet.
+   * Must be one of DiagramTalk's HIGHLIGHT_COLORS {yellow, blue, green, red, violet};
+   * an out-of-palette colour is rejected (HTTP 400) and dropped best-effort.
+   */
+  correctionColor?: string;
+  /** Pulse colour for an eject lane (`oN`+`l-*`). Defaults to red (HIGHLIGHT_COLORS). */
+  ejectColor?: string;
   /**
    * Opt in to wrapping each run in a DiagramTalk recording (start on the root
    * phase, end at submittal). Defaults to env AGENTTALK_DIAGRAM_RECORD (OFF when
@@ -122,7 +177,15 @@ export class DiagramTalkBridge {
   private readonly tagId: string;
   private readonly tagColor: string;
   private readonly highlightColor: string;
+  private readonly correctionColor: string;
+  private readonly ejectColor: string;
   private readonly record: boolean;
+  /**
+   * Serialises every command (phase + protocol-event) so back-to-back emissions
+   * can't interleave on the wire. Each handler chains onto this tail; it never
+   * stays rejected (a failed handler is isolated) so the queue can't wedge.
+   */
+  private tail: Promise<void> = Promise.resolve();
   private readonly recordName?: string;
   private readonly fetchImpl: typeof fetch;
   private readonly log: (msg: string, err?: unknown) => void;
@@ -137,14 +200,37 @@ export class DiagramTalkBridge {
     this.tagId = opts.tagId ?? 'consensus-cursor';
     this.tagColor = opts.tagColor ?? 'green';
     this.highlightColor = opts.highlightColor ?? 'yellow';
+    this.correctionColor = opts.correctionColor ?? 'violet';
+    this.ejectColor = opts.ejectColor ?? 'red';
     this.record = opts.record ?? Boolean(process.env.AGENTTALK_DIAGRAM_RECORD);
     if (opts.recordName !== undefined) this.recordName = opts.recordName;
     this.fetchImpl = opts.fetchImpl ?? fetch;
     this.log = opts.log ?? ((msg, err) => console.error(msg, err ?? ''));
   }
 
+  /**
+   * Chain a unit of work onto the serial command queue. The tail is kept
+   * non-rejecting (a failed unit is isolated) so one bad command can't wedge the
+   * queue; the returned promise still reflects this unit's completion for callers
+   * (e.g. tests) that await it.
+   */
+  private enqueue(work: () => Promise<void>): Promise<void> {
+    const run = this.tail.then(work, work);
+    this.tail = run.catch(() => undefined);
+    return run;
+  }
+
   /** Handle one phase transition: move the badge, then pulse the transition edge. */
   async onPhase(evt: PhaseChangeEvent): Promise<void> {
+    return this.enqueue(() => this.handlePhase(evt));
+  }
+
+  /** Handle one off-spine protocol event: endorsement stop, or correction/eject lane. */
+  async onProtocolEvent(evt: ProtocolEvent): Promise<void> {
+    return this.enqueue(() => this.handleProtocolEvent(evt));
+  }
+
+  private async handlePhase(evt: PhaseChangeEvent): Promise<void> {
     const visual = phaseToVisual(evt.phase);
     if (!visual) return; // phase not on the v1 forward spine
     // Run startup = the spine entry (the edgeless root phase): wipe any stale badge
@@ -188,6 +274,37 @@ export class DiagramTalkBridge {
     if (this.record && evt.phase === 'submittal_pending') {
       await this.endRecording();
     }
+  }
+
+  private async handleProtocolEvent(evt: ProtocolEvent): Promise<void> {
+    if (evt.kind === 'endorsed') {
+      // Stop the badge on the `endorse` box and pulse the `prop -> endorse` edge.
+      // The submittal phase change that follows moves it on to `submit`/`e5`.
+      await this.post({
+        type: 'setStateTag',
+        input: {
+          tagId: this.tagId,
+          shapeId: shapeRef('endorse'),
+          label: 'endorsement',
+          color: this.tagColor,
+        },
+      });
+      await this.post({
+        type: 'highlight',
+        input: { ids: [shapeRef('e4')], color: this.highlightColor },
+      });
+      return;
+    }
+    // correction / eject: pulse the phase's eject-correction lane (oN edge + l-* node).
+    const overlay = phaseToOverlay(evt.phase);
+    if (!overlay) return; // no lane for this phase (or phase unknown)
+    await this.post({
+      type: 'highlight',
+      input: {
+        ids: [shapeRef(overlay.edge), shapeRef(overlay.lane)],
+        color: evt.kind === 'eject' ? this.ejectColor : this.correctionColor,
+      },
+    });
   }
 
   /**
@@ -274,6 +391,9 @@ export function attachDiagramTalkBridge(
   const bridge = new DiagramTalkBridge(opts);
   registry.on('team_planning_phase', (evt: PhaseChangeEvent) => {
     void bridge.onPhase(evt);
+  });
+  registry.on('team_protocol_event', (evt: ProtocolEvent) => {
+    void bridge.onProtocolEvent(evt);
   });
   return bridge;
 }

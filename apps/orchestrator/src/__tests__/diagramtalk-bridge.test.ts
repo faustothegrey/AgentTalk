@@ -2,6 +2,7 @@ import { describe, it, expect, vi, afterEach } from 'vitest';
 import { EventEmitter } from 'events';
 import {
   phaseToVisual,
+  phaseToOverlay,
   shapeRef,
   DiagramTalkBridge,
   attachDiagramTalkBridge,
@@ -166,6 +167,110 @@ describe('DiagramTalk bridge — record-for-replay (v2, opt-in, command path)', 
   });
 });
 
+describe('DiagramTalk bridge — protocol-event overlay mapping (pure, v3)', () => {
+  it('maps each funnel phase to its eject/correction lane (oN edge + l-* node)', () => {
+    expect(phaseToOverlay('protocol_ack_pending')).toEqual({ edge: 'o1', lane: 'l-ack' });
+    expect(phaseToOverlay('fact_collection')).toEqual({ edge: 'o2', lane: 'l-facts' });
+    expect(phaseToOverlay('discussion')).toEqual({ edge: 'o3', lane: 'l-disc' });
+    expect(phaseToOverlay('proposal_pending_endorsement')).toEqual({ edge: 'o4', lane: 'l-prop' });
+    expect(phaseToOverlay('submittal_pending')).toEqual({ edge: 'o6', lane: 'l-submit' });
+  });
+
+  it('returns undefined for an unknown/absent phase', () => {
+    expect(phaseToOverlay(undefined)).toBeUndefined();
+  });
+});
+
+describe('DiagramTalk bridge — protocol events (v3 dispatch)', () => {
+  const okFetch = () => vi.fn().mockResolvedValue({ ok: true, status: 200 });
+  const bodyOf = (call: any) => JSON.parse((call[1] as any).body);
+
+  it('endorsed: stops the badge on `endorse` then pulses `e4`', async () => {
+    const f = okFetch();
+    const b = new DiagramTalkBridge({ fetchImpl: f as any, baseUrl: 'http://x', tagId: 'cur' });
+    await b.onProtocolEvent({ taskId: 't', kind: 'endorsed' });
+
+    expect(f).toHaveBeenCalledTimes(2);
+    expect(bodyOf(f.mock.calls[0]!)).toMatchObject({
+      type: 'setStateTag',
+      input: { tagId: 'cur', shapeId: 'shape:endorse', label: 'endorsement' },
+    });
+    expect(bodyOf(f.mock.calls[1]!)).toMatchObject({
+      type: 'highlight',
+      input: { ids: ['shape:e4'] },
+    });
+  });
+
+  it('correction: pulses the phase lane (oN + l-*) in the default correction colour (violet, in palette)', async () => {
+    const f = okFetch();
+    // No explicit colour -> the default must be a valid DiagramTalk HIGHLIGHT_COLORS
+    // member {yellow, blue, green, red, violet}; orange (an earlier default) 400s live.
+    const b = new DiagramTalkBridge({ fetchImpl: f as any });
+    await b.onProtocolEvent({ taskId: 't', kind: 'correction', phase: 'discussion' });
+
+    expect(f).toHaveBeenCalledTimes(1);
+    expect(bodyOf(f.mock.calls[0]!)).toMatchObject({
+      type: 'highlight',
+      input: { ids: ['shape:o3', 'shape:l-disc'], color: 'violet' },
+    });
+  });
+
+  it('eject: pulses the phase lane (oN + l-*) in the eject colour', async () => {
+    const f = okFetch();
+    const b = new DiagramTalkBridge({ fetchImpl: f as any, ejectColor: 'red' });
+    await b.onProtocolEvent({ taskId: 't', kind: 'eject', phase: 'proposal_pending_endorsement' });
+
+    expect(f).toHaveBeenCalledTimes(1);
+    expect(bodyOf(f.mock.calls[0]!)).toMatchObject({
+      type: 'highlight',
+      input: { ids: ['shape:o4', 'shape:l-prop'], color: 'red' },
+    });
+  });
+
+  it('correction/eject with no resolvable phase is a no-op (no command)', async () => {
+    const f = okFetch();
+    const b = new DiagramTalkBridge({ fetchImpl: f as any });
+    await b.onProtocolEvent({ taskId: 't', kind: 'eject' }); // phase undefined
+    expect(f).not.toHaveBeenCalled();
+  });
+
+  it('never throws when DiagramTalk is unreachable (best-effort)', async () => {
+    const f = vi.fn().mockRejectedValue(new Error('ECONNREFUSED'));
+    const b = new DiagramTalkBridge({ fetchImpl: f as any, log: () => {} });
+    await expect(b.onProtocolEvent({ taskId: 't', kind: 'endorsed' })).resolves.toBeUndefined();
+  });
+
+  it('serialises commands: a slow endorsed badge is not overtaken by the next submittal', async () => {
+    let releaseEndorse: (() => void) | undefined;
+    const f = vi.fn().mockImplementation((_url: string, init?: any) => {
+      const shapeId = init?.body ? JSON.parse(init.body).input?.shapeId : undefined;
+      if (shapeId === 'shape:endorse') {
+        return new Promise((res) => {
+          releaseEndorse = () => res({ ok: true, status: 200 });
+        });
+      }
+      return Promise.resolve({ ok: true, status: 200 });
+    });
+    const b = new DiagramTalkBridge({ fetchImpl: f as any, tagId: 'cur' });
+
+    // endorsed (slow) emitted just before the submittal phase change — fire-and-forget.
+    const p1 = b.onProtocolEvent({ taskId: 't', kind: 'endorsed' });
+    const p2 = b.onPhase({ taskId: 't', phase: 'submittal_pending' });
+    await new Promise((res) => setImmediate(res));
+
+    // While the endorse tag is in flight, the submit tag must be BLOCKED behind it.
+    const shapesSoFar = f.mock.calls.map((c) => bodyOf(c).input?.shapeId);
+    expect(shapesSoFar).toContain('shape:endorse');
+    expect(shapesSoFar).not.toContain('shape:submit');
+
+    releaseEndorse!();
+    await Promise.all([p1, p2]);
+
+    const order = f.mock.calls.map((c) => bodyOf(c).input?.shapeId).filter(Boolean);
+    expect(order.indexOf('shape:endorse')).toBeLessThan(order.indexOf('shape:submit'));
+  });
+});
+
 describe('attachDiagramTalkBridge — env gating', () => {
   afterEach(() => {
     delete process.env.AGENTTALK_DIAGRAM_BRIDGE;
@@ -176,6 +281,7 @@ describe('attachDiagramTalkBridge — env gating', () => {
     const r = new EventEmitter();
     expect(attachDiagramTalkBridge(r)).toBeUndefined();
     expect(r.listenerCount('team_planning_phase')).toBe(0);
+    expect(r.listenerCount('team_protocol_event')).toBe(0);
   });
 
   it('subscribes and dispatches on the event when enabled', async () => {
@@ -188,6 +294,18 @@ describe('attachDiagramTalkBridge — env gating', () => {
 
     r.emit('team_planning_phase', { taskId: 't', phase: 'fact_collection' });
     await new Promise((res) => setImmediate(res)); // let the async handler run
+    expect(f).toHaveBeenCalled();
+  });
+
+  it('also subscribes to team_protocol_event and dispatches it (v3)', async () => {
+    process.env.AGENTTALK_DIAGRAM_BRIDGE = '1';
+    const f = vi.fn().mockResolvedValue({ ok: true, status: 200 });
+    const r = new EventEmitter();
+    attachDiagramTalkBridge(r, { fetchImpl: f as any });
+    expect(r.listenerCount('team_protocol_event')).toBe(1);
+
+    r.emit('team_protocol_event', { taskId: 't', kind: 'endorsed' });
+    await new Promise((res) => setImmediate(res));
     expect(f).toHaveBeenCalled();
   });
 });

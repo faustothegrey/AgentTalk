@@ -43,6 +43,21 @@ interface TeamCoordinatorDeps {
    * which case the funnel is a strict no-op preserving prior behaviour.
    */
   onPhaseChange?: (evt: { taskId: string; phase: PlanningPhase; previous?: PlanningPhase | undefined }) => void;
+  /**
+   * M10 observability hook (bridge v3): fires on OFF-forward-spine protocol moments
+   * the phase funnel doesn't cover — endorsement, a graded-loop correction, an eject.
+   * Pure observability, exactly like onPhaseChange: it decides nothing and feeds
+   * nothing back into validation, so with it undefined (all non-bridge wiring)
+   * behaviour is byte-identical. Deliberately SEPARATE from onPhaseChange so these
+   * signals never touch the validation path (getPlanningPhase/validateProtocolStep).
+   */
+  onProtocolEvent?: (evt: {
+    taskId: string;
+    kind: ProtocolEventKind;
+    phase?: PlanningPhase | undefined;
+    agentId?: string | undefined;
+    reason?: string | undefined;
+  }) => void;
   logError: (message: string, err: unknown) => void;
 }
 
@@ -97,6 +112,12 @@ type PlanningPhase =
   | 'discussion'
   | 'proposal_pending_endorsement'
   | 'submittal_pending';
+
+/**
+ * Off-forward-spine protocol moments surfaced via onProtocolEvent (bridge v3):
+ * a proposal being endorsed, a graded-loop correction (T2), or a peer-safe eject (T1).
+ */
+type ProtocolEventKind = 'endorsed' | 'correction' | 'eject';
 
 const ADVANCEMENT_RANK: Record<string, number> = {
   opinion: 0,
@@ -659,6 +680,10 @@ export class TeamCoordinator {
 
     // Agreement complete — record who confirmed and arm submit_plan urgency
     this.taskAgreementReachedAgent.set(task.id, agentId);
+    // bridge v3: the proposal was just endorsed (observability only — emitted
+    // BEFORE the submittal phase change so the badge stops on `endorse`/pulses e4
+    // before moving on to `submit`/e5).
+    this.emitProtocolEvent({ taskId: task.id, kind: 'endorsed', phase: 'proposal_pending_endorsement', agentId });
     this.setPlanningPhase(task.id, 'submittal_pending');
     this.taskExpectedResponses.set(task.id, ['submit_plan']);
     await this.armSubmitPlanUrgencyWatchdog(team, task, ['submit_plan']);
@@ -885,6 +910,26 @@ export class TeamCoordinator {
       this.deps.onPhaseChange?.({ taskId, phase, previous });
     } catch (err) {
       this.deps.logError('[TeamCoordinator] onPhaseChange hook threw (ignored)', err);
+    }
+  }
+
+  /**
+   * Best-effort observability emit for off-spine protocol moments (bridge v3).
+   * Same swallow discipline as setPlanningPhase's hook: a throwing observer is
+   * logged and ignored so visualisation can never perturb the protocol brain.
+   * Pure observability — reads nothing to decide anything, returns nothing.
+   */
+  private emitProtocolEvent(evt: {
+    taskId: string;
+    kind: ProtocolEventKind;
+    phase?: PlanningPhase | undefined;
+    agentId?: string | undefined;
+    reason?: string | undefined;
+  }): void {
+    try {
+      this.deps.onProtocolEvent?.(evt);
+    } catch (err) {
+      this.deps.logError('[TeamCoordinator] onProtocolEvent hook threw (ignored)', err);
     }
   }
 
@@ -1603,6 +1648,10 @@ export class TeamCoordinator {
 
     console.log(`[TeamCoordinator] Ejecting planner ${agentId} from task ${task.id} (${reason}); surviving planner(s) kept alive, round frozen for operator.`);
 
+    // bridge v3: observability only — capture the phase the eject happened at BEFORE
+    // the task is frozen (phase state is still intact here; cleared later on removal).
+    this.emitProtocolEvent({ taskId: task.id, kind: 'eject', phase: this.getPlanningPhase(task.id), agentId, reason });
+
     // Stop this task's planning watchdogs so a stray timer can't fire the
     // dual-kill after the eject. (The timers also self-guard on task.status,
     // but clearing is cleaner and is bounded to this task only.)
@@ -1888,6 +1937,8 @@ export class TeamCoordinator {
         } else {
           void this.askProtocolCorrection(taskId, senderAgentId, actualType, expected, retryCount + 1);
         }
+        // bridge v3: observability only — a graded-loop correction at the current phase.
+        this.emitProtocolEvent({ taskId, kind: 'correction', phase: this.getPlanningPhase(taskId), agentId: senderAgentId });
         return false;
       }
 

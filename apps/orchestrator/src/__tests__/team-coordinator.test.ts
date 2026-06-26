@@ -832,6 +832,7 @@ describe('TeamCoordinator', () => {
     const emitTeamTask = vi.fn();
     const emitPlanningComplete = vi.fn();
     const sendProtocol = vi.fn().mockResolvedValue(undefined);
+    const onProtocolEvent = vi.fn(); // bridge v3: observe the real correction/eject sites
     const coordinator = new TeamCoordinator({
       getAgent: (id) => {
         if (id === 'planner-a') return plannerA;
@@ -843,6 +844,7 @@ describe('TeamCoordinator', () => {
       emitTeam: vi.fn(),
       emitTeamTask,
       emitPlanningComplete,
+      onProtocolEvent,
       logError: vi.fn(),
     }, { planningRunsDir: '' });
 
@@ -898,6 +900,15 @@ describe('TeamCoordinator', () => {
       ([id, , payload]) => id === 'planner-b' && typeof payload === 'object' && (payload as any).payload?.includes?.('You remain active'),
     );
     expect(peerNotice).toBeDefined();
+
+    // bridge v3: the real graded-loop sites emit observability events — a correction
+    // for each bounded retry, then an eject when the budget is exhausted.
+    expect(onProtocolEvent).toHaveBeenCalledWith(
+      expect.objectContaining({ kind: 'correction', agentId: 'planner-a' }),
+    );
+    expect(onProtocolEvent).toHaveBeenCalledWith(
+      expect.objectContaining({ kind: 'eject', agentId: 'planner-a' }),
+    );
   });
 
   it('M10-T2: an illegal move is corrected and the planner RECOVERS within budget (no eject)', async () => {

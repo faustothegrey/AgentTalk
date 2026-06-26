@@ -678,3 +678,44 @@ The other three were less "is it safe" and more "is this a small clean change or
   The "unfit on 400" path is untested against a real endpoint (parked; gemini API out of budget).
 - **Source:** Claude, 2026-06-26. Implements `design/milestone10-t4-api-enforcement-plan.md`; ledger §T4 in
   `design/milestone10-implementation.md`. Pairs with [[LB-14]] (human-gated closure).
+
+### LB-26 · 2026-06-26 — [M10/DiagramTalk] Bridge v3 — endorse stop + eject/correction overlay (observation-only hook)
+
+- **What shipped.** The two diagram features v1 left dark are now lit, driven by a SECOND brain hook
+  `onProtocolEvent` (Registry re-emits `team_protocol_event`), kept SEPARATE from the `onPhaseChange` phase
+  funnel so off-spine signals never touch consensus validation (`getPlanningPhase`/`validateProtocolStep`):
+  - **`endorsed`** — emitted at the agreement-acceptance site *before* `submittal_pending` → badge stops on the
+    `endorse` box + pulses `e4`. Closes the v1 gap where the badge jumped `prop ▶ submit` (v1 mapped
+    `submittal_pending→submit/e5`, but `e5` is `endorse→submit`, so `endorse`/`e4` were skipped).
+  - **`correction`** (validateProtocolStep retry branch) / **`eject`** (ejectPlanner) → pulse the phase's
+    eject/correction lane (`oN` edge + `l-*` node) in violet / red. Phase→lane: ack→o1/l-ack, facts→o2/l-facts,
+    disc→o3/l-disc, prop→o4/l-prop, submit→o6/l-submit (transient `endorse` has no funnel phase → o5 unused).
+- **Brain stays pure.** 3 **additive emit-only** sites + an `emitProtocolEvent` helper (same try/catch-swallow
+  discipline as the phase funnel). With the hook unset (all non-bridge wiring) behaviour is byte-identical —
+  pure observability, decides nothing, feeds nothing back. Pre-authorised by Fausto's scope decision; the
+  approach choice (observation-only hook vs extending the PlanningPhase machinery) was **his** (Rule-2 safety).
+- **Ordering fix (app layer).** `endorsed` and `submittal_pending` fire back-to-back in ONE synchronous handler;
+  the Registry dispatches both fire-and-forget, so their HTTP posts could interleave and flip the badge. The
+  bridge now serialises ALL commands through a single non-rejecting tail-promise queue → post order == emission
+  order. Unit-proven (a deliberately-slow `endorse` tag is shown to block the following `submit` tag).
+- **🔑 Live finding — the badge-walk caught a real defect the unit tests structurally couldn't.** The v3 default
+  `correctionColor:'orange'` is **not** in DiagramTalk's `HIGHLIGHT_COLORS {yellow,blue,green,red,violet}`
+  (`app/api/diagram/commands/route.ts`) → **HTTP 400, dropped best-effort** on the first live run. Unit tests
+  passed because they inject a mock `fetch` that doesn't validate the palette — **same class of gap as LB-24**
+  (mocked sync fetch hides a real server contract). Fixed: default → **violet**; the bridge test now drops the
+  explicit colour so it **pins a valid in-palette default**. Verified against the shipped contract by READING
+  DiagramTalk's route (cross-repo "don't trust, verify" — same pattern as LB-23). Re-walk clean (8/8 accepted),
+  Fausto visually confirmed the `endorse` stop + both lanes.
+- **Tech-debt noted (Fausto's prompt).** Two emission shapes now coexist (`onPhaseChange` funnel vs
+  `onProtocolEvent`); logged in `design/backlog.md` as "Unify protocol state-change event emission" (low
+  priority). Explicitly NOT the same thing as the `AGENTTALK_DIAGRAM_RECORD` flag (that's opt-in record gating).
+- **Telemetry (closure):**
+  - task:        M10 Bridge-v3 (DiagramTalk overlay)
+  - wall-clock:  2026-06-26 ~12:30 → ~13:15 CEST (~45 min, incl. live badge-walk + orange→violet fix)
+  - budget:      weekly 62%→65% (Δ ~3%), session reset mid-task (79%→new window, 28% at close)
+  - gate:        tsc 0, suite **225/225** (213 baseline +12 new), pollution clean
+  - diff:        6 mod + 2 new (plan + `protocol-event-hook.test.ts`); UNCOMMITTED
+  - outcome:     IMPLEMENTED ✅ + live-verified — merge HUMAN-GATED ([[LB-14]]), pending Fausto's call
+- **Source:** Claude, 2026-06-26. Implements `design/milestone10-diagramtalk-overlay-plan.md`; ledger §Bridge-v3
+  in `design/milestone10-implementation.md`. Continues [[LB-22]]/[[LB-23]]/[[LB-24]]; pairs with memory
+  `diagramtalk-channel`.

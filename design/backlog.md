@@ -265,4 +265,16 @@ fault tolerance, plan at `design/milestone08-transport-fault-tolerance-plan.md`.
   - **Trigger to promote:** a handful of observed real `awaiting_operator` pauses (so the recovery model is
     grounded in actual partial-effect cases, not guessed). **Source:** Fausto ↔ Claude T3 decisions, 2026-06-23.
 
+- [open · tiny tech-debt, 2026-06-26] — **Unify protocol state-change event emission** — after the
+  DiagramTalk overlay work (bridge v3, `milestone10-diagramtalk-overlay-plan.md`) the brain emits protocol
+  state changes through **two shapes**: the `onPhaseChange` funnel (forward phases, via `setPlanningPhase`,
+  which *also* feeds `getPlanningPhase`/validation) **and** the new `onProtocolEvent` hook (off-path
+  `endorsed`/`correction`/`eject`, deliberately kept OFF the validation path for Rule-2 safety). They diverged
+  for a real reason, but conceptually both are "the protocol changed state — notify observers," so the split is
+  a mild inconsistency. **Debt:** ideally all protocol state-change emissions share one uniform mechanism.
+  **Note (don't conflate):** this is **NOT** what the `AGENTTALK_DIAGRAM_RECORD` flag was about — that flag is
+  opt-in record-for-replay gating (drop attempt `25ab372` reversed by `8004ae3`, LB-24), an unrelated concern.
+  **Low priority / not blocking;** revisit if a third emission site appears or the two shapes start drifting.
+  **Source:** Fausto ↔ Claude, 2026-06-26 (overlay-plan session).
+
 *(add new items above this line)*

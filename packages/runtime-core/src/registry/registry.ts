@@ -122,6 +122,7 @@ export class Registry extends EventEmitter {
       emitTeamTask: (task) => this.emit('team_task', task),
       emitPlanningComplete: (payload) => this.emit('team_planning_complete', payload),
       onPhaseChange: (evt) => this.emit('team_planning_phase', evt),
+      onProtocolEvent: (evt) => this.emit('team_protocol_event', evt),
       logError: (message, err) => console.error(message, err),
     });
 
