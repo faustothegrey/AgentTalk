@@ -193,9 +193,9 @@ the EARLIER of:** the show-stopper fence (Rule 2 — even on attempt 1), **or** 
 ### Session Primer (cold-start context brief) — NOT the per-turn baton
 
 > **Two different things, two different names — never conflate them:**
-> - **Session Primer** *(this section)* = a self-contained context summary written at session end and pasted into the
->   **start of a fresh agent instance**, so a cold-start reader (new context window, the human, or another agent) boots
->   with **zero prior context**.
+> - **Session Primer** *(this section)* = a self-contained context summary written at session end and saved into the
+>   appropriate **role-primer file**, so a cold-start reader (new context window, the human, or another agent) boots
+>   with **zero prior context** after the shared header key proves the primer is fresh for that role.
 > - **Baton** (a.k.a. "hand-off" in casual use) = the per-turn pass of work **between roles inside the workflow**
 >   (planner→implementer→reviewer) — a dev-turn report/instruction. That is a *different* thing; it lives in the ledger
 >   log and the chat, and it does **not** trigger the cold-start rule below.
@@ -227,10 +227,16 @@ for planner-reviewer; Gemini for implementer) cold-starts, finds this key **not*
 reports, STOPs, and consumes it in **their** store (see **First Entry Point**). If you want to leave the role
 **un-handed** (no fresh cold-start due), set `key: none`.
 
+If the human pastes a self-contained brief in chat while the role-primer says `key: none`, treat that as a
+normal human brief: verify it against the repo and follow the user's explicit instructions. It does **not** by
+itself trigger the private-store consume path, and it is not a substitute for a fresh keyed role-primer when the
+goal is to hand off a cold session.
+
 **First-time bootstrap (no key store yet).** The very first time an agent runs this — no private key store
-exists — is a one-time **manual** setup, done with the human. With no store, every key reads as *not consumed* →
-the agent would cold-start-stop on the current role-primer; that's harmless (it just reports and waits), but seed
-the store so the consumed-tracking works:
+exists — is a one-time **manual** setup, done with the human. With no store, any real fresh key reads as *not
+consumed* → the agent would cold-start-stop on that role-primer; that's harmless (it just reports and waits), but
+seed the store so the consumed-tracking works. `key: none` still means no fresh primer is waiting and proceeds
+normally:
 1. **Create your private key store** at your per-agent, per-project, *outside-the-repo* location, as
    `{ "consumed": [] }`. Claude Code → `~/.claude/projects/<project-slug>/session-primer-key.json` (alongside
    `memory/`). Codex → its stable private dir, e.g. `~/.codex/agenttalk-session-primer-key.json`. agy/Gemini →
@@ -240,12 +246,11 @@ the store so the consumed-tracking works:
    (Claude/Codex) or `implementer-primer.md` (Gemini). Keep the `-primer.md` suffix so it can't be auto-loaded as
    a `CLAUDE.md`/`AGENTS.md`/`GEMINI.md` context file on a case-insensitive filesystem (LB-12).
 3. From then on the handshake is automatic: read the role-primer's key, compare to your `consumed`, act/consume.
-   *(Claude's store bootstrapped 2026-06-22 — migrate it to the `{consumed:[]}` shape on next write. Codex and
-   agy/Gemini stores are pending their first run.)*
+   *(Claude's store bootstrapped 2026-06-22 — migrate it to the `{consumed:[]}` shape on next write. Codex was
+   bootstrapped 2026-06-26 at `~/.codex/agenttalk-session-primer-key.json`; agy/Gemini is pending its first run.)*
 
 **Receiving a Session Primer — GATHER CONTEXT ONLY, then STOP.**
-> **Critical rule.** When you load a **key-matched `fresh` primer** (per **First Entry Point**, or one pasted at
-> the top of chat), you MUST NOT take any action — **no code, edits, builds, test runs, scripts, or commits**
+> **Critical rule.** When you load a **key-matched `fresh` role-primer** (per **First Entry Point**), you MUST NOT take any action — **no code, edits, builds, test runs, scripts, or commits**
 > (the lone exception: consuming the key in your private key store, which lives *outside* the repo). Your *only* output is a **report of your understanding**:
 > what the project is, which epic/task is active, where it stands per the ledger, and what you believe the next step is —
 > nothing more. Then **STOP and WAIT** for the human's explicit go. **Naming the next step is context, not permission.**

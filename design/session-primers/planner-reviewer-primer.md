@@ -6,6 +6,11 @@ written: 2026-06-26 by Claude — migrated to role-keyed primers (was claude-pri
 
 This is your session primer.
 
+> **Historical / inactive body.** This file currently has `key: none`, so nothing below is a fresh assignment and
+> any stale references to the old `active` private-store model are obsolete. The current handshake is in
+> `AGENT.md`: only a non-`none` shared role-primer key that is not already in your private `consumed` list triggers
+> report-and-STOP plus key consumption.
+
 **0. Key-gated cold-start contract.** Valid **only if its `key` (above) matches the `active` key in your private
 key store** (`session-primer-key.json` beside your `memory/`). Match → **gather context only**: read the artifacts
 below, verify these claims against ground truth (git, the ledgers), report your understanding, make **no changes**

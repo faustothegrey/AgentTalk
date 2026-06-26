@@ -859,3 +859,28 @@ The other three were less "is it safe" and more "is this a small clean change or
   `planner-reviewer-primer.md`/`implementer-primer.md`; the finding (the `-primer.md` suffix avoids
   case-insensitive auto-load) is unchanged.
 - **Source:** Claude, 2026-06-26, at Fausto's direction. Canonical change to `AGENT.md` (the primer protocol).
+
+---
+
+### LB-30 · 2026-06-26 — [process] Role-keyed primer review — two planner-reviewers edge cases tightened
+
+- **What was reviewed.** Codex, acting as the newly bootstrapped **planner-reviewer** co-eligible with Claude, reviewed
+  the LB-29 role-keyed primer mechanism against `AGENT.md`, the role-primer files, and the actual repo state. Repo
+  ground truth at review time was `master`/`origin/master` at `063ff0c`; the onboarding brief's `b409b97` pointer was
+  stale but explicitly allowed "or newer."
+- **Findings.**
+  1. The old "primer pasted at the top of chat" language conflicted with the new shared-header authority: a pasted
+     brief has no role-primer header key and no private-store consume target.
+  2. First-time bootstrap text overgeneralized: a missing store would cold-start-stop on a real fresh key, but
+     `key: none` still short-circuits to "no fresh primer."
+  3. The inactive role-primer bodies were correctly marked historical in their headers, but still contained old
+     `active`-key wording that could mislead a cold reader who skimmed past the header.
+  4. LB-29's "Codex store pending" line is now historical: Codex's store has been seeded at
+     `~/.codex/agenttalk-session-primer-key.json`; Gemini remains pending.
+- **Resolution.** `AGENT.md` now states that the cold-start Session Primer lives in the keyed role-primer file. A
+  pasted human brief while `key: none` is just a normal brief to verify; it does not trigger private-store consumption
+  and is not a substitute for a fresh keyed handoff. Bootstrap wording now distinguishes real fresh keys from
+  `key: none`. Both inactive role-primer bodies now carry an explicit warning that stale body text is historical and
+  the current handshake is the shared-header/`consumed` protocol.
+- **Verification.** Docs-only patch; checked with `rg`, `git diff --check`, and `git status`. No build/test run needed
+  because no code, scripts, package config, or test contracts changed.
