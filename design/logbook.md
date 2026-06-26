@@ -643,9 +643,10 @@ The other three were less "is it safe" and more "is this a small clean change or
   Fausto), same cross-repo pattern as the `startRecording`/`endRecording` command work.
 - **Corrections made (honesty).** Retracted the false "replay mirrors the live run" claim in the bridge
   header + `onPhase` comment and in [[LB-23]]; both now point here.
-- **Decision (Fausto, 2026-06-26): RESOLVED → flag removed.** A flag guarding a not-yet-working feature is
-  useless complexity; we iterate on the functionality in-tree until it's fixed. `AGENTTALK_DIAGRAM_RECORD`
-  (and the `record` opt-in) are **deleted**; recording now wraps **every** run the bridge drives
-  (unconditional — including the v1 "just watch" path). Lossy capture stands until the DiagramTalk-side fix
-  lands. Bridge + tests updated; gate 202/202 (removed the 2 obsolete flag/env tests).
+- **Resolution (Fausto, 2026-06-26).** (1) Recording stays **OPT-IN** — `AGENTTALK_DIAGRAM_RECORD` /
+  the `record` option are **kept** (a brief decision to delete the flag, commit `25ab372`, was reversed —
+  see commit reverting it). (2) DiagramTalk fixed the capture race **internally**: capture is now server-side
+  **AT ENQUEUE** (`recordEnqueuedCommand`, DiagramTalk `cd27775`), independent of the browser's async apply.
+  **Re-verified live 2026-06-26: `eventCount=10` — full spine incl. the submit frame** (was 4–8 with frames
+  dropped). The "lossy/not-guaranteed" caveats in the bridge header + `onPhase` are updated to match. **Closed.**
 - **Source:** Claude, 2026-06-26. Continues [[LB-23]]; pairs with memory `diagramtalk-channel`.

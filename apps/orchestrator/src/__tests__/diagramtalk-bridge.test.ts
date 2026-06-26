@@ -47,19 +47,17 @@ describe('DiagramTalk bridge — dispatch (best-effort HTTP)', () => {
     });
   });
 
-  it('opens recording, clears the stale badge, then tags ack on the entry phase (no edge)', async () => {
+  it('clears the stale badge then tags ack on the entry phase (no edge to pulse)', async () => {
     const f = okFetch();
     const b = new DiagramTalkBridge({ fetchImpl: f as any, tagId: 'cur' });
     await b.onPhase({ taskId: 't', phase: 'protocol_ack_pending' });
 
-    // entry now also opens a recording first: startRecording, clear, tag — no highlight.
-    expect(f).toHaveBeenCalledTimes(3);
-    expect(JSON.parse((f.mock.calls[0]![1] as any).body).type).toBe('startRecording');
-    expect(JSON.parse((f.mock.calls[1]![1] as any).body)).toMatchObject({
+    expect(f).toHaveBeenCalledTimes(2); // clear, then tag — no highlight (entry)
+    expect(JSON.parse((f.mock.calls[0]![1] as any).body)).toMatchObject({
       type: 'setStateTag',
       input: { tagId: 'cur', clear: true },
     });
-    expect(JSON.parse((f.mock.calls[2]![1] as any).body)).toMatchObject({
+    expect(JSON.parse((f.mock.calls[1]![1] as any).body)).toMatchObject({
       type: 'setStateTag',
       input: { tagId: 'cur', shapeId: 'shape:ack' },
     });
@@ -87,10 +85,9 @@ describe('DiagramTalk bridge — dispatch (best-effort HTTP)', () => {
   });
 });
 
-describe('DiagramTalk bridge — record-for-replay (v2, unconditional, command path)', () => {
-  // Every call hits /api/diagram/commands; branch on the command `type`. The
+describe('DiagramTalk bridge — record-for-replay (v2, opt-in, command path)', () => {
+  // Every call now hits /api/diagram/commands; branch on the command `type`. The
   // startRecording command returns the new recording id at command.result.recordingId.
-  // Recording is no longer opt-in — it wraps every run the bridge drives.
   const bodyOf = (call: any) => JSON.parse((call[1] as any).body);
   const recFetch = (recordingId = 'rec-1') =>
     vi.fn().mockImplementation((_url: string, init?: any) => {
@@ -106,9 +103,23 @@ describe('DiagramTalk bridge — record-for-replay (v2, unconditional, command p
       return Promise.resolve({ ok: true, status: 200 });
     });
 
+  afterEach(() => {
+    delete process.env.AGENTTALK_DIAGRAM_RECORD;
+  });
+
+  it('emits NO recording commands when record is off (default — behaviour preserved)', async () => {
+    const f = vi.fn().mockResolvedValue({ ok: true, status: 200 });
+    const b = new DiagramTalkBridge({ fetchImpl: f as any, baseUrl: 'http://x' });
+    await b.onPhase({ taskId: 't', phase: 'protocol_ack_pending' });
+    await b.onPhase({ taskId: 't', phase: 'submittal_pending' });
+    const types = f.mock.calls.map((c) => bodyOf(c).type);
+    expect(types).not.toContain('startRecording');
+    expect(types).not.toContain('endRecording');
+  });
+
   it('opens a recording at the root phase (before the clear/tag) and closes it at submittal', async () => {
     const f = recFetch('rec-1');
-    const b = new DiagramTalkBridge({ fetchImpl: f as any, baseUrl: 'http://x' });
+    const b = new DiagramTalkBridge({ fetchImpl: f as any, baseUrl: 'http://x', record: true });
 
     await b.onPhase({ taskId: 't', phase: 'protocol_ack_pending' }); // entry
     // Everything rides one endpoint; the very first command is the recording START.
@@ -121,9 +132,17 @@ describe('DiagramTalk bridge — record-for-replay (v2, unconditional, command p
     expect(last.input.id).toBe('rec-1'); // closes the id start returned
   });
 
+  it('reads AGENTTALK_DIAGRAM_RECORD as the record default', async () => {
+    process.env.AGENTTALK_DIAGRAM_RECORD = '1';
+    const f = recFetch();
+    const b = new DiagramTalkBridge({ fetchImpl: f as any, baseUrl: 'http://x' });
+    await b.onPhase({ taskId: 't', phase: 'protocol_ack_pending' });
+    expect(bodyOf(f.mock.calls[0]!).type).toBe('startRecording');
+  });
+
   it('targets the configured diagramId in the startRecording command', async () => {
     const f = recFetch();
-    const b = new DiagramTalkBridge({ fetchImpl: f as any, baseUrl: 'http://x', diagramId: 'D1' });
+    const b = new DiagramTalkBridge({ fetchImpl: f as any, baseUrl: 'http://x', record: true, diagramId: 'D1' });
     await b.onPhase({ taskId: 't', phase: 'protocol_ack_pending' });
     expect(bodyOf(f.mock.calls[0]!)).toMatchObject({ type: 'startRecording', diagramId: 'D1' });
   });
@@ -134,7 +153,7 @@ describe('DiagramTalk bridge — record-for-replay (v2, unconditional, command p
       if (type === 'startRecording') return Promise.resolve({ ok: false, status: 500 });
       return Promise.resolve({ ok: true, status: 200 });
     });
-    const b = new DiagramTalkBridge({ fetchImpl: f as any, baseUrl: 'http://x', log: () => {} });
+    const b = new DiagramTalkBridge({ fetchImpl: f as any, baseUrl: 'http://x', record: true, log: () => {} });
     await b.onPhase({ taskId: 't', phase: 'protocol_ack_pending' });
     await b.onPhase({ taskId: 't', phase: 'submittal_pending' });
     expect(f.mock.calls.map((c) => bodyOf(c).type)).not.toContain('endRecording');
@@ -142,7 +161,7 @@ describe('DiagramTalk bridge — record-for-replay (v2, unconditional, command p
 
   it('never throws when the command endpoint is unreachable (best-effort)', async () => {
     const f = vi.fn().mockRejectedValue(new Error('ECONNREFUSED'));
-    const b = new DiagramTalkBridge({ fetchImpl: f as any, log: () => {} });
+    const b = new DiagramTalkBridge({ fetchImpl: f as any, record: true, log: () => {} });
     await expect(b.onPhase({ taskId: 't', phase: 'protocol_ack_pending' })).resolves.toBeUndefined();
   });
 });

@@ -18,14 +18,13 @@
  *
  * v1 scope = FORWARD SPINE ONLY: a moving badge + forward-edge pulses.
  *
- * v2 wraps each run in a DiagramTalk recording whenever the bridge is attached:
- * start it as the run enters the root phase, end it at submittal. A recording is
- * *meant* to capture the `highlight` +
- * `setStateTag` events the bridge emits (RecordingEventType), so the bridge only
- * opens and closes it with no extra per-phase wiring. ⚠️ In practice capture is
- * LOSSY — DiagramTalk records a command only when the browser posts its `applied`
- * result while the recording is open, which races the bridge's close; replay
- * fidelity is NOT yet guaranteed (see the limitation note in onPhase + LB-24).
+ * v2 adds OPTIONAL record-for-replay (env AGENTTALK_DIAGRAM_RECORD, default OFF):
+ * wrap each run in a DiagramTalk recording — start it as the run enters the root
+ * phase, end it at submittal. The recording captures the `highlight` + `setStateTag`
+ * events the bridge emits (RecordingEventType), so the bridge only opens and closes
+ * it with no extra per-phase wiring. Capture is server-side AT ENQUEUE (DiagramTalk
+ * `cd27775`) — independent of the browser's async apply, so it no longer races the
+ * close; verified full-spine live 2026-06-26 (LB-24).
  * Record start/stop are first-class COMMANDS on the same command stream
  * (`startRecording`/`endRecording` — DiagramTalk added them so the bridge drives
  * everything through ONE endpoint, `POST ${baseUrl}/api/diagram/commands`).
@@ -100,7 +99,13 @@ export interface DiagramTalkBridgeOptions {
   tagColor?: string;
   /** Transition pulse colour. */
   highlightColor?: string;
-  /** Optional name applied to the recording opened for each run. */
+  /**
+   * Opt in to wrapping each run in a DiagramTalk recording (start on the root
+   * phase, end at submittal). Defaults to env AGENTTALK_DIAGRAM_RECORD (OFF when
+   * unset) — so the default bridge run is unchanged.
+   */
+  record?: boolean;
+  /** Optional name applied to recordings opened when `record` is on. */
   recordName?: string;
   /** Injectable fetch + logger for testing. */
   fetchImpl?: typeof fetch;
@@ -117,6 +122,7 @@ export class DiagramTalkBridge {
   private readonly tagId: string;
   private readonly tagColor: string;
   private readonly highlightColor: string;
+  private readonly record: boolean;
   private readonly recordName?: string;
   private readonly fetchImpl: typeof fetch;
   private readonly log: (msg: string, err?: unknown) => void;
@@ -131,6 +137,7 @@ export class DiagramTalkBridge {
     this.tagId = opts.tagId ?? 'consensus-cursor';
     this.tagColor = opts.tagColor ?? 'green';
     this.highlightColor = opts.highlightColor ?? 'yellow';
+    this.record = opts.record ?? Boolean(process.env.AGENTTALK_DIAGRAM_RECORD);
     if (opts.recordName !== undefined) this.recordName = opts.recordName;
     this.fetchImpl = opts.fetchImpl ?? fetch;
     this.log = opts.log ?? ((msg, err) => console.error(msg, err ?? ''));
@@ -146,8 +153,10 @@ export class DiagramTalkBridge {
     if (!visual.edge) {
       // v2: open a fresh recording for this run (closing any we left open on a
       // prior, interrupted run) BEFORE the clear/tag, so the whole run is captured.
-      await this.endRecording();
-      await this.startRecording();
+      if (this.record) {
+        await this.endRecording();
+        await this.startRecording();
+      }
       await this.post({
         type: 'setStateTag',
         input: { tagId: this.tagId, clear: true },
@@ -171,15 +180,12 @@ export class DiagramTalkBridge {
       });
     }
     // v2: submittal is the terminal forward phase — close the recording here.
-    // ⚠️ KNOWN LIMITATION (LB-24, live-verified 2026-06-26): capture is DiagramTalk-side
-    // and fires only when the browser posts an `applied` result for a tag/highlight
-    // *while the recording is open*. This close runs on the bridge's clock and races
-    // ahead of the browser's async apply, so commands not yet applied are dropped from
-    // the recording — lossy and non-deterministic (observed 4–8 of ~11 events; the
-    // submit frame is always lost). EMISSION is correct; REPLAY fidelity is NOT
-    // guaranteed until the capture race is fixed DiagramTalk-side. Do not claim the
-    // recording mirrors the live run.
-    if (evt.phase === 'submittal_pending') {
+    // (History, LB-24: an earlier DiagramTalk captured only on the browser's async
+    // `applied` result, which raced this close and dropped frames. Fixed upstream —
+    // capture is now server-side AT ENQUEUE (DiagramTalk `cd27775`) — so the submit
+    // tag+pulse, enqueued just above before this close, are recorded. Re-verified live
+    // 2026-06-26: full spine, eventCount=10.)
+    if (this.record && evt.phase === 'submittal_pending') {
       await this.endRecording();
     }
   }
