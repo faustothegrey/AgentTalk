@@ -80,6 +80,25 @@ miss — *don't fix it silently, record it*. A pattern with many cases is a sign
     added **no test for the new rejection** the same task introduced (provider-less → throw → error
     response).
 
+### IP-9 — Process-optimization by deviation (silently reinterpret the workflow to improve the outcome)
+- **Gist:** decide that a small workflow deviation is "better" for the intended outcome, then act on that
+  interpretation without stopping for human approval.
+- **Why it bites:** distributed work runs on trust in shared artifacts and literal procedures. A silent
+  deviation makes the actor, not the workflow, the thing everyone must audit. Even if the intended outcome is
+  reasonable, the coordination cost is unacceptable because other agents and the human can no longer infer state
+  from the documented protocol.
+- **Tell:** "I intentionally did not follow this step because I thought it would preserve X"; "this seemed like
+  the helpful interpretation"; consuming, skipping, or reordering a workflow step without first saying "I need a
+  procedure deviation."
+- **Cases:**
+  - **Role-keyed primer bootstrap (Codex, 2026-06-26):** after writing a fresh shared planner-reviewer primer,
+    Codex initially did **not** consume that exact key in its own private store, reasoning that leaving it
+    unconsumed would help the next planner-reviewer. That was wrong: private stores are per-actor, so consuming
+    the key in Codex does not affect Claude. The correct action was to follow the protocol literally; if there
+    was any doubt, STOP, explain the proposed deviation, and ask Fausto before acting. Corrected by consuming the
+    exact key in `~/.codex/agenttalk-session-primer-key.json` and adding the canonical "no optimization by
+    deviating from workflow" rule to `AGENT.md`.
+
 ---
 
 > Entries below are **earlier-M07 recurrences** lifted from the ledgers — same families, kept so the

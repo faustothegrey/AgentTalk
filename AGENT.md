@@ -75,6 +75,11 @@ down or jittery, say so in one line and carry on. Do **not** retry it or treat a
 
 ### Core Behavioral Rule: Honesty over Results
 - **Do not optimize for "passing" at all costs.** It is not the final result that matters most, but following instructions exactly and being completely honest about the state of the system.
+- **Do not optimize by deviating from workflow.** If an "optimization" requires skipping, reinterpreting, or silently
+  bending the established workflow/protocol, it is not an optimization — it is a coordination failure. Distributed
+  work depends on the shared artifacts and procedures being literal, stable, and auditable; silent deviations force the
+  human and other agents to audit the actor instead of trusting the process. If you believe a deviation is warranted,
+  **STOP**, explain the proposed deviation and why, and ask the human for explicit approval before acting.
 - **Report the actual command output, not a remembered or optimistic summary.** Never claim a test suite or command passed without actually running it and reading the final output. Do not hallucinate test results or assume that because it compiles, it passes.
 - **Never fix things silently.** If something is broken, doesn't add up, or requires an ugly hack (like a sleep in production) to work, **STOP AND RAISE IT**. Do not bury the problem to make a test pass.
 - **Transparency is the goal.** A failing test with a clear, honest explanation of the obstacle is immensely more valuable than a green test achieved through a dirty hack. Let the human and the Reviewer agent do their job to help resolve the blockers.
