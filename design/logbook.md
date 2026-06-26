@@ -643,6 +643,9 @@ The other three were less "is it safe" and more "is this a small clean change or
   Fausto), same cross-repo pattern as the `startRecording`/`endRecording` command work.
 - **Corrections made (honesty).** Retracted the false "replay mirrors the live run" claim in the bridge
   header + `onPhase` comment and in [[LB-23]]; both now point here.
-- **Open decision (for Fausto).** Keep `AGENTTALK_DIAGRAM_RECORD` available (emission fine, replay
-  untrustworthy) vs gate it OFF until the capture race is fixed. **Undecided — parked pending Fausto.**
+- **Decision (Fausto, 2026-06-26): RESOLVED → flag removed.** A flag guarding a not-yet-working feature is
+  useless complexity; we iterate on the functionality in-tree until it's fixed. `AGENTTALK_DIAGRAM_RECORD`
+  (and the `record` opt-in) are **deleted**; recording now wraps **every** run the bridge drives
+  (unconditional — including the v1 "just watch" path). Lossy capture stands until the DiagramTalk-side fix
+  lands. Bridge + tests updated; gate 202/202 (removed the 2 obsolete flag/env tests).
 - **Source:** Claude, 2026-06-26. Continues [[LB-23]]; pairs with memory `diagramtalk-channel`.
