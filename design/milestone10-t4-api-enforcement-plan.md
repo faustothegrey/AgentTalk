@@ -1,6 +1,6 @@
 # Milestone 10 · T4 — API-path protocol enforcement (plan / for review)
 
-> **Status:** ✅ IMPLEMENTED + gated (Claude, 2026-06-26) — on branch `m10-t4-api-enforcement`, merge HUMAN-GATED (LB-14).
+> **Status:** ✅ DONE — **MERGED to `master`** at `d0462b6` (Fausto's go, 2026-06-26) + pushed.
 > Decisions **D-T4-1 = static enum**, **D-T4-2 = declare-unfit (no fallback)**, **D-T4-3 = keep both** all
 > settled by Fausto 2026-06-26. One deliberate deviation from §5: `message_payload` is a generic `object`,
 > not per-type (enum is the structural guarantee; `validatePayload` remains the payload net). Log + telemetry

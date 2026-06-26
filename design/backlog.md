@@ -30,15 +30,24 @@ promoted→X · absorbed→X · dropped}.
 
 ### M10 follow-ons (post DiagramTalk bridge-v2)
 
-- **[open] 2026-06-26 — M10-T4 API-path protocol enforcement — plan drafted, awaiting go.** Switch
-  API-path planners to OpenAI-compat tool-calling with `tool_choice:"required"` + a strict `enum` on
-  `message_type`, so an off-protocol *structural* action is unrepresentable at generation time
-  (today: `response_format:json_object` + after-the-fact parse/grade only). **Pure optimization —
-  brain & grading loop untouched; the JSON parser stays as the universal fallback.** Spec, DoD, and 3
-  open decisions (enum granularity · provider `tool_choice` capability · drop `response_format` when
-  tools are sent) live in `design/milestone10-t4-api-enforcement-plan.md`. Top risk = per-provider
-  `tool_choice` support → gate + fallback; live-verify parked while budgets are tight. **Sibling
-  T3 (single-tool `consensus_respond`, wire-contract v5→v6, cross-repo lockstep) stays deferred per D3.**
+- **[done] 2026-06-26 — M10-T4 API-path protocol enforcement — MERGED to `master` (`d0462b6`).** Shipped:
+  structured API turns send an OpenAI-compat `respond(message_type, message_payload)` tool with
+  `tool_choice:"required"` + a strict `enum` derived from `STRUCTURED_MESSAGE_TYPES`, so an off-list
+  structural action is unrepresentable at generation time. Decisions (Fausto): D-T4-1 static enum ·
+  D-T4-2 declare-unfit (no `json_object` fallback) · D-T4-3 keep `response_format`. Deviation: generic
+  `message_payload` (enum is the guarantee; `validatePayload` is the net). Gate: tsc 0, 213/213. Record:
+  `design/milestone10-t4-api-enforcement-plan.md` + ledger §T4 + **LB-25**. *(Sibling T3 single-tool
+  `consensus_respond`, v5→v6 cross-repo, stays deferred per D3.)*
+
+- **[open · spike] 2026-06-26 — M10-T4 live-verification probe — experience-led.** T4 shipped
+  *ship-and-watch* (D-T4-2 = declare-unfit), so the combo `tools`+`tool_choice:"required"`+`response_format`
+  is **assumed** for google/openrouter/nous — unit-tested via injected `fetchFn` only, **never** hit a
+  real endpoint. **Spike (only if experience says we need it):** a **transport capability-probe** — one
+  cheap real request per provider, classify by the HTTP response (400 on the combo → unfit; tool-call
+  back → fit), cache the verdict. It would double as the missing live-verification. Reopens D-T4-2
+  (declare-unfit → detect-and-gate). **NOT a model self-report handshake** — that's the wrong layer
+  (the model can't introspect its server's param support; hallucinates "yes"). Triggered by: a provider
+  actually 400-ing in real use, or wanting the live gap closed before relying on T4 in anger. See LB-25.
 
 ### Backlog gate — 2026-06-22 (opening M08 · architect: Claude)
 

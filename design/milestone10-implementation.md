@@ -19,7 +19,7 @@ Baseline before T1: `master` `5cc84d2`, `tsc -b` 0, **183/183** (32 files).
 | **T1** | Peer-safe `ejectPlanner(agentId, reason)` — additive non-killing path (D1 fail-soft) | **Implemented + gated on branch `m10-t1-eject-planner`; merge = Fausto's call.** |
 | T2 | Generalise the graded loop at the validation site (correct → retry N=2 → eject, not dual-kill) | **Implemented + gated on `m10-t2-graded-loop` (stacked on T1); merge = Fausto's call.** Decisions D-T2a (minimal) + D-T2b (unify) approved; proposal `design/milestone10-t2-contract-proposal.md`. |
 | T3 | Single tool `consensus_respond(action, payload)` (wire-contract v5→v6, lockstep client) | Deferred (D3). |
-| **T4** | API-path `tools`+`tool_choice`+strict `enum` enforcement optimization | **Implemented + gated on branch `m10-t4-api-enforcement`; merge = Fausto's call.** Plan `design/milestone10-t4-api-enforcement-plan.md`; decisions D-T4-1 static / D-T4-2 declare-unfit / D-T4-3 keep-both (Fausto 2026-06-26). |
+| **T4** | API-path `tools`+`tool_choice`+strict `enum` enforcement optimization | **✅ MERGED to `master` (`d0462b6`) + pushed (Fausto's go, 2026-06-26).** Plan `design/milestone10-t4-api-enforcement-plan.md`; decisions D-T4-1 static / D-T4-2 declare-unfit / D-T4-3 keep-both. Live-verification probe → backlog spike. |
 
 ## T1 — peer-safe `ejectPlanner` (log)
 
@@ -139,4 +139,4 @@ of budget).
 - budget:      weekly 59%→60% (Δ ~1%), session 54%→60% (Δ ~6%) [per /usage]
 - gate:        tsc 0, suite 213/213 (204 baseline +9 new), pollution clean
 - diff:        6 files (5 mod +1 new test), +223/-5 (code+tests); ledger/plan/logbook separate
-- outcome:     IMPLEMENTED ✅ — on branch `m10-t4-api-enforcement`, merge HUMAN-GATED (LB-14)
+- outcome:     MERGED ✅ — ff to `master` at `d0462b6` (Fausto's go) + pushed
