@@ -15,7 +15,8 @@
     "scenario": "npm run scenario --workspace @agenttalk/orchestrator",
     "backend": "npm run start --workspace @agenttalk/orchestrator",
     "frontend": "npm run dev --workspace @agenttalk/web",
-    "play-recording": "npm run play-recording --workspace @agenttalk/orchestrator"
+    "play-recording": "npm run play-recording --workspace @agenttalk/orchestrator",
+    "smoke:exec": "tsc -b && node scripts/smoke-mcp-exec-server.mjs"
   },
   "devDependencies": {
     "@types/node": "^25.5.0",
