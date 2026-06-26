@@ -765,3 +765,61 @@ The other three were less "is it safe" and more "is this a small clean change or
   - outcome:     IMPLEMENTED ✅ — live CLI smoke owed; merge HUMAN-GATED ([[LB-14]])
 - **Source:** Claude, 2026-06-26. Implements `design/mcp-exec-server-plan.md`. Continues the llm-client
   extraction ([[LB-14]] gating); pairs with `design/llm-client-architecture.md`.
+
+---
+
+### LB-28 · 2026-06-26 — [attach] Live 1:1 chat verified end-to-end: web UI ⇄ real `agentalk-mcp-client` → `claude` CLI
+
+- **What was tested (and why now).** A plain **single-agent chat** in the web UI, with the agent's turn
+  executed by the **real external** `agentalk-mcp-client` CLI driving the real `claude` CLI — the M05/M06
+  attach path, re-exercised for the **first time on the current (post-M10) codebase**. Prompted by the
+  mcp-exec-server work: before doing more on the *consensus-free* chat path, confirm the *real product's*
+  1:1 attach chat still works hands-on. **It does.** No UI development was needed — the UI already has agent
+  creation, selection, a `Send message…` composer (`App.tsx`), and the receive/display (`MessagesView.tsx`);
+  the backend already has the `message → message_received → exec_rpc → submit_exec_result → agent_message`
+  round-trip.
+- **Setup.** `npm run backend` (Express+browser-WS :3000 + the **dedicated-port** MCP server) + `npm run
+  frontend` (vite :5173). Agent `chat-1` created in the UI (form default provider label = gemini). Client:
+  `AGENTTALK_PERSISTENT_MCP_URL=ws://localhost:56020/ node llm-agent.mjs --provider claude --agentId chat-1`.
+- **Evidence (backend log, abridged).**
+  ```
+  [McpServer] Connection established for agentId=chat-1
+  [Registry] MCP tool call from chat-1: await_turn {}
+  [Server] Sending message to agent chat-1: ciao agent chat-1
+  [Registry] Sending EVT ... {"type":"message_received","from":"user","payload":"ciao agent chat-1"}
+  [Agent chat-1] ready -> busy
+  [Registry] MCP tool call from chat-1: submit_exec_result { text: "...Ciao! ... I'm here and ready ..." }
+  [Server] Agent message from chat-1: "...Ciao! ..." → 1 client(s)
+  [Agent chat-1] busy -> ready
+  [Registry] MCP tool call from chat-1: await_turn {}
+  ```
+  A real `claude` reply rendered in the browser (Fausto confirmed visually).
+- **Findings (durable).**
+  1. **`ready` is immediate and correct, before any client attaches.** For a `claude`/`codex`/`gemini`-labelled
+     agent, `activateAgent` starts an `InProcessAgentDriver` with an **`McpCompleter`** (`registry.ts` ~213-230)
+     — the driver marks the agent `ready` (loop up), but every turn is **delegated** to the external client
+     (`McpCompleter.complete` queues `{type:'exec_rpc'}` and waits for `submit_exec_result`, default **120s**
+     timeout). `ready` ≠ "answers on its own"; only a `provider:'api'` agent uses an in-process `ApiCompleter`.
+  2. **The MCP attach endpoint is a DEDICATED random port with path `/`, never `:3000/mcp`.** The client's
+     default URL is `ws://localhost:3000/mcp`; against this orchestrator that hits the Express server →
+     `Unexpected server response: 400` + reconnect loop. **You must pass `AGENTTALK_PERSISTENT_MCP_URL` =
+     the dedicated port from the backend log** (`[Server] ... MCP server listening on ws://localhost:<port>/`).
+     This was the one real stumble in the live run. (Root cause = the documented WS-collision fix.)
+  3. **Provider label vs real model.** Orchestrator-side provider only selects `McpCompleter`; the `exec_rpc`
+     carries only `{prompt}`. The client's `--provider` decides the actual CLI. A "gemini"-labelled agent
+     answered by a `--provider claude` client is normal — they only share the **agentId**.
+  4. **Cosmetic artifact (client-side, NOT AgentTalk).** The reply was prefixed with claude CLI meta text
+     (*"Let me check my memory for context on this project and user."*). That's the **client's** provider
+     output-parser leaking thinking into the response — a `agentalk-mcp-client` concern (separate repo;
+     relay-only). Worth a follow-up there; AgentTalk just relayed what the client submitted.
+- **Reproduction.** Full operator steps + troubleshooting captured in **`design/attach-chat-runbook.md`**
+  (the old `attach-harness.mjs` is gone, so that runbook is now canonical).
+- **Telemetry (task closure):**
+  - task:        live 1:1 attach-chat verification (web UI ⇄ real mcp-client → claude)
+  - wall-clock:  2026-06-26 ~17:30 → ~18:10 CEST (~40 min, mostly exploration + the env-var stumble)
+  - budget:      claude session ~0%→27% (Δ ~27%, heavy read/explore), weekly 72%→74% (Δ ~2%)
+  - gate:        no code change to app/engine; build green; live round-trip ✅ (real claude reply in UI)
+  - diff:        docs only — `design/attach-chat-runbook.md` (new) + this LB-28 entry
+  - outcome:     VERIFIED ✅ — 1:1 attach chat works on the current codebase
+- **Source:** Claude, 2026-06-26. Pairs with `design/attach-chat-runbook.md`; relates to [[LB-27]]
+  (mcp-exec-server, the consensus-free sibling path) and the M05 attach mode.
