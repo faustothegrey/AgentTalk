@@ -1,7 +1,7 @@
 ---
 audience: claude
-key: 20260625-2206-b4e7f1a9
-written: 2026-06-25 by Claude (DiagramTalk live-flow bridge v1 MERGED to master at 7c1765c; un-pushed)
+key: 20260626-0747-c1a9e6b2
+written: 2026-06-26 by Claude (DiagramTalk bridge v2 record-for-replay DONE + live-verified; master 10 ahead, un-pushed)
 ---
 
 This is your session primer.
@@ -10,8 +10,8 @@ This is your session primer.
 key store** (`session-primer-key.json` beside your `memory/`). Match → **gather context only**: read the artifacts
 below, verify these claims against ground truth (git, the ledgers), report your understanding, make **no changes**
 until Fausto says go. The one write you may make now is **consuming the key** (`active`→`consumed`). **Also at turn 1:**
-poll runway with `node scripts/usage.mjs` — read the **full** output, check its `(updated …)` stamp vs `date` now,
-stamp wall-clock. Don't trust this primer blindly — verify; surface anything off.
+poll runway with `node scripts/usage.mjs` — read the **full** output, check its `(updated …)` stamp vs `date` now.
+Don't trust this primer blindly — verify; surface anything off.
 
 **1. What it is.** AgentTalk = an orchestrator coordinating multiple AI agents (in-process **API**-path providers +
 externally-launched **MCP**-attached agents) collaborating over MCP through a multi-agent **consensus protocol**
@@ -27,54 +27,63 @@ Engagement before any code.** Fausto = human (scope, decisions, relay).
 `*-implementation.md` (the **ledger**), `design/backlog.md`, `design/logbook.md` (LB-N), `design/implementer-pitfalls.md`
 (IP-N). `AGENT.md` is canonical (`CLAUDE.md`/`AGENTS.md` are symlinks).
 
-**4. EXACTLY where we are.** `master` = **`7c1765c`**, **3 commits AHEAD of `origin/master` (UN-PUSHED)** — Fausto's
+**4. EXACTLY where we are.** `master` = **`8004ae3`**, **10 commits AHEAD of `origin/master` (UN-PUSHED)** — Fausto's
 call whether to push (his standing "don't push without go" rule).
-- **Last session's work — DiagramTalk live-flow bridge v1 — ✅ DONE + MERGED (2026-06-25).** Delivers LB-21's
-  "missing piece": watch the consensus protocol advance LIVE on the M10 state-machine diagram. Commits:
-  - `988b721` — v1 forward-spine bridge. Brain stays **pure**: `team-coordinator.ts` gained one private
-    `setPlanningPhase()` funnel (the 6 `planningPhases.set` sites route through it) firing an **optional**
-    `onPhaseChange` dep; `registry.ts` re-emits it as a `team_planning_phase` event; new
-    `apps/orchestrator/src/diagramtalk-bridge.ts` maps phase→box+edge and POSTs `setStateTag`/`highlight` to
-    `${DIAGRAMTALK_URL}/api/diagram/commands`. **Best-effort, never blocking, OFF unless `AGENTTALK_DIAGRAM_BRIDGE`
-    is set.** Live ids carry a **`shape:` prefix** (handled by `shapeRef()`).
-  - `0a2f7cc` — clear-on-start: on the entry phase, clear the cursor tag before tagging `ack` (clean stage per run).
-  - `7c1765c` — LB-22 docs (marks MERGED). Full record = **logbook LB-22** (+ LB-20/LB-21 for the M10 brain + the
-    DiagramTalk facility).
-  - **LIVE-VERIFIED twice** against Fausto's loaded M10 diagram (no LLM budget — drove the real bridge through the 5
-    phases; badge walked `ack→facts→disc→prop→submit`, edges `e1/e2/e3/e5` pulsed).
-- **M10 brain itself (earlier, already on master):** graded, stateful protocol loop — valid→ack+advance ·
-  invalid→correct+retry(N=2) · repeated→peer-safe **eject**. Phase-2 v1 = **T1** (`76e5b34` peer-safe `ejectPlanner`) +
-  **T2** (`5fea20c` graded `validateProtocolStep`). Plans: `design/milestone10-*plan.md`; ledger
-  `design/milestone10-implementation.md`.
+- **This session (2026-06-26) — DiagramTalk bridge **v2 = record-for-replay** — ✅ DONE + live-verified.** Lets you
+  record a consensus run on the M10 diagram and replay it. **OPT-IN** (`AGENTTALK_DIAGRAM_RECORD` env / `record`
+  option, default OFF). The bridge opens a recording at the root phase and closes it at submittal, all over the **one**
+  `/api/diagram/commands` stream (DiagramTalk added `startRecording`/`endRecording` lifecycle commands — their commit
+  `a698b43`; start returns `command.result.recordingId`, end closes via `input.id`). Best-effort/never-blocking as ever.
+  Bridge file: `apps/orchestrator/src/diagramtalk-bridge.ts` (+ its test).
+- **The capture race (LB-24) — found, fixed upstream, re-verified.** First live smoke exposed lossy/non-deterministic
+  capture (4–8 of ~11 events, submit frame always dropped) — DiagramTalk only captured on the browser's async `applied`
+  result, which raced the bridge's close. DiagramTalk fixed it **internally**: capture is now **at enqueue**
+  (`recordEnqueuedCommand`, their commit `cd27775`). Re-verified live: **eventCount=10, full spine** incl. submit. The
+  bridge needed no contract change. (Mid-session a brief decision to delete the flag, `25ab372`, was **reversed** —
+  recording stays opt-in.)
+- **Commits this session on master** (all un-pushed): `d3db0d0` v2 bridge · `bf36d62` T4 plan+backlog · `f85cedd` LB-23 ·
+  `3ac1ec2` LB-24 finding+retractions · `25ab372` flag-removal (reversed) · `8004ae3` flag-restore+realign+verify.
+  Full record = **logbook LB-23 (v2 closure) + LB-24 (capture race, now closed)**.
 - **⏭️ NEXT CANDIDATES (none committed-to; Fausto picks):**
-  - **DiagramTalk bridge v2:** the `endorse` box + edge `e4` (tap the `agreement_acceptance` handler); the
-    **eject/correction overlay** (`o1–o6`, red/yellow off the T2 graded loop); wrap a run in `record` for replay.
-  - **M10 T3** — single `consensus_respond(action,payload)` tool (wire-contract bump **v5→v6**, lockstep with the
-    `agentalk-mcp-client` repo + handshake gate; higher risk). **M10 T4** — API-path enforcement (`tools`+`tool_choice`+
-    strict `enum`; pure optimization). Both deferred per D3.
-  - **gemini live gate** (`node scripts/test-mcp-gate.mjs gemini`) — still parked while gemini is out of weekly budget
+  - **Push** `master` to origin (10 ahead) — his decision.
+  - **M10 T4** — API-path enforcement: `tools`+`tool_choice`+strict `enum` so API-path planners can't emit an
+    off-protocol action (vs today's parse-and-grade). **Plan DRAFTED, awaiting go**:
+    `design/milestone10-t4-api-enforcement-plan.md` (3 open decisions: enum granularity · provider `tool_choice`
+    capability · drop `response_format` when tools sent). Self-contained in AgentTalk, no cross-repo. Backlog has the row.
+  - **DiagramTalk bridge — remaining v2 basket:** the `endorse` box + edge `e4`, and the eject/correction overlay
+    (`o1–o6`). **Both need NEW brain-emitted phases** (`team-coordinator.ts`) — a separate scope decision, NOT
+    "changes on the bridge alone" (Rule 2). Don't start without a scope call.
+  - **M10 T3** — single-tool `consensus_respond` (wire-contract **v5→v6**, lockstep with the `agentalk-mcp-client` repo;
+    higher risk). **M10 T4** API-enforcement. Both deferred per **D3**.
+  - **gemini live gate** (`node scripts/test-mcp-gate.mjs gemini`) — parked while gemini is out of weekly budget
     (memory `run-gemini-live-gate-when-budget-returns`).
 
-**5. Where state lives.** Resume from `design/logbook.md` (LB-22 is the bridge closure record; LB-20/21 the M10 brain +
-DiagramTalk facility) + `design/milestone10-implementation.md` (the M10 ledger) + memory `diagramtalk-channel`, **not
-chat**. Gate baseline on master = **198/198, tsc 0**. Verify it still holds before/after any new code.
+**5. Where state lives.** Resume from `design/logbook.md` (**LB-24** = capture-race closure; LB-23 = v2 closure; LB-22 =
+bridge v1; LB-20/21 = M10 brain + DiagramTalk facility) + `design/milestone10-implementation.md` (M10 ledger) + memory
+`diagramtalk-channel`, **not chat**. Gate baseline on master = **204/204, tsc 0**. Verify before/after any new code.
 
 **6. Op notes / gotchas.**
-- **Gate:** `npm run build` (tsc -b) AND `npm test` (vitest). **LB-9:** `planning_runs/` is gitignored and the
-  failure/consensus tests write into it — pre-existing, NOT pollution; check `git status` (in-scope files only).
-- **DiagramTalk bridge map (`apps/orchestrator/src/diagramtalk-bridge.ts`):** `FORWARD_SPINE` = phase→{box,edge};
-  `phaseToVisual` (pure); `shapeRef` (the `shape:` transport prefix); `DiagramTalkBridge.onPhase` (clear-on-entry →
-  tag → highlight); `attachDiagramTalkBridge` (env-gated subscribe). Drive it live via the `diagramtalk.py` CLI at
-  `/Users/fausto/Software/DiagramTalk/diagramtalk/scripts/diagramtalk.py` (`tag`/`highlight`/`context`/`commands`).
-- **Known DiagramTalk rendering quirk (Fausto, 2026-06-25):** the `highlight` pulse overlay does **not** align to a
-  shape's bounding box (especially on arrows — looks askew). This is **DiagramTalk-side rendering**, NOT the bridge —
-  the bridge only names the id+color. A note for the DiagramTalk dev agent if it ever matters; not an AgentTalk bug.
-- **Engine map (M10):** `team-coordinator.ts` — `setPlanningPhase` (NEW funnel + onPhaseChange), `ejectPlanner` (T1
-  peer-safe), `validateProtocolStep` (T2 graded loop), `interruptPlanningForMissingEvents` (M03 dual-kill — still used
-  for genuine agent-failure/watchdog; do NOT extend it for illegal moves), `pauseTaskForOperator` (M08-T3 fence).
+- **Gate:** `npm run build` (tsc -b) AND `npm test` (vitest). **LB-9:** `planning_runs/` is gitignored and some tests
+  write into it — pre-existing, NOT pollution; check `git status` (in-scope files only).
+- **DiagramTalk e2e pattern (non-polluting).** To smoke the bridge live without touching the real M10 diagram: clone
+  M10's snapshot onto a **disposable scratch diagram**, drive the bridge against it (real browser renders/captures),
+  read the recording, then **delete the scratch + reactivate M10**. Capture is now server-side at enqueue, so a paced
+  drive captures the full spine. Throwaway scripts live in the session scratchpad (ephemeral, not in the repo).
+  **Never drive the real M10 diagram** (Fausto's explicit constraint).
+- **Bridge map (`apps/orchestrator/src/diagramtalk-bridge.ts`):** `FORWARD_SPINE` phase→{box,edge}; `phaseToVisual`
+  (pure); `shapeRef` (the `shape:` transport prefix — live ids are `shape:ack` etc.); `onPhase` (clear→tag→pulse, +
+  open/close recording when `record`); `post()` → `/api/diagram/commands` (returns the Response so startRecording reads
+  the id); `attachDiagramTalkBridge` (env-gated subscribe, `AGENTTALK_DIAGRAM_BRIDGE`).
+- **Engine map (M10):** `team-coordinator.ts` — `setPlanningPhase` (the funnel firing `onPhaseChange`), `ejectPlanner`
+  (T1 peer-safe), `validateProtocolStep` (T2 graded loop), `interruptPlanningForMissingEvents` (M03 dual-kill — genuine
+  agent-failure only; do NOT extend for illegal moves), `pauseTaskForOperator` (M08-T3 fence).
 - **Budget:** `node scripts/usage.mjs` — check the `(updated …)` stamp (memory `token-budget-checkpoints`). At handoff:
-  claude **weekly ~53%** (resets Jul 1 ~9am Rome; session resets ~2am Rome). **Gemini still out of weekly budget** →
+  claude **weekly ~57%** (resets Jul 1 ~9am Rome; session resets ~2am Rome). **Gemini still out of weekly budget** →
   you remain implementer (LB-14).
-- **🌍 GitHub:** `git@github.com:faustothegrey/AgentTalk.git`. Feature code branches off `master`, merges ff, branch
-  deleted. **Don't push without his go** — and note master is currently **ahead of origin by 3, unpushed**. There's
-  also a pre-existing `docs/diagramtalk-logbook` branch (not yours; leave it).
+- **🌍 GitHub:** `git@github.com:faustothegrey/AgentTalk.git`. Feature code branches off `master`, merges ff. **Don't
+  push without his go** — master is currently **10 ahead of origin, unpushed**. (A few small bridge-v2 edits this
+  session went straight onto `master` in the working tree with Fausto's OK — not a feature branch; noted for honesty.)
+  Pre-existing `docs/diagramtalk-logbook` branch is not yours; leave it.
+- **DiagramTalk repo** (`/Users/fausto/Software/DiagramTalk`, branch `main`) is a **separate** repo/agent. This session
+  it shipped `a698b43` (recording lifecycle commands) + `cd27775` (capture-at-enqueue fix). You only ever **read** it to
+  verify contracts; never edit it — relay findings to its agent via Fausto.
