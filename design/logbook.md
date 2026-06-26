@@ -579,3 +579,40 @@ The other three were less "is it safe" and more "is this a small clean change or
   - diff:        7 files (3 src +3 test +this note), +421/-6; commits `988b721` (v1 spine) + `0a2f7cc` (clear-on-start)
   - outcome:     MERGED ✅ to master (ff at `0a2f7cc`) — LIVE-VERIFIED twice; gate 198/198 post-merge
 - **Source:** Claude, 2026-06-25. Continues [[LB-21]]; pairs with memory `diagramtalk-channel`.
+
+### LB-23 · 2026-06-26 — [M10/DiagramTalk] Bridge v2 — record-for-replay via recording commands (cross-repo)
+
+- **What shipped.** Optional **record-for-replay** on the live bridge: when `AGENTTALK_DIAGRAM_RECORD`
+  is set (default **OFF** → default run unchanged), the bridge opens a DiagramTalk recording as a run
+  enters the root phase and closes it at submittal. A recording **auto-captures** exactly the
+  `highlight` + `setStateTag` events the bridge already emits, so there is **no extra per-phase
+  wiring** — the bridge only opens/closes. It only ever closes a recording **it opened** (captures the
+  returned id; no id → no-op), so it never ends one it didn't start. Best-effort/never-blocking as ever.
+- **🔑 Decision — start/stop are first-class COMMANDS, not a separate REST resource.** v1 of this work
+  (earlier same session) drove recording via DiagramTalk's standalone `POST /api/diagram/recordings` +
+  `PATCH /recordings/{id}` REST endpoints. To keep the bridge on **one** endpoint, Fausto had the
+  DiagramTalk agent add `startRecording`/`endRecording` as lifecycle **commands** on the shared
+  `/api/diagram/commands` stream (DiagramTalk commit `a698b43`). The bridge was then rewired onto them:
+  everything (tag/highlight/start/stop) now rides `post()` → `/api/diagram/commands`. `startRecording`
+  returns the new id at **`command.result.recordingId`**; `endRecording` closes it via **`input.id`**
+  (server 409s if a mismatched `diagramId` is also sent — we only send the id we own, so it matches).
+- **Cross-repo flow (worth noting as a pattern).** Claude (AgentTalk) **specced** the command contract →
+  the DiagramTalk agent **implemented** it server-side (additive; the REST endpoints still exist) →
+  Claude **verified the shipped contract by reading their code** (not the spec) and rewired the bridge to
+  it. The "don't trust, verify" rule applied across repos: confirmed `command.result.recordingId` /
+  `input.id` / the 409 guard from `app/api/diagram/commands/route.ts` before touching the bridge.
+- **⚠️ NOT live-verified yet** (unlike v1). The unit gate is green but a real drive against a loaded
+  diagram — `record` on, confirm a recording appears + replays the spine — is still **pending** (no LLM
+  budget needed; just the bridge). Honest status: code-complete + unit-proven, live-smoke owed.
+- **Still pending (the original LB-22 "v2" basket, minus record):** the `endorse` box + edge `e4` and
+  the eject/correction overlay (`o1–o6`) — both need **new brain-emitted phases**, a separate scope
+  decision (out of "changes on the bridge alone").
+- **Telemetry (closure):**
+  - task:        M10 DiagramTalk-bridge v2 (record-for-replay)
+  - wall-clock:  2026-06-26 ~06:10 → ~06:55 CEST (~45 min, incl. the REST→command rewire)
+  - budget:      weekly 54%→57% (Δ ~3%), session 0%→27% [per /usage, updated 06:57]
+  - gate:        tsc 0, suite 204/204 (198 + 6 new), pollution clean
+  - diff:        2 files, +182/-11; commit `d3db0d0`
+  - outcome:     COMMITTED ✅ to master (`d3db0d0`, unpushed — master ahead of origin by 6); **live smoke owed**
+- **Source:** Claude, 2026-06-26. Continues [[LB-22]]; pairs with memory `diagramtalk-channel`. T4 plan
+  (`design/milestone10-t4-api-enforcement-plan.md`, commit `bf36d62`) drafted same session, awaiting go.
