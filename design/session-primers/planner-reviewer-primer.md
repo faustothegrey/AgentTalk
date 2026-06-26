@@ -1,7 +1,7 @@
 ---
-audience: claude
-key: 20260626-1456-abb85a40
-written: 2026-06-26 by Claude (llm-client extraction Phase 1+2 + mcp-exec-server DONE; merging to master)
+role: planner-reviewer
+key: none
+written: 2026-06-26 by Claude — migrated to role-keyed primers (was claude-primer.md). Body below is HISTORICAL (the last handoff brief); key:none = no fresh cold-start due. The next real handoff overwrites the body and mints a fresh key.
 ---
 
 This is your session primer.

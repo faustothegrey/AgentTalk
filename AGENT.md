@@ -13,30 +13,34 @@ This project has reached Milestone 06. From now on follow these rules:
 
 At the very start of **every** session, before reading anything else or acting, do the **primer handshake**:
 
-1. Open your **session-primer file** in the repo: `design/session-primers/<your-agent>-primer.md` (you are
-   Claude → `claude-primer.md`; Gemini → `gemini-primer.md`). **The filename must never collide with the
-   auto-loaded `CLAUDE.md`/`AGENTS.md` convention** — on a case-insensitive filesystem `claude.md` *is*
-   `CLAUDE.md` and gets slurped in as instructions, bypassing this gate; hence the `-primer.md` suffix.
-2. Read its `key:` header, and read your **private key store** — a file *outside the repo*, in your own
-   per-project agent dir (for Claude Code: alongside your `memory/` folder, named `session-primer-key.json`,
-   holding `{ active, consumed: [] }`). The store is private to you; another agent can't read or match it.
-3. Compare the primer's `key` to your store:
-   - **== your `active` key** → this primer is genuinely **for you and fresh**. Follow **Receiving a Session
-     Primer** below (gather context, verify, report, **STOP**). The **one** write permitted in that no-action
-     window is to **consume the key**: move it `active`→`consumed` in your private store. That consume is
-     *outside the repo* (so the repo stays untouched on cold start) and is the *don't-read-it-twice* mechanism.
-   - **∈ your `consumed` list** → you already consumed this one (benign re-read / restart). Do **NOT**
-     re-trigger the cold-start stop; treat the body as historical context and proceed normally.
-   - **anything else** — no match, `key: none`, no store, or missing key → **🚨 MISMATCH.** Do **NOT** act on
-     the primer and do **NOT** consume anything. Emit a prominent warning banner and **STOP** — realign with
-     Fausto manually. A mismatch means the primer wasn't written for *this* you (wrong agent, stale,
-     cross-agent handoff, or tampering); the human resolves it.
-   - **no primer file at all** → no primer waiting; proceed normally (the user will brief you).
+0. **Know your role.** Primers are keyed by **role**, not by agent. The standing role map (you are one of these):
+   **planner-reviewer → Claude *and* Codex** (by convention either may hold it — one at a time) ·
+   **implementer → Gemini**. Your eligible role-primer is `design/session-primers/<role>-primer.md` —
+   Claude/Codex → `planner-reviewer-primer.md`, Gemini → `implementer-primer.md`. **The `-primer.md` suffix is
+   mandatory** — on a case-insensitive filesystem `claude.md` *is* `CLAUDE.md` and would be auto-slurped as
+   instructions, bypassing this gate.
+1. Open your eligible **role-primer** and read its `key:` header. Also read your **private key store** — a file
+   *outside the repo*, in your own per-project agent dir (Claude Code: alongside your `memory/` folder, named
+   `session-primer-key.json`; Codex/Gemini: the equivalent stable private dir). The store holds `{ consumed: [] }`
+   — only **the keys you have already consumed**. It is private to you.
+2. The key lives in the **shared** primer header, so every eligible reader sees the *same* key — that is the whole
+   idea: **the right key ⇒ the right primer.** Decide by whether **you** have consumed it:
+   - **key ∉ your `consumed`** → the primer is **fresh for you** → it *is* your assignment this session. Follow
+     **Receiving a Session Primer** below (gather context, verify, report, **STOP**). The **one** write permitted
+     in that no-action window is to **consume the key**: append it to `consumed` in your private store. That
+     consume is *outside the repo* (so the repo stays untouched on cold start) and is the *don't-stop-twice*
+     mechanism.
+   - **key ∈ your `consumed`** → you already consumed this one (benign re-read / restart). Do **NOT** re-trigger
+     the cold-start stop; treat the body as historical context and proceed normally.
+   - **`key: none`, missing key, or no primer file** → nothing fresh waiting for your role; proceed normally (the
+     user will brief you).
 
-Why a private key rather than just a label in the file: possession of the matching key *proves* you are the
-intended reader — a different agent literally cannot match it, and because the consume happens in your private
-store, a wrong reader can't "burn" a primer meant for someone else. The repo primer file is the durable,
-human-readable brief; the private key is the capability that authorizes consuming it. *(How to write one →
+Why the key sits in the **shared** primer (not copied into each private store): the header is the single
+authority, so two eligible agents naturally see one identical key — no cross-store seeding, no human relay needed
+to "share" it. What stays private is only your **consumed** set, so a restart doesn't re-stop you. Routing to
+exactly one actor is **not** the key's job: if more than one eligible agent cold-starts on the same fresh primer,
+each independently **reports-and-STOPs** and the **human picks who proceeds** (see Receiving a Session Primer).
+The repo primer is the durable, human-readable brief; the key is its freshness token. *(How to write one →
 **Session Primer** section below.)*
 
 **Also at session start — poll your runway right off the bat.** As part of turn-1 startup (a read, so it's
@@ -197,13 +201,15 @@ the EARLIER of:** the show-stopper fence (Rule 2 — even on attempt 1), **or** 
 >   log and the chat, and it does **not** trigger the cold-start rule below.
 
 **Writing a Session Primer.** When the user asks for one — or at a clean stopping point before a fresh session — write
-**one tight, self-contained block** so the cold-start reader can orient with zero prior context. By default a Primer is
-**addressed to the next instance of the same agent** (the next Claude reads Claude's Primer; the next Gemini reads
-Gemini's) — write it in the second person to that successor, unless stated otherwise. It MUST **open with the exact
-sentence "This is your session primer."** (so the reader instantly recognises the cold-start contract and the
-report-only rule below kicks in), and it MUST contain:
+**one tight, self-contained block** so the cold-start reader can orient with zero prior context. A Primer is
+**addressed to the next holder of the *role*** (whoever next picks up planner-reviewer, or implementer — not a
+specific agent), so write it in the second person to that successor and keep it **agent-neutral** where you can —
+the few agent-specific bits (your provider's budget, a CLI quirk) are written fresh for whoever you expect to hand
+to. It MUST **open with the exact sentence "This is your session primer."** (so the reader instantly recognises the
+cold-start contract and the report-only rule below kicks in), and it MUST contain:
 1. **Project micro-description** — what AgentTalk is, in 1–2 lines.
-2. **Roles** — the human (Fausto) and each agent, **including which agent you are** (e.g. Claude = planner/reviewer/architect; Gemini = implementer; human = scope/decisions/relay).
+2. **Roles** — the human (Fausto) and the role map: **planner-reviewer → Claude *or* Codex**, **implementer → Gemini**,
+   human = scope/decisions/relay; name **which role this primer is for** (and, if it matters, which agent you expect to take it).
 3. **Workflow / source of truth** — `design/collaboration-workflow.md` (the method) + the artifacts: `*-plan.md` (spec+DoD), `*-implementation.md` (the **ledger**), `backlog.md`, `logbook.md`.
 4. **Which epic/task we're on** *(REQUIRED — always state the active milestone/epic/task)* + what's next.
 5. **Where state lives** — resume from the active epic's `*-implementation.md` ledger, **not from chat**.
@@ -211,31 +217,31 @@ report-only rule below kicks in), and it MUST contain:
 
 Keep it tight; the ledger holds the detail.
 
-**Save it to the primer file + seed the key (don't paste into chat).** For a **same-agent** handoff (the
-common case — you writing for the next you): (1) generate a fresh key (e.g. `YYYYMMDD-HHMM-<rand>`); (2)
-overwrite `design/session-primers/<agent>-primer.md` with header `audience: <agent>`, `key: <fresh-key>`,
-`written: <date> by <agent>`, then the body (starting with the exact opening sentence); (3) set that same key
-as `active` in your **private key store** (keep prior keys in `consumed`). Overwriting the repo file is safe —
-git history keeps every prior primer. The next instance matches the key and consumes it (see **First Entry
-Point**). For a **cross-agent** handoff (writing for the *other* agent), you can't seed *their* private key —
-write their `<agent>-primer.md` with `key: none` (or a note) and tell Fausto; their cold-start will mismatch by
-design and route through him (the relay).
+**Save it to the role-primer + mint a fresh key (don't paste into chat).** (1) Generate a fresh key (e.g.
+`YYYYMMDD-HHMM-<rand>`); (2) overwrite `design/session-primers/<role>-primer.md` (`planner-reviewer-primer.md`
+or `implementer-primer.md`) with header `role: <role>`, `key: <fresh-key>`, `written: <date> by <agent>`, then
+the body (starting with the exact opening sentence). **That's it** — the key lives in this shared header, so it's
+already the same for every eligible reader; there is **no** per-agent `active` to seed, no cross-store relay.
+Overwriting the repo file is safe — git history keeps every prior primer. Whoever you hand to (Claude or Codex
+for planner-reviewer; Gemini for implementer) cold-starts, finds this key **not** in their own `consumed`,
+reports, STOPs, and consumes it in **their** store (see **First Entry Point**). If you want to leave the role
+**un-handed** (no fresh cold-start due), set `key: none`.
 
 **First-time bootstrap (no key store yet).** The very first time an agent runs this — no private key store
-exists, so First Entry Point hits the mismatch banner — is a one-time **manual** setup, done with the human:
+exists — is a one-time **manual** setup, done with the human. With no store, every key reads as *not consumed* →
+the agent would cold-start-stop on the current role-primer; that's harmless (it just reports and waits), but seed
+the store so the consumed-tracking works:
 1. **Create your private key store** at your per-agent, per-project, *outside-the-repo* location, as
-   `{ "active": null, "consumed": [] }`. Claude Code → `~/.claude/projects/<project-slug>/session-primer-key.json`
-   (alongside `memory/`). Other MCPs (agy/Gemini, codex) → the equivalent **stable** private config/home dir for
-   this project — **never** the repo, **never** an ephemeral per-turn exec home (those are wiped). If you don't
-   know your MCP's stable private path, **ask the human** — don't guess.
-2. **Pick a collision-safe primer filename.** It already exists as `design/session-primers/<agent>-primer.md`;
-   keep the `-primer.md` suffix so it can't be auto-loaded as a `CLAUDE.md`/`AGENTS.md`/`GEMINI.md` context file
-   on a case-insensitive filesystem (LB-12).
-3. **Write your first primer + seed the key** per the paragraph above (generate a key → fill the file header +
-   body → set that key `active` in your store).
-
-From then on every same-agent handoff is automatic. *(Claude's store was bootstrapped 2026-06-22; agy/Gemini's
-is pending its first run.)*
+   `{ "consumed": [] }`. Claude Code → `~/.claude/projects/<project-slug>/session-primer-key.json` (alongside
+   `memory/`). Codex → its stable private dir, e.g. `~/.codex/agenttalk-session-primer-key.json`. agy/Gemini →
+   the equivalent **stable** private config/home dir — **never** the repo, **never** an ephemeral per-turn exec
+   home (those are wiped). If you don't know your MCP's stable private path, **ask the human** — don't guess.
+2. **The role-primer filename is fixed** by your role: `design/session-primers/planner-reviewer-primer.md`
+   (Claude/Codex) or `implementer-primer.md` (Gemini). Keep the `-primer.md` suffix so it can't be auto-loaded as
+   a `CLAUDE.md`/`AGENTS.md`/`GEMINI.md` context file on a case-insensitive filesystem (LB-12).
+3. From then on the handshake is automatic: read the role-primer's key, compare to your `consumed`, act/consume.
+   *(Claude's store bootstrapped 2026-06-22 — migrate it to the `{consumed:[]}` shape on next write. Codex and
+   agy/Gemini stores are pending their first run.)*
 
 **Receiving a Session Primer — GATHER CONTEXT ONLY, then STOP.**
 > **Critical rule.** When you load a **key-matched `fresh` primer** (per **First Entry Point**, or one pasted at
@@ -253,10 +259,12 @@ is pending its first run.)*
 > immediately and prominently** in your report rather than parroting the Primer. A Primer that disagrees with the ground
 > truth is itself a finding worth surfacing.
 >
-> **Why:** a Primer may be handed to more than one agent at once (Claude *and* Gemini). If each starts developing on
-> receipt, they collide — duplicate branches, racing live runs, stray worktrees/processes, lost work. The human is the
-> relay and decides who acts. Reporting-only on receipt makes that safe. *(This rule is about the Primer/cold-start only —
-> a mid-session **baton** to you as implementer/reviewer is a normal task assignment, not a cold start.)*
+> **Why:** the same fresh role-primer may be seen by **more than one eligible agent at once** (e.g. both Claude *and*
+> Codex are eligible for planner-reviewer). This is expected — the key does **not** route to one of them; it's a
+> freshness token they all share. If each started developing on receipt they'd collide — duplicate branches, racing live
+> runs, stray worktrees/processes, lost work. So **reporting-only-then-STOP is the actual collision guard**: each
+> eligible reader independently reports and stops, and **the human decides who proceeds**. *(This rule is about the
+> Primer/cold-start only — a mid-session **baton** to you as implementer/reviewer is a normal task assignment, not a cold start.)*
 
 ### Re-priming from an older primer (human-gated)
 
@@ -265,24 +273,22 @@ cold instance to run the **full cold-start orientation** from an *older, already
 context window whose only durable brief is a primer you already consumed — use **re-priming**.
 
 **Principle: fresh key + old body — never recycle a consumed key.** The primer *body* is durable (git history
-keeps every prior `<agent>-primer.md`), so re-priming re-arms a capability against a recovered body. It MUST mint
-a **fresh** key; never move a `consumed` key back to `active` (that would erase the spent/replay distinction).
+keeps every prior `<role>-primer.md`), so re-priming re-arms a capability against a recovered body. It MUST mint
+a **fresh** key (a key already in someone's `consumed` only ever yields a benign re-read, never a fresh stop).
 
 **Gate: soft (human-approved).** The human decides to re-prime and gives the go-ahead **first**; only then does the
 agent perform the ritual. The private key store is the agent's to write, so this gate is **behavioural, not
 enforced** — mint the fresh key *only after* the human approves.
 
 **Ritual** (agent performs, after approval):
-1. Recover the old body: `git show <commit>:design/session-primers/<agent>-primer.md`.
+1. Recover the old body: `git show <commit>:design/session-primers/<role>-primer.md`.
 2. Mint a fresh key (`YYYYMMDD-HHMM-<rand>`).
-3. Overwrite `<agent>-primer.md` with: header `audience`, `key: <fresh-key>`, `written: <date> by <agent>
+3. Overwrite `<role>-primer.md` with: header `role: <role>`, `key: <fresh-key>`, `written: <date> by <agent>
    (re-primed)`, **`reprimed_from: <commit>`** (audit trail), then the recovered body.
-4. Set the fresh key `active` in the private key store (prior `active` → `consumed`, as usual).
 
-The next cold instance matches the fresh key on the `== active` branch and runs the normal full cold-start gate
+The next cold instance finds the fresh key **not** in its `consumed` and runs the normal full cold-start gate
 (gather context, **verify the recovered body against current ground truth** — it may be stale by definition —
-report, STOP, consume). Re-priming changes nothing in the three-branch handshake; it only *produces* a fresh
-primer for it to consume.
+report, STOP, consume). Re-priming changes nothing in the handshake; it only *produces* a fresh primer for it to consume.
 
 ### The baton (per-turn hand-off) — pointers, not transcript
 

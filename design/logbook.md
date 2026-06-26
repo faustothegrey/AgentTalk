@@ -823,3 +823,39 @@ The other three were less "is it safe" and more "is this a small clean change or
   - outcome:     VERIFIED ✅ — 1:1 attach chat works on the current codebase
 - **Source:** Claude, 2026-06-26. Pairs with `design/attach-chat-runbook.md`; relates to [[LB-27]]
   (mcp-exec-server, the consensus-free sibling path) and the M05 attach mode.
+
+---
+
+### LB-29 · 2026-06-26 — [process] Session primers re-keyed by ROLE, not by agent (key lives in the shared header)
+
+- **Trigger.** Adding **Codex as a planner-reviewer** (alongside Claude) broke the implicit 1:1 agent↔role
+  mapping the primer system relied on. Fausto's insight: *"the primer is the brief for the next planner-reviewer,
+  whoever that is — two different primers for two different roles is fine; two different primers for the **same**
+  role is wrong."* Correct — the primer **body is the role's context**, but it was filed under the **agent's** name.
+- **The design smell.** Primers were keyed by agent (`claude-primer.md`, `gemini-primer.md`) with the routing key
+  copied as `active` into each agent's **private** store. The moment two agents share a role, "share the key" meant
+  seeding the same `active` into two private stores — but **no agent can write another's store**, so every handoff
+  needed the human as a relay. The key was in the wrong place.
+- **The fix (approved by Fausto).** Key the primer by **role**, and put the key's authority in the **shared primer
+  header** (in the repo), not in private stores:
+  - Files: `claude-primer.md → planner-reviewer-primer.md`, `gemini-primer.md → implementer-primer.md` (git-mv'd;
+    history preserved).
+  - **Eligibility map in AGENT.md:** planner-reviewer → **Claude *or* Codex**; implementer → **Gemini**.
+  - The key sits in the **shared** header, so every eligible reader sees the *same* key — "the right key ⇒ the
+    right primer." Private store is now just `{ consumed: [] }` — a per-agent "have I already stopped on this key?"
+    marker (so a restart doesn't re-stop). **No more `active`, no cross-store seeding, no relay.**
+  - Handoff = overwrite the role-primer body + mint a fresh header key. Whoever is launched (of the eligible set)
+    finds the key ∉ their `consumed` → fresh → report+STOP+consume in *their* store.
+  - **Collision guard unchanged & now load-bearing:** the key does NOT route to one actor; if two eligible agents
+    cold-start the same fresh primer, each independently reports-and-STOPs and **the human picks who proceeds**.
+- **Trade-off (honest).** We lose the old `== active` "addressed specifically to me" cryptographic feel; the new
+  guarantee is "fresh key + I'm role-eligible" + the human-go gate. Acceptable for our context (key in a
+  git-tracked file, human in the loop).
+- **Migration done.** AGENT.md First Entry Point + Writing/Bootstrap/Receiving/Re-priming sections rewritten;
+  both primers renamed with `role:`/`key: none` headers (bodies kept as historical); Claude's private store
+  migrated to `{consumed:[]}`. **Codex and Gemini stores are pending their first run** (bootstrap = create
+  `{consumed:[]}` at their stable private dir — Codex e.g. `~/.codex/agenttalk-session-primer-key.json`).
+- **Note on [[LB-12]]:** its illustrative filenames (`claude-primer.md`/`gemini-primer.md`) are now
+  `planner-reviewer-primer.md`/`implementer-primer.md`; the finding (the `-primer.md` suffix avoids
+  case-insensitive auto-load) is unchanged.
+- **Source:** Claude, 2026-06-26, at Fausto's direction. Canonical change to `AGENT.md` (the primer protocol).

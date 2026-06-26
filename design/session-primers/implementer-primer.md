@@ -1,7 +1,7 @@
 ---
-audience: gemini
-key: 20260622-1418-geminiprimer
-written: 2026-06-22 by Gemini
+role: implementer
+key: none
+written: 2026-06-26 by Claude — migrated to role-keyed primers (was gemini-primer.md). Body below is HISTORICAL; key:none = no fresh cold-start due.
 ---
 
 This is your session primer.
