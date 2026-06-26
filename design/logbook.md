@@ -745,10 +745,17 @@ The other three were less "is it safe" and more "is this a small clean change or
   instead of the MCP `tools/call` envelope (`params.name`) — server correctly returned `-32601 Method not found`.
   Fixed the TEST harness (added a `callTool` wrapper); the server code was right. Real agentalk-mcp-client uses
   `callTool()`, which does the correct envelope.
-- **⚠️ OWED (honest gap).** NO live smoke against a real `agentalk-mcp-client` CLI executor. The e2e test uses an
-  in-test echo executor — real socket + real wire protocol, so strong evidence the loop is correct, but the real
-  CLI's behaviour is unproven here (parked; same posture as the other transport live-smokes — gated on a
-  provider/CLI being available).
+- **⚠️ OWED → ✅ CLOSED (2026-06-26).** The owed live smoke against a **real `agentalk-mcp-client` CLI** is done:
+  `scripts/smoke-mcp-exec-server.mjs` spawns the actual `llm-agent.mjs` (real `McpClient` + `executor-runtime` +
+  node-pty, persistent mode) pointed at a real `McpExecServer` over a real socket; the CLI long-polls `await_turn`,
+  receives the `{type:'exec_rpc', prompt}` turn, and returns `submit_exec_result`; `McpChatCompleter` resolves the
+  text + mapped usage. The LLM provider is replaced by a fake persistent bridge via `AGENTTALK_PERSISTENT_COMMAND_JSON`
+  (same hook the client's own `exec-rpc.test.ts` uses) so **no provider CLI runs and no budget is spent** — everything
+  else (socket, JSON-RPC framing, contract handshake with hash-gate UNSET per D4, await_turn/exec_rpc/submit round-trip,
+  the executor-runtime bridge protocol) is real. PASS ×2 (deterministic); suite still 245/245. Stand-alone like the
+  other live gates (NOT in the vitest suite — it spawns an external CLI from a separate repo). The only thing still
+  unexercised is a **real LLM provider** end of the bridge (gated on provider budget) — the transport/protocol path
+  itself is now proven against the real client.
 - **Telemetry (closure):**
   - task:        llm-client Phase 2 — mcp-exec-server (Option B)
   - wall-clock:  2026-06-26 ~14:40 → ~14:55 CEST (~55 min incl. McpServer extraction + e2e test debug)

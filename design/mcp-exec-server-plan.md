@@ -2,8 +2,10 @@
 
 **Status:** ✅ IMPLEMENTED (branch `mcp-exec-server`, uncommitted) — decisions D1 extract / D2 names / D3
 single-flight / D4 hash-unset all as recommended. Gate: tsc 0, suite 245/245 (239 +6). Merge HUMAN-GATED (LB-14).
-**Owed:** live smoke vs a real `agentalk-mcp-client` CLI (the integration test uses an in-test echo executor over
-a real socket + real wire protocol — strong evidence, but not a real CLI). Full record: logbook LB-27.
+**Owed → ✅ DONE (2026-06-26):** live smoke vs a real `agentalk-mcp-client` CLI — `scripts/smoke-mcp-exec-server.mjs`
+spawns the actual `llm-agent.mjs` (real McpClient + executor-runtime + node-pty) against a real `McpExecServer`; the
+provider is replaced by a fake bridge (`AGENTTALK_PERSISTENT_COMMAND_JSON`) so no budget is spent. PASS ×2; suite
+245/245. Only a real-LLM-provider end remains unexercised (gated on budget). Full record: logbook LB-27.
 **Author:** Claude (planner/architect), 2026-06-26.
 **Type:** new transport package (Option B from the Phase-2 fork). Delivers the consensus-free "third-party app
 chats via an MCP CLI executor" path — the piece the llm-client spike flagged as owed.
