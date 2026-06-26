@@ -1,10 +1,20 @@
 export type ApiProvider = 'google' | 'openrouter' | 'nous';
 
+/** OpenAI-compatible `tool_choice` directive (M10-T4). `'required'` forces *some* tool call. */
+export type ToolChoice = 'auto' | 'none' | 'required' | { type: 'function'; function: { name: string } };
+
 export interface ApiCallArgs {
   provider: ApiProvider;
   model?: string;
   messages: Array<{ role: string; content: string }>;
   response_format?: { type: 'json_object' };
+  /**
+   * M10-T4: OpenAI-compatible function tools. Transport-only — this layer stays schema-agnostic and
+   * passes the array through verbatim (the protocol tool is built by the caller). When present with
+   * {@link tool_choice}, the model is constrained to call a tool at generation time.
+   */
+  tools?: unknown[];
+  tool_choice?: ToolChoice;
 }
 
 export interface ApiCallResult {
@@ -66,6 +76,15 @@ export async function callApi(args: ApiCallArgs, fetchFn = fetch): Promise<ApiCa
     body.response_format = args.response_format;
   }
 
+  // M10-T4: forward function tools + the choice directive when present (only on structured turns).
+  // Absent these, the body is byte-identical to the pre-T4 request (behavior preserved).
+  if (args.tools) {
+    body.tools = args.tools;
+  }
+  if (args.tool_choice) {
+    body.tool_choice = args.tool_choice;
+  }
+
   const res = await fetchFn(`${providerDef.baseUrl}/chat/completions`, {
     method: 'POST',
     headers,
@@ -78,8 +97,12 @@ export async function callApi(args: ApiCallArgs, fetchFn = fetch): Promise<ApiCa
   }
 
   const json = await res.json();
-  const text = json.choices?.[0]?.message?.content ?? '';
-  
+  // M10-T4: when a tool was forced, the envelope arrives as the tool call's `arguments` (a JSON
+  // string of `{ message_type, message_payload }`) rather than `message.content`. Prefer it so the
+  // downstream parser is reused verbatim; fall back to `content` for the pre-T4 (no-tools) path.
+  const message = json.choices?.[0]?.message;
+  const text = message?.tool_calls?.[0]?.function?.arguments ?? message?.content ?? '';
+
   return {
     text,
     usage: json.usage,

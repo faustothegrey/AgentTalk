@@ -1,8 +1,63 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { EventEmitter } from 'events';
-import { McpCompleter, McpError, DEFAULT_EXEC_TIMEOUT_MS, EXEC_TIMEOUT_BACKSTOP_GRACE_MS } from '../completer.js';
+import { ApiCompleter, McpCompleter, McpError, DEFAULT_EXEC_TIMEOUT_MS, EXEC_TIMEOUT_BACKSTOP_GRACE_MS } from '../completer.js';
+import { parseStructuredResponse } from '../response-schema.js';
 import type { Agent } from '../agent.js';
 import type { Registry } from '../../registry/registry.js';
+
+// M10-T4: ApiCompleter must constrain structured turns with the protocol tool while leaving
+// non-structured turns byte-identical to the pre-T4 request. Driven through an injected fetchFn
+// (the existing constructor seam) so no live provider call is needed.
+describe('ApiCompleter (M10-T4 tool enforcement)', () => {
+  let originalEnv: NodeJS.ProcessEnv;
+  beforeEach(() => {
+    originalEnv = process.env;
+    process.env = { ...originalEnv, GEMINI_API_KEY: 'test-key' };
+  });
+  afterEach(() => {
+    process.env = originalEnv;
+    vi.restoreAllMocks();
+  });
+
+  function captureFetch(responseJson: any) {
+    const fetchFn = vi.fn().mockResolvedValue({ ok: true, json: async () => responseJson });
+    const bodyOf = () => JSON.parse((fetchFn.mock.calls[0]![1] as any).body);
+    return { fetchFn, bodyOf };
+  }
+
+  it('sends tools + tool_choice:required + response_format on a structured turn, and decodes the tool call', async () => {
+    const envelope = '{"message_type":"opinion","message_payload":{"text":"hi","proposal":null,"expected_response_types":["opinion"]}}';
+    const { fetchFn, bodyOf } = captureFetch({
+      choices: [{ message: { content: null, tool_calls: [{ function: { name: 'respond', arguments: envelope } }] } }],
+    });
+
+    const completer = new ApiCompleter('google', 'gemini-2.5-flash', fetchFn as any);
+    const result = await completer.complete('do planning', { expectsStructured: true });
+
+    const body = bodyOf();
+    expect(Array.isArray(body.tools)).toBe(true);
+    expect(body.tools[0].function.name).toBe('respond');
+    expect(body.tools[0].function.parameters.properties.message_type.enum).toContain('submit_plan');
+    expect(body.tool_choice).toBe('required');
+    expect(body.response_format).toEqual({ type: 'json_object' });
+    // Decoded tool-call arguments are handed downstream as the envelope text the parser accepts.
+    expect(result.text).toBe(envelope);
+    expect(parseStructuredResponse(result.text)).not.toBeNull();
+  });
+
+  it('sends NO tools/tool_choice/response_format on a non-structured turn (behavior preserved)', async () => {
+    const { fetchFn, bodyOf } = captureFetch({ choices: [{ message: { content: 'plain reply' } }] });
+
+    const completer = new ApiCompleter('google', undefined, fetchFn as any);
+    const result = await completer.complete('just chat');
+
+    const body = bodyOf();
+    expect(body).not.toHaveProperty('tools');
+    expect(body).not.toHaveProperty('tool_choice');
+    expect(body).not.toHaveProperty('response_format');
+    expect(result.text).toBe('plain reply');
+  });
+});
 
 // M08-T1: deterministic, mocked-transport unit tests for the McpCompleter reject path.
 // The registry is a bare EventEmitter (the completer only uses on/off + the 'exec_result'/'status'

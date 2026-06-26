@@ -80,6 +80,67 @@ export type StructuredResponse =
   | { message_type: 'healthcheck_ack'; message_payload: HealthcheckAckPayload }
   | { message_type: 'ack_planning_protocol'; message_payload: AckPlanningProtocolPayload };
 
+/**
+ * OpenAI-compatible function-tool schema for the structured protocol envelope (M10-T4).
+ *
+ * Exposes a single `respond(message_type, message_payload)` function whose `message_type`
+ * carries a strict `enum` derived from {@link STRUCTURED_MESSAGE_TYPES} — the *same* constant the
+ * parser validates against, so the action set has one source of truth and cannot drift. When this
+ * tool is sent with `tool_choice: 'required'`, an OpenAI-compatible model *cannot* emit an off-list
+ * `message_type`: the structural action set becomes unrepresentable at generation time, rather than
+ * being discovered (and corrected) after the fact by {@link parseStructuredResponse}.
+ *
+ * `message_payload` is intentionally a generic `object` (v1, D-T4-1 = static/simplest): the enum is
+ * the structural guarantee; per-field payload correctness stays the job of {@link validatePayload}
+ * (the universal post-parse net). The tool call's `arguments` are exactly the existing
+ * `{ message_type, message_payload }` envelope, so the downstream parser is reused verbatim.
+ */
+export interface ProtocolToolSchema {
+  type: 'function';
+  function: {
+    name: string;
+    description: string;
+    parameters: {
+      type: 'object';
+      properties: {
+        message_type: { type: 'string'; enum: readonly string[]; description: string };
+        message_payload: { type: 'object'; description: string };
+      };
+      required: string[];
+      additionalProperties: boolean;
+    };
+  };
+}
+
+export function buildProtocolToolSchema(): ProtocolToolSchema {
+  return {
+    type: 'function',
+    function: {
+      name: 'respond',
+      description:
+        'Emit your single structured protocol response. You MUST call this function exactly once, ' +
+        'choosing the appropriate message_type for the current protocol phase and providing its payload.',
+      parameters: {
+        type: 'object',
+        properties: {
+          message_type: {
+            type: 'string',
+            enum: [...STRUCTURED_MESSAGE_TYPES],
+            description: 'The protocol action. Must be one of the allowed values for the current phase.',
+          },
+          message_payload: {
+            type: 'object',
+            description:
+              'The payload object for the chosen message_type (e.g. opinion → { text, proposal, expected_response_types }).',
+          },
+        },
+        required: ['message_type', 'message_payload'],
+        additionalProperties: false,
+      },
+    },
+  };
+}
+
 function isValidMessageType(value: unknown): value is StructuredMessageType {
   return typeof value === 'string' && (STRUCTURED_MESSAGE_TYPES as readonly string[]).includes(value);
 }

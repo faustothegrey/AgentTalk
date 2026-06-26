@@ -1,8 +1,12 @@
 # Milestone 10 · T4 — API-path protocol enforcement (plan / for review)
 
-> **Status:** DRAFT for review (architect: Claude, 2026-06-26). **No code yet.**
+> **Status:** ✅ IMPLEMENTED + gated (Claude, 2026-06-26) — on branch `m10-t4-api-enforcement`, merge HUMAN-GATED (LB-14).
+> Decisions **D-T4-1 = static enum**, **D-T4-2 = declare-unfit (no fallback)**, **D-T4-3 = keep both** all
+> settled by Fausto 2026-06-26. One deliberate deviation from §5: `message_payload` is a generic `object`,
+> not per-type (enum is the structural guarantee; `validatePayload` remains the payload net). Log + telemetry
+> in `design/milestone10-implementation.md` (§T4); see also **LB-25**.
 > Parent: `design/milestone10-phase2-plan.md` (T4 stub, §T4). Decisions D1/D2/D3 already
-> settled; T4 was deferred per **D3** (v1 = T1+T2). This plan proposes promoting T4 to an
+> settled; T4 was deferred per **D3** (v1 = T1+T2). This plan promoted T4 to an
 > implementable unit. **Brain stays untouched** — see §Scope.
 
 ## 1. Why (the gap T4 closes)

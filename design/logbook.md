@@ -650,3 +650,31 @@ The other three were less "is it safe" and more "is this a small clean change or
   **Re-verified live 2026-06-26: `eventCount=10` — full spine incl. the submit frame** (was 4–8 with frames
   dropped). The "lossy/not-guaranteed" caveats in the bridge header + `onPhase` are updated to match. **Closed.**
 - **Source:** Claude, 2026-06-26. Continues [[LB-23]]; pairs with memory `diagramtalk-channel`.
+
+### LB-25 · 2026-06-26 — [M10/protocol] T4 API-path enforcement — tools+tool_choice+strict enum (declare-unfit, no probe)
+
+- **What.** Promoted M10-**T4** from deferred to implemented. On the **API path**, a structured planner turn now
+  sends an OpenAI-compatible function tool `respond(message_type, message_payload)` with `tool_choice:'required'`,
+  where `message_type` carries a strict `enum` **derived from `STRUCTURED_MESSAGE_TYPES`** (one source of truth).
+  Off-list structural actions become **unrepresentable at generation time** instead of being caught post-parse.
+  The tool-call `arguments` ARE the existing envelope, so `parseStructuredResponse` + the T2 grading loop are
+  reused verbatim — **it's an emission-layer optimization, not a behavior/authority change** (the brain stays the
+  sequence authority).
+- **Scope.** 3 source files only (`response-schema.ts` +`buildProtocolToolSchema`, `api-client.ts`, `completer.ts`)
+  + 3 test files. Brain / MCP path / registry / wire-contract **untouched**. Gate: `tsc -b` 0, suite **213/213**
+  (204 baseline +9), pollution clean.
+- **Decisions (Fausto).** **D-T4-1** static enum · **D-T4-2** declare-unfit — **no** `json_object` fallback
+  machinery (a provider that 400s on the combo is "unfit for now," revisit if too restrictive) · **D-T4-3** keep
+  `response_format` alongside the tool (accepting some strict servers may reject the combo → unfit).
+- **Capability-handshake — considered, declined (the interesting bit).** Idea: ask the agent "what do you support?"
+  before relying on tools. Rejected as the **wrong layer**: tool/`response_format` support is a property of the
+  **serving HTTP endpoint**, not the model — a text generator can't introspect its server's param handling and will
+  hallucinate "yes." The *correct* form is a **transport capability-probe** (one real request, classify by the HTTP
+  response, cache) which would also **double as the live-verification we currently lack** — but that reopens D-T4-2
+  and adds machinery, so it's **deferred**, not bolted on. Shipped v1 as ship-and-watch.
+- **Deliberate deviation.** `message_payload` = generic `object`, not per-type schema (plan §5). The enum is the
+  structural guarantee; `validatePayload` stays the payload net. Avoids `oneOf` provider-compat surface.
+- **Honesty — owed.** No live-provider call; the combo is **assumed** and unit-tested via injected `fetchFn` only.
+  The "unfit on 400" path is untested against a real endpoint (parked; gemini API out of budget).
+- **Source:** Claude, 2026-06-26. Implements `design/milestone10-t4-api-enforcement-plan.md`; ledger §T4 in
+  `design/milestone10-implementation.md`. Pairs with [[LB-14]] (human-gated closure).

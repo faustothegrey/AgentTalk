@@ -72,6 +72,73 @@ describe('api-client', () => {
     await expect(callApi({ provider: 'google', messages: [] }, mockFetch as any)).rejects.toThrow('HTTP 429: Quota exceeded');
   });
 
+  it('forwards tools + tool_choice in the request body when provided (M10-T4)', async () => {
+    process.env.GEMINI_API_KEY = 'test-google-key';
+
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ choices: [{ message: { content: '{}' } }] }),
+    });
+
+    const tool = { type: 'function', function: { name: 'respond' } };
+    await callApi({
+      provider: 'google',
+      messages: [{ role: 'user', content: 'hi' }],
+      response_format: { type: 'json_object' },
+      tools: [tool],
+      tool_choice: 'required',
+    }, mockFetch as any);
+
+    const body = JSON.parse((mockFetch.mock.calls[0]![1] as any).body);
+    expect(body.tools).toEqual([tool]);
+    expect(body.tool_choice).toBe('required');
+    // D-T4-3: response_format is kept alongside the tools.
+    expect(body.response_format).toEqual({ type: 'json_object' });
+  });
+
+  it('omits tools/tool_choice from the body when not provided (behavior preserved)', async () => {
+    process.env.GEMINI_API_KEY = 'test-google-key';
+
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ choices: [{ message: { content: '{}' } }] }),
+    });
+
+    await callApi({ provider: 'google', messages: [{ role: 'user', content: 'hi' }] }, mockFetch as any);
+
+    const body = JSON.parse((mockFetch.mock.calls[0]![1] as any).body);
+    expect(body).not.toHaveProperty('tools');
+    expect(body).not.toHaveProperty('tool_choice');
+  });
+
+  it('decodes a forced tool-call arguments string into text, preferring it over content (M10-T4)', async () => {
+    process.env.GEMINI_API_KEY = 'test-google-key';
+
+    const envelope = '{"message_type":"opinion","message_payload":{"text":"hi","proposal":null,"expected_response_types":["opinion"]}}';
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        choices: [{
+          message: {
+            content: null,
+            tool_calls: [{ function: { name: 'respond', arguments: envelope } }],
+          },
+        }],
+        usage: { prompt_tokens: 3, completion_tokens: 4 },
+      }),
+    });
+
+    const result = await callApi({
+      provider: 'google',
+      messages: [{ role: 'user', content: 'hi' }],
+      tools: [{ type: 'function', function: { name: 'respond' } }],
+      tool_choice: 'required',
+    }, mockFetch as any);
+
+    expect(result.text).toBe(envelope);
+    expect(result.usage).toEqual({ prompt_tokens: 3, completion_tokens: 4 });
+  });
+
   it('adds extra headers for openrouter', async () => {
     process.env.OPENROUTER_API_KEY = 'test-or-key';
 

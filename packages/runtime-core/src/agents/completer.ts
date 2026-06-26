@@ -1,5 +1,6 @@
 import { Agent } from './agent.js';
 import { callApi, type ApiProvider } from './api-client.js';
+import { buildProtocolToolSchema } from './response-schema.js';
 import type { Registry } from '../registry/registry.js';
 
 /** Default wall-clock guard for an mcp exec turn when the caller passes no timeout (D1, M08-T1). */
@@ -55,7 +56,18 @@ export class ApiCompleter implements Completer {
       messages: [{ role: 'user', content: prompt }],
     };
     if (this.model) args.model = this.model;
-    if (opts?.expectsStructured) args.response_format = { type: 'json_object' };
+    if (opts?.expectsStructured) {
+      // M10-T4: constrain the structural action set at generation time. The `respond` tool's strict
+      // `message_type` enum makes an off-list action unrepresentable; `tool_choice: 'required'` forces
+      // the call. `response_format` is kept alongside the tool (D-T4-3) — a provider that rejects the
+      // combination is treated as unfit for the API path for now (D-T4-2), not silently fallen back.
+      // The tool-call arguments decode into the same envelope the parser already accepts (api-client),
+      // so downstream grading is unchanged. The parser + retry remain the universal net for any
+      // provider that ignores the directive.
+      args.response_format = { type: 'json_object' };
+      args.tools = [buildProtocolToolSchema()];
+      args.tool_choice = 'required';
+    }
 
     const result = await callApi(args, this.fetchFn);
     
