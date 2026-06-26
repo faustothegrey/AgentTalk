@@ -19,3 +19,10 @@ export type {
 } from './completer.js';
 export { ChatSession } from './chat-session.js';
 export type { ChatSessionOptions } from './chat-session.js';
+export { McpChatCompleter, McpExecError, DEFAULT_EXEC_TIMEOUT_MS } from './mcp-chat-completer.js';
+export type {
+  ExecTransport,
+  ExecTurn,
+  ExecResult,
+  McpChatCompleterOptions,
+} from './mcp-chat-completer.js';

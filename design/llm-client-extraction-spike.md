@@ -1,7 +1,9 @@
 # Spike — `@agenttalk/llm-client`: a standalone chat-with-LLM package (API + MCP plug)
 
-**Status:** SPIKE / ACCEPTED — scope decided (Fausto, 2026-06-26). **No code cut yet** (awaiting go to start
-Phase 1). Decisions: **Q1** widen `complete()` with an optional `messages[]` (additive) · **Q2** build
+**Status:** Phase 1 ✅ committed (`eae6321`, branch `llm-client-extraction-phase1`). Phase 2 core ✅ done
+(uncommitted): `McpChatCompleter` + `ExecTransport` plug + tests — the concrete WebSocket/MCP adapter to
+agentalk-mcp-client is the remaining owed piece (see §7). Gate at Phase 2: tsc 0, suite 239/239.
+Originally scope-decided (Fausto, 2026-06-26). Decisions: **Q1** widen `complete()` with an optional `messages[]` (additive) · **Q2** build
 **Phase 1 + 2** (API chat *and* the MCP plug) · **Q3** structured-output (T4 tool schema) **stays in runtime-core**
 (llm-client stays consensus-free) · **Q4** name = `@agenttalk/llm-client`.
 **Author:** Claude (planner/architect), 2026-06-26.
@@ -115,6 +117,21 @@ non-breaking) rather than flatten — keeps roles, doesn't break the string sign
 - **Phase 2 (the MCP plug):** build `McpChatCompleter` against the exec subset of the wire-contract — a
   registry-free turn driver. Reuses `wire-contract.json` (already a shared artifact) minus consensus tools.
   This is the bounded-new-work piece; the existing Registry-coupled `McpCompleter` is untouched.
+
+  **DONE (2026-06-26).** Shipped `McpChatCompleter` (a `Completer`, `maintainsSession=true`) racing
+  result/timeout/disconnect against an **injected `ExecTransport`** — the exec-subset contract
+  (`dispatch(turn)` / `onResult` / `onDisconnect`), plus a typed `McpExecError`. Registry-free,
+  consensus-free, unit-tested with a fake transport (7 tests). Mirrors runtime-core's proven McpCompleter
+  race, decoupled from the engine.
+  **HONEST SCOPE BOUNDARY (owed):** the **concrete WebSocket/MCP `ExecTransport` adapter** — the piece that
+  actually hosts the `await_turn`/`submit_exec_result` attach endpoint an agentalk-mcp-client connects to —
+  is **NOT shipped**. That machinery is large and currently spread across runtime-core's `Agent` turn-queue
+  (`pendingExecTurns`/`awaitTurn`/`queueExecTurn`) + `mcp-tools.ts` + `apps/orchestrator/src/mcp-server.ts`,
+  entangled with the multi-agent Registry. So `McpChatCompleter` is **usable today via any `ExecTransport`**
+  (incl. a fake/in-process one), but a real end-to-end "chat through agentalk-mcp-client" needs that adapter
+  written next — a separate, larger task. A natural first adapter: wrap an `Agent` + an emitter (it already
+  exposes `queueExecTurn` and emits `exec_result`) — ~a handful of lines — which would also let runtime-core's
+  `McpCompleter` be re-expressed over `ExecTransport` later (ties to the unify-emission tech-debt note).
 
 ## 8. Migration (Phase 1 mechanics)
 
