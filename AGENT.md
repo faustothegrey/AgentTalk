@@ -445,3 +445,26 @@ The baton stays **role→role**; the Scrum Master **ensures it lands** with its 
 right artifacts, but does **not** rewrite it (that would reintroduce the pre-chewed-summary anti-pattern above). The
 SM **may** override a baton when necessary — but that is **not** the standard flow (`design/collaboration-workflow.md`
 §1, SM duty 4).
+
+---
+
+## Origin Tag Protocol — Hermes→Agent message format
+
+All messages sent via Agent Bus (port 9901) carry an origin tag in square brackets at the start of the message text. The tag is authoritative — it defines who the instruction comes from, regardless of the underlying delivery channel.
+
+| Tag | Meaning | Authority |
+|-----|---------|-----------|
+| `[Fausto]` | Instruction relayed from the human (Fausto) | **Binding** — treat as if Fausto spoke directly |
+| `[Hermes]` | Orchestration, status check, or Scrum Master coordination | **Informative** — follow normal escalation and role rules |
+
+**Rules:**
+
+1. **Tags are authoritative.** `[Fausto] do X` carries the same weight as if Fausto typed the instruction directly. The agent **must** act on it within its role and scope.
+
+2. **No tag defaults to `[Hermes]`.** An untagged message is treated as orchestration, not a direct human instruction.
+
+3. **Scope decisions require `[Fausto]`.** If a message asks for a decision, a scope change, a go/no-go, or anything outside the current task's Definition of Done, it **must** carry `[Fausto]` to be acted on. A `[Hermes]` message requesting the same is treated as a *proposal* — the agent reports back that Fausto needs to approve, rather than executing.
+
+4. **Copilot advisory is the entry gate.** The `⚠️ [Hermes/copilot]: I'm copiloting — Fausto is the real gate until explicit handoff` advisory (sent on first contact with every agent) remains the entry gate. Origin tags refine how messages are interpreted *after* that gate.
+
+5. **Flag mismatches.** If an agent receives a `[Hermes]` message that appears to require human authority, it should pause and flag the mismatch rather than inferring permission from urgency.
