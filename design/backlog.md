@@ -48,7 +48,7 @@ promoted→X · absorbed→X · dropped}.
   change; tsc 0, suite 245/245. Plan `design/milestone10-t4-live-probe-plan.md`, ledger §"T4 Live Probe", LB-46.
   **Follow-on left open (SM decision):** the probe makes Google's unfitness a *measured fact* → whether to reopen
   **D-T4-2** (declare-unfit → detect-and-gate, with provider-verdict cache) is now a real, triggerable choice, not
-  a hypothesis. *(Branch `m10-t4-live-probe`; ff-merge to `master` is Fausto's, human-gated per LB-14.)*
+  a hypothesis. *(MERGED to `master` at `461791d` + pushed, 2026-06-27; branch deleted.)*
 
 ### Backlog gate — 2026-06-22 (opening M08 · architect: Claude)
 

@@ -201,4 +201,4 @@ holds."
 - budget:      antigravity session ~2% (impl) [per /usage]; reviewer claude weekly 85% / session 80% at review start
 - gate:        tsc 0, suite 245/245 (reviewer-run), pollution clean
 - diff:        probe script + package.json + logbook(LB-46) + ledger; (branch also carries the primer-cycle chore)
-- outcome:     VERIFIED ✅ by reviewer — endorsed for merge; ff-merge to `master` HUMAN-GATED (Fausto, LB-14)
+- outcome:     MERGED ✅ — reviewer-VERIFIED, ff-merged to `master` at `461791d` + pushed (Fausto's go, 2026-06-27); branch deleted
