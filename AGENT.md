@@ -454,16 +454,16 @@ All messages sent via Agent Bus (port 9901) carry an origin tag in square bracke
 
 | Tag | Meaning | Authority |
 |-----|---------|-----------|
-| `[Fausto]` | Instruction relayed from the human (Fausto) | **Binding** — treat as if Fausto spoke directly |
+| `[Human]` | Instruction relayed from the human (Fausto) | **Binding** — treat as if the human spoke directly |
 | `[Hermes]` | Orchestration, status check, or Scrum Master coordination | **Informative** — follow normal escalation and role rules |
 
 **Rules:**
 
-1. **Tags are authoritative.** `[Fausto] do X` carries the same weight as if Fausto typed the instruction directly. The agent **must** act on it within its role and scope.
+1. **Tags are authoritative.** `[Human] do X` carries the same weight as if the human typed the instruction directly. The agent **must** act on it within its role and scope.
 
-2. **No tag defaults to `[Hermes]`.** An untagged message is treated as orchestration, not a direct human instruction.
+2. **No tag defaults to `[Human]`.** A message without a tag came directly from the human (e.g. typed in the terminal) and is treated as a binding instruction.
 
-3. **Scope decisions require `[Fausto]`.** If a message asks for a decision, a scope change, a go/no-go, or anything outside the current task's Definition of Done, it **must** carry `[Fausto]` to be acted on. A `[Hermes]` message requesting the same is treated as a *proposal* — the agent reports back that Fausto needs to approve, rather than executing.
+3. **Scope decisions require `[Human]`.** If a message asks for a decision, a scope change, a go/no-go, or anything outside the current task's Definition of Done, it **must** carry `[Human]` to be acted on. A `[Hermes]` message requesting the same is treated as a *proposal* — the agent reports back that the human needs to approve, rather than executing.
 
 4. **Copilot advisory is the entry gate.** The `⚠️ [Hermes/copilot]: I'm copiloting — Fausto is the real gate until explicit handoff` advisory (sent on first contact with every agent) remains the entry gate. Origin tags refine how messages are interpreted *after* that gate.
 
