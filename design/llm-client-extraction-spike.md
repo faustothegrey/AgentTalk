@@ -1,9 +1,16 @@
 # Spike — `@agenttalk/llm-client`: a standalone chat-with-LLM package (API + MCP plug)
 
-**Status:** Phase 1 ✅ committed (`eae6321`, branch `llm-client-extraction-phase1`). Phase 2 core ✅ committed
-(`877577c`, on `master`): `McpChatCompleter` + `ExecTransport` plug + tests — the concrete WebSocket/MCP adapter to
-agentalk-mcp-client is the remaining owed piece (see §7). Gate at Phase 2: tsc 0, suite 239/239.
+**Status:** ✅ **VERIFIED — DONE** (Claude, planner-reviewer, 2026-06-27). Phase 1 (`eae6321`), Phase 2 core
+(`877577c`), Phase 2 **Option B** — standalone exec-only MCP attach server `@agenttalk/mcp-exec-server` (`b67a6ce`),
+and the **owed adapter gap closed** by a live smoke vs the real `agentalk-mcp-client` CLI (`4fb2a69`) + operator
+runbook (`e1524ba`) — **all merged to `master`**.
+**Reviewer verification (run, not asserted, 2026-06-27):** `tsc -b` 0; full suite **245/245** (incl. llm-client
+`chat-session`/`mcp-chat-completer` + exec-server `exec-turn-queue`); `@agenttalk/llm-client` is a zero-dep leaf with
+**no** runtime-core/registry/consensus imports (grep-clean) exporting `ChatSession`/`ApiCompleter`/`McpChatCompleter`;
+and `npm run smoke:exec` **PASSED** end-to-end — the real CLI completed a turn through `McpExecServer` over a real
+socket (text + usage round-tripped; no LLM/budget spent). See LB-47.
 <!-- Status corrected 2026-06-27 (LB-33): was "Phase 2 core ✅ done (uncommitted)"; McpChatCompleter merged at `877577c`, sibling drift the LB-31 sweep missed. -->
+<!-- Status finalised 2026-06-27: prior line still said "the concrete WebSocket/MCP adapter is the remaining owed piece" — that owed piece was since delivered (mcp-exec-server Option B `b67a6ce`) and proven by the live smoke `4fb2a69`. Reviewer-verified DONE. -->
 Originally scope-decided (Fausto, 2026-06-26). Decisions: **Q1** widen `complete()` with an optional `messages[]` (additive) · **Q2** build
 **Phase 1 + 2** (API chat *and* the MCP plug) · **Q3** structured-output (T4 tool schema) **stays in runtime-core**
 (llm-client stays consensus-free) · **Q4** name = `@agenttalk/llm-client`.
@@ -124,7 +131,14 @@ non-breaking) rather than flatten — keeps roles, doesn't break the string sign
   (`dispatch(turn)` / `onResult` / `onDisconnect`), plus a typed `McpExecError`. Registry-free,
   consensus-free, unit-tested with a fake transport (7 tests). Mirrors runtime-core's proven McpCompleter
   race, decoupled from the engine.
-  **HONEST SCOPE BOUNDARY (owed):** the **concrete WebSocket/MCP `ExecTransport` adapter** — the piece that
+  **✅ OWED PIECE SINCE DELIVERED (2026-06-27).** The **concrete WebSocket/MCP `ExecTransport` adapter** below —
+  the piece that hosts the `await_turn`/`submit_exec_result` attach endpoint an agentalk-mcp-client connects to —
+  was shipped as the standalone `@agenttalk/mcp-exec-server` (Phase 2 **Option B**, `b67a6ce`) and **proven live**
+  by `npm run smoke:exec` (`4fb2a69`): the real CLI completes a turn through `McpExecServer` over a real socket.
+  Reviewer-verified 2026-06-27 (LB-47). The original boundary note is kept below for history.
+
+  **HONEST SCOPE BOUNDARY (owed, as written at Phase-2 — now CLOSED):** the **concrete WebSocket/MCP `ExecTransport`
+  adapter** — the piece that
   actually hosts the `await_turn`/`submit_exec_result` attach endpoint an agentalk-mcp-client connects to —
   is **NOT shipped**. That machinery is large and currently spread across runtime-core's `Agent` turn-queue
   (`pendingExecTurns`/`awaitTurn`/`queueExecTurn`) + `mcp-tools.ts` + `apps/orchestrator/src/mcp-server.ts`,

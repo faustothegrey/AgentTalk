@@ -1282,3 +1282,21 @@ no scope change to the probe plan otherwise. The plan stays DRAFT-for-review aft
   3. `nous` (with `deepseek-v4-flash`): **HTTP_REJECT (404)**. The default model `deepseek-v4-flash` is missing from their catalog.
 - **Implication:** The M10-T4 hypothesis holds: `openai/gpt-4o-mini` via OpenRouter supports the strict structured tools combo seamlessly. However, `google` explicitly rejects it. Thus, the D-T4-2 "declare-unfit" decision correctly flags `google` as unfit for this protocol variant until they support the combination, or fallback machinery is built. The `nous` provider needs its default model updated (see LB-1).
 - **Source:** Live run of `scripts/probe-t4-api-tools.mjs` (M10-T4-live-probe task implementation).
+
+### LB-47 · 2026-06-27 — [llm-client] Spike VERIFIED DONE; three-layer doc staleness corrected
+- **Trigger:** asked to prime a planner to "tackle the `@agenttalk/llm-client` extraction spike" as the next backlog
+  item. Cold-start ground-truth check (Reviewer Rule 5 / the verify-don't-assert discipline) found the **premise
+  false** — the work was already merged to `master`.
+- **Three-layer staleness found:** (1) backlog line said `[open · SPIKE/proposed]` (read as not-started);
+  (2) the spike doc status said Phase 1+2-core done but "the concrete WebSocket/MCP adapter is the **remaining owed
+  piece**"; (3) **git reality** = Phase 1 (`eae6321`) + Phase 2 core (`877577c`) + Phase 2 Option B standalone
+  `@agenttalk/mcp-exec-server` (`b67a6ce`) + owed-gap live smoke (`4fb2a69`) + operator runbook (`e1524ba`), all on
+  `master`. Lineage of LB-31/LB-33 (sibling-doc drift the earlier sweeps missed).
+- **Reviewer verification (run, not asserted):** `tsc -b` 0; full suite **245/245**; `@agenttalk/llm-client` is a
+  zero-dep leaf with no runtime-core/registry/consensus imports (grep-clean) exporting
+  `ChatSession`/`ApiCompleter`/`McpChatCompleter`; **`npm run smoke:exec` PASSED** — the real `agentalk-mcp-client`
+  CLI completed a turn through `McpExecServer` over a real socket (text + usage round-tripped; fake bridge ⇒ no LLM,
+  no budget). → marked **VERIFIED DONE** in the spike doc + backlog.
+- **Lesson:** picking "the next backlog item" must pass the §3b gate — verify each candidate against git *before*
+  priming, or you hand a planner a phantom task. The verify step here turned an assumed implementation task into a
+  doc-reconciliation + verification closure.

@@ -278,12 +278,16 @@ fault tolerance, plan at `design/milestone08-transport-fault-tolerance-plan.md`.
   **Low priority / not blocking;** revisit if a third emission site appears or the two shapes start drifting.
   **Source:** Fausto ↔ Claude, 2026-06-26 (overlay-plan session).
 
-- [open · SPIKE/proposed, 2026-06-26] — **`@agenttalk/llm-client` — standalone chat-with-LLM package (API + MCP plug)**
-  — extract the reusable LLM-calling core out of `runtime-core` so third-party apps get plain chat without the
-  consensus stack. The `Completer` plug + zero-dep `api-client.ts` already exist; only 2 src importers
-  (`registry.ts`, `in-process-driver.ts`) → low-risk move. Phase 1 = interface + `ApiCompleter` + multi-turn
-  `ChatSession`; Phase 2 = registry-free `McpChatCompleter` (exec subset of the wire-contract, no consensus).
-  Steps ahead of M10-T3 by Fausto's call (immediate value). **Full design:** `design/llm-client-extraction-spike.md`
-  (open decisions Q1–Q4 await Fausto). **Source:** Fausto ↔ Claude, 2026-06-26.
+- [done] 2026-06-27 — **`@agenttalk/llm-client` — standalone chat-with-LLM package (API + MCP plug)** — ✅
+  **VERIFIED DONE** (Claude, reviewer-run). The reusable LLM-calling core is extracted out of `runtime-core` into a
+  zero-dep leaf package: Phase 1 (`ApiCompleter` + multi-turn `ChatSession`, `eae6321`), Phase 2 core
+  (registry-free `McpChatCompleter` + `ExecTransport` plug, `877577c`), Phase 2 **Option B** (standalone exec-only
+  attach server `@agenttalk/mcp-exec-server`, `b67a6ce`), owed adapter gap closed by a live smoke vs the real
+  `agentalk-mcp-client` CLI (`4fb2a69`) + operator runbook (`e1524ba`) — all on `master`. Decisions Q1–Q4 were
+  resolved (widen / Phase 1+2 / structured-output stays in runtime-core / name). Reviewer gate 2026-06-27: tsc 0,
+  suite 245/245, consensus-free (grep-clean), `npm run smoke:exec` PASSED end-to-end. Record:
+  `design/llm-client-extraction-spike.md` + LB-47. **NOTE — this item's prior `[open · SPIKE/proposed]` line and the
+  spike doc's "owed piece remaining" status were both stale**; ground-truth check against git found the work already
+  merged (the three-layer staleness LB-47 records). **Source:** Fausto ↔ Claude, 2026-06-26/27.
 
 *(add new items above this line)*
