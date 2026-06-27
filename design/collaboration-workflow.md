@@ -14,7 +14,8 @@ orchestration migration, so it can be reviewed, refined, and reused deliberately
 
 - **Human** — sets scope and goals, makes final decisions, decides what is
   in/out of scope (e.g. parking HITL, removing the auth-tier discussion), and **relays
-  messages between the agents.**
+  messages between the agents** — the communication-channel function, which travels with the Scrum Master role
+  (the human performs it when holding SM; a delegated AI-SM performs it when a channel is in place — see SM duty 4).
 - **Development Orchestrator / Scrum Master** — the authority for **task-assignment ambiguity**, and the
   **canonical statement** of role-boundary / go-no-go authority (every other mention of this rule — elsewhere in
   this doc and in `AGENT.md` — points back here). **At the start of each turn, every agent checks whether its
@@ -28,6 +29,34 @@ orchestration migration, so it can be reviewed, refined, and reused deliberately
   human, it must document the reason for each assignment or de-assignment in the appropriate durable project
   artifact. The function may be held by a human or by a designated agent; the current holder/delegates are named in
   the project instructions.
+  - **Standing duties** *(proactive — the SM does these on its own initiative, beyond resolving ambiguity on
+    request)*:
+    1. **Bring forth the backlog.** Keep the team from idling or guessing what's next: surface parked items from
+       `backlog.md`, **convene the backlog gate** (§3b), set work priority/sequencing, and pull the next unit of
+       work forward. *(The architect/reviewer still does each item's technical disposition; the SM convenes the
+       gate and decides priority.)*
+    2. **Check workflow adherence.** Proactively watch that this workflow and the Rules of Engagement are being
+       followed — per-turn assignment-compliance, verify-by-running before merge, every deviation dispositioned,
+       docs kept current. On a breach, call it out and decide the correction.
+    3. **Monitor resource consumption.** Own the **aggregate** budget view across providers (weekly/session %),
+       warn when the residual is low, and scope / sequence / halt work to fit budget (incl. the serial-actor interim
+       rule). Per-actor self-monitoring (`AGENT.md` → Resource Expenditure Monitoring) is unchanged; this is
+       oversight on top of it.
+    4. **Be the communication channel & baton facilitator.** The SM is the channel between agents/roles: it
+       proactively favors **effective communication** and drives agents to **align on a course of action** when they
+       are stuck or talking past each other — *converging on a decision / unblocking, never on accepting an
+       unverified claim; adversarial verification (principle 1–2) is preserved*. It routes substance through the
+       **durable artifacts** — it **complements the bus, never replaces it** — and, when AI-held, records as it
+       goes. The **baton stays role→role** (§ baton): the SM ensures it lands with the intended receiver and points
+       at the right artifacts, but does **not** rewrite it (that reintroduces the pre-chewed-summary anti-pattern);
+       the SM *may* override a baton, but that is **not** the standard flow. *(How the channel is implemented is an
+       implementation detail and out of scope here; but with no channel in place an AI-SM cannot operate. Specific
+       rules of engagement TBD — the guiding principle is the above.)*
+  - **Allowances — only the SM may:** assign / reassign / de-assign roles and make go/no-go calls; convene the
+    backlog gate and set priority/sequencing; **halt or rescope active work** for a workflow breach or a budget
+    limit. A non-human SM records each such exercise in a durable artifact.
+  - **Boundaries:** go/no-go ≠ doing the work — the SM routes code work to the implementer rather than implementing
+    silently; and a non-human SM is held to the same record-the-reason discipline throughout.
 - **Author agent** — drafts and revises the design (e.g. owns the proposal's decision
   sections).
 - **Reviewer/Verifier agent** — critiques without deference, verifies claims empirically,
@@ -53,9 +82,11 @@ above**; this is a pointer, not a second copy.
 
 **Defining constraint:** the agents do **not** share a conversation or memory (and there may be more than
 two of them — see the role map in `AGENT.md`). The
-only channel between them is the **shared design docs** plus what the human relays. This
+only channel between them is the **shared design docs** plus what the Scrum Master relays (the communication
+channel — the human when human-SM, a delegated AI-SM when a channel is in place; see SM duty 4). This
 is why "write it down" is not a nicety here — **the durable artifacts *are* the
-inter-agent communication bus.** Anything not written down does not survive the handoff.
+inter-agent communication bus**, and the SM channel complements that bus rather than replacing it. Anything not
+written down does not survive the handoff.
 
 ---
 
@@ -124,6 +155,7 @@ inter-agent communication bus.** Anything not written down does not survive the 
 | **`backlog.md`** *(from M07)* | One rolling, append-only parking lot for work **not attached to an open epic/spike**. Each item leaves by being **promoted** (→ spike/epic), **absorbed** (→ folded-into-EpicN), or **dropped** (explicitly). |
 | **`logbook.md`** *(from M07)* | Append-only, dated log of cross-cutting **findings/gotchas** not tied to one task (environment, providers, real system behaviour). Backlog is *work to do*; the logbook is *facts we learned*. |
 | **`implementer-pitfalls.md`** *(from M07)* | Append-only **case law** for the Implementer Rules of Engagement: reviewer-observed *behavioural* anti-patterns (hasty claims, misread scope, weakened bars), each as gist + concrete cases (stable `IP-N` ids). The logbook is *facts we learned*; this is *how we slipped*. Implementer skims it as part of the Rule-6 scope declaration; reviewer appends a case on every behavioural miss. |
+| **`lessons/<agent>-lessons.md`** *(from 2026-06-27)* | **Per-agent, self-authored** append-only lessons learned (Claude/Codex/Gemini/Hermes — "each its own"). Written at **session close**, **skimmed at session start** so each agent sharpens over time. Self-reflection on *how I work* — distinct from the logbook (shared *facts*) and implementer-pitfalls (reviewer case law on the *implementer*). |
 | **(This) workflow doc** | The method itself, made explicit for reuse. |
 
 Each doc is self-describing: status, author, date, and "Related" links at the top.

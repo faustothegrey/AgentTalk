@@ -1198,3 +1198,79 @@ no scope change to the probe plan otherwise. The plan stays DRAFT-for-review aft
 - **Verification.** Live `curl` to `/models` and `/chat/completions` with the env key; pass/fail probed across ~10
   free models. Raw pings only (not yet routed through `packages/llm-client`); a through-the-client live ping is the
   natural next step if we want to exercise the real `callApi()` path.
+
+---
+
+### LB-43 · 2026-06-27 — [process] Refined the Scrum Master role: three standing duties + allowances
+
+- **Trigger.** Fausto wanted the Scrum Master elevated from a mostly-reactive authority (resolve ambiguity, decide
+  go/no-go, reassign roles) to a role with **proactive standing duties**. Three goals given: bring forth the backlog,
+  check workflow adherence, monitor resource consumption.
+- **Decision (Fausto, all three confirmed).**
+  - **(A) Backlog:** the SM **convenes the backlog gate** (§3b) and sets work priority/sequencing; the
+    architect/reviewer still does each item's technical disposition.
+  - **(B) Resource:** the SM owns the **aggregate** cross-actor budget view (warn/scope/halt to fit budget);
+    per-actor self-monitoring (`AGENT.md` → Resource Expenditure Monitoring) is **unchanged** — oversight on top.
+  - **(C)** Applies to **both** a human SM and an agent SM (Hermes), with the record-the-reason duty falling on the
+    non-human one.
+- **What landed.** Canonical text added to `collaboration-workflow.md` §1 (the SM's home per LB-39): three standing
+  duties, an **Allowances** line (assign/reassign + go/no-go + convene the backlog gate + halt/rescope work), and a
+  **Boundaries** line (go/no-go ≠ doing the work; SM routes code to the implementer, doesn't implement silently).
+  `AGENT.md` carries pointers only (no duplication, per LB-39): the role-boundary bullet now names the three duties +
+  points to §1, and the Resource-Expenditure section notes the SM's aggregate oversight on top of per-actor
+  self-monitoring.
+- **Verification.** Docs-only; `git diff --check` clean. No build/test run (no code, scripts, package config, or test
+  contracts changed).
+
+---
+
+### LB-44 · 2026-06-27 — [process] Scrum Master as communication channel + baton facilitator (SM duty 4)
+
+- **Trigger.** Fausto extended the SM refinement (LB-43): the SM becomes the **communication channel** between
+  agents/roles and is to **proactively favor effective communication** and **drive agents to align on a course of
+  action**. Specific RoE deferred; the above is the guiding principle. Primarily instructs an **AI-SM**; a no-op when
+  the human is SM.
+- **Guardrails agreed (Claude proposed, Fausto confirmed all).**
+  1. The SM channel **complements the durable-artifact bus, never replaces it** — substance still gets written down;
+     not a verbal side-channel that bypasses the ledger.
+  2. "Align on a course of action" = converge on a **decision / unblocking**, **never** on accepting an unverified
+     claim — **adversarial verification (principles 1–2) is preserved**.
+  3. Encouraged proactive reporting is **additive to, not a softening of**, the mandatory STOP gates (out-of-role,
+     show-stopper, blocker remain mandatory).
+  4. Channel **implementation is out of scope** (an implementation detail); but with no channel in place an AI-SM
+     cannot operate. Don't overstate plumbing that may not exist.
+- **Baton stance (Fausto).** Baton stays **role→role**; the SM **ensures it lands** and points at the right
+  artifacts but does **not** rewrite it (pre-chewed-summary anti-pattern); the SM **may override** a baton, but that
+  is **not** the standard flow.
+- **What landed.** `collaboration-workflow.md` §1: new **SM duty 4** (communication channel & baton facilitator)
+  with the four guardrails + baton stance baked in; the "Human relays" bullet and the "Defining constraint"
+  paragraph generalized so the relay is the SM's channel function (human when human-SM, delegated AI-SM when a
+  channel exists). `AGENT.md`: a new Workflow-Rules bullet — *report to the SM freely (encouraged), additive to the
+  mandatory gates* — and a baton-section note (SM ensures-it-lands, override is non-standard). Pointers only in
+  AGENT.md; canonical text in §1 (per LB-39).
+- **Verification.** Docs-only; `git diff --check` clean. No build/test run (no code, scripts, package config, or test
+  contracts changed).
+
+---
+
+### LB-45 · 2026-06-27 — [process] Per-agent lessons-learned files (self-authored, session-close, read-back at start)
+
+- **Trigger.** Fausto: at session close each agent should record a brief lessons-learned entry so it sharpens its
+  effectiveness over time — **agent-declined** (Claude its own, Codex its own, Gemini its own, Hermes when it joins).
+- **Why it's the *good* kind of process.** It's *earned by real experience* and compounds — the opposite of the
+  pre-written-for-hypotheticals bloat flagged earlier this session. Kept deliberately minimal.
+- **Design (Fausto confirmed: per-agent files, in-repo).** New `design/lessons/<agent>-lessons.md` (claude, codex,
+  gemini, hermes), append-only, dated, **1–3 bullets** each (what worked / what didn't / do differently).
+  **Self-authored — each agent writes only its own.** Chosen over (i) the shared logbook (would mix private
+  reflection into cross-cutting facts — the LB-35 noise concern; no clean "each its own") and (ii) out-of-repo
+  private files (loses transparency + cross-agent learning). In-repo keeps it durable, visible, auditable.
+- **The loop (so it doesn't rot).** **Write** at session close (with the Session Primer); **skim your own at session
+  start** (a turn-1 read). Write-only is worthless — the read-back is the point ("teeth or it rots", cf. logbook).
+- **Distinctness.** vs `logbook.md` = shared cross-cutting *facts*; vs `implementer-pitfalls.md` = *reviewer*-authored
+  case law about the *implementer*; lessons = *self*-authored reflection by *each* agent on *how it works*.
+- **What landed.** Four files created (claude seeded with a real first entry; codex/gemini/hermes are header +
+  "no entries yet" — each authors its own). `AGENT.md`: write-rule under Session Primer + read-back line in First
+  Entry Point. `collaboration-workflow.md` §3: artifact-table row. No-op when a human is in the loop; guidance for
+  the agents.
+- **Verification.** Docs-only; `git diff --check` clean. No build/test run (no code, scripts, package config, or test
+  contracts changed).

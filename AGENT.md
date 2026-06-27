@@ -53,6 +53,11 @@ Expenditure Monitoring** rule below; doing it up front means you know your headr
 after. **Strictly best-effort, NEVER blocking** (the `claude` block often returns `ok:false` — LB-11): if it's
 down or jittery, say so in one line and carry on. Do **not** retry it or treat a failed read as a blocker.
 
+**Also at session start — skim your own lessons file.** As a turn-1 read (allowed inside the cold-start no-action
+window), skim **`design/lessons/<agent>-lessons.md`** (yours: Claude/Codex/Gemini/Hermes) so past lessons actually
+sharpen *this* session — that read-back is what makes the mechanism compound (write-only rots). Best-effort; if it's
+empty or absent, carry on. *(You write to it at session close — see "Lessons learned" under Session Primer below.)*
+
 **End the priming routine by declaring your role, loudly.** Every startup / fresh-primer report MUST end with an
 explicit role line, e.g. **"Current role: planner-reviewer"** or **"Current roles: planner-reviewer + temporary
 implementer (human-approved)."** This is not decorative: it is the operator's guard against accidentally asking an
@@ -85,7 +90,9 @@ agent to work outside its assigned function.
   and any safe alternatives; then do what the Scrum Master decides. You may *propose* a reassignment, but you report
   first. **The Scrum Master, and only the Scrum Master, makes go/no-go decisions and may reassign or de-assign
   roles** (a non-human Scrum Master must document the reason in a durable artifact). *(This is the operational
-  restatement; the **canonical full rule** is the Scrum Master bullet in `design/collaboration-workflow.md` §1.)*
+  restatement; the **canonical full rule** — plus the SM's three standing duties (bring forth the backlog,
+  check workflow adherence, monitor resource consumption) and its allowances — is the Scrum Master bullet in
+  `design/collaboration-workflow.md` §1.)*
   Unless explicitly delegated, Fausto holds the Scrum Master function; **Hermes Agent** is an allowed
   delegate/impersonator when Fausto explicitly assigns it that function.
   - **Standing conditional reassignment — the one pre-authorized exception to "STOP before implementing."** The
@@ -104,6 +111,12 @@ agent to work outside its assigned function.
       status:   DORMANT as of 2026-06-27 — Gemini is currently considered AVAILABLE, so
                 implementer→Gemini is the LIVE default and this grant is NOT in effect right now.
     ```
+- **Report to the Scrum Master freely — encouraged.** Beyond the mandatory STOP-and-report gates (out-of-role,
+  show-stopper, blocker — all unchanged and still mandatory), you are **encouraged to report to / consult the Scrum
+  Master proactively, any time you feel the need** — to flag a concern, request alignment with another role, or
+  surface a half-formed risk. **Over-communication to the SM is welcomed, not penalized.** *(Primarily guidance for
+  when an AI holds the SM function; a no-op refinement when the human is SM. The SM is the communication channel and
+  baton facilitator — see `design/collaboration-workflow.md` §1, SM duty 4.)*
 
 ### Core Behavioral Rule: Honesty over Results
 
@@ -162,6 +175,8 @@ a session can do).
 - **Watch the residual + warn.** Keep an eye on the **percentage left** and **warn when it gets too low** so work can be
   scoped/closed cleanly instead of being cut off mid-task. *(Exact warning thresholds TBD — to be calibrated in the course
   of action.)* Note: the **weekly %** is the real cross-session budget; the **5h window** resets every few hours.
+  **This per-actor self-monitoring is unchanged; on top of it the Scrum Master owns the *aggregate* cross-actor budget
+  view and may scope / sequence / halt work to fit budget** (see `design/collaboration-workflow.md` §1, SM duty 3).
 - **Known limits (best-effort, 2026-06-22 — we're in deep exploration).** The meter reports **per-provider, machine-wide
   percentages** — not per-actor or per-task, and **% of an opaque, flexing plan-window, not raw tokens** (token-denominated
   figures pending a service improvement). Per-action cost is only approximable by **diffing % before/after an action**,
@@ -317,6 +332,15 @@ cold-start contract and the report-only rule below kicks in), and it MUST contai
 
 Keep it tight; the ledger holds the detail.
 
+**Lessons learned (per-agent — self-authored, at session close).** Whenever you write a Session Primer — or
+otherwise wrap a working session — also append a **brief, dated** entry to **your own**
+`design/lessons/<agent>-lessons.md` (Claude/Codex/Gemini/Hermes): **1–3 bullets** — what worked, what didn't, what
+you'll do differently — so you sharpen your effectiveness over time. **Each agent writes only its own file**
+("agent-declined"). You **skim it back at session start** (see First Entry Point) — that read-back is the point;
+write-only rots. This is *self-reflection on how you work* — **distinct** from `logbook.md` (shared cross-cutting
+*facts*) and `implementer-pitfalls.md` (reviewer-authored case law about the *implementer*). This is a no-op for a
+human in the loop; it's guidance for the agents.
+
 **Save it to the role-primer + mint a fresh key (don't paste into chat).** (1) Generate a fresh key (e.g.
 `YYYYMMDD-HHMM-<rand>`); (2) overwrite `design/session-primers/<role>-primer.md` (`planner-reviewer-primer.md`
 or `implementer-primer.md`) with header `role: <role>`, `key: <fresh-key>`, `written: <date> by <agent>`, then
@@ -410,3 +434,8 @@ quietly invites the receiver to follow *your* summary instead of the source of t
 gaps the way the workflow expects — by reading the artifacts and the Rules of Engagement — rather than predetermining
 them. This is the exact mirror of the Session Primer above: a **Primer is self-contained** precisely because its reader
 is *cold*; a **baton is a pointer** precisely because its reader is *not*.
+
+The baton stays **role→role**; the Scrum Master **ensures it lands** with its intended receiver and points at the
+right artifacts, but does **not** rewrite it (that would reintroduce the pre-chewed-summary anti-pattern above). The
+SM **may** override a baton when necessary — but that is **not** the standard flow (`design/collaboration-workflow.md`
+§1, SM duty 4).
