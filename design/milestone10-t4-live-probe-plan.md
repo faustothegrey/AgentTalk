@@ -39,8 +39,9 @@ This task measures that transport fact without changing production behavior.
 ## 3. Implementation approach
 
 The script should import the built protocol helpers from `dist` after `tsc -b`, matching existing live scripts that
-depend on compiled packages. It should use `buildProtocolToolSchema()` and `parseStructuredResponse()` from
-`@agenttalk/runtime-core`'s built output so the probed tool schema and validation are the same as production.
+depend on compiled packages. It should import `buildProtocolToolSchema()` and `parseStructuredResponse()` from
+`@agenttalk/runtime-core/agents/response-schema.js` so the probed tool schema and validation are the same as
+production.
 
 For response inspection the script should perform the HTTP request directly instead of calling `callApi()`, because
 `callApi()` intentionally normalizes the response to text and hides whether it came from `tool_calls` or

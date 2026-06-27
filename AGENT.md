@@ -77,12 +77,19 @@ agent to work outside its assigned function.
 - **Follow Collaboration Workflow**: Strictly adhere to the workflow defined in `design/collaboration-workflow.md`. That document is the source of truth for how we build things and must be followed at all times.
 - **Document Before Implementation**: Do not rush to the implementation phase. Always document proposed code changes beforehand so that another agent can review and approve the plan.
 - **Document Changes**: Always amend documentation to accurately reflect the code changes that have taken place.
+- **Check assignment compliance every turn**: Before acting on any assignment, compare the requested action with
+  `design/collaboration-workflow.md`, your current role, and the current Scrum Master authority. If the assignment
+  does not comply, or if compliance is ambiguous, STOP before acting. Report the mismatch plainly and wait for the
+  Development Orchestrator / Scrum Master's go/no-go decision.
 - **Respect role boundaries**: If you are asked to perform an action outside your current role (for example:
   implementing code while your current role is only planner-reviewer), STOP before acting. State the mismatch
   plainly and ask for an authoritative course-of-action decision from the Development Orchestrator / Scrum Master.
   You may propose alternatives or a temporary role reassignment, but you report first and then do what the Scrum
-  Master decides. Unless explicitly delegated, Fausto holds the Scrum Master function; **Hermes Agent** is an
-  allowed Scrum Master delegate/impersonator when Fausto explicitly assigns it that function.
+  Master decides. The Scrum Master, and only the Scrum Master, may make go/no-go decisions and may reassign or
+  de-assign roles on the fly as necessity arises. If the Scrum Master is not human, it must document the reason for
+  each assignment or de-assignment in the appropriate durable project artifact. Unless explicitly delegated, Fausto
+  holds the Scrum Master function; **Hermes Agent** is an allowed Scrum Master delegate/impersonator when Fausto
+  explicitly assigns it that function.
 
 ### Core Behavioral Rule: Honesty over Results
 - **Do not optimize for "passing" at all costs.** It is not the final result that matters most, but following instructions exactly and being completely honest about the state of the system.

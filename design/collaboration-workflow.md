@@ -19,8 +19,10 @@ orchestration migration, so it can be reviewed, refined, and reused deliberately
   agent is asked to do work outside its current role (for example, a planner-reviewer being asked to
   implement code), the agent stops and reports the mismatch to the Scrum Master for a course-of-action decision.
   The agent may propose alternatives or a temporary role reassignment, but it must present the issue first
-  and then do what the Scrum Master decides. The function may be held by a human or by a designated agent; the
-  current holder/delegates are named in the project instructions.
+  and then do what the Scrum Master decides. The Scrum Master, and only the Scrum Master, makes go/no-go decisions
+  and may reassign or de-assign roles on the fly as necessity arises. If the Scrum Master is not human, it must
+  document the reason for each assignment or de-assignment in the appropriate durable project artifact. The function
+  may be held by a human or by a designated agent; the current holder/delegates are named in the project instructions.
 - **Author agent** — drafts and revises the design (e.g. owns the proposal's decision
   sections).
 - **Reviewer/Verifier agent** — critiques without deference, verifies claims empirically,
@@ -34,15 +36,18 @@ particular agent (or agents) for simplicity and continuity, the roles are **dyna
 nature and may be temporarily reassigned whenever the work calls for it** — for example,
 the Reviewer/architect stepping in as Implementer for a change too sensitive or specialised
 to delegate, or the Human taking a role directly. What is bound is the **responsibility of
-the role**, never the identity of the agent performing it. When such a reassignment happens
-it is **stated explicitly** — in the relay and in the ledger — so it is always unambiguous
-who currently holds which function (the no-shared-memory constraint below makes this
-mandatory, not optional).
+the role**, never the identity of the agent performing it. Only the Scrum Master may make
+that reassignment or de-assignment. When such a reassignment happens it is **stated explicitly**
+— in the relay and in the ledger — so it is always unambiguous who currently holds which function
+(the no-shared-memory constraint below makes this mandatory, not optional). If the Scrum Master
+is not human, the same durable record must include the reason for the assignment or de-assignment.
 
-**Role-boundary disputes go to the Scrum Master before action.** If a request crosses role lines and the assignment is
-doubtful, the agent does not infer permission from urgency or convenience. It reports: current role, requested action,
-why the action appears out-of-role, and any safe alternatives. Then it waits for the Scrum Master's authoritative
-course-of-action decision and follows it.
+**Role-boundary and go/no-go decisions go to the Scrum Master before action.** At the start of each turn, each agent
+checks whether the assignment complies with this workflow, its current role, and the current Scrum Master authority.
+If a request crosses role lines, makes ownership doubtful, or otherwise appears non-compliant, the agent does not
+infer permission from urgency or convenience. It reports: current role, requested action, why the action appears
+out-of-role or non-compliant, and any safe alternatives. Then it waits for the Scrum Master's authoritative go/no-go
+or course-of-action decision and follows it.
 
 **Defining constraint:** the two agents do **not** share a conversation or memory. The
 only channel between them is the **shared design docs** plus what the human relays. This
@@ -94,13 +99,15 @@ inter-agent communication bus.** Anything not written down does not survive the 
 6. **Internal consistency is maintained.** When sections are removed or reordered, headings
    are renumbered and cross-references fixed in the same pass, across all affected docs.
 7. **A readiness gate precedes code.** We state explicitly whether we are ready to plan /
-   start, and what specifically gates the next step.
+   start, and what specifically gates the next step. Go/no-go decisions belong to the Scrum Master.
 8. **Step-by-step with smoke tests.** Implementation proceeds in small phases, each with a
    concrete smoke checkpoint; the riskiest unknowns are validated first, in isolation,
    before touching production paths.
-9. **Ambiguous assignment escalates before execution.** When role ownership is unclear, especially when a
-   non-implementer is asked to implement, the actor asks the Development Orchestrator / Scrum Master for an
-   explicit course-of-action decision instead of silently widening its role.
+9. **Ambiguous or non-compliant assignment escalates before execution.** At the start of each turn, the actor checks
+   the assignment against this workflow and its current role. When role ownership is unclear, especially when a
+   non-implementer is asked to implement, the actor asks the Development Orchestrator / Scrum Master for an explicit
+   go/no-go or course-of-action decision instead of silently widening its role. Only the Scrum Master may reassign or
+   de-assign roles.
 
 ---
 

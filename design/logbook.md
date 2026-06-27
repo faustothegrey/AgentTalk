@@ -977,3 +977,18 @@ the implementer should use: `@agenttalk/runtime-core/agents/response-schema.js` 
 and `parseStructuredResponse()` (or a direct `dist/agents/response-schema.js` path, matching the precedent of other
 live scripts — note there is currently **no** script importing these, so you're setting the precedent). Docs-only;
 no scope change to the probe plan otherwise. The plan stays DRAFT-for-review after the fix.
+
+---
+
+### LB-34 · 2026-06-27 — [process] Scrum Master owns role reassignment and go/no-go gates
+
+- **Trigger.** Fausto clarified the workflow after the T4 probe-plan import correction: role reassignment authority
+  and go/no-go decisions should not be inferred by agents.
+- **Rule added.** The Scrum Master, and only the Scrum Master, may make go/no-go decisions and reassign or de-assign
+  roles on the fly as necessity arises. If the Scrum Master is not human, it must document the reason for each
+  assignment or de-assignment in a durable project artifact.
+- **Agent turn check.** `AGENT.md` now requires each agent, before acting on a turn assignment, to check whether the
+  assignment complies with `design/collaboration-workflow.md`, its current role, and current Scrum Master authority;
+  on mismatch or ambiguity, the agent reports, stops, and waits for the Scrum Master's go/no-go.
+- **Verification.** Docs-only process amendment; checked with targeted `rg` and `git diff --check`. No build/test run
+  needed because no code, scripts, package config, or test contracts changed.
