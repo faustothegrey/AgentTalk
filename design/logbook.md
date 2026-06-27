@@ -1274,3 +1274,11 @@ no scope change to the probe plan otherwise. The plan stays DRAFT-for-review aft
   the agents.
 - **Verification.** Docs-only; `git diff --check` clean. No build/test run (no code, scripts, package config, or test
   contracts changed).
+
+### LB-46 · 2026-06-27 — [M10/protocol] Live probe results for API structured-tools (M10-T4)
+- **Finding:** The live probe `scripts/probe-t4-api-tools.mjs` was run against OpenRouter, Nous, and Google.
+  1. `openrouter` (with `openai/gpt-4o-mini`): **FIT**. The endpoint correctly accepts `tools` + `tool_choice:'required'` + `response_format: {type: 'json_object'}` and returns the envelope via `tool_calls`. Note: It requires the prompt to contain the word "json" (standard OpenAI requirement), otherwise it 400s. The probe script was adjusted to include "Respond in JSON." to correctly test the structure.
+  2. `google` (with `gemini-2.5-flash`): **HTTP_REJECT**. Returns `HTTP 400: Forced function calling (ANY mode) with a response mime type: 'application/json' is unsupported`. Google explicitly rejects this combination.
+  3. `nous` (with `deepseek-v4-flash`): **HTTP_REJECT (404)**. The default model `deepseek-v4-flash` is missing from their catalog.
+- **Implication:** The M10-T4 hypothesis holds: `openai/gpt-4o-mini` via OpenRouter supports the strict structured tools combo seamlessly. However, `google` explicitly rejects it. Thus, the D-T4-2 "declare-unfit" decision correctly flags `google` as unfit for this protocol variant until they support the combination, or fallback machinery is built. The `nous` provider needs its default model updated (see LB-1).
+- **Source:** Live run of `scripts/probe-t4-api-tools.mjs` (M10-T4-live-probe task implementation).

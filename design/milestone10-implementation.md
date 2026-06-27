@@ -167,3 +167,13 @@ default. Re-walk clean (8/8 commands accepted); Fausto visually confirmed the `e
 - gate:        tsc 0, suite 225/225 (213 baseline +12 new), pollution clean
 - diff:        6 mod +2 new (plan + protocol-event-hook.test.ts); commit `53593a4`
 - outcome:     MERGED ✅ — ff to `master` at `53593a4` + pushed
+
+## T4 Live Probe (log)
+
+**Telemetry (task closure):**
+- task:        M10-T4-live-probe
+- wall-clock:  2026-06-27 10:28 → 10:33 CEST (~5 min)
+- budget:      antigravity session ~2% [per /usage]
+- gate:        tsc 0, test gate N/A, pollution clean
+- diff:        3 files (probe script, package.json, logbook.md)
+- outcome:     IMPLEMENTED ✅ — on branch `m10-t4-live-probe`, merge HUMAN-GATED (LB-14)
