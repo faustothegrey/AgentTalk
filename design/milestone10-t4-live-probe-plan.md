@@ -1,6 +1,6 @@
 # M10-T4 follow-up — live API structured-tools probe
 
-**Status:** DRAFT for human review. Do not implement until Fausto approves this scope.
+**Status:** READY for Scrum Master go/no-go. Do not implement until Fausto approves this scope.
 **Parent:** `design/milestone10-t4-api-enforcement-plan.md` + backlog item "M10-T4 live-verification probe".
 **Type:** script-only live verification / provider capability classifier.
 
@@ -75,3 +75,40 @@ Suggested prompt: ask the model to call `respond` with
   whether D-T4-2 should be reopened.
 - Do not spend repeated live calls debugging provider output. Retry budget for each provider live check: max 1
   request by default, max 2 only if the first failure is clearly a transient transport error.
+
+## 6. Implementer task plan
+
+**Pending gate:** Scrum Master go/no-go. This section plans the task; it is not approval to implement.
+
+**Suggested task id / branch:** `M10-T4-live-probe` on branch `m10-t4-live-probe`.
+
+**Files in scope:**
+- `scripts/probe-t4-api-tools.mjs`
+- `package.json`, only if adding the optional `probe:t4-api-tools` convenience script
+- `design/logbook.md` or `design/milestone10-implementation.md`, only to record actual probe results if live checks
+  are run
+
+**Files out of scope:** everything listed in §2 OUT, especially `packages/llm-client/src/api-client.ts`,
+`packages/runtime-core/src/agents/response-schema.ts`, `team-coordinator.ts`, registry, MCP, and wire-contract files.
+
+**Implementation sequence:**
+1. Create the script with `--help`, `--provider <google|openrouter|nous>`, and `--model <model>` parsing.
+2. Mirror the provider table from `packages/llm-client/src/api-client.ts` locally in the script:
+   `google` uses `GEMINI_API_KEY` and `https://generativelanguage.googleapis.com/v1beta/openai`;
+   `openrouter` uses `OPENROUTER_API_KEY` and `https://openrouter.ai/api/v1`;
+   `nous` uses `HERMES_API_KEY` and `https://inference-api.nousresearch.com/v1`.
+3. Build first, then import `buildProtocolToolSchema()` and `parseStructuredResponse()` from
+   `@agenttalk/runtime-core/agents/response-schema.js`.
+4. Send one raw `/chat/completions` request per selected provider using the exact T4 combo and the suggested smallest
+   valid structured-envelope prompt.
+5. Classify each result with the taxonomy in §2, print a compact table, and exit non-zero only for script bugs or
+   malformed CLI args.
+6. Add the npm convenience script only if it stays a one-line build-then-run wrapper; otherwise leave it out.
+7. Run the no-key path first. If keys are present and Scrum Master has approved spending live calls, run at most the
+   per-provider retry budget in §5 and record results.
+
+**Verification gates:**
+- `node scripts/probe-t4-api-tools.mjs --help`
+- no-key/default run reports `skipped` providers and exits 0
+- `npm run build`
+- existing full suite, unless the Scrum Master explicitly narrows the gate

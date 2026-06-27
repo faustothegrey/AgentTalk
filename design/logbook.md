@@ -992,3 +992,17 @@ no scope change to the probe plan otherwise. The plan stays DRAFT-for-review aft
   on mismatch or ambiguity, the agent reports, stops, and waits for the Scrum Master's go/no-go.
 - **Verification.** Docs-only process amendment; checked with targeted `rg` and `git diff --check`. No build/test run
   needed because no code, scripts, package config, or test contracts changed.
+
+---
+
+### LB-35 · 2026-06-27 — [process] Corrected over-documentation of a planning pass
+
+- **Request.** Fausto asked the planner-reviewer to plan the M10-T4 live probe task before deciding go/no-go.
+- **What happened.** Codex updated `design/milestone10-t4-live-probe-plan.md` with an implementer task plan, but also
+  added a logbook entry that merely restated the planning update.
+- **Why that was wrong.** The plan file is the source artifact for this task. Recording the planning pass itself in
+  `design/logbook.md` was redundant logbook noise; the logbook should capture durable findings, decisions, corrections,
+  operational results, or process lessons, not every ordinary plan edit.
+- **Amendment.** Removed the redundant planning-entry content and replaced it with this correction record at Fausto's
+  request. The implementer task plan remains in `design/milestone10-t4-live-probe-plan.md`; no implementation approval,
+  live provider call, or runtime behavior change has occurred.
