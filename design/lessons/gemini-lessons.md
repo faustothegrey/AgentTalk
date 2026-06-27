@@ -14,3 +14,6 @@ here.**
 ---
 
 *(No entries yet — Gemini appends its first lesson at the next session close.)*
+
+### 2026-06-27 — Testing API compliance honestly
+- When building API probes, if a provider like OpenAI rejects a payload with a 400, I must read the exact error message (e.g. missing "json" in prompt) and adjust the test prompt to be compliant so I can accurately measure the actual feature (structured tools) rather than failing on an unrelated prompt-formatting technicality.
