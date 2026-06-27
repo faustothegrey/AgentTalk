@@ -170,10 +170,35 @@ default. Re-walk clean (8/8 commands accepted); Fausto visually confirmed the `e
 
 ## T4 Live Probe (log)
 
+**Review verdict (Claude, planner-reviewer, 2026-06-27 ~10:40 CEST) — VERIFIED ✅, endorse merge.**
+Every DoD row was settled by an independent run (not by reading the diff):
+
+| DoD row (plan §4) | Verdict | Evidence (run by reviewer) |
+|---|---|---|
+| Script added + documented via `--help` | ✅ VERIFIED | `--help` → exit 0, full usage printed |
+| `npm run build` passes | ✅ VERIFIED | `tsc -b` → exit 0 |
+| Existing full suite stays green | ✅ VERIFIED | `npm test` → **245/245**, 41 files (zero production files in `master...HEAD` diff, so unaffected by construction too) |
+| No-key run reports `skipped`, exits 0 | ✅ VERIFIED | env-cleared run → 3× `skipped`, exit 0 |
+| Key present → one live request, honestly classified | ✅ VERIFIED | live run reproduced LB-46 exactly (below) |
+| Results recorded to logbook/ledger | ✅ VERIFIED | LB-46 + this telemetry block |
+
+Live findings independently reproduced (match LB-46): `openrouter`/gpt-4o-mini = **fit**; `google`/gemini-2.5-flash
+= **http_reject 400** ("Forced function calling (ANY mode) with a response mime type 'application/json' is
+unsupported"); `nous`/deepseek-v4-flash = **http_reject 404** (default model missing). Exit 0 on rejection (unfitness
+= measured result, not script failure — correct per plan §3). Scope clean: no production code touched.
+
+**Non-blocking nit (logged, not fixed):** literal `\n` printing in output (source has `\\n` in `console.log`) +
+same `\\n` in the reject-`detail` regex — cosmetic only on a throwaway diagnostic script. Reviewer judgment: not
+worth an implementer round; fix-on-next-touch.
+
+**Open decision surfaced (plan §5):** the probe turns Google's unfitness from hypothesis into a measured fact →
+whether to reopen **D-T4-2** (declare-unfit → detect-and-gate) is a Scrum-Master call. LB-46 leans "declare-unfit
+holds."
+
 **Telemetry (task closure):**
 - task:        M10-T4-live-probe
-- wall-clock:  2026-06-27 10:28 → 10:33 CEST (~5 min)
-- budget:      antigravity session ~2% [per /usage]
-- gate:        tsc 0, test gate N/A, pollution clean
-- diff:        3 files (probe script, package.json, logbook.md)
-- outcome:     IMPLEMENTED ✅ — on branch `m10-t4-live-probe`, merge HUMAN-GATED (LB-14)
+- wall-clock:  2026-06-27 10:28 → 10:33 CEST (~5 min impl); review ~10:38 → 10:42 CEST
+- budget:      antigravity session ~2% (impl) [per /usage]; reviewer claude weekly 85% / session 80% at review start
+- gate:        tsc 0, suite 245/245 (reviewer-run), pollution clean
+- diff:        probe script + package.json + logbook(LB-46) + ledger; (branch also carries the primer-cycle chore)
+- outcome:     VERIFIED ✅ by reviewer — endorsed for merge; ff-merge to `master` HUMAN-GATED (Fausto, LB-14)

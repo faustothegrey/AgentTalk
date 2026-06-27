@@ -39,16 +39,16 @@ promoted→X · absorbed→X · dropped}.
   `design/milestone10-t4-api-enforcement-plan.md` + ledger §T4 + **LB-25**. *(Sibling T3 single-tool
   `consensus_respond`, v5→v6 cross-repo, stays deferred per D3.)*
 
-- **[promoted→M10-T4-live-probe] 2026-06-26 — M10-T4 live-verification probe — experience-led.** T4 shipped
-  *ship-and-watch* (D-T4-2 = declare-unfit), so the combo `tools`+`tool_choice:"required"`+`response_format`
-  is **assumed** for google/openrouter/nous — unit-tested via injected `fetchFn` only, **never** hit a
-  real endpoint. **Spike (only if experience says we need it):** a **transport capability-probe** — one
-  cheap real request per provider, classify by the HTTP response (400 on the combo → unfit; tool-call
-  back → fit), cache the verdict. It would double as the missing live-verification. Reopens D-T4-2
-  (declare-unfit → detect-and-gate). **NOT a model self-report handshake** — that's the wrong layer
-  (the model can't introspect its server's param support; hallucinates "yes"). Triggered by: a provider
-  actually 400-ing in real use, or wanting the live gap closed before relying on T4 in anger. See LB-25.
-  Promoted 2026-06-27 to `design/milestone10-t4-live-probe-plan.md` for review before implementation.
+- **[done] 2026-06-27 — M10-T4 live-verification probe — VERIFIED ✅ (reviewer-run), endorsed for merge.**
+  `scripts/probe-t4-api-tools.mjs` sends one cheap real `/chat/completions` per provider with the exact T4 combo
+  (`tools`+`tool_choice:'required'`+`response_format:{type:'json_object'}`) and classifies by HTTP response.
+  **Measured findings (LB-46, reproduced independently by Claude):** `openrouter`/gpt-4o-mini = **fit**;
+  `google`/gemini-2.5-flash = **http_reject 400** (ANY-mode + JSON mime explicitly unsupported);
+  `nous`/deepseek-v4-flash = **http_reject 404** (default model missing — see LB-1). Script-only, zero production
+  change; tsc 0, suite 245/245. Plan `design/milestone10-t4-live-probe-plan.md`, ledger §"T4 Live Probe", LB-46.
+  **Follow-on left open (SM decision):** the probe makes Google's unfitness a *measured fact* → whether to reopen
+  **D-T4-2** (declare-unfit → detect-and-gate, with provider-verdict cache) is now a real, triggerable choice, not
+  a hypothesis. *(Branch `m10-t4-live-probe`; ff-merge to `master` is Fausto's, human-gated per LB-14.)*
 
 ### Backlog gate — 2026-06-22 (opening M08 · architect: Claude)
 

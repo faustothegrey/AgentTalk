@@ -1,6 +1,7 @@
 # M10-T4 follow-up — live API structured-tools probe
 
-**Status:** READY for Scrum Master go/no-go. Do not implement until Fausto approves this scope.
+**Status:** APPROVED for implementation by Fausto (Scrum Master), 2026-06-27. Gemini should cold-start report and
+STOP per AGENT.md after consuming its fresh implementer primer, then proceed only after Fausto's explicit go.
 **Parent:** `design/milestone10-t4-api-enforcement-plan.md` + backlog item "M10-T4 live-verification probe".
 **Type:** script-only live verification / provider capability classifier.
 
