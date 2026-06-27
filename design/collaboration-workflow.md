@@ -28,7 +28,10 @@ orchestration migration, so it can be reviewed, refined, and reused deliberately
   go/no-go decisions and may reassign or de-assign roles on the fly as necessity arises. If the Scrum Master is not
   human, it must document the reason for each assignment or de-assignment in the appropriate durable project
   artifact. The function may be held by a human or by a designated agent; the current holder/delegates are named in
-  the project instructions.
+  the project instructions. **Current standing (Fausto, 2026-06-27): the human (Fausto) holds the SM function and
+  stays the real gate at any moment; Hermes is in the workflow as a *co-pilot only* — it assists, advises, and
+  drafts, but holds no go/no-go authority — until Fausto explicitly elevates it. See the Hermes-status note under
+  the Scrum Master bullet in `AGENT.md`.**
   - **Standing duties** *(proactive — the SM does these on its own initiative, beyond resolving ambiguity on
     request)*:
     1. **Bring forth the backlog.** Keep the team from idling or guessing what's next: surface parked items from

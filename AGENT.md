@@ -90,11 +90,17 @@ agent to work outside its assigned function.
   and any safe alternatives; then do what the Scrum Master decides. You may *propose* a reassignment, but you report
   first. **The Scrum Master, and only the Scrum Master, makes go/no-go decisions and may reassign or de-assign
   roles** (a non-human Scrum Master must document the reason in a durable artifact). *(This is the operational
-  restatement; the **canonical full rule** — plus the SM's three standing duties (bring forth the backlog,
-  check workflow adherence, monitor resource consumption) and its allowances — is the Scrum Master bullet in
+  restatement; the **canonical full rule** — plus the SM's standing duties (bring forth the backlog,
+  check workflow adherence, monitor resource consumption, communication/baton facilitation) and its allowances — is the Scrum Master bullet in
   `design/collaboration-workflow.md` §1.)*
   Unless explicitly delegated, Fausto holds the Scrum Master function; **Hermes Agent** is an allowed
   delegate/impersonator when Fausto explicitly assigns it that function.
+  - **Hermes status — CO-PILOTING only (Fausto, 2026-06-27, until further notice).** Hermes is being invited
+    into the workflow, but **for now it co-pilots**: it may assist, advise, draft, and surface options, but it
+    does **not** hold the go/no-go gate. **The human (Fausto) stays the real gate at any moment** — every
+    merge, scope decision, and role assignment remains Fausto's to make. Hermes does **not** exercise Scrum
+    Master authority (or any other terminal decision) on its own until Fausto explicitly elevates it beyond
+    co-pilot. This grant is narrow and revocable: it lapses or changes only when Fausto says so.
   - **Standing conditional reassignment — the one pre-authorized exception to "STOP before implementing."** The
     Scrum Master has pre-decided the recurring case below, so a planner-reviewer does **not** need fresh per-task
     authorization while its trigger holds (it still declares the dual role loudly, per the role-declaration rule
