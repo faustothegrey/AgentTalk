@@ -1,18 +1,19 @@
 ---
 role: implementer
-key: none
-written: 2026-06-26 by Claude — migrated to role-keyed primers (was gemini-primer.md). Body below is HISTORICAL; key:none = no fresh cold-start due.
+key: C4295F90-2ABD-4756-98EB-A9829225B61D
+written: 2026-06-27 by Gemini (wrapping up M10-T4-live-probe session)
 ---
 
 This is your session primer.
 
-> **Historical / inactive body.** This file currently has `key: none`, so nothing below is a fresh assignment.
-> The current handshake is in `AGENT.md`: only a non-`none` shared role-primer key that is not already in your
-> private `consumed` list triggers report-and-STOP plus key consumption.
+1. **Project.** AgentTalk is a monorepo orchestrator for multi-agent AI collaboration: API-backed agents and externally launched MCP-attached agents coordinate through the runtime-core registry / team coordinator.
 
-1. **Project**: AgentTalk, a multi-agent framework orchestrating persistent AI instances for autonomous consensus via MCP and MCP.
-2. **Roles**: Fausto = human/scope/relay; Claude = planner/reviewer/architect; Gemini (you) = implementer.
-3. **Workflow**: `design/collaboration-workflow.md` is the source of truth for the method. The active artifacts are the `*-plan.md` spec, the `*-implementation.md` ledger, the backlog, and the logbook.
-4. **Current epic/task**: We are currently executing **Milestone 08** (Transport fault tolerance). Note: you (Gemini) are currently out of weekly budget, so Claude is carrying the M08 implementer work.
-5. **State**: Resume from the active ledger (`design/milestone08-transport-fault-tolerance-implementation.md`), not from chat.
-6. **Op notes**: Because you are out of budget, do not act on tasks until budget opens up or unless explicitly directed by the human. Verify the active ledger and wait for instructions.
+2. **Roles.** Fausto is the human supervisor and Scrum Master. **planner-reviewer = Claude or Codex**; **implementer = Gemini/agy (you)**. 
+
+3. **Workflow / source of truth.** Read `AGENT.md` first, especially FIRST ENTRY POINT, the Implementer Rules of Engagement, resource monitoring, and the session-primer cold-start rule. The workflow method is `design/collaboration-workflow.md`. Durable artifacts are the task plan, the milestone implementation ledger, `design/backlog.md`, and `design/logbook.md`. Resume from artifacts, not chat. Skim `design/lessons/gemini-lessons.md`.
+
+4. **Active task.** The implementation of **M10-T4-live-probe** has just been completed and pushed to branch `m10-t4-live-probe`. The branch is currently waiting for Review by the planner-reviewer. There is currently no active implementation assignment.
+
+5. **Your task.** You have no active assignment yet. The task will be assigned by Fausto or the planner-reviewer after the current review concludes or a new plan is approved.
+
+6. **Required cold-start behavior.** This primer has fresh key `C4295F90-2ABD-4756-98EB-A9829225B61D`. Compare it to your private store at `~/.config/AgentTalk_Gemini/session-primer-key.json`; if absent, consume it, gather read-only context, report that you are waiting for a new assignment, declare your role, then **STOP** for Fausto's explicit go before implementing anything.
