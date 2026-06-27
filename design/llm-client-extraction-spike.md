@@ -1,8 +1,9 @@
 # Spike — `@agenttalk/llm-client`: a standalone chat-with-LLM package (API + MCP plug)
 
-**Status:** Phase 1 ✅ committed (`eae6321`, branch `llm-client-extraction-phase1`). Phase 2 core ✅ done
-(uncommitted): `McpChatCompleter` + `ExecTransport` plug + tests — the concrete WebSocket/MCP adapter to
+**Status:** Phase 1 ✅ committed (`eae6321`, branch `llm-client-extraction-phase1`). Phase 2 core ✅ committed
+(`877577c`, on `master`): `McpChatCompleter` + `ExecTransport` plug + tests — the concrete WebSocket/MCP adapter to
 agentalk-mcp-client is the remaining owed piece (see §7). Gate at Phase 2: tsc 0, suite 239/239.
+<!-- Status corrected 2026-06-27 (LB-33): was "Phase 2 core ✅ done (uncommitted)"; McpChatCompleter merged at `877577c`, sibling drift the LB-31 sweep missed. -->
 Originally scope-decided (Fausto, 2026-06-26). Decisions: **Q1** widen `complete()` with an optional `messages[]` (additive) · **Q2** build
 **Phase 1 + 2** (API chat *and* the MCP plug) · **Q3** structured-output (T4 tool schema) **stays in runtime-core**
 (llm-client stays consensus-free) · **Q4** name = `@agenttalk/llm-client`.

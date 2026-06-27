@@ -922,3 +922,58 @@ The other three were less "is it safe" and more "is this a small clean change or
   by default, with Hermes Agent allowed when Fausto explicitly assigns it that function.
 - **Verification.** Docs-only process amendment; checked with `rg` and `git diff --check`. No build/test run needed
   because no code, scripts, package config, or test contracts changed.
+
+---
+
+### LB-33 · 2026-06-27 — [review] Claude (planner-reviewer) review of Codex's `36cbf81` work
+
+- **Trigger.** Fausto's session objective: review Codex's planner-reviewer output — commit `36cbf81`
+  (`docs(process): record role-boundary workflow and T4 probe plan`; Fausto-committed, Codex-authored) plus the
+  refreshed `planner-reviewer-primer.md`. Read-only verification against git ground truth, no deference.
+- **Verdict.** Strong planner-reviewer work; two completeness gaps worth learning from. Nothing is a correctness
+  defect.
+- **What held up (verified).**
+  1. **Status-correction discipline (LB-31)** is the standout: Codex distrusted the docs, found Bridge-v3 /
+     mcp-exec-server records claiming "uncommitted/pending/owed" while git showed them merged, and verified with
+     `git merge-base --is-ancestor` before rewriting. Re-checked all five commits (`53593a4`, `b67a6ce`, `e3f85c4`,
+     `4fb2a69`, `d0462b6`) — every corrected status line is accurate.
+  2. **Role-boundary docs are well-layered:** generic Scrum Master *function* in `collaboration-workflow.md`
+     (agent-neutral), concrete *holder* (Fausto default, Hermes when delegated) in `AGENT.md`. LB-32 records the
+     provenance honestly.
+  3. **The primer Codex wrote** is action-oriented, enumerates the commit's contents, and correctly flags the T4
+     probe as DRAFT-not-approved.
+- **Gap 1 — the LB-31 stale-status sweep was scoped, not exhaustive.** The same status vocabulary survived in a
+  sibling doc Codex didn't sweep: `design/llm-client-extraction-spike.md` still said *"Phase 2 core ✅ done
+  (uncommitted)"* though `McpChatCompleter` was committed at `877577c` (on `master`, verified). **Corrected here**
+  (see that file's status line). *Lesson:* a status-correction pass should declare its scope and `rg` the whole
+  `design/` for the status vocabulary (`uncommitted`, `pending Fausto`, `HUMAN-GATED`, `owed`) — fix all instances
+  or explicitly note "scoped to X; siblings unchecked". A half-swept correction is itself new drift.
+- **Gap 2 — T4 probe plan import inaccuracy (assigned back to Codex).** `design/milestone10-t4-live-probe-plan.md`
+  §3 tells the implementer to import `buildProtocolToolSchema()` / `parseStructuredResponse()` "from
+  `@agenttalk/runtime-core`'s built output", but runtime-core has **no package-root barrel** — its `exports` map
+  only exposes subpaths (`./agents/*`, `./registry/*`, …), so the package-root import won't resolve. Correct
+  specifier: `@agenttalk/runtime-core/agents/response-schema.js`. No existing script imports these helpers, so the
+  probe is the first — the exact specifier should be pinned in the plan so Gemini (who STOPs on surprises) doesn't
+  bounce it back as a blocker. Otherwise the plan is approve-worthy (explicit IN/OUT scope, honest classification
+  taxonomy, per-provider retry budget, unfitness-is-data exit-code discipline). **Decision (Fausto): pass this fix
+  back to Codex as author** — reviewer flags, author revises; better learning loop than a silent patch. See baton
+  below.
+- **Minor.** The role-boundary rule appears 3× in `collaboration-workflow.md` (roles-list bullet + standalone
+  paragraph + principle #9); correct across files, mildly repetitive within the one file. Not actioned.
+- **Verification.** Docs-only review + one status correction (`llm-client-extraction-spike.md`). Checked with
+  `git merge-base --is-ancestor` (`53593a4`/`b67a6ce`/`e3f85c4`/`4fb2a69`/`d0462b6`/`877577c` all on `master`),
+  package `exports`-map inspection (`packages/runtime-core/package.json` — no root barrel), and `rg` for the
+  status vocabulary. No build/test run needed: no code, scripts, package config, or test contracts changed.
+
+---
+
+### Baton — Claude (reviewer) → Codex (author), 2026-06-27
+
+Codex: one actionable from the LB-33 review, scoped to a doc you own. **Fix the import specifier in
+`design/milestone10-t4-live-probe-plan.md` §3 "Implementation approach".** It currently says to import the protocol
+helpers from `@agenttalk/runtime-core`'s built output; that package has **no root barrel** (its `package.json`
+`exports` only exposes subpaths like `./agents/*`), so a package-root import won't resolve. Pin the exact specifier
+the implementer should use: `@agenttalk/runtime-core/agents/response-schema.js` for both `buildProtocolToolSchema()`
+and `parseStructuredResponse()` (or a direct `dist/agents/response-schema.js` path, matching the precedent of other
+live scripts — note there is currently **no** script importing these, so you're setting the precedent). Docs-only;
+no scope change to the probe plan otherwise. The plan stays DRAFT-for-review after the fix.
