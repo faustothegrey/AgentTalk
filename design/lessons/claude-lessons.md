@@ -24,3 +24,16 @@ here.**
 - **`git add` of a git-rm'd path errors and stages nothing** → I shipped a broken commit (deletion only) and had to
   amend. When a commit involves a rename/deletion, check `git status` *after* staging and *before* committing, or
   stage with `git add -A` on the dir rather than listing a path that no longer exists.
+
+### 2026-06-27 — verify-don't-assert caught THREE phantom backlog items in one session
+- **The backlog lied three times; git told the truth.** Asked to prime a planner for the "next item," the §3b
+  ground-truth check found the picked item (`llm-client` spike) **already merged**, then the next two candidates
+  (`provider`-union, mcp-rename) **also already done** — all still reading `[open]`/`[promoted]`. The gate's
+  "disposition *every* item against reality" is load-bearing: picking off a stale backlog manufactures phantom
+  tasks. **Always grep/log the actual code before believing a backlog or plan line** (Reviewer Rule 5). Wrote LB-47.
+- **Review = run it, not read it.** I stamped both M10-T4 and llm-client VERIFIED only after re-running the suite
+  (245/245), reproducing the live probe, and running `npm run smoke:exec` end-to-end. The smoke proved the "owed"
+  adapter gap was *already* closed — something a diff-read would have missed.
+- **Scope to budget; baton to headroom.** At ~87% I correctly *declined* to start the big conductor plan and instead
+  swept the backlog (cheap) + handed planning to Codex (more weekly headroom). Recognizing "this is the wrong
+  budget window for a big design" is part of planning, not a cop-out.
