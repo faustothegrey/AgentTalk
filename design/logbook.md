@@ -1175,3 +1175,26 @@ no scope change to the probe plan otherwise. The plan stays DRAFT-for-review aft
      next" means **confirm** the assigned task and where it stands — the implementer doesn't self-pick work; the task
      traces to Fausto's go + the plan's DoD.
 - **Origin.** Fausto ↔ Claude exchange clarifying the priming model right after agy's key-store bootstrap (LB-40).
+
+---
+
+### LB-42 · 2026-06-27 — [finding] OpenRouter confirmed as a live-test API gateway (+ verified free-model shortlist)
+
+- **Finding.** `OPENROUTER_API_KEY` is present in the env and the OpenRouter gateway works end-to-end from this
+  machine. `GET https://openrouter.ai/api/v1/models` returns **339 models** (2026-06-27); a `/chat/completions` ping
+  to `meta-llama/llama-3.3-70b-instruct` returned `pong` (20 prompt + 2 completion tokens). OpenRouter is already in
+  the `api-client.ts` provider table (`openrouter` / `OPENROUTER_API_KEY` / `openrouter.ai`), so it's a usable live
+  gateway with no code change — one key fronts a large multi-vendor pool behind an OpenAI-compatible surface.
+- **Free-tier caveat (verify, don't assert).** The `:free` tier is **rate-limited / intermittent** —
+  `google/gemma-4-31b-it:free` returned *"Provider returned error"* on one attempt then succeeded on another. Many
+  free "reasoning"/"thinking" models (nvidia `nemotron-*:free`, `liquid/lfm-2.5-1.2b-thinking:free`,
+  `poolside/laguna-*:free`) respond but spend the token budget on a `reasoning` field and return null `content` at
+  low `max_tokens`. The cleanest free instruct picks were `google/gemma-4-26b-a4b-it:free` and
+  `google/gemma-4-31b-it:free` (both gave a terse `pong`). **Don't gate a required check on a `:free` model**; use a
+  cheap-paid fallback (`meta-llama/llama-3.3-70b-instruct`, `openai/gpt-4o-mini`) when reliability matters.
+- **Where the maintained list lives.** Curated, growing reference: **`design/live-test-models.md`** (gateways +
+  verified free models + cheap fallbacks + how to add more). The logbook records the finding; the doc holds the
+  living list (logbook is append-only and can't maintain it).
+- **Verification.** Live `curl` to `/models` and `/chat/completions` with the env key; pass/fail probed across ~10
+  free models. Raw pings only (not yet routed through `packages/llm-client`); a through-the-client live ping is the
+  natural next step if we want to exercise the real `callApi()` path.
