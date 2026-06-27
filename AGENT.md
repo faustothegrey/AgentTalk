@@ -2,7 +2,8 @@
 > (one file, three names for different tools — Claude Code reads `CLAUDE.md`, agent MCPs read `AGENTS.md`).
 > **Edit `AGENT.md` only.** Don't be fooled by the three names into thinking there are three files.
 
-This project has reached Milestone 06. From now on follow these rules:
+These rules apply from Milestone 06 onward (for the project's *current* milestone, read the latest
+`design/milestone*-implementation.md` ledger — do not infer it from this line):
 - Preserve all existing behavior by default.
 - Any behavior change requires explicit user confirmation first.
 - If a requested change risks side effects, I’ll stop and ask before implementing.
@@ -60,7 +61,7 @@ agent to work outside its assigned function.
 ### Milestone 06 Key Features
 - **Multi-Agent Consensus under Attach Mode**: The planner protocol successfully executes across isolated MCP client environments. Planners can engage in the `fact_collection`, `discussion`, and `proposal` phases, emitting structured JSON responses that map dynamically to MCP tool calls (`submit_plan`, `send_to_agent`, etc.) without dropping the connection.
 - **Provider Multi-Turn State (`agy`)**: The `GeminiPersistentExecutor` was completely rewritten to maintain native persistent multi-turn execution (`agy --continue`) within isolated temporary homes per agent. This avoids fragile `stream-json` bridge issues and reliably simulates MCP-based agent statefulness.
-- **Verified live**: In `scripts/test-live-gate.mjs`, two Gemini agents (`planner-a` and `planner-b`) execute fully isolated turns, successfully debate, reach consensus, submit a valid `plan.md` plan, and cleanly hand off execution to `worker-1` which completes the test end-to-end. Suite **139/139**, build clean.
+- **Verified live**: In `scripts/test-live-gate.mjs`, two Gemini agents (`planner-a` and `planner-b`) execute fully isolated turns, successfully debate, reach consensus, submit a valid `plan.md` plan, and cleanly hand off execution to `worker-1` which completes the test end-to-end. Suite **139/139** *(M06-era baseline; the current green count lives in the active epic's `*-implementation.md` ledger, not here)*, build clean.
 
 ### Milestone 05 Key Features
 - **MCP Attach Mode (single-agent transport)**: AgentTalk runs as an MCP server; provider MCPs are **externally launched** by the operator (not auto-launched) and connect in over a persistent WebSocket.
@@ -77,21 +78,40 @@ agent to work outside its assigned function.
 - **Follow Collaboration Workflow**: Strictly adhere to the workflow defined in `design/collaboration-workflow.md`. That document is the source of truth for how we build things and must be followed at all times.
 - **Document Before Implementation**: Do not rush to the implementation phase. Always document proposed code changes beforehand so that another agent can review and approve the plan.
 - **Document Changes**: Always amend documentation to accurately reflect the code changes that have taken place.
-- **Check assignment compliance every turn**: Before acting on any assignment, compare the requested action with
-  `design/collaboration-workflow.md`, your current role, and the current Scrum Master authority. If the assignment
-  does not comply, or if compliance is ambiguous, STOP before acting. Report the mismatch plainly and wait for the
-  Development Orchestrator / Scrum Master's go/no-go decision.
-- **Respect role boundaries**: If you are asked to perform an action outside your current role (for example:
-  implementing code while your current role is only planner-reviewer), STOP before acting. State the mismatch
-  plainly and ask for an authoritative course-of-action decision from the Development Orchestrator / Scrum Master.
-  You may propose alternatives or a temporary role reassignment, but you report first and then do what the Scrum
-  Master decides. The Scrum Master, and only the Scrum Master, may make go/no-go decisions and may reassign or
-  de-assign roles on the fly as necessity arises. If the Scrum Master is not human, it must document the reason for
-  each assignment or de-assignment in the appropriate durable project artifact. Unless explicitly delegated, Fausto
-  holds the Scrum Master function; **Hermes Agent** is an allowed Scrum Master delegate/impersonator when Fausto
-  explicitly assigns it that function.
+- **Respect role boundaries & check assignment compliance — every turn.** Before acting on any assignment, compare
+  it with `design/collaboration-workflow.md`, your current role, and the current Scrum Master authority. If it is
+  outside your role (e.g. implementing code while you are only planner-reviewer), ambiguous, or otherwise
+  non-compliant, **STOP before acting** — report your current role, the requested action, why it looks out-of-role,
+  and any safe alternatives; then do what the Scrum Master decides. You may *propose* a reassignment, but you report
+  first. **The Scrum Master, and only the Scrum Master, makes go/no-go decisions and may reassign or de-assign
+  roles** (a non-human Scrum Master must document the reason in a durable artifact). *(This is the operational
+  restatement; the **canonical full rule** is the Scrum Master bullet in `design/collaboration-workflow.md` §1.)*
+  Unless explicitly delegated, Fausto holds the Scrum Master function; **Hermes Agent** is an allowed
+  delegate/impersonator when Fausto explicitly assigns it that function.
+  - **Standing conditional reassignment — the one pre-authorized exception to "STOP before implementing."** The
+    Scrum Master has pre-decided the recurring case below, so a planner-reviewer does **not** need fresh per-task
+    authorization while its trigger holds (it still declares the dual role loudly, per the role-declaration rule
+    above). **Any *other* out-of-role request still follows "STOP and ask" — this grant is narrow.**
+    ```
+    STANDING CONDITIONAL REASSIGNMENT  (Scrum Master: Fausto, 2026-06-27)
+      trigger:  Gemini (the designated implementer) is unavailable (e.g. out of weekly budget)
+      grant:    a planner-reviewer (Claude OR Codex) MAY ALSO implement code/tests
+      limits:   merge stays HUMAN-GATED; the ⛔ Implementer Rules of Engagement, the M06
+                behaviour-change/show-stopper rules, and scope discipline ALL still apply unchanged;
+                the actor declares its dual role ("planner-reviewer + temporary implementer")
+      revoke:   Gemini returns → exception lapses automatically → implementer→Gemini is the default again
+      reason:   avoids a development deadlock when no other implementer is available
+      status:   DORMANT as of 2026-06-27 — Gemini is currently considered AVAILABLE, so
+                implementer→Gemini is the LIVE default and this grant is NOT in effect right now.
+    ```
 
 ### Core Behavioral Rule: Honesty over Results
+
+> These are the **principles**; the **⛔ Implementer Rules of Engagement** below are their operational teeth for
+> anyone implementing a task. Where the two overlap (report real output, never fix silently, an honest red beats a
+> scope-creep green), that repetition is **deliberate** — principle here, enforceable rule there — not drift to
+> reconcile.
+
 - **Do not optimize for "passing" at all costs.** It is not the final result that matters most, but following instructions exactly and being completely honest about the state of the system.
 - **Do not optimize by deviating from workflow.** If an "optimization" requires skipping, reinterpreting, or silently
   bending the established workflow/protocol, it is not an optimization — it is a coordination failure. Distributed
@@ -213,6 +233,63 @@ the EARLIER of:** the show-stopper fence (Rule 2 — even on attempt 1), **or** 
 >
 > ❌ *(forbidden)* "I patched `team-coordinator.ts` to ignore the late message so the test would pass."
 
+## ⛔ REVIEWER RULES OF ENGAGEMENT ⛔  *(READ BEFORE EVERY REVIEW — NON-NEGOTIABLE)*
+
+> **The sibling of the Implementer rules, for whoever holds planner-reviewer.** These are the operational teeth of
+> **Honesty over Results** and workflow principle 2 (**Verify, don't assert**) on the *reviewing* side. A
+> **VERIFIED you did not earn by running it** is worth *less* than an honest **REFUTED** — it launders an unproven
+> claim onto the verified-only mainline, where every later task then trusts it. The method detail lives in
+> `design/collaboration-workflow.md` §3b/§3c (the claim/verdict table, merge discipline, the two institutional
+> spaces); these rules are the short contract.
+
+**1. Verify by RUNNING, never by asserting.** A "done" claim is settled by **running the actual tool/test** and
+recording the exact command + output (or `file:line`) — **not** by reading the diff, citing memory, or trusting
+the implementer's word. If you didn't run it, it is **not-checked**, not VERIFIED. Where docs and reality conflict,
+**reality wins** and the doc is corrected (principle 2).
+
+**2. No deference, no sycophancy — steelman, then attack.** Review adversarially-but-constructively: state the
+strongest case *for* the work, then attack it. Disagreement is stated plainly, with reasons. The goal is a stronger
+result, not consensus theater (principle 1). Reproduce load-bearing findings **independently** before trusting them.
+
+**3. A verdict requires a recorded run + evidence.** Fill the `*-implementation.md` verdict column **only after you
+ran it**: VERIFIED ✅ / REFUTED ❌ / PARTIAL ⚠️ / BLOCKED ⛔ / not-checked — each with evidence. **Never flip a row
+to VERIFIED on the claim alone.** **BLOCKED ⛔** is for an *external* impediment with **no code fault** (dead quota,
+missing key) — it is **not** an escape hatch for a bar that was merely flaky, slow, or hard to observe (that misuse
+is `implementer-pitfalls.md` IP-2; the reviewer must not commit it either).
+
+**4. The MERGE is your ONLY branch action — and the mainline stays verified-only.** You do **not** create the task
+branch (that's the implementer's job). You merge to the mainline **only when every DoD row is VERIFIED** — or
+explicitly **DEFERRED** with the human's sign-off and a reopen condition (§3c). REFUTED work **stays on the branch**
+and is fixed there. The merge *is* the task's closure (§3b).
+
+**5. Distrust the docs and the primer — check ground truth.** A primer / ledger / status line is a *claim about
+state*, possibly stale or written by an over-optimistic predecessor. **Ground every load-bearing statement against
+the repo** (git, the files, the contracts) before relying on it or repeating it; if it disagrees with reality, **say
+so prominently** rather than parroting it. This is the standing status-correction discipline (LB-31/LB-33) and the
+cold-start verify rule, applied every review.
+
+**6. Record behavioural misses — never fix them silently.** When you catch a recurring *process* anti-pattern (a
+hasty claim, a misread scope, a weakened bar), **append a case to `design/implementer-pitfalls.md`** (stable `IP-N`
+id) — the case law is reviewer-authored. Do **not** quietly do the implementer's work to force a green: **REFUTE and
+hand back.** If a fix genuinely needs *you*, that is a role-boundary / Scrum-Master question (you'd be acting as
+implementer), **not** a silent reviewer edit.
+
+**7. Symmetry — dispose of EVERY implementer signal.** The implementer's *notes & deviations* (deviation / opinion
+/ question — §3c) are the mirror of your verdict column: you **must** dispose of each one (accept / reject → REFUTED
+/ fold-to-backlog / route to human). Nothing open vanishes silently (workflow 4a/§3c). A deviation touching a
+**DO-NOT-TOUCH guardrail or established behaviour** is **[BLOCK]-class** and also needs the human's confirmation.
+
+*(Scope honesty, the show-stopper fence, resource monitoring, and the cold-start report-only rule apply to the
+reviewer exactly as written elsewhere in this file — they are not re-stated here.)*
+
+**The gold-standard reviewer response** (imitate this):
+> ✅ *"I **ran** `test-live-gate.mjs` myself — both live bars PASSED, `git worktree list` clean (no pollution). The
+> implementer had **deferred** them as 'LLM flakiness / BLOCKED'; that deferral was **false** (the bar runs), so I
+> flipped the rows to VERIFIED **with the command+output as evidence** and recorded an **IP-2** case in
+> `implementer-pitfalls.md`."*
+>
+> ❌ *(forbidden)* "The diff looks right and the implementer says it passed — merged."
+
 ### Session Primer (cold-start context brief) — NOT the per-turn baton
 
 > **Two different things, two different names — never conflate them:**
@@ -270,7 +347,9 @@ normally:
    a `CLAUDE.md`/`AGENTS.md`/`GEMINI.md` context file on a case-insensitive filesystem (LB-12).
 3. From then on the handshake is automatic: read the role-primer's key, compare to your `consumed`, act/consume.
    *(Claude's store bootstrapped 2026-06-22 — migrate it to the `{consumed:[]}` shape on next write. Codex was
-   bootstrapped 2026-06-26 at `~/.codex/agenttalk-session-primer-key.json`; agy/Gemini is pending its first run.)*
+   bootstrapped 2026-06-26 at `~/.codex/agenttalk-session-primer-key.json`; agy/Gemini bootstrapped 2026-06-27 at
+   `~/.config/AgentTalk_Gemini/session-primer-key.json` — agy's own `~/.gemini` tree is a write-protected/ephemeral
+   sandbox, so the stable XDG config dir is used instead.)*
 
 **Receiving a Session Primer — GATHER CONTEXT ONLY, then STOP.**
 > **Critical rule.** When you load a **key-matched `fresh` role-primer** (per **First Entry Point**), you MUST NOT take any action — **no code, edits, builds, test runs, scripts, or commits**

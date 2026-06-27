@@ -1,5 +1,11 @@
 # Codex onboarding brief — activating Codex as PLANNER-REVIEWER (first run)
 
+> ⚠️ **ARCHIVED (2026-06-27) — one-time artifact, superseded by the normal primer flow.** Codex is onboarded
+> (private key store seeded 2026-06-26; role-keyed handshake live). This brief is kept for historical rationale
+> only; it is **not** live guidance. Its git ref (`master @ b409b97`), test baseline, and milestone notes are
+> stale by design — for current state read `git log` + the active `*-implementation.md` ledger, and for the
+> canonical cold-start contract read `AGENT.md → FIRST ENTRY POINT`.
+
 **What this is.** The chat brief to paste to **Codex** on its first run in the repo, to activate it in the
 **planner-reviewer** role (co-eligible with Claude — see `AGENT.md → FIRST ENTRY POINT`, role-keyed primers,
 [[LB-29]]). Because the role-primer (`design/session-primers/planner-reviewer-primer.md`) currently carries

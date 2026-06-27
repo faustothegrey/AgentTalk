@@ -227,7 +227,7 @@ entry carries a **stable `LB-N` id** — cite it from ledgers/backlog (titles ma
   private key store is agent-writable, so the gate is behavioural, not enforced (hard-gate alt: human supplies the
   key value so possession proves authorisation — considered, not adopted).
 - **Source:** Fausto ↔ Claude design exchange, 2026-06-22 (surfaced by a stress-test of the consumed-key re-read
-  path). See `design/reprime-mechanism-proposal.md`.
+  path). See `design/reprime-mechanism.md` *(renamed from `…-proposal.md` + actualized to the role-keyed model 2026-06-27)*.
 
 ### LB-14 · 2026-06-22 — [process] The human gate's purpose is *independence*, not *determinism* — so a deterministic check can be delegated, a judgment check cannot
 - **Finding:** with Gemini out of budget there is **no independent agent verifier**, so plan §8 made Fausto the
@@ -1006,3 +1006,131 @@ no scope change to the probe plan otherwise. The plan stays DRAFT-for-review aft
 - **Amendment.** Removed the redundant planning-entry content and replaced it with this correction record at Fausto's
   request. The implementer task plan remains in `design/milestone10-t4-live-probe-plan.md`; no implementation approval,
   live provider call, or runtime behavior change has occurred.
+
+---
+
+### LB-36 · 2026-06-27 — [review] Claude review of T4 live-probe plan (post-LB-33 fix) — two nuances for the implementer hand-off
+
+- **Trigger.** Fausto asked Claude for an independent opinion on the T4 live-probe planning state (Codex `900a79b` →
+  `fa1bd13`) before a Scrum Master go/no-go. Read-only verification against git ground truth.
+- **Verdict.** Plan is implementer-ready; the LB-33 import fix is correct; the LB-35 over-doc correction is the right
+  discipline. No correctness defects. Two nuances worth recording so the eventual implementer (Gemini, who STOPs on
+  surprises) doesn't bounce them back as blockers.
+- **Verified.** Import specifier `@agenttalk/runtime-core/agents/response-schema.js` resolves (exports map exposes
+  `./agents/*.js` → `./dist/agents/*.js`; dist file present; `buildProtocolToolSchema`/`parseStructuredResponse`
+  exported). Provider table in the plan matches `packages/llm-client/src/api-client.ts` exactly. Suggested probe
+  envelope `ack_planning_protocol` + `{}` is an accepted type (`response-schema.ts:283`), so a real success classifies
+  as `fit`, not a false `invalid_arguments`. Probe script absent (review-only). 7 commits ahead of origin, docs-only.
+- **Nuance 1 — import style diverges from script precedent; flag it as intentional.** *Every* existing live script
+  imports compiled helpers by **relative dist path** (`../packages/runtime-core/dist/...`), not the bare
+  `@agenttalk/...` specifier. The bare specifier *does* resolve here (workspace symlink `node_modules/@agenttalk/runtime-core`
+  + subpath exports — both verified), so it is **not wrong**, just stylistically new. Recommend one line in the plan:
+  "bare specifier is intentional; resolves via the workspace symlink + `exports` subpaths." Otherwise the implementer
+  may STOP on it as an unexplained deviation from the precedent set by `test-live-gate.mjs` et al.
+- **Nuance 2 — full-suite gate vs a script-only change.** §4 DoD + §6 list the full suite as a gate, but this task adds
+  one standalone `.mjs` that touches no package source. Running the whole suite is harmless but arguably more than the
+  change warrants; §4 already hedges "unless Fausto explicitly scopes a narrower gate." A Scrum Master note on whether
+  the full-suite gate is required for a script-only addition would remove the ambiguity at go/no-go.
+- **Verification.** Docs+repo read-only: `exports`-map inspection, `rg` of script import styles, `node_modules`
+  symlink check, message-type enum check, `git diff --stat origin/master..master`. No build/test run (nothing in code,
+  scripts, package config, or test contracts changed).
+
+---
+
+### LB-37 · 2026-06-27 — [process] Added the missing Reviewer Rules of Engagement (governance-doc audit, item 5)
+
+- **Trigger.** A governance-doc consistency audit (Claude, planner-reviewer) found that `codex-onboarding-brief.md`
+  referenced "AGENT.md → ⛔ IMPLEMENTER/**REVIEWER** RULES OF ENGAGEMENT", but AGENT.md only had the *Implementer*
+  RoE. The reviewer's duties existed but were **scattered** across `collaboration-workflow.md` §1 (Reviewer role),
+  principle 2 (verify-don't-assert), §3b (verify-by-running, verdict column, merge-only-when-VERIFIED, never create
+  the branch) and §3c (the symmetry rule) — no single imperative contract for half the team.
+- **Decision (Fausto).** Consolidate into a new **`⛔ REVIEWER RULES OF ENGAGEMENT`** sibling section in `AGENT.md`
+  (the "law" for both roles lives in AGENT.md), pointing into `collaboration-workflow.md` §3b/§3c for method detail —
+  chosen over putting it in the workflow doc, to keep both RoE contracts symmetric and in one place.
+- **What landed.** Seven imperative rules (verify-by-running; no-deference/steelman; verdict needs a recorded run +
+  evidence; merge is the reviewer's only branch action + verified-only mainline; distrust docs/primer; record
+  behavioural misses in `implementer-pitfalls.md` don't fix silently; symmetry — dispose of every implementer
+  signal), a gold-standard example, and a back-pointer added in workflow §3b. The previously-dangling onboarding-brief
+  reference now resolves.
+- **Verification.** Docs-only; `rg` confirmed the new section exists and the inbound reference resolves; `git diff
+  --check` clean. No build/test run (no code, scripts, package config, or test contracts changed).
+- **Context.** Part of a multi-item governance audit; staleness/polish items (1–4, 7, 9–12) already applied; the two
+  remaining substantive items are role-boundary exception documentation (item 6) and consolidating the ~7×-stated
+  Scrum-Master authority rule (item 8).
+
+---
+
+### LB-38 · 2026-06-27 — [process] Scrum Master decision: standing conditional reassignment for implementer-unavailable (audit item 6)
+
+- **Trigger.** The governance audit (item 6) found that the only place the "Gemini out of budget → planner-reviewers
+  are effectively the implementer" idea lived was a casual aside in the now-archived `codex-onboarding-brief.md` —
+  implying a *silent blanket* exception, which contradicted both the strict role map (`implementer → Gemini`) and the
+  per-occurrence-documentation rule for reassignments. The reassignment *mechanism* was already documented; a
+  *standing dated policy* for the recurring case was not.
+- **Ground truth at decision time.** Reassignment precedent exists (`backlog.md:181`, "Claude as implementer,
+  reassigned", 2026-06-21). Meter showed `antigravity 0% used` (unreliable per the known-limits note). Fausto
+  confirmed **Gemini is AVAILABLE now**.
+- **Decision (Scrum Master: Fausto, 2026-06-27).** Recorded a **STANDING CONDITIONAL REASSIGNMENT** in `AGENT.md`
+  (under Workflow Rules → Respect role boundaries): *while Gemini (designated implementer) is unavailable, a
+  planner-reviewer (Claude or Codex) MAY also implement code/tests* — merge stays **human-gated**, the ⛔ Implementer
+  Rules of Engagement + M06 behaviour-change/show-stopper rules + scope discipline all apply unchanged, and the actor
+  declares its dual role. It **lapses automatically when Gemini returns**. This is the *one* pre-authorized exception
+  to "STOP before implementing"; every other out-of-role request still follows STOP-and-ask. It satisfies LB-34
+  (Scrum Master owns reassignment; reason documented in a durable artifact).
+- **Current status: DORMANT.** Because Gemini is available now, `implementer → Gemini` is the live default and this
+  grant is **not** in effect; it activates only while the trigger (Gemini unavailable) holds.
+- **Verification.** Docs-only; the AGENT.md note carries the trigger/grant/limits/revoke/reason/status fields. No
+  build/test run (no code, scripts, package config, or test contracts changed).
+- **Adjacent (not actioned here).** Gemini being back is the reopen condition for the parked TODO "run the Gemini
+  live gate when budget returns" (`node scripts/test-mcp-gate.mjs gemini`, provider-parity for the v5 contract) —
+  flagged to Fausto, out of scope for item 6.
+
+---
+
+### LB-39 · 2026-06-27 — [process] De-duplicated the Scrum-Master authority / role-boundary rule (audit item 8) + audit closeout
+
+- **Trigger.** The governance audit (item 8) found the Scrum-Master-authority + per-turn-role-boundary rule restated
+  **~7×** across `AGENT.md` (two overlapping Workflow-Rules bullets) and `collaboration-workflow.md` (§1 Scrum Master
+  bullet, §1 "Roles are functions" para, §1 "Role-boundary before action" para, §2 principle 7 tail, §2 principle 9).
+  Each restatement was a drift risk and the wordings had already diverged slightly.
+- **Decision (Fausto).** Reduce to **one canonical statement + pointers**, meaning-preserving (de-dup only, no rule
+  change):
+  - **Canonical full rule** = the Scrum Master bullet in `collaboration-workflow.md` §1 (where the role is defined);
+    augmented to also carry the per-turn compliance-check sentence so it fully subsumes the others.
+  - **Operational restatement** = one merged bullet in `AGENT.md` (kept deliberately, since AGENT.md is the
+    always-loaded turn-1 file — an agent shouldn't have to jump docs for the basic rule); points to §1 as canonical
+    and retains the project-specific facts (Fausto holds SM; Hermes delegate) + the LB-38 standing-reassignment block.
+  - **Pointers** (no longer full copies): §1 "Roles are functions" (authority/reason clause → pointer, keeps its
+    unique "stated explicitly in relay+ledger" point), §1 "Role-boundary before action" para, and §2 principle 9.
+- **Invariants checked preserved** (via `rg`): non-human-SM "document the reason" duty, "stated explicitly in relay
+  and ledger", the per-turn compliance check, and "only the Scrum Master may reassign/de-assign or decide go/no-go".
+- **Verification.** Docs-only; `git diff --check` clean; meaning-preservation confirmed by grepping each invariant
+  still has a home. No build/test run (no code, scripts, package config, or test contracts changed).
+- **Audit closeout.** This completes the governance-doc consistency audit (items 1–12). Done this session: staleness
+  fixes 1–4 + 10–11, polish 7 + 9 + 12, and the three substantive items — 5 (Reviewer RoE, LB-37), 6 (standing
+  conditional reassignment, LB-38), 8 (this entry). **One sub-task remains open:** bootstrapping Gemini's private
+  key store (spun out of item 6) — blocked on agy reporting its stable, non-repo, non-ephemeral private path; AGENT.md
+  line ~353 still reads "agy/Gemini is pending its first run" until then.
+
+---
+
+### LB-40 · 2026-06-27 — [process] Bootstrapped Gemini/agy's private key store (closes the item-6 sub-task)
+
+- **Trigger.** Item-6 readiness gap: agy was the live implementer default but its private key store had never been
+  created (AGENT.md read "pending its first run"). agy's self-report had asserted it "checks a private store" without
+  confirming the store existed — an over-confident claim that `key: none` had masked. Per AGENT.md bootstrap step 1,
+  the stable path was obtained from agy via Fausto (relay), not guessed.
+- **What agy reported.** Stable path `/Users/fausto/.config/AgentTalk_Gemini` — chosen because agy's own
+  `~/.gemini/antigravity-cli` tree is a **write-protected/ephemeral per-session sandbox** (a hardcoded security
+  boundary blocks writes there). agy verified persistence by writing + re-reading throwaway files.
+- **Reviewer verification (Claude).** Confirmed the dir exists, is **outside the repo**, is a standard persistent
+  `~/.config` (XDG) dir (not `/tmp`, `/var/folders`, or the `.gemini` sandbox), and is writable from the machine
+  where the store is seeded. Removed agy's throwaway `test.json`/`test2.json`.
+- **Action.** Seeded `~/.config/AgentTalk_Gemini/session-primer-key.json` = `{ "consumed": [] }` (with the standard
+  `_comment` explaining the role-keyed model, mirroring Claude's/Codex's stores). Flipped AGENT.md from "pending its
+  first run" → "bootstrapped 2026-06-27 at `~/.config/AgentTalk_Gemini/session-primer-key.json`".
+- **Effect.** All three agents now have durable private stores (Claude `~/.claude/projects/…`; Codex `~/.codex/…`;
+  Gemini `~/.config/AgentTalk_Gemini/…`). The next time a fresh-keyed `implementer-primer.md` is handed to Gemini,
+  its cold-start consume will persist correctly. **This closes the last open thread from the governance audit.**
+- **Verification.** Store file present + valid JSON; AGENT.md line updated; `git diff --check` clean. The store lives
+  outside the repo, so it does not appear in the repo diff (by design).

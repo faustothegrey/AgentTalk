@@ -1,6 +1,6 @@
 # Design Collaboration Workflow (multi-agent + human)
 
-**Status:** Draft for review (2026-06-18)
+**Status:** Operative — the source of truth for our working method (first drafted 2026-06-18; amended continuously since, see `logbook.md`)
 **Author:** the Reviewer/Verifier agent (at the Human's request)
 **Purpose:** Make explicit the working method we converged on while designing the MCP
 orchestration migration, so it can be reviewed, refined, and reused deliberately.
@@ -14,15 +14,20 @@ orchestration migration, so it can be reviewed, refined, and reused deliberately
 
 - **Human** — sets scope and goals, makes final decisions, decides what is
   in/out of scope (e.g. parking HITL, removing the auth-tier discussion), and **relays
-  messages between the two agents.**
-- **Development Orchestrator / Scrum Master** — the authority for **task-assignment ambiguity**. When an
-  agent is asked to do work outside its current role (for example, a planner-reviewer being asked to
-  implement code), the agent stops and reports the mismatch to the Scrum Master for a course-of-action decision.
-  The agent may propose alternatives or a temporary role reassignment, but it must present the issue first
-  and then do what the Scrum Master decides. The Scrum Master, and only the Scrum Master, makes go/no-go decisions
-  and may reassign or de-assign roles on the fly as necessity arises. If the Scrum Master is not human, it must
-  document the reason for each assignment or de-assignment in the appropriate durable project artifact. The function
-  may be held by a human or by a designated agent; the current holder/delegates are named in the project instructions.
+  messages between the agents.**
+- **Development Orchestrator / Scrum Master** — the authority for **task-assignment ambiguity**, and the
+  **canonical statement** of role-boundary / go-no-go authority (every other mention of this rule — elsewhere in
+  this doc and in `AGENT.md` — points back here). **At the start of each turn, every agent checks whether its
+  assignment complies with this workflow, its current role, and the current Scrum Master authority**, reporting its
+  current role, the requested action, why it may be out-of-role, and any safe alternatives — rather than inferring
+  permission from urgency or convenience. When an agent is asked to do work outside its current role (for example, a
+  planner-reviewer being asked to implement code), the agent stops and reports the mismatch to the Scrum Master for a
+  course-of-action decision. The agent may propose alternatives or a temporary role reassignment, but it must present
+  the issue first and then do what the Scrum Master decides. The Scrum Master, and only the Scrum Master, makes
+  go/no-go decisions and may reassign or de-assign roles on the fly as necessity arises. If the Scrum Master is not
+  human, it must document the reason for each assignment or de-assignment in the appropriate durable project
+  artifact. The function may be held by a human or by a designated agent; the current holder/delegates are named in
+  the project instructions.
 - **Author agent** — drafts and revises the design (e.g. owns the proposal's decision
   sections).
 - **Reviewer/Verifier agent** — critiques without deference, verifies claims empirically,
@@ -36,20 +41,18 @@ particular agent (or agents) for simplicity and continuity, the roles are **dyna
 nature and may be temporarily reassigned whenever the work calls for it** — for example,
 the Reviewer/architect stepping in as Implementer for a change too sensitive or specialised
 to delegate, or the Human taking a role directly. What is bound is the **responsibility of
-the role**, never the identity of the agent performing it. Only the Scrum Master may make
-that reassignment or de-assignment. When such a reassignment happens it is **stated explicitly**
-— in the relay and in the ledger — so it is always unambiguous who currently holds which function
-(the no-shared-memory constraint below makes this mandatory, not optional). If the Scrum Master
-is not human, the same durable record must include the reason for the assignment or de-assignment.
+the role**, never the identity of the agent performing it. *(Who may reassign, and the duty of a
+non-human Scrum Master to document the reason, are the Scrum Master bullet's job above.)* What this
+paragraph adds: when a reassignment happens it is **stated explicitly — in the relay and in the ledger** —
+so it is always unambiguous who currently holds which function (the no-shared-memory constraint below
+makes this mandatory, not optional).
 
-**Role-boundary and go/no-go decisions go to the Scrum Master before action.** At the start of each turn, each agent
-checks whether the assignment complies with this workflow, its current role, and the current Scrum Master authority.
-If a request crosses role lines, makes ownership doubtful, or otherwise appears non-compliant, the agent does not
-infer permission from urgency or convenience. It reports: current role, requested action, why the action appears
-out-of-role or non-compliant, and any safe alternatives. Then it waits for the Scrum Master's authoritative go/no-go
-or course-of-action decision and follows it.
+**Role-boundary and go/no-go decisions go to the Scrum Master before action** — the per-turn compliance check,
+the escalation steps, and the reassignment authority are stated once, canonically, in the **Scrum Master bullet
+above**; this is a pointer, not a second copy.
 
-**Defining constraint:** the two agents do **not** share a conversation or memory. The
+**Defining constraint:** the agents do **not** share a conversation or memory (and there may be more than
+two of them — see the role map in `AGENT.md`). The
 only channel between them is the **shared design docs** plus what the human relays. This
 is why "write it down" is not a nicety here — **the durable artifacts *are* the
 inter-agent communication bus.** Anything not written down does not survive the handoff.
@@ -103,11 +106,9 @@ inter-agent communication bus.** Anything not written down does not survive the 
 8. **Step-by-step with smoke tests.** Implementation proceeds in small phases, each with a
    concrete smoke checkpoint; the riskiest unknowns are validated first, in isolation,
    before touching production paths.
-9. **Ambiguous or non-compliant assignment escalates before execution.** At the start of each turn, the actor checks
-   the assignment against this workflow and its current role. When role ownership is unclear, especially when a
-   non-implementer is asked to implement, the actor asks the Development Orchestrator / Scrum Master for an explicit
-   go/no-go or course-of-action decision instead of silently widening its role. Only the Scrum Master may reassign or
-   de-assign roles.
+9. **Ambiguous or non-compliant assignment escalates before execution.** Canonical rule: the **Scrum Master bullet
+   in §1** (per-turn compliance check; escalate before widening your role; only the Scrum Master may reassign/de-assign
+   or decide go/no-go).
 
 ---
 
@@ -171,7 +172,8 @@ smallest independently reviewable + mergeable unit; a.k.a. a "story"). Each task
 - The **reviewer** verifies the branch **by running it**, fills the *verdict* column, and **merges
   to the mainline only when every row is VERIFIED — or explicitly DEFERRED** (the merge *is* the
   task's closure). REFUTED work stays on the branch and is fixed there. **The reviewer's only branch
-  action is the merge — it never creates the branch.**
+  action is the merge — it never creates the branch.** *(These duties are the short imperative
+  contract in `AGENT.md → ⛔ REVIEWER RULES OF ENGAGEMENT`; this section is the method detail it points back to.)*
 - **The mainline stays verified-only.** The branch is the claim; the merge is the verdict.
 
 **Backlog gate — before opening any new macro unit (epic/task).** The architect/reviewer **reviews
@@ -236,7 +238,7 @@ Format — a table:
   (accept / reject → code changes / fold-to-backlog). This is the mirror image of REFUTED: as the
   implementer must answer every REFUTED, the reviewer must answer every deviation. A deviation that
   touches a **DO-NOT-TOUCH guardrail or changes established behavior** is **[BLOCK]-class** and also
-  needs the human's confirmation (CLAUDE.md), regardless of merit.
+  needs the human's confirmation (AGENT.md), regardless of merit.
 - **opinion** — "the spec is fine but I think Z is better / I have a concern" → becomes a refinement
   row or a backlog item.
 - **question** — "did you mean X or Y?" → routes to the human.
@@ -315,7 +317,7 @@ Steps:
   that pure review would have missed.
 - **Severity tagging + resolution mapping** turned a long list of objections into a short,
   trackable set of decisions, and made "are we done?" answerable.
-- **Writing everything down** let two agents with no shared memory build on each other's
+- **Writing everything down** lets agents with no shared memory build on each other's
   work across many turns without losing context.
 - The **readiness gate** prevents drifting into code before the load-bearing decisions are
   made, while still allowing isolated, zero-risk spikes to start early.
@@ -324,8 +326,10 @@ Steps:
 
 ## 6. Open questions for review
 
-1. **Role assignment.** Should Author/Reviewer roles be fixed per workstream, or keep
-   alternating? Fixed roles add consistency; alternating reduces blind spots.
+1. **Role assignment.** ~~Should Author/Reviewer roles be fixed per workstream, or keep alternating?~~
+   **RESOLVED** — settled by the role-keyed model (`AGENT.md → FIRST ENTRY POINT`): planner-reviewer is held by
+   Claude *or* Codex (co-eligible, one at a time), implementer by Gemini; only the Scrum Master may temporarily
+   reassign. Roles are functions, not fixed identities (§1).
 2. **Relay overhead.** The human is the sole channel between agents. Is that a feature
    (human stays in control, curates signal) or a bottleneck we should reduce (e.g. a shared
    "open questions" doc each agent reads/writes directly)?
