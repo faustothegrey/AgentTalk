@@ -75,7 +75,10 @@ fault tolerance, plan at `design/milestone08-transport-fault-tolerance-plan.md`.
     valid id; it's an aggregator). **Not** OpenRouter-`:free` (flaky/429). When promoting, **fix
     `api-client.ts` `nous` defaultModel** (`deepseek-v4-flash` 404s).
 
-- [open] 2026-06-20 — **Auto-handoff between agents (remove the human as turn-scheduler)** — resolves
+- [open · ⭐ SELECTED NEXT — planning pending, gate 2026-06-27] — **Auto-handoff between agents (remove the human
+  as turn-scheduler)** — picked as the next planning target by Fausto at the §3b gate (2026-06-27). Confirmed **not
+  built** (no conductor script, no `baton:` field). Defer-condition ("after M07-T3") is lifted. Next step: a proper
+  `*-plan.md` + DoD (planning deferred to a fresh-budget session). resolves
   workflow **open question #2** (relay overhead). Insight: the *channel* already exists (ledger +
   branch); what the human supplies is the **scheduler** ("vai te" / "ha finito, vai te"). Replace it
   with: (1) an explicit **3-state baton** at the top of `implementation.md` — `baton ∈ {impl, review,
@@ -205,7 +208,13 @@ fault tolerance, plan at `design/milestone08-transport-fault-tolerance-plan.md`.
   `createAgent` → `/start` returns the error status (not 200, not a crash). Low-risk; closes the IP-4 gap.
   (IP-3 — the report mischaracterising this as pre-existing — is logged in `implementer-pitfalls.md`, not here.)
 
-- [open · small · type-safety, 2026-06-22] — **Type `provider` as a union instead of `string`** — `provider` is
+- [done] 2026-06-27 (gate sweep — was stale `[open]`) — **Type `provider` as a union instead of `string`** — ✅
+  **ALREADY DONE**: `export type AgentProvider = 'api' | 'mcp' | 'gemini' | 'claude' | 'codex'` exists at
+  `packages/contracts/src/types.ts:13` and the field uses it (`provider?: AgentProvider`, `:29`/`:74`); every
+  branch site is exhaustiveness-checkable. Landed with the M09 rename work. The text below is the original (stale)
+  rationale, kept for history. *(Found by the §3b gate, 2026-06-27 — see LB-47 staleness pattern.)*
+  <!-- STALE BELOW (pre-M09): -->
+  `provider` is
   currently `string` (`contracts/src/types.ts:23,67`), and the runtime branches on its *value* (`registry.ts:210,322`
   enumerate `'api'|'mcp'|'gemini'|'claude'|'codex'`). Because it's untyped, **the compiler cannot catch a typo or
   a missed value** at any branch/createAgent site — a wrong/missed value silently misroutes an agent to the wrong turn
@@ -217,7 +226,13 @@ fault tolerance, plan at `design/milestone08-transport-fault-tolerance-plan.md`.
   survives even if the rename is deferred.
   - **Source:** Claude recommendation, 2026-06-22 (T3-prep session). Related: ↓ mcp→mcp/api rename item.
 
-- [**PROMOTED → M09**, 2026-06-24] — **Rename `mcp` → `mcp`/`api` across the codebase** — drop the
+- [done] 2026-06-27 (gate sweep — was stale `[PROMOTED → M09]`) — **Rename `mcp` → `mcp`/`api` across the
+  codebase** — ✅ **DONE + EPIC CLOSED** (M09, merged + history squashed `565ad3d`, 2026-06-25; ledger
+  `design/milestone09-mcp-vocabulary-removal-implementation.md` = "DONE + EPIC CLOSED"). The taxonomy is now
+  `api | mcp | gemini | claude | codex`; the open sub-questions (scenario-runner name, `Mcp*` form, provider-union
+  first) were all resolved during M09. The promotion text below is kept for history. *(Found by the §3b gate,
+  2026-06-27.)*
+  <!-- HISTORICAL (M09 promotion brief, now closed): --> drop the
   "mcp" vocabulary; an agent client is either **`api`** (in-process) or **`mcp`** (externally-launched, attaches over
   MCP). Assessment requested by Fausto; **scope decisions settled** (below). **Promoted to its own milestone (M09)
   ahead of consensus/protocol robustness, which renumbers M09 → M10** (Fausto, 2026-06-24). Plan +
