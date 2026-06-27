@@ -52,6 +52,11 @@ Expenditure Monitoring** rule below; doing it up front means you know your headr
 after. **Strictly best-effort, NEVER blocking** (the `claude` block often returns `ok:false` — LB-11): if it's
 down or jittery, say so in one line and carry on. Do **not** retry it or treat a failed read as a blocker.
 
+**End the priming routine by declaring your role, loudly.** Every startup / fresh-primer report MUST end with an
+explicit role line, e.g. **"Current role: planner-reviewer"** or **"Current roles: planner-reviewer + temporary
+implementer (human-approved)."** This is not decorative: it is the operator's guard against accidentally asking an
+agent to work outside its assigned function.
+
 ### Milestone 06 Key Features
 - **Multi-Agent Consensus under Attach Mode**: The planner protocol successfully executes across isolated MCP client environments. Planners can engage in the `fact_collection`, `discussion`, and `proposal` phases, emitting structured JSON responses that map dynamically to MCP tool calls (`submit_plan`, `send_to_agent`, etc.) without dropping the connection.
 - **Provider Multi-Turn State (`agy`)**: The `GeminiPersistentExecutor` was completely rewritten to maintain native persistent multi-turn execution (`agy --continue`) within isolated temporary homes per agent. This avoids fragile `stream-json` bridge issues and reliably simulates MCP-based agent statefulness.
@@ -72,6 +77,12 @@ down or jittery, say so in one line and carry on. Do **not** retry it or treat a
 - **Follow Collaboration Workflow**: Strictly adhere to the workflow defined in `design/collaboration-workflow.md`. That document is the source of truth for how we build things and must be followed at all times.
 - **Document Before Implementation**: Do not rush to the implementation phase. Always document proposed code changes beforehand so that another agent can review and approve the plan.
 - **Document Changes**: Always amend documentation to accurately reflect the code changes that have taken place.
+- **Respect role boundaries**: If you are asked to perform an action outside your current role (for example:
+  implementing code while your current role is only planner-reviewer), STOP before acting. State the mismatch
+  plainly and ask for an authoritative course-of-action decision from the Development Orchestrator / Scrum Master.
+  You may propose alternatives or a temporary role reassignment, but you report first and then do what the Scrum
+  Master decides. Unless explicitly delegated, Fausto holds the Scrum Master function; **Hermes Agent** is an
+  allowed Scrum Master delegate/impersonator when Fausto explicitly assigns it that function.
 
 ### Core Behavioral Rule: Honesty over Results
 - **Do not optimize for "passing" at all costs.** It is not the final result that matters most, but following instructions exactly and being completely honest about the state of the system.

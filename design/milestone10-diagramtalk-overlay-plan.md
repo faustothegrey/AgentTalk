@@ -1,7 +1,7 @@
 # M10 — DiagramTalk bridge v3: endorse stop + eject/correction overlay (`endorse`/`e4` + `o1–o6`)
 
-**Status:** ✅ IMPLEMENTED + live-verified (badge-walk, Fausto watched 2026-06-26). Gate: tsc 0, suite 225/225.
-Merge HUMAN-GATED (LB-14) — uncommitted pending Fausto's call. Full record: ledger §Bridge-v3 + logbook LB-26.
+**Status:** ✅ MERGED to `master` at `53593a4` + pushed. Live-verified (badge-walk, Fausto watched 2026-06-26).
+Gate: tsc 0, suite 225/225. Full record: ledger §Bridge-v3 + logbook LB-26; status correction LB-31.
 Deviation from this plan: default `correctionColor` is **violet** not orange (orange 400s — not in DiagramTalk's
 HIGHLIGHT_COLORS; caught by the live badge-walk).
 **Author:** Claude (planner/architect), 2026-06-26.

@@ -39,7 +39,7 @@ promoted→X · absorbed→X · dropped}.
   `design/milestone10-t4-api-enforcement-plan.md` + ledger §T4 + **LB-25**. *(Sibling T3 single-tool
   `consensus_respond`, v5→v6 cross-repo, stays deferred per D3.)*
 
-- **[open · spike] 2026-06-26 — M10-T4 live-verification probe — experience-led.** T4 shipped
+- **[promoted→M10-T4-live-probe] 2026-06-26 — M10-T4 live-verification probe — experience-led.** T4 shipped
   *ship-and-watch* (D-T4-2 = declare-unfit), so the combo `tools`+`tool_choice:"required"`+`response_format`
   is **assumed** for google/openrouter/nous — unit-tested via injected `fetchFn` only, **never** hit a
   real endpoint. **Spike (only if experience says we need it):** a **transport capability-probe** — one
@@ -48,6 +48,7 @@ promoted→X · absorbed→X · dropped}.
   (declare-unfit → detect-and-gate). **NOT a model self-report handshake** — that's the wrong layer
   (the model can't introspect its server's param support; hallucinates "yes"). Triggered by: a provider
   actually 400-ing in real use, or wanting the live gap closed before relying on T4 in anger. See LB-25.
+  Promoted 2026-06-27 to `design/milestone10-t4-live-probe-plan.md` for review before implementation.
 
 ### Backlog gate — 2026-06-22 (opening M08 · architect: Claude)
 

@@ -1,7 +1,8 @@
 # Plan — standalone exec-only MCP attach server (`@agenttalk/mcp-exec-server`)
 
-**Status:** ✅ IMPLEMENTED (branch `mcp-exec-server`, uncommitted) — decisions D1 extract / D2 names / D3
-single-flight / D4 hash-unset all as recommended. Gate: tsc 0, suite 245/245 (239 +6). Merge HUMAN-GATED (LB-14).
+**Status:** ✅ MERGED to `master` at `b67a6ce` + pushed; live-smoke follow-ups `e3f85c4`/`4fb2a69` also on
+`master`. Decisions D1 extract / D2 names / D3 single-flight / D4 hash-unset all as recommended. Gate: tsc 0,
+suite 245/245 (239 +6).
 **Owed → ✅ DONE (2026-06-26):** live smoke vs a real `agentalk-mcp-client` CLI — `scripts/smoke-mcp-exec-server.mjs`
 spawns the actual `llm-agent.mjs` (real McpClient + executor-runtime + node-pty) against a real `McpExecServer`; the
 provider is replaced by a fake bridge (`AGENTTALK_PERSISTENT_COMMAND_JSON`) so no budget is spent. PASS ×2; suite

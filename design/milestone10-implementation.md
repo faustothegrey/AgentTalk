@@ -20,7 +20,7 @@ Baseline before T1: `master` `5cc84d2`, `tsc -b` 0, **183/183** (32 files).
 | T2 | Generalise the graded loop at the validation site (correct → retry N=2 → eject, not dual-kill) | **✅ MERGED to `master` (`5fea20c`) + pushed** (Fausto, after the primer — branch `m10-t2-graded-loop` merged then deleted). Decisions D-T2a (minimal) + D-T2b (unify); proposal `design/milestone10-t2-contract-proposal.md`. |
 | T3 | Single tool `consensus_respond(action, payload)` (wire-contract v5→v6, lockstep client) | Deferred (D3). |
 | **T4** | API-path `tools`+`tool_choice`+strict `enum` enforcement optimization | **✅ MERGED to `master` (`d0462b6`) + pushed (Fausto's go, 2026-06-26).** Plan `design/milestone10-t4-api-enforcement-plan.md`; decisions D-T4-1 static / D-T4-2 declare-unfit / D-T4-3 keep-both. Live-verification probe → backlog spike. |
-| **Bridge v3** | DiagramTalk overlay: `endorse` stop + `e4`, and the `o1–o6` eject/correction lanes — via a separate observation-only hook (`onProtocolEvent`), brain consensus logic untouched | **✅ IMPLEMENTED + live-verified (badge-walk, Fausto watched); merge HUMAN-GATED (LB-14), uncommitted.** Plan `design/milestone10-diagramtalk-overlay-plan.md`; full record [[LB-26]]. Continues bridge v1/v2 ([[LB-22]]/[[LB-23]]/[[LB-24]]). |
+| **Bridge v3** | DiagramTalk overlay: `endorse` stop + `e4`, and the `o1–o6` eject/correction lanes — via a separate observation-only hook (`onProtocolEvent`), brain consensus logic untouched | **✅ MERGED to `master` (`53593a4`) + pushed.** Plan `design/milestone10-diagramtalk-overlay-plan.md`; full record [[LB-26]] + status correction [[LB-31]]. Continues bridge v1/v2 ([[LB-22]]/[[LB-23]]/[[LB-24]]). |
 
 ## T1 — peer-safe `ejectPlanner` (log)
 
@@ -165,5 +165,5 @@ default. Re-walk clean (8/8 commands accepted); Fausto visually confirmed the `e
 - wall-clock:  2026-06-26 ~12:30 → ~13:15 CEST (~45 min, incl. live badge-walk + orange→violet fix)
 - budget:      weekly 62%→65% (Δ ~3%), session reset mid-task (79%→new window, 28% at close) [per /usage]
 - gate:        tsc 0, suite 225/225 (213 baseline +12 new), pollution clean
-- diff:        6 mod +2 new (plan + protocol-event-hook.test.ts); see git diff --stat; UNCOMMITTED
-- outcome:     IMPLEMENTED ✅ + live-verified — merge HUMAN-GATED (LB-14), uncommitted pending Fausto's call
+- diff:        6 mod +2 new (plan + protocol-event-hook.test.ts); commit `53593a4`
+- outcome:     MERGED ✅ — ff to `master` at `53593a4` + pushed

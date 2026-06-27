@@ -714,8 +714,8 @@ The other three were less "is it safe" and more "is this a small clean change or
   - wall-clock:  2026-06-26 ~12:30 → ~13:15 CEST (~45 min, incl. live badge-walk + orange→violet fix)
   - budget:      weekly 62%→65% (Δ ~3%), session reset mid-task (79%→new window, 28% at close)
   - gate:        tsc 0, suite **225/225** (213 baseline +12 new), pollution clean
-  - diff:        6 mod + 2 new (plan + `protocol-event-hook.test.ts`); UNCOMMITTED
-  - outcome:     IMPLEMENTED ✅ + live-verified — merge HUMAN-GATED ([[LB-14]]), pending Fausto's call
+  - diff:        6 mod + 2 new (plan + `protocol-event-hook.test.ts`); commit `53593a4`
+  - outcome:     MERGED ✅ — ff to `master` at `53593a4` + pushed
 - **Source:** Claude, 2026-06-26. Implements `design/milestone10-diagramtalk-overlay-plan.md`; ledger §Bridge-v3
   in `design/milestone10-implementation.md`. Continues [[LB-22]]/[[LB-23]]/[[LB-24]]; pairs with memory
   `diagramtalk-channel`.
@@ -761,8 +761,8 @@ The other three were less "is it safe" and more "is this a small clean change or
   - wall-clock:  2026-06-26 ~14:40 → ~14:55 CEST (~55 min incl. McpServer extraction + e2e test debug)
   - budget:      weekly 67%→70% (Δ ~3%), session 51%→84% (Δ ~33%, multi-package + e2e heavy)
   - gate:        tsc 0, suite 245/245 (239 +6), pollution clean
-  - diff:        6 mod + 2 new packages (mcp-transport, mcp-exec-server) + 2 git-mv renames; UNCOMMITTED
-  - outcome:     IMPLEMENTED ✅ — live CLI smoke owed; merge HUMAN-GATED ([[LB-14]])
+  - diff:        6 mod + 2 new packages (mcp-transport, mcp-exec-server) + 2 git-mv renames; commit `b67a6ce`
+  - outcome:     MERGED ✅ — `b67a6ce` on `master` + pushed; live CLI smoke closed by `e3f85c4`/`4fb2a69`
 - **Source:** Claude, 2026-06-26. Implements `design/mcp-exec-server-plan.md`. Continues the llm-client
   extraction ([[LB-14]] gating); pairs with `design/llm-client-architecture.md`.
 
@@ -883,4 +883,42 @@ The other three were less "is it safe" and more "is this a small clean change or
   `key: none`. Both inactive role-primer bodies now carry an explicit warning that stale body text is historical and
   the current handshake is the shared-header/`consumed` protocol.
 - **Verification.** Docs-only patch; checked with `rg`, `git diff --check`, and `git status`. No build/test run needed
+  because no code, scripts, package config, or test contracts changed.
+
+---
+
+### LB-31 · 2026-06-27 — [process] Re-prime validation findings: header key is authority; status docs were stale
+
+- **Trigger.** Fausto re-primed Codex as planner-reviewer after the role-keyed primer work. Codex consumed the fresh
+  shared header key `20260627-0613-56824e` in its private store and performed the required read-only verification.
+- **Findings.**
+  1. The primer body still mentioned the older key `20260626-1951-e6d338`, but the authoritative YAML header carried
+     `key: 20260627-0613-56824e`. Per AGENT.md, the header key is the handshake authority; Codex used the header.
+  2. Local `master` and `origin/master` were both at `b72fa9b`, so the primer body's "local master ahead of origin"
+     warning was stale by the time Codex verified it.
+  3. Bridge v3 records in the M10 ledger/plan still said "uncommitted" / "pending Fausto's call", but git showed
+     `53593a4` (`feat(M10): DiagramTalk bridge v3 — endorse stop + eject/correction overlay`) as an ancestor of
+     current `master`. The status text has been corrected to MERGED.
+  4. The mcp-exec-server plan/logbook similarly still said "uncommitted" / "live CLI smoke owed", but git showed
+     `b67a6ce` as the merged implementation and `e3f85c4`/`4fb2a69` as the smoke-script/live-smoke closure commits
+     on current `master`. Those status lines have been corrected to MERGED / smoke closed.
+- **Verification.** Docs-only status correction; checked with `git status`, `git log`, `git merge-base --is-ancestor`
+  for `53593a4` / `b67a6ce` / `e3f85c4` / `4fb2a69`, and targeted `rg`. No build/test run needed because no code,
+  scripts, package config, or test contracts changed.
+
+---
+
+### LB-32 · 2026-06-27 — [process] Role-boundary escalation: Scrum Master owns ambiguous assignments
+
+- **Trigger.** During Codex's planner-reviewer turn, Fausto intentionally used wording that could invite the
+  planner-reviewer to start implementation. Codex planned the next implementable task instead of implementing it,
+  then Fausto clarified the desired rule.
+- **Rule added.** Startup/fresh-primer reports must end by clearly declaring the agent's current role. If a requested
+  action falls outside that role, the agent must stop, report the mismatch, may propose alternatives, and must ask the
+  Development Orchestrator / Scrum Master for an authoritative course-of-action decision. The agent then does what
+  the Scrum Master decides.
+- **Role definition.** `design/collaboration-workflow.md` defines the Scrum Master function generically as the
+  authority for task-assignment ambiguity. `AGENT.md` records the current project-specific holders/delegates: Fausto
+  by default, with Hermes Agent allowed when Fausto explicitly assigns it that function.
+- **Verification.** Docs-only process amendment; checked with `rg` and `git diff --check`. No build/test run needed
   because no code, scripts, package config, or test contracts changed.

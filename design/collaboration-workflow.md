@@ -15,6 +15,12 @@ orchestration migration, so it can be reviewed, refined, and reused deliberately
 - **Human** — sets scope and goals, makes final decisions, decides what is
   in/out of scope (e.g. parking HITL, removing the auth-tier discussion), and **relays
   messages between the two agents.**
+- **Development Orchestrator / Scrum Master** — the authority for **task-assignment ambiguity**. When an
+  agent is asked to do work outside its current role (for example, a planner-reviewer being asked to
+  implement code), the agent stops and reports the mismatch to the Scrum Master for a course-of-action decision.
+  The agent may propose alternatives or a temporary role reassignment, but it must present the issue first
+  and then do what the Scrum Master decides. The function may be held by a human or by a designated agent; the
+  current holder/delegates are named in the project instructions.
 - **Author agent** — drafts and revises the design (e.g. owns the proposal's decision
   sections).
 - **Reviewer/Verifier agent** — critiques without deference, verifies claims empirically,
@@ -32,6 +38,11 @@ the role**, never the identity of the agent performing it. When such a reassignm
 it is **stated explicitly** — in the relay and in the ledger — so it is always unambiguous
 who currently holds which function (the no-shared-memory constraint below makes this
 mandatory, not optional).
+
+**Role-boundary disputes go to the Scrum Master before action.** If a request crosses role lines and the assignment is
+doubtful, the agent does not infer permission from urgency or convenience. It reports: current role, requested action,
+why the action appears out-of-role, and any safe alternatives. Then it waits for the Scrum Master's authoritative
+course-of-action decision and follows it.
 
 **Defining constraint:** the two agents do **not** share a conversation or memory. The
 only channel between them is the **shared design docs** plus what the human relays. This
@@ -87,6 +98,9 @@ inter-agent communication bus.** Anything not written down does not survive the 
 8. **Step-by-step with smoke tests.** Implementation proceeds in small phases, each with a
    concrete smoke checkpoint; the riskiest unknowns are validated first, in isolation,
    before touching production paths.
+9. **Ambiguous assignment escalates before execution.** When role ownership is unclear, especially when a
+   non-implementer is asked to implement, the actor asks the Development Orchestrator / Scrum Master for an
+   explicit course-of-action decision instead of silently widening its role.
 
 ---
 
