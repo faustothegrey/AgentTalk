@@ -1134,3 +1134,44 @@ no scope change to the probe plan otherwise. The plan stays DRAFT-for-review aft
   its cold-start consume will persist correctly. **This closes the last open thread from the governance audit.**
 - **Verification.** Store file present + valid JSON; AGENT.md line updated; `git diff --check` clean. The store lives
   outside the repo, so it does not appear in the repo diff (by design).
+
+---
+
+### LB-41 · 2026-06-27 — [process] The priming loop, end-to-end (who writes the brief, who verifies what)
+
+- **Why this is here.** A recurring confusion is conflating *writing* a primer with *receiving* one, and treating
+  the primer as the source of truth. This diagram pins the full loop so a cold reader gets it in one look. *(The
+  canonical rules are `AGENT.md → Session Primer` + `First Entry Point`; this is the picture behind them.)*
+
+```
+  Fausto assigns task (Scrum Master go)
+        │
+        ▼
+  planner-reviewer WRITES implementer-primer   ← the "previous session did this" brief
+   (task + state pointers + FRESH key)            (first time: planner-reviewer; later: prior agy session)
+        │
+        ▼
+  fresh agy launches → READS it → key is fresh →
+   gather context, VERIFY vs ledger, report, STOP, consume key   ← the cold-start (receiving) half
+        │
+        ▼
+  Fausto gives explicit go → agy implements
+        │
+        ▼
+  at close, agy WRITES the next implementer-primer (+ fresh key)
+        └──────────────► loops back for the next agy session
+```
+
+- **Two load-bearing clarifications the diagram encodes:**
+  1. **Someone has to *write* the brief, and for the *first* implementer task that is NOT the implementer.** The
+     current `implementer-primer.md` is `key: none` (historical) — no implementer session has ever closed and left
+     one. So the first brief is authored by the **planner-reviewer** (carrying Fausto's task assignment); from agy's
+     *second* session onward, each agy turn writes the primer for the next at close. An agent does **not** author its
+     own cold-start primer (self-priming crosses no context boundary and would have the implementer assign itself
+     work — against the §1 Scrum-Master-owns-assignment rule).
+  2. **The ledger is the source of truth; the primer is the pointer — verify, don't trust.** A primer is a *claim
+     about state*, possibly stale/over-optimistic. The receiver reads it to orient, then **grounds every load-bearing
+     claim against the ledger/git**; if they disagree, the ledger wins and the primer is the bug. "Determine what's
+     next" means **confirm** the assigned task and where it stands — the implementer doesn't self-pick work; the task
+     traces to Fausto's go + the plan's DoD.
+- **Origin.** Fausto ↔ Claude exchange clarifying the priming model right after agy's key-store bootstrap (LB-40).
