@@ -106,8 +106,11 @@ and discipline still hold separately**.
   holds the PO/Architect role**; the **SM function is, as of 2026-06-29, delegated by default to Hermes** (the PO
   can reclaim or overrule it at any moment — see the Hermes-status note under the Scrum Master bullet). Where this
   doc grants the Scrum Master "final" go/no-go, read it as **operational** authority exercised *on the PO's
-  behalf*: the PO can always overrule, redirect, or reassign. The canonical, fuller statement is the **Product
-  Owner / Architect** participant in `design/collaboration-workflow.md` §1.
+  behalf*: the PO can always overrule, redirect, or reassign. **The PO subsumes the SM — it is the figure
+  immediately above it — so the PO may also exercise *any* SM power directly itself** (convene the backlog gate,
+  set priority, call operational go/no-go, halt/rescope, route the baton), not merely overrule the SM's use of it.
+  The canonical, fuller statement is the **Product Owner / Architect** participant in
+  `design/collaboration-workflow.md` §1.
 - **Respect role boundaries & check assignment compliance — every turn.** Before acting on any assignment, compare
   it with `design/collaboration-workflow.md`, your current role, and the current Scrum Master authority. If it is
   outside your role (e.g. implementing code while you are only a planner or a reviewer), ambiguous, or otherwise

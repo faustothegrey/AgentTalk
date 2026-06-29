@@ -24,9 +24,12 @@ orchestration migration, so it can be reviewed, refined, and reused deliberately
     process duties to an agent.
   - Sits **above the Scrum Master**: the SM is a *process/facilitation* function that **serves** the PO. Where this
     doc grants the SM "final" go/no-go (next bullet), that authority is **operational, exercised on the PO's
-    behalf** — the PO can always overrule, redirect, reassign, or reclaim it.
-  - **By default the human (Fausto) holds the PO/Architect role** (and, by default, the SM function too, until he
-    delegates it). A non-human PO would be an explicit, documented delegation by the human — the same discipline
+    behalf** — the PO can always overrule, redirect, reassign, or reclaim it. **And because the PO is the figure
+    immediately above the SM, it *subsumes* it: the PO may exercise any SM power directly itself** (backlog gate,
+    priority, operational go/no-go, halt/rescope, baton) — not only overrule the SM's use of it.
+  - **By default the human (Fausto) holds the PO/Architect role**; the SM function is, **as of 2026-06-29, delegated
+    by default to Hermes** (the PO can reclaim or overrule it at any moment). A non-human PO would be an explicit,
+    documented delegation by the human — the same discipline
     that governs a delegated SM. *(`AGENT.md` carries the short statement of this role; this is the canonical one.)*
 - **Human** — by default **is the Product Owner / Architect** (above) and also holds the Scrum Master function:
   sets scope and goals, makes the final decisions, decides what is in/out of scope (e.g. parking HITL, removing the
