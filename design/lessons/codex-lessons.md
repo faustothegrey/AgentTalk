@@ -25,3 +25,11 @@ here.**
   closing so the next session still has a real cold-start handoff.
 - Keep the refresh minimal and factual: update only the primer/own lessons, and preserve the active assignment
   without sliding into the underlying planning work.
+
+### 2026-06-29 — Spike review and backlog status discipline
+- When a backlog item has conflicting status text, privilege the most recent explicit human correction and the gate
+  table over stale "selected next" wording; record the corrected disposition before planning further work.
+- For exploratory spikes, keep the plan/document as the artifact and make the DoD reviewable without implying a code
+  implementation; this fit the protocol-state-event unification question better than opening an epic.
+- In review, verify both hook layers separately: immediate engine hooks (`onPhaseChange`/`onProtocolEvent`) and
+  registry-level consumers (`team_planning_phase`/`team_protocol_event`) can have different "consumer" meanings.
