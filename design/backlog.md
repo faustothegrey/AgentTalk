@@ -281,7 +281,9 @@ fault tolerance, plan at `design/milestone08-transport-fault-tolerance-plan.md`.
   - **Trigger to promote:** a handful of observed real `awaiting_operator` pauses (so the recovery model is
     grounded in actual partial-effect cases, not guessed). **Source:** Fausto ↔ Claude T3 decisions, 2026-06-23.
 
-- [open · tiny tech-debt, 2026-06-26] — **Unify protocol state-change event emission** — after the
+- [promoted→protocol-state-event-unification-spike · planned, 2026-06-29] — **Unify protocol state-change event emission** —
+  planned as `design/protocol-state-event-unification-spike.md` (exploratory only; no production-code
+  implementation in the spike). Original item: after the
   DiagramTalk overlay work (bridge v3, `milestone10-diagramtalk-overlay-plan.md`) the brain emits protocol
   state changes through **two shapes**: the `onPhaseChange` funnel (forward phases, via `setPlanningPhase`,
   which *also* feeds `getPlanningPhase`/validation) **and** the new `onProtocolEvent` hook (off-path

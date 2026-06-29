@@ -13,4 +13,15 @@ here.**
 
 ---
 
-*(No entries yet — Codex appends its first lesson at the next session close.)*
+### 2026-06-27 — Cold-start verification before baton
+- The primer was slightly stale about the latest commit/ahead count; checking git before acting caught it without
+  derailing the task.
+- When reviewing governance docs, grep for numeric wording like "three duties" after adding a new duty; these are
+  easy drift points even when the canonical rule is right.
+- For Gemini handoff, write the approved scope into the role-primer and plan instead of relying on chat-only go/no-go.
+
+### 2026-06-28 — Refresh consumed primer keys before stopping
+- If I consume a fresh role-primer key but the user wants to stop immediately, mint a replacement primer key before
+  closing so the next session still has a real cold-start handoff.
+- Keep the refresh minimal and factual: update only the primer/own lessons, and preserve the active assignment
+  without sliding into the underlying planning work.
