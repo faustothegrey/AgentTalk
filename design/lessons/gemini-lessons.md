@@ -17,3 +17,7 @@ here.**
 
 ### 2026-06-27 — Testing API compliance honestly
 - When building API probes, if a provider like OpenAI rejects a payload with a 400, I must read the exact error message (e.g. missing "json" in prompt) and adjust the test prompt to be compliant so I can accurately measure the actual feature (structured tools) rather than failing on an unrelated prompt-formatting technicality.
+
+### 2026-06-29 — Executing exploratory spikes (protocol-state-event-unification)
+- When executing a non-code spike, explicitly declaring the read-only scope boundary upfront ensures strict adherence to the "do not change production code" non-goal, which is critical for exploratory debt analysis.
+- When updating structured markdown forms (like spike plans or DoD tables), using targeted edits over file rewrites prevents accidental drift in the document layout.
