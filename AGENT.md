@@ -16,7 +16,8 @@ At the very start of **every** session, before reading anything else or acting, 
 
 0. **Know your role(s).** Primers are keyed by **role**, not by agent. **Planner and Reviewer are now SEPARATE
    roles** (the old fused `planner-reviewer` is retired). The standing role map (you are eligible for one or more):
-   **planner → Claude *or* Codex** · **reviewer → Claude *or* Codex** · **implementer → Gemini**. The role→primer
+   **planner → Claude *or* Codex (default: Codex)** · **reviewer → Claude *or* Codex (default: Claude)** ·
+   **implementer → Gemini**. The role→primer
    map is `design/session-primers/<role>-primer.md` — `planner-primer.md` · `reviewer-primer.md` ·
    `implementer-primer.md`. **The `-primer.md` suffix is mandatory** — on a case-insensitive filesystem `claude.md`
    *is* `CLAUDE.md` and would be auto-slurped as instructions, bypassing this gate.
@@ -31,6 +32,12 @@ At the very start of **every** session, before reading anything else or acting, 
    - **Which role(s) are mine?** If you're eligible for more than one role (Claude/Codex → planner *and* reviewer),
      check **each** eligible role-primer; the human's assignment (or the fresh primer) tells you which seat is yours
      this task. When in doubt, report what you found for each and let the human assign.
+   - **TEMPORARY ASSIGNMENT — Codex covers reviewer too (PO Fausto, 2026-06-29).** Claude is out of weekly budget,
+     so for **today and the next two days (2026-06-29 → ~2026-07-01)** Codex holds **both planner *and* reviewer**
+     (the resource-scarcity fallback above): Codex declares both roles loudly and keeps each gate/discipline
+     separate; the no-self-review default is **consciously suspended** for this window. **Auto-lapses when Claude's
+     credits return** (≈ the weekly reset, Jul 1 ~09:00 Europe/Rome) → default reviewer → Claude resumes. The PO can
+     revoke earlier.
 1. Open your eligible **role-primer** and read its `key:` header. Also read your **private key store** — a file
    *outside the repo*, in your own per-project agent dir (Claude Code: alongside your `memory/` folder, named
    `session-primer-key.json`; Codex/Gemini: the equivalent stable private dir). The store holds `{ consumed: [] }`
