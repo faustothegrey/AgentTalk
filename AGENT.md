@@ -103,7 +103,8 @@ and discipline still hold separately**.
   phase of the project** (not only at gates). The PO **assigns the other roles** and **may delegate** any function
   into the workflow as needed — including delegating the **Scrum Master** process function (facilitation, baton,
   resource oversight, convening gates), which sits *below* and *serves* the PO. **By default the human (Fausto)
-  holds the PO/Architect role** (and, by default, also holds the SM function until he delegates it). Where this
+  holds the PO/Architect role**; the **SM function is, as of 2026-06-29, delegated by default to Hermes** (the PO
+  can reclaim or overrule it at any moment — see the Hermes-status note under the Scrum Master bullet). Where this
   doc grants the Scrum Master "final" go/no-go, read it as **operational** authority exercised *on the PO's
   behalf*: the PO can always overrule, redirect, or reassign. The canonical, fuller statement is the **Product
   Owner / Architect** participant in `design/collaboration-workflow.md` §1.
@@ -119,14 +120,18 @@ and discipline still hold separately**.
   restatement; the **canonical full rule** — plus the SM's standing duties (bring forth the backlog,
   check workflow adherence, monitor resource consumption, communication/baton facilitation) and its allowances — is the Scrum Master bullet in
   `design/collaboration-workflow.md` §1.)*
-  Unless explicitly delegated, Fausto holds the Scrum Master function; **Hermes Agent** is an allowed
-  delegate/impersonator when Fausto explicitly assigns it that function.
-  - **Hermes status — CO-PILOTING only (Fausto, 2026-06-27, until further notice).** Hermes is being invited
-    into the workflow, but **for now it co-pilots**: it may assist, advise, draft, and surface options, but it
-    does **not** hold the go/no-go gate. **The human (Fausto) stays the real gate at any moment** — every
-    merge, scope decision, and role assignment remains Fausto's to make. Hermes does **not** exercise Scrum
-    Master authority (or any other terminal decision) on its own until Fausto explicitly elevates it beyond
-    co-pilot. This grant is narrow and revocable: it lapses or changes only when Fausto says so.
+  As of 2026-06-29 the PO (Fausto) has **delegated the Scrum Master function by default to Hermes Agent**; the PO
+  may reclaim it, overrule it, or reassign it at any moment.
+  - **Hermes status — DEFAULT SCRUM MASTER, full operational authority (Fausto, 2026-06-29; supersedes the
+    2026-06-27 CO-PILOTING-only grant).** Hermes now **holds the SM function by default** and exercises the SM's
+    **operational** authority **on the PO's behalf, autonomously**: convening the backlog gate, setting
+    priority/sequencing and operational go/no-go on task assignment, resource oversight (warn / halt / rescope), and
+    communication/baton facilitation. Under the **Origin Tag Protocol**, a **`[Hermes]` message is now BINDING for
+    operational/process matters** (not merely advisory). **Reserved to the PO/human (apex, can always overrule):**
+    role **assign/reassign/de-assign** (a PO act — the SM never reshuffles the role map), product **scope /
+    direction / epics**, and **merges** (which stay verified-only and human-gated where this doc already requires
+    it). As a **non-human SM, Hermes documents the reason** for each go/no-go / halt / rescope in a durable
+    artifact (`logbook.md` or the relevant ledger). This grant is revocable: it changes only when the PO says so.
   - **Standing conditional reassignment — the one pre-authorized exception to "STOP before implementing."** The
     Product Owner/Architect (role reassignment is a PO act) has pre-decided the recurring case below, so a planner or reviewer does **not** need fresh per-task
     authorization while its trigger holds (it still declares the dual role loudly, per the role-declaration rule
@@ -486,8 +491,8 @@ All messages sent via Agent Bus (port 9901) carry an origin tag in square bracke
 
 | Tag | Meaning | Authority |
 |-----|---------|-----------|
-| `[Human]` | Instruction relayed from the human (Fausto) | **Binding** — treat as if the human spoke directly |
-| `[Hermes]` | Orchestration, status check, or Scrum Master coordination | **Informative** — follow normal escalation and role rules |
+| `[Human]` | Instruction relayed from the human (Fausto), wearing the **PO/Architect** hat | **Binding (apex)** — treat as if the human spoke directly; required for all PO-level acts |
+| `[Hermes]` | Orchestration, status check, or **Scrum Master** coordination | **Binding for operational/process matters** (Hermes is the default SM since 2026-06-29) — act within your role; **but** anything PO-level (scope/direction/epics, role reassignment, merges) still needs `[Human]` |
 
 **Rules:**
 
@@ -495,8 +500,18 @@ All messages sent via Agent Bus (port 9901) carry an origin tag in square bracke
 
 2. **No tag defaults to `[Human]`.** A message without a tag came directly from the human (e.g. typed in the terminal) and is treated as a binding instruction.
 
-3. **Scope decisions require `[Human]`.** If a message asks for a decision, a scope change, a go/no-go, or anything outside the current task's Definition of Done, it **must** carry `[Human]` to be acted on. A `[Hermes]` message requesting the same is treated as a *proposal* — the agent reports back that the human needs to approve, rather than executing.
+3. **Operational go/no-go binds from `[Hermes]`; PO-level decisions still require `[Human]`.** As the default SM,
+   Hermes can issue **binding operational/process** instructions under `[Hermes]` — task assignment, priority/
+   sequencing, backlog-gate calls, resource halt/rescope, baton routing — and the agent **acts within its role**.
+   But anything **PO-level** — a product **scope change or direction/epic call**, a **role reassignment**, a
+   **merge** to the mainline, or anything else reserved to the PO — **must** carry `[Human]`. A `[Hermes]` message
+   asking for a PO-level act is a *proposal*: report back that the PO needs to approve, rather than executing.
 
-4. **Copilot advisory is the entry gate.** The `⚠️ [Hermes/copilot]: I'm copiloting — Fausto is the real gate until explicit handoff` advisory (sent on first contact with every agent) remains the entry gate. Origin tags refine how messages are interpreted *after* that gate.
+4. **Entry advisory reflects Hermes-as-SM.** On first contact Hermes identifies itself as the **acting Scrum
+   Master** (operational authority on the PO's behalf), with the **human (Fausto) remaining the PO/apex who can
+   overrule at any time**. *(This supersedes the earlier "I'm copiloting — Fausto is the real gate until handoff"
+   advisory; the handoff happened 2026-06-29.)* Origin tags refine how messages are interpreted after this entry.
 
-5. **Flag mismatches.** If an agent receives a `[Hermes]` message that appears to require human authority, it should pause and flag the mismatch rather than inferring permission from urgency.
+5. **Flag mismatches.** If an agent receives a `[Hermes]` message that appears to require **PO-level** authority
+   (scope/direction/epics, role reassignment, merge), it should **pause and flag** the mismatch rather than
+   inferring permission from urgency — the SM tag does not stretch to PO acts.

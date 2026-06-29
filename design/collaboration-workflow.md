@@ -47,10 +47,14 @@ orchestration migration, so it can be reviewed, refined, and reused deliberately
   Product Owner/Architect's authority, not the SM's** (the SM facilitates; it does not reshuffle the role map). A
   non-human SM or PO must document the reason for each go/no-go, assignment, or de-assignment in the appropriate
   durable project artifact. The function may be held by a human or by a designated agent; the current holder/delegates are named in
-  the project instructions. **Current standing (Fausto, 2026-06-27): the human (Fausto) holds the SM function and
-  stays the real gate at any moment; Hermes is in the workflow as a *co-pilot only* — it assists, advises, and
-  drafts, but holds no go/no-go authority — until Fausto explicitly elevates it. See the Hermes-status note under
-  the Scrum Master bullet in `AGENT.md`.**
+  the project instructions. **Current standing (Fausto, 2026-06-29): the PO (Fausto) has delegated the SM function
+  by default to Hermes, with full *operational* authority on the PO's behalf — convening the backlog gate, setting
+  priority/sequencing and operational go/no-go, resource warn/halt/rescope, and baton facilitation; under the Origin
+  Tag Protocol a `[Hermes]` message is now binding for operational/process matters. The human (Fausto) remains the
+  PO/apex who can overrule, redirect, or reclaim the SM at any moment, and PO-level acts — role assign/reassign,
+  product scope/direction/epics, and merges — stay with the human. A non-human SM documents its reasons in a durable
+  artifact. See the Hermes-status note under the Scrum Master bullet in `AGENT.md`.** *(This supersedes the
+  2026-06-27 co-pilot-only standing.)*
   - **Standing duties** *(proactive — the SM does these on its own initiative, beyond resolving ambiguity on
     request)*:
     1. **Bring forth the backlog.** Keep the team from idling or guessing what's next: surface parked items from
