@@ -12,22 +12,41 @@ orchestration migration, so it can be reviewed, refined, and reused deliberately
 
 ## 1. The participants and a key constraint
 
-- **Human** — sets scope and goals, makes final decisions, decides what is
-  in/out of scope (e.g. parking HITL, removing the auth-tier discussion), and **relays
-  messages between the agents** — the communication-channel function, which travels with the Scrum Master role
-  (the human performs it when holding SM; a delegated AI-SM performs it when a channel is in place — see SM duty 4).
+- **Product Owner / Architect (PO)** — **the apex authority of the project.** This is the role that holds the
+  **final word on every decision**, owns the **product direction** (the *what* and the *why*) **and the technical
+  architecture** (the *how it is shaped*), and is therefore the single point where vision and structure meet. The PO:
+  - **Proposes epics** and sets the direction and priority of work at the strategic level — it decides what the
+    team builds next and why.
+  - **May decide or intervene at any phase of the project**, not only at the formal gates — a mid-flight redirect,
+    a scope cut, an architecture call, or an override of a lower decision are all the PO's to make.
+  - **Assigns the other roles** (planner, reviewer, implementer, and the Scrum Master function itself) and **may
+    delegate** any function into the workflow when it serves the work — including delegating the Scrum Master's
+    process duties to an agent.
+  - Sits **above the Scrum Master**: the SM is a *process/facilitation* function that **serves** the PO. Where this
+    doc grants the SM "final" go/no-go (next bullet), that authority is **operational, exercised on the PO's
+    behalf** — the PO can always overrule, redirect, reassign, or reclaim it.
+  - **By default the human (Fausto) holds the PO/Architect role** (and, by default, the SM function too, until he
+    delegates it). A non-human PO would be an explicit, documented delegation by the human — the same discipline
+    that governs a delegated SM. *(`AGENT.md` carries the short statement of this role; this is the canonical one.)*
+- **Human** — by default **is the Product Owner / Architect** (above) and also holds the Scrum Master function:
+  sets scope and goals, makes the final decisions, decides what is in/out of scope (e.g. parking HITL, removing the
+  auth-tier discussion), and **relays messages between the agents** — the communication-channel function, which
+  travels with the Scrum Master role (the human performs it when holding SM; a delegated AI-SM performs it when a
+  channel is in place — see SM duty 4). The "final decisions" the human makes here are the **PO authority** he
+  holds by default; the relay/process duties are the **SM function** he holds by default.
 - **Development Orchestrator / Scrum Master** — the authority for **task-assignment ambiguity**, and the
   **canonical statement** of role-boundary / go-no-go authority (every other mention of this rule — elsewhere in
   this doc and in `AGENT.md` — points back here). **At the start of each turn, every agent checks whether its
   assignment complies with this workflow, its current role, and the current Scrum Master authority**, reporting its
   current role, the requested action, why it may be out-of-role, and any safe alternatives — rather than inferring
   permission from urgency or convenience. When an agent is asked to do work outside its current role (for example, a
-  planner-reviewer being asked to implement code), the agent stops and reports the mismatch to the Scrum Master for a
+  planner or reviewer being asked to implement code), the agent stops and reports the mismatch to the Scrum Master for a
   course-of-action decision. The agent may propose alternatives or a temporary role reassignment, but it must present
-  the issue first and then do what the Scrum Master decides. The Scrum Master, and only the Scrum Master, makes
-  go/no-go decisions and may reassign or de-assign roles on the fly as necessity arises. If the Scrum Master is not
-  human, it must document the reason for each assignment or de-assignment in the appropriate durable project
-  artifact. The function may be held by a human or by a designated agent; the current holder/delegates are named in
+  the issue first and then do what the Scrum Master decides. The Scrum Master makes the **operational go/no-go**
+  calls (on the PO's behalf) and may scope/sequence/halt work — but **reassigning or de-assigning roles is the
+  Product Owner/Architect's authority, not the SM's** (the SM facilitates; it does not reshuffle the role map). A
+  non-human SM or PO must document the reason for each go/no-go, assignment, or de-assignment in the appropriate
+  durable project artifact. The function may be held by a human or by a designated agent; the current holder/delegates are named in
   the project instructions. **Current standing (Fausto, 2026-06-27): the human (Fausto) holds the SM function and
   stays the real gate at any moment; Hermes is in the workflow as a *co-pilot only* — it assists, advises, and
   drafts, but holds no go/no-go authority — until Fausto explicitly elevates it. See the Hermes-status note under
@@ -55,26 +74,43 @@ orchestration migration, so it can be reviewed, refined, and reused deliberately
        the SM *may* override a baton, but that is **not** the standard flow. *(How the channel is implemented is an
        implementation detail and out of scope here; but with no channel in place an AI-SM cannot operate. Specific
        rules of engagement TBD — the guiding principle is the above.)*
-  - **Allowances — only the SM may:** assign / reassign / de-assign roles and make go/no-go calls; convene the
+  - **Allowances — only the SM may:** make the operational go/no-go calls (on the PO's behalf); convene the
     backlog gate and set priority/sequencing; **halt or rescope active work** for a workflow breach or a budget
-    limit. A non-human SM records each such exercise in a durable artifact.
+    limit. **Role assign / reassign / de-assign is NOT an SM allowance — it belongs to the Product Owner/Architect**
+    (§ the PO bullet). A non-human SM records each such exercise in a durable artifact.
   - **Boundaries:** go/no-go ≠ doing the work — the SM routes code work to the implementer rather than implementing
     silently; and a non-human SM is held to the same record-the-reason discipline throughout.
-- **Author agent** — drafts and revises the design (e.g. owns the proposal's decision
-  sections).
-- **Reviewer/Verifier agent** — critiques without deference, verifies claims empirically,
-  tracks caveats and their resolution.
+- **Planner (Author) agent** — drafts and revises the plan/design (e.g. owns the proposal's decision sections):
+  produces the `*-plan.md` + Definition of Done that the Reviewer then approves before any implementation.
+- **Reviewer/Verifier agent** — critiques without deference, verifies claims empirically, tracks caveats and their
+  resolution. **Distinct from the Planner** (see the split below).
+- **Implementer agent** — builds the spec'd change on a task branch (the ⛔ Implementer Rules of Engagement); records
+  *claims*, never self-closes.
 
-The roles are not fixed to a person — they **alternate by turn**. What matters is that on
-any given turn one side is *proposing* and the other is *challenging*.
+**Planner and Reviewer are SEPARATE roles (split adopted 2026-06-29).** The old fused `planner-reviewer` is retired.
+The optimal flow is a **2-gate sequence**: the **Planner** plans → the **Reviewer approves the plan for
+implementation (gate 1)** → the baton passes to the **Implementer**, who builds it → the **Reviewer verifies the
+result and declares the task closable or not (gate 2)**. The **same Reviewer** owns both gates on a task.
+- **Why split:** the founding principle is *adversarial, independent* verification (§2.1–2.2). One actor that both
+  plans and reviews its own plan dilutes that — so **by default Planner ≠ Reviewer on the same task** (no
+  self-review). Claude and Codex are each eligible for *both* seats, but take **different** ones per task.
+- **Resource-scarcity fallback:** when agents are scarce, one actor MAY hold several roles (planner *and* reviewer,
+  or all of them) — but it **declares every role loudly** and keeps **each role's gate and discipline separately**;
+  the 2-gate sequence and every workflow mechanism are **unchanged**. *(Per-role primers + the multi-role handshake
+  live in `AGENT.md → FIRST ENTRY POINT`.)*
+
+The roles are not fixed to a person — they may **alternate by turn/assignment** (within the eligibility map and the
+no-self-review default). What matters is that on any given task one actor is *proposing* and a **different** one is
+*challenging*.
 
 **Roles are functions, not fixed labels.** Although each role is normally assigned to a
 particular agent (or agents) for simplicity and continuity, the roles are **dynamic by
 nature and may be temporarily reassigned whenever the work calls for it** — for example,
 the Reviewer/architect stepping in as Implementer for a change too sensitive or specialised
 to delegate, or the Human taking a role directly. What is bound is the **responsibility of
-the role**, never the identity of the agent performing it. *(Who may reassign, and the duty of a
-non-human Scrum Master to document the reason, are the Scrum Master bullet's job above.)* What this
+the role**, never the identity of the agent performing it. *(Who may reassign — the **Product Owner/Architect**,
+not the SM — and the duty of a non-human PO/SM to document the reason, are covered in the PO and Scrum Master
+bullets above.)* What this
 paragraph adds: when a reassignment happens it is **stated explicitly — in the relay and in the ledger** —
 so it is always unambiguous who currently holds which function (the no-shared-memory constraint below
 makes this mandatory, not optional).
@@ -141,8 +177,8 @@ written down does not survive the handoff.
    concrete smoke checkpoint; the riskiest unknowns are validated first, in isolation,
    before touching production paths.
 9. **Ambiguous or non-compliant assignment escalates before execution.** Canonical rule: the **Scrum Master bullet
-   in §1** (per-turn compliance check; escalate before widening your role; only the Scrum Master may reassign/de-assign
-   or decide go/no-go).
+   in §1** (per-turn compliance check; escalate before widening your role; the SM decides operational go/no-go,
+   while only the **Product Owner/Architect** may reassign/de-assign roles).
 
 ---
 
@@ -362,9 +398,10 @@ Steps:
 ## 6. Open questions for review
 
 1. **Role assignment.** ~~Should Author/Reviewer roles be fixed per workstream, or keep alternating?~~
-   **RESOLVED** — settled by the role-keyed model (`AGENT.md → FIRST ENTRY POINT`): planner-reviewer is held by
-   Claude *or* Codex (co-eligible, one at a time), implementer by Gemini; only the Scrum Master may temporarily
-   reassign. Roles are functions, not fixed identities (§1).
+   **RESOLVED** — settled by the role-keyed model (`AGENT.md → FIRST ENTRY POINT`): **planner** and **reviewer** are
+   now **separate roles** (split 2026-06-29), each held by Claude *or* Codex (planner ≠ reviewer per task by default —
+   no self-review), implementer by Gemini; only the **Product Owner/Architect** may reassign (the SM facilitates but
+   does not reshuffle the role map). Roles are functions, not fixed identities (§1).
 2. **Relay overhead.** The human is the sole channel between agents. Is that a feature
    (human stays in control, curates signal) or a bottleneck we should reduce (e.g. a shared
    "open questions" doc each agent reads/writes directly)?

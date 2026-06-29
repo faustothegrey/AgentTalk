@@ -14,12 +14,23 @@ These rules apply from Milestone 06 onward (for the project's *current* mileston
 
 At the very start of **every** session, before reading anything else or acting, do the **primer handshake**:
 
-0. **Know your role.** Primers are keyed by **role**, not by agent. The standing role map (you are one of these):
-   **planner-reviewer → Claude *and* Codex** (by convention either may hold it — one at a time) ·
-   **implementer → Gemini**. Your eligible role-primer is `design/session-primers/<role>-primer.md` —
-   Claude/Codex → `planner-reviewer-primer.md`, Gemini → `implementer-primer.md`. **The `-primer.md` suffix is
-   mandatory** — on a case-insensitive filesystem `claude.md` *is* `CLAUDE.md` and would be auto-slurped as
-   instructions, bypassing this gate.
+0. **Know your role(s).** Primers are keyed by **role**, not by agent. **Planner and Reviewer are now SEPARATE
+   roles** (the old fused `planner-reviewer` is retired). The standing role map (you are eligible for one or more):
+   **planner → Claude *or* Codex** · **reviewer → Claude *or* Codex** · **implementer → Gemini**. The role→primer
+   map is `design/session-primers/<role>-primer.md` — `planner-primer.md` · `reviewer-primer.md` ·
+   `implementer-primer.md`. **The `-primer.md` suffix is mandatory** — on a case-insensitive filesystem `claude.md`
+   *is* `CLAUDE.md` and would be auto-slurped as instructions, bypassing this gate.
+   - **Default: Planner ≠ Reviewer on the same task** — the adversarial independence (no self-review) is the whole
+     point of the split. So Claude and Codex are each eligible for *both* planner and reviewer, but on a given task
+     they take **different** seats.
+   - **Resource-scarcity fallback (allowed, but declared loudly):** when there aren't enough agents, **one agent MAY
+     hold several roles** — planner *and* reviewer, or even all of them. It then does the handshake **once per role
+     it holds** (loop step 1–2 below for each), keeps **each role's gate and discipline separately**, and **declares
+     every role it holds** (see the role-declaration rule below). The 2-gate sequence (reviewer approves the plan →
+     implementer builds → reviewer verifies & closes) is **unchanged** regardless of how many hats one actor wears.
+   - **Which role(s) are mine?** If you're eligible for more than one role (Claude/Codex → planner *and* reviewer),
+     check **each** eligible role-primer; the human's assignment (or the fresh primer) tells you which seat is yours
+     this task. When in doubt, report what you found for each and let the human assign.
 1. Open your eligible **role-primer** and read its `key:` header. Also read your **private key store** — a file
    *outside the repo*, in your own per-project agent dir (Claude Code: alongside your `memory/` folder, named
    `session-primer-key.json`; Codex/Gemini: the equivalent stable private dir). The store holds `{ consumed: [] }`
@@ -58,10 +69,13 @@ window), skim **`design/lessons/<agent>-lessons.md`** (yours: Claude/Codex/Gemin
 sharpen *this* session — that read-back is what makes the mechanism compound (write-only rots). Best-effort; if it's
 empty or absent, carry on. *(You write to it at session close — see "Lessons learned" under Session Primer below.)*
 
-**End the priming routine by declaring your role, loudly.** Every startup / fresh-primer report MUST end with an
-explicit role line, e.g. **"Current role: planner-reviewer"** or **"Current roles: planner-reviewer + temporary
-implementer (human-approved)."** This is not decorative: it is the operator's guard against accidentally asking an
-agent to work outside its assigned function.
+**End the priming routine by declaring your role(s), loudly.** Every startup / fresh-primer report MUST end with an
+explicit role line, e.g. **"Current role: planner"** or **"Current role: reviewer"** — and when one actor wears
+several hats (resource-scarcity fallback or human-approved reassignment) it names **all** of them, e.g.
+**"Current roles: planner + reviewer (resource fallback)"** or **"Current roles: reviewer + temporary implementer
+(human-approved)."** This is not decorative: it is the operator's guard against accidentally asking an agent to
+work outside its assigned function — and, when roles are doubled up, the explicit reminder that **each role's gate
+and discipline still hold separately**.
 
 ### Milestone 06 Key Features
 - **Multi-Agent Consensus under Attach Mode**: The planner protocol successfully executes across isolated MCP client environments. Planners can engage in the `fact_collection`, `discussion`, and `proposal` phases, emitting structured JSON responses that map dynamically to MCP tool calls (`submit_plan`, `send_to_agent`, etc.) without dropping the connection.
@@ -83,13 +97,25 @@ agent to work outside its assigned function.
 - **Follow Collaboration Workflow**: Strictly adhere to the workflow defined in `design/collaboration-workflow.md`. That document is the source of truth for how we build things and must be followed at all times.
 - **Document Before Implementation**: Do not rush to the implementation phase. Always document proposed code changes beforehand so that another agent can review and approve the plan.
 - **Document Changes**: Always amend documentation to accurately reflect the code changes that have taken place.
+- **Product Owner / Architect (PO) — the apex authority.** Above every other role sits the **Product Owner /
+  Architect**: the holder of the **final word** on any decision, the owner of **product direction and technical
+  architecture**, the one who **proposes epics**, sets the direction of work, and **may decide or intervene at any
+  phase of the project** (not only at gates). The PO **assigns the other roles** and **may delegate** any function
+  into the workflow as needed — including delegating the **Scrum Master** process function (facilitation, baton,
+  resource oversight, convening gates), which sits *below* and *serves* the PO. **By default the human (Fausto)
+  holds the PO/Architect role** (and, by default, also holds the SM function until he delegates it). Where this
+  doc grants the Scrum Master "final" go/no-go, read it as **operational** authority exercised *on the PO's
+  behalf*: the PO can always overrule, redirect, or reassign. The canonical, fuller statement is the **Product
+  Owner / Architect** participant in `design/collaboration-workflow.md` §1.
 - **Respect role boundaries & check assignment compliance — every turn.** Before acting on any assignment, compare
   it with `design/collaboration-workflow.md`, your current role, and the current Scrum Master authority. If it is
-  outside your role (e.g. implementing code while you are only planner-reviewer), ambiguous, or otherwise
+  outside your role (e.g. implementing code while you are only a planner or a reviewer), ambiguous, or otherwise
   non-compliant, **STOP before acting** — report your current role, the requested action, why it looks out-of-role,
-  and any safe alternatives; then do what the Scrum Master decides. You may *propose* a reassignment, but you report
-  first. **The Scrum Master, and only the Scrum Master, makes go/no-go decisions and may reassign or de-assign
-  roles** (a non-human Scrum Master must document the reason in a durable artifact). *(This is the operational
+  and any safe alternatives; then do what the Scrum Master decides (or, if the fix is a **role reassignment**, what
+  the Product Owner/Architect decides — reassignment is a PO call). You may *propose* a reassignment, but you report
+  first. **The Scrum Master makes the operational go/no-go calls (on the PO's behalf); but reassigning or
+  de-assigning roles is the Product Owner/Architect's authority alone — the SM does NOT reassign roles** (a
+  non-human SM or PO must document the reason in a durable artifact). *(This is the operational
   restatement; the **canonical full rule** — plus the SM's standing duties (bring forth the backlog,
   check workflow adherence, monitor resource consumption, communication/baton facilitation) and its allowances — is the Scrum Master bullet in
   `design/collaboration-workflow.md` §1.)*
@@ -102,16 +128,16 @@ agent to work outside its assigned function.
     Master authority (or any other terminal decision) on its own until Fausto explicitly elevates it beyond
     co-pilot. This grant is narrow and revocable: it lapses or changes only when Fausto says so.
   - **Standing conditional reassignment — the one pre-authorized exception to "STOP before implementing."** The
-    Scrum Master has pre-decided the recurring case below, so a planner-reviewer does **not** need fresh per-task
+    Product Owner/Architect (role reassignment is a PO act) has pre-decided the recurring case below, so a planner or reviewer does **not** need fresh per-task
     authorization while its trigger holds (it still declares the dual role loudly, per the role-declaration rule
     above). **Any *other* out-of-role request still follows "STOP and ask" — this grant is narrow.**
     ```
-    STANDING CONDITIONAL REASSIGNMENT  (Scrum Master: Fausto, 2026-06-27)
+    STANDING CONDITIONAL REASSIGNMENT  (Product Owner: Fausto, 2026-06-27)
       trigger:  Gemini (the designated implementer) is unavailable (e.g. out of weekly budget)
-      grant:    a planner-reviewer (Claude OR Codex) MAY ALSO implement code/tests
+      grant:    a planner or reviewer (Claude OR Codex) MAY ALSO implement code/tests
       limits:   merge stays HUMAN-GATED; the ⛔ Implementer Rules of Engagement, the M06
                 behaviour-change/show-stopper rules, and scope discipline ALL still apply unchanged;
-                the actor declares its dual role ("planner-reviewer + temporary implementer")
+                the actor declares its dual role (e.g. "reviewer + temporary implementer")
       revoke:   Gemini returns → exception lapses automatically → implementer→Gemini is the default again
       reason:   avoids a development deadlock when no other implementer is available
       status:   DORMANT as of 2026-06-27 — Gemini is currently considered AVAILABLE, so
@@ -256,7 +282,7 @@ the EARLIER of:** the show-stopper fence (Rule 2 — even on attempt 1), **or** 
 
 ## ⛔ REVIEWER RULES OF ENGAGEMENT ⛔  *(READ BEFORE EVERY REVIEW — NON-NEGOTIABLE)*
 
-> **The sibling of the Implementer rules, for whoever holds planner-reviewer.** These are the operational teeth of
+> **The sibling of the Implementer rules, for whoever holds the reviewer role.** These are the operational teeth of
 > **Honesty over Results** and workflow principle 2 (**Verify, don't assert**) on the *reviewing* side. A
 > **VERIFIED you did not earn by running it** is worth *less* than an honest **REFUTED** — it launders an unproven
 > claim onto the verified-only mainline, where every later task then trusts it. The method detail lives in
@@ -323,14 +349,15 @@ reviewer exactly as written elsewhere in this file — they are not re-stated he
 
 **Writing a Session Primer.** When the user asks for one — or at a clean stopping point before a fresh session — write
 **one tight, self-contained block** so the cold-start reader can orient with zero prior context. A Primer is
-**addressed to the next holder of the *role*** (whoever next picks up planner-reviewer, or implementer — not a
+**addressed to the next holder of the *role*** (whoever next picks up planner, reviewer, or implementer — not a
 specific agent), so write it in the second person to that successor and keep it **agent-neutral** where you can —
 the few agent-specific bits (your provider's budget, a CLI quirk) are written fresh for whoever you expect to hand
 to. It MUST **open with the exact sentence "This is your session primer."** (so the reader instantly recognises the
 cold-start contract and the report-only rule below kicks in), and it MUST contain:
 1. **Project micro-description** — what AgentTalk is, in 1–2 lines.
-2. **Roles** — the human (Fausto) and the role map: **planner-reviewer → Claude *or* Codex**, **implementer → Gemini**,
-   human = scope/decisions/relay; name **which role this primer is for** (and, if it matters, which agent you expect to take it).
+2. **Roles** — the human (Fausto) and the role map: **planner → Claude *or* Codex**, **reviewer → Claude *or* Codex**
+   (planner ≠ reviewer per task by default), **implementer → Gemini**, human = PO/scope/decisions/relay; name **which
+   role this primer is for** (and, if it matters, which agent you expect to take it).
 3. **Workflow / source of truth** — `design/collaboration-workflow.md` (the method) + the artifacts: `*-plan.md` (spec+DoD), `*-implementation.md` (the **ledger**), `backlog.md`, `logbook.md`.
 4. **Which epic/task we're on** *(REQUIRED — always state the active milestone/epic/task)* + what's next.
 5. **Where state lives** — resume from the active epic's `*-implementation.md` ledger, **not from chat**.
@@ -341,19 +368,23 @@ Keep it tight; the ledger holds the detail.
 **Lessons learned (per-agent — self-authored, at session close).** Whenever you write a Session Primer — or
 otherwise wrap a working session — also append a **brief, dated** entry to **your own**
 `design/lessons/<agent>-lessons.md` (Claude/Codex/Gemini/Hermes): **1–3 bullets** — what worked, what didn't, what
-you'll do differently — so you sharpen your effectiveness over time. **Each agent writes only its own file**
+you'll do differently — so you sharpen your effectiveness over time. **Lessons stay keyed by AGENT, not by role**
+(even though planner and reviewer are separate roles): one file per agent, and you **tag the lesson with the hat you
+were wearing** — e.g. *"today as planner I realised …"*, *"today as reviewer I learned …"*, *"today as Scrum Master
+I learned …"*. A single agent that wore several hats records each lesson under the relevant hat in its one file.
+**Each agent writes only its own file**
 ("agent-declined"). You **skim it back at session start** (see First Entry Point) — that read-back is the point;
 write-only rots. This is *self-reflection on how you work* — **distinct** from `logbook.md` (shared cross-cutting
 *facts*) and `implementer-pitfalls.md` (reviewer-authored case law about the *implementer*). This is a no-op for a
 human in the loop; it's guidance for the agents.
 
 **Save it to the role-primer + mint a fresh key (don't paste into chat).** (1) Generate a fresh key (e.g.
-`YYYYMMDD-HHMM-<rand>`); (2) overwrite `design/session-primers/<role>-primer.md` (`planner-reviewer-primer.md`
-or `implementer-primer.md`) with header `role: <role>`, `key: <fresh-key>`, `written: <date> by <agent>`, then
+`YYYYMMDD-HHMM-<rand>`); (2) overwrite `design/session-primers/<role>-primer.md` (`planner-primer.md`,
+`reviewer-primer.md`, or `implementer-primer.md`) with header `role: <role>`, `key: <fresh-key>`, `written: <date> by <agent>`, then
 the body (starting with the exact opening sentence). **That's it** — the key lives in this shared header, so it's
 already the same for every eligible reader; there is **no** per-agent `active` to seed, no cross-store relay.
 Overwriting the repo file is safe — git history keeps every prior primer. Whoever you hand to (Claude or Codex
-for planner-reviewer; Gemini for implementer) cold-starts, finds this key **not** in their own `consumed`,
+for planner or reviewer; Gemini for implementer) cold-starts, finds this key **not** in their own `consumed`,
 reports, STOPs, and consumes it in **their** store (see **First Entry Point**). If you want to leave the role
 **un-handed** (no fresh cold-start due), set `key: none`.
 
@@ -372,9 +403,10 @@ normally:
    `memory/`). Codex → its stable private dir, e.g. `~/.codex/agenttalk-session-primer-key.json`. agy/Gemini →
    the equivalent **stable** private config/home dir — **never** the repo, **never** an ephemeral per-turn exec
    home (those are wiped). If you don't know your MCP's stable private path, **ask the human** — don't guess.
-2. **The role-primer filename is fixed** by your role: `design/session-primers/planner-reviewer-primer.md`
-   (Claude/Codex) or `implementer-primer.md` (Gemini). Keep the `-primer.md` suffix so it can't be auto-loaded as
-   a `CLAUDE.md`/`AGENTS.md`/`GEMINI.md` context file on a case-insensitive filesystem (LB-12).
+2. **The role-primer filename is fixed** by your role: `design/session-primers/planner-primer.md` or
+   `reviewer-primer.md` (Claude/Codex are eligible for both) or `implementer-primer.md` (Gemini). Keep the
+   `-primer.md` suffix so it can't be auto-loaded as a `CLAUDE.md`/`AGENTS.md`/`GEMINI.md` context file on a
+   case-insensitive filesystem (LB-12).
 3. From then on the handshake is automatic: read the role-primer's key, compare to your `consumed`, act/consume.
    *(Claude's store bootstrapped 2026-06-22 — migrate it to the `{consumed:[]}` shape on next write. Codex was
    bootstrapped 2026-06-26 at `~/.codex/agenttalk-session-primer-key.json`; agy/Gemini bootstrapped 2026-06-27 at
@@ -397,7 +429,7 @@ normally:
 > truth is itself a finding worth surfacing.
 >
 > **Why:** the same fresh role-primer may be seen by **more than one eligible agent at once** (e.g. both Claude *and*
-> Codex are eligible for planner-reviewer). This is expected — the key does **not** route to one of them; it's a
+> Codex are eligible for planner — and for reviewer). This is expected — the key does **not** route to one of them; it's a
 > freshness token they all share. If each started developing on receipt they'd collide — duplicate branches, racing live
 > runs, stray worktrees/processes, lost work. So **reporting-only-then-STOP is the actual collision guard**: each
 > eligible reader independently reports and stops, and **the human decides who proceeds**. *(This rule is about the
