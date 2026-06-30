@@ -1,7 +1,7 @@
 ---
 role: planner
-key: 20260630-0715-M11-plan
-written: 2026-06-30 by Hermes (SM → planner handoff)
+key: none
+written: 2026-06-30 by Hermes (session close — no handoff pending)
 ---
 
 This is your session primer.

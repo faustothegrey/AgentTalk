@@ -13,8 +13,4 @@ here.**
 
 ---
 
-### 2026-06-29 — SM activation, spike orchestration handoff
-
-- **What worked:** Agentctl workflow (spawn → send → capture) with parallel Codex+Gemini agents works smoothly for the plan→implement→review cycle. The spike was the right format for the tiny tech-debt item — no epic overhead.
-- **What didn't:** Codex sometimes gets stuck at the `›` prompt and needs the message re-sent. Need to add "press Enter first" or send empty line if capture shows stale prompt after send.
-- **What I'll do differently:** As SM I should do a quick backlog gate sweep at session start before jumping into delegation. Also need to ground every claim against git (the vault note was stale about my delegation status — real state was in AGENT.md).
+|2026-06-30|Session start: poll usage meter first. MT2 spike complete, recommendation DROP/DEFER. Next: T3 (single tool). Worked as SM: backlog gate sweep, M11 epic opened, planner→reviewer→implementer cycle. One lesson: never wait passively for agent output — poll proactively and report findings as soon as they're ready. Second lesson: never mention process/CLI/tmux details in responses — only substance (task, findings, review, decisions).|
