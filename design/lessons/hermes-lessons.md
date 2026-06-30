@@ -13,4 +13,8 @@ here.**
 
 ---
 
-*(No entries yet — Hermes has not yet joined the fray; it appends its first lesson once active as Scrum Master delegate.)*
+### 2026-06-29 — SM activation, spike orchestration handoff
+
+- **What worked:** Agentctl workflow (spawn → send → capture) with parallel Codex+Gemini agents works smoothly for the plan→implement→review cycle. The spike was the right format for the tiny tech-debt item — no epic overhead.
+- **What didn't:** Codex sometimes gets stuck at the `›` prompt and needs the message re-sent. Need to add "press Enter first" or send empty line if capture shows stale prompt after send.
+- **What I'll do differently:** As SM I should do a quick backlog gate sweep at session start before jumping into delegation. Also need to ground every claim against git (the vault note was stale about my delegation status — real state was in AGENT.md).
