@@ -12,7 +12,7 @@
 | Task | What | Status |
 |------|------|--------|
 | **SP1** | Affordance-protocol spike (per-harness probe: dynamic skills + scoped toolset) | VERIFIED ✅ |
-| **M11-T1** | Single tool `consensus_respond(action, payload)` — wire-contract v5→v6, lockstep client (origin: M10-T3) | Gate 1 VERIFIED ✅ — ready for implementation |
+| **M11-T1** | Single tool `consensus_respond(action, payload)` — wire-contract v5→v6, lockstep client (origin: M10-T3) | Gate 2 VERIFIED ✅ |
 | **M11-T2** | Active re-prompting (current legal set in correction message) | ⬜ not started |
 | **M11-T3** | Turn-budget / Referee (bound discussion, force-advance on non-convergence) | ⬜ not started |
 
@@ -236,3 +236,80 @@ Disposition of prior blockers:
    requires explicit PO-approved rescope for any compatibility shim.
 
 Gate 1 outcome: **VERIFIED ✅ — M11-T1 is ready for implementer handoff on branch `m11-t1-consensus-respond`.**
+
+## M11-T1 Reviewer gate 2 — implementation verification
+
+**2026-06-30 — Codex reviewer verdict: REFUTED ❌**
+
+Branch reviewed: `m11-t1-consensus-respond` at `5dfb451`.
+
+Evidence run:
+- `node packages/contracts/scripts/verify-contract.js` → `Contract hash verified successfully (v6).`
+- `(cd ../agentalk-mcp-client && node scripts/verify-contract.js)` → `Contract hash verified successfully (v6).`
+- `cmp -s packages/contracts/wire-contract.json ../agentalk-mcp-client/wire-contract.json && echo 'contracts byte-identical'`
+  → `contracts byte-identical`.
+- `tsc -b` → exit 0, no output.
+- `npm test` → contracts verifier passed, Vitest summary `Test Files 42 passed (42)`, `Tests 247 passed (247)`.
+- Hash cross-check:
+  - current contract `version 6`
+  - stored hash `3fd29873ed97bdefb9aeee63808d4bbcefb03c95d8dff122ace52b49e8129992`
+  - computed approved-style hash `3fd29873ed97bdefb9aeee63808d4bbcefb03c95d8dff122ace52b49e8129992`
+  - helper-style hash from committed `update-hash.js` algorithm `9ebf6f05b7d73380a2ca924c2bf9016f35971953d5ace7af9d59d421c8588fed`
+- `git -C ../agentalk-mcp-client status --short --branch` → `## m11-t1-consensus-respond` with no dirty files.
+- `git status --short --branch` in AgentTalk → `## m11-t1-consensus-respond` plus dirty
+  `M design/lessons/hermes-lessons.md` (appears unrelated to this implementation review).
+- `git diff --stat master...HEAD` includes expected M11-T1 runtime/contracts/tests/docs files, but also
+  `update-hash.js` (`23` lines added).
+
+Finding:
+1. **Out-of-scope committed helper blocks closure.** `update-hash.js` is not in the approved M11-T1 edit scope. It is
+   also dangerous as a future utility because it computes the contract hash with `JSON.stringify(data.data)` instead
+   of the canonical `JSON.stringify(data, null, 2)` algorithm used by both verifier scripts. Running it would write an
+   invalid hash for the current v6 contract. This is not a behavior issue in the shipped runtime path, but it is repo
+   pollution and a bad contract-maintenance footgun.
+
+What is verified:
+- Runtime/build/test behavior is green (`tsc -b` and full suite).
+- Contract lockstep is correct now: both repos are v6, hash-valid, and byte-identical.
+- The suite includes the new `consensus_respond` rejection tests and mocked consensus continues to pass.
+
+Required fix for re-review:
+- Remove `update-hash.js` from the branch, or replace it only with a reviewer/PO-approved scoped artifact that uses the
+  exact verifier algorithm and is documented in the task breakdown. The minimal fix is deletion.
+- Re-run `node packages/contracts/scripts/verify-contract.js`, client verifier, byte identity, `tsc -b`, `npm test`,
+  and pollution checks.
+
+Gate 2 outcome: **REFUTED ❌ — deterministic behavior is green, but branch is not closable until the out-of-scope
+hash helper is removed.**
+
+**2026-06-30 — Codex reviewer re-review after blocker fix: VERIFIED ✅**
+
+Branch reviewed: `m11-t1-consensus-respond` at `ef0366d` (`chore: remove update-hash.js from scope (not in approved plan)`).
+
+Evidence run:
+- `test ! -e update-hash.js && echo 'update-hash.js absent'` → `update-hash.js absent`.
+- `git diff --stat master...HEAD` no longer includes `update-hash.js`; branch diff is now 13 files, `+652/-350`.
+- `node packages/contracts/scripts/verify-contract.js` → `Contract hash verified successfully (v6).`
+- `(cd ../agentalk-mcp-client && node scripts/verify-contract.js)` → `Contract hash verified successfully (v6).`
+- `cmp -s packages/contracts/wire-contract.json ../agentalk-mcp-client/wire-contract.json && echo 'contracts byte-identical'`
+  → `contracts byte-identical`.
+- `tsc -b` → exit 0, no output.
+- `npm test` → contracts verifier passed; Vitest summary `Test Files 42 passed (42)`, `Tests 247 passed (247)`.
+- `node scripts/test-mcp-provider.mjs gemini` → real Gemini MCP exec turn completed:
+  `submit_exec_result` with `Hello! How can I help you today?`, then `send_to_agent`, final line
+  `TEST PASSED: Live MCP exec-RPC turn successfully completed for gemini.`
+- `git worktree list --porcelain` → only `/Users/fausto/Software/AgentTalk` on branch `m11-t1-consensus-respond`.
+- `git branch --list 'task-*' 'm11-t1*'` → only `m11-t1-consensus-respond`.
+- `git -C ../agentalk-mcp-client status --short --branch` → clean `## m11-t1-consensus-respond`.
+- `git status --short --branch` in AgentTalk → branch `m11-t1-consensus-respond` with dirty
+  `design/milestone11-consensus-robustness-implementation.md` (this verdict) and pre-existing
+  `design/lessons/hermes-lessons.md`; no live-gate worktree/branch pollution.
+- `node scripts/usage.mjs` → Codex weekly 19%, 5h 57%; antigravity 5h 10%.
+
+Disposition:
+- Prior blocker **RESOLVED**: the out-of-scope `update-hash.js` helper is removed in commit `ef0366d`.
+- M11-T1 implementation satisfies the approved plan: single `consensus_respond(action,payload)` MCP/runtime surface,
+  API-side `respond(message_type,message_payload)` preserved, v6 contracts lockstepped, old planning MCP tools rejected,
+  deterministic and live gates green.
+
+Gate 2 outcome: **VERIFIED ✅ — ready for human merge decision.**
