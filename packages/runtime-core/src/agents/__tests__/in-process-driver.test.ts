@@ -75,9 +75,12 @@ describe('InProcessAgentDriver', () => {
     await new Promise(r => setTimeout(r, 50));
 
     expect(mockFetch).toHaveBeenCalled();
-    expect(registry.handleMcpToolCall).toHaveBeenCalledWith('agent-1', 'send_to_agent', expect.objectContaining({
-      payload: 'my opinion',
-      to: 'agent-2'
+    expect(registry.handleMcpToolCall).toHaveBeenCalledWith('agent-1', 'consensus_respond', expect.objectContaining({
+      action: 'opinion',
+      payload: expect.objectContaining({
+        text: 'my opinion',
+        expected_response_types: ['opinion']
+      })
     }));
 
     driver.stop();
@@ -101,7 +104,10 @@ describe('InProcessAgentDriver', () => {
     await new Promise(r => setTimeout(r, 50));
 
     expect(mockFetch).toHaveBeenCalled();
-    expect(registry.handleMcpToolCall).toHaveBeenCalledWith('agent-1', 'fact_collection_end', { summary: 'Some facts here' });
+    expect(registry.handleMcpToolCall).toHaveBeenCalledWith('agent-1', 'consensus_respond', {
+      action: 'fact_collection_end',
+      payload: { summary: 'Some facts here' }
+    });
 
     driver.stop();
   });

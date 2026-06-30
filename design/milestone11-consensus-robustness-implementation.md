@@ -12,7 +12,7 @@
 | Task | What | Status |
 |------|------|--------|
 | **SP1** | Affordance-protocol spike (per-harness probe: dynamic skills + scoped toolset) | VERIFIED ✅ |
-| **M11-T1** | Single tool `consensus_respond(action, payload)` — wire-contract v5→v6, lockstep client (origin: M10-T3) | ⏭️ next |
+| **M11-T1** | Single tool `consensus_respond(action, payload)` — wire-contract v5→v6, lockstep client (origin: M10-T3) | Gate 1 VERIFIED ✅ — ready for implementation |
 | **M11-T2** | Active re-prompting (current legal set in correction message) | ⬜ not started |
 | **M11-T3** | Turn-budget / Referee (bound discussion, force-advance on non-convergence) | ⬜ not started |
 
@@ -146,3 +146,93 @@ Disposition of prior blockers:
    post-parse to MCP/runtime `consensus_respond(action,payload)`.
 
 Gate 1 outcome: **plan status updated to `reviewer approved`; SP1 is ready for implementer handoff.**
+
+## M11-T1 Reviewer gate 1 — task breakdown review
+
+**2026-06-30 — Codex reviewer verdict: REFUTED ❌**
+
+Reviewed: `design/m11-t1-consensus-respond-task-breakdown.md`.
+
+Evidence run/read:
+- `wc -l` confirmed all cited AgentTalk and client files/ranges exist, including
+  `mcp-tools.ts:12-125`, `registry.ts:29-86` + `336-464`, `translation.ts:11-82`,
+  `response-schema.ts:16-28` + `83-142` + `152-194` + `281-346`,
+  `in-process-driver.ts:142-175` + `203-241`, `protocol-payloads.ts:20-29` + `40-48` +
+  `76-119` + `301-319` + `363-422`, both `wire-contract.json:1-27` copies, both
+  `verify-contract.js:1-21` copies, and the listed tests/scripts.
+- Re-read the numbered ranges with `nl -ba ... | sed -n ...`; the main code/test ranges match the planned surfaces.
+- `node scripts/usage.mjs` → Codex weekly 11%, 5h 9%.
+- `git diff --check -- design/m11-t1-consensus-respond-task-breakdown.md` → clean.
+- `git diff --no-index --check /dev/null design/m11-t1-consensus-respond-task-breakdown.md` → no output.
+- `LC_ALL=C rg -n "[^\x00-\x7F]" design/m11-t1-consensus-respond-task-breakdown.md` → no output.
+- `command -v markdownlint || true` → no output, so markdownlint is unavailable in this environment.
+- `git diff --check -- design packages apps scripts ../agentalk-mcp-client/wire-contract.json` →
+  `fatal: ../agentalk-mcp-client/wire-contract.json: '../agentalk-mcp-client/wire-contract.json' is outside repository at '/Users/fausto/Software/AgentTalk'`.
+- `git -C ../agentalk-mcp-client diff --check -- wire-contract.json` → clean.
+- `rg -n "test-mcp-provider|test-mcp-gate|test-live-gate" package.json design scripts README.md -S`
+  shows `scripts/test-mcp-provider.mjs` is a recorded/used live provider gate in prior milestone evidence.
+- Read `scripts/test-mcp-provider.mjs:12-109`: it is a one-agent live MCP provider gate that still treats
+  `send_to_agent` as the success event at `:67-70`.
+- Read `/Users/fausto/Software/agentalk-mcp-client/attach-skill.md:5-10`: it still instructs attached planners to
+  submit with `submit_plan`, which M11-T1 removes from the advertised v6 MCP tool surface.
+
+Gate blockers:
+1. **Invalid retry-budget command.** The proposed markdown/diff hygiene command includes
+   `../agentalk-mcp-client/wire-contract.json` in an AgentTalk `git diff --check` invocation, which fails because the
+   path is outside the repository. Split this into an AgentTalk command and a client-repo command.
+2. **Client instruction surface is missing.** M11-T1 locksteps the MCP contract with `agentalk-mcp-client`, but the
+   client repo has `attach-skill.md:5-10` telling planners to use the removed `submit_plan` tool. The task breakdown
+   must either include that file as an edit/review surface or explicitly prove it is unused and out of scope.
+3. **Legacy provider gate surface is missing.** `scripts/test-mcp-provider.mjs:12-109` is a sibling live provider gate
+   with old success observation at `:67-70`. The task breakdown scopes `test-mcp-gate.mjs` and `test-live-gate.mjs`,
+   but not this script. Include it as an update/deprecation surface or explain why it is no longer an active gate.
+4. **Compatibility-shim wording conflicts with stop conditions.** The registry DoD says old planning tool names are
+   not accepted "unless the reviewer explicitly approves a compatibility shim"; the stop conditions correctly say any
+   compatibility shim that keeps old planning tools accepted after v6 is out of scope. Remove the escape hatch or make
+   it an explicit PO-approved rescope, not a reviewer-only implementation option.
+
+What is sound:
+- The API/MCP split is correct: API stays `respond(message_type, message_payload)`, runtime moves to
+  `consensus_respond(action, payload)`.
+- The v5→v6 hash algorithm and byte-copy lockstep procedure are correct.
+- The sequence A→B→C→D→E is dependency-correct once the missing surfaces and invalid command are fixed.
+- Retry budgets are otherwise reasonable.
+
+**2026-06-30 — Codex reviewer re-review after planner corrections: VERIFIED ✅**
+
+Reviewed: `design/m11-t1-consensus-respond-task-breakdown.md`.
+
+Evidence run/read:
+- Re-read the corrected task breakdown.
+- `rg -n "git diff --check|git -C ../agentalk-mcp-client|../agentalk-mcp-client/wire-contract.json"
+  design/m11-t1-consensus-respond-task-breakdown.md` shows the invalid cross-repo diff-check command has been split:
+  AgentTalk uses `git diff --check -- design packages apps scripts`; client uses
+  `git -C ../agentalk-mcp-client diff --check -- wire-contract.json attach-skill.md`.
+- `git diff --check -- design packages apps scripts && git -C ../agentalk-mcp-client diff --check -- wire-contract.json attach-skill.md`
+  → clean.
+- `rg -n "attach-skill.md|submit_plan|consensus_respond\(action,payload\)"
+  design/m11-t1-consensus-respond-task-breakdown.md` confirms `/Users/fausto/Software/agentalk-mcp-client/attach-skill.md:5-10`
+  is now an edit/review surface and must remove stale `submit_plan` planner guidance.
+- `nl -ba /Users/fausto/Software/agentalk-mcp-client/attach-skill.md | sed -n '5,10p'` confirms the cited range exists
+  and currently contains the stale planner instruction.
+- `rg -n "test-mcp-provider|test-mcp-gate|test-live-gate|active live MCP gate"
+  design/m11-t1-consensus-respond-task-breakdown.md` confirms `scripts/test-mcp-provider.mjs:12-109` is now covered.
+- `nl -ba scripts/test-mcp-provider.mjs | sed -n '12,109p'` confirms that range exists and includes the old success
+  observation at `:67-70`.
+- `rg -n "unless the reviewer|reviewer explicitly approves|compatibility shim|PO-approved rescope|old planning tool names are no longer accepted"
+  design/m11-t1-consensus-respond-task-breakdown.md` confirms the reviewer-only compatibility-shim escape hatch is gone;
+  old planning tools are not accepted, and any compatibility shim requires explicit PO-approved rescope.
+- `git diff --check -- design/m11-t1-consensus-respond-task-breakdown.md design/milestone11-consensus-robustness-implementation.md`
+  → clean.
+- `git diff --no-index --check /dev/null design/m11-t1-consensus-respond-task-breakdown.md` → no output.
+- `LC_ALL=C rg -n "[^\x00-\x7F]" design/m11-t1-consensus-respond-task-breakdown.md` → no output.
+- `node scripts/usage.mjs` → Codex weekly 13%, 5h 21%.
+
+Disposition of prior blockers:
+1. **Invalid retry-budget command** — RESOLVED: split into separate AgentTalk and client-repo commands, both executable.
+2. **Client instruction surface missing** — RESOLVED: `attach-skill.md:5-10` is included with a clear DoD.
+3. **Legacy provider gate missing** — RESOLVED: `scripts/test-mcp-provider.mjs:12-109` is included with update/fold/deprecate options.
+4. **Compatibility-shim contradiction** — RESOLVED: registry DoD no longer allows old planning MCP cases; stop condition
+   requires explicit PO-approved rescope for any compatibility shim.
+
+Gate 1 outcome: **VERIFIED ✅ — M11-T1 is ready for implementer handoff on branch `m11-t1-consensus-respond`.**

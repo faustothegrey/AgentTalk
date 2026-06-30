@@ -19,9 +19,9 @@ describe('translation module', () => {
       };
 
       const result = translateStructuredResponse(mockEvt, structured, mockBuildProtocolRequest);
-      expect(result.call).toBe('send_to_agent');
-      expect(result.args.payload).toBe('my opinion');
-      expect((result.args as any).expected_response_types).toEqual(['agreement_proposal']);
+      expect(result.call).toBe('consensus_respond');
+      expect((result.args as any).action).toBe('opinion');
+      expect((result.args as any).payload.text).toBe('my opinion');
     });
 
     it('translates agreement_proposal', () => {
@@ -31,10 +31,9 @@ describe('translation module', () => {
       };
 
       const result = translateStructuredResponse(mockEvt, structured, mockBuildProtocolRequest);
-      expect(result.call).toBe('agreement_proposal');
-      expect(result.args.proposal).toBe('X');
-      expect(result.args.text).toBe('I propose X');
-      expect((result.args as any).expected_response_types).toEqual(['agreement_acceptance']);
+      expect(result.call).toBe('consensus_respond');
+      expect((result.args as any).action).toBe('agreement_proposal');
+      expect((result.args as any).payload.proposal).toBe('X');
     });
 
     it('translates submit_plan', () => {
@@ -44,9 +43,9 @@ describe('translation module', () => {
       };
 
       const result = translateStructuredResponse(mockEvt, structured, mockBuildProtocolRequest);
-      expect(result.call).toBe('submit_plan');
-      expect(result.args.plan).toBe('1. Do X');
-      expect(result.args.proposal).toBe('X');
+      expect(result.call).toBe('consensus_respond');
+      expect((result.args as any).action).toBe('submit_plan');
+      expect((result.args as any).payload.plan).toBe('1. Do X');
     });
   });
 

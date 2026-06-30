@@ -2,52 +2,58 @@ import { describe, expect, it } from 'vitest';
 import { parseRequestPayload } from '@agenttalk/contracts/protocol-payloads';
 
 describe('protocol-payloads parseRequestPayload', () => {
-  it('parses agreement_acceptance request payload', () => {
+  it('parses consensus_respond with agreement_acceptance payload', () => {
     const payload = parseRequestPayload({
       id: 'req-1',
-      call: 'agreement_acceptance',
-      args: { expected_response_types: ['submit_plan'] },
+      call: 'consensus_respond',
+      args: { action: 'agreement_acceptance', payload: { expected_response_types: ['submit_plan'] } },
     });
 
     expect(payload).toEqual({
       id: 'req-1',
-      call: 'agreement_acceptance',
-      args: { expected_response_types: ['submit_plan'] },
+      call: 'consensus_respond',
+      args: { action: 'agreement_acceptance', payload: { expected_response_types: ['submit_plan'] } },
     });
   });
 
-  it('parses agreement_proposal with proposal text', () => {
+  it('parses consensus_respond with agreement_proposal payload', () => {
     const payload = parseRequestPayload({
       id: 'req-2',
-      call: 'agreement_proposal',
-      args: { proposal: 'Adopt the tiny-cleanup plan.', expected_response_types: ['agreement_acceptance', 'opinion'] },
+      call: 'consensus_respond',
+      args: { action: 'agreement_proposal', payload: { proposal: 'Adopt the tiny-cleanup plan.', expected_response_types: ['agreement_acceptance', 'opinion'] } },
     });
 
     expect(payload).toEqual({
       id: 'req-2',
-      call: 'agreement_proposal',
-      args: { proposal: 'Adopt the tiny-cleanup plan.', expected_response_types: ['agreement_acceptance', 'opinion'] },
+      call: 'consensus_respond',
+      args: { action: 'agreement_proposal', payload: { proposal: 'Adopt the tiny-cleanup plan.', expected_response_types: ['agreement_acceptance', 'opinion'] } },
     });
   });
 
-  it('parses submit_plan with proposal and text', () => {
+  it('parses consensus_respond with submit_plan payload', () => {
     const payload = parseRequestPayload({
       id: 'req-3',
-      call: 'submit_plan',
+      call: 'consensus_respond',
       args: {
-        plan: '1. Do X\n2. Do Y',
-        proposal: 'Adopt the tiny-cleanup plan.',
-        text: 'Submitting final plan.',
+        action: 'submit_plan',
+        payload: {
+          plan: '1. Do X\n2. Do Y',
+          proposal: 'Adopt the tiny-cleanup plan.',
+          text: 'Submitting final plan.',
+        }
       },
     });
 
     expect(payload).toEqual({
       id: 'req-3',
-      call: 'submit_plan',
+      call: 'consensus_respond',
       args: {
-        plan: '1. Do X\n2. Do Y',
-        proposal: 'Adopt the tiny-cleanup plan.',
-        text: 'Submitting final plan.',
+        action: 'submit_plan',
+        payload: {
+          plan: '1. Do X\n2. Do Y',
+          proposal: 'Adopt the tiny-cleanup plan.',
+          text: 'Submitting final plan.',
+        }
       },
     });
   });

@@ -37,13 +37,12 @@ export interface AckHealthcheckRequestPayload {
   };
 }
 
-export interface SubmitPlanRequestPayload {
+export interface ConsensusRespondRequestPayload {
   id: string;
-  call: 'submit_plan';
+  call: 'consensus_respond';
   args: {
-    plan: string;
-    proposal?: string;
-    text?: string;
+    action: 'opinion' | 'agreement_proposal' | 'agreement_acceptance' | 'ack_planning_protocol' | 'fact_collection_end' | 'submit_plan';
+    payload: Record<string, unknown>;
   };
 }
 
@@ -73,50 +72,14 @@ export interface SubmitUsageStatsRequestPayload {
   };
 }
 
-export interface AgreementProposalRequestPayload {
-  id: string;
-  call: 'agreement_proposal';
-  args?: {
-    expected_response_types?: string[];
-    proposal?: string;
-  };
-}
-
-export interface AgreementAcceptanceRequestPayload {
-  id: string;
-  call: 'agreement_acceptance';
-  args?: {
-    expected_response_types?: string[];
-    proposal?: string;
-  };
-}
-
-export interface AckPlanningProtocolRequestPayload {
-  id: string;
-  call: 'ack_planning_protocol';
-  args?: Record<string, unknown>;
-}
-
-export interface FactCollectionEndRequestPayload {
-  id: string;
-  call: 'fact_collection_end';
-  args: {
-    summary: string;
-  };
-}
-
 export type RequestPayload =
   | ListAgentsRequestPayload
   | SendToAgentRequestPayload
   | AckHealthcheckRequestPayload
-  | SubmitPlanRequestPayload
+  | ConsensusRespondRequestPayload
   | SubmitWorkResponseRequestPayload
   | SubmitWorkResultRequestPayload
-  | SubmitUsageStatsRequestPayload
-  | AgreementProposalRequestPayload
-  | AgreementAcceptanceRequestPayload
-  | AckPlanningProtocolRequestPayload
-  | FactCollectionEndRequestPayload;
+  | SubmitUsageStatsRequestPayload;
 
 export interface ResponsePayload {
   id: string;
@@ -298,25 +261,23 @@ export function parseRequestPayload(value: unknown): RequestPayload | null {
         },
       };
 
-    case 'submit_plan':
-      if (!isRecord(value.args) || typeof value.args.plan !== 'string') {
+    case 'consensus_respond':
+      if (
+        !isRecord(value.args) ||
+        typeof value.args.action !== 'string' ||
+        !['opinion', 'agreement_proposal', 'agreement_acceptance', 'ack_planning_protocol', 'fact_collection_end', 'submit_plan'].includes(value.args.action) ||
+        !isRecord(value.args.payload)
+      ) {
         return null;
       }
-
-      {
-        const args: SubmitPlanRequestPayload['args'] = { plan: value.args.plan };
-        if (typeof value.args.proposal === 'string') {
-          args.proposal = value.args.proposal;
-        }
-        if (typeof value.args.text === 'string') {
-          args.text = value.args.text;
-        }
-        return {
-          id: value.id,
-          call: 'submit_plan',
-          args,
-        };
-      }
+      return {
+        id: value.id,
+        call: 'consensus_respond',
+        args: {
+          action: value.args.action as ConsensusRespondRequestPayload['args']['action'],
+          payload: value.args.payload,
+        },
+      };
 
     case 'submit_work_response':
       if (!isRecord(value.args) || typeof value.args.accepted !== 'boolean') {
@@ -360,65 +321,7 @@ export function parseRequestPayload(value: unknown): RequestPayload | null {
         },
       };
 
-    case 'agreement_proposal':
-      if (!isRecord(value.args)) {
-        return {
-          id: value.id,
-          call: 'agreement_proposal',
-        };
-      }
-      return {
-        id: value.id,
-        call: 'agreement_proposal',
-        args: {
-          ...(Array.isArray(value.args.expected_response_types) &&
-          value.args.expected_response_types.every((entry) => typeof entry === 'string')
-            ? { expected_response_types: value.args.expected_response_types }
-            : {}),
-          ...(typeof value.args.proposal === 'string'
-            ? { proposal: value.args.proposal }
-            : {}),
-        },
-      };
 
-    case 'agreement_acceptance':
-      if (!isRecord(value.args)) {
-        return {
-          id: value.id,
-          call: 'agreement_acceptance',
-        };
-      }
-      return {
-        id: value.id,
-        call: 'agreement_acceptance',
-        args: {
-          ...(Array.isArray(value.args.expected_response_types) &&
-          value.args.expected_response_types.every((entry) => typeof entry === 'string')
-            ? { expected_response_types: value.args.expected_response_types }
-            : {}),
-          ...(typeof value.args.proposal === 'string'
-            ? { proposal: value.args.proposal }
-            : {}),
-        },
-      };
-
-    case 'ack_planning_protocol':
-      return {
-        id: value.id,
-        call: 'ack_planning_protocol',
-        ...(isRecord(value.args) ? { args: value.args } : {}),
-      };
-
-    case 'fact_collection_end':
-      if (!isRecord(value.args) || typeof value.args.summary !== 'string') {
-        return null;
-      }
-
-      return {
-        id: value.id,
-        call: 'fact_collection_end',
-        args: { summary: value.args.summary },
-      };
 
     default:
       return null;

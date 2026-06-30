@@ -13,65 +13,26 @@ export function translateStructuredResponse(
   structured: StructuredResponse,
   buildProtocolRequest: (evt: ConversationEvent, reply: string) => ProtocolRequest
 ): ProtocolRequest {
-  const commonArgs = {
-    expected_response_types: (structured.message_payload as any).expected_response_types,
-  };
+
 
   switch (structured.message_type) {
-    case 'opinion': {
-      const request = buildProtocolRequest(evt, structured.message_payload.text);
-      request.args = { ...request.args, ...commonArgs };
-      return request;
-    }
-    case 'agreement_proposal': {
-      return {
-        id: '', // typically assigned by caller
-        call: 'agreement_proposal',
-        args: {
-          ...commonArgs,
-          proposal: structured.message_payload.proposal,
-          ...(structured.message_payload.text ? { text: structured.message_payload.text } : {}),
-        },
-      };
-    }
-    case 'agreement_acceptance': {
-      return {
-        id: '',
-        call: 'agreement_acceptance',
-        args: {
-          ...commonArgs,
-          proposal: structured.message_payload.proposal,
-          ...(structured.message_payload.text ? { text: structured.message_payload.text } : {}),
-        },
-      };
-    }
-    case 'submit_plan': {
-      return {
-        id: '',
-        call: 'submit_plan',
-        args: {
-          plan: structured.message_payload.plan,
-          proposal: structured.message_payload.proposal,
-          text: structured.message_payload.text,
-        },
-      };
-    }
-    case 'fact_collection_end': {
-      return {
-        id: '',
-        call: 'fact_collection_end',
-        args: { summary: structured.message_payload.summary },
-      };
-    }
-    case 'healthcheck_ack': {
-      return buildProtocolRequest(evt, structured.message_payload.text);
-    }
+    case 'opinion':
+    case 'agreement_proposal':
+    case 'agreement_acceptance':
+    case 'submit_plan':
+    case 'fact_collection_end':
     case 'ack_planning_protocol': {
       return {
         id: '',
-        call: 'ack_planning_protocol',
-        args: {},
+        call: 'consensus_respond',
+        args: {
+          action: structured.message_type,
+          payload: structured.message_payload,
+        },
       };
+    }
+    case 'healthcheck_ack': {
+      return buildProtocolRequest(evt, (structured.message_payload as any).text);
     }
     default: {
       // work_accept / work_refuse etc.

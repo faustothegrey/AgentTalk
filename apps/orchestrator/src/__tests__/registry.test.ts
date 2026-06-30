@@ -284,7 +284,7 @@ describe('Registry', () => {
     let threw = false;
     let result: { isError?: boolean } | undefined;
     try {
-      result = await registry.handleMcpToolCall('planner-b', 'submit_plan', { plan: 'x', proposal: 'p', text: 't' });
+      result = await registry.handleMcpToolCall('planner-b', 'consensus_respond', { action: 'submit_plan', payload: { plan: 'x', proposal: 'p', text: 't' } });
     } catch {
       threw = true;
     }

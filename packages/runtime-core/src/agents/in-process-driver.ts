@@ -155,12 +155,15 @@ export class InProcessAgentDriver {
       this.runtime.recordStructuredMessageType(structured!.message_type);
 
       if (structured!.message_type === 'opinion' && this.runtime.shouldAutoPropose()) {
-        const opinionReq = this.runtime.buildProtocolRequest(evt, (structured!.message_payload as any).text);
+        const opinionReq = {
+          call: 'consensus_respond',
+          args: { action: 'opinion', payload: structured!.message_payload }
+        };
         await this.registry.handleMcpToolCall(this.agent.id, opinionReq.call, opinionReq.args);
         
         request = {
-          call: 'agreement_proposal',
-          args: { proposal: (structured!.message_payload as any).text }
+          call: 'consensus_respond',
+          args: { action: 'agreement_proposal', payload: { proposal: (structured!.message_payload as any).text } }
         };
       } else {
         request = translateStructuredResponse(evt, structured!, (e, reply) => this.runtime.buildProtocolRequest(e, reply));
@@ -228,16 +231,16 @@ export class InProcessAgentDriver {
 
     const text = await this.executeApiPrompt(prompt, true);
     if (!text) {
-      await this.registry.handleMcpToolCall(this.agent.id, 'fact_collection_end', { summary: 'No facts collected.' });
+      await this.registry.handleMcpToolCall(this.agent.id, 'consensus_respond', { action: 'fact_collection_end', payload: { summary: 'No facts collected.' } });
       return;
     }
 
     const { structured } = await parseWithRetry(text, async (p) => this.executeApiPrompt(p, true));
     
     if (structured && structured.message_type === 'fact_collection_end') {
-      await this.registry.handleMcpToolCall(this.agent.id, 'fact_collection_end', { summary: structured.message_payload.summary });
+      await this.registry.handleMcpToolCall(this.agent.id, 'consensus_respond', { action: 'fact_collection_end', payload: { summary: structured.message_payload.summary } });
     } else {
-      await this.registry.handleMcpToolCall(this.agent.id, 'fact_collection_end', { summary: text });
+      await this.registry.handleMcpToolCall(this.agent.id, 'consensus_respond', { action: 'fact_collection_end', payload: { summary: text } });
     }
   }
 

@@ -31,7 +31,10 @@ function getExpectedResponseTypes(args: unknown): StructuredMessageType[] | unde
     return undefined;
   }
 
-  const candidate = (args as Record<string, unknown>).expected_response_types;
+  let candidate = (args as Record<string, unknown>).expected_response_types;
+  if (!candidate && (args as Record<string, unknown>).payload && typeof (args as Record<string, unknown>).payload === 'object') {
+    candidate = ((args as Record<string, unknown>).payload as Record<string, unknown>).expected_response_types;
+  }
   if (!Array.isArray(candidate)) {
     return undefined;
   }
@@ -73,7 +76,10 @@ function getProposalText(args: unknown): string | undefined {
   if (!args || typeof args !== 'object') {
     return undefined;
   }
-  const proposal = (args as Record<string, unknown>).proposal;
+  let proposal = (args as Record<string, unknown>).proposal;
+  if (!proposal && (args as Record<string, unknown>).payload && typeof (args as Record<string, unknown>).payload === 'object') {
+    proposal = ((args as Record<string, unknown>).payload as Record<string, unknown>).proposal;
+  }
   return typeof proposal === 'string' ? proposal : undefined;
 }
 
@@ -81,7 +87,10 @@ function getPlanningText(args: unknown): string | undefined {
   if (!args || typeof args !== 'object') {
     return undefined;
   }
-  const text = (args as Record<string, unknown>).text;
+  let text = (args as Record<string, unknown>).text;
+  if (!text && (args as Record<string, unknown>).payload && typeof (args as Record<string, unknown>).payload === 'object') {
+    text = ((args as Record<string, unknown>).payload as Record<string, unknown>).text;
+  }
   return typeof text === 'string' ? text : undefined;
 }
 
@@ -345,17 +354,7 @@ export class Registry extends EventEmitter {
           return { content: [{ type: 'text', text: 'Message sent to user successfully' }] };
         }
 
-        // Planning routing
-        const planningHandled = await this.teamCoordinator.handlePlanningMessage(
-          agent.id,
-          payload,
-          replyToMessageId,
-          expectedResponseTypes,
-        );
-        if (planningHandled) {
-          this.markTerminalActionComplete(agent);
-          return { content: [{ type: 'text', text: 'Planning message routed successfully' }] };
-        }
+
 
         const senderTeam = this.teamCoordinator.findTeamByAgent(agent.id);
         if (
@@ -404,63 +403,39 @@ export class Registry extends EventEmitter {
         return { content: [{ type: 'text', text: 'Message sent successfully' }] };
       }
 
-      case 'agreement_proposal': {
+      case 'consensus_respond': {
         if (this.isDuplicateTerminalAction(agent)) return { content: [{ type: 'text', text: 'Action accepted (deduplicated)' }] };
+        const { action, payload } = args;
         const expectedResponseTypes = getExpectedResponseTypes(args);
-        const proposal = getProposalText(args) || args.proposal;
+        
         try {
-          await this.teamCoordinator.handleAgreementProposal(agent.id, expectedResponseTypes, proposal);
+          switch (action) {
+            case 'opinion':
+              await this.teamCoordinator.handlePlanningMessage(agent.id, getPlanningText(args) || payload?.text, payload?.replyToMessageId, expectedResponseTypes);
+              break;
+            case 'agreement_proposal':
+              await this.teamCoordinator.handleAgreementProposal(agent.id, expectedResponseTypes, getProposalText(args) || payload?.proposal);
+              break;
+            case 'agreement_acceptance':
+              await this.teamCoordinator.handleAgreementReached(agent.id, expectedResponseTypes, getProposalText(args) || payload?.proposal);
+              break;
+            case 'ack_planning_protocol':
+              await this.teamCoordinator.handlePlanningProtocolAck(agent.id);
+              break;
+            case 'fact_collection_end':
+              await this.teamCoordinator.handleFactCollectionEnd(agent.id, payload?.summary);
+              break;
+            case 'submit_plan':
+              this.teamCoordinator.handlePlanSubmitted(agent.id, payload?.plan, getProposalText(args) || payload?.proposal, getPlanningText(args) || payload?.text);
+              break;
+            default:
+              return this.softProtocolReject('consensus_respond', agent.id, new Error(`Illegal action: ${action}`));
+          }
         } catch (err) {
-          return this.softProtocolReject('agreement_proposal', agent.id, err);
+          return this.softProtocolReject(action || 'consensus_respond', agent.id, err);
         }
         this.markTerminalActionComplete(agent);
-        return { content: [{ type: 'text', text: 'Agreement proposal submitted successfully' }] };
-      }
-
-      case 'agreement_acceptance': {
-        if (this.isDuplicateTerminalAction(agent)) return { content: [{ type: 'text', text: 'Action accepted (deduplicated)' }] };
-        const expectedResponseTypes = getExpectedResponseTypes(args);
-        const proposal = getProposalText(args) || args.proposal;
-        try {
-          await this.teamCoordinator.handleAgreementReached(agent.id, expectedResponseTypes, proposal);
-        } catch (err) {
-          return this.softProtocolReject('agreement_acceptance', agent.id, err);
-        }
-        this.markTerminalActionComplete(agent);
-        return { content: [{ type: 'text', text: 'Agreement acceptance submitted successfully' }] };
-      }
-
-      case 'ack_planning_protocol': {
-        if (this.isDuplicateTerminalAction(agent)) return { content: [{ type: 'text', text: 'Action accepted (deduplicated)' }] };
-        try {
-          await this.teamCoordinator.handlePlanningProtocolAck(agent.id);
-        } catch (err) {
-          return this.softProtocolReject('ack_planning_protocol', agent.id, err);
-        }
-        this.markTerminalActionComplete(agent);
-        return { content: [{ type: 'text', text: 'Planning protocol acknowledged' }] };
-      }
-
-      case 'fact_collection_end': {
-        if (this.isDuplicateTerminalAction(agent)) return { content: [{ type: 'text', text: 'Action accepted (deduplicated)' }] };
-        try {
-          await this.teamCoordinator.handleFactCollectionEnd(agent.id, args.summary);
-        } catch (err) {
-          return this.softProtocolReject('fact_collection_end', agent.id, err);
-        }
-        this.markTerminalActionComplete(agent);
-        return { content: [{ type: 'text', text: 'Fact collection ended successfully' }] };
-      }
-
-      case 'submit_plan': {
-        if (this.isDuplicateTerminalAction(agent)) return { content: [{ type: 'text', text: 'Action accepted (deduplicated)' }] };
-        try {
-          this.teamCoordinator.handlePlanSubmitted(agent.id, args.plan, getProposalText(args) || args.proposal, getPlanningText(args) || args.text);
-        } catch (err) {
-          return this.softProtocolReject('submit_plan', agent.id, err);
-        }
-        this.markTerminalActionComplete(agent);
-        return { content: [{ type: 'text', text: 'Plan submitted successfully' }] };
+        return { content: [{ type: 'text', text: `Action ${action} submitted successfully` }] };
       }
 
       case 'submit_work_response': {

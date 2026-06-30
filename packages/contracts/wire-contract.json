@@ -1,15 +1,11 @@
 {
-  "version": 5,
-  "hash": "1236003f9db2a7110879855bbdc66c7aa5b7c19dbab28f2bdcdb463cd1ac9883",
+  "version": 6,
+  "hash": "3fd29873ed97bdefb9aeee63808d4bbcefb03c95d8dff122ace52b49e8129992",
   "data": {
     "mcpTools": [
       "list_agents",
       "send_to_agent",
-      "agreement_proposal",
-      "agreement_acceptance",
-      "ack_planning_protocol",
-      "fact_collection_end",
-      "submit_plan",
+      "consensus_respond",
       "submit_work_response",
       "submit_work_result",
       "submit_usage_stats",

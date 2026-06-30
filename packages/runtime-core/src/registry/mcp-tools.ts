@@ -46,81 +46,29 @@ export const AGENTTALK_MCP_TOOLS: McpToolDefinition[] = [
     },
   },
   {
-    name: 'agreement_proposal',
-    description: 'Propose a consensus agreement direction to peer agents.',
+    name: 'consensus_respond',
+    description: 'Submit a planning phase response.',
     inputSchema: {
       type: 'object',
       properties: {
-        proposal: {
+        action: {
           type: 'string',
-          description: 'The proposed consensus text statement.',
+          enum: [
+            'opinion',
+            'agreement_proposal',
+            'agreement_acceptance',
+            'ack_planning_protocol',
+            'fact_collection_end',
+            'submit_plan'
+          ],
+          description: 'The planning action to execute.'
         },
-        expected_response_types: {
-          type: 'array',
-          items: { type: 'string' },
-        },
+        payload: {
+          type: 'object',
+          description: 'The phase-specific payload data.'
+        }
       },
-    },
-  },
-  {
-    name: 'agreement_acceptance',
-    description: 'Accept a consensus proposal submitted by a peer.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        proposal: {
-          type: 'string',
-          description: 'The accepted consensus text statement.',
-        },
-        expected_response_types: {
-          type: 'array',
-          items: { type: 'string' },
-        },
-      },
-    },
-  },
-  {
-    name: 'ack_planning_protocol',
-    description: 'Acknowledge planning phase transitions and readiness.',
-    inputSchema: {
-      type: 'object',
-      properties: {},
-    },
-  },
-  {
-    name: 'fact_collection_end',
-    description: 'Submit gathered codebase facts to end the fact collection phase.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        summary: {
-          type: 'string',
-          description: 'A detailed summary of files, symbols, and details collected.',
-        },
-      },
-      required: ['summary'],
-    },
-  },
-  {
-    name: 'submit_plan',
-    description: 'Submit a finished planning strategy to the team worker.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        plan: {
-          type: 'string',
-          description: 'The complete, detailed step-by-step implementation plan.',
-        },
-        proposal: {
-          type: 'string',
-          description: 'The agreement direction this plan fulfills.',
-        },
-        text: {
-          type: 'string',
-          description: 'Brief accompanying context.',
-        },
-      },
-      required: ['plan'],
+      required: ['action', 'payload'],
     },
   },
   {
