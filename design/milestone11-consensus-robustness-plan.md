@@ -42,10 +42,10 @@ These are the remaining pieces to make multi-agent consensus genuinely robust �
 > **Baseline for file/line scopes:** `master` `5cd03df` (2026-06-30). These are planning anchors, not a license
 > to edit beyond the named surfaces. Implementers must re-check the exact lines on their task branch before editing.
 
-### MT2 — Affordance-protocol spike (dynamic skills + scoped toolset)
+### SP1 — Affordance-protocol spike (dynamic skills + scoped toolset)
 
 **Purpose.** Determine whether the next structural improvement should be dynamic per-phase guidance/tool exposure,
-or whether M11 should stop after T3 + MT3 + MT1. This task is a **spike only**.
+or whether M11 should stop after M11-T1 + M11-T2 + M11-T3. This task is a **spike only**.
 
 **Allowed scope (read/probe/docs only):**
 - Read current MCP tool surface in `packages/runtime-core/src/registry/mcp-tools.ts:12-125`.
@@ -85,7 +85,7 @@ runtime/client behavior, stop and record the needed implementation as a recommen
 - Each live harness probe: max 1 run per provider/harness. Do not burn retries on protocol-unfit/free flaky models.
 - Documentation review command (`git diff --check`): max 2 attempts for markdown formatting fixes.
 
-### T3 — Single tool `consensus_respond(action, payload)`
+### M11-T1 — Single tool `consensus_respond(action, payload)` (origin: M10-T3)
 
 **Purpose.** Collapse the planning protocol MCP surface from several planning tools into one
 `consensus_respond(action, payload)` tool. The server still validates action legality against the current phase; the
@@ -96,7 +96,7 @@ tool collapse removes the wrong-tool class at the MCP surface and makes the cont
   `agreement_proposal`, `agreement_acceptance`, `ack_planning_protocol`, `fact_collection_end`, and `submit_plan`
   with one `consensus_respond` definition. `opinion` is not a separate MCP tool today (it rides through
   `send_to_agent`), but under T3 it must become `consensus_respond({ action: 'opinion', payload })` for planning
-  consensus. Preserve `send_to_agent` for non-planning peer/user messages unless a reviewer-approved T3 subdecision
+  consensus. Preserve `send_to_agent` for non-planning peer/user messages unless a reviewer-approved M11-T1 subdecision
   says otherwise.
 - `packages/runtime-core/src/registry/registry.ts:29-86`, the current `send_to_agent` planning/discussion path around
   `360-404`, and planning tool handlers at `407-464`: add argument extraction for `{ action, payload }`; dispatch
@@ -108,7 +108,7 @@ tool collapse removes the wrong-tool class at the MCP surface and makes the cont
 - `packages/runtime-core/src/agents/response-schema.ts:16-28`, `83-142`, `152-194`, `281-346`: keep the
   API-path schema unchanged as `respond(message_type, message_payload)` for M11. Decision: API structured turns
   already use one function tool, and renaming it would add provider-facing churn without improving the MCP wire
-  contract. T3 changes the MCP/runtime planning action surface to `consensus_respond(action,payload)`; API responses
+  contract. M11-T1 changes the MCP/runtime planning action surface to `consensus_respond(action,payload)`; API responses
   continue to parse as the existing structured envelope and are translated into the new runtime request.
 - `packages/contracts/wire-contract.json:1-27`: bump v5 -> v6 and recompute hash after changing `data.mcpTools`.
 - `/Users/fausto/Software/agentalk-mcp-client/wire-contract.json:1-27`: update byte-identically with the runtime
@@ -161,10 +161,10 @@ tool collapse removes the wrong-tool class at the MCP surface and makes the cont
 - Live gate: max 1 attempt per provider. If it fails from model behavior or quota after contract/build/tests are green,
   stop and report rather than reshaping production behavior.
 
-### MT3 — Active re-prompting (richer tolerance)
+### M11-T2 — Active re-prompting (richer tolerance)
 
 **Purpose.** Improve the correction message for illegal protocol actions so the offender is actively steered toward a
-valid next action after one correction, using the final T3 vocabulary.
+valid next action after one correction, using the final M11-T1 vocabulary.
 
 **Allowed production scope:**
 - `packages/runtime-core/src/registry/team-coordinator.ts:1910-1963`: validation path only as needed to pass richer
@@ -182,7 +182,7 @@ scope.
 
 **DoD:**
 - When an agent sends an illegal action for the current phase, the transcript/system event includes: the rejected
-  action, current phase when available, legal action set, and one concrete instruction to resend using the T3 action
+  action, current phase when available, legal action set, and one concrete instruction to resend using the M11-T1 action
   vocabulary.
 - A deterministic probe/test shows an illegal first action followed by a valid corrected action is accepted within
   one correction and does not eject the planner.
@@ -191,15 +191,15 @@ scope.
 - No change to legal happy-path consensus behavior.
 
 **Retry budget:**
-- Focused MT3 correction tests: max 3 attempts.
+- Focused M11-T2 correction tests: max 3 attempts.
 - Regression/eject preservation test: max 2 attempts.
 - `tsc -b`: max 2 attempts.
 - Full suite: max 2 attempts.
 - Live weak-model observation: max 1 run; if inconclusive, record as observation rather than changing the bar.
 
-### MT1 — Turn-budget / Referee
+### M11-T3 — Turn-budget / Referee
 
-**Purpose.** Bound non-converging discussion loops. T3 prevents wrong tools; MT3 improves correction; MT1 prevents a
+**Purpose.** Bound non-converging discussion loops. M11-T1 prevents wrong tools; M11-T2 improves correction; M11-T3 prevents a
 model from choosing legal-but-unproductive actions forever.
 
 **Allowed production scope:**
@@ -225,7 +225,7 @@ without agreement in v1; force-advance is a future PO decision because it change
   `scripts/test-live-gate.mjs:72-131`) that starts a real multi-planner round designed to keep discussion legal but
   non-converging until the referee fires. Required command shape: `MCP_GATE_PROVIDER=<available-provider> node
   scripts/<mt1-live-referee-probe>.mjs` after `tsc -b`. Use exactly one available fit provider; if no provider/quota
-  is available, stop and request reviewer/PO deferral instead of closing MT1.
+  is available, stop and request reviewer/PO deferral instead of closing M11-T3.
 
 **DoD:**
 - At exactly `MAX_DISCUSSION_TURNS` non-converging legal discussion actions, planning transitions to a clean
@@ -249,29 +249,29 @@ without agreement in v1; force-advance is a future PO decision because it change
 | Decision | Confirmed value |
 |----------|-----------------|
 | Milestone number | M11 |
-| Sequencing | MT2 -> T3 -> MT3 -> MT1 |
-| MT2 spike timing | First, separate, read/probe/docs only |
-| T3 contract bump | Current v5 -> v6 |
-| T3 API schema naming | Keep API function tool as `respond(message_type, message_payload)`; translate post-parse to MCP/runtime `consensus_respond(action,payload)` |
+| Sequencing | SP1 -> M11-T1 -> M11-T2 -> M11-T3 |
+| SP1 spike timing | First, separate, read/probe/docs only |
+| M11-T1 contract bump | Current v5 -> v6 |
+| M11-T1 API schema naming | Keep API function tool as `respond(message_type, message_payload)`; translate post-parse to MCP/runtime `consensus_respond(action,payload)` |
 | Turn-budget N | Start at `MAX_DISCUSSION_TURNS = 6` |
-| MT1 referee policy | Fail/interruption in v1; no force-advance without a later PO decision |
+| M11-T3 referee policy | Fail/interruption in v1; no force-advance without a later PO decision |
 
 ## 5. Definition of Done (M11)
 
-1. T3: single `consensus_respond` tool live on ≥1 provider; wire-contract hash-verified; old multi-tool surface removed.
-2. MT1: turn-budget/referee proven (deterministic test + live observation); discussion bounded, non-convergence handled cleanly.
-3. MT2: affordance spike complete with per-harness findings and recommendation.
-4. MT3: active re-prompting ships the current legal set on correction; probe test green.
+1. M11-T1: single `consensus_respond` tool live on ≥1 provider; wire-contract hash-verified; old multi-tool surface removed.
+2. M11-T3: turn-budget/referee proven (deterministic test + live observation); discussion bounded, non-convergence handled cleanly.
+3. SP1: affordance spike complete with per-harness findings and recommendation.
+4. M11-T2: active re-prompting ships the current legal set on correction; probe test green.
 5. Gate: `tsc -b` 0 + full suite green (updated contracts where changed); no pollution (LB-9); telemetry block per task.
 6. All ledger entries written; backlog updated.
 
 ## 6. Sequencing
 
-1. **MT2 (spike)** — read-only, zero production changes, informs later decisions. Run first.
-2. **T3** — single-tool collapse. Independent of spike outcome; wire-contract work.
-3. **MT3** — active re-prompting. Depends on T3 (the tool vocabulary changes).
-4. **MT1** — turn-budget/referee. Depends on T3 (the action set is final). Last, and lowest priority if budget is tight.
+1. **SP1 (spike)** — read-only, zero production changes, informs later decisions. Run first.
+2. **M11-T1** — single-tool collapse. Independent of spike outcome; wire-contract work.
+3. **M11-T2** — active re-prompting. Depends on M11-T1 (the tool vocabulary changes).
+4. **M11-T3** — turn-budget/referee. Depends on M11-T1 (the action set is final). Last, and lowest priority if budget is tight.
 
 ## 7. Open items
 
-- None for gate 1. Next step: implementer takes MT2 under this approved scope.
+- None for gate 1. Next step: implementer takes SP1 under this approved scope.

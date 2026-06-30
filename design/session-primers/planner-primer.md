@@ -15,11 +15,11 @@ You are Codex, holding the **planner** role for AgentTalk. (You also hold **revi
 **What's already done (from the old M10 graded-brain work):** T1 (ejectPlanner), T2 (graded loop), T4 (API enforcement), Bridge v3 — all merged to master.
 
 **Your job as planner:** Read `design/milestone11-consensus-robustness-plan.md`, then write a detailed task breakdown with:
-- Exact file/line scope for each task (T3, MT1, MT2, MT3)
+- Exact file/line scope for each task (M11-T1, M11-T2, M11-T3, SP1)
 - DoD per task
 - Retry budgets per test
-- Sequencing that respects dependencies (MT2 spike first → T3 → MT3 → MT1)
-- Wire-contract lockstep procedure for T3 (reuse the harness-division spike pattern)
+- Sequencing that respects dependencies (SP1 spike first → M11-T1 → M11-T2 → M11-T3)
+- Wire-contract lockstep procedure for M11-T1 (reuse the harness-division spike pattern)
 
 **Source of truth:** `design/collaboration-workflow.md` (the method). Artifacts: `design/milestone11-consensus-robustness-plan.md` (spec), `design/milestone11-consensus-robustness-implementation.md` (ledger), `design/backlog.md`, `design/logbook.md`.
 

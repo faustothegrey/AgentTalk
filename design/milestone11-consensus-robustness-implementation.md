@@ -11,12 +11,12 @@
 
 | Task | What | Status |
 |------|------|--------|
-| **MT2** | Affordance-protocol spike (per-harness probe: dynamic skills + scoped toolset) | VERIFIED ✅ |
-| **T3** | Single tool `consensus_respond(action, payload)` — wire-contract v5→v6, lockstep client | ⏭️ next |
-| **MT3** | Active re-prompting (current legal set in correction message) | ⬜ not started |
-| **MT1** | Turn-budget / Referee (bound discussion, force-advance on non-convergence) | ⬜ not started |
+| **SP1** | Affordance-protocol spike (per-harness probe: dynamic skills + scoped toolset) | VERIFIED ✅ |
+| **M11-T1** | Single tool `consensus_respond(action, payload)` — wire-contract v5→v6, lockstep client (origin: M10-T3) | ⏭️ next |
+| **M11-T2** | Active re-prompting (current legal set in correction message) | ⬜ not started |
+| **M11-T3** | Turn-budget / Referee (bound discussion, force-advance on non-convergence) | ⬜ not started |
 
-### MT2 Findings
+### SP1 Findings
 
 **Probe Results:**
 1. **Gemini (`agy`) dynamic instructions:** Probed `executor-runtime.mjs:380-615`. In persistent mode, `agy` is invoked with `--continue` and `--print <prompt>`. There is no native API/flag per-turn to inject system instructions or skills outside of the standard user prompt.
@@ -30,19 +30,19 @@
 - **Budget Impact:** Gemini usage remained at 3% (minimal/no visible impact).
 - **Result:** Successfully reached `send_to_agent` response.
 
-**Recommendation:** **DROP/DEFER**. Dynamic per-phase skills and phase-scoped MCP toolsets require fundamental changes to the persistent executors and the MCP client/server implementations to support `notifications/tools/list_changed`. We should proceed with T3 + MT3 + MT1, maintaining a single `consensus_respond` tool with server-side phase validation.
+**Recommendation:** **DROP/DEFER**. Dynamic per-phase skills and phase-scoped MCP toolsets require fundamental changes to the persistent executors and the MCP client/server implementations to support `notifications/tools/list_changed`. We should proceed with M11-T1 + M11-T2 + M11-T3, maintaining a single `consensus_respond` tool with server-side phase validation.
 
 **Repo state:** `git status --short` and `git worktree list` confirm zero pollution.
 
 **Telemetry (task closure):**
-- task:        MT2
+- task:        SP1
 - wall-clock:  07:40:31 → 07:45:00 (Δ ~4m)
 - budget:      session 3%→3% (Δ ~0%)
 - gate:        tsc n/a, suite n/a, pollution clean
 - diff:        0 files, +0/-0, commits n/a (read-only spike)
 - outcome:     COMPLETED ✅ (recommendation: defer/drop)
 
-### MT2 Reviewer gate 2
+### SP1 Reviewer gate 2
 
 **2026-06-30 — Codex reviewer verdict: VERIFIED ✅**
 
@@ -67,10 +67,10 @@ Evidence run/read:
   `AGENTTALK_MCP_TOOLS`.
 
 Verdict:
-- MT2 was read/probe/docs-only and left no repo pollution.
+- SP1 was read/probe/docs-only and left no repo pollution.
 - Findings are accurate: dynamic per-phase skills and phase-scoped MCP toolsets would require new executor and MCP
   client/server capabilities, not a small M11 implementation.
-- Recommendation **DROP/DEFER** is founded. Proceed to **T3** with one static `consensus_respond` tool and
+- Recommendation **DROP/DEFER** is founded. Proceed to **M11-T1** with one static `consensus_respond` tool and
   server-side phase validation.
 
 **2026-06-30 — Codex reviewer re-check requested by Hermes: VERIFIED ✅**
@@ -93,8 +93,8 @@ Evidence run/read:
   `packages/mcp-transport/src/mcp-server.ts:29-38` + `171-180`,
   `apps/orchestrator/src/server.ts:739-742`, and `packages/runtime-core/src/registry/mcp-tools.ts:12-125`.
 
-Verdict: **VERIFIED ✅**. No production code changed for MT2; findings are accurate; DROP/DEFER is founded; repo
-pollution check is clean for this task. Continue to **T3**.
+Verdict: **VERIFIED ✅**. No production code changed for SP1; findings are accurate; DROP/DEFER is founded; repo
+pollution check is clean for this task. Continue to **M11-T1**.
 
 ## Reviewer gate 1 — plan review
 
@@ -107,22 +107,22 @@ Evidence run/read:
 - `git diff --check -- design/milestone11-consensus-robustness-plan.md design/milestone11-consensus-robustness-implementation.md` → clean.
 
 Gate findings:
-1. **MT2 file/line scope is not precise enough.** The plan cites
+1. **SP1 file/line scope is not precise enough.** The plan cites
    `/Users/fausto/Software/agentalk-mcp-client/lib/mcp-client.mjs` and
    `/Users/fausto/Software/agentalk-mcp-client/lib/executor-runtime.mjs` without line ranges. The actual useful spans
    are discoverable (for example `mcp-client.mjs:20-38` handshake, `mcp-client.mjs:97-99` tool calls,
    `executor-runtime.mjs:25-38` execution-mode routing, Gemini around `380-610`, Codex around `627-760`,
    executor factory around `811-832`) and should be recorded before approval.
-2. **MT1 DoD is internally inconsistent.** The MT1 task text makes live observation optional ("if budget allows"),
+2. **M11-T3 DoD is internally inconsistent.** The M11-T3 task text makes live observation optional ("if budget allows"),
    while the milestone DoD still requires "deterministic test + live observation". Pick one gate. If live is required,
    it needs a concrete command/provider/retry rule; if it is observational, the milestone DoD must say so.
-3. **T3 leaves a gate-level implementation decision open.** The plan says to decide during implementation whether the
+3. **M11-T1 leaves a gate-level implementation decision open.** The plan says to decide during implementation whether the
    API structured-tool schema stays `respond(message_type,message_payload)` or adopts
    `consensus_respond(action,payload)`. That is an implementation-affecting contract decision and should be settled
-   in the approved plan before T3 starts, or explicitly split into a reviewer-approved T3 preflight decision.
+   in the approved plan before M11-T1 starts, or explicitly split into a reviewer-approved M11-T1 preflight decision.
 
 What is acceptable:
-- The sequence MT2 → T3 → MT3 → MT1 is sound.
+- The sequence SP1 → M11-T1 → M11-T2 → M11-T3 is sound.
 - Retry budgets are generally reasonable once the DoD inconsistency above is resolved.
 - Baseline commit `5cd03df` is correct.
 
@@ -137,12 +137,12 @@ Evidence run/read:
   → clean.
 
 Disposition of prior blockers:
-1. **MT2 file/line scope** — VERIFIED: `mcp-client.mjs:20-38`, `mcp-client.mjs:86-99`,
+1. **SP1 file/line scope** — VERIFIED: `mcp-client.mjs:20-38`, `mcp-client.mjs:86-99`,
    `executor-runtime.mjs:25-38`, `executor-runtime.mjs:811-837`, `executor-runtime.mjs:380-615`, and
    `executor-runtime.mjs:627-768` are now listed.
-2. **MT1 DoD consistency** — VERIFIED: live referee observation is now required, with one attempt on one available
+2. **M11-T3 DoD consistency** — VERIFIED: live referee observation is now required, with one attempt on one available
    fit provider and explicit reviewer/PO deferral if quota/provider is unavailable.
-3. **T3 API schema naming** — VERIFIED: M11 keeps API `respond(message_type, message_payload)` and translates
+3. **M11-T1 API schema naming** — VERIFIED: M11 keeps API `respond(message_type, message_payload)` and translates
    post-parse to MCP/runtime `consensus_respond(action,payload)`.
 
-Gate 1 outcome: **plan status updated to `reviewer approved`; MT2 is ready for implementer handoff.**
+Gate 1 outcome: **plan status updated to `reviewer approved`; SP1 is ready for implementer handoff.**

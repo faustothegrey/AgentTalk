@@ -92,9 +92,10 @@ fault tolerance, plan at `design/milestone08-transport-fault-tolerance-plan.md`.
     the M08 item), **or** a frontier-compliant model with available quota. **Do not burn live runs on
     unfit models meanwhile** (live-test gate, M08 item).
 
-- [promoted→M11 (consensus robustness) · planned, 2026-06-30] — **Consensus / Protocol Robustness — the
+- [promoted→M11 (consensus robustness) · planned, 2026-06-30, **renamed per §3e convention 2026-06-30**] — **Consensus / Protocol Robustness — the
   remaining pieces after M08/M10.** Opened as M11, plan at `design/milestone11-consensus-robustness-plan.md`
-  and ledger at `design/milestone11-consensus-robustness-implementation.md`. The original
+  and ledger at `design/milestone11-consensus-robustness-implementation.md`. Naming per §3e: SP1 (done), M11-T1 (next, origin: M10-T3), M11-T2, M11-T3.
+  The original
   "Failure-modes split" item below carries the full history; this line is the promotion record.
   **M08 OPENED 2026-06-22** → `milestone08-transport-fault-tolerance-plan.md` (the three transport
   sub-bullets below are now spec'd there). **The M09 sub-bullets remain open here** until M09 opens. There are *many* failure modes (agent crash mid-task,

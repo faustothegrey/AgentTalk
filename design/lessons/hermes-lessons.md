@@ -13,4 +13,4 @@ here.**
 
 ---
 
-|2026-06-30|Session start: poll usage meter first. MT2 spike complete, recommendation DROP/DEFER. Next: T3 (single tool). Worked as SM: backlog gate sweep, M11 epic opened, planner→reviewer→implementer cycle. One lesson: never wait passively for agent output — poll proactively and report findings as soon as they're ready. Second lesson: never mention process/CLI/tmux details in responses — only substance (task, findings, review, decisions).|
+|2026-06-30|Session start: poll usage meter first. SP1 spike complete, recommendation DROP/DEFER. Next: M11-T1 (single tool, origin: M10-T3). Worked as SM: backlog gate sweep, M11 epic opened, planner→reviewer→implementer cycle. One lesson: never wait passively for agent output — poll proactively and report findings as soon as they're ready. Second lesson: never mention process/CLI/tmux details in responses — only substance (task, findings, review, decisions).|

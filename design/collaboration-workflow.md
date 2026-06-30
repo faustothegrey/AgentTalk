@@ -217,6 +217,38 @@ everything is either a **spike** or an **epic**; there are no standalone "small 
 unit is called (`milestone07-…-plan.md`, not `-epic.md`). `<name>` identifies the unit; the suffix
 identifies the doc type — so the two always pair cleanly. Use `-plan`, never `-epic`, as the suffix.
 
+### 3e. Task & spike naming convention (adopted 2026-06-30, applies to M10 and M11)
+
+**Scope.** This convention applies to milestones M10 and M11 (the "rename window"). Earlier milestones
+(M01–M09) keep their existing naming — the blast radius is deliberately contained.
+
+**Epic/milestone naming.** Each milestone is `M<N>` (e.g. M10, M11). The doc pair follows the existing
+`design/milestone<N>-<slug>-plan.md` / `-implementation.md` pattern.
+
+**Feature task naming.** Within a milestone, feature tasks are numbered sequentially:
+`<epic>-T<N>` — e.g. M10-T1, M10-T4, M11-T1, M11-T2. Numbering reflects the task's position in the
+milestone's execution sequence (left-to-right), not origin or priority weight.
+
+**TECH tasks (refactoring / infrastructure).** Pure codebase changes with zero user-facing delta
+(refactoring, extraction, dependency upgrades, infrastructure) get `<epic>-TECH<N>` — e.g. M11-TECH1
+for Bridge v3. TECH tasks share the same branch/review discipline as feature tasks but sit in a
+separate namespace to signal "this changes the plumbing, not the protocol."
+
+**Spikes (independent, per-milestone).** Spikes are numbered globally, independent of any epic:
+`SP<N>` — e.g. SP1 (the affordance-protocol spike). A spike belongs to the milestone it runs under
+in practice, but its name does not carry the milestone prefix. Spikes are always read-only/probe/docs
+— zero production code changes. When a spike recommendation promotes to a task, that task gets a
+regular `<epic>-T<N>` name.
+
+**Task numbering is by execution position within the milestone.** The sequence determines the number:
+the first feature task to execute is -T1, the second is -T2, etc. This means a task may carry a
+different number than its predecessor in a prior milestone — the milestone's own sequence wins over
+origin numbering. Origin is preserved in the task description (e.g. `origin: M10-T3`).
+
+**Branch naming.** Branches follow `<epic>-t<N>-<slug>` (lowercase): `m11-t1-<slug>`,
+`m11-tech1-<slug>`, `sp1-<slug>`. The implementer creates the branch; the reviewer merges (§3b
+*Tasks & branches*).
+
 **Claim/verdict table** — the core anti-drift device. The `implementation.md` mirrors the plan's
 DoD as rows, each carrying an explicit, separately-authored status:
 
