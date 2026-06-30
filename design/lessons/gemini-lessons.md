@@ -21,3 +21,6 @@ here.**
 ### 2026-06-29 — Executing exploratory spikes (protocol-state-event-unification)
 - When executing a non-code spike, explicitly declaring the read-only scope boundary upfront ensures strict adherence to the "do not change production code" non-goal, which is critical for exploratory debt analysis.
 - When updating structured markdown forms (like spike plans or DoD tables), using targeted edits over file rewrites prevents accidental drift in the document layout.
+
+### 2026-06-30 — Spiking dynamic MCP tools and system instructions
+- In a persistent CLI wrapper context (like `agy --continue` or `codex exec`), there is no native out-of-band way to inject per-turn system instructions dynamically; attempting to scope tools or instructions strictly per-phase requires significant foundational rewrites of the MCP layer. It is often safer to fall back to server-side action validation rather than fighting the execution model.
