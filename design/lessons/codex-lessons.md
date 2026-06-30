@@ -33,3 +33,11 @@ here.**
   implementation; this fit the protocol-state-event unification question better than opening an epic.
 - In review, verify both hook layers separately: immediate engine hooks (`onPhaseChange`/`onProtocolEvent`) and
   registry-level consumers (`team_planning_phase`/`team_protocol_event`) can have different "consumer" meanings.
+
+### 2026-06-30 — Dual-role gate discipline under fallback
+- As planner, leave no gate-level implementation decision open inside an approved plan; reviewer-me caught the T3
+  API naming ambiguity only because I re-read the plan adversarially instead of rubber-stamping my own draft.
+- As reviewer, check pollution beyond `git status`: ignored directories and worktrees can look suspicious, so verify
+  timestamps/ignored state before calling them task pollution.
+- When asked for a re-check after an existing VERIFIED ledger entry, append fresh evidence rather than relying on the
+  previous verdict; it preserves the audit trail without pretending the old run is today's run.

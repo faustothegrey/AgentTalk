@@ -73,6 +73,29 @@ Verdict:
 - Recommendation **DROP/DEFER** is founded. Proceed to **T3** with one static `consensus_respond` tool and
   server-side phase validation.
 
+**2026-06-30 — Codex reviewer re-check requested by Hermes: VERIFIED ✅**
+
+Evidence run/read:
+- `git status --short --branch` → `## master...origin/master [ahead 20]` with no modified/untracked files before this
+  re-check note.
+- `git diff --stat` → no output before this re-check note.
+- `git show --stat --oneline 04edc8a` → docs-only MT2 completion commit: one file,
+  `design/milestone11-consensus-robustness-implementation.md`.
+- `git show --stat --oneline e9c27e7` → docs-only MT2 reviewer gate-2 commit: one file,
+  `design/milestone11-consensus-robustness-implementation.md`.
+- `git worktree list --porcelain` → only `/Users/fausto/Software/AgentTalk`; no task worktrees.
+- `git status --short --ignored -- planning_runs .claude/worktrees` shows `planning_runs/` is ignored, and
+  `ls -lt planning_runs` shows newest files from 2026-06-27, so it is pre-existing ignored output, not MT2 pollution.
+- Re-read the cited implementation/client/server files:
+  `/Users/fausto/Software/agentalk-mcp-client/lib/executor-runtime.mjs:380-615`,
+  `/Users/fausto/Software/agentalk-mcp-client/lib/executor-runtime.mjs:627-768`,
+  `/Users/fausto/Software/agentalk-mcp-client/lib/mcp-client.mjs:20-99`,
+  `packages/mcp-transport/src/mcp-server.ts:29-38` + `171-180`,
+  `apps/orchestrator/src/server.ts:739-742`, and `packages/runtime-core/src/registry/mcp-tools.ts:12-125`.
+
+Verdict: **VERIFIED ✅**. No production code changed for MT2; findings are accurate; DROP/DEFER is founded; repo
+pollution check is clean for this task. Continue to **T3**.
+
 ## Reviewer gate 1 — plan review
 
 **2026-06-30 — Codex reviewer verdict: REFUTED ❌**
