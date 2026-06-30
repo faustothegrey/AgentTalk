@@ -1,19 +1,21 @@
 ---
 role: implementer
-key: C4295F90-2ABD-4756-98EB-A9829225B61D
-written: 2026-06-27 by Gemini (wrapping up M10-T4-live-probe session)
+key: 20260630-0740-M11-MT2
+written: 2026-06-30 by Hermes (SM → implementer handoff for M11 MT2)
 ---
 
 This is your session primer.
 
-1. **Project.** AgentTalk is a monorepo orchestrator for multi-agent AI collaboration: API-backed agents and externally launched MCP-attached agents coordinate through the runtime-core registry / team coordinator.
+1. **Project.** AgentTalk is a monorepo orchestrator for multi-agent AI collaboration. Your role is **implementer** (Gemini/agy).
 
-2. **Roles.** Fausto is the human supervisor (PO/Architect + Scrum Master). **planner = Claude or Codex**; **reviewer = Claude or Codex** (separate roles since 2026-06-29, planner ≠ reviewer per task); **implementer = Gemini/agy (you)**. 
+2. **Roles.** Fausto = PO/Architect (apex). Hermes = Scrum Master (operational authority, [Hermes] binding). Codex = planner + reviewer (resource fallback, Claude out of budget until Jul 1).
 
-3. **Workflow / source of truth.** Read `AGENT.md` first, especially FIRST ENTRY POINT, the Implementer Rules of Engagement, resource monitoring, and the session-primer cold-start rule. The workflow method is `design/collaboration-workflow.md`. Durable artifacts are the task plan, the milestone implementation ledger, `design/backlog.md`, and `design/logbook.md`. Resume from artifacts, not chat. Skim `design/lessons/gemini-lessons.md`.
+3. **Active epic: M11 — Consensus / Protocol Robustness.** Plan at `design/milestone11-consensus-robustness-plan.md`, approved by reviewer gate 1 (status: `reviewer approved`). Ledger at `design/milestone11-consensus-robustness-implementation.md`.
 
-4. **Active task.** The implementation of **M10-T4-live-probe** has just been completed and pushed to branch `m10-t4-live-probe`. The branch is currently waiting for Review by the reviewer. There is currently no active implementation assignment.
+4. **Your task: MT2 — Affordance-protocol spike.** This is a **read-only spike**: probe agy/Gemini, Codex MCP, and the MCP tool surface for dynamic per-phase affordances. No production code changes. Scope and DoD are in the M11 plan §3 -> MT2. Read it carefully.
 
-5. **Your task.** You have no active assignment yet. The task will be assigned by Fausto or the reviewer after the current review concludes or a new plan is approved.
+5. **Source of truth:** `design/collaboration-workflow.md` (the method). Artifacts: the M11 plan, the M11 ledger, `design/backlog.md`. The implementer Rules of Engagement in AGENT.md (the ⛔ section) are mandatory reading before starting.
 
-6. **Required cold-start behavior.** This primer has fresh key `C4295F90-2ABD-4756-98EB-A9829225B61D`. Compare it to your private store at `~/.config/AgentTalk_Gemini/session-primer-key.json`; if absent, consume it, gather read-only context, report that you are waiting for a new assignment, declare your role, then **STOP** for Fausto's explicit go before implementing anything.
+6. **Budget:** Gemini at 3% (ample for read-only probes). Codex at 2% weekly. Claude at 92% (unavailable). Check `node scripts/usage.mjs` at start.
+
+7. **Required cold-start behavior.** This primer has fresh key `20260630-0740-M11-MT2`. Compare it to your private store at `~/.config/AgentTalk_Gemini/session-primer-key.json`; if absent, consume it, gather read-only context, report your understanding, then **STOP** for Fausto's explicit go before implementing anything.
