@@ -11,10 +11,36 @@
 
 | Task | What | Status |
 |------|------|--------|
-| **MT2** | Affordance-protocol spike (per-harness probe: dynamic skills + scoped toolset) | ⬜ not started |
+| **MT2** | Affordance-protocol spike (per-harness probe: dynamic skills + scoped toolset) | ✅ done |
 | **T3** | Single tool `consensus_respond(action, payload)` — wire-contract v5→v6, lockstep client | ⬜ not started |
 | **MT3** | Active re-prompting (current legal set in correction message) | ⬜ not started |
 | **MT1** | Turn-budget / Referee (bound discussion, force-advance on non-convergence) | ⬜ not started |
+
+### MT2 Findings
+
+**Probe Results:**
+1. **Gemini (`agy`) dynamic instructions:** Probed `executor-runtime.mjs:380-615`. In persistent mode, `agy` is invoked with `--continue` and `--print <prompt>`. There is no native API/flag per-turn to inject system instructions or skills outside of the standard user prompt.
+2. **Codex dynamic instructions:** Probed `executor-runtime.mjs:627-768`. Codex persistent execution uses RPC `tools/call` with `name: 'codex-reply'`. There is no out-of-band parameter to dynamically update the system instruction.
+3. **Dynamic MCP toolset:** Probed `mcp-client.mjs:20-100` and `mcp-tools.ts`. The `McpServer` is initialized with a static `AGENTTALK_MCP_TOOLS` list. `mcp-client.mjs` does not implement `notifications/tools/list_changed` to fetch updated tools dynamically.
+4. **Phase-scoped enum validation:** Because tool schemas are passed once at server initialization, the schema for `consensus_respond` is static. We cannot narrow the `action` enum dynamically without a major rewrite of the MCP server and client. The server must validate phase legality internally post-receipt.
+
+**Live Observation:**
+- **Command:** `node scripts/test-mcp-gate.mjs gemini`
+- **Model:** Real model (`agy` via `llm-agent.mjs`).
+- **Budget Impact:** Gemini usage remained at 3% (minimal/no visible impact).
+- **Result:** Successfully reached `send_to_agent` response.
+
+**Recommendation:** **DROP/DEFER**. Dynamic per-phase skills and phase-scoped MCP toolsets require fundamental changes to the persistent executors and the MCP client/server implementations to support `notifications/tools/list_changed`. We should proceed with T3 + MT3 + MT1, maintaining a single `consensus_respond` tool with server-side phase validation.
+
+**Repo state:** `git status --short` and `git worktree list` confirm zero pollution.
+
+**Telemetry (task closure):**
+- task:        MT2
+- wall-clock:  07:40:31 → 07:45:00 (Δ ~4m)
+- budget:      session 3%→3% (Δ ~0%)
+- gate:        tsc n/a, suite n/a, pollution clean
+- diff:        0 files, +0/-0, commits n/a (read-only spike)
+- outcome:     COMPLETED ✅ (recommendation: defer/drop)
 
 ## Reviewer gate 1 — plan review
 
