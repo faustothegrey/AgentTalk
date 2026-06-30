@@ -11,8 +11,8 @@
 
 | Task | What | Status |
 |------|------|--------|
-| **MT2** | Affordance-protocol spike (per-harness probe: dynamic skills + scoped toolset) | ✅ done |
-| **T3** | Single tool `consensus_respond(action, payload)` — wire-contract v5→v6, lockstep client | ⬜ not started |
+| **MT2** | Affordance-protocol spike (per-harness probe: dynamic skills + scoped toolset) | VERIFIED ✅ |
+| **T3** | Single tool `consensus_respond(action, payload)` — wire-contract v5→v6, lockstep client | ⏭️ next |
 | **MT3** | Active re-prompting (current legal set in correction message) | ⬜ not started |
 | **MT1** | Turn-budget / Referee (bound discussion, force-advance on non-convergence) | ⬜ not started |
 
@@ -41,6 +41,37 @@
 - gate:        tsc n/a, suite n/a, pollution clean
 - diff:        0 files, +0/-0, commits n/a (read-only spike)
 - outcome:     COMPLETED ✅ (recommendation: defer/drop)
+
+### MT2 Reviewer gate 2
+
+**2026-06-30 — Codex reviewer verdict: VERIFIED ✅**
+
+Evidence run/read:
+- `git status --short --branch` → `## master...origin/master [ahead 19]` with no modified/untracked files.
+- `git diff --stat` → no output.
+- `git diff --stat 94d7a8a..04edc8a` → one docs-only file:
+  `design/milestone11-consensus-robustness-implementation.md` (`28` lines changed). No production code changed.
+- `git worktree list --porcelain` → only `/Users/fausto/Software/AgentTalk`; no extra task worktrees.
+- Read `/Users/fausto/Software/agentalk-mcp-client/lib/executor-runtime.mjs:380-615`: Gemini persistent MCP mode writes
+  a temporary `.gemini/settings.json`, then sends each turn as `agy --dangerously-skip-permissions [--continue]
+  --print <prompt>`; no separate per-turn skill/system-instruction API is present.
+- Read `/Users/fausto/Software/agentalk-mcp-client/lib/executor-runtime.mjs:627-768`: Codex persistent MCP mode uses
+  either `codex exec ... <prompt>` in persistent-MCP mode or RPC tool calls with `{ prompt }`; no out-of-band dynamic
+  system-instruction parameter is present.
+- Read `/Users/fausto/Software/agentalk-mcp-client/lib/mcp-client.mjs:20-99`: client sends contract metadata at
+  `initialize` and exposes a generic `callTool(name,args)` wrapper; it does not implement
+  `notifications/tools/list_changed`.
+- Read `packages/mcp-transport/src/mcp-server.ts:29-38` and `171-180`: server stores `options.tools` once and serves
+  that static list on `tools/list`; no update/list-changed mechanism exists.
+- Read `apps/orchestrator/src/server.ts:739-742`: orchestrator constructs `McpServer` with static
+  `AGENTTALK_MCP_TOOLS`.
+
+Verdict:
+- MT2 was read/probe/docs-only and left no repo pollution.
+- Findings are accurate: dynamic per-phase skills and phase-scoped MCP toolsets would require new executor and MCP
+  client/server capabilities, not a small M11 implementation.
+- Recommendation **DROP/DEFER** is founded. Proceed to **T3** with one static `consensus_respond` tool and
+  server-side phase validation.
 
 ## Reviewer gate 1 — plan review
 
