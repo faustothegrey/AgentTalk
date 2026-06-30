@@ -12,7 +12,7 @@
 | Task | What | Status |
 |------|------|--------|
 | **SP1** | Affordance-protocol spike (per-harness probe: dynamic skills + scoped toolset) | VERIFIED ✅ |
-| **M11-T1** | Single tool `consensus_respond(action, payload)` — wire-contract v5→v6, lockstep client (origin: M10-T3) | Gate 2 VERIFIED ✅ |
+| **M11-T1** | Single tool `consensus_respond(action, payload)` — wire-contract v5→v6, lockstep client (origin: M10-T3) | **DONE** ✅ merged to master |
 | **M11-T2** | Active re-prompting (current legal set in correction message) | ⬜ not started |
 | **M11-T3** | Turn-budget / Referee (bound discussion, force-advance on non-convergence) | ⬜ not started |
 

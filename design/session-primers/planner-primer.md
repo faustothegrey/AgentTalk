@@ -1,7 +1,7 @@
 ---
 role: planner
 key: none
-written: 2026-06-30 by Hermes (session close — no handoff pending)
+written: 2026-06-30 by Hermes (session close — M11-T1 merged to master)
 ---
 
 This is your session primer.
