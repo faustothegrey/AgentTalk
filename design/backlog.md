@@ -104,8 +104,10 @@ fault tolerance, plan at `design/milestone08-transport-fault-tolerance-plan.md`.
     the M08 item), **or** a frontier-compliant model with available quota. **Do not burn live runs on
     unfit models meanwhile** (live-test gate, M08 item).
 
-- [promoted→M08 (transport) · M09 still open (consensus)] 2026-06-20 — **Failure-modes work → split
-  into TWO milestones (M08 + M09)** (split decided Fausto + Claude, 2026-06-22; M07 now closed).
+- [promoted→M11 (consensus robustness) · planned, 2026-06-30] — **Consensus / Protocol Robustness — the
+  remaining pieces after M08/M10.** Opened as M11, plan at `design/milestone11-consensus-robustness-plan.md`
+  and ledger at `design/milestone11-consensus-robustness-implementation.md`. The original
+  "Failure-modes split" item below carries the full history; this line is the promotion record.
   **M08 OPENED 2026-06-22** → `milestone08-transport-fault-tolerance-plan.md` (the three transport
   sub-bullets below are now spec'd there). **The M09 sub-bullets remain open here** until M09 opens. There are *many* failure modes (agent crash mid-task,
   partial worktree writes, network drops, mid-turn quota exhaustion, deadlocks, corrupted state, …);
