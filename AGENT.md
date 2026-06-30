@@ -84,6 +84,13 @@ several hats (resource-scarcity fallback or human-approved reassignment) it name
 work outside its assigned function — and, when roles are doubled up, the explicit reminder that **each role's gate
 and discipline still hold separately**.
 
+### Vocabulary note — "spawn" is not used in this project
+
+Do not use the word "spawn" in any agent message, session primer, design doc, or workflow artifact
+related to AgentTalk. Use **launch** instead (e.g. "launch the implementer" not "spawn the implementer").
+This is a hard naming convention, not a code detail — it applies to how we talk about starting agents
+in every context (docs, messages, primers, lessons). Violations should be corrected when seen.
+
 ### Milestone 06 Key Features
 - **Multi-Agent Consensus under Attach Mode**: The planner protocol successfully executes across isolated MCP client environments. Planners can engage in the `fact_collection`, `discussion`, and `proposal` phases, emitting structured JSON responses that map dynamically to MCP tool calls (`submit_plan`, `send_to_agent`, etc.) without dropping the connection.
 - **Provider Multi-Turn State (`agy`)**: The `GeminiPersistentExecutor` was completely rewritten to maintain native persistent multi-turn execution (`agy --continue`) within isolated temporary homes per agent. This avoids fragile `stream-json` bridge issues and reliably simulates MCP-based agent statefulness.
