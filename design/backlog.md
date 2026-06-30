@@ -68,29 +68,17 @@ fault tolerance, plan at `design/milestone08-transport-fault-tolerance-plan.md`.
 
 ---
 
-- [open] 2026-06-20 — **Cross-provider consensus** (e.g. planner-a Google + planner-b Nous in one
-  `planner-planner-worker` team) — deferred from M07-T2 (all-Google for budget). Proves the centralized
+- [deferred · after M11, 2026-06-30] — **Cross-provider consensus** (e.g. planner-a Google + planner-b Nous in one
+  `planner-planner-worker` team) — deferred from M07-T2 (all-Google for budget). **Depends on M11** (consensus
+  robustness needs to be done first for reliable cross-provider rounds). Proves the centralized
   brain mixes providers in a single consensus.
   - **Readiness (facts: logbook LB-1/LB-2):** pair **Google + Nous** (Nous = GREEN 3/3 with a
     valid id; it's an aggregator). **Not** OpenRouter-`:free` (flaky/429). When promoting, **fix
     `api-client.ts` `nous` defaultModel** (`deepseek-v4-flash` 404s).
 
-- [open · ⭐ SELECTED NEXT — planning pending, gate 2026-06-27] — **Auto-handoff between agents (remove the human
-  as turn-scheduler)** — picked as the next planning target by Fausto at the §3b gate (2026-06-27). Confirmed **not
-  built** (no conductor script, no `baton:` field). Defer-condition ("after M07-T3") is lifted. Next step: a proper
-  `*-plan.md` + DoD (planning deferred to a fresh-budget session). resolves
-  workflow **open question #2** (relay overhead). Insight: the *channel* already exists (ledger +
-  branch); what the human supplies is the **scheduler** ("vai te" / "ha finito, vai te"). Replace it
-  with: (1) an explicit **3-state baton** at the top of `implementation.md` — `baton ∈ {impl, review,
-  human}` + one-line reason; impl does the first non-VERIFIED row → commit claim-only → `baton:review`;
-  reviewer runs it, fills verdicts → all VERIFIED → merge + next task → `baton:impl`, else REFUTED →
-  `baton:impl`, else scope/decision → `baton:human`; (2) a **sequential conductor script** that loops
-  `while baton != human && !done: invoke (headless) the agent named by the baton; re-read baton`. Human
-  is invoked **only on `baton:human`**. Stays turn-based/sequential — **not** parallel worktrees (Fausto
-  not ready for parallel agent orchestration yet). Guardrails: `max_rounds` per task (cap REFUTED↔fix
-  ping-pong), keep the reviewer's *run-it* verification (the circuit breaker), single human escape
-  hatch, log per-round token cost. **Defer:** revisit after M07-T3 (T3 likely needs the human in the
-  loop). Document the baton protocol into `collaboration-workflow.md` before building the conductor.
+- [deferred · own future epic, 2026-06-30] — **Auto-handoff between agents (remove the human
+  as turn-scheduler)** — re-evaluated 2026-06-29: Fausto confirmed this is **premature**,
+  still DEFER for its own future epic. Reopen after M11 closes. (Seed text kept below for reference.)
 
 - [open] 2026-06-20 — **Re-run the M07-T2 live smoke** (`scripts/test-live-api-team.mjs`, all-Google
   `gemini-2.5-flash`, 2 planners + worker in-process) **after the Google daily quota resets** — the
