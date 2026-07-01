@@ -491,6 +491,25 @@ TEST PASSED: Live MCP exec-RPC turn successfully completed for codex.
 
 ### M12-T4 — Recorded Live Mixed-Provider Run
 
+**Findings & Derailment Report:**
+
+The capstone test (`PLANNER_A_PROVIDER=gemini PLANNER_B_PROVIDER=codex node scripts/test-live-cross-provider.mjs`) was attempted. The run derailed due to an architectural gap in how external agents manage MCP WebSocket connections.
+
+**Transcript Summary:**
+- The team (`planner-a`: Gemini, `planner-b`: Codex, `worker-1`: Gemini) was created and started successfully.
+- Agents attempted to run the protocol (turn coordination worked).
+- Codex (`planner-b`) attempted to submit a protocol response (`consensus_respond`) but was rejected by the server because the connection identified itself as `unknown`.
+- The task was marked as `error`/`interrupted`.
+
+**Root Cause (Honest Partial / System Defect):**
+1. **Missing Environment Variable:** The test harness spawns `llm-agent.mjs` via `child_process.spawn()`. `llm-agent.mjs` parses `--agentId=planner-b` but fails to export `AGENTTALK_AGENT_ID`. When `CodexPersistentExecutor` spawns the actual Codex CLI (which connects via `bridge.mjs`), it uses `process.env.AGENTTALK_AGENT_ID || 'unknown'`.
+2. **Double WebSocket Connection Conflict (Impending Blocker):** Even if `AGENTTALK_AGENT_ID` is correctly set, `AgentTalk`'s `McpServer` enforces a strict **one active connection per agentId** rule ("Session isolation & hijack check"). Because `llm-agent.mjs` holds the main connection for `planner-b` (to pull `await_turn`), the secondary inner connection initiated by `bridge.mjs` (for `consensus_respond` tool calls) will be rejected with `4001 Session already active`.
+
+**Outcomes:**
+- **Attempts made:** 1 (derailed by system defect, stopping to preserve budget).
+- **Usage before/after:** Codex budget was significantly consumed (~47-61% used according to `usage.mjs`), prompting the manual halt.
+- **Classification:** Honest partial. The protocol logic and multi-provider mixing are seemingly functional, but the MCP transport layering between `llm-agent.mjs` and the external `Codex` CLI is incompatible with the server's connection hijacking protections.
+
 Scope:
 
 | File | Scope |
