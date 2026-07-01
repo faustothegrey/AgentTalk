@@ -42,3 +42,8 @@ here.**
 - I terminated Codex, Claude, and agy tmux sessions without giving them a chance to write their individual lessons files, consume primer keys, or perform session close. Each agent owns its own entry in `design/lessons/<agent>-lessons.md` and its own private key store — I can't write those for them.
 - Fix: next session, before killing, send each agent a "session close" baton: write your lessons, update your key store, report done. Then kill when they confirm.
 - Also: verify `~/.codex/agenttalk-session-primer-key.json`, `~/.claude/projects/AgentTalk/session-primer-key.json`, and `~/.config/AgentTalk_Gemini/session-primer-key.json` are in a clean state before closing.
+
+### 2026-07-01 — Session close: M12 complete (honest partial, C-PF1 fix verified)
+- M12: cross-provider consensus epic closed. T1/T2/T3 merged. C-PF1 fix: removed bridge MCP config from CodexPersistentExecutor — confirmed by PF2 (structured preflight with no 4001 errors).
+- T4 honest partial: Codex bridge collision resolved, but Codex's behavioral protocol compliance (R1 — prose/JSON mixing, deep exploration) remains a genuine finding. Connection model is fixed; behavioral gap is a separate concern.
+- Lesson: when implementing in a cross-repo fix, keep the scope tight. C-PF1 was a 3-line change — precisely scoped, and it worked.
