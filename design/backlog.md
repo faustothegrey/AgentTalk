@@ -90,12 +90,12 @@ fault tolerance, plan at `design/milestone08-transport-fault-tolerance-plan.md`.
 
 <!-- @item
 id: BL-001
-status: deferred
-date: 2026-06-30
+status: done
+date: 2026-07-01
 epic: null
 tags: [consensus, cross-provider]
 -->
-- [**closed** · M12 complete, 2026-07-01] — **Cross-provider consensus** — M12 epic complete.
+- [done · M12 complete, 2026-07-01] — **Cross-provider consensus** — M12 epic complete.
   Structural proof (T1-T3) merged. C-PF1 fix confirmed by PF2. T4 honest partial — Codex bridge collision resolved by removing bridge MCP config; remaining R1 (protocol compliance) is a behavioral finding. Epic closed per PO Q6.
 
 <!-- @item

@@ -1,6 +1,8 @@
 # M12 — Cross-Provider Consensus — Implementation Breakdown
 
-> **Status:** T2/T1 merged; T3 verified; PF/T4 re-opened for client follow-on planning.
+> **Status:** ✅ **EPIC COMPLETE — closed 2026-07-01.** T1–T3 merged/verified; C-PF1 fixed (verified by PF2);
+> T4 closed as honest partial (R1 protocol-compliance = behavioral finding, per PO Q6); T5 docs/backlog closed.
+> *(Status line corrected 2026-07-01 — it lagged the task rows below; LB-31 discipline.)*
 > **Plan:** `design/milestone12-cross-provider-consensus-plan.md`
 > **Base:** `master` at `edc6a3b` (2026-07-01).
 > **Planner:** Codex. **Architect:** Claude. **PO:** Fausto.

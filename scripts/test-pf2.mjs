@@ -1,0 +1,124 @@
+import { Registry } from '../packages/runtime-core/dist/registry/registry.js';
+import { AGENTTALK_MCP_TOOLS } from '../packages/runtime-core/dist/registry/mcp-tools.js';
+import { McpServer } from '../apps/orchestrator/dist/mcp-server.js';
+import { spawn, execSync } from 'child_process';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import fs from 'fs';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const wireContract = JSON.parse(fs.readFileSync(path.join(__dirname, '../packages/contracts/wire-contract.json'), 'utf8'));
+
+async function run() {
+  console.log('Starting live MCP cross-provider consensus smoke test...');
+
+  const adapter = { spawn() {}, sendText() {}, onData() {}, onExit() {}, kill() {} };
+  const registry = new Registry(adapter, { readinessTimeoutMs: 5000 });
+
+  const mcpServer = new McpServer({
+    tools: AGENTTALK_MCP_TOOLS,
+    expectedContractHash: wireContract.hash,
+    handler: (agentId, name, args) => registry.handleMcpToolCall(agentId, name, args),
+    onConnect: (agentId) => registry.handleMcpConnect(agentId),
+    onDisconnect: (agentId) => registry.handleMcpDisconnect(agentId),
+  });
+  const port = await mcpServer.start(0);
+  console.log(`[Server] MCP server on ws://localhost:${port}/`);
+
+  const PA = process.env.PLANNER_A_PROVIDER || 'gemini';
+  const PB = process.env.PLANNER_B_PROVIDER || 'codex';
+  const PW = process.env.WORKER_PROVIDER  || 'gemini';
+
+  await registry.createAgent('planner-a', { provider: 'mcp', providerName: PA });
+  await registry.createAgent('planner-b', { provider: 'mcp', providerName: PB });
+  await registry.createAgent('worker-1', { provider: 'mcp', providerName: PW });
+  
+  await registry.activateAgent('planner-a');
+  await registry.activateAgent('planner-b');
+  await registry.activateAgent('worker-1');
+
+  const llmAgentPath = path.join(__dirname, '../../agentalk-mcp-client/llm-agent.mjs');
+
+  const harnessA = spawn('node', [llmAgentPath, '--agentId', 'planner-a', '--provider', PA, '--execution-mode', 'persistent'],
+    { env: { ...process.env, AGENTTALK_PERSISTENT_MCP: 'true', AGENTTALK_PERSISTENT_MCP_URL: `ws://localhost:${port}/`, AGENTTALK_AGENT_ID: 'planner-a' }, stdio: ['ignore', 'pipe', 'pipe'] });
+  harnessA.stdout.on('data', d => process.stdout.write(`[llm-agent-a] ${d}`));
+  harnessA.stderr.on('data', d => process.stderr.write(`[llm-agent-a-err] ${d}`));
+
+  const harnessB = spawn('node', [llmAgentPath, '--agentId', 'planner-b', '--provider', PB, '--execution-mode', 'persistent'],
+    { env: { ...process.env, AGENTTALK_PERSISTENT_MCP: 'true', AGENTTALK_PERSISTENT_MCP_URL: `ws://localhost:${port}/`, AGENTTALK_AGENT_ID: 'planner-b' }, stdio: ['ignore', 'pipe', 'pipe'] });
+  harnessB.stdout.on('data', d => process.stdout.write(`[llm-agent-b] ${d}`));
+  harnessB.stderr.on('data', d => process.stderr.write(`[llm-agent-b-err] ${d}`));
+
+  const harnessC = spawn('node', [llmAgentPath, '--agentId', 'worker-1', '--provider', PW, '--execution-mode', 'persistent'],
+    { env: { ...process.env, AGENTTALK_PERSISTENT_MCP: 'true', AGENTTALK_PERSISTENT_MCP_URL: `ws://localhost:${port}/`, AGENTTALK_AGENT_ID: 'worker-1' }, stdio: ['ignore', 'pipe', 'pipe'] });
+  harnessC.stdout.on('data', d => process.stdout.write(`[llm-agent-w] ${d}`));
+  harnessC.stderr.on('data', d => process.stderr.write(`[llm-agent-w-err] ${d}`));
+
+  await new Promise(r => setTimeout(r, 2500)); // wait for attach
+
+  console.log('[Test] Creating team...');
+  const team = await registry.createTeam([
+    { agentId: 'planner-a', role: 'planner' },
+    { agentId: 'planner-b', role: 'planner' },
+    { agentId: 'worker-1', role: 'worker' }
+  ]);
+
+  console.log('[Test] Starting team...');
+  const repoRoot = path.join(__dirname, '..');
+  
+  const getWorktreePaths = () => execSync('git worktree list --porcelain', { cwd: repoRoot })
+    .toString().split('\n\n')
+    .map(b => b.split('\n').find(l => l.startsWith('worktree ')))
+    .filter(Boolean).map(l => l.slice('worktree '.length).trim());
+    
+  const beforePaths = new Set(getWorktreePaths());
+
+  await registry.assignTeamTask(team.id, 'Let us build a plan. Please immediately agree on adding a file named plan.md with content "hello" and submit the plan. Make sure your submitted plan contains the exact text "add plan.md".');
+
+  // Monitor events
+  let codexStructuredAction = false;
+  registry.on('mcp_tool_call', (call) => {
+    if (call.agentId === 'planner-b' && call.name === 'consensus_respond') {
+      console.log('[Test] Codex emitted consensus_respond!', call.args);
+      codexStructuredAction = true;
+    }
+  });
+
+  // Wait for codex structured action
+  for (let i = 0; i < 300 && !codexStructuredAction; i++) {
+    await new Promise(r => setTimeout(r, 1000));
+  }
+
+  try { harnessA.kill('SIGKILL'); } catch {}
+  try { harnessB.kill('SIGKILL'); } catch {}
+  try { harnessC.kill('SIGKILL'); } catch {}
+  await mcpServer.close();
+
+  // Best-effort cleanup AFTER recording: remove every worktree not present
+  // before the run, avoiding path-name coupling since agy is nondeterministic.
+  try {
+    const afterBlocks = execSync('git worktree list --porcelain', { cwd: repoRoot }).toString().split('\n\n');
+    const branchesToDelete = [];
+    for (const block of afterBlocks) {
+      const pathLine = block.split('\n').find(l => l.startsWith('worktree '));
+      if (!pathLine) continue;
+      const p = pathLine.slice('worktree '.length).trim();
+      if (beforePaths.has(p) || p === repoRoot) continue;
+      const branchLine = block.split('\n').find(l => l.startsWith('branch '));
+      if (branchLine) branchesToDelete.push(branchLine.slice('branch refs/heads/'.length).trim());
+      try { execSync(`git worktree remove --force ${p}`, { cwd: repoRoot, stdio: 'ignore' }); } catch {}
+    }
+    execSync('git worktree prune', { cwd: repoRoot, stdio: 'ignore' });
+    for (const b of branchesToDelete) { try { execSync(`git branch -D ${b}`, { cwd: repoRoot, stdio: 'ignore' }); } catch {} }
+  } catch {}
+
+  if (codexStructuredAction) {
+    console.log('TEST PASSED: PF2 Codex structured preflight succeeded');
+    process.exit(0);
+  } else {
+    console.error('TEST FAILED: Codex did not emit structured planning action');
+    process.exit(1);
+  }
+}
+
+run().catch((e) => { console.error('TEST ERROR', e); process.exit(1); });
