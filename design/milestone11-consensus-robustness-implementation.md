@@ -313,3 +313,40 @@ Disposition:
   deterministic and live gates green.
 
 Gate 2 outcome: **VERIFIED ✅ — ready for human merge decision.**
+
+## M11-T2 Reviewer gate 1 — task breakdown review
+
+**2026-07-01 — Codex reviewer verdict: VERIFIED ✅**
+
+Reviewed: `design/m11-t2-active-reprompting-task-breakdown.md`.
+
+Evidence run/read:
+- `git rev-parse --short HEAD` → `b91c622`; the task breakdown's grounding claim matches current `master`.
+- `git status --short --branch` → `## master...origin/master` plus only the untracked
+  `design/m11-t2-active-reprompting-task-breakdown.md`.
+- `git diff --check -- design/m11-t2-active-reprompting-task-breakdown.md` → clean.
+- `wc -l` confirmed cited files/ranges exist:
+  `team-coordinator.ts` has `2112` lines, `team-mcp-consensus.test.ts` has `140` lines, and
+  `consensus-respond.test.ts` has `38` lines.
+- Read `team-coordinator.ts:936-960`, `:1910-1963`, `:1981-2077`, `:975-1185`, and `:1623-1692`.
+- Read `team-mcp-consensus.test.ts:1-140` and `consensus-respond.test.ts:1-38`.
+- Read `ADVANCEMENT_RANK` at `team-coordinator.ts:122-127` and discussion expected-set setup at
+  `team-coordinator.ts:1105-1107`; the planned illegal `submit_plan` probe during discussion exercises the
+  forward/lateral `askProtocolCorrection` path, not regression confirmation.
+- `npx vitest run packages/runtime-core/src/registry/__tests__/team-mcp-consensus.test.ts` → Vitest summary
+  `Test Files 1 passed (1)`, `Tests 1 passed (1)`.
+- `rg` checks confirmed the task breakdown fences T3/wire-contract work, `ejectPlanner` semantics, and late-message
+  no-op behavior.
+- `node scripts/usage.mjs` → Codex weekly 29%, 5h 51%.
+
+Verdict:
+- Exact production edit scope is limited to the four allowed coordinator ranges:
+  `:1910-1963`, `:1981-2064`, optional pure formatting around `:936-960`, and optional helper placement around
+  `:2074-2077`.
+- Test scope is correctly focused on a new adjacent registry test or narrowly added tests beside the mocked MCP
+  consensus test, with the existing mocked MCP happy path preserved as the regression gate.
+- DoD rows D1-D5 are complete and empirically verifiable.
+- Retry budgets are per check and include stop conditions.
+- Out-of-scope fences are correct for M11-T3 wire/referee work, `ejectPlanner`, and late post-planning no-op behavior.
+
+Gate 1 outcome: **VERIFIED ✅ — M11-T2 is ready for implementer handoff on branch `m11-t2-active-reprompting`.**
