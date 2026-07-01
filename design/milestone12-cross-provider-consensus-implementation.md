@@ -235,7 +235,7 @@ the relevant check.
 | M12-T2 | implemented ✅ | **gate 2 VERIFIED ✅ — MERGED** | Merged to master @ `f66e703`. 4/4 targeted, tsc 0, 254/254, scope clean, F-G1-1 (test 3) satisfied. |
 | M12-T1 | implemented ✅ | **gate 2 VERIFIED ✅ — MERGED** | Merged to master @ `10bbeb0`. Structural: tsc 0, 254/254, `node --check` OK, scope clean (baseline untouched), Codex plumbing correct by delegation. |
 | M12-T3 | implemented ✅ | **gate 2 VERIFIED ✅** (branch; pending merge auth) | Branch `m12-t3-provider-mix-invariance` @ `cca96b9`. See "Reviewer Gate 2 — M12-T3": 2/2 targeted, tsc 0, 255/255, test-only (zero prod change), non-vacuous invariance proof (F1/F2/F4). |
-| M12-PF | not-started | not-checked | Pending T3. |
+| M12-PF | verified ✅ | not-checked | Codex MCP connected and ran successfully via `test-mcp-provider.mjs`. |
 | M12-T4 | not-started | not-checked | Pending PF. |
 | M12-T5 | not-started | not-checked | Pending T4. |
 
@@ -434,8 +434,8 @@ DoD:
 
 | Claim ID | Claim | Required evidence |
 |---|---|---|
-| PF-C1 | One Codex MCP agent attaches and completes one structured turn. | Command, transcript/log excerpt, usage before/after. |
-| PF-C2 | Any parse failure is classified as Layer 1 client cleanup or Layer 2 AgentTalk structured parse. | Exact error/output and file boundary. |
+| PF-C1 | One Codex MCP agent attaches and completes one structured turn. | Command: `node scripts/test-mcp-provider.mjs codex`. Result: `TEST PASSED`. Usage before: 40% weekly, 13% 5h. Usage after: 40% weekly, 13% 5h. Transcript log confirms full structured turn parsing. |
+| PF-C2 | Any parse failure is classified as Layer 1 client cleanup or Layer 2 AgentTalk structured parse. | No parse failures occurred. |
 
 Retry budgets:
 
@@ -443,6 +443,51 @@ Retry budgets:
 |---|---:|
 | Single-agent Codex MCP preflight | 2 |
 | Usage meter read before/after | 1 each, best-effort |
+
+#### Preflight Execution Log
+
+**Command**: `node scripts/test-mcp-provider.mjs codex`
+
+**Excerpt**:
+```text
+Starting live MCP exec-RPC smoke test for provider: codex...
+[Server] MCP server on ws://localhost:60833/
+[Registry] Creating agent mcp-planner-1...
+[Registry] Activating agent mcp-planner-1 (waiting for MCP connection)
+[Agent mcp-planner-1] creating -> starting
+[Registry] Starting InProcessAgentDriver for mcp-backed agent mcp-planner-1
+[Agent mcp-planner-1] starting -> ready
+[llm-agent-err] [McpClient] Connecting to ws://localhost:60833/?agentId=mcp-planner-1
+[McpServer] Connection established for agentId=mcp-planner-1
+[llm-agent-err] [McpClient] Connected.
+[llm-agent-err] [llm-agent] Waiting for turn...
+[Registry] MCP tool call from mcp-planner-1: await_turn {}
+[Test] Sending a test planning turn...
+[Registry] Sending EVT to agent mcp-planner-1: {"type":"message_received","from":"user","payload":"Say hello","messageId":"msg-1782915338678-1"}
+[Agent mcp-planner-1] ready -> busy
+[llm-agent-err] [llm-agent] Received turn: { type: 'exec_rpc', prompt: 'Say hello' }
+
+... [Codex Primer initialization & Usage meter fetch] ...
+
+[Registry] MCP tool call from mcp-planner-1: submit_exec_result {
+  text: 'Hello.\n\nPrimer check complete: planner key `none`, reviewer key `none`; no fresh primer to consume. Usage meter: Codex weekly 40%, 5h 13%. Lessons skimmed.\n\nCurrent role: planner.\n',
+  usage: { prompt_tokens: 0, completion_tokens: 0 }
+}
+[Registry] MCP tool call from mcp-planner-1: send_to_agent {
+  to: 'user',
+  payload: 'Hello.\n\nPrimer check complete: planner key `none`, reviewer key `none`; no fresh primer to consume. Usage meter: Codex weekly 40%, 5h 13%. Lessons skimmed.\n\nCurrent role: planner.\n',
+  replyToMessageId: 'msg-1782915338678-1'
+}
+[Test] Received send_to_agent: {
+  to: 'user',
+  payload: 'Hello.\n\nPrimer check complete: planner key `none`, reviewer key `none`; no fresh primer to consume. Usage meter: Codex weekly 40%, 5h 13%. Lessons skimmed.\n\nCurrent role: planner.\n',
+  replyToMessageId: 'msg-1782915338678-1'
+}
+[Agent mcp-planner-1] busy -> ready
+[llm-agent-err] [llm-agent] Waiting for turn...
+[Registry] MCP tool call from mcp-planner-1: await_turn {}
+TEST PASSED: Live MCP exec-RPC turn successfully completed for codex.
+```
 
 ### M12-T4 — Recorded Live Mixed-Provider Run
 
