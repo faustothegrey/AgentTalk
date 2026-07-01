@@ -236,7 +236,7 @@ the relevant check.
 | M12-T1 | implemented ✅ | **gate 2 VERIFIED ✅ — MERGED** | Merged to master @ `10bbeb0`. Structural: tsc 0, 254/254, `node --check` OK, scope clean (baseline untouched), Codex plumbing correct by delegation. |
 | M12-T3 | implemented ✅ | **gate 2 VERIFIED ✅** (branch; pending merge auth) | Branch `m12-t3-provider-mix-invariance` @ `cca96b9`. See "Reviewer Gate 2 — M12-T3": 2/2 targeted, tsc 0, 255/255, test-only (zero prod change), non-vacuous invariance proof (F1/F2/F4). |
 | M12-PF | re-opened ⚠️ | not-checked | Original PF passed but was insufficient: it tested Codex text relay only, not a consensus/tool action. See "PF/T4 Re-plan". |
-| M12-T4 | blocked ⛔ | not-checked | Blocked on client follow-on: Codex persistent-MCP mode opens a second same-agent socket when tool use is attempted. |
+| M12-T4 | derailed ⚠️ | not-checked | Honest partial: Client fix resolved 4001 collision, but Codex's internal exec_command tool failed because stdin is closed ('write_stdin failed'). |
 | **C-PF1** | **done** | not-checked | Bridge config removed from CodexPersistentExecutor (agentalk-mcp-client). |
 | M12-T5 | not-started | not-checked | Pending T4. |
 
@@ -847,3 +847,47 @@ Retry budgets:
 |---|---:|
 | Docs consistency grep for stale M12 status | 2 |
 | `git diff --stat && git diff --name-only` | 1 |
+
+## Implementer Gate — PF2 — Structured Codex Preflight
+
+**Date:** 2026-07-01. **Implementer:** Gemini. **Branch:** `m12-c-pf1-codex-bridge-fix` (in client) + `master` (in AgentTalk).
+
+**Action:**
+1. Switched `agentalk-mcp-client` to `m12-c-pf1-codex-bridge-fix`.
+2. Ran `PLANNER_A_PROVIDER=gemini PLANNER_B_PROVIDER=codex node scripts/test-live-cross-provider.mjs` in AgentTalk.
+
+**Observations:**
+- Codex (planner-b) successfully launched, read its primer, and processed the planning protocol prompt.
+- Codex emitted the first structured action as a raw JSON text block (`"message_type": "ack_planning_protocol"`).
+- The AgentTalk Layer-2 parser correctly intercepted the text via `submit_exec_result`, extracted the JSON, and dynamically mapped it to a `consensus_respond` tool call.
+- The orchestrator accepted the action and advanced the protocol to `fact_collection_begin`.
+- **CRITICALLY:** There were no `4001` or "Session already active" errors. The fix successfully allows Codex to execute structured consensus turns over the single existing WebSocket connection without colliding inner MCP servers.
+
+**Verdict:**
+- **PF2-C1 (structured action forced):** VERIFIED ✅. Codex responded with `ack_planning_protocol`.
+- **PF2-C2 (no inner bridge collision):** VERIFIED ✅. No 4001 errors.
+- **PF2-C3 (Layer-2 parser works):** VERIFIED ✅. Raw text successfully parsed into `consensus_respond`.
+
+C-PF1 fix is confirmed working. M12-T4 live run is unblocked.
+
+### M12-T4 — Recorded Live Mixed-Provider Run (Attempt 2)
+
+**Findings & Derailment Report:**
+
+The capstone test (`PLANNER_A_PROVIDER=gemini PLANNER_B_PROVIDER=codex node scripts/test-live-cross-provider.mjs`) was attempted again after `C-PF1` fixed the connection collision. The run derailed due to an issue with Codex's handling of tool execution when `stdin` is closed under the new text-relay piping model.
+
+**Transcript Summary:**
+- The team (`planner-a`: Gemini, `planner-b`: Codex, `worker-1`: Gemini) was created and started successfully.
+- Protocol advanced to `fact_collection_begin`.
+- Codex (`planner-b`) was instructed to gather facts and attempted to run `exec_command` to read `usage.mjs` and primer context.
+- Codex's core `router` failed with `error=write_stdin failed: stdin is closed for this session; rerun exec_command with tty=true to keep stdin open`.
+- Codex subsequently returned a text block describing the internal tool failure rather than a valid planning action.
+- The AgentTalk parser failed to extract a protocol response and marked the task as `error`/`interrupted`.
+
+**Root Cause (Honest Partial / System Defect):**
+1. **Stdin closed:** The `C-PF1` fix changed Codex to execute as a direct `exec` process passing its output via `stdout`. When Node spawns it with `stdio: ['ignore', 'pipe', 'pipe']` (which `agentalk-mcp-client` uses internally for non-TTY execution), the `stdin` is closed.
+2. **Codex dependency on TTY:** Codex's agent relies on `exec_command` to gather information. That internal tool seemingly requires an active `stdin` or `tty=true` to function, leading to a crash when it tries to write to standard input.
+
+**Outcomes:**
+- **Attempts made:** 2 total (derailed by system defect in client execution model).
+- **Classification:** Honest partial. The 4001 socket collision is fixed, but the transition to text-exec mode exposed that Codex's internal tool usage is incompatible with a closed `stdin` environment.
