@@ -37,3 +37,8 @@ here.**
 - Cross-provider Gem+Codex consensus BLOCKED by architectural conflict: Codex's CodexPersistentExecutor uses bridge.mjs which opens a second WebSocket, but McpServer enforces one-active-connection-per-agentId.
 - Lesson: a preflight that only tests text-relay ("Say hello") doesn't exercise the tool-calling path. A valid Codex preflight must force a tool invocation.
 - Epic closed on structural proof (T2+T3 merged) with live gap documented — per PO Q6. Honest partial stands.
+
+### 2026-07-01 — SM error: killed agents before their session close
+- I terminated Codex, Claude, and agy tmux sessions without giving them a chance to write their individual lessons files, consume primer keys, or perform session close. Each agent owns its own entry in `design/lessons/<agent>-lessons.md` and its own private key store — I can't write those for them.
+- Fix: next session, before killing, send each agent a "session close" baton: write your lessons, update your key store, report done. Then kill when they confirm.
+- Also: verify `~/.codex/agenttalk-session-primer-key.json`, `~/.claude/projects/AgentTalk/session-primer-key.json`, and `~/.config/AgentTalk_Gemini/session-primer-key.json` are in a clean state before closing.
