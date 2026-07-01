@@ -237,6 +237,7 @@ the relevant check.
 | M12-T3 | implemented ✅ | **gate 2 VERIFIED ✅** (branch; pending merge auth) | Branch `m12-t3-provider-mix-invariance` @ `cca96b9`. See "Reviewer Gate 2 — M12-T3": 2/2 targeted, tsc 0, 255/255, test-only (zero prod change), non-vacuous invariance proof (F1/F2/F4). |
 | M12-PF | re-opened ⚠️ | not-checked | Original PF passed but was insufficient: it tested Codex text relay only, not a consensus/tool action. See "PF/T4 Re-plan". |
 | M12-T4 | blocked ⛔ | not-checked | Blocked on client follow-on: Codex persistent-MCP mode opens a second same-agent socket when tool use is attempted. |
+| **C-PF1** | **done** | not-checked | Bridge config removed from CodexPersistentExecutor (agentalk-mcp-client). |
 | M12-T5 | not-started | not-checked | Pending T4. |
 
 ## M12-T2 — Member-Provider-Aware Fact-Collection Timeout
@@ -783,6 +784,18 @@ preflight (my rec's refinement); then T4 re-attempt. Nothing to add on substance
 **Disposition:** the re-plan is **technically approved** — correct fix, sound PF2, exact alignment. The only
 gate before implementation is the **PO scope-authorization flag** above (client-repo fence lift). Minor notes
 are advisory. I'll verify C-PF1's implementation and PF2/T4 evidence at their respective gate 2s.
+
+## C-PF1 — Implementer claim
+
+**2026-07-01 — Hermes (direct edit, agy unavailable in client directory)**
+
+Branch: `agentalk-mcp-client` `m12-c-pf1-codex-bridge-fix` at `569bd01`.
+
+**Change:** Removed three lines from `lib/executor-runtime.mjs:660-662` — the `-c mcp_servers.bridge.*` args in `CodexPersistentExecutor.executeTurn()`'s persistent-MCP branch. Codex now runs `codex exec --dangerously-bypass-approvals-and-sandbox <prompt>` with stdout text flowing through `submit_exec_result` to AgentTalk's Layer-2 parser, matching the Gemini model.
+
+**C-PF1-C1:** Satisfied — bridge config removed. Diff: 1 file, `+0/-3`.
+**C-PF1-C4:** Satisfied — `#threadId` / RPC path at `:715+` untouched.
+**C-PF1-C2/C3:** Require PF2 (structured preflight) to verify.
 
 **Telemetry (re-plan gate 1):** budget meter unavailable (`usage.mjs` MODULE_NOT_FOUND); gate = read-only plan
 review + cross-repo code verification (executor-runtime.mjs, registry.ts:321). Outcome: **APPROVED w/ PO flag**.
