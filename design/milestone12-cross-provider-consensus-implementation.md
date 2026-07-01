@@ -731,6 +731,62 @@ Main residual risks:
 - Codex may still fail protocol compliance even after the connection model is fixed. That returns M12 to the
   existing R1 category: log the failure honestly; do not change AgentTalk protocol tolerance inside this follow-on.
 
+##### Reviewer Gate 1 on the PF/T4 Re-plan — verdict: **APPROVED** (one PO-authorization flag + minor notes)
+
+**Reviewer:** Claude (reviewer seat). **Date:** 2026-07-01. **Method:** read the re-plan + verified its
+load-bearing code assumptions fresh (Reviewer Rule 1) in both repos. Telemetry: `usage.mjs` down earlier
+(`MODULE_NOT_FOUND`) — best-effort, unavailable this gate.
+
+**Is the fix (C-PF1) correct? — YES.** Dropping the `mcp_servers.bridge.*` config from
+`CodexPersistentExecutor`'s persistent-MCP branch (executor-runtime.mjs:654-664) so codex runs
+`codex exec <prompt>` → stdout **text** → `submit_exec_result` → the brain's Layer-2 parser is exactly the
+Gemini model (`agy … --print`) and exactly my recommended follow-on. The existing stdout-capture path
+(:677-680) already accumulates `responseText` and resolves `{ response }`, so removing the bridge args needs no
+new capture machinery. The **PF that passed earlier already produced clean text on stdout with the bridge
+merely configured-but-unused**, so plain `codex exec` output is very likely clean too — and the plan correctly
+fences the residual risk (no `--json` unless a final-answer extractor is added; :623-624/:727-728). C-PF1-C4
+(non-MCP `#threadId`/RPC path untouched) is a good guardrail.
+
+**Is PF2 well-designed? — YES, and I verified its key assumption.** Forcing a structured action
+(`ack_planning_protocol`) and asserting **no `4001`/one socket** directly closes the exact gap I flagged (old
+PF used a no-tool "say hello", so the bridge never activated). I checked the one thing that could have broken
+PF2: after C-PF1 the `consensus_respond` is issued **internally by the brain**, not by codex over a socket — but
+`registry.handleMcpToolCall` emits `'mcp_tool_call'` at its entry (registry.ts:321) for internal callers too, so
+"registry observes `consensus_respond` for the Codex agent" (PF2-C1/C3) **is** a real, emitted signal. PF2 is
+observably sound. The "custom_event_request" preferred shape is hedged with a real-team alternative, so it's
+implementable either way.
+
+**Alignment with my follow-on recommendation? — EXACT.** C-PF1 = drop bridge (my rec); PF2 = tool-forcing
+preflight (my rec's refinement); then T4 re-attempt. Nothing to add on substance.
+
+**REQUIRED FLAG — PO authorization (the one thing to settle before implementation):**
+> **C-PF1 is a client-repo (`agentalk-mcp-client`) change, which M12's own hard rule — "no client-repo
+> changes" — forbids, and which my second opinion classified as OUT of M12 scope.** The re-plan folds C-PF1 into
+> the M12 ledger/sequencing without noting that the fence must be **formally lifted by the PO**. This is a
+> scope-*authority* decision, not a technical defect: the PO must explicitly either (a) extend M12's scope to
+> cover this client-repo task, or (b) run C-PF1 as a **separate client-repo follow-on** feeding a later M12-T4
+> re-attempt. Per workflow this is a STOP-and-confirm boundary — the implementer should not touch the client
+> repo until the PO authorizes. (Merges of client-repo work are also PO/[Human]-gated.)
+
+**MINOR notes (non-blocking):**
+- **N-RP1:** C-PF1 also **moots** the `AGENTTALK_AGENT_ID`/`'unknown'` issue entirely (no bridge ⇒ no second
+  agentId ⇒ nothing to propagate). Worth stating so no one "fixes" that separately.
+- **N-RP2 (hygiene — real):** before the T4 re-attempt, confirm `scripts/test-live-cross-provider.mjs` is at its
+  **clean committed state**. Earlier the working tree carried uncommitted debug hacks (an `'unknown'` 4th agent,
+  removal of the `expectedContractHash` safety check, and a `patch.js` prompt-injector); they appear reverted,
+  but T4 must run against the clean merged harness, not those workarounds. The plan's "harness = execute only,
+  no code change" (:648) is correct and implicitly rejects them — just verify it explicitly.
+- **N-RP3:** the PF2 real-team alternative should **stop at the first structured action** (as written) and not
+  drift into a full round — otherwise it silently consumes the T4 live-budget cap. The plan says this (:711);
+  keep it firm.
+
+**Disposition:** the re-plan is **technically approved** — correct fix, sound PF2, exact alignment. The only
+gate before implementation is the **PO scope-authorization flag** above (client-repo fence lift). Minor notes
+are advisory. I'll verify C-PF1's implementation and PF2/T4 evidence at their respective gate 2s.
+
+**Telemetry (re-plan gate 1):** budget meter unavailable (`usage.mjs` MODULE_NOT_FOUND); gate = read-only plan
+review + cross-repo code verification (executor-runtime.mjs, registry.ts:321). Outcome: **APPROVED w/ PO flag**.
+
 Scope:
 
 | File | Scope |
