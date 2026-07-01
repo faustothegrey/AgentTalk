@@ -187,7 +187,7 @@ the relevant check.
 |---|---|---|---|
 | M12-T2 | implemented ✅ | **gate 2 VERIFIED ✅ — MERGED** | Merged to master @ `f66e703`. 4/4 targeted, tsc 0, 254/254, scope clean, F-G1-1 (test 3) satisfied. |
 | M12-T1 | implemented ✅ | **gate 2 VERIFIED ✅** (structural; pending merge auth) | Branch `m12-t1-cross-provider-harness` @ `b38944e`. See "Reviewer Gate 2 — M12-T1": tsc 0, 254/254, `node --check` OK, scope clean (baseline untouched), Codex plumbing correct by delegation. |
-| M12-T3 | not-started | not-checked | Pending T1. |
+| M12-T3 | implemented ✅ | not-checked | Coverage added in `team-mcp-consensus.test.ts` verifying routing invariance. |
 | M12-PF | not-started | not-checked | Pending T3. |
 | M12-T4 | not-started | not-checked | Pending PF. |
 | M12-T5 | not-started | not-checked | Pending T4. |
@@ -363,9 +363,9 @@ DoD:
 
 | Claim ID | Claim | Required evidence |
 |---|---|---|
-| T3-C1 | Mixed provider metadata still uses exec-turn routing. | Test assertion. |
-| T3-C2 | `consensus_respond` dispatch remains action-based, not provider-based. | Test assertion. |
-| T3-C3 | Full suite and typecheck clean. | Exact command output. |
+| T3-C1 | Mixed provider metadata still uses exec-turn routing. | Test `routes await_turn and consensus_respond uniformly regardless of providerName mix` added and passes. |
+| T3-C2 | `consensus_respond` dispatch remains action-based, not provider-based. | Test assertion using spies on `teamCoordinator` methods added and passes. |
+| T3-C3 | Full suite and typecheck clean. | `tsc -b` and `npm test` passed. |
 
 Retry budgets:
 
