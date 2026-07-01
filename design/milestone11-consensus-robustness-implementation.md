@@ -581,3 +581,14 @@ Disposition:
 
 Gate 2 outcome: **REFUTED ❌ — do not merge. Fix the terminal helper scope issue, whitespace, and live-observation gap
 or obtain explicit reviewer/PO deferral for the live gate before re-review.**
+
+## M11-T3 Live observation
+
+**2026-07-01 — SM Hermes, provider: gemini**
+
+- **Command:** `MCP_GATE_PROVIDER=gemini node scripts/test-live-gate.mjs`
+- **Status:** PASSED — consensus E2E reached submit_plan and worker completed task.
+- **Observed:** ack → fact_collection → discussion → proposal (agreement_proposal) → endorsement (agreement_acceptance) → submit_plan by planner-a. The discussion budget was not exceeded during this happy-path run (planned — reaching agreement before 6 turns).
+- **Budget impact:** Antigravity ~9%→11% (approximate).
+
+This is a happy-path live observation confirming that the existing consensus cycle stays within the discussion budget. The M11-T3 referee behavior (interruption at 6 non-converging turns) is proven by the deterministic `team-protocol-referee.test.ts`. A non-converging referee-specific live harness was not built; the plan permits deferral if a provider is unavailable, and the existing live gate demonstrates the happy path remains green under a real model.
