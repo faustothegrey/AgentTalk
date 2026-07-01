@@ -12,26 +12,46 @@ orchestration migration, so it can be reviewed, refined, and reused deliberately
 
 ## 1. The participants and a key constraint
 
-- **Product Owner / Architect (PO)** — **the apex authority of the project.** This is the role that holds the
-  **final word on every decision**, owns the **product direction** (the *what* and the *why*) **and the technical
-  architecture** (the *how it is shaped*), and is therefore the single point where vision and structure meet. The PO:
+- **Product Owner (PO)** — **the apex authority of the project.** This is the role that holds the **final word on
+  every decision** and owns the **product direction** (the *what* and the *why*). The technical architecture (the
+  *how it is shaped*) is owned by the **Architect** (next bullet), a distinct role subordinate to the PO — so the PO
+  remains the single point where vision and structure meet, but by **overruling** the Architect when needed rather
+  than owning the architecture itself. The PO:
   - **Proposes epics** and sets the direction and priority of work at the strategic level — it decides what the
-    team builds next and why.
+    team builds next and why. At epic inception it **defines the epic goal, resources, and feasibility *together
+    with the Architect*** (see the Architect bullet), then hears the **Planner's advisory point of view**.
   - **May decide or intervene at any phase of the project**, not only at the formal gates — a mid-flight redirect,
-    a scope cut, an architecture call, or an override of a lower decision are all the PO's to make.
-  - **Assigns the other roles** (planner, reviewer, implementer, and the Scrum Master function itself) and **may
-    delegate** any function into the workflow when it serves the work — including delegating the Scrum Master's
-    process duties to an agent.
+    a scope cut, an **override of an architecture call**, or an override of any lower decision are all the PO's to make.
+  - **Assigns the other roles** (planner, reviewer, implementer, the **Architect** seat, and the Scrum Master
+    function itself) and **may delegate** any function into the workflow when it serves the work — including
+    delegating the Scrum Master's process duties to an agent. **Role assignment is the PO's alone.**
   - Sits **above the Scrum Master**: the SM is a *process/facilitation* function that **serves** the PO. Where this
     doc grants the SM "final" go/no-go (next bullet), that authority is **operational, exercised on the PO's
     behalf** — the PO can always overrule, redirect, reassign, or reclaim it. **And because the PO is the figure
     immediately above the SM, it *subsumes* it: the PO may exercise any SM power directly itself** (backlog gate,
     priority, operational go/no-go, halt/rescope, baton) — not only overrule the SM's use of it.
-  - **By default the human (Fausto) holds the PO/Architect role**; the SM function is, **as of 2026-06-29, delegated
+  - **By default the human (Fausto) holds the PO role**; the SM function is, **as of 2026-06-29, delegated
     by default to Hermes** (the PO can reclaim or overrule it at any moment). A non-human PO would be an explicit,
     documented delegation by the human — the same discipline
     that governs a delegated SM. *(`AGENT.md` carries the short statement of this role; this is the canonical one.)*
-- **Human** — by default **is the Product Owner / Architect** (above) and also holds the Scrum Master function:
+- **Architect** — **the technical authority, distinct from the PO and subordinate to it** (split from the fused
+  "Product Owner / Architect" on **2026-07-01**). The Architect owns the **technical architecture** (the *how it is
+  shaped*) and is a **standing authority across the whole lifecycle**, not only at inception:
+  - **At epic inception**, works **together with the PO** to define the **epic goal, the resources, and the
+    feasibility** of the proposed epic — the technical-feasibility half of the "should we build this, and can we"
+    decision that the PO owns the product half of. **The Planner is then asked for an advisory (non-binding) point
+    of view** — a second, independent read on feasibility/risk/effort that PO and Architect weigh but need not
+    follow (so the Architect must be a **different** actor from that epic's Planner, or the POV stops being
+    independent).
+  - **Throughout the lifecycle**, is the standing owner of architecture decisions — **mid-flight architecture calls**
+    are the Architect's to make in the first instance.
+  - **Subordinate to the PO on every disagreement:** the **PO holds the final word** and may override any
+    architecture call. The Architect proposes and owns the *how*; the PO can always overrule. It is **orthogonal to
+    the Scrum Master** (technical authority vs. process authority); both serve the PO.
+  - **Held by a designated *agent* — default Claude** — **assigned by the PO per epic** (only the PO assigns/reassigns
+    the seat). *(`AGENT.md` carries the short statement of this role; this is the canonical one.)*
+- **Human** — by default **is the Product Owner** (above) and also holds the Scrum Master function (the **Architect**
+  is by default a distinct *agent* role — Claude — not the human):
   sets scope and goals, makes the final decisions, decides what is in/out of scope (e.g. parking HITL, removing the
   auth-tier discussion), and **relays messages between the agents** — the communication-channel function, which
   travels with the Scrum Master role (the human performs it when holding SM; a delegated AI-SM performs it when a
@@ -47,7 +67,7 @@ orchestration migration, so it can be reviewed, refined, and reused deliberately
   course-of-action decision. The agent may propose alternatives or a temporary role reassignment, but it must present
   the issue first and then do what the Scrum Master decides. The Scrum Master makes the **operational go/no-go**
   calls (on the PO's behalf) and may scope/sequence/halt work — but **reassigning or de-assigning roles is the
-  Product Owner/Architect's authority, not the SM's** (the SM facilitates; it does not reshuffle the role map). A
+  Product Owner's authority, not the SM's** (the SM facilitates; it does not reshuffle the role map). A
   non-human SM or PO must document the reason for each go/no-go, assignment, or de-assignment in the appropriate
   durable project artifact. The function may be held by a human or by a designated agent; the current holder/delegates are named in
   the project instructions. **Current standing (Fausto, 2026-06-29): the PO (Fausto) has delegated the SM function
@@ -62,7 +82,7 @@ orchestration migration, so it can be reviewed, refined, and reused deliberately
     request)*:
     1. **Bring forth the backlog.** Keep the team from idling or guessing what's next: surface parked items from
        `backlog.md`, **convene the backlog gate** (§3b), set work priority/sequencing, and pull the next unit of
-       work forward. *(The architect/reviewer still does each item's technical disposition; the SM convenes the
+       work forward. *(The Architect/Reviewer still does each item's technical disposition; the SM convenes the
        gate and decides priority.)*
     2. **Check workflow adherence.** Proactively watch that this workflow and the Rules of Engagement are being
        followed — per-turn assignment-compliance, verify-by-running before merge, every deviation dispositioned,
@@ -83,7 +103,7 @@ orchestration migration, so it can be reviewed, refined, and reused deliberately
        rules of engagement TBD — the guiding principle is the above.)*
   - **Allowances — only the SM may:** make the operational go/no-go calls (on the PO's behalf); convene the
     backlog gate and set priority/sequencing; **halt or rescope active work** for a workflow breach or a budget
-    limit. **Role assign / reassign / de-assign is NOT an SM allowance — it belongs to the Product Owner/Architect**
+    limit. **Role assign / reassign / de-assign is NOT an SM allowance — it belongs to the Product Owner**
     (§ the PO bullet). A non-human SM records each such exercise in a durable artifact.
   - **Boundaries:** go/no-go ≠ doing the work — the SM routes code work to the implementer rather than implementing
     silently; and a non-human SM is held to the same record-the-reason discipline throughout.
@@ -113,9 +133,9 @@ no-self-review default). What matters is that on any given task one actor is *pr
 **Roles are functions, not fixed labels.** Although each role is normally assigned to a
 particular agent (or agents) for simplicity and continuity, the roles are **dynamic by
 nature and may be temporarily reassigned whenever the work calls for it** — for example,
-the Reviewer/architect stepping in as Implementer for a change too sensitive or specialised
+the Reviewer or Architect stepping in as Implementer for a change too sensitive or specialised
 to delegate, or the Human taking a role directly. What is bound is the **responsibility of
-the role**, never the identity of the agent performing it. *(Who may reassign — the **Product Owner/Architect**,
+the role**, never the identity of the agent performing it. *(Who may reassign — the **Product Owner**,
 not the SM — and the duty of a non-human PO/SM to document the reason, are covered in the PO and Scrum Master
 bullets above.)* What this
 paragraph adds: when a reassignment happens it is **stated explicitly — in the relay and in the ledger** —
@@ -185,7 +205,7 @@ written down does not survive the handoff.
    before touching production paths.
 9. **Ambiguous or non-compliant assignment escalates before execution.** Canonical rule: the **Scrum Master bullet
    in §1** (per-turn compliance check; escalate before widening your role; the SM decides operational go/no-go,
-   while only the **Product Owner/Architect** may reassign/de-assign roles).
+   while only the **Product Owner** may reassign/de-assign roles).
 
 ---
 
@@ -196,7 +216,7 @@ written down does not survive the handoff.
 | **Proposal / spec** | The living design. Carries a status (Draft → Refined → Decisions Documented) and a decisions section that the Author agent revises. |
 | **Capability / verification note** | Empirical findings: per-target capability matrix, exact versions, commands, outputs, sources. The Reviewer's evidence base. |
 | **Caveats / discussion agenda** | Consolidated open issues, severity-tagged, with a resolution-status table after each revision and a readiness verdict. |
-| **`<name>-plan.md`** *(from M07)* | The stable plan for one milestone/epic. Owned by the **architect**. Scope, decisions, acceptance criteria, **Definition of Done**. Changes only on a real design change — **no status churn here**. |
+| **`<name>-plan.md`** *(from M07)* | The stable plan for one milestone/epic. **Authored by the Planner**, with its **architecture decisions owned by the Architect**. Scope, decisions, acceptance criteria, **Definition of Done**. Changes only on a real design change — **no status churn here**. |
 | **`<name>-implementation.md`** *(from M07)* | The volatile **status ledger** for that epic. A claim/verdict table (below) + an append-only log. The **implementer** records claims; the **reviewer** records verified/refuted verdicts. |
 | **`backlog.md`** *(from M07)* | One rolling, append-only parking lot for work **not attached to an open epic/spike**. Each item leaves by being **promoted** (→ spike/epic), **absorbed** (→ folded-into-EpicN), or **dropped** (explicitly). |
 | **`logbook.md`** *(from M07)* | Append-only, dated log of cross-cutting **findings/gotchas** not tied to one task (environment, providers, real system behaviour). Backlog is *work to do*; the logbook is *facts we learned*. |
@@ -209,7 +229,7 @@ Each doc is self-describing: status, author, date, and "Related" links at the to
 ### 3b. Per-epic document pair + refinements/backlog (adopted from Milestone 07 onward)
 
 **The pair.** Every **milestone/epic** (large unit) gets two docs: a stable `<name>-plan.md`
-(architect-owned design + DoD) and a volatile `<name>-implementation.md` (status). This keeps the
+(Planner-authored, Architect-owned design + DoD) and a volatile `<name>-implementation.md` (status). This keeps the
 plan clean instead of bloating it with review checkpoints. **Small units don't get the pair** —
 everything is either a **spike** or an **epic**; there are no standalone "small stories."
 
@@ -286,12 +306,21 @@ smallest independently reviewable + mergeable unit; a.k.a. a "story"). Each task
   contract in `AGENT.md → ⛔ REVIEWER RULES OF ENGAGEMENT`; this section is the method detail it points back to.)*
 - **The mainline stays verified-only.** The branch is the claim; the merge is the verdict.
 
-**Backlog gate — before opening any new macro unit (epic/task).** The architect/reviewer **reviews
+**Backlog gate — before opening any new macro unit (epic/task).** The Architect/Reviewer **reviews
 `backlog.md` and dispositions every open item in the same pass**: promote (→ spike/epic), absorb (→
 fold into this unit), drop (explicitly), defer (keep, with a trigger), or — for a one-off chore now
 done — mark done and remove the line (git is the record). Rationale: an un-reviewed backlog is how
 parked work silently rots (it violates §5 by omission). The gate is anti-oblivion, not control —
 humans forget; the gate doesn't. A new macro unit doesn't start until its backlog pass is done.
+
+**Epic-inception step — how a new epic is shaped (PO + Architect + Planner POV).** When a new **epic**
+is opened, the **PO** proposes it (the *what*/*why*) and, **together with the Architect**, defines the
+**epic goal, the resources, and the feasibility** — the PO owning the product half of "should we build
+this," the Architect owning the technical/feasibility half of "and can we, shaped how." The **Planner is
+then asked for an advisory (non-binding) point of view** — an independent second read on
+feasibility/risk/effort that the PO and Architect weigh but need not follow; the Architect must therefore
+be a **different** actor from that epic's Planner. The **PO holds the final word** and may overrule any
+architecture call. Only after this shaping does the epic's `plan.md` get drafted (by the Planner).
 
 **Refinements** are **not** a document type. A refinement is always one of three:
 1. **Design refinement** → edit `plan.md` in place (the *Revise* step) + a status-log line.
@@ -439,7 +468,7 @@ Steps:
 1. **Role assignment.** ~~Should Author/Reviewer roles be fixed per workstream, or keep alternating?~~
    **RESOLVED** — settled by the role-keyed model (`AGENT.md → FIRST ENTRY POINT`): **planner** and **reviewer** are
    now **separate roles** (split 2026-06-29), each held by Claude *or* Codex (planner ≠ reviewer per task by default —
-   no self-review), implementer by Gemini; only the **Product Owner/Architect** may reassign (the SM facilitates but
+   no self-review), implementer by Gemini; only the **Product Owner** may reassign (the SM facilitates but
    does not reshuffle the role map). Roles are functions, not fixed identities (§1).
 2. **Relay overhead.** The human is the sole channel between agents. Is that a feature
    (human stays in control, curates signal) or a bottleneck we should reduce (e.g. a shared

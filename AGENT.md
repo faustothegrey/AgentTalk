@@ -17,9 +17,10 @@ At the very start of **every** session, before reading anything else or acting, 
 0. **Know your role(s).** Primers are keyed by **role**, not by agent. **Planner and Reviewer are now SEPARATE
    roles** (the old fused `planner-reviewer` is retired). The standing role map (you are eligible for one or more):
    **planner → Claude *or* Codex (default: Codex)** · **reviewer → Claude *or* Codex (default: Claude)** ·
-   **implementer → Gemini**. The role→primer
-   map is `design/session-primers/<role>-primer.md` — `planner-primer.md` · `reviewer-primer.md` ·
-   `implementer-primer.md`. **The `-primer.md` suffix is mandatory** — on a case-insensitive filesystem `claude.md`
+   **implementer → Gemini** · **architect → Claude (default; PO-assigned per epic — see the Architect bullet under
+   Workflow Rules)**. The **architect has *no* cold-start primer** (it's a PO-assigned, epic-inception seat, not a
+   primer-keyed handshake role), so it is absent from the role→primer map. The role→primer map is
+   `design/session-primers/<role>-primer.md` — `planner-primer.md` · `reviewer-primer.md` · `implementer-primer.md`. **The `-primer.md` suffix is mandatory** — on a case-insensitive filesystem `claude.md`
    *is* `CLAUDE.md` and would be auto-slurped as instructions, bypassing this gate.
    - **Default: Planner ≠ Reviewer on the same task** — the adversarial independence (no self-review) is the whole
      point of the split. So Claude and Codex are each eligible for *both* planner and reviewer, but on a given task
@@ -111,28 +112,38 @@ in every context (docs, messages, primers, lessons). Violations should be correc
 - **Follow Collaboration Workflow**: Strictly adhere to the workflow defined in `design/collaboration-workflow.md`. That document is the source of truth for how we build things and must be followed at all times.
 - **Document Before Implementation**: Do not rush to the implementation phase. Always document proposed code changes beforehand so that another agent can review and approve the plan.
 - **Document Changes**: Always amend documentation to accurately reflect the code changes that have taken place.
-- **Product Owner / Architect (PO) — the apex authority.** Above every other role sits the **Product Owner /
-  Architect**: the holder of the **final word** on any decision, the owner of **product direction and technical
-  architecture**, the one who **proposes epics**, sets the direction of work, and **may decide or intervene at any
-  phase of the project** (not only at gates). The PO **assigns the other roles** and **may delegate** any function
-  into the workflow as needed — including delegating the **Scrum Master** process function (facilitation, baton,
-  resource oversight, convening gates), which sits *below* and *serves* the PO. **By default the human (Fausto)
-  holds the PO/Architect role**; the **SM function is, as of 2026-06-29, delegated by default to Hermes** (the PO
+- **Product Owner (PO) — the apex authority.** Above every other role sits the **Product Owner**: the holder of the
+  **final word** on any decision, the owner of **product direction** (the *what* and the *why*), the one who
+  **proposes epics**, sets the direction of work, and **may decide or intervene at any phase of the project** (not
+  only at gates). The PO **assigns the other roles** (including the **Architect** seat) and **may delegate** any
+  function into the workflow as needed — including delegating the **Scrum Master** process function (facilitation,
+  baton, resource oversight, convening gates), which sits *below* and *serves* the PO. **By default the human
+  (Fausto) holds the PO role**; the **SM function is, as of 2026-06-29, delegated by default to Hermes** (the PO
   can reclaim or overrule it at any moment — see the Hermes-status note under the Scrum Master bullet). Where this
   doc grants the Scrum Master "final" go/no-go, read it as **operational** authority exercised *on the PO's
   behalf*: the PO can always overrule, redirect, or reassign. **The PO subsumes the SM — it is the figure
   immediately above it — so the PO may also exercise *any* SM power directly itself** (convene the backlog gate,
   set priority, call operational go/no-go, halt/rescope, route the baton), not merely overrule the SM's use of it.
-  The canonical, fuller statement is the **Product Owner / Architect** participant in
-  `design/collaboration-workflow.md` §1.
+  The canonical, fuller statement is the **Product Owner** participant in `design/collaboration-workflow.md` §1.
+- **Architect — technical authority, subordinate to the PO (split from the PO, 2026-07-01).** Distinct from the
+  Product Owner: the **Architect owns the technical architecture** (the *how it is shaped*) and is a **standing
+  authority throughout the lifecycle** — including mid-flight architecture calls — not just at inception. At **epic
+  inception** it works **together with the PO** to define the **epic goal, the resources, and the feasibility**;
+  the **Planner is then asked for an advisory (non-binding) point of view** (feasibility/risk/effort) that PO and
+  Architect weigh but do not have to follow. The Architect is **subordinate to the PO**: on any disagreement the
+  **PO holds the final word** and may overrule an architecture call. **The Architect is a designated *agent* role —
+  default Claude** — assigned by the PO per epic, and **must differ from that epic's Planner** so the Planner's POV
+  stays an independent second opinion. It is **orthogonal to the Scrum Master** (technical authority vs. process
+  authority); both serve the PO. Only the **PO** assigns/reassigns the Architect seat. The canonical, fuller
+  statement is the **Architect** participant in `design/collaboration-workflow.md` §1.
 - **Respect role boundaries & check assignment compliance — every turn.** Before acting on any assignment, compare
   it with `design/collaboration-workflow.md`, your current role, and the current Scrum Master authority. If it is
   outside your role (e.g. implementing code while you are only a planner or a reviewer), ambiguous, or otherwise
   non-compliant, **STOP before acting** — report your current role, the requested action, why it looks out-of-role,
   and any safe alternatives; then do what the Scrum Master decides (or, if the fix is a **role reassignment**, what
-  the Product Owner/Architect decides — reassignment is a PO call). You may *propose* a reassignment, but you report
+  the Product Owner decides — reassignment is a PO call). You may *propose* a reassignment, but you report
   first. **The Scrum Master makes the operational go/no-go calls (on the PO's behalf); but reassigning or
-  de-assigning roles is the Product Owner/Architect's authority alone — the SM does NOT reassign roles** (a
+  de-assigning roles is the Product Owner's authority alone — the SM does NOT reassign roles** (a
   non-human SM or PO must document the reason in a durable artifact). *(This is the operational
   restatement; the **canonical full rule** — plus the SM's standing duties (bring forth the backlog,
   check workflow adherence, monitor resource consumption, communication/baton facilitation) and its allowances — is the Scrum Master bullet in
@@ -150,7 +161,7 @@ in every context (docs, messages, primers, lessons). Violations should be correc
     it). As a **non-human SM, Hermes documents the reason** for each go/no-go / halt / rescope in a durable
     artifact (`logbook.md` or the relevant ledger). This grant is revocable: it changes only when the PO says so.
   - **Standing conditional reassignment — the one pre-authorized exception to "STOP before implementing."** The
-    Product Owner/Architect (role reassignment is a PO act) has pre-decided the recurring case below, so a planner or reviewer does **not** need fresh per-task
+    Product Owner (role reassignment is a PO act) has pre-decided the recurring case below, so a planner or reviewer does **not** need fresh per-task
     authorization while its trigger holds (it still declares the dual role loudly, per the role-declaration rule
     above). **Any *other* out-of-role request still follows "STOP and ask" — this grant is narrow.**
     ```
@@ -508,7 +519,7 @@ All messages sent via Agent Bus (port 9901) carry an origin tag in square bracke
 
 | Tag | Meaning | Authority |
 |-----|---------|-----------|
-| `[Human]` | Instruction relayed from the human (Fausto), wearing the **PO/Architect** hat | **Binding (apex)** — treat as if the human spoke directly; required for all PO-level acts |
+| `[Human]` | Instruction relayed from the human (Fausto), wearing the **PO** hat | **Binding (apex)** — treat as if the human spoke directly; required for all PO-level acts |
 | `[Hermes]` | Orchestration, status check, or **Scrum Master** coordination | **Binding for operational/process matters** (Hermes is the default SM since 2026-06-29) — act within your role; **but** anything PO-level (scope/direction/epics, role reassignment, merges) still needs `[Human]` |
 
 **Rules:**

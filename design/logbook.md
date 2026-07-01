@@ -1300,3 +1300,26 @@ no scope change to the probe plan otherwise. The plan stays DRAFT-for-review aft
 - **Lesson:** picking "the next backlog item" must pass the §3b gate — verify each candidate against git *before*
   priming, or you hand a planner a phantom task. The verify step here turned an assumed implementation task into a
   doc-reconciliation + verification closure.
+
+### LB-48 · 2026-07-01 — [process] Split the fused "Product Owner / Architect" into two distinct roles
+- **Trigger:** Fausto (PO) asked to better define the **Architect** as a role *distinct from* the Product Owner —
+  the Architect defines the **epic goal, resources, and feasibility together with the PO**, and another scrum-team
+  member (usually the **Planner**) is asked for a point of view.
+- **Resolved model (Fausto's four decisions):** (1) **PO stays apex** — the Architect owns technical shape/
+  feasibility and advises, but the PO holds the final word and may overrule any architecture call. (2) The
+  **Architect is a designated *agent* role — default Claude** — assigned by the PO per epic, and **must differ from
+  that epic's Planner** so the Planner's POV stays an independent second opinion. (3) **Standing tech-arch owner** —
+  the Architect owns architecture across the whole lifecycle (incl. mid-flight architecture calls), not only at
+  inception. (4) The **Planner's point of view is advisory/non-binding**.
+- **What landed:** `collaboration-workflow.md` §1 — the fused "Product Owner / Architect (PO)" bullet split into a
+  tightened **PO** bullet (apex, product direction, proposes epics, assigns roles incl. the Architect seat,
+  subsumes the SM) + a new **Architect** bullet (agent/default-Claude, standing tech-arch owner, PO-overrulable,
+  orthogonal to the SM). Added the **Epic-inception step** to §3b's backlog-gate area (PO+Architect define goal/
+  resources/feasibility → Planner advisory POV → PO final word → then `plan.md` is drafted). `plan.md` ownership
+  reconciled: **Planner-authored, Architect-owned design** (was ambiguously "architect-owned"). Every apex/
+  role-reassignment "Product Owner/Architect" reference across §1/§5 collapsed to **PO**; every architecture/
+  feasibility one routed to the **Architect**. `AGENT.md` mirrored: split bullet, Architect added to the standing
+  role map (**no cold-start primer** — it's a PO-assigned epic-inception seat, so it's absent from the role→primer
+  map by design), `[Human]` origin tag now "PO" hat (the human is PO, not Architect).
+- **Note:** the Architect deliberately has **no session-primer/handshake** — it is not a primer-keyed role. If we
+  later want cold-start Architect priming, that's a separate mechanism change.
