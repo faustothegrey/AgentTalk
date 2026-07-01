@@ -1,6 +1,6 @@
 # M12 — Cross-Provider Consensus — Implementation Breakdown
 
-> **Status:** Planner breakdown — ready for Reviewer gate 1.
+> **Status:** T2/T1 merged; T3 verified; PF/T4 re-opened for client follow-on planning.
 > **Plan:** `design/milestone12-cross-provider-consensus-plan.md`
 > **Base:** `master` at `edc6a3b` (2026-07-01).
 > **Planner:** Codex. **Architect:** Claude. **PO:** Fausto.
@@ -152,7 +152,7 @@ here is **structural** (build/suite green, script correct + scope-clean), not a 
   `--provider PA|PB|PW` (42-55). T1-C1 + T1-C2 satisfied.
 - **Codex PTY handling is correct BY DELEGATION — and that is the right design.** The harness must *not* do
   Codex-specific PTY work; that belongs in the client. I confirmed in the client repo that
-  `CodexPersistentExecutor` spawns `codex` with `stdio: ['ignore','pipe','pipe']` (executor-runtime.mjs:672) —
+  `CodexPersistentExecutor` starts `codex` with `stdio: ['ignore','pipe','pipe']` (executor-runtime.mjs:672) —
   **no TTY required** — so the harness's piped stdio for `llm-agent.mjs` is compatible. `codex-pty.mjs` is a
   *separate* manual launcher, **not** on the persistent-executor path, so it is correctly irrelevant here.
 - **Beneficial in-scope addition:** the script sets `AGENTTALK_AGENT_ID` per agent (43/48/53). I verified the
@@ -235,8 +235,8 @@ the relevant check.
 | M12-T2 | implemented ✅ | **gate 2 VERIFIED ✅ — MERGED** | Merged to master @ `f66e703`. 4/4 targeted, tsc 0, 254/254, scope clean, F-G1-1 (test 3) satisfied. |
 | M12-T1 | implemented ✅ | **gate 2 VERIFIED ✅ — MERGED** | Merged to master @ `10bbeb0`. Structural: tsc 0, 254/254, `node --check` OK, scope clean (baseline untouched), Codex plumbing correct by delegation. |
 | M12-T3 | implemented ✅ | **gate 2 VERIFIED ✅** (branch; pending merge auth) | Branch `m12-t3-provider-mix-invariance` @ `cca96b9`. See "Reviewer Gate 2 — M12-T3": 2/2 targeted, tsc 0, 255/255, test-only (zero prod change), non-vacuous invariance proof (F1/F2/F4). |
-| M12-PF | verified ✅ | not-checked | Codex MCP connected and ran successfully via `test-mcp-provider.mjs`. |
-| M12-T4 | not-started | not-checked | Pending PF. |
+| M12-PF | re-opened ⚠️ | not-checked | Original PF passed but was insufficient: it tested Codex text relay only, not a consensus/tool action. See "PF/T4 Re-plan". |
+| M12-T4 | blocked ⛔ | not-checked | Blocked on client follow-on: Codex persistent-MCP mode opens a second same-agent socket when tool use is attempted. |
 | M12-T5 | not-started | not-checked | Pending T4. |
 
 ## M12-T2 — Member-Provider-Aware Fact-Collection Timeout
@@ -502,7 +502,7 @@ The capstone test (`PLANNER_A_PROVIDER=gemini PLANNER_B_PROVIDER=codex node scri
 - The task was marked as `error`/`interrupted`.
 
 **Root Cause (Honest Partial / System Defect):**
-1. **Missing Environment Variable:** The test harness spawns `llm-agent.mjs` via `child_process.spawn()`. `llm-agent.mjs` parses `--agentId=planner-b` but fails to export `AGENTTALK_AGENT_ID`. When `CodexPersistentExecutor` spawns the actual Codex CLI (which connects via `bridge.mjs`), it uses `process.env.AGENTTALK_AGENT_ID || 'unknown'`.
+1. **Missing Environment Variable:** The test harness starts `llm-agent.mjs` via `child_process`. `llm-agent.mjs` parses `--agentId=planner-b` but fails to export `AGENTTALK_AGENT_ID`. When `CodexPersistentExecutor` starts the actual Codex CLI (which connects via `bridge.mjs`), it uses `process.env.AGENTTALK_AGENT_ID || 'unknown'`.
 2. **Double WebSocket Connection Conflict (Impending Blocker):** Even if `AGENTTALK_AGENT_ID` is correctly set, `AgentTalk`'s `McpServer` enforces a strict **one active connection per agentId** rule ("Session isolation & hijack check"). Because `llm-agent.mjs` holds the main connection for `planner-b` (to pull `await_turn`), the secondary inner connection initiated by `bridge.mjs` (for `consensus_respond` tool calls) will be rejected with `4001 Session already active`.
 
 **Outcomes:**
@@ -519,7 +519,7 @@ skipped, not blocking.
 
 **Q1 — Is the finding accurate? — MOSTLY YES, with one imprecision and one deeper cause the report understates.**
 - **Claim 2 (double WebSocket / one-connection-per-agentId) — CONFIRMED by code.** `CodexPersistentExecutor`
-  (persistent-MCP branch, `executor-runtime.mjs:646-664`) spawns `codex exec` configured with
+  (persistent-MCP branch, `executor-runtime.mjs:646-664`) starts `codex exec` configured with
   `-c mcp_servers.bridge.args=["${bridgePath}","${agentMcpUrl}"]`, where `agentMcpUrl = ws://…?agentId=<agentId>`.
   `bridge.mjs:12` opens **its own** `new WebSocket(url)` to that URL. Meanwhile `llm-agent.mjs:159` **already
   holds** a live socket for the same agentId (to pull `await_turn` / `submit_exec_result`). `mcp-server.ts`
@@ -528,7 +528,7 @@ skipped, not blocking.
   forbids. The mechanism is real.
 - **Claim 1 (`AGENTTALK_AGENT_ID` → `'unknown'`) — PARTIALLY INACCURATE / imprecise.** The **merged** harness
   (T1, `test-live-cross-provider.mjs:43/48/53`) **does** set `AGENTTALK_AGENT_ID`, and `CodexPersistentExecutor`
-  spawns codex with `env: process.env` (`:674`), so `:654` should resolve to `planner-b`, **not** `unknown`. The
+  starts codex with `env: process.env` (`:674`), so `:654` should resolve to `planner-b`, **not** `unknown`. The
   observed `unknown` most likely reflects a run before that env wiring, or a propagation gap worth pinning — but
   it is the **secondary** issue: fixing it only moves you to Claim 2 (a correctly-named `planner-b` bridge
   socket then collides at 4001). The report's framing "*llm-agent.mjs fails to export AGENTTALK_AGENT_ID*" is
@@ -581,6 +581,156 @@ persistent-MCP path onto the exec-RPC text model (drop the `bridge` MCP wiring f
 M12-PF → M12-T4. Until then, cross-provider live consensus with Codex-as-planner is blocked by the client's
 executor model, **not** by anything in the AgentTalk engine.
 
+#### PF/T4 Re-plan — client follow-on before live re-attempt
+
+**Planner:** Codex. **Date:** 2026-07-01. **Trigger:** SM Hermes re-opened PF/T4 after Claude's independent
+T4 root-cause refinement.
+
+This follow-on is **cross-repo**. The implementation lives in `../agentalk-mcp-client`, not this AgentTalk repo.
+AgentTalk code, contracts, MCP tools, and the M12 harness should remain unchanged unless the client fix proves they
+are insufficient.
+
+##### Task C-PF1 — Client fix: Codex persistent-MCP uses text exec, not inner bridge
+
+**Exact file scope:**
+
+| Repo | File | Lines read at planning time | Scope |
+|---|---|---:|---|
+| `agentalk-mcp-client` | `lib/executor-runtime.mjs` | 627-715 | Change only `CodexPersistentExecutor.executeTurn()` inside the `AGENTTALK_PERSISTENT_MCP === 'true'` branch. |
+| `agentalk-mcp-client` | `lib/executor-runtime.mjs` | 654-664 | Remove the persistent-MCP bridge URL/config args from the Codex command. |
+| `agentalk-mcp-client` | `lib/executor-runtime.mjs` | 672-675 | Keep the external process stdout/stderr relay shape; consider `cwd: sink.cwd || process.cwd()` for parity with Gemini only if needed and documented. |
+| `agentalk-mcp-client` | `lib/provider-runtime.mjs` | 95-110, 190-203 | Read-only reference for Codex one-shot args/output extraction; do not refactor provider runtime unless the Codex stdout format requires a minimal shared helper. |
+
+**Required behavior:**
+
+The persistent-MCP Codex branch must continue to mean: `llm-agent.mjs` is the **only** MCP client. Codex itself
+must not receive an `mcp_servers.bridge` configuration in this path.
+
+Recommended command shape:
+
+```js
+const args = [
+  'exec',
+  '--dangerously-bypass-approvals-and-sandbox',
+  request.prompt,
+];
+```
+
+Allowed refinements, if verified against current Codex CLI behavior:
+
+- Add `--skip-git-repo-check`, `--color never`, or selected-model args if they are already normal for non-MCP Codex
+  calls and do not change the connection model.
+- Do **not** add `--json` unless the executor also extracts the final assistant message before resolving. AgentTalk's
+  `parseWithRetry` expects the assistant's text, not Codex JSONL wrapper output.
+- Do **not** pass any `mcp_servers.bridge.*` config in persistent-MCP mode.
+- Do **not** use a second agentId or a separate bridge agent as a workaround; that would hide the session collision
+  without restoring the single-client exec-RPC architecture.
+
+**DoD claim rows:**
+
+| Claim ID | Claim | Required evidence |
+|---|---|---|
+| C-PF1-C1 | Codex persistent-MCP no longer configures or starts `bridge.mjs`. | Diff showing removal of `mcp_servers.bridge.command`, `mcp_servers.bridge.args`, and `tool_timeout_sec` from the Codex persistent-MCP branch. |
+| C-PF1-C2 | `llm-agent.mjs` remains the sole MCP client for Codex persistent-MCP turns. | Live/preflight logs show one WebSocket for the Codex agent and no `4001 Session already active`. |
+| C-PF1-C3 | Codex text output reaches `submit_exec_result` and AgentTalk parses it through the existing Layer-2 parser. | PF evidence: registry observes `submit_exec_result` followed by `consensus_respond` from the same agent. |
+| C-PF1-C4 | Existing non-MCP Codex persistent path is unchanged. | Diff confirms code below the persistent-MCP branch (`#threadId` / RPC path) is untouched. |
+
+**Retry budgets:**
+
+| Check | Max attempts | Stop condition |
+|---|---:|---|
+| Client syntax/build check available in `agentalk-mcp-client` | 2 | Stop if failures require broader client refactor. |
+| Codex single text turn (`Say hello`-style) | 2 | Stop if plain text relay regresses. |
+| New structured PF below | 2 | Stop after attempt 2 and classify failure as command/output/parse/socket. |
+
+##### Effect on the live harness
+
+`scripts/test-live-cross-provider.mjs` should not need a code change. It already starts exactly one `llm-agent.mjs`
+process per AgentTalk agent and sets:
+
+| Agent | Env / args already present | Expected after C-PF1 |
+|---|---|---|
+| `planner-a` Gemini | `AGENTTALK_PERSISTENT_MCP=true`, `AGENTTALK_AGENT_ID=planner-a`, `--provider gemini` | unchanged |
+| `planner-b` Codex | `AGENTTALK_PERSISTENT_MCP=true`, `AGENTTALK_AGENT_ID=planner-b`, `--provider codex` | unchanged; Codex no longer opens an inner bridge socket |
+| `worker-1` Gemini | `AGENTTALK_PERSISTENT_MCP=true`, `AGENTTALK_AGENT_ID=worker-1`, `--provider gemini` | unchanged |
+
+The harness remains the correct test surface because its model is: external CLIs return text to `llm-agent.mjs`;
+AgentTalk's in-process driver parses that text and calls `consensus_respond`. The client fix brings Codex back into
+that model.
+
+##### New PF design — force a consensus/tool action, not just text
+
+The old PF (`node scripts/test-mcp-provider.mjs codex`) sent `"Say hello"` and waited for `send_to_agent`. That is
+still useful as a text-relay smoke, but it is **not** sufficient for PF after this finding.
+
+New PF must create a turn that requires the planning protocol path and assert that AgentTalk observes a
+`consensus_respond` action for the Codex agent.
+
+Preferred low-cost PF shape:
+
+1. Start one Codex MCP agent through `llm-agent.mjs` with `AGENTTALK_PERSISTENT_MCP=true`, as before.
+2. Send an `EVT` `custom_event_request` with `event: 'ack_planning_protocol'` and a prompt that explicitly requires:
+   `{"message_type":"ack_planning_protocol","message_payload":{}}`.
+3. Watch registry events:
+   - `mcp_tool_call` for `await_turn` from the Codex agent.
+   - `mcp_tool_call` for `submit_exec_result` from the Codex agent.
+   - `mcp_tool_call` for `consensus_respond` with `action: 'ack_planning_protocol'` from the same Codex agent.
+4. Fail if any server log shows `4001`, `Session already active`, or a connection for a second socket using the
+   same agentId.
+
+Alternative PF if the direct custom event needs too much harness code:
+
+1. Start a real `planner-planner-worker` team with planner-a mocked or Gemini, planner-b Codex, worker mocked or
+   Gemini.
+2. Stop as soon as Codex successfully returns the first required structured planning action
+   (`ack_planning_protocol` or `fact_collection_end`).
+3. Do **not** wait for full consensus; that is T4.
+
+PF DoD rows:
+
+| Claim ID | Claim | Required evidence |
+|---|---|---|
+| PF2-C1 | PF forces a structured planning/protocol action, not `send_to_agent` text. | Script command and logged `consensus_respond` action. |
+| PF2-C2 | Codex completes the action with one AgentTalk WebSocket, no inner bridge collision. | Logs show no `4001` / `Session already active`; one connection for the Codex agent. |
+| PF2-C3 | AgentTalk Layer-2 parser accepts Codex's raw text after the client fix. | `submit_exec_result` text followed by `consensus_respond` action, or exact parser error classified. |
+
+PF retry budgets:
+
+| Check | Max attempts | Stop condition |
+|---|---:|---|
+| PF2 structured Codex preflight | 2 | Stop and classify the failure after attempt 2. |
+| Usage meter before/after PF2 | 1 each, best-effort | Never blocking. |
+
+##### Sequencing
+
+1. **C-PF1 client fix** in `agentalk-mcp-client`.
+2. **PF2 structured Codex preflight** from AgentTalk, using the fixed client.
+3. **M12-T4 re-attempt** with `PLANNER_A_PROVIDER=gemini PLANNER_B_PROVIDER=codex node scripts/test-live-cross-provider.mjs`.
+4. **M12-T5 close** with the client-fix reference, PF2 evidence, T4 result, and budget telemetry.
+
+T4 remains capped by the existing live budget policy. PF2 failures do not consume the T4 full-round cap unless the
+SM/PO decides otherwise.
+
+##### Risk: non-consensus Codex usage
+
+Expected impact is low for normal exec-RPC text usage and positive for M12 consensus, but there are real boundaries:
+
+| Usage | Expected effect | Verification |
+|---|---|---|
+| Simple Codex text turn through `llm-agent.mjs` | Should continue to work; it already relies on stdout -> `submit_exec_result`. | Re-run the old `test-mcp-provider.mjs codex` or equivalent. |
+| Codex structured planning turn | Should improve: output is parsed by AgentTalk instead of Codex trying to call tools over a second socket. | PF2. |
+| Codex worker/task turns | Should continue to work if Codex prints parseable text/JSON for the worker instructions. | Existing or targeted Codex worker smoke if available; otherwise classify as residual risk. |
+| Any behavior that intentionally relied on Codex native MCP tool calls inside AgentTalk persistent-MCP mode | Will stop working in this path by design. | Acceptable for M12 because that model conflicts with AgentTalk's one-socket-per-agent architecture; if some separate workflow needs native Codex tools, it needs a distinct execution mode, not this path. |
+
+Main residual risks:
+
+- Codex plain stdout may be less clean than expected. If so, prefer a minimal final-answer extraction inside
+  `CodexPersistentExecutor`; do not push JSONL wrapper output into AgentTalk's parser.
+- Removing bridge mode removes Codex's direct access to AgentTalk tools in persistent-MCP mode. That is intentional
+  for this architecture, but it should be called out in the client task review.
+- Codex may still fail protocol compliance even after the connection model is fixed. That returns M12 to the
+  existing R1 category: log the failure honestly; do not change AgentTalk protocol tolerance inside this follow-on.
+
 Scope:
 
 | File | Scope |
@@ -628,4 +778,3 @@ Retry budgets:
 |---|---:|
 | Docs consistency grep for stale M12 status | 2 |
 | `git diff --stat && git diff --name-only` | 1 |
-
