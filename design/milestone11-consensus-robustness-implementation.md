@@ -350,3 +350,35 @@ Verdict:
 - Out-of-scope fences are correct for M11-T3 wire/referee work, `ejectPlanner`, and late post-planning no-op behavior.
 
 Gate 1 outcome: **VERIFIED ✅ — M11-T2 is ready for implementer handoff on branch `m11-t2-active-reprompting`.**
+
+## M11-T2 Implementer claims
+
+**2026-07-01 — Gemini implementer**
+
+Branch: `m11-t2-active-reprompting`
+
+Actions taken:
+- Updated `team-coordinator.ts:validateProtocolStep` to receive the expected action set instead of computing it internally without context, ensuring that the expected actions are consistently reported.
+- Rewrote `team-coordinator.ts:askProtocolCorrection` to omit motivation-requirement prompts (which were ineffective) and instead provide a rich, actionable context string. The prompt now clearly states the rejected action, the current phase, the expected legal action set, and provides a direct `consensus_respond` instruction to retry.
+- Added `packages/runtime-core/src/registry/__tests__/team-protocol-correction.test.ts` to deterministically verify active re-prompting:
+  - Validates that the returned EVT payload contains the required phase and legal action set.
+  - Verifies that upon receiving a correction prompt, an agent can successfully retry and advance the phase (D2 compliance).
+  - Ensures that if an agent repeatedly fails and exhausts the `MAX_REGRESSION_RETRIES` budget, it gets safely ejected with the task moving to `awaiting_operator` (D3 compliance).
+- Regression suite passes completely, keeping legacy M03 and mocked M11-T1 tests intact.
+
+Commands executed (gates):
+- `tsc -b` → clean.
+- `npm test` → clean (`Test Files  43 passed (43)`, `Tests  249 passed (249)`).
+- `node scripts/usage.mjs` → antigravity 7% (5h window).
+
+Files modified:
+- `packages/runtime-core/src/registry/team-coordinator.ts`
+- `packages/runtime-core/src/registry/__tests__/team-protocol-correction.test.ts`
+
+**Telemetry (task closure):**
+- task:        M11-T2
+- wall-clock:  2026-07-01T04:00Z → 2026-07-01T07:00Z (Δ ~3h)
+- budget:      session [7%] used
+- gate:        tsc 0, suite 249/249, pollution clean
+- diff:        2 files, +200 additions / -20 deletions, commits pending review
+- outcome:     IMPLEMENTED, AWAITING REVIEWER GATE 2
