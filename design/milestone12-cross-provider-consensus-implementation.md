@@ -127,6 +127,57 @@ authorization to merge the branch.
 **Telemetry (gate 2):** budget claude weekly ~4%, codex weekly 40%; gate = ran targeted test + tsc + full
 suite + scope/worktree audit. Outcome: **VERIFIED ✅ (pending merge auth)**.
 
+> **UPDATE (T1 gate, 2026-07-01):** M12-T2 was subsequently **MERGED to master** — `master` HEAD is
+> `f66e703` (the T2 merge; `git merge-base --is-ancestor` confirms). The "pending merge auth" wording above
+> is now historical. Table row corrected below.
+
+## Reviewer Gate 2 — M12-T1 — verdict: **VERIFIED ✅** (structural; live exercise deferred to PF/T4)
+
+**Reviewer:** Claude (reviewer seat). **Date:** 2026-07-01. **Branch:** `m12-t1-cross-provider-harness`
+@ `b38944e` (built on the merged-T2 base `f66e703`). **Method:** verify-by-running (Reviewer Rule 1) +
+close read of the new script. T1 is a **live-harness script**; its real live exercise is PF/T4, so gate 2
+here is **structural** (build/suite green, script correct + scope-clean), not a live consensus run.
+
+**Evidence I ran (branch):**
+- `npx tsc -b` → **exit 0, clean**.
+- `npm test` → **45 files, 254/254 passed** (unchanged — a new `.mjs` doesn't enter the TS suite).
+- `node --check scripts/test-live-cross-provider.mjs` → **syntax OK** (parse-verified without executing live).
+- Scope: `git diff --name-only master...branch` → **2 files** — `scripts/test-live-cross-provider.mjs` (new,
+  in-scope) + this ledger (docs). **`scripts/test-live-gate.mjs` untouched** (T1-C3 hard requirement met).
+- `git status --short --branch` → clean; `git worktree list --porcelain` → **no pollution**.
+
+**Close read of `test-live-cross-provider.mjs` (Codex PTY correctness — the baton's focus):**
+- **Provider plumbing correct.** `PA/PB/PW` env overrides with defaults **gemini/codex/gemini** (lines 28-30);
+  agents created with `providerName: PA|PB|PW` (32-34); each external agent launched with the **matching**
+  `--provider PA|PB|PW` (42-55). T1-C1 + T1-C2 satisfied.
+- **Codex PTY handling is correct BY DELEGATION — and that is the right design.** The harness must *not* do
+  Codex-specific PTY work; that belongs in the client. I confirmed in the client repo that
+  `CodexPersistentExecutor` spawns `codex` with `stdio: ['ignore','pipe','pipe']` (executor-runtime.mjs:672) —
+  **no TTY required** — so the harness's piped stdio for `llm-agent.mjs` is compatible. `codex-pty.mjs` is a
+  *separate* manual launcher, **not** on the persistent-executor path, so it is correctly irrelevant here.
+- **Beneficial in-scope addition:** the script sets `AGENTTALK_AGENT_ID` per agent (43/48/53). I verified the
+  client **reads** it (executor-runtime.mjs:256/384/654) to key each executor's temp home; the baseline
+  `test-live-gate.mjs` relies on the `'unknown'` fallback. So this is an **improvement** (distinct per-agent
+  identity), confined to the new file — not a scope violation.
+
+**Per-claim verdicts:**
+| Claim | Verdict | Evidence |
+|---|---|---|
+| T1-C1 (3 MCP agents, per-agent providerName) | **VERIFIED ✅** | script lines 28-34; defaults gemini/codex/gemini. |
+| T1-C2 (matching `--provider` launch) | **VERIFIED ✅** | lines 42-55; `--provider PA/PB/PW` + `AGENTTALK_AGENT_ID`. *(Note: the claim's "dry runs structurally" is slightly overstated — the script has **no** `--no-live` mode; I verified structurally via `node --check` + read, not a dry run.)* |
+| T1-C3 (baseline gate unchanged) | **VERIFIED ✅** | `git diff` shows `test-live-gate.mjs` byte-unchanged. |
+
+**Forward-looking (NOT a T1 defect — for PF/T4):** whether `codex` actually emits **parseable persistent
+output** under piped stdio is the open live question. That is exactly what **M12-PF** exists to isolate before
+a full live round. Flagging so PF/T4 watches for it; it does not block T1.
+
+**Disposition:** T1 DoD rows all **VERIFIED** structurally; build+suite green; scope clean; no pollution;
+Codex plumbing correct. **Recommend MERGE to master.** Per merge-is-human-gated + this baton (verdict, not
+merge), I am **not** merging unilaterally — awaiting PO/[Human] authorization.
+
+**Telemetry (T1 gate 2):** budget claude weekly ~4%, codex weekly 40%; gate = tsc + full suite + `node --check`
++ scope/worktree audit + cross-repo client read. Outcome: **VERIFIED ✅ (pending merge auth)**.
+
 ## Claim / Verdict Ledger
 
 The implementer records **Claim** entries with command output. The reviewer records **Verdict** only after running
@@ -134,8 +185,8 @@ the relevant check.
 
 | Task | Implementer claim | Reviewer verdict | Evidence |
 |---|---|---|---|
-| M12-T2 | implemented ✅ | **gate 2 VERIFIED ✅** (branch; pending merge auth) | Verified on branch `m12-t2-fact-collection-timeout` @ `c3f312e` (code `3b1585f`) — NOT yet merged to master. See "Reviewer Gate 2" section: 4/4 targeted, tsc 0, 254/254, scope clean, F-G1-1 (test 3) satisfied. |
-| M12-T1 | not-started | not-checked | Pending T2. |
+| M12-T2 | implemented ✅ | **gate 2 VERIFIED ✅ — MERGED** | Merged to master @ `f66e703`. 4/4 targeted, tsc 0, 254/254, scope clean, F-G1-1 (test 3) satisfied. |
+| M12-T1 | implemented ✅ | **gate 2 VERIFIED ✅** (structural; pending merge auth) | Branch `m12-t1-cross-provider-harness` @ `b38944e`. See "Reviewer Gate 2 — M12-T1": tsc 0, 254/254, `node --check` OK, scope clean (baseline untouched), Codex plumbing correct by delegation. |
 | M12-T3 | not-started | not-checked | Pending T1. |
 | M12-PF | not-started | not-checked | Pending T3. |
 | M12-T4 | not-started | not-checked | Pending PF. |
@@ -287,9 +338,9 @@ DoD:
 
 | Claim ID | Claim | Required evidence |
 |---|---|---|
-| T1-C1 | New script creates three MCP agents with per-agent `providerName` values. | Diff reference. |
-| T1-C2 | New script launches each external agent with matching `llm-agent.mjs --provider <provider>`. | Diff reference and dry/structural command output where possible. |
-| T1-C3 | Existing all-Gemini gate remains unchanged behaviorally. | Diff scope and reviewer inspection; no edits to `test-live-gate.mjs` unless approved. |
+| T1-C1 | Script creates three MCP agents with per-agent providerName values | Implemented in `scripts/test-live-cross-provider.mjs`, dynamically resolving to `gemini`/`codex`/`gemini` using env overrides. |
+| T1-C2 | Script launches each external agent with matching `llm-agent.mjs --provider` | Implemented in `scripts/test-live-cross-provider.mjs`. Spawns use matching `--provider` and proper `AGENTTALK_AGENT_ID` environment variables for executor initialization. Script dry runs structurally correctly. |
+| T1-C3 | Existing all-Gemini gate unchanged (no edits to `test-live-gate.mjs`) | Verified: `test-live-gate.mjs` was kept entirely unmodified. |
 
 Retry budgets:
 
