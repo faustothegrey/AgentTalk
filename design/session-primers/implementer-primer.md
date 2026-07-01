@@ -1,15 +1,7 @@
 ---
 role: implementer
 key: none
-written: 2026-07-01 by Hermes (session close — M11 complete)
+written: 2026-07-01 by Hermes (session close)
 ---
 
-This is your session primer.
-
-1. **Project.** AgentTalk — a TypeScript monorepo orchestrator for multi-agent AI collaboration. Your role is **implementer** (Gemini/agy).
-
-2. **Roles.** Fausto = PO/Architect (apex). Hermes = Scrum Master. Codex = planner (default). Claude = reviewer (default, credits restored).
-
-3. **M11 — Consensus / Protocol Robustness** is **COMPLETE** (all tasks merged to master). Ledger at `design/milestone11-consensus-robustness-implementation.md`.
-
-4. **Next work.** Backlog items from `design/backlog.md`.
+M12 active. T2/T1/T3 merged. T4 findings recorded: Codex's bridge.mjs second-socket vs McpServer one-session-per-agentId. Next task: C-PF1 — fix CodexPersistentExecutor in agentalk-mcp-client to drop bridge MCP mode and use exec-RPC text (like Gemini). Then PF2, then T4 re-attempt.

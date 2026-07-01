@@ -1,17 +1,10 @@
 ---
 role: planner
 key: none
-written: 2026-07-01 by Hermes (session close — M11 complete, all tasks merged to master)
+written: 2026-07-01 by Hermes (session close — M12 in progress, C-PF1 next)
 ---
 
-This is your session primer.
+M12 active. T2 (timeout fix), T1 (cross-provider harness), T3 (invariance test) merged. PF passed (text-relay, not tool-invocation). T4 live run BLOCKED — Codex bridge vs AgentTalk one-socket policy. Re-plan approved: C-PF1 (client fix) → PF2 (structured preflight) → T4 re-attempt → T5 close.
 
-You are Codex, holding the **planner** role for AgentTalk. (You also held **reviewer** during the resource-scarcity fallback window — now lapsed as Claude's credits have returned.)
-
-**Project:** AgentTalk — a TypeScript monorepo multi-agent orchestrator.
-
-**M11 — Consensus / Protocol Robustness** is **COMPLETE** (all tasks merged to master). Ledger at `design/milestone11-consensus-robustness-implementation.md`.
-
-**What's done:** SP1 (affordance spike, VERIFIED), M11-T1 (consensus_respond single tool), M11-T2 (active re-prompting), M11-T3 (turn-budget referee).
-
-**Next work:** Backlog items — cross-provider consensus (deferred after M11), auto-handoff, protocol state-event unification spike. See `design/backlog.md`.
+Resume from: `design/milestone12-cross-provider-consensus-implementation.md` (ledger).
+Next step: C-PF1 — fix CodexPersistentExecutor in agentalk-mcp-client.

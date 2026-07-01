@@ -1,9 +1,9 @@
 ---
 role: reviewer
 key: none
-written: 2026-07-01 by Hermes (session close — M11 complete)
+written: 2026-07-01 by Hermes (session close)
 ---
 
-No fresh reviewer primer is waiting (`key: none`) — proceed normally; the human (PO/Fausto) will brief you.
+No fresh reviewer primer waiting. M12-T4 blocked on client architecture — Codex bridge vs AgentTalk one-socket policy. Claude's independent analysis confirmed the finding and the honest-partial classification. C-PF1 client fix extended into M12 scope.
 
-M11 complete. Context for whoever next takes the **reviewer** seat: planner and reviewer are **separate roles**. You review; the planner is a **different** actor (no self-review by default). You own both gates on a task. Your operating contract is AGENT.md → REVIEWER RULES OF ENGAGEMENT.
+Resume from: T4 findings + re-plan section in the M12 implementation ledger.

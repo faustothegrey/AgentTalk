@@ -27,3 +27,13 @@ here.**
 - Full 3-agent cycle worked well: Codex planned + reviewed gate 1, Gemini implemented, Codex reviewed gate 2 (first pass, REFUTED), Gemini fixed, I served as appointed reviewer for gate 2 re-review when Codex hit 5h limit.
 - The adversarial review is working — Codex caught scope creep (terminal helper) and whitespace at gate 2, forcing honest cleanup before re-review.
 - M11 is the milestone where the 3-role pipeline gelled: SP1 → T1 → T2 → T3, each through full plan → review gate 1 → implement → review gate 2 → merge cycle.
+- Next: M12 cross-provider consensus (active). Session suspended at T4 — Codex bridge vs AgentTalk one-socket policy found. C-PF1 client fix next.
+
+### 2026-07-01 — Epic inception with Architect role (first use)
+- First use of the split Architect role (Claude) for M12 epic inception. Worked well: Architect produces plan → PO decides → Planner gives advisory POV → Architect incorporates → Planner breaks down → Reviewer gates. The full 7-step inception flow.
+- Claude as Architect self-corrected an overstatement in its own plan (F5: client supports Codex in MCP mode — half-right). The live run exposed the gap. Recording, not papering over.
+
+### 2026-07-01 — T4 honest partial: Codex bridge vs one-socket policy
+- Cross-provider Gem+Codex consensus BLOCKED by architectural conflict: Codex's CodexPersistentExecutor uses bridge.mjs which opens a second WebSocket, but McpServer enforces one-active-connection-per-agentId.
+- Lesson: a preflight that only tests text-relay ("Say hello") doesn't exercise the tool-calling path. A valid Codex preflight must force a tool invocation.
+- Epic closed on structural proof (T2+T3 merged) with live gap documented — per PO Q6. Honest partial stands.
