@@ -14,7 +14,7 @@
 | **SP1** | Affordance-protocol spike (per-harness probe: dynamic skills + scoped toolset) | VERIFIED ✅ |
 | **M11-T1** | Single tool `consensus_respond(action, payload)` — wire-contract v5→v6, lockstep client (origin: M10-T3) | **DONE** ✅ merged to master |
 | **M11-T2** | Active re-prompting (current legal set in correction message) | **DONE** ✅ merged to master |
-| **M11-T3** | Turn-budget / Referee (bound discussion, force-advance on non-convergence) | Gate 1 VERIFIED ✅ ready for implementer handoff |
+| **M11-T3** | Turn-budget / Referee (bound discussion, force-advance on non-convergence) | Gate 2 REFUTED ❌ |
 
 ### SP1 Findings
 
@@ -360,6 +360,13 @@ Branch: `m11-t2-active-reprompting`
 Actions taken:
 - Updated `team-coordinator.ts:validateProtocolStep` to receive the expected action set instead of computing it internally without context, ensuring that the expected actions are consistently reported.
 - Rewrote `team-coordinator.ts:askProtocolCorrection` to omit motivation-requirement prompts (which were ineffective) and instead provide a rich, actionable context string. The prompt now clearly states the rejected action, the current phase, the expected legal action set, and provides a direct `consensus_respond` instruction to retry.
+### M11-T3: Turn-budget / Referee (Limit Non-Converging Discussion)
+- [x] **Step B: State & Constants** -> Add `MAX_DISCUSSION_TURNS = 6` to `team-coordinator.ts` and `discussionTurnCounts` state map.
+- [x] **Step C: Initialization & Reset** -> Initialize budget to 0 when starting `discussion` (after fact collection) and reset when falling back from `agreement_endorsement` to `discussion`.
+- [x] **Step D: Counting Integration & Referee Policy** -> Track legal `opinion` and `agreement_proposal` actions in `validateProtocolStep`. If the limit is reached, trigger interruption (via a wrapper or explicitly matching the terminal shape).
+- [x] **Step E: Cleanup State** -> Clear budget state in all cleanup paths (interruptPlanningTerminal, rejectPlan, confirmPlan, removeAgentFromTeams).
+- [x] **Step F: Tests** -> Create a focused deterministic test in `__tests__/team-protocol-referee.test.ts` verifying the budget exhaustion behavior.
+- [x] **Step G: Telemetry & Ledger** -> Ensure everything passes, claim rows in this ledger.
 - Added `packages/runtime-core/src/registry/__tests__/team-protocol-correction.test.ts` to deterministically verify active re-prompting:
   - Validates that the returned EVT payload contains the required phase and legal action set.
   - Verifies that upon receiving a correction prompt, an agent can successfully retry and advance the phase (D2 compliance).
@@ -509,3 +516,68 @@ Disposition of prior blocker:
   fallback reset in the approved `:615-880` area.
 
 Gate 1 outcome: **VERIFIED ✅ — M11-T3 is ready for implementer handoff on branch `m11-t3-turn-budget-referee`.**
+
+## M11-T3 Reviewer gate 2 — implementation verification
+
+**2026-07-01 — Codex reviewer verdict: REFUTED ❌**
+
+Branch reviewed: `m11-t3-turn-budget-referee` at `3974bc8`.
+
+Evidence run/read:
+- `git rev-parse --short HEAD` → `3974bc8`.
+- `npx vitest run packages/runtime-core/src/registry/__tests__/team-protocol-referee.test.ts` →
+  `Test Files 1 passed (1)`, `Tests 1 passed (1)`. The run output showed legal `opinion` turns 1-5 routed to peers,
+  then turn 6 interrupted planning with `discussion turn budget exhausted (6/6)`.
+- `npx vitest run packages/runtime-core/src/registry/__tests__/team-mcp-consensus.test.ts` →
+  `Test Files 1 passed (1)`, `Tests 1 passed (1)`.
+- `tsc -b` → exit 0, no output.
+- `npm test` → contract hash verified successfully (v6); Vitest summary `Test Files 44 passed (44)`,
+  `Tests 250 passed (250)`.
+- `git diff --stat master...m11-t3-turn-budget-referee` → 3 files, `+177/-7`:
+  `design/milestone11-consensus-robustness-implementation.md`,
+  `packages/runtime-core/src/registry/__tests__/team-protocol-referee.test.ts`,
+  `packages/runtime-core/src/registry/team-coordinator.ts`.
+- `git status --short --branch` → `## m11-t3-turn-budget-referee` with no dirty files before this verdict entry.
+- `git worktree list --porcelain` → only `/Users/fausto/Software/AgentTalk`, HEAD `3974bc8`, branch
+  `refs/heads/m11-t3-turn-budget-referee`.
+- Read `team-coordinator.ts:1840-2010`, the master baseline for `team-coordinator.ts:1840-1905`, the approved M11-T3
+  plan lines `:200-240`, and task breakdown lines `:63-118`, `:205-260`, `:270-307`.
+- `git diff --check master...m11-t3-turn-budget-referee` → failed on trailing whitespace in
+  `packages/runtime-core/src/registry/__tests__/team-protocol-referee.test.ts:55`, `:94`, `:95`, `:100`, `:113`,
+  `:116`, and `:117`.
+- `node scripts/usage.mjs` → Codex weekly 35%, 5h 91%; antigravity 15% 5h; Claude unavailable.
+
+Steelman:
+- The core deterministic behavior is close: `MAX_DISCUSSION_TURNS = 6` is present, discussion counts are task-local,
+  legal `opinion` / `agreement_proposal` actions are counted in `validateProtocolStep(...)`, and budget exhaustion
+  returns `false` before the read-only peer-routing/proposal paths can continue.
+- The existing mocked MCP happy path remains green, so the normal agreement/submittal path still reaches `submit_plan`
+  before the budget.
+
+Gate blockers:
+1. **Out-of-scope terminal behavior change.** The approved production scope allows cleanup in
+   `team-coordinator.ts:1847-1860` and permits a small budget-specific wrapper/helper only if it preserves the same
+   terminal shape. The branch refactors `interruptPlanningForMissingEvents(...)` into `interruptPlanningTerminal(...)`
+   and now sends an additional `conversation_end` protocol event to every planner for all missing-event interruptions
+   (`team-coordinator.ts:1894-1898` on the branch). Master sent only `message_received` before requesting shutdown
+   (`master:team-coordinator.ts:1881-1887`). That changes the pre-existing missing-events interruption surface, not only
+   the new referee path.
+2. **Formatting gate fails.** `git diff --check master...m11-t3-turn-budget-referee` reports trailing whitespace in the
+   new focused test file.
+3. **Required live observation is missing from the branch evidence.** The approved milestone plan requires a live
+   referee observation recorded in the ledger with provider, command, final status, and budget reading
+   (`design/milestone11-consensus-robustness-plan.md:221-237`). I found no new task-specific live harness or M11-T3 live
+   observation record in the branch diff or ledger.
+
+Disposition:
+- D1: **PARTIAL ⚠️** — deterministic test and run output prove the 6/6 interruption and transcript wording.
+- D2: **PARTIAL ⚠️** — run output shows the exhausting sixth action is not peer-routed, but the focused test does not
+  explicitly attempt/assert the `MAX_DISCUSSION_TURNS + 1` post-interruption route block.
+- D3: **VERIFIED ✅** — mocked MCP consensus regression stays green and reaches `submit_plan`.
+- D4: **PARTIAL ⚠️** — cleanup code deletes `discussionTurnCounts` on the listed paths, but focused cleanup coverage
+  promised by the breakdown is not present.
+- D5: **REFUTED ❌** — the branch changes an existing terminal notification path outside the narrow cleanup allowance,
+  and the whitespace gate fails.
+
+Gate 2 outcome: **REFUTED ❌ — do not merge. Fix the terminal helper scope issue, whitespace, and live-observation gap
+or obtain explicit reviewer/PO deferral for the live gate before re-review.**

@@ -83,6 +83,7 @@ const MAX_AGREEMENT_ASKS = 2;
 // corrections the offender is ejected (peer-safe), not dual-killed. (Name kept
 // for low-churn continuity; meaning is now "protocol correction retries".)
 const MAX_REGRESSION_RETRIES = 2;
+const MAX_DISCUSSION_TURNS = 6;
 
 interface AgreementState {
   phase: 'awaiting_proposal' | 'awaiting_endorsement';
@@ -149,6 +150,7 @@ export class TeamCoordinator {
   private readonly regressionRetryCounts: Map<string, number> = new Map();
   private readonly factCollectionStates: Map<string, FactCollectionState> = new Map();
   private readonly planningPhases: Map<string, PlanningPhase> = new Map();
+  private readonly discussionTurnCounts: Map<string, number> = new Map();
   private readonly factCollectionTimeoutMs: number;
 
   constructor(
@@ -847,6 +849,7 @@ export class TeamCoordinator {
     this.taskMaxAdvancement.delete(task.id);
     this.clearRegressionRetries(task.id);
     this.setPlanningPhase(task.id, 'discussion');
+    this.discussionTurnCounts.set(task.id, 0);
     this.taskPendingProposal.delete(task.id);
 
     const message =
@@ -1103,6 +1106,7 @@ export class TeamCoordinator {
     this.deps.emitTeamTask(task);
 
     this.setPlanningPhase(task.id, 'discussion');
+    this.discussionTurnCounts.set(task.id, 0);
     this.taskExpectedResponses.set(task.id, ['opinion', 'agreement_proposal']);
     this.armPlanningWatchdog(team, task, ['submit_plan']);
 
@@ -1214,6 +1218,7 @@ export class TeamCoordinator {
     this.taskAgreementReachedAgent.delete(task.id);
     this.taskPendingProposal.delete(task.id);
     this.taskAcceptedProposal.delete(task.id);
+    this.discussionTurnCounts.delete(task.id);
     task.plan = plan;
     task.planningComplete = true;
     task.planSubmittedAt = now;
@@ -1322,6 +1327,7 @@ export class TeamCoordinator {
     this.agreementReachedDiscussionFallbackCounts.delete(task.id);
     this.taskPendingProposal.delete(task.id);
     this.taskAcceptedProposal.delete(task.id);
+    this.discussionTurnCounts.delete(task.id);
     this.armPlanningWatchdog(team, task, ['submit_plan']);
 
     await this.deps.sendProtocol(planner.agentId, 'EVT', {
@@ -1715,6 +1721,7 @@ export class TeamCoordinator {
       this.planningPhases.delete(team.currentTaskId);
       this.taskPendingProposal.delete(team.currentTaskId);
       this.taskAcceptedProposal.delete(team.currentTaskId);
+      this.discussionTurnCounts.delete(team.currentTaskId);
     }
 
     team.status = 'error';
@@ -1857,6 +1864,7 @@ export class TeamCoordinator {
     this.taskAgreementReachedAgent.delete(task.id);
     this.taskPendingProposal.delete(task.id);
     this.taskAcceptedProposal.delete(task.id);
+    this.discussionTurnCounts.delete(task.id);
 
     const missing = missingEvents.join(', ');
     task.status = 'interrupted';
@@ -1888,6 +1896,59 @@ export class TeamCoordinator {
       } catch (err) {
         this.deps.logError(`[TeamCoordinator] Failed to notify ${planner.agentId} about missing planning events:`, err);
       }
+    }
+  }
+
+  private async interruptPlanningForReferee(team: Team, task: TeamTask, reason: string): Promise<void> {
+    this.clearPlanningWatchdog(task.id);
+    this.clearSubmitPlanUrgencyWatchdog(task.id);
+    this.clearAgreementState(task.id);
+    this.clearFactCollectionState(task.id);
+    this.agreementReachedDiscussionFallbackCounts.delete(task.id);
+    this.planningProtocolStates.delete(task.id);
+    this.planningPhases.delete(task.id);
+    this.taskExpectedResponses.delete(task.id);
+    this.taskMaxAdvancement.delete(task.id);
+    this.taskAgreementReachedAgent.delete(task.id);
+    this.taskPendingProposal.delete(task.id);
+    this.taskAcceptedProposal.delete(task.id);
+    this.discussionTurnCounts.delete(task.id);
+
+    task.status = 'interrupted';
+    this.recordTaskTranscript(task, {
+      kind: 'system',
+      from: 'system',
+      to: team.members.map((m) => m.agentId).join(','),
+      payload: `Planning stopped: ${reason}.`,
+    });
+
+    team.status = 'interrupted';
+    delete team.currentTaskId;
+    team.updatedAt = new Date().toISOString();
+
+    this.deps.emitTeam(team);
+    this.deps.emitTeamTask(task);
+    this.persistPlanningRun(team, task);
+
+    const planners = team.members.filter((m) => m.role === 'planner');
+    for (const planner of planners) {
+      try {
+        await this.deps.sendProtocol(planner.agentId, 'EVT', {
+          type: 'message_received',
+          from: 'system',
+          payload: `Planning interrupted: ${reason}.`,
+        });
+
+        await this.deps.sendProtocol(planner.agentId, 'EVT', {
+          type: 'conversation_end',
+          conversationId: task.id,
+          reason: `Planning interrupted: ${reason}.`,
+        });
+      } catch (err) {
+        this.deps.logError(`[TeamCoordinator] Failed to notify ${planner.agentId} of planning interruption:`, err);
+      }
+
+      this.requestAgentShutdown(planner.agentId);
     }
   }
 
@@ -1952,6 +2013,21 @@ export class TeamCoordinator {
         : `Illegal protocol move: repeated "${actualType}" not in the expected set [${expected.join(', ')}].`;
       void this.ejectPlanner(senderAgentId, reason);
       return false;
+    }
+
+    // M11-T3 Referee policy: limit non-converging discussion turns
+    if (this.getPlanningPhase(taskId) === 'discussion' && (actualType === 'opinion' || actualType === 'agreement_proposal')) {
+      const turns = (this.discussionTurnCounts.get(taskId) ?? 0) + 1;
+      this.discussionTurnCounts.set(taskId, turns);
+
+      if (turns >= MAX_DISCUSSION_TURNS) {
+        const team = this.findTeamByAgent(senderAgentId);
+        const task = this.tasks.get(taskId);
+        if (team && task) {
+          void this.interruptPlanningForReferee(team, task, `discussion turn budget exhausted (${turns}/${MAX_DISCUSSION_TURNS})`);
+        }
+        return false;
+      }
     }
 
     // If moving forward past a rank that had pending regression retries, clear them.
