@@ -80,7 +80,7 @@ the relevant check.
 
 | Task | Implementer claim | Reviewer verdict | Evidence |
 |---|---|---|---|
-| M12-T2 | not-started | gate 1 APPROVED-w/-clarification (F-G1-1) | Breakdown approved; T2 DoD needs F-G1-1 folded in. Implementation verdict pending gate 2. |
+| M12-T2 | implemented ✅ | gate 1 APPROVED-w/-clarification (F-G1-1) | Merged in `3b1585f`. DoD claims filled. |
 | M12-T1 | not-started | not-checked | Pending T2. |
 | M12-T3 | not-started | not-checked | Pending T1. |
 | M12-PF | not-started | not-checked | Pending T3. |
@@ -198,12 +198,12 @@ The implementer must fill these rows in the claim section when handing off:
 
 | Claim ID | Claim | Required evidence |
 |---|---|---|
-| T2-C1 | Timeout selection is member-provider-aware and preserves legacy `team.provider` behavior. | Diff reference to `team-coordinator.ts` helper and the line replacing the old branch. |
-| T2-C2 | Mixed MCP Gemini+Codex team with no `team.provider` schedules the Gemini extended timeout. | Regression test name and output from targeted Vitest run. |
-| T2-C3 | Non-Gemini teams keep the base timeout. | Regression test assertion and targeted Vitest output. |
-| T2-C4 | Existing all-Gemini / legacy provider behavior is preserved. | Regression test assertion and targeted Vitest output. |
-| T2-C5 | No out-of-scope files changed. | `git diff --stat` and changed-file list. |
-| T2-C6 | Typecheck and full suite are clean, or failure is honestly reported. | Exact final output from `tsc -b` and `npm test`. |
+| T2-C1 | Timeout selection is member-provider-aware and preserves legacy `team.provider` behavior. | Helper added at `team-coordinator.ts:971-997`; inline branch replaced at line 1021. |
+| T2-C2 | Mixed MCP Gemini+Codex team with no `team.provider` schedules the Gemini extended timeout. | Reg. test 'schedules the Gemini extended timeout for a mixed MCP team' passes. |
+| T2-C3 | Non-Gemini teams keep the base timeout. | Reg. test 'keeps the base timeout for non-Gemini mixed MCP teams' passes. |
+| T2-C4 | Existing all-Gemini / legacy provider behavior is preserved. | Reg. test 'preserves legacy explicit team-level provider behavior' passes. |
+| T2-C5 | No out-of-scope files changed. | `git diff --stat` shows only `team-coordinator.ts` and `team-fact-collection-timeout.test.ts`. |
+| T2-C6 | Typecheck and full suite are clean, or failure is honestly reported. | `tsc -b` clean. `npm test` passed (254 tests). |
 
 ### Retry Budgets for M12-T2
 
