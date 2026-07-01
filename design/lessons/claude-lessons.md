@@ -37,3 +37,18 @@ here.**
 - **Scope to budget; baton to headroom.** At ~87% I correctly *declined* to start the big conductor plan and instead
   swept the backlog (cheap) + handed planning to Codex (more weekly headroom). Recognizing "this is the wrong
   budget window for a big design" is part of planning, not a cop-out.
+
+### 2026-07-01 — M13 structured backlog; the destructive-restore near-miss
+- **NEVER `git checkout -- <file>` to "restore" a file that has uncommitted changes I want to keep.** During a
+  negative test (temporarily breaking `backlog.md` to prove the validation harness exits 1), I "restored" with
+  `git checkout` — which reverted to HEAD and **wiped my own un-committed backfill** (8 @item headers + a doc
+  note). The next gate run caught it (suite 265/266 + backlog:check 8 errors), so no bad commit shipped — but I
+  had to redo all the edits. For a reversible poke, **back up to a temp file** (`cp`/scratchpad) and restore from
+  that, or stash — never checkout over live work.
+- **A real-file test earns its keep.** The `readBacklog()`-on-the-actual-file test found TWO real bugs a
+  fixture-only suite would've missed: the parser reading an `@item` example inside a doc code-block (→ made it
+  fence-aware) and a title picking bold text inside the `[status]` tag. Keep one integration test that runs on
+  the genuine artifact, not just synthetic fixtures.
+- **Proportionality, as PO-directed.** Fausto explicitly collapsed the role ceremony ("fai tutto tu, troppo
+  context sharing for something this pointed"). Wearing all hats for a small additive tooling epic was the right
+  call — I should propose that compression myself next time instead of defaulting to the full gate dance.
