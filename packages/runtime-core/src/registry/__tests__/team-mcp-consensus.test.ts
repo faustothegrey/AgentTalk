@@ -137,4 +137,42 @@ describe('Team MCP-exec Consensus (mocked)', () => {
     
     // Do not await the promises here because they might be hanging on await_turn until registry.destroy() is called in afterEach.
   });
+
+  it('routes await_turn and consensus_respond uniformly regardless of providerName mix', async () => {
+    const codexAgent = await registry.createAgent('codex-agent', { provider: 'mcp', providerName: 'codex' });
+    const geminiAgent = await registry.createAgent('gemini-agent', { provider: 'mcp', providerName: 'gemini' });
+    const claudeAgent = await registry.createAgent('claude-agent', { provider: 'mcp', providerName: 'claude' });
+
+    await registry.activateAgent(codexAgent.id);
+    await registry.activateAgent(geminiAgent.id);
+    await registry.activateAgent(claudeAgent.id);
+
+    // M12-T3 Claim 1: Mixed provider metadata still uses exec-turn routing
+    // queueExecTurn gives them an exec_rpc turn when they call await_turn
+    codexAgent.queueExecTurn({ id: 'c1', prompt: 'codex turn' });
+    geminiAgent.queueExecTurn({ id: 'g1', prompt: 'gemini turn' });
+    claudeAgent.queueTurn({ type: 'user_message' }); // This is what happens if they used non-exec route, but they shouldn't!
+    claudeAgent.queueExecTurn({ id: 'a1', prompt: 'claude turn' });
+
+    const codexTurn = await registry.handleMcpToolCall(codexAgent.id, 'await_turn', {});
+    const geminiTurn = await registry.handleMcpToolCall(geminiAgent.id, 'await_turn', {});
+    // NOTE: claudeAgent has `provider: 'mcp'`, so it uses `awaitExecTurn()` regardless of `providerName`.
+    const claudeTurn = await registry.handleMcpToolCall(claudeAgent.id, 'await_turn', {});
+
+    expect(JSON.parse(codexTurn.content[0].text)).toMatchObject({ id: 'c1', prompt: 'codex turn' });
+    expect(JSON.parse(geminiTurn.content[0].text)).toMatchObject({ id: 'g1', prompt: 'gemini turn' });
+    expect(JSON.parse(claudeTurn.content[0].text)).toMatchObject({ id: 'a1', prompt: 'claude turn' });
+
+    // M12-T3 Claim 2: consensus_respond dispatch remains action-based, not provider-based
+    const opinionSpy = vi.spyOn((registry as any).teamCoordinator, 'handlePlanningMessage').mockResolvedValue(true as any);
+    const agreementSpy = vi.spyOn((registry as any).teamCoordinator, 'handleAgreementProposal').mockResolvedValue(true as any);
+
+    await registry.handleMcpToolCall(codexAgent.id, 'consensus_respond', { action: 'opinion', payload: { text: 'my opinion' } });
+    await registry.handleMcpToolCall(geminiAgent.id, 'consensus_respond', { action: 'agreement_proposal', payload: { proposal: 'my proposal' } });
+    await registry.handleMcpToolCall(claudeAgent.id, 'consensus_respond', { action: 'opinion', payload: { text: 'another opinion' } });
+
+    expect(opinionSpy).toHaveBeenCalledWith(codexAgent.id, 'my opinion', undefined, undefined);
+    expect(agreementSpy).toHaveBeenCalledWith(geminiAgent.id, undefined, 'my proposal');
+    expect(opinionSpy).toHaveBeenCalledWith(claudeAgent.id, 'another opinion', undefined, undefined);
+  });
 });

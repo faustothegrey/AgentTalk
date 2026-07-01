@@ -178,6 +178,53 @@ merge), I am **not** merging unilaterally — awaiting PO/[Human] authorization.
 **Telemetry (T1 gate 2):** budget claude weekly ~4%, codex weekly 40%; gate = tsc + full suite + `node --check`
 + scope/worktree audit + cross-repo client read. Outcome: **VERIFIED ✅ (pending merge auth)**.
 
+> **UPDATE (T3 gate, 2026-07-01):** M12-T1 was subsequently **MERGED to master** — `master` HEAD is
+> `10bbeb0` (the T1 merge). The "pending merge auth" wording above is now historical; row corrected below.
+
+## Reviewer Gate 2 — M12-T3 — verdict: **VERIFIED ✅** (on branch; pending merge authorization)
+
+**Reviewer:** Claude (reviewer seat). **Date:** 2026-07-01. **Branch:** `m12-t3-provider-mix-invariance`
+@ `cca96b9` (built on the merged-T1 base `10bbeb0`). **Method:** verify-by-running (Reviewer Rule 1) + close
+read of the new test to confirm it is a **meaningful, non-vacuous** invariance proof (not a tautology).
+
+**Evidence I ran (branch):**
+- Targeted: `npx vitest run …/team-mcp-consensus.test.ts` → **2/2 passed** (original consensus flow + new
+  invariance test).
+- Typecheck: `npx tsc -b` → **exit 0, clean**.
+- Full suite: `npm test` → **45 files, 255/255 passed** (254 baseline + 1 new test).
+- Scope: `git diff --name-only master...branch` → **2 files** — `team-mcp-consensus.test.ts` (in-scope) + this
+  ledger (docs). **ZERO production changes** — the "test-only" claim is confirmed (no `registry.ts` / coordinator
+  / contracts / scripts / client touched).
+- `git status --short --branch` → clean; `git worktree list --porcelain` → **no pollution**.
+
+**Non-vacuousness check (the important part for a test-only task):**
+- **Claim 1 (routing invariance) genuinely distinguishes the two paths.** The claude agent is given *both* a
+  normal `queueTurn({type:'user_message'})` **and** a `queueExecTurn({id:'a1'})`. If MCP routing wrongly took
+  the non-exec path, `await_turn` would return the `user_message` and `toMatchObject({id:'a1'})` would **fail**.
+  So the assertion actually pins exec-routing across `providerName` ∈ {codex, gemini, claude} — it is not a
+  no-op. Uses the **real** `registry.handleMcpToolCall` / `awaitExecTurn` (nothing mocked here).
+- **Claim 2 (action-based dispatch) uses the real registry handler.** It spies on the *downstream* coordinator
+  methods only, then shows codex+claude `'opinion'` → `handlePlanningMessage` and gemini `'agreement_proposal'`
+  → `handleAgreementProposal`. Same action ⇒ same handler across different providers; different action ⇒
+  different handler. That is exactly F2 (dispatch keys on `action`, not provider). Mocking only the downstream
+  is correct — it isolates *dispatch* from handler internals, so no team needs to exist.
+- Together these pin the plan's **F1** (provider-blind exec routing) and **F2** (action-based dispatch), and
+  implicitly **F4** (providerName not branched on) — the intended T3 guardrail against future regression.
+
+**Per-claim verdicts:**
+| Claim | Verdict | Evidence |
+|---|---|---|
+| T3-C1 (mixed metadata → exec-turn routing) | **VERIFIED ✅** | invariance test Claim 1 passes; distinguishes exec vs non-exec. |
+| T3-C2 (dispatch action-based, not provider-based) | **VERIFIED ✅** | invariance test Claim 2 passes; real handler + downstream spies. |
+| T3-C3 (suite + typecheck clean) | **VERIFIED ✅** | tsc exit 0; 255/255. |
+
+**Disposition:** all T3 DoD rows **VERIFIED**; test-only (zero production change) confirmed; suite green; no
+pollution; the test is a real invariance proof. **Recommend MERGE to master.** Per merge-is-human-gated + this
+baton (verdict, not merge), I am **not** merging unilaterally — awaiting PO/[Human] authorization.
+
+**Telemetry (T3 gate 2):** budget claude weekly ~5%, codex weekly 40%; gate = targeted test + tsc + full suite
++ scope/worktree audit + non-vacuousness read. Outcome: **VERIFIED ✅ (pending merge auth)**.
+
 ## Claim / Verdict Ledger
 
 The implementer records **Claim** entries with command output. The reviewer records **Verdict** only after running
@@ -186,8 +233,8 @@ the relevant check.
 | Task | Implementer claim | Reviewer verdict | Evidence |
 |---|---|---|---|
 | M12-T2 | implemented ✅ | **gate 2 VERIFIED ✅ — MERGED** | Merged to master @ `f66e703`. 4/4 targeted, tsc 0, 254/254, scope clean, F-G1-1 (test 3) satisfied. |
-| M12-T1 | implemented ✅ | **gate 2 VERIFIED ✅** (structural; pending merge auth) | Branch `m12-t1-cross-provider-harness` @ `b38944e`. See "Reviewer Gate 2 — M12-T1": tsc 0, 254/254, `node --check` OK, scope clean (baseline untouched), Codex plumbing correct by delegation. |
-| M12-T3 | not-started | not-checked | Pending T1. |
+| M12-T1 | implemented ✅ | **gate 2 VERIFIED ✅ — MERGED** | Merged to master @ `10bbeb0`. Structural: tsc 0, 254/254, `node --check` OK, scope clean (baseline untouched), Codex plumbing correct by delegation. |
+| M12-T3 | implemented ✅ | **gate 2 VERIFIED ✅** (branch; pending merge auth) | Branch `m12-t3-provider-mix-invariance` @ `cca96b9`. See "Reviewer Gate 2 — M12-T3": 2/2 targeted, tsc 0, 255/255, test-only (zero prod change), non-vacuous invariance proof (F1/F2/F4). |
 | M12-PF | not-started | not-checked | Pending T3. |
 | M12-T4 | not-started | not-checked | Pending PF. |
 | M12-T5 | not-started | not-checked | Pending T4. |
@@ -363,9 +410,9 @@ DoD:
 
 | Claim ID | Claim | Required evidence |
 |---|---|---|
-| T3-C1 | Mixed provider metadata still uses exec-turn routing. | Test assertion. |
-| T3-C2 | `consensus_respond` dispatch remains action-based, not provider-based. | Test assertion. |
-| T3-C3 | Full suite and typecheck clean. | Exact command output. |
+| T3-C1 | Mixed provider metadata still uses exec-turn routing. | Test `routes await_turn and consensus_respond uniformly regardless of providerName mix` added and passes. |
+| T3-C2 | `consensus_respond` dispatch remains action-based, not provider-based. | Test assertion using spies on `teamCoordinator` methods added and passes. |
+| T3-C3 | Full suite and typecheck clean. | `tsc -b` and `npm test` passed. |
 
 Retry budgets:
 
