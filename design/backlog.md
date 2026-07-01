@@ -35,6 +35,23 @@ Parser + endpoint: `apps/orchestrator/src/backlog.ts`.
 
 ---
 
+### Backlog gate — 2026-07-01 (opening the arbiter shadow spike · architect: Claude)
+
+Per §3b, every item dispositioned before opening the first arbiter macro unit (the shadow-mode spike,
+`design/arbiter-shadow-spike-plan.md` — inception draft, pending Planner POV + PO go). PO (Fausto) directed the
+groundwork this session; ratification calls are marked.
+
+| Item | Disposition for this gate |
+|---|---|
+| **BL-001 / BL-004 / BL-006 / BL-008** | Already terminal (done/promoted/absorbed) — confirmed, no action. Note on BL-008: its residual debt (two protocol event-emission shapes) sits exactly on the surface the future facilitator-extraction epic touches → carry a "compose with arbiter Epic 1" reminder there. |
+| **BL-002 auto-handoff** | **Reopen trigger FIRED** (M11 closed). Architect recommendation: **absorb into the arbiter program** — the facilitator ("the push") is the natural owner of turn-driving, making a separate auto-handoff epic redundant. **PO ratification pending** → stays `deferred` with this note until then. |
+| **BL-003 M07-T2 live smoke** | Blocker half-lifted (M11 shipped tolerance; quota gate remains). Likely **superseded** by the arbiter direction (the arbiter judges advancement semantically, making the old strict-protocol live bar moot). Keep `open`/parked; final supersede-or-run call when arbiter Epic 1 opens. |
+| **BL-005 worker-prompt worktree** | Unchanged — parked with explicit trigger (orchestrator collecting worker output). Not arbiter-adjacent. |
+| **BL-007 operator abort/recovery** | Unchanged — experience-triggered (needs real `awaiting_operator` cases). Not arbiter-adjacent. |
+| **BL-009 semantic arbiter** | **PROMOTED → arbiter shadow spike** (`design/arbiter-shadow-spike-plan.md`). The program decomposition (spike + 4 epics) stays in `design/arbiter-consensus-draft.md` §8/§10; only the spike opens now. |
+
+*Nothing dropped.*
+
 ## Items
 
 ### ✅ DONE — M09 epic-close squash (Fausto, 2026-06-25)
@@ -108,6 +125,9 @@ tags: [auto-handoff, turn-scheduler]
 - [deferred · own future epic, 2026-06-30] — **Auto-handoff between agents (remove the human
   as turn-scheduler)** — re-evaluated 2026-06-29: Fausto confirmed this is **premature**,
   still DEFER for its own future epic. Reopen after M11 closes. (Seed text kept below for reference.)
+  **Gate update 2026-07-01: the reopen trigger FIRED (M11 closed).** Architect recommendation at the gate:
+  absorb into the arbiter program (the facilitator layer owns turn-driving — see BL-009 /
+  `arbiter-consensus-draft.md`). **PO ratification pending**; stays deferred until then.
 
 <!-- @item
 id: BL-003
@@ -374,12 +394,16 @@ tags: [protocol, events, tech-debt]
 
 <!-- @item
 id: BL-009
-status: open
+status: promoted
+promoted_to: arbiter-shadow-spike
 date: 2026-07-01
 epic: null
 tags: [consensus, arbiter, architecture, heavyweight]
 -->
-- [open] 2026-07-01 — **Semantic arbiter & the two consensus modes** — heavyweight direction to re-architect the
+- [promoted→arbiter-shadow-spike · inception draft, 2026-07-01] — **Semantic arbiter & the two consensus modes** —
+  promoted at the 2026-07-01 gate: first macro unit is the shadow-mode spike
+  (`design/arbiter-shadow-spike-plan.md`, pending Planner POV + PO go); program decomposition stays in the draft
+  §8/§10. Original seed below. — heavyweight direction to re-architect the
   consensus core: advancement decided by a **semantic arbiter** (reads agents' responses, advances by meaning)
   instead of the rigid protocol state machine. Refined into **two complementary modes over one shared "push"**:
   **A — arbiter-synthesis** (the arbiter authors the deliverable; semantic consensus) and **B — collective-signing**
