@@ -179,9 +179,67 @@ As the implementer executing the final plans, my primary concern is the **fideli
 3. **Token Multiplier & Latency:** We need to carefully consider the operational cost of the Facilitator. Does the semantic arbiter evaluate *every single message* in a multi-agent debate to check if convergence is reached? If so, the token burn and latency will be massive. The implementation should explore "out-of-band" or "sampled" arbitration (e.g., evaluating only after N messages, or when agents explicitly signal readiness).
 4. **M11 Scaffolding:** I strongly agree with Codex. The arbiter should absorb the *judgment* of state advancement, but the strict deterministic floor of M11 (vocabulary, bounds, single-tool usage) should remain. Unconstrained natural language can lead to rambling; structured constraints help models focus. Let the arbiter be flexible, but keep the agents disciplined.
 
-## 10. What is NOT decided / next step
+## 10. Synthesis — Architect (Claude, 2026-07-01, after all three POVs)
 
-Everything in §5, the decomposition in §7, and whether this even opens as one epic or several. **Next step is the
+**Where the three roles genuinely agree** (this is real consensus, not politeness — each POV arrived at it
+independently):
+1. **Direction confirmed.** Nobody disputes moving advancement judgment into the brain; all three read it as the
+   M07/M10/M11 trajectory continued, not fought.
+2. **Shadow-mode spike first, non-negotiable.** All three name §6 as the mandatory entry: zero production change,
+   reuse the `AGENTTALK_DIAGRAM_RECORD` / `play-recording` infra.
+3. **Two clean modes, no hybrid.** The A/B boundary held under both the planner's and the implementer's scrutiny.
+4. **Deterministic-first rollout.** Facilitator + Mode B ship without ever breaking the deterministic bar; Mode A
+   only behind the golden-set harness.
+
+**Where I change my mind:**
+
+5. **M11: composes, not absorbed — I concede.** My §5 instinct ("absorbs and supersedes") was refuted by both
+   other POVs, and they are right. The arbiter takes over the *judgment* of advancement; M11's deterministic floor
+   (single-tool vocabulary, correction semantics, bounded turns, clean failure modes) constrains the *input space*
+   that judgment has to face. A disciplined agent population is what makes semantic arbitration tractable —
+   ripping the floor out would trade a brittle protocol for an unbounded one. Revised architect stance: **arbiter
+   on top of the M11 floor**; supersede individual pieces later, case-by-case, only with spike evidence.
+
+**Open questions from §5 that the POV round effectively resolved** (working assumptions now, still PO-ratifiable):
+
+6. **Facilitator/Author: separated at the interface, from v1.** The PO already leaned separated; the planner's
+   audit-point argument ("facilitator judged ready" / "author produced artifact" / "ratifier accepted") clinches
+   it, and it is cheap — an interface boundary, not extra modules; the same model can sit behind both in v1.
+7. **Mode selection: typed by deliverable, not free config.** The implementer's constraint upgrades §3's "natural
+   use case" row into a rule: **binding executable artifacts (plans, code) → Mode B mandatory; open-ended prose
+   deliverables → Mode A eligible.** The team/task config picks the deliverable type; the type fixes the mode.
+   That answers most of §5's mode-selection question.
+8. **Decomposition: adopt the planner's 4-epic split.** Splitting my Epic 1 into "extract facilitator (pure
+   refactor, Mode B behavior byte-identical)" and "Mode B-on-facilitator" is the safer evolution — every epic
+   keeps the deterministic bar green and gets a crisp DoD.
+
+**New question the implementer added that my draft missed:**
+
+9. **Arbitration cadence / cost.** Judging convergence on *every* message multiplies token burn by team size and
+   debate length. Candidate shapes: every-N-messages, per-phase checkpoints, or arbitration **triggered by an
+   explicit agent readiness signal**. Note the readiness-signal variant stays mode-clean: an agent's "I think
+   we're done" *triggers* arbitration but never *decides* it — a cost optimization of the facilitator, not a third
+   mode. The §6 spike's cost question must measure this, not just per-arbitration price.
+
+**New architect observation (post-round):**
+
+10. **The corpus is the scarce asset — start collecting now.** The golden set needs transcripts with *known
+    outcomes*, and the valuable ones are the failures (LB-6/7, the late-message race, non-converging debates):
+    successful runs can be recorded any time, but failure transcripts are expensive to reproduce on demand. Cheap
+    standing habit: run consensus work with recording on and archive the transcripts, so the spike doesn't open on
+    an empty bench. Also: Mode A's golden set needs converged/not-converged *labels*, and labeling is human/
+    architect work — size it into the spike, it is the spike's real cost center.
+
+**Bottom line for the PO:** three POVs, zero dissent on direction or on spike-first entry; one architect
+mind-change (the M11 floor stays as scaffolding); two §5 questions resolved into working assumptions (separated
+interface; deliverable-typed mode selection); one genuinely new question (arbitration cadence) assigned to the
+spike to measure. From the architect seat this draft is ready for the normal epic-inception whenever you are —
+starting with the spike, whose entry cost is mostly corpus collection + labeling.
+
+## 11. What is NOT decided / next step
+
+Everything in §5 (except where §10 records a converged working assumption — still PO-ratifiable, not decided),
+the decomposition in §7/§8/§10, and whether this even opens as one epic or several. **Next step is the
 PO's:** return to this draft with more input, then run the normal epic-inception (PO + Architect define
 goal/resources/feasibility; Planner gives advisory POV) — or open the shadow-mode spike first. This draft opens
 nothing on its own.
