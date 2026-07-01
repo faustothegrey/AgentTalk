@@ -1932,13 +1932,14 @@ export class TeamCoordinator {
 
       if (retryCount < MAX_REGRESSION_RETRIES) {
         this.regressionRetryCounts.set(retryKey, retryCount + 1);
+        const phase = this.getPlanningPhase(taskId);
         if (isRegression) {
           void this.askRegressionConfirmation(taskId, senderAgentId, actualType, currentMax, retryCount + 1);
         } else {
-          void this.askProtocolCorrection(taskId, senderAgentId, actualType, expected, retryCount + 1);
+          void this.askProtocolCorrection(taskId, senderAgentId, actualType, expected, phase, retryCount + 1);
         }
         // bridge v3: observability only — a graded-loop correction at the current phase.
-        this.emitProtocolEvent({ taskId, kind: 'correction', phase: this.getPlanningPhase(taskId), agentId: senderAgentId });
+        this.emitProtocolEvent({ taskId, kind: 'correction', phase, agentId: senderAgentId });
         return false;
       }
 
@@ -1994,11 +1995,10 @@ export class TeamCoordinator {
     const maxRankName = rankNames ? rankNames[0] : 'unknown';
 
     const message =
-      `You sent "${actual}", but planning has already advanced to "${maxRankName}". ` +
-      `Did you really intend to go back to "${actual}", or did you misstep the message type? ` +
-      `If this was a mistake, please resend with the correct message type. ` +
+      `You sent action "${actual}", but planning has already advanced to "${maxRankName}". ` +
+      `Did you really intend to go back to "${actual}", or did you misstep the action? ` +
+      `If this was a mistake, please resend with the correct action using consensus_respond. ` +
       `If you genuinely want to regress, send "${actual}" again — but note that confirming a regression will end the planning session. ` +
-      `${MESSAGE_TYPE_MOTIVATION_REQUIREMENT} ` +
       `(confirmation attempt ${attempt}/${MAX_REGRESSION_RETRIES})`;
 
     this.recordTaskTranscript(task, {
@@ -2032,16 +2032,17 @@ export class TeamCoordinator {
     senderAgentId: string,
     actual: string,
     expected: string[],
+    phase: string | undefined,
     attempt: number,
   ): Promise<void> {
     const task = this.tasks.get(taskId);
     if (!task) return;
 
+    const phaseStr = phase ? ` (current phase: ${phase})` : '';
     const message =
-      `You sent "${actual}", which is not a valid move at the current protocol step. ` +
-      `The expected message_type is one of [${expected.join(', ')}]. ` +
-      `Please resend with a correct message_type. ` +
-      `${MESSAGE_TYPE_MOTIVATION_REQUIREMENT} ` +
+      `You sent action "${actual}", which is not a valid move at the current protocol step${phaseStr}. ` +
+      `The expected legal action set is [${expected.join(', ')}]. ` +
+      `Resend by calling consensus_respond with action set to one of [${expected.join(', ')}] and payload matching that action. ` +
       `(correction attempt ${attempt}/${MAX_REGRESSION_RETRIES})`;
 
     this.recordTaskTranscript(task, {
