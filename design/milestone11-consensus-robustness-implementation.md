@@ -14,7 +14,7 @@
 | **SP1** | Affordance-protocol spike (per-harness probe: dynamic skills + scoped toolset) | VERIFIED ✅ |
 | **M11-T1** | Single tool `consensus_respond(action, payload)` — wire-contract v5→v6, lockstep client (origin: M10-T3) | **DONE** ✅ merged to master |
 | **M11-T2** | Active re-prompting (current legal set in correction message) | **DONE** ✅ merged to master |
-| **M11-T3** | Turn-budget / Referee (bound discussion, force-advance on non-convergence) | ⬜ not started |
+| **M11-T3** | Turn-budget / Referee (bound discussion, force-advance on non-convergence) | Gate 1 VERIFIED ✅ ready for implementer handoff |
 
 ### SP1 Findings
 
@@ -429,3 +429,83 @@ Attack:
 - No out-of-scope wire-contract, `ejectPlanner`, late-message no-op, or T3/referee surfaces changed.
 
 Gate 2 outcome: **VERIFIED ✅ — M11-T2 satisfies D1-D5 and is ready for human merge decision.**
+
+## M11-T3 Reviewer gate 1 — task breakdown review
+
+**2026-07-01 — Codex reviewer verdict: REFUTED ❌**
+
+Reviewed: `design/m11-t3-turn-budget-referee-task-breakdown.md`.
+
+Evidence run/read:
+- `git switch master && git rev-parse --short HEAD` → `6038b12`; branch is up to date with `origin/master`.
+- `git status --short --branch` → `## master...origin/master` plus only untracked
+  `design/m11-t3-turn-budget-referee-task-breakdown.md`.
+- `git diff --check -- design/m11-t3-turn-budget-referee-task-breakdown.md` → clean.
+- `wc -l` confirmed cited files/ranges exist:
+  `design/m11-t3-turn-budget-referee-task-breakdown.md` has `303` lines,
+  `team-coordinator.ts` has `2113` lines, `team-mcp-consensus.test.ts` has `140` lines,
+  `scripts/test-live-gate.mjs` has `134` lines.
+- Read approved coordinator ranges:
+  `team-coordinator.ts:72-86`, `:141-152`, `:315-360`, `:1055-1138`, `:615-880`,
+  `:1910-1963`, and cleanup ranges `:1208-1216`, `:1320-1324`, `:1694-1718`, `:1847-1860`.
+- Read additionally cited ranges `team-coordinator.ts:419-523` and `:525-600`.
+- `rg -n "419-523|525-600|team-coordinator\\.ts:" design/m11-t3-turn-budget-referee-task-breakdown.md design/milestone11-consensus-robustness-plan.md`
+  shows `:419-523` and `:525-600` appear only in the task breakdown, not in the approved M11-T3 production scope.
+- `git diff --no-index --check /dev/null design/m11-t3-turn-budget-referee-task-breakdown.md` → no output.
+
+Steelman:
+- The plan correctly states referee policy v1 as fail/interruption only, with no force-advance.
+- DoD rows cover boundary interruption, no extra routed action, happy path, cleanup, live observation, and gates.
+- Test scope correctly calls for a focused deterministic test, existing mocked MCP happy-path regression, and a live
+  referee observation harness.
+- Cleanup paths are explicitly called out for interruption, plan submission, rejection, and agent removal.
+
+Gate blocker:
+1. **Production scope is wider than the approved M11-T3 scope.** The plan lists
+   `team-coordinator.ts:419-523` as an edit surface for the `opinion` path and `team-coordinator.ts:525-600` as an edit
+   surface for `agreement_proposal`. Those ranges are real code, but they are not in the approved M11-T3 scope in
+   `design/milestone11-consensus-robustness-plan.md:206-214` or the Hermes baton. The approved counting surface is
+   `team-coordinator.ts:615-880` plus `:1910-1963`; exact-scope discipline means a planner cannot pre-authorize edits
+   to `:419-600` without an explicit reviewer/PO rescope. This also conflicts with the checklist requirement that exact
+   production edit scope be limited to the allowed ranges.
+
+What remains sound after correction:
+- The implementer can still satisfy D1/D2 through the validation path at `:1910-1963` by making budget exhaustion cause
+  `validateProtocolStep(...)` to return `false`, so `handlePlanningMessage` returns before peer routing at `:475-499`
+  and `handleAgreementProposal` returns before proposal state/endorsement at `:571-600`.
+- The live observation and retry budgets are otherwise reasonable.
+
+Required fix for re-review:
+- Remove `team-coordinator.ts:419-523` and `:525-600` as allowed edit surfaces, or mark them read-only explanatory
+  context only.
+- State explicitly that counting/referee gating must be implemented inside the approved `:1910-1963` validation path
+  and `:615-880` fallback/reset area unless the reviewer/PO expands scope.
+
+Gate 1 outcome: **REFUTED ❌ — revise the task breakdown before implementer handoff.**
+
+**2026-07-01 — Codex reviewer re-review after planner corrections: VERIFIED ✅**
+
+Reviewed: `design/m11-t3-turn-budget-referee-task-breakdown.md` after the scope correction.
+
+Evidence run/read:
+- `git rev-parse --short HEAD` → `6038b12`.
+- `git status --short --branch` → `## master...origin/master` with modified
+  `design/milestone11-consensus-robustness-implementation.md` and untracked
+  `design/m11-t3-turn-budget-referee-task-breakdown.md`.
+- `git diff --check -- design/m11-t3-turn-budget-referee-task-breakdown.md design/milestone11-consensus-robustness-implementation.md`
+  → clean.
+- Read corrected breakdown lines `:63-86`: `team-coordinator.ts:419-523` and `:525-600` are now explicitly
+  **read-only context only**, while approved edit surfaces are `:615-880` and `:1910-1963`.
+- `rg -n "419-523|525-600|Read-only context|Approved edit surfaces|Required location|validateProtocolStep|615-880|1910-1963|force|ejectPlanner|late-message|wire" design/m11-t3-turn-budget-referee-task-breakdown.md`
+  confirms the prior blocker is resolved and the out-of-scope fences remain present.
+- Read DoD/test/live-observation sections `:115-190` and `:262-303`.
+- `node scripts/usage.mjs` → Codex weekly 33%, 5h 81%; antigravity 9% 5h.
+
+Disposition of prior blocker:
+- **RESOLVED:** The planner artifact no longer authorizes edits to `team-coordinator.ts:419-523` or `:525-600`.
+  Those ranges are retained only as explanatory context for why returning `false` from `validateProtocolStep(...)`
+  short-circuits peer routing/proposal endorsement.
+- **VERIFIED:** Counting/referee gating is explicitly scoped to the approved validation path `:1910-1963`, with
+  fallback reset in the approved `:615-880` area.
+
+Gate 1 outcome: **VERIFIED ✅ — M11-T3 is ready for implementer handoff on branch `m11-t3-turn-budget-referee`.**
