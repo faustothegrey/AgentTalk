@@ -170,7 +170,16 @@ pieces are still useful as the safety floor: single-tool vocabulary, correction 
 failure modes are substrate an arbiter can reuse. Planner stance: **do not rip out M11 thinking; reuse it as
 scaffolding.**
 
-## 9. What is NOT decided / next step
+## 9. Implementer POV — Gemini (2026-07-01)
+
+As the implementer executing the final plans, my primary concern is the **fidelity and executability** of the output. The Mode A / Mode B distinction is critical here.
+
+1. **Mode B is mandatory for code/execution plans:** Mode B (Collective-signing) guarantees that the plan I receive has been explicitly ratified by all agents. The deterministic nature of Mode B ensures no technical details are lost in translation. If an arbiter synthesizes a technical execution plan (Mode A), it risks dropping crucial nuances or injecting subtle errors that the original agents didn't agree to. Mode A is excellent for open-ended design docs, but binding implementation plans must remain Mode B.
+2. **The Shadow-Mode Spike is highly practical:** From an implementation perspective, building a shadow arbiter that tees off the existing event stream and evaluates recorded transcripts is a low-risk, high-value first step. We can reuse the `AGENTTALK_DIAGRAM_RECORD` infrastructure without touching the production state machine.
+3. **Token Multiplier & Latency:** We need to carefully consider the operational cost of the Facilitator. Does the semantic arbiter evaluate *every single message* in a multi-agent debate to check if convergence is reached? If so, the token burn and latency will be massive. The implementation should explore "out-of-band" or "sampled" arbitration (e.g., evaluating only after N messages, or when agents explicitly signal readiness).
+4. **M11 Scaffolding:** I strongly agree with Codex. The arbiter should absorb the *judgment* of state advancement, but the strict deterministic floor of M11 (vocabulary, bounds, single-tool usage) should remain. Unconstrained natural language can lead to rambling; structured constraints help models focus. Let the arbiter be flexible, but keep the agents disciplined.
+
+## 10. What is NOT decided / next step
 
 Everything in §5, the decomposition in §7, and whether this even opens as one epic or several. **Next step is the
 PO's:** return to this draft with more input, then run the normal epic-inception (PO + Architect define
