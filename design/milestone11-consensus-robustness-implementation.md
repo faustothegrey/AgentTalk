@@ -13,7 +13,7 @@
 |------|------|--------|
 | **SP1** | Affordance-protocol spike (per-harness probe: dynamic skills + scoped toolset) | VERIFIED ✅ |
 | **M11-T1** | Single tool `consensus_respond(action, payload)` — wire-contract v5→v6, lockstep client (origin: M10-T3) | **DONE** ✅ merged to master |
-| **M11-T2** | Active re-prompting (current legal set in correction message) | VERIFIED ✅ ready for human merge decision |
+| **M11-T2** | Active re-prompting (current legal set in correction message) | **DONE** ✅ merged to master |
 | **M11-T3** | Turn-budget / Referee (bound discussion, force-advance on non-convergence) | ⬜ not started |
 
 ### SP1 Findings
@@ -381,7 +381,7 @@ Files modified:
 - budget:      session [7%] used
 - gate:        tsc 0, suite 249/249, pollution clean
 - diff:        2 files, +200 additions / -20 deletions, commits pending review
-- outcome:     IMPLEMENTED, AWAITING REVIEWER GATE 2
+- outcome:     MERGED ✅
 
 ## M11-T2 Reviewer gate 2 — implementation verification
 
