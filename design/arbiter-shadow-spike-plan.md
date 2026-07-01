@@ -1,9 +1,9 @@
 # Arbiter Shadow Spike — inception plan
 
-> **Status:** 🟡 **INCEPTION DRAFT — Planner advisory POV added; pending PO go.** Authored by the Architect (Claude,
-> 2026-07-01) at the PO's direction; the §3b backlog gate for this unit is recorded in `design/backlog.md`
-> (gate 2026-07-01). **Task-level breakdown is the Planner's** — this doc fixes goal/resources/feasibility and
-> the DoD bar, per epic-inception in `design/collaboration-workflow.md` §1.
+> **Status:** 🟢 **OPEN — PO GO given (Fausto, 2026-07-01).** Inception complete: Architect draft + Planner
+> advisory POV (§7) + Architect disposition (§8, all refinements folded into §5). The §3b backlog gate is
+> recorded in `design/backlog.md` (gate 2026-07-01). **Next: Planner task breakdown** (slices per §7 guidance)
+> into a sibling `*-implementation.md` ledger; this doc fixes goal/resources/feasibility and the DoD bar.
 > **Parent direction:** `design/arbiter-consensus-draft.md` (BL-009) — read §6 (de-risking entry) and §10
 > (three-POV synthesis) first. **Program context:** this spike is the entry gate for the tentative 4-epic
 > program (draft §8/§10); it opens nothing beyond itself.

@@ -402,9 +402,10 @@ date: 2026-07-01
 epic: null
 tags: [consensus, arbiter, architecture, heavyweight]
 -->
-- [promoted→arbiter-shadow-spike · inception draft, 2026-07-01] — **Semantic arbiter & the two consensus modes** —
+- [promoted→arbiter-shadow-spike · **OPEN — PO go 2026-07-01**] — **Semantic arbiter & the two consensus modes** —
   promoted at the 2026-07-01 gate: first macro unit is the shadow-mode spike
-  (`design/arbiter-shadow-spike-plan.md`, pending Planner POV + PO go); program decomposition stays in the draft
+  (`design/arbiter-shadow-spike-plan.md` — inception complete: architect draft + planner POV + disposition + PO
+  go; planner task breakdown next); program decomposition stays in the draft
   §8/§10. Original seed below. — heavyweight direction to re-architect the
   consensus core: advancement decided by a **semantic arbiter** (reads agents' responses, advances by meaning)
   instead of the rigid protocol state machine. Refined into **two complementary modes over one shared "push"**:
