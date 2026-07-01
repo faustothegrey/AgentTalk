@@ -1,0 +1,49 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Arbiter Shadow Spike Labels",
+  "type": "object",
+  "properties": {
+    "labels": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "verdict": {
+            "type": "string",
+            "enum": [
+              "advance-to:fact_collection",
+              "advance-to:discussion",
+              "advance-to:proposal",
+              "hold",
+              "fail-soft:planner-a",
+              "fail-soft:planner-b",
+              "fail-soft:worker-1",
+              "converged",
+              "not-converged"
+            ],
+            "description": "The judgment decision for this corpus entry."
+          },
+          "rationale": {
+            "type": "string",
+            "description": "Explanation for why this verdict was chosen."
+          },
+          "confidence": {
+            "type": "string",
+            "enum": ["high", "medium", "low"],
+            "description": "Confidence level in the verdict."
+          },
+          "notes": {
+            "type": "string",
+            "description": "Any additional notes or observations."
+          },
+          "author": {
+            "type": "string",
+            "description": "The person (PO/Architect) who authored the label."
+          }
+        },
+        "required": ["verdict", "rationale", "author"]
+      }
+    }
+  },
+  "required": ["labels"]
+}

@@ -1,0 +1,95 @@
+{
+  "corpus": [
+    {
+      "id": "live-success-1",
+      "scenario_class": "success",
+      "source_command": "AGENTTALK_RECORDING_PATH=design/arbiter-shadow-corpus/live-success-1.jsonl node scripts/test-live-gate.mjs",
+      "recording_path": "design/arbiter-shadow-corpus/live-success-1.jsonl",
+      "label_status": "needs-po-architect-label"
+    },
+    {
+      "id": "deterministic-success-1",
+      "scenario_class": "success",
+      "source_command": "node scripts/arbiter-generate-corpus.mjs",
+      "recording_path": "design/arbiter-shadow-corpus/deterministic-success-1.jsonl",
+      "label_status": "needs-po-architect-label"
+    },
+    {
+      "id": "deterministic-success-2",
+      "scenario_class": "success",
+      "source_command": "node scripts/arbiter-generate-corpus.mjs",
+      "recording_path": "design/arbiter-shadow-corpus/deterministic-success-2.jsonl",
+      "label_status": "needs-po-architect-label"
+    },
+    {
+      "id": "deterministic-success-3",
+      "scenario_class": "success",
+      "source_command": "node scripts/arbiter-generate-corpus.mjs",
+      "recording_path": "design/arbiter-shadow-corpus/deterministic-success-3.jsonl",
+      "label_status": "needs-po-architect-label"
+    },
+    {
+      "id": "deterministic-success-4",
+      "scenario_class": "success",
+      "source_command": "node scripts/arbiter-generate-corpus.mjs",
+      "recording_path": "design/arbiter-shadow-corpus/deterministic-success-4.jsonl",
+      "label_status": "needs-po-architect-label"
+    },
+    {
+      "id": "sample-success",
+      "scenario_class": "success",
+      "source_command": "node scripts/arbiter-generate-sample.mjs",
+      "recording_path": "design/arbiter-shadow-corpus/sample-success.jsonl",
+      "label_status": "needs-po-architect-label"
+    },
+    {
+      "id": "failure-phase-illegal",
+      "scenario_class": "failure-phase-illegal",
+      "source_command": "node scripts/arbiter-generate-corpus.mjs",
+      "recording_path": "design/arbiter-shadow-corpus/failure-phase-illegal.jsonl",
+      "label_status": "needs-po-architect-label"
+    },
+    {
+      "id": "failure-malformed",
+      "scenario_class": "failure-malformed",
+      "source_command": "node scripts/arbiter-generate-corpus.mjs",
+      "recording_path": "design/arbiter-shadow-corpus/failure-malformed.jsonl",
+      "label_status": "needs-po-architect-label"
+    },
+    {
+      "id": "failure-bounded-correction",
+      "scenario_class": "failure-bounded-correction",
+      "source_command": "node scripts/arbiter-generate-corpus.mjs",
+      "recording_path": "design/arbiter-shadow-corpus/failure-bounded-correction.jsonl",
+      "label_status": "needs-po-architect-label"
+    },
+    {
+      "id": "failure-non-converging",
+      "scenario_class": "failure-non-converging",
+      "source_command": "node scripts/arbiter-generate-corpus.mjs",
+      "recording_path": "design/arbiter-shadow-corpus/failure-non-converging.jsonl",
+      "label_status": "needs-po-architect-label"
+    },
+    {
+      "id": "failure-late-message",
+      "scenario_class": "failure-late-message",
+      "source_command": "node scripts/arbiter-generate-corpus-append.mjs",
+      "recording_path": "design/arbiter-shadow-corpus/failure-late-message.jsonl",
+      "label_status": "needs-po-architect-label"
+    },
+    {
+      "id": "ambiguous-1",
+      "scenario_class": "ambiguous",
+      "source_command": "node scripts/arbiter-generate-corpus.mjs",
+      "recording_path": "design/arbiter-shadow-corpus/ambiguous-1.jsonl",
+      "label_status": "needs-po-architect-label"
+    },
+    {
+      "id": "ambiguous-2",
+      "scenario_class": "ambiguous",
+      "source_command": "node scripts/arbiter-generate-corpus.mjs",
+      "recording_path": "design/arbiter-shadow-corpus/ambiguous-2.jsonl",
+      "label_status": "needs-po-architect-label"
+    }
+  ]
+}

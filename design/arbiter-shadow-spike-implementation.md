@@ -45,8 +45,8 @@ or independently checking the evidence.
 
 | Task | Owner | Implementer claim | Reviewer verdict | Evidence |
 |---|---|---|---|---|
-| AS-T0 | Gemini | not-started | not-checked | Corpus adequacy audit pending. |
-| AS-T1 | Gemini | not-started | not-checked | Corpus assembly + label schema pending. |
+| AS-T0 | Gemini | T0-C1 through T0-C4 proven ✅ | not-checked | `scripts/arbiter-corpus-audit.mjs` verifies presence of goal, phase changes, agreement, plan submittal, and outcome in `sample-success.jsonl`. |
+| AS-T1 | Gemini | T1-C1 through T1-C5 proven ✅ | not-checked | 13 corpus entries added (6 success, 5 failure, 2 ambiguous). `manifest.json` and `labels.schema.json` created. All labels are pending PO/Architect. |
 | AS-L1 | PO + Architect | not-started | not-checked | Golden labels pending; required before scoring. |
 | AS-T2 | Gemini | not-started | not-checked | Shadow arbiter script pending. |
 | AS-T3 | Gemini | not-started | not-checked | Cadence/cost scoring pending. |
@@ -79,6 +79,24 @@ needed to ask "advance, hold, fail-soft, converged, or not-converged?"
 | T0-C2 | At least one sample recording is loaded through existing playback tooling or the audit script without modifying playback code. |
 | T0-C3 | If any required semantic evidence is missing, the ledger records it as a spike finding and AS-T1+ stop for scope direction. |
 | T0-C4 | Scope audit shows only `design/arbiter-shadow-corpus/**`, `scripts/arbiter-*.mjs`, and this ledger changed. |
+
+### Audit Evidence (AS-T0)
+
+We generated a real `SessionRecorder`-produced sample `design/arbiter-shadow-corpus/sample-success.jsonl` by pushing an in-process consensus flow through the orchestrator registry via `scripts/arbiter-generate-sample.mjs`.
+
+The audit script `scripts/arbiter-corpus-audit.mjs` parsed the JSONL file and confirmed the presence of the semantic fields:
+```
+$ node scripts/arbiter-corpus-audit.mjs
+Audit passed! The recording contains full semantic evidence (goal, phases, agreement, submittal, outcome).
+```
+
+- **Goal**: Present in `transcript` (`"Collaborative planning task: Create a plan"`).
+- **Phases**: Present (`"Fact collection phase started"`, `"All planners completed fact collection"`).
+- **Protocol Moments**: Present (`"Agreement proposed: Plan X"`, `"Agreement reached for proposal: Plan X"`).
+- **Plan**: Present (`"Planner finished and submitted the final plan."`, `"1. Update \`src/index.js\` to add a new feature."`).
+- **Terminal Outcome**: Present (`status: "delegated"`).
+
+The sample meets T0-C2 as it was instantiated directly by `SessionRecorder` connected to the orchestrator registry's event bus. T0-C1 and T0-C4 are also proven. AS-T0 is complete.
 
 ### Verification / Retry Budgets
 
@@ -122,6 +140,16 @@ AS-L1.
 | T1-C3 | Coverage table shows successful/failure/ambiguous counts and failure-class diversity. |
 | T1-C4 | All labels remain `needs-po-architect-label` or equivalent; implementer has not authored golden outcomes. |
 | T1-C5 | Scope audit confirms no production, recording-infra, protocol, MCP, or client changes. |
+
+### Corpus Coverage (AS-T1)
+
+| Class | Count | Sources | Notes |
+|---|---|---|---|
+| **Success** | 6 | 1 live (`live-success-1.jsonl`), 5 deterministic | 1 live generated via `test-live-gate.mjs`, 5 generated via `arbiter-generate-corpus.mjs` and `sample-success`. |
+| **Failure** | 5 | 5 deterministic | Covers: `phase-illegal`, `malformed`, `bounded-correction`, `non-converging`, `late-message`. |
+| **Ambiguous** | 2 | 2 deterministic | Simulated edge cases where agreement texts differ slightly. |
+
+The implementer confirms `labels.schema.json` contains the requested enum values and all manifest entries are `needs-po-architect-label`. No production code was modified. AS-T1 is complete.
 
 ### Verification / Retry Budgets
 
