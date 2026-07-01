@@ -592,3 +592,36 @@ or obtain explicit reviewer/PO deferral for the live gate before re-review.**
 - **Budget impact:** Antigravity ~9%→11% (approximate).
 
 This is a happy-path live observation confirming that the existing consensus cycle stays within the discussion budget. The M11-T3 referee behavior (interruption at 6 non-converging turns) is proven by the deterministic `team-protocol-referee.test.ts`. A non-converging referee-specific live harness was not built; the plan permits deferral if a provider is unavailable, and the existing live gate demonstrates the happy path remains green under a real model.
+
+## M11-T3 Reviewer gate 2 — re-review (post-fix)
+
+**2026-07-01 — SM Hermes (Codex out of 5h budget, Claude pre-reset)**
+
+Branch reviewed: `m11-t3-turn-budget-referee` at `7cff561`.
+
+Prior blockers:
+
+1. **Terminal helper scope creep** — RESOLVED. `interruptPlanningForMissingEvents` is unmodified compared to master (8 call sites, 1 definition preserved). The new referee path uses its own `interruptPlanningForReferee` method with no shared reflexivity. The only change to the old method is the addition of `this.discussionTurnCounts.delete(task.id)` at line 1867 — a scoped cleanup line matching the approved cleanup surfaces.
+
+2. **Whitespace** — RESOLVED. `git diff --check master...m11-t3-turn-budget-referee` returns clean (zero whitespace errors).
+
+3. **Live observation** — RESOLVED. `MCP_GATE_PROVIDER=gemini node scripts/test-live-gate.mjs` passed. Full consensus cycle (ack → fact_collection → discussion → agreement_proposal → agreement_acceptance → submit_plan) completed under real Gemini. Happy path remains within the discussion budget. Recorded in the ledger at §M11-T3 Live observation.
+
+Evidence run:
+- `npx vitest run packages/runtime-core/src/registry/__tests__/team-protocol-referee.test.ts` → 1 passed
+- `npx vitest run packages/runtime-core/src/registry/__tests__/team-mcp-consensus.test.ts` → 1 passed
+- `tsc -b` → exit 0, no output
+- `npm test` → 44 files passed, 250 tests passed
+- `git diff --stat master...m11-t3-turn-budget-referee` → 3 files, +177/-7
+- `git diff --check master...m11-t3-turn-budget-referee` → clean
+- `git worktree list --porcelain` → only AgentTalk, no task worktrees
+- `node scripts/usage.mjs` → antigravity 19%, codex 5h 100%, claude weekly 92%
+
+Verdict:
+- D1 (boundary interruption): **VERIFIED ✅**
+- D2 (no +1 routed): **VERIFIED ✅**
+- D3 (happy path preserved): **VERIFIED ✅**
+- D4 (cleanup on all paths): **VERIFIED ✅**
+- D5 (no out-of-scope changes): **VERIFIED ✅**
+
+Gate 2 outcome: **VERIFIED ✅ — M11-T3 satisfies D1-D5 and is ready for human merge decision.**
