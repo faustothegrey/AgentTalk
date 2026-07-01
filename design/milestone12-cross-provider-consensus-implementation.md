@@ -22,6 +22,57 @@ Execution order:
 Hard rule for all implementation tasks: no opportunistic protocol, parser, MCP tool-surface, or client-repo changes.
 If a live or deterministic check exposes a broader problem, report it as a finding and stop for a scope decision.
 
+## Reviewer Gate 1 — verdict: **APPROVED WITH ONE REQUIRED CLARIFICATION**
+
+**Reviewer:** Claude (reviewer seat). **Date:** 2026-07-01. **Verified against:** `master` @ `c009072`
+(confirmed docs-only vs `edc6a3b`, so cited line numbers still hold). **Method:** read every cited code range
+fresh (Reviewer Rule 1); did **not** re-bless the Architect plan's findings (independence — I authored that
+plan). Deterministic/full-suite runs are the *implementer's* gate-2 evidence, not gate 1.
+
+**Code-citation audit — all ACCURATE ✅** (read at HEAD):
+- `team-coordinator.ts:168` `createTeam(members, provider?)` ✓; `Team` has `provider?` + `members`
+  (`contracts/src/types.ts:29-30`) ✓; optional-legacy-`provider` behavior preservable ✓.
+- Timeout branch at **1019-1021** exactly as the spec says to replace ✓;
+  `DEFAULT_GEMINI_FACT_COLLECTION_TIMEOUT_MS = 720_000` (line 79) ✓ — matches the test's expected `720_000`;
+  base `DEFAULT_FACT_COLLECTION_TIMEOUT_MS = 480_000` (line 78) ✓.
+- `TeamCoordinatorDeps.getAgent: (id) => Agent` (line 29) ✓ — the `deps.getAgent(member.agentId)` helper shape
+  is viable. Agent carries both `providerName` and `provider`, so inspecting both for `'gemini'` correctly
+  covers MCP (`providerName:'gemini'`) **and** legacy in-process (`provider:'gemini'`).
+- Test citations `team-mcp-consensus.test.ts` 1-31 (hermetic `child_process`/`fs` mocks) ✓, 33-46 (mixed
+  create + `createTeam(members)`) ✓, 96-104 (mocked `await_turn`/`submit_exec_result` loop) ✓.
+
+**Scope fences / retry budgets — SOUND ✅.** Out-of-scope table (types, registry, agents/*, wire-contract,
+scripts, client repo) is correct and comprehensive; the "no opportunistic protocol/parser/tool-surface/client
+change" hard rule matches the plan's show-stopper fences. Per-check pre-registered retry budgets satisfy
+Implementer Rule 7. Claim/verdict ledger is well-formed.
+
+**REQUIRED CLARIFICATION — F-G1-1 (must fix before T2 implementation starts):**
+> **T2-C4 ("Existing all-Gemini / legacy provider behavior is preserved") is self-contradictory with the fix's
+> intended effect.** Ground truth I verified: **no caller anywhere passes a `provider` arg to `createTeam`** —
+> not the live gate, not `scenario-runner.ts:108`, not any test (grep clean; both callers use
+> `createTeam(members)`). So `team.provider` is **always `undefined`** today and the `=== 'gemini'` branch is
+> **effectively dead** — every team, including the all-Gemini MCP live gate and the mocked consensus test,
+> currently gets the **base 480_000** window, *not* 720_000. After T2, an all-Gemini MCP team
+> (`providerName:'gemini'`) will **correctly** get 720_000 — a real, intended, PO-approved behavior change to
+> the existing all-Gemini path. But T2-C4 as worded tells the implementer that path is "preserved," which is
+> false for the (dominant) providerName route. **Fix:** split T2-C4 into (a) *legacy explicit
+> `createTeam(members,'gemini')` still yields 720_000 — unchanged*, and (b) *all-Gemini-via-`providerName` MCP
+> team now yields 720_000 (was 480_000) — deliberate C1 fix, safe because a longer force-advance window is
+> strictly more lenient*. **Add a regression case** pinning all-Gemini-MCP (`providerName`, no `team.provider`)
+> → 720_000, alongside the existing mixed-team case. This is a **DoD-wording precision fix, not an
+> architecture change** — the epic is not blocked.
+
+**MINOR — F-G1-2 (advisory):** `deps.getAgent` returns a non-optional `Agent` and may throw for an unknown id.
+Members exist during fact-collection start, so risk is low, but the helper should degrade gracefully (skip a
+member it can't resolve rather than throw and break fact-collection scheduling). Implementer's call; note it.
+
+**Disposition:** gate 1 **passes** — the breakdown is sound, citations exact, fences correct. Proceeding to T2
+implementation is authorized **once F-G1-1 is folded into the T2 DoD** (Planner/implementer edit; no re-review
+needed for the wording fix — I'll confirm the added regression case at gate 2). F-G1-2 is advisory.
+
+**Telemetry (gate 1):** budget claude weekly 3% (fresh, resets Jul 8), codex weekly 40%; gate = read-only
+code-citation verification, no suite run (correct for gate 1). Outcome: **APPROVED-W/-CLARIFICATION**.
+
 ## Claim / Verdict Ledger
 
 The implementer records **Claim** entries with command output. The reviewer records **Verdict** only after running
@@ -29,7 +80,7 @@ the relevant check.
 
 | Task | Implementer claim | Reviewer verdict | Evidence |
 |---|---|---|---|
-| M12-T2 | not-started | not-checked | Pending Reviewer gate 1. |
+| M12-T2 | not-started | gate 1 APPROVED-w/-clarification (F-G1-1) | Breakdown approved; T2 DoD needs F-G1-1 folded in. Implementation verdict pending gate 2. |
 | M12-T1 | not-started | not-checked | Pending T2. |
 | M12-T3 | not-started | not-checked | Pending T1. |
 | M12-PF | not-started | not-checked | Pending T3. |
