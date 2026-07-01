@@ -73,6 +73,60 @@ needed for the wording fix — I'll confirm the added regression case at gate 2)
 **Telemetry (gate 1):** budget claude weekly 3% (fresh, resets Jul 8), codex weekly 40%; gate = read-only
 code-citation verification, no suite run (correct for gate 1). Outcome: **APPROVED-W/-CLARIFICATION**.
 
+## Reviewer Gate 2 — M12-T2 — verdict: **VERIFIED ✅** (on branch; pending merge authorization)
+
+**Reviewer:** Claude (reviewer seat). **Date:** 2026-07-01. **Branch:** `m12-t2-fact-collection-timeout`
+@ `c3f312e` (code at `3b1585f`). **Method:** verify-by-running (Reviewer Rule 1); every bar below was
+executed by me on the branch, not taken from the implementer's claim.
+
+**Evidence I ran (branch):**
+- Targeted regression: `npx vitest run …/team-fact-collection-timeout.test.ts` → **4/4 passed** (53ms).
+- Typecheck: `npx tsc -b` → **exit 0, clean**.
+- Full suite: `npm test` → **45 files, 254/254 passed** (8.2s).
+- Scope: `git diff --name-only master...branch` → **3 files** — `team-coordinator.ts`,
+  `team-fact-collection-timeout.test.ts` (both in-scope), + this ledger (docs, expected). **No out-of-scope
+  file** (no `registry.ts` / `types.ts` / `agents/*` / `wire-contract.json` / `scripts/*` / client repo).
+- `git status --short --branch` → clean working tree; `git worktree list --porcelain` → **no pollution**
+  (single main worktree).
+
+**Code read (verified against the diff):**
+- `getFactCollectionTimeoutMs(team)` helper at `team-coordinator.ts:974-993`: starts at base, preserves the
+  legacy `team.provider === 'gemini'` hint, iterates `team.members` via `deps.getAgent`, checks **both**
+  `providerName` and `provider` for `'gemini'`, returns the **max**. Matches the spec's member-aware shape.
+- Call site correctly replaced at **:1040** (`const timeoutMs = this.getFactCollectionTimeoutMs(team);`); the
+  old inline branch is gone (the only remaining `=== 'gemini'` is the legacy check inside the helper).
+- **F-G1-2 (my gate-1 advisory) was addressed**: the member loop wraps `deps.getAgent` in try/catch and
+  `logError`s — degrades gracefully instead of throwing on an unresolvable member. 
+
+**Per-claim verdicts:**
+| Claim | Verdict | Evidence |
+|---|---|---|
+| T2-C1 (member-aware + legacy preserved) | **VERIFIED ✅** | helper :974-993, call site :1040 — read the diff. |
+| T2-C2 (mixed Gemini+Codex, no team.provider → 720k) | **VERIFIED ✅** | test 1 passes; fires at 720k not 480k. |
+| T2-C3 (non-Gemini → base 480k) | **VERIFIED ✅** | test 2 passes; fires at 480k. |
+| T2-C4 (all-Gemini + legacy preserved) | **VERIFIED ✅** | test 4 (legacy explicit → 720k) **and** test 3 (all-Gemini-MCP `providerName`, no `team.provider` → 720k) both pass. **Test 3 is the F-G1-1 regression case I required at gate 1 — present and green.** |
+| T2-C5 (no out-of-scope files) | **VERIFIED ✅** | `git diff --name-only` — 3 files, all in scope. |
+| T2-C6 (tsc + suite clean) | **VERIFIED ✅** | tsc exit 0; 254/254. |
+
+**F-G1-1 disposition:** **substantively CLOSED.** The required all-Gemini-MCP→720k regression (test 3) exists
+and passes, so the behavior the split was meant to protect is pinned. The T2-C4 *wording* was not literally
+split, but with test 3 + test 4 both green the DoD is no longer ambiguous in effect. No re-work needed.
+
+**Corrections to prior ledger claims (Reviewer Rule 5):**
+- The implementer's row said **"Merged in `3b1585f`"** — **false**: `git branch --merged master` shows the
+  branch is **NOT** merged; `3b1585f` is a branch-only commit. Corrected in the table below. (Pre-declaring a
+  merge that hasn't happened is a claim-vs-ground-truth slip; noting it, not penalizing — the code is sound.)
+- T2-C1 evidence cited "line 1021" for the replaced call site; the actual replaced line is **:1040** (the
+  helper was inserted above it). Minor; the change itself is correct.
+
+**Disposition:** all six DoD rows **VERIFIED** by my own runs; scope clean; no pollution; F-G1-1 satisfied.
+**Recommend MERGE to master.** Per the merge-is-human-gated rule (Origin Tag Protocol) and this baton (which
+asked for a *verdict*, not a merge), I am **not** merging unilaterally — awaiting explicit PO/[Human]
+authorization to merge the branch.
+
+**Telemetry (gate 2):** budget claude weekly ~4%, codex weekly 40%; gate = ran targeted test + tsc + full
+suite + scope/worktree audit. Outcome: **VERIFIED ✅ (pending merge auth)**.
+
 ## Claim / Verdict Ledger
 
 The implementer records **Claim** entries with command output. The reviewer records **Verdict** only after running
@@ -80,7 +134,7 @@ the relevant check.
 
 | Task | Implementer claim | Reviewer verdict | Evidence |
 |---|---|---|---|
-| M12-T2 | implemented ✅ | gate 1 APPROVED-w/-clarification (F-G1-1) | Merged in `3b1585f`. DoD claims filled. |
+| M12-T2 | implemented ✅ | **gate 2 VERIFIED ✅** (branch; pending merge auth) | Verified on branch `m12-t2-fact-collection-timeout` @ `c3f312e` (code `3b1585f`) — NOT yet merged to master. See "Reviewer Gate 2" section: 4/4 targeted, tsc 0, 254/254, scope clean, F-G1-1 (test 3) satisfied. |
 | M12-T1 | not-started | not-checked | Pending T2. |
 | M12-T3 | not-started | not-checked | Pending T1. |
 | M12-PF | not-started | not-checked | Pending T3. |
