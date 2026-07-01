@@ -11,7 +11,27 @@ architect/reviewer reviews this file and **dispositions every open item** in the
 nothing rots by being forgotten.
 
 **Entry format:** `- [STATUS] YYYY-MM-DD — <what> — <why>` where STATUS ∈ {open · parked ·
-promoted→X · absorbed→X · dropped}.
+promoted→X · absorbed→X · deferred · dropped}.
+
+**Machine-readable header (M13, optional but preferred).** Any item MAY carry a small header comment
+directly above its bullet so the backlog can be served via API (`GET /api/backlog`) and rendered in a UI.
+It is an HTML comment (invisible when the markdown renders) and the prose bullet below stays the human
+record, unchanged:
+
+```
+<!-- @item
+id: BL-NNN            # stable, never reused; next id = max existing + 1
+status: open          # open | parked | promoted | absorbed | deferred | dropped | done
+date: YYYY-MM-DD      # optional
+epic: M08 | null      # optional owning/target epic
+promoted_to: X | null # optional; the →X in promoted→X / absorbed→X
+tags: [a, b]          # optional; free labels for UI filtering
+-->
+```
+
+The **header is authoritative for the API**; if it disagrees with the prose `[STATUS]` tag the parser
+emits a drift warning (surfaced at the §3b gate). Validate with `npm run backlog:check` after any edit.
+Parser + endpoint: `apps/orchestrator/src/backlog.ts`.
 
 ---
 
@@ -68,6 +88,13 @@ fault tolerance, plan at `design/milestone08-transport-fault-tolerance-plan.md`.
 
 ---
 
+<!-- @item
+id: BL-001
+status: deferred
+date: 2026-06-30
+epic: null
+tags: [consensus, cross-provider]
+-->
 - [deferred · after M11, 2026-06-30] — **Cross-provider consensus** (e.g. planner-a Google + planner-b Nous in one
   `planner-planner-worker` team) — deferred from M07-T2 (all-Google for budget). **Depends on M11** (consensus
   robustness needs to be done first for reliable cross-provider rounds). Proves the centralized
@@ -76,10 +103,24 @@ fault tolerance, plan at `design/milestone08-transport-fault-tolerance-plan.md`.
     valid id; it's an aggregator). **Not** OpenRouter-`:free` (flaky/429). When promoting, **fix
     `api-client.ts` `nous` defaultModel** (`deepseek-v4-flash` 404s).
 
+<!-- @item
+id: BL-002
+status: deferred
+date: 2026-06-30
+epic: null
+tags: [auto-handoff, turn-scheduler]
+-->
 - [deferred · own future epic, 2026-06-30] — **Auto-handoff between agents (remove the human
   as turn-scheduler)** — re-evaluated 2026-06-29: Fausto confirmed this is **premature**,
   still DEFER for its own future epic. Reopen after M11 closes. (Seed text kept below for reference.)
 
+<!-- @item
+id: BL-003
+status: open
+date: 2026-06-20
+epic: M07
+tags: [live-smoke, quota-blocked]
+-->
 - [open] 2026-06-20 — **Re-run the M07-T2 live smoke** (`scripts/test-live-api-team.mjs`, all-Google
   `gemini-2.5-flash`, 2 planners + worker in-process) **after the Google daily quota resets** — the
   deferred T2.4 / IMP-1. T2 was allowed to close without it (T2.3 mocked proves the flow
@@ -92,6 +133,14 @@ fault tolerance, plan at `design/milestone08-transport-fault-tolerance-plan.md`.
     the M08 item), **or** a frontier-compliant model with available quota. **Do not burn live runs on
     unfit models meanwhile** (live-test gate, M08 item).
 
+<!-- @item
+id: BL-004
+status: promoted
+promoted_to: M11
+date: 2026-06-30
+epic: M11
+tags: [consensus, robustness]
+-->
 - [promoted→M11 (consensus robustness) · planned, 2026-06-30, **renamed per §3e convention 2026-06-30**] — **Consensus / Protocol Robustness — the
   remaining pieces after M08/M10.** Opened as M11, plan at `design/milestone11-consensus-robustness-plan.md`
   and ledger at `design/milestone11-consensus-robustness-implementation.md`. Naming per §3e: SP1 (done), M11-T1 (next, origin: M10-T3), M11-T2, M11-T3.
@@ -183,6 +232,13 @@ fault tolerance, plan at `design/milestone08-transport-fault-tolerance-plan.md`.
     `gemini-*-flash-lite`) — they only re-confirm LB-6/7, zero new signal. **Worker / single-agent live runs
     are unaffected** (they don't exercise the consensus state machine).
 
+<!-- @item
+id: BL-005
+status: open
+date: 2026-06-21
+epic: M08
+tags: [worktree, worker-prompt]
+-->
 - [open · deferred, adjacent to M08-T3] 2026-06-21 — **Worker-prompt worktree cleanup (FIND-T3b2-1)** — the worker prompt
   (`in-process-driver.ts` `handleTeamWorkAssign`) still tells agy *"you must use strictly `git worktree`…
   or refuse,"* but the orchestrator **already** runs the worker inside a per-task worktree (its `cwd`). So
@@ -192,6 +248,14 @@ fault tolerance, plan at `design/milestone08-transport-fault-tolerance-plan.md`.
   already provided; **behavior change → needs its own spec** before touching. Matters once the orchestrator
   needs to *collect* worker output (M07-T4 / failure-modes), not before.
 
+<!-- @item
+id: BL-006
+status: absorbed
+promoted_to: M08-T4
+date: 2026-06-22
+epic: M08
+tags: [registry, test-coverage]
+-->
 - [absorbed→M08-T4] 2026-06-22 — **No-driver rejection is untested (T4b-3, IP-4)** — T4b-3.2 changed
   `registry.activateAgent` to **throw** for provider-less/unknown providers (caught at `server.ts:565` →
   clean error response) and removed the old "activate without a command" test (correct — that wire path is
@@ -255,6 +319,13 @@ fault tolerance, plan at `design/milestone08-transport-fault-tolerance-plan.md`.
     `McpExec*`; (c) do the `provider`-union-first pass (recommended) or accept the untyped grep-sweep risk.
   - **Source:** read-only survey + scope Q&A, Claude ↔ Fausto, 2026-06-22 (T3-prep session). Not started.
 
+<!-- @item
+id: BL-007
+status: open
+date: 2026-06-23
+epic: null
+tags: [recovery, awaiting-operator]
+-->
 - [open · future · own milestone, 2026-06-23] — **Operator abort / recovery for `awaiting_operator` tasks** —
   split OUT of M08-T3 (Fausto's call, 2026-06-23). M08-T3 now ships the **fence only** (worker crash mid-exec →
   `awaiting_operator` → record + surface → **kill nobody**); the *recovery gesture* an operator makes afterwards
@@ -272,6 +343,14 @@ fault tolerance, plan at `design/milestone08-transport-fault-tolerance-plan.md`.
   - **Trigger to promote:** a handful of observed real `awaiting_operator` pauses (so the recovery model is
     grounded in actual partial-effect cases, not guessed). **Source:** Fausto ↔ Claude T3 decisions, 2026-06-23.
 
+<!-- @item
+id: BL-008
+status: promoted
+promoted_to: protocol-state-event-unification-spike
+date: 2026-06-29
+epic: null
+tags: [protocol, events, tech-debt]
+-->
 - [promoted→protocol-state-event-unification-spike · planned, 2026-06-29] — **Unify protocol state-change event emission** —
   planned as `design/protocol-state-event-unification-spike.md` (exploratory only; no production-code
   implementation in the spike). Original item: after the

@@ -10,6 +10,7 @@ const wireContract = require('@agenttalk/contracts/wire-contract.json');
 
 import { Registry } from '@agenttalk/runtime-core/registry/registry';
 import { McpServer } from '@agenttalk/mcp-transport';
+import { readBacklog } from './backlog.js';
 import { AGENTTALK_MCP_TOOLS } from '@agenttalk/runtime-core/registry/mcp-tools';
 import type { AgentProvider } from '@agenttalk/contracts/types';
 import type { ScenarioDefinition } from '@agenttalk/runtime-scenarios/scenarios/types';
@@ -220,6 +221,25 @@ export function startServer(
     const topics = Array.from(new Set(conversations.map(s => s.topic))).filter(Boolean);
     console.log(`[Server] Returning ${topics.length} topics`);
     res.json(topics);
+  });
+
+  app.get('/api/backlog', (_req, res) => {
+    console.log('[Server] GET /api/backlog');
+    const { items, warnings } = readBacklog();
+    console.log(`[Server] Returning ${items.length} backlog items (${warnings.length} warnings)`);
+    res.json({ items, warnings, generatedAt: new Date().toISOString() });
+  });
+
+  app.get('/api/backlog/:id', (req, res) => {
+    const { id } = req.params;
+    console.log(`[Server] GET /api/backlog/${id}`);
+    const { items } = readBacklog();
+    const item = items.find((i) => i.id === id);
+    if (!item) {
+      res.status(404).json({ error: 'Backlog item not found' });
+      return;
+    }
+    res.json(item);
   });
 
   app.get('/api/scheduler/status', (_req, res) => {

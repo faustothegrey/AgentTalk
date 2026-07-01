@@ -312,6 +312,9 @@ fold into this unit), drop (explicitly), defer (keep, with a trigger), or — fo
 done — mark done and remove the line (git is the record). Rationale: an un-reviewed backlog is how
 parked work silently rots (it violates §5 by omission). The gate is anti-oblivion, not control —
 humans forget; the gate doesn't. A new macro unit doesn't start until its backlog pass is done.
+*(M13 tooling:* each item may carry a machine-readable `<!-- @item -->` header — see `backlog.md`'s
+Entry-format note — served at `GET /api/backlog`. The parser flags header↔prose **status drift**; the
+gate pass should clear any drift warnings as part of its disposition.*)
 
 **Epic-inception step — how a new epic is shaped (PO + Architect + Planner POV).** When a new **epic**
 is opened, the **PO** proposes it (the *what*/*why*) and, **together with the Architect**, defines the
