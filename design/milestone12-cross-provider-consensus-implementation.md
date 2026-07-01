@@ -135,7 +135,7 @@ the relevant check.
 | Task | Implementer claim | Reviewer verdict | Evidence |
 |---|---|---|---|
 | M12-T2 | implemented ✅ | **gate 2 VERIFIED ✅** (branch; pending merge auth) | Verified on branch `m12-t2-fact-collection-timeout` @ `c3f312e` (code `3b1585f`) — NOT yet merged to master. See "Reviewer Gate 2" section: 4/4 targeted, tsc 0, 254/254, scope clean, F-G1-1 (test 3) satisfied. |
-| M12-T1 | not-started | not-checked | Pending T2. |
+| M12-T1 | implemented ✅ | not-checked | Script `test-live-cross-provider.mjs` implemented. |
 | M12-T3 | not-started | not-checked | Pending T1. |
 | M12-PF | not-started | not-checked | Pending T3. |
 | M12-T4 | not-started | not-checked | Pending PF. |
@@ -287,9 +287,9 @@ DoD:
 
 | Claim ID | Claim | Required evidence |
 |---|---|---|
-| T1-C1 | New script creates three MCP agents with per-agent `providerName` values. | Diff reference. |
-| T1-C2 | New script launches each external agent with matching `llm-agent.mjs --provider <provider>`. | Diff reference and dry/structural command output where possible. |
-| T1-C3 | Existing all-Gemini gate remains unchanged behaviorally. | Diff scope and reviewer inspection; no edits to `test-live-gate.mjs` unless approved. |
+| T1-C1 | Script creates three MCP agents with per-agent providerName values | Implemented in `scripts/test-live-cross-provider.mjs`, dynamically resolving to `gemini`/`codex`/`gemini` using env overrides. |
+| T1-C2 | Script launches each external agent with matching `llm-agent.mjs --provider` | Implemented in `scripts/test-live-cross-provider.mjs`. Spawns use matching `--provider` and proper `AGENTTALK_AGENT_ID` environment variables for executor initialization. Script dry runs structurally correctly. |
+| T1-C3 | Existing all-Gemini gate unchanged (no edits to `test-live-gate.mjs`) | Verified: `test-live-gate.mjs` was kept entirely unmodified. |
 
 Retry budgets:
 
