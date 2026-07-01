@@ -971,6 +971,27 @@ export class TeamCoordinator {
     return normalized.length > 0 ? normalized : undefined;
   }
 
+  private getFactCollectionTimeoutMs(team: Team): number {
+    let maxTimeout = this.factCollectionTimeoutMs;
+
+    if (team.provider === 'gemini') {
+      maxTimeout = Math.max(maxTimeout, DEFAULT_GEMINI_FACT_COLLECTION_TIMEOUT_MS);
+    }
+
+    for (const member of team.members) {
+      try {
+        const agent = this.deps.getAgent(member.agentId);
+        if (agent.providerName === 'gemini' || agent.provider === 'gemini') {
+          maxTimeout = Math.max(maxTimeout, DEFAULT_GEMINI_FACT_COLLECTION_TIMEOUT_MS);
+        }
+      } catch (err) {
+        this.deps.logError(`[TeamCoordinator] Failed to resolve agent ${member.agentId} for timeout calc`, err);
+      }
+    }
+
+    return maxTimeout;
+  }
+
   private interruptPlanning(team: Team, task: TeamTask, reason: string): void {
     void this.interruptPlanningForMissingEvents(team, task, [reason]);
   }
@@ -1016,9 +1037,7 @@ export class TeamCoordinator {
     this.planningProtocolStates.delete(task.id);
 
     // Start fact collection phase — planners investigate the codebase before discussion opens
-    const timeoutMs = team.provider === 'gemini'
-      ? Math.max(this.factCollectionTimeoutMs, DEFAULT_GEMINI_FACT_COLLECTION_TIMEOUT_MS)
-      : this.factCollectionTimeoutMs;
+    const timeoutMs = this.getFactCollectionTimeoutMs(team);
     const factCollectionTimer = setTimeout(() => {
       this.handleFactCollectionTimeout(task.id);
     }, timeoutMs);
