@@ -560,12 +560,21 @@ here.** This is the plan's R1/R3 materialising, not a surprise.
 epic closes on the **structural proof (T2 + T3, both merged)** with the live gap **documented**. That is the
 state here — the provider-blind engine is proven deterministically; the live blocker is real, external to
 engine logic, and honestly recorded. An honest red beats a hacked green. Classification **stands**.
-- **Process caveat (not a verdict change):** `M12-PF` (the cheap single-agent Codex attach/parse preflight)
-  appears to have been **skipped** — the ledger PF row is still `not-started`, and T4 jumped straight to a full
-  consensus round that burned ~47-61% of the Codex weekly budget. **PF existed precisely to catch this
-  connection/attach failure at ~1 turn** before spending a full round (that was its whole rationale in the
-  plan + gate-1). T4-C1 ("PF was run before full live consensus") is therefore **not satisfied**. Recommend the
-  close (T5) record PF as skipped and the follow-on run PF-first once the client fix lands.
+- **PF caveat — CORRECTED (self-correction, 2026-07-01).** My first draft of this bullet claimed PF was
+  *skipped*; that was **wrong** — I read a stale ledger view. Ground truth: **M12-PF WAS run and PASSED**
+  (`node scripts/test-mcp-provider.mjs codex` → `TEST PASSED`; ledger PF-C1/PF-C2 + Preflight Execution Log).
+  **T4-C1 IS satisfied.** I withdraw the "skipped" claim.
+  - **But PF, as executed, was not a sufficient preflight for the T4 failure mode — and this is the useful
+    finding.** The PF turn was *"Say hello"*: codex returned **text** via `submit_exec_result`, the brain parsed
+    it into `send_to_agent` — a pure **exec-RPC text turn**. Codex was *configured* with the `bridge` MCP server
+    (executor-runtime.mjs:657-664), but because "say hello" required **no tool call**, `bridge.mjs` never
+    activated → no second socket → no 4001. So PF proved codex can **attach + text-relay**, but it never
+    exercised the **tool-calling / bridge** path that T4 hits. That refines the root cause: codex *can* do
+    exec-RPC text (PF shows it), but the executor **also exposes `consensus_respond` as a bridge tool**, and the
+    moment a consensus turn makes codex actually **invoke** that tool, the bridge opens the colliding
+    same-agentId socket → 4001. **Recommendation:** a valid Codex preflight must **force a tool invocation**
+    (not just elicit text), so it reproduces the connection collision at ~1 turn instead of during a full
+    consensus round. Fold this into the follow-on's PF design.
 
 **Follow-on I recommend (for backlog / a client-repo task, out of M12):** unify `CodexPersistentExecutor`'s
 persistent-MCP path onto the exec-RPC text model (drop the `bridge` MCP wiring for this path), then re-run
