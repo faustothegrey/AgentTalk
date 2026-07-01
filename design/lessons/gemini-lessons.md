@@ -24,3 +24,7 @@ here.**
 
 ### 2026-06-30 — Spiking dynamic MCP tools and system instructions
 - In a persistent CLI wrapper context (like `agy --continue` or `codex exec`), there is no native out-of-band way to inject per-turn system instructions dynamically; attempting to scope tools or instructions strictly per-phase requires significant foundational rewrites of the MCP layer. It is often safer to fall back to server-side action validation rather than fighting the execution model.
+
+### 2026-07-01 — Mixed-model Execution Contexts (Stdin vs Text Relay)
+- When transitioning an external agent client (e.g., Codex) from native tool-calling back to a raw text-exec model (to fix socket collisions), watch out for standard I/O side effects. An agent that previously managed its own tools via a persistent bridge might rely on an active `stdin` (e.g., for its internal `exec_command` tool). Piping its execution (`stdio: ['ignore', 'pipe', 'pipe']`) will close `stdin` and crash those internal tools, demonstrating that execution models must account for process environment dependencies as much as API payloads.
+- An honest partial result, like recording a derailment and stopping before burning the budget or making unauthorized changes, is significantly more valuable than a hacked success. Explicitly stating "honest partial" builds trust and ensures the team solves the true root cause.
