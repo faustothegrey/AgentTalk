@@ -13,7 +13,7 @@
 |------|------|--------|
 | **SP1** | Affordance-protocol spike (per-harness probe: dynamic skills + scoped toolset) | VERIFIED ✅ |
 | **M11-T1** | Single tool `consensus_respond(action, payload)` — wire-contract v5→v6, lockstep client (origin: M10-T3) | **DONE** ✅ merged to master |
-| **M11-T2** | Active re-prompting (current legal set in correction message) | ⬜ not started |
+| **M11-T2** | Active re-prompting (current legal set in correction message) | VERIFIED ✅ ready for human merge decision |
 | **M11-T3** | Turn-budget / Referee (bound discussion, force-advance on non-convergence) | ⬜ not started |
 
 ### SP1 Findings
@@ -382,3 +382,50 @@ Files modified:
 - gate:        tsc 0, suite 249/249, pollution clean
 - diff:        2 files, +200 additions / -20 deletions, commits pending review
 - outcome:     IMPLEMENTED, AWAITING REVIEWER GATE 2
+
+## M11-T2 Reviewer gate 2 — implementation verification
+
+**2026-07-01 — Codex reviewer verdict: VERIFIED ✅**
+
+Branch reviewed: `m11-t2-active-reprompting` at `01a4c32` (local HEAD and `origin/m11-t2-active-reprompting`
+both resolved to `01a4c32`).
+
+Evidence run/read:
+- `npx vitest run packages/runtime-core/src/registry/__tests__/team-protocol-correction.test.ts` →
+  `Test Files 1 passed (1)`, `Tests 2 passed (2)`. The run output showed:
+  - D1 correction text: `You sent action "submit_plan"`; `current phase: discussion`; legal set
+    `[opinion, agreement_proposal]`; resend instruction using `consensus_respond` with `action` and `payload`.
+  - D2 recovery: after the correction, `opinion` was accepted and routed to `planner-b`; no eject transcript entry.
+  - D3 exhaustion: repeated `submit_plan` attempts reached correction attempts `1/2`, `2/2`, then peer-safe eject on
+    the third non-compliant action; task moved to `awaiting_operator`.
+- `npx vitest run packages/runtime-core/src/registry/__tests__/team-mcp-consensus.test.ts` →
+  `Test Files 1 passed (1)`, `Tests 1 passed (1)`.
+- `tsc -b` → exit 0, no output.
+- `npm test` → contract hash verified successfully (v6); Vitest summary `Test Files 43 passed (43)`,
+  `Tests 249 passed (249)`.
+- `git diff --stat master...m11-t2-active-reprompting` → 3 files, `+212/-10`:
+  `design/milestone11-consensus-robustness-implementation.md`,
+  `packages/runtime-core/src/registry/__tests__/team-protocol-correction.test.ts`,
+  `packages/runtime-core/src/registry/team-coordinator.ts`.
+- `git status --short --branch` → `## m11-t2-active-reprompting` with no dirty files before this verdict entry.
+- `git worktree list --porcelain` → only `/Users/fausto/Software/AgentTalk`, HEAD `01a4c32`, branch
+  `refs/heads/m11-t2-active-reprompting`.
+- Read `team-coordinator.ts:1910-2068` and `team-protocol-correction.test.ts:1-169`.
+- `git diff --check -- design/milestone11-consensus-robustness-implementation.md packages/runtime-core/src/registry/__tests__/team-protocol-correction.test.ts packages/runtime-core/src/registry/team-coordinator.ts`
+  → clean before this verdict entry.
+- `node scripts/usage.mjs` → Codex weekly 30%, 5h 60%; antigravity 9% 5h.
+
+Steelman:
+- The implementation makes the smallest useful production change: it captures `phase` once in `validateProtocolStep`,
+  passes it to `askProtocolCorrection`, and rewrites correction text to the M11-T1
+  `consensus_respond(action, payload)` vocabulary.
+- The focused test directly exercises D1-D3 through the public registry/MCP path, while the existing mocked MCP
+  consensus test protects D4.
+
+Attack:
+- The implementer claim at lines 363-366 says the corrected action can "advance the phase"; the verified behavior is
+  more precise: the corrected `opinion` is accepted/routed and the task remains in `planning`. This is wording drift in
+  the claim, not a code or DoD failure.
+- No out-of-scope wire-contract, `ejectPlanner`, late-message no-op, or T3/referee surfaces changed.
+
+Gate 2 outcome: **VERIFIED ✅ — M11-T2 satisfies D1-D5 and is ready for human merge decision.**
