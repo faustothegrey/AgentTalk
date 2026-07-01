@@ -35,8 +35,8 @@ it adopts YOUR 4-epic split and the M11-floor-stays concession). The 2026-07-01 
 2. **Only after the PO's go:** task-level breakdown of the spike (the plan fixes goal/fence/DoD bar; tasks are
    yours).
 
-**Op notes:** BL-002 (auto-handoff) absorb-into-arbiter-program is recommended but **PO ratification pending** —
-do not treat it as decided. Recording infra: `packages/observability/src/recordings/` (JSONL recorder +
+**Op notes:** BL-002 (auto-handoff): the PO **deferred** the absorb-into-arbiter-program call (2026-07-01);
+it re-raises at the gate that opens arbiter Epic 1 — not decided, not yours to plan around. Recording infra: `packages/observability/src/recordings/` (JSONL recorder +
 `npm run play-recording`), opt-in via `AGENTTALK_DIAGRAM_RECORD` (default OFF, LB-24); **zero recordings exist on
 disk today** — corpus assembly is spike step 0. `@agenttalk/llm-client` is the registry-free way to call an LLM
 judge. Codex budget at primer-write: weekly 60% used, 5h window 76% used — check `node scripts/usage.mjs` at

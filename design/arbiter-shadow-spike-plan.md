@@ -80,5 +80,5 @@ why, close BL-009 thread as learning). Either outcome is a successful spike.
 ## 6. Explicitly out of scope (the program, not the spike)
 
 Facilitator extraction (Epic 1), Mode B rewiring (Epic 2), Mode A synthesis (Epic 3), single-point mitigation
-(Epic 4), the BL-002 auto-handoff absorb (PO ratification pending at the 2026-07-01 gate), and any M11-floor
+(Epic 4), the BL-002 auto-handoff absorb (PO deferred the call, 2026-07-01 — re-raise at the Epic 1 gate), and any M11-floor
 changes. The spike only *informs* these.

@@ -44,7 +44,7 @@ groundwork this session; ratification calls are marked.
 | Item | Disposition for this gate |
 |---|---|
 | **BL-001 / BL-004 / BL-006 / BL-008** | Already terminal (done/promoted/absorbed) — confirmed, no action. Note on BL-008: its residual debt (two protocol event-emission shapes) sits exactly on the surface the future facilitator-extraction epic touches → carry a "compose with arbiter Epic 1" reminder there. |
-| **BL-002 auto-handoff** | **Reopen trigger FIRED** (M11 closed). Architect recommendation: **absorb into the arbiter program** — the facilitator ("the push") is the natural owner of turn-driving, making a separate auto-handoff epic redundant. **PO ratification pending** → stays `deferred` with this note until then. |
+| **BL-002 auto-handoff** | **Reopen trigger FIRED** (M11 closed). Architect recommendation: **absorb into the arbiter program** — the facilitator ("the push") is the natural owner of turn-driving, making a separate auto-handoff epic redundant. **PO deferred the ratification (2026-07-01)** → stays `deferred`; **re-raise at the gate that opens arbiter Epic 1**. |
 | **BL-003 M07-T2 live smoke** | Blocker half-lifted (M11 shipped tolerance; quota gate remains). Likely **superseded** by the arbiter direction (the arbiter judges advancement semantically, making the old strict-protocol live bar moot). Keep `open`/parked; final supersede-or-run call when arbiter Epic 1 opens. |
 | **BL-005 worker-prompt worktree** | Unchanged — parked with explicit trigger (orchestrator collecting worker output). Not arbiter-adjacent. |
 | **BL-007 operator abort/recovery** | Unchanged — experience-triggered (needs real `awaiting_operator` cases). Not arbiter-adjacent. |
@@ -127,7 +127,9 @@ tags: [auto-handoff, turn-scheduler]
   still DEFER for its own future epic. Reopen after M11 closes. (Seed text kept below for reference.)
   **Gate update 2026-07-01: the reopen trigger FIRED (M11 closed).** Architect recommendation at the gate:
   absorb into the arbiter program (the facilitator layer owns turn-driving — see BL-009 /
-  `arbiter-consensus-draft.md`). **PO ratification pending**; stays deferred until then.
+  `arbiter-consensus-draft.md`). **PO decision (Fausto, 2026-07-01): ratification itself DEFERRED** — pressing
+  on with the arbiter spike instead. Stays `deferred`; **re-raise condition: the §3b gate that opens arbiter
+  Epic 1 (facilitator extraction)** — the natural moment, since that epic builds the layer that would absorb this.
 
 <!-- @item
 id: BL-003
