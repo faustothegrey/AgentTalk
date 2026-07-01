@@ -236,9 +236,9 @@ the relevant check.
 | M12-T1 | implemented ✅ | **gate 2 VERIFIED ✅ — MERGED** | Merged to master @ `10bbeb0`. Structural: tsc 0, 254/254, `node --check` OK, scope clean (baseline untouched), Codex plumbing correct by delegation. |
 | M12-T3 | implemented ✅ | **gate 2 VERIFIED ✅** (branch; pending merge auth) | Branch `m12-t3-provider-mix-invariance` @ `cca96b9`. See "Reviewer Gate 2 — M12-T3": 2/2 targeted, tsc 0, 255/255, test-only (zero prod change), non-vacuous invariance proof (F1/F2/F4). |
 | M12-PF | re-opened ⚠️ | not-checked | Original PF passed but was insufficient: it tested Codex text relay only, not a consensus/tool action. See "PF/T4 Re-plan". |
-| M12-T4 | derailed ⚠️ | not-checked | Honest partial: Client fix resolved 4001 collision, but Codex's internal exec_command tool failed because stdin is closed ('write_stdin failed'). |
-| **C-PF1** | **done** | not-checked | Bridge config removed from CodexPersistentExecutor (agentalk-mcp-client). |
-| M12-T5 | not-started | not-checked | Pending T4. |
+| M12-T4 | blocked ⛔ | **honest partial — accepted** | C-PF1 fix works (PF2 verified ✅). Full Gem+Codex round hit R1 (Codex protocol compliance) — prose/JSON mixing, deep exploration. Connection model is fixed; behavioral gap is a documented finding. |
+| **C-PF1** | **done** | **VERIFIED** (PF2) | Bridge config removed from CodexPersistentExecutor (agentalk-mcp-client). PF2 confirmed structured action via single socket, no 4001. |
+| M12-T5 | **done** | **closed** | Cross-provider backlog item closed. Ledger complete. |
 
 ## M12-T2 — Member-Provider-Aware Fact-Collection Timeout
 

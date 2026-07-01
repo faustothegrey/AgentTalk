@@ -95,13 +95,8 @@ date: 2026-06-30
 epic: null
 tags: [consensus, cross-provider]
 -->
-- [deferred · after M11, 2026-06-30] — **Cross-provider consensus** (e.g. planner-a Google + planner-b Nous in one
-  `planner-planner-worker` team) — deferred from M07-T2 (all-Google for budget). **Depends on M11** (consensus
-  robustness needs to be done first for reliable cross-provider rounds). Proves the centralized
-  brain mixes providers in a single consensus.
-  - **Readiness (facts: logbook LB-1/LB-2):** pair **Google + Nous** (Nous = GREEN 3/3 with a
-    valid id; it's an aggregator). **Not** OpenRouter-`:free` (flaky/429). When promoting, **fix
-    `api-client.ts` `nous` defaultModel** (`deepseek-v4-flash` 404s).
+- [**closed** · M12 complete, 2026-07-01] — **Cross-provider consensus** — M12 epic complete.
+  Structural proof (T1-T3) merged. C-PF1 fix confirmed by PF2. T4 honest partial — Codex bridge collision resolved by removing bridge MCP config; remaining R1 (protocol compliance) is a behavioral finding. Epic closed per PO Q6.
 
 <!-- @item
 id: BL-002
@@ -376,5 +371,20 @@ tags: [protocol, events, tech-debt]
   `design/llm-client-extraction-spike.md` + LB-47. **NOTE — this item's prior `[open · SPIKE/proposed]` line and the
   spike doc's "owed piece remaining" status were both stale**; ground-truth check against git found the work already
   merged (the three-layer staleness LB-47 records). **Source:** Fausto ↔ Claude, 2026-06-26/27.
+
+<!-- @item
+id: BL-009
+status: open
+date: 2026-07-01
+epic: null
+tags: [consensus, arbiter, architecture, heavyweight]
+-->
+- [open] 2026-07-01 — **Semantic arbiter & the two consensus modes** — heavyweight direction to re-architect the
+  consensus core: advancement decided by a **semantic arbiter** (reads agents' responses, advances by meaning)
+  instead of the rigid protocol state machine. Refined into **two complementary modes over one shared "push"**:
+  **A — arbiter-synthesis** (the arbiter authors the deliverable; semantic consensus) and **B — collective-signing**
+  (all agents sign the same artifact; today's protocol ≈ B). Draft: `design/arbiter-consensus-draft.md`. **Ideation
+  only — may father one or more epics; PO revisits with more input.** Absorbs/supersedes the M11 "referee"/tolerance
+  thread and composes with the SP1 affordance spike. **Source:** Fausto ↔ Claude (architect), 2026-07-01.
 
 *(add new items above this line)*
