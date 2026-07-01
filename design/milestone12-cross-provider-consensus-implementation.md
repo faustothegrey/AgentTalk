@@ -510,6 +510,68 @@ The capstone test (`PLANNER_A_PROVIDER=gemini PLANNER_B_PROVIDER=codex node scri
 - **Usage before/after:** Codex budget was significantly consumed (~47-61% used according to `usage.mjs`), prompting the manual halt.
 - **Classification:** Honest partial. The protocol logic and multi-provider mixing are seemingly functional, but the MCP transport layering between `llm-agent.mjs` and the external `Codex` CLI is incompatible with the server's connection hijacking protections.
 
+#### Reviewer second opinion (Claude, 2026-07-01) — independent root-cause assessment
+
+**Method:** SM asked for a second opinion. I read the cited code across **both** repos (not the ledger prose):
+`llm-agent.mjs`, `lib/executor-runtime.mjs` (Codex + Gemini executors), `bridge.mjs`,
+`packages/mcp-transport/src/mcp-server.ts`. Telemetry: `usage.mjs` was down (`MODULE_NOT_FOUND`) — best-effort,
+skipped, not blocking.
+
+**Q1 — Is the finding accurate? — MOSTLY YES, with one imprecision and one deeper cause the report understates.**
+- **Claim 2 (double WebSocket / one-connection-per-agentId) — CONFIRMED by code.** `CodexPersistentExecutor`
+  (persistent-MCP branch, `executor-runtime.mjs:646-664`) spawns `codex exec` configured with
+  `-c mcp_servers.bridge.args=["${bridgePath}","${agentMcpUrl}"]`, where `agentMcpUrl = ws://…?agentId=<agentId>`.
+  `bridge.mjs:12` opens **its own** `new WebSocket(url)` to that URL. Meanwhile `llm-agent.mjs:159` **already
+  holds** a live socket for the same agentId (to pull `await_turn` / `submit_exec_result`). `mcp-server.ts`
+  keeps a `Map<agentId, WebSocket>` (`:20`) and, on a second connection to a **live** agentId, **rejects with
+  `4001 "Session already active"`** (`:74-87`). So two live sockets for `planner-b` is exactly what the server
+  forbids. The mechanism is real.
+- **Claim 1 (`AGENTTALK_AGENT_ID` → `'unknown'`) — PARTIALLY INACCURATE / imprecise.** The **merged** harness
+  (T1, `test-live-cross-provider.mjs:43/48/53`) **does** set `AGENTTALK_AGENT_ID`, and `CodexPersistentExecutor`
+  spawns codex with `env: process.env` (`:674`), so `:654` should resolve to `planner-b`, **not** `unknown`. The
+  observed `unknown` most likely reflects a run before that env wiring, or a propagation gap worth pinning — but
+  it is the **secondary** issue: fixing it only moves you to Claim 2 (a correctly-named `planner-b` bridge
+  socket then collides at 4001). The report's framing "*llm-agent.mjs fails to export AGENTTALK_AGENT_ID*" is
+  slightly off — the **harness** supplies it; llm-agent.mjs merely doesn't re-derive it from `--agentId`.
+- **The report UNDER-characterises the root cause.** This is not merely "transport layering vs hijack
+  protections." The two providers' persistent executors implement **two different execution paradigms**:
+  - **Gemini = exec-RPC text relay:** `agy … --print <prompt>` (`executor-runtime.mjs:477`) → stdout **text** →
+    `llm-agent.mjs` submits it via `submit_exec_result` → the **AgentTalk brain** (`InProcessAgentDriver`)
+    parses the text into `consensus_respond`. **One** socket. Matches the harness + the plan's F3.
+  - **Codex = native MCP tool-calling:** codex calls tools **itself** via `bridge.mjs`, which opens a **second**
+    socket as the same agentId. The 4001 is the *symptom*; the *cause* is that Codex's executor was written for
+    a native-tool-calling model, **not** the exec-RPC text model the cross-provider harness and brain assume
+    (and that Gemini uses). Even with a distinct agentId it would be wrong — a `consensus_respond` from a
+    different socket wouldn't be attributed to `planner-b`'s turn.
+  - **Honesty note on my own Architect plan:** my plan's **F5** ("the client already supports Gemini + Codex in
+    persistent MCP-attach mode") was **half-right** — the class exists, but it uses a structurally different
+    connection model. The live run exposed a gap my static analysis missed. That is exactly what R1/R3 + the
+    live gate were for; recording it rather than papering over it.
+
+**Q2 — Epic-level blocker, or M12-fixable? — Genuine blocker for the LIVE DoD; correctly OUT of M12 scope.**
+The fix lives in the **client repo** (`agentalk-mcp-client`): make `CodexPersistentExecutor`'s persistent-MCP
+path run codex in **plain text-exec mode** (`codex exec <prompt>` → stdout, **no** `mcp_servers.bridge`
+config, no second socket), mirroring Gemini — so `llm-agent.mjs` remains the sole MCP client and the brain
+parses codex's text like everyone else's. That is a **cross-repo change explicitly fenced out** by this epic's
+hard rule ("no client-repo changes") and by the plan's R3. So: **report as a follow-on finding, do not fix
+here.** This is the plan's R1/R3 materialising, not a surprise.
+
+**Q3 — Does the honest-partial classification stand? — YES.** PO Q6 explicitly allows it: after ≤4 attempts the
+epic closes on the **structural proof (T2 + T3, both merged)** with the live gap **documented**. That is the
+state here — the provider-blind engine is proven deterministically; the live blocker is real, external to
+engine logic, and honestly recorded. An honest red beats a hacked green. Classification **stands**.
+- **Process caveat (not a verdict change):** `M12-PF` (the cheap single-agent Codex attach/parse preflight)
+  appears to have been **skipped** — the ledger PF row is still `not-started`, and T4 jumped straight to a full
+  consensus round that burned ~47-61% of the Codex weekly budget. **PF existed precisely to catch this
+  connection/attach failure at ~1 turn** before spending a full round (that was its whole rationale in the
+  plan + gate-1). T4-C1 ("PF was run before full live consensus") is therefore **not satisfied**. Recommend the
+  close (T5) record PF as skipped and the follow-on run PF-first once the client fix lands.
+
+**Follow-on I recommend (for backlog / a client-repo task, out of M12):** unify `CodexPersistentExecutor`'s
+persistent-MCP path onto the exec-RPC text model (drop the `bridge` MCP wiring for this path), then re-run
+M12-PF → M12-T4. Until then, cross-provider live consensus with Codex-as-planner is blocked by the client's
+executor model, **not** by anything in the AgentTalk engine.
+
 Scope:
 
 | File | Scope |
