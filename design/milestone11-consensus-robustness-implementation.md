@@ -14,7 +14,7 @@
 | **SP1** | Affordance-protocol spike (per-harness probe: dynamic skills + scoped toolset) | VERIFIED ✅ |
 | **M11-T1** | Single tool `consensus_respond(action, payload)` — wire-contract v5→v6, lockstep client (origin: M10-T3) | **DONE** ✅ merged to master |
 | **M11-T2** | Active re-prompting (current legal set in correction message) | **DONE** ✅ merged to master |
-| **M11-T3** | Turn-budget / Referee (bound discussion, force-advance on non-convergence) | Gate 2 REFUTED ❌ |
+| **M11-T3** | Turn-budget / Referee (bound discussion, force-advance on non-convergence) | **VERIFIED ✅** ready for human merge decision |
 
 ### SP1 Findings
 
