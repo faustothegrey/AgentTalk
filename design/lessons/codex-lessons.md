@@ -41,3 +41,9 @@ here.**
   timestamps/ignored state before calling them task pollution.
 - When asked for a re-check after an existing VERIFIED ledger entry, append fresh evidence rather than relying on the
   previous verdict; it preserves the audit trail without pretending the old run is today's run.
+
+### 2026-07-01 — Planner ideation capture
+- As planner, when giving a POV on an architect/PO direction draft, keep it explicitly advisory and separate from
+  gate-approved planning; this lets the idea mature without accidentally opening implementation scope.
+- When closing after a side-track ideation update, the primer should preserve the real active epic pointer and call
+  out that the ideation artifact opens no work by itself.
