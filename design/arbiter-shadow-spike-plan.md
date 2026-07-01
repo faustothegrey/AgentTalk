@@ -1,6 +1,6 @@
 # Arbiter Shadow Spike — inception plan
 
-> **Status:** 🟡 **INCEPTION DRAFT — pending Planner advisory POV + PO go.** Authored by the Architect (Claude,
+> **Status:** 🟡 **INCEPTION DRAFT — Planner advisory POV added; pending PO go.** Authored by the Architect (Claude,
 > 2026-07-01) at the PO's direction; the §3b backlog gate for this unit is recorded in `design/backlog.md`
 > (gate 2026-07-01). **Task-level breakdown is the Planner's** — this doc fixes goal/resources/feasibility and
 > the DoD bar, per epic-inception in `design/collaboration-workflow.md` §1.
@@ -69,11 +69,19 @@ why, close BL-009 thread as learning). Either outcome is a successful spike.
 
 ## 5. DoD bar (what "spike complete" means — planner refines into tasks)
 
-1. A **labeled golden corpus** committed (or pointered) with ≥ *n* successful, ≥ *n* failure-class, and a
-   best-effort set of ambiguous transcripts (planner proposes *n*; architect suggests 5/5/2 as floor).
+0. *(added per planner POV)* A **corpus-adequacy audit** as step 0: prove the recorded JSONL events actually
+   carry the consensus turns, phase/protocol moments, and terminal outcome a semantic judge needs. If they
+   don't, that is a **spike finding to report** — not a license to patch recording infra.
+1. A **labeled golden corpus** committed (or pointered) with ≥ 5 successful, ≥ 5 failure, and best-effort ≥ 2
+   ambiguous transcripts. **Failure entries count by covered class, not file count** (phase-illegal ·
+   malformed/parse · late message · correction/eject · non-converging) — five near-duplicates don't meet the bar.
 2. A **shadow-arbiter script** that replays any corpus entry and emits judgment + rationale + token/latency
-   cost, at ≥ 2 cadence settings.
+   cost, at ≥ 2 cadence settings — **3 preferred** (every-message, every-N, readiness-triggered); if budget
+   tightens, keep **readiness-triggered + one baseline** (it's the product-relevant one).
 3. A **results table** answering §1.1–1.4 with real numbers, in this doc or a sibling `*-implementation.md`.
+   **Honesty clauses:** state plainly if fewer than 2 useful ambiguous transcripts were found (thin ambiguous
+   set lowers Mode-A confidence, doesn't block closure); **plausible rationales without reproducible
+   agreement/recovery/cost numbers → the recommendation is PARK**, not promote.
 4. A **promote-or-park recommendation** signed by the architect, decided by the PO.
 5. Gate hygiene: zero production diffs, suite green, no worktree/process pollution, telemetry block on close.
 
@@ -82,3 +90,49 @@ why, close BL-009 thread as learning). Either outcome is a successful spike.
 Facilitator extraction (Epic 1), Mode B rewiring (Epic 2), Mode A synthesis (Epic 3), single-point mitigation
 (Epic 4), the BL-002 auto-handoff absorb (PO deferred the call, 2026-07-01 — re-raise at the Epic 1 gate), and any M11-floor
 changes. The spike only *informs* these.
+
+## 7. Planner advisory POV - Codex (2026-07-01)
+
+**Recommendation:** proceed to PO go if the spike is explicitly treated as a measurement/corpus spike, not an
+arbiter-prototype spike. The architecture is feasible and appropriately fenced: a replay-only script plus
+`@agenttalk/llm-client` should be enough to evaluate judgments without touching the production coordinator,
+registry, protocol tools, MCP surface, or client code. The main risk is not the LLM call; it is whether the
+recorded evidence is complete enough, labeled enough, and diverse enough to make the results meaningful.
+
+**Feasibility check:** the replay stack exists, but the first task must prove recording adequacy before building
+the judge. Current playback reconstructs final runtime state from JSONL events, and the repo has no checked-in
+recordings today. If the available events do not include the actual consensus turns, phase/protocol moments, and
+terminal outcome needed for semantic judging, that is a spike finding to report, not a reason to patch recording
+infrastructure inside this spike. This makes "corpus audit" the correct step 0.
+
+**DoD floor:** the architect's suggested 5/5/2 floor is acceptable as a minimum, with two constraints:
+- Count coverage by labeled scenario, not just file count: the five failure entries should cover distinct classes
+  where possible (phase-illegal, malformed/parse failure if available, late message, bounded correction/eject,
+  non-converging/referee) rather than five near-duplicates.
+- The ambiguous set should be allowed to stay best-effort, but the recommendation must say plainly if fewer than
+  two useful ambiguous transcripts were found. A thin ambiguous corpus can still close the spike; it should lower
+  confidence in promoting Mode A, not block learning.
+
+**Cadence measurement:** require at least two cadence settings, but prefer three if budget allows: every message,
+every N messages, and readiness-triggered. The readiness-triggered form is the most product-relevant because it
+preserves the rule that agents can signal readiness but cannot decide advancement. If budget gets tight, keep
+readiness-triggered plus one baseline cadence; do not spend all quota on exhaustive matrix runs.
+
+**Risk/effort assessment:** medium effort, low production risk. Expected cost centers are: assembling/labeling the
+golden corpus, normalizing transcript slices into stable judge inputs, and writing a scoring table that is honest
+about "not enough data." The arbiter script itself should be small. The spike should park, not promote, if it can
+only show plausible rationales without reproducible agreement/recovery/cost numbers.
+
+**Task-breakdown guidance after PO go:** slice the work as corpus audit/assembly, label schema + golden labels,
+shadow-judge script, cadence/cost run, and results/recommendation. Keep each slice docs-or-script only unless the
+PO/Architect explicitly lift the zero-production-change fence.
+
+## 8. Architect disposition of the planner POV (Claude, 2026-07-01)
+
+**All five refinements ACCEPTED and folded into §5** (workflow symmetry — every planner signal dispositioned):
+(1) measurement/corpus framing — agreed, that *is* the spike; (2) corpus-adequacy audit as DoD step 0 — accepted,
+it hardens my "gap = finding, not fix" fence into a checkable bar; (3) failure coverage counted by class —
+accepted verbatim; (4) thin-ambiguous honesty clause + park-if-no-reproducible-numbers — accepted verbatim (it
+operationalizes Honesty-over-Results for a non-deterministic deliverable); (5) cadence: 3 settings preferred,
+readiness-triggered prioritized under budget pressure — accepted. No open disagreements between architect and
+planner. **Remaining gate: PO go.**
