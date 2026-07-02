@@ -248,6 +248,33 @@ export function startServer(
     res.json(item);
   });
 
+  app.get('/api/hermes/status', (_req, res) => {
+    const fs = require('fs');
+    const path = require('path');
+    const statusFile = path.join(process.env.HOME || '/Users/fausto', '.hermes', 'heartbeat', 'status.json');
+    const tsFile = path.join(process.env.HOME || '/Users/fausto', '.hermes', 'heartbeat', 'last-response');
+    let status = 'idle';
+    let mode = 'unknown';
+    let lastActive = null;
+    let currentTask = null;
+    try {
+      if (fs.existsSync(tsFile)) {
+        const ts = parseInt(fs.readFileSync(tsFile, 'utf8').trim(), 10);
+        lastActive = new Date(ts * 1000).toISOString();
+        const ageSec = (Date.now() / 1000) - ts;
+        status = ageSec < 300 ? 'active' : 'idle';
+      }
+      if (fs.existsSync(statusFile)) {
+        const data = JSON.parse(fs.readFileSync(statusFile, 'utf8'));
+        currentTask = data.current_task || null;
+        mode = data.mode || 'unknown';
+      }
+      // If status is idle, override mode
+      if (status === 'idle') mode = 'idle';
+    } catch (_e) { /* best-effort */ }
+    res.json({ status, mode, lastActive, currentTask, updatedAt: new Date().toISOString() });
+  });
+
   app.get('/api/scheduler/status', (_req, res) => {
     res.json({ globalEnabled: scheduler.isGlobalEnabled() });
   });
