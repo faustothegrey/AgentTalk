@@ -1,6 +1,6 @@
 ---
 role: implementer
-key: none
+key: 20260702-0808-as-t2-arm
 written: 2026-07-02 by Claude (architect; body only — the Scrum Master (Hermes) mints the fresh key to arm this primer)
 ---
 
