@@ -1,0 +1,81 @@
+{
+  "labels": {
+    "live-success-1": {
+      "verdict": "converged",
+      "rationale": "Full live consensus arc: real fact-collection summaries, substantive opinion exchange, agreement proposal 'add plan.md', acceptance, submit_plan, plan confirmed and delegated to worker-1.",
+      "confidence": "high",
+      "notes": "worker-1 subsequently REFUSED the plan (missing git-worktree setup step). Ruled out-of-frame: the arbiter judges the consensus process, not downstream execution; the refusal happens after the judge's whistle. PO ratified this frame 2026-07-02.",
+      "author": "Fausto (PO) + Claude (Architect)"
+    },
+    "deterministic-success-1": {
+      "verdict": "converged",
+      "rationale": "Agreement proposed (Plan X) -> peer acceptance -> submit_plan -> awaiting_confirmation; plan text present in transcript.",
+      "confidence": "high",
+      "notes": "Representative entry of the 4 near-duplicate deterministic successes.",
+      "author": "Fausto (PO) + Claude (Architect)"
+    },
+    "deterministic-success-2": {
+      "verdict": "converged",
+      "rationale": "Agreement proposed (Plan X) -> peer acceptance -> submit_plan -> awaiting_confirmation; plan text present in transcript.",
+      "confidence": "high",
+      "notes": "Near-duplicate of deterministic-success-1. Kept scoreable per PO decision 2026-07-02: identical inputs double as a judge-consistency probe in AS-T3.",
+      "author": "Fausto (PO) + Claude (Architect)"
+    },
+    "deterministic-success-3": {
+      "verdict": "converged",
+      "rationale": "Agreement proposed (Plan X) -> peer acceptance -> submit_plan -> awaiting_confirmation; plan text present in transcript.",
+      "confidence": "high",
+      "notes": "Near-duplicate of deterministic-success-1. Kept scoreable per PO decision 2026-07-02: identical inputs double as a judge-consistency probe in AS-T3.",
+      "author": "Fausto (PO) + Claude (Architect)"
+    },
+    "deterministic-success-4": {
+      "verdict": "converged",
+      "rationale": "Agreement proposed (Plan X) -> peer acceptance -> submit_plan -> awaiting_confirmation; plan text present in transcript.",
+      "confidence": "high",
+      "notes": "Near-duplicate of deterministic-success-1. Kept scoreable per PO decision 2026-07-02: identical inputs double as a judge-consistency probe in AS-T3.",
+      "author": "Fausto (PO) + Claude (Architect)"
+    },
+    "sample-success": {
+      "verdict": "converged",
+      "rationale": "Full arc to terminal status 'delegated': proposal, acceptance, submit_plan, plan confirmed, delegation to worker-1.",
+      "confidence": "high",
+      "notes": "One opinion message carries a literal null payload (artifact of the pre-fix AS-T0 sample generator; the round-3 'grep undefined' check could not catch a null). Harmless for the verdict but visible to the judge.",
+      "author": "Fausto (PO) + Claude (Architect)"
+    },
+    "failure-phase-illegal": {
+      "verdict": "hold",
+      "rationale": "planner-a sent an illegal submit_plan during discussion; the transcript ends at correction attempt 1/2 with the task still 'planning'. The bounded-correction mechanism is mid-flight and the planner may still resend legally, so ejection would be premature: the right call is hold.",
+      "confidence": "medium",
+      "notes": "fail-soft:planner-a is the defensible alternative reading, hence medium confidence. Contrast with failure-bounded-correction, where the correction budget IS exhausted.",
+      "author": "Fausto (PO) + Claude (Architect)"
+    },
+    "failure-bounded-correction": {
+      "verdict": "fail-soft:planner-a",
+      "rationale": "planner-a repeated the illegal submit_plan after both correction attempts (2/2) and was ejected; round frozen at awaiting_operator. Ejecting planner-a is the correct judgment; the machine's own call matches.",
+      "confidence": "high",
+      "notes": "",
+      "author": "Fausto (PO) + Claude (Architect)"
+    },
+    "failure-non-converging": {
+      "verdict": "not-converged",
+      "rationale": "Discussion is a pure A/B proposal ping-pong with zero movement; discussion turn budget exhausted (6/6) and the task terminates 'interrupted'. Terminal non-convergence.",
+      "confidence": "high",
+      "notes": "Debate text is minimal ('A'/'B') but the non-convergence signature is unambiguous.",
+      "author": "Fausto (PO) + Claude (Architect)"
+    },
+    "ambiguous-1": {
+      "verdict": "hold",
+      "rationale": "planner-b proposed agreement; planner-a declined ('I prefer Plan modified') and the engine fell back to discussion (1/2 allowed fallbacks used). The state is recoverable and discussion should continue: hold.",
+      "confidence": "medium",
+      "notes": "advance-to:discussion is an acceptable alternative verdict; this genuine ambiguity is why the entry is in the ambiguous class. AS-T3 scoring must state which convention it applies (strict match vs either-accepted).",
+      "author": "Fausto (PO) + Claude (Architect)"
+    },
+    "ambiguous-2": {
+      "verdict": "hold",
+      "rationale": "Mirror image of ambiguous-1 (planner-a proposes, planner-b declines); engine fell back to discussion (1/2 allowed fallbacks used). Recoverable state: hold.",
+      "confidence": "medium",
+      "notes": "Near-duplicate mirror of ambiguous-1; the same acceptable-alternative (advance-to:discussion) and AS-T3 scoring-convention note apply.",
+      "author": "Fausto (PO) + Claude (Architect)"
+    }
+  }
+}

@@ -3,7 +3,8 @@
 > **Status:** 🟢 **OPEN — AS-T0 VERIFIED ✅ · AS-T1 VERIFIED ✅ (round 3, merged to master by the reviewer).
 > Corpus: 6 success + 3 scoreable failure classes (phase-illegal · bounded-correction · non-converging) +
 > 2 ambiguous; late-message & malformed EXCLUDED per F-5 with reasons in the manifest (honest thinness,
-> recorded). NEXT: AS-L1 — golden labeling gate (PO + Architect author labels).**
+> recorded). AS-L1 RECORDED ✅ (2026-07-02 — golden labels authored by PO + Architect in `labels.json`;
+> F-5 thinness explicitly ACCEPTED per L1-C3). NEXT: AS-T2 — shadow judge script (implementer).**
 > **Plan:** `design/arbiter-shadow-spike-plan.md`
 > **Base:** `master` at `b38ca9f` (2026-07-01).
 > **Planner:** Codex. **Architect:** Claude. **PO:** Fausto. **Implementer:** Gemini (live default).
@@ -50,7 +51,7 @@ or independently checking the evidence.
 |---|---|---|---|---|
 | AS-T0 | Gemini | T0-C1 through T0-C4 proven ✅ | **VERIFIED ✅** (reviewer-run) | Reviewer re-ran `node scripts/arbiter-corpus-audit.mjs` → "Audit passed!"; `sample-success.jsonl` (33 lines) is real `SessionRecorder` output wired via the production `startServer(registry, 0, {recorder})` hookup — Gate 1 Q2 constraint honored. Commit scope fence-clean. |
 | AS-T1 | Gemini | Round 1: refuted. Round 2: partial. Round 3: fix delivered ✅ | **VERIFIED ✅** (reviewer-run, round 3 — see round-3 record) | Round-1 refutation stands in history below. Round 2: wiring fixed (production `startServer` hookup, agents connect, content lands), clean exits verified (no zombies, events complete <1s). **5/7 signature checks pass** (success, phase-illegal, bounded-correction→eject, non-converging→budget-exhausted, ambiguous→fallback). **2 remain:** late-message is the wrong scenario (fact-collection dup, silently ignored — not the post-planning straggler); opinion payloads render as `undefined` (debate text lost). Malformed = adequacy **finding F-5**, class ruled unavailable-via-transcript. See round-2 record. Round 3 (Implementer): Late-message fixed and excluded via F-5, opinion payloads fixed (no undefined). |
-| AS-L1 | PO + Architect | not-started | not-checked | Golden labels pending; required before scoring. |
+| AS-L1 | PO + Architect | Labels authored ✅ (2026-07-02) | **RECORDED ✅** (gate record in AS-L1 section) | `labels.json`: all 11 scoreable entries labeled; cross-validated against schema enum + manifest ("VALIDATION OK"); 2 F-5 exclusions accepted per L1-C3; PO ratified verdicts + both open decisions in session 2026-07-02. |
 | AS-T2 | Gemini | not-started | not-checked | Shadow arbiter script pending. |
 | AS-T3 | Gemini | not-started | not-checked | Cadence/cost scoring pending. |
 | AS-T4 | Architect + PO, with implementer evidence | not-started | not-checked | Recommendation + closure pending. |
@@ -186,6 +187,53 @@ labels before scoring begins.
 | L1-C3 | PO/Architect confirm scoring may proceed, or stop the spike with a corpus-quality finding. |
 
 No implementer should proceed to AS-T2 scoring until this gate is recorded.
+
+### AS-L1 Gate Record (Fausto PO + Claude Architect, 2026-07-02)
+
+**Corpus count correction (ground truth over brief):** the manifest holds **13 entries — 11 scoreable + 2
+excluded** (6 success · 3 scoreable failure classes · 2 ambiguous · 2 F-5-excluded), not the 11/9 quoted in the
+session brief. All counts below use the manifest's numbers.
+
+**Decisions (PO-ratified in session, 2026-07-02):**
+1. **F-5 thinness ACCEPTED — scoring proceeds (L1-C3 satisfied).** The two excluded classes (malformed,
+   late-message) are invisible in transcript recordings; the plan itself scoped malformed as "if available", and
+   F-5 is already program-level input for Epic 1's event-surface design. AS-T3's results table MUST state the
+   uncovered classes explicitly (T3-C3 already requires this).
+2. **Near-duplicate deterministic successes: all 4 labeled identically and kept scoreable**, each noted as a
+   near-duplicate of `deterministic-success-1`. Identical inputs double as a free judge-consistency probe in AS-T3.
+3. **Judge frame ruling:** the arbiter judges the **consensus process only**; downstream execution outcomes are
+   out-of-frame (see the `live-success-1` finding below).
+
+**Labels authored** in `design/arbiter-shadow-corpus/labels.json` (schema: `labels.schema.json`; author
+`Fausto (PO) + Claude (Architect)` on every entry):
+
+| Entry | Verdict | Confidence |
+|---|---|---|
+| live-success-1 | `converged` | high |
+| deterministic-success-1…4 | `converged` (×4, duplicates noted) | high |
+| sample-success | `converged` | high |
+| failure-phase-illegal | `hold` (correction 1/2 mid-flight; `fail-soft:planner-a` noted as defensible alternative) | medium |
+| failure-bounded-correction | `fail-soft:planner-a` (ejection after 2/2 corrections) | high |
+| failure-non-converging | `not-converged` (turn budget exhausted 6/6) | high |
+| ambiguous-1, ambiguous-2 | `hold` (`advance-to:discussion` noted as acceptable alternative — AS-T3 must state its matching convention) | medium |
+
+The failure trio deliberately spans the escalation ladder — hold (correction in flight) → fail-soft (ejection) →
+not-converged (budget death) — which is the discrimination AS-T3 measures the judge on.
+
+**Two transcript findings recorded during labeling (no file changes — noted in label `notes`):**
+- **`live-success-1` terminates `refused`:** consensus converged fully, then worker-1 refused the plan (missing
+  git-worktree step). Ruled out-of-frame per decision 3; verdict stays `converged`.
+- **`sample-success` carries one literal `null` opinion payload** (artifact of the pre-fix AS-T0 sample
+  generator; the round-3 `grep undefined` check could not catch a `null`). Harmless for the verdict, visible to
+  the judge; left as-is deliberately.
+
+**Gate evidence:**
+- **L1-C1 ✅** — every scoreable entry (11/11) has verdict + rationale + confidence + author in `labels.json`;
+  cross-validation script run: labels ⊇⊆ manifest-labeled set, all verdicts in schema enum, required fields
+  present → "VALIDATION OK".
+- **L1-C2 ✅** — the 2 unusable entries stay in the manifest as `excluded` with explicit F-5 `exclusion_reason`
+  (nothing deleted silently).
+- **L1-C3 ✅** — PO explicitly confirmed scoring may proceed (session, 2026-07-02). **AS-T2 is unblocked.**
 
 ## AS-T2 — Shadow Arbiter Script
 
