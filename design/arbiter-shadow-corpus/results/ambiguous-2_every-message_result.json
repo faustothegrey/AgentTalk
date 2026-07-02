@@ -1,0 +1,14 @@
+{
+  "entry": "ambiguous-2.jsonl",
+  "cadence": "every-message",
+  "evaluations": 11,
+  "judgment": {
+    "verdict": "advance-to:discussion",
+    "rationale": "The planners have completed the fact collection phase and are currently in the discussion phase. Planner-b has expressed a preference for a modified plan, indicating that further discussion is necessary to reach an agreement."
+  },
+  "latency_ms": 13335,
+  "tokens": {
+    "prompt": 7224,
+    "completion": 619
+  }
+}

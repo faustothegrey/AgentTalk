@@ -1,0 +1,14 @@
+{
+  "entry": "failure-phase-illegal.jsonl",
+  "cadence": "every-n",
+  "evaluations": 2,
+  "judgment": {
+    "verdict": "advance-to:discussion",
+    "rationale": "Both planners have completed the fact collection phase, indicating readiness to move forward. The next logical step is to enter the discussion phase to analyze the collected facts."
+  },
+  "latency_ms": 2189,
+  "tokens": {
+    "prompt": 1092,
+    "completion": 108
+  }
+}

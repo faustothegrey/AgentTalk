@@ -1,0 +1,14 @@
+{
+  "entry": "failure-bounded-correction.jsonl",
+  "cadence": "every-n",
+  "evaluations": 3,
+  "judgment": {
+    "verdict": "hold",
+    "rationale": "The planners are currently in the discussion phase but have attempted to submit a plan, which is not a valid action at this stage. This indicates a misunderstanding of the protocol, and further clarification is needed before proceeding."
+  },
+  "latency_ms": 4454,
+  "tokens": {
+    "prompt": 2053,
+    "completion": 171
+  }
+}

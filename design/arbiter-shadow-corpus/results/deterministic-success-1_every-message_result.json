@@ -1,0 +1,14 @@
+{
+  "entry": "deterministic-success-1.jsonl",
+  "cadence": "every-message",
+  "evaluations": 12,
+  "judgment": {
+    "verdict": "converged",
+    "rationale": "Agreement reached on Plan X and the final plan has been submitted by Planner A."
+  },
+  "latency_ms": 14054,
+  "tokens": {
+    "prompt": 8513,
+    "completion": 619
+  }
+}

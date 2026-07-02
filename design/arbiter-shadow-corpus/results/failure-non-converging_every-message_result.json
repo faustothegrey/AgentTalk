@@ -1,0 +1,14 @@
+{
+  "entry": "failure-non-converging.jsonl",
+  "cadence": "every-message",
+  "evaluations": 13,
+  "judgment": {
+    "verdict": "hold",
+    "rationale": "The discussion phase was interrupted due to the exhaustion of the turn budget, and no consensus or agreement was reached among the planners."
+  },
+  "latency_ms": 14607,
+  "tokens": {
+    "prompt": 9175,
+    "completion": 642
+  }
+}

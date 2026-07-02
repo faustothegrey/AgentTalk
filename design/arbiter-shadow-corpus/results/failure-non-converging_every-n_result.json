@@ -1,0 +1,14 @@
+{
+  "entry": "failure-non-converging.jsonl",
+  "cadence": "every-n",
+  "evaluations": 4,
+  "judgment": {
+    "verdict": "advance-to:discussion",
+    "rationale": "The team has completed the fact collection phase and is now engaged in the discussion phase, exchanging messages and ideas."
+  },
+  "latency_ms": 3787,
+  "tokens": {
+    "prompt": 2951,
+    "completion": 201
+  }
+}

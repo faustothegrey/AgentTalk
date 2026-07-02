@@ -1,14 +1,14 @@
 {
   "entry": "live-success-1.jsonl",
   "cadence": "readiness-triggered",
-  "evaluations": 6,
+  "evaluations": 9,
   "judgment": {
-    "verdict": "converged",
-    "rationale": "Mock judgment"
+    "verdict": "hold",
+    "rationale": "The plan submitted by the planners does not address the worker's concerns regarding the setup or navigation into a git worktree before creating the file. Therefore, the plan cannot be executed as is, and further discussion or revision is needed."
   },
-  "latency_ms": 0,
+  "latency_ms": 11041,
   "tokens": {
-    "prompt": 60,
-    "completion": 30
+    "prompt": 9907,
+    "completion": 575
   }
 }

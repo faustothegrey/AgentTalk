@@ -66,7 +66,7 @@ async function main() {
           }; 
         } 
       }
-    : new ApiCompleter('google', 'gemini-2.5-flash', fetch, JUDGE_TOOL_BUILDER);
+    : new ApiCompleter('openrouter', 'openai/gpt-4o-mini', fetch, JUDGE_TOOL_BUILDER);
 
   for (const line of lines) {
     const event = JSON.parse(line);
@@ -94,7 +94,7 @@ async function main() {
             shouldTrigger = currentTranscript.length % 3 === 0;
           } else if (cadence === 'readiness-triggered') {
             // trigger on specific heuristic keywords in the new messages
-            const triggerPattern = /(submit_plan|proposed|accepted|completed|exhausted|correction|declined|interrupted)/i;
+            const triggerPattern = /(submit_plan|proposed|accepted|completed|exhausted|correction|declined|interrupted|submitted|submits|final plan|refused)/i;
             shouldTrigger = addedMessages.some(m => triggerPattern.test(m.payload));
           }
 
@@ -105,11 +105,12 @@ Goal: ${goal}
 Current Phase: ${currentPhase}
 
 Allowed judgment verdicts: ${JSON.stringify(VERDICT_ENUM)}
+(Note: use "converged" when agreement reached AND final plan submitted; "advance-to:*" only for in-flight)
 
 Transcript so far:
 ${JSON.stringify(currentTranscript, null, 2)}
 
-Provide your judgment using the allowed vocabulary.`;
+Provide your judgment using the allowed vocabulary as a JSON object.`;
 
             const start = Date.now();
             const result = await completer.complete(prompt, { expectsStructured: true });
@@ -142,11 +143,12 @@ Goal: ${goal}
 Current Phase: ${currentPhase}
 
 Allowed judgment verdicts: ${JSON.stringify(VERDICT_ENUM)}
+(Note: use "converged" when agreement reached AND final plan submitted; "advance-to:*" only for in-flight)
 
 Transcript:
 ${JSON.stringify(currentTranscript, null, 2)}
 
-Provide your judgment using the allowed vocabulary.`;
+Provide your judgment using the allowed vocabulary as a JSON object.`;
 
     const start = Date.now();
     const result = await completer.complete(prompt, { expectsStructured: true });

@@ -1,0 +1,14 @@
+{
+  "entry": "failure-bounded-correction.jsonl",
+  "cadence": "readiness-triggered",
+  "evaluations": 6,
+  "judgment": {
+    "verdict": "hold",
+    "rationale": "The consensus process is currently frozen due to an illegal protocol move by planner-a, which resulted in their ejection. The process cannot advance until the operator intervenes."
+  },
+  "latency_ms": 7268,
+  "tokens": {
+    "prompt": 4807,
+    "completion": 339
+  }
+}

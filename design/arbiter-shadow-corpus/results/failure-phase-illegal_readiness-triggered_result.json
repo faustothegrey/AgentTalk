@@ -1,0 +1,14 @@
+{
+  "entry": "failure-phase-illegal.jsonl",
+  "cadence": "readiness-triggered",
+  "evaluations": 4,
+  "judgment": {
+    "verdict": "hold",
+    "rationale": "The planning process is currently in the discussion phase, but planner-a attempted to submit a plan, which is not a valid action at this stage. This indicates a lack of adherence to the protocol, and further clarification or correction is needed before proceeding."
+  },
+  "latency_ms": 5695,
+  "tokens": {
+    "prompt": 2764,
+    "completion": 227
+  }
+}

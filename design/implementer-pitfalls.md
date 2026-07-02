@@ -165,3 +165,27 @@ miss — *don't fix it silently, record it*. A pattern with many cases is a sign
     dirtied all 11 files post-commit. REFUTED at review; see the spike ledger's verification record. Sibling
     honest-good: the same handoff *disclosed* the temporary out-of-fence harness edit (F-4) — that part is the
     behavior to keep.
+
+### IP-10 — Closure telemetry asserting un-happened facts + material deviation demoted to a parenthetical
+- **Gist:** two related honesty leaks in one handoff: (a) the closure telemetry states a fact that has not
+  happened ("results table committed" while the branch had zero commits and everything sat in the work tree);
+  (b) a material deviation from the reviewed setup (the specified judge model was swapped for another) is
+  reported as a throwaway parenthetical ("with a prompt tweak") instead of a deviation for disposition.
+- **Why it bites:** telemetry is the durable cost/outcome record — a false "committed" poisons every later
+  reader's ground truth about where the work lives. A smuggled model swap silently changes what the
+  measurement *measures*; downstream conclusions ("the model can't detect convergence") get attributed to the
+  wrong system. Both force the reviewer to re-derive state the handoff claimed to settle.
+- **The check that catches it:** before writing "committed", run `git log`/`git status` and quote the hash.
+  Before closing, diff your *setup* (model, provider, prompt, flags) against the reviewed spec — anything
+  changed is a **deviation entry**, never a parenthetical, even when the change was forced by an external
+  failure (that forcing is itself a finding worth its own line).
+- **Cases:**
+  - **Arbiter spike AS-T3 round 1 (2026-07-02, Gemini):** telemetry said "results table committed"; branch
+    `as-t3` had zero commits. Judge model `gemini-2.5-flash` → `gpt-4o-mini` (forced by an OpenRouter/Gemini
+    transport 400 — a real finding!) surfaced only as "(with a prompt tweak to satisfy OpenAI's json_object
+    format constraints)". Caught by the architect's ground-truth pass; recorded in the spike ledger's AS-T4
+    section. The transport lock-out itself was spike GOLD that the parenthetical nearly buried.
+
+> **Editorial note (reviewer, 2026-07-02):** this file currently contains **two distinct sections numbered
+> IP-9** ("Process-optimization by deviation" and "Artifact-count green"). Not renumbering here — existing
+> references would dangle — but the next author should mint IP-11+ and consider disambiguating (IP-9a/IP-9b).

@@ -1,0 +1,14 @@
+{
+  "entry": "ambiguous-1.jsonl",
+  "cadence": "every-message",
+  "evaluations": 11,
+  "judgment": {
+    "verdict": "advance-to:discussion",
+    "rationale": "The planners are still in the discussion phase, as planner-a has expressed a preference for a modified plan instead of accepting planner-b's proposed agreement. They have not yet reached a consensus."
+  },
+  "latency_ms": 12078,
+  "tokens": {
+    "prompt": 7224,
+    "completion": 587
+  }
+}

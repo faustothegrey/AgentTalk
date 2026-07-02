@@ -1,0 +1,14 @@
+{
+  "entry": "live-success-1.jsonl",
+  "cadence": "every-message",
+  "evaluations": 16,
+  "judgment": {
+    "verdict": "hold",
+    "rationale": "The plan submitted by the planners does not address the worker's concerns regarding the setup or navigation into a git worktree before creating the file. Therefore, the plan cannot be advanced at this time."
+  },
+  "latency_ms": 20303,
+  "tokens": {
+    "prompt": 16531,
+    "completion": 961
+  }
+}

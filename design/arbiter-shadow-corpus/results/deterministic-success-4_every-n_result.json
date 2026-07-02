@@ -1,0 +1,14 @@
+{
+  "entry": "deterministic-success-4.jsonl",
+  "cadence": "every-n",
+  "evaluations": 3,
+  "judgment": {
+    "verdict": "advance-to:discussion",
+    "rationale": "The planners have completed the fact collection phase and have proposed an agreement (Plan X). The process is now ready to advance to the discussion phase for further evaluation and potential acceptance of the proposal."
+  },
+  "latency_ms": 5615,
+  "tokens": {
+    "prompt": 1986,
+    "completion": 170
+  }
+}
