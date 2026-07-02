@@ -1349,3 +1349,9 @@ no scope change to the probe plan otherwise. The plan stays DRAFT-for-review aft
   every assistant message, machine-readable, zero tmux. Codex/agy have equivalents to verify.
 - **Status:** diagnosis only — remediation is a PO decision (options: fix `-S`/Escape in agentctl for
   codex/agy; transcript-tail channel for claude; or return to the designed delegate_task/bus path).
+- **Remediation applied (PO go, 2026-07-02, options 1+2):** `agentctl` fixed in `agent-bus` repo
+  (`09a2501`; backup `~/.local/bin/agentctl.bak-lb49`): capture for claude now reads the Claude Code session
+  transcript (falls back to tmux if absent); capture for codex/agy uses `-S - -J` (measured: codex 43,917
+  chars vs ~1.4k viewport); the blind pre-send Escape is removed (accepted cost: an open modal may swallow a
+  paste). Hermes call sites unchanged — the fix is entirely inside `agentctl capture`/`send`. Verified live:
+  claude capture returned in-progress turn text that never appeared in any tmux screenful.
