@@ -31,3 +31,6 @@ here.**
 
 ### 2026-07-02 — Validating recording systems via end-to-end edge case generation
 - When validating if an internal subsystem records edge-case failures, driving the true orchestrator engine to the failure point ensures complete simulation fidelity. Mocking or skipping phases may silence failures unexpectedly.
+
+### 2026-07-02 — API Key Availability in CLI Environment
+- When building tools that require external API access (like llm-client), explicitly verify if the current non-interactive shell or CLI runner actually has the API keys (e.g., GEMINI_API_KEY) exported. Without it, mock/dry-run paths become the only way to satisfy CI/CD constraints unless the PO steps in to provide keys or overrule real-execution gates.
