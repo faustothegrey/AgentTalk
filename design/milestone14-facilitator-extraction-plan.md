@@ -1,7 +1,7 @@
 # Milestone 14 — Facilitator Extraction (Arbiter Epic 1)
 
-**Status:** 🟡 **INCEPTION — PO + Architect complete (2026-07-02); awaiting Planner advisory POV (Codex);
-task breakdown after the PO weighs it.** No branch, no code yet.
+**Status:** 🟡 **INCEPTION — PO + Architect complete (2026-07-02); Planner advisory POV submitted (Codex);
+awaiting PO/Architect disposition; task breakdown after the PO weighs it.** No branch, no code yet.
 **PO:** Fausto · **Architect:** Claude · **Planner:** Codex · **Implementer:** Gemini (live default) ·
 **Reviewer:** Claude (reviewer + architect dual-hat, declared per gate; planner ≠ reviewer holds).
 **Program:** the arbiter direction — `design/arbiter-consensus-draft.md` (§7/§8/§10 decomposition); evidence
@@ -107,7 +107,46 @@ Zero API spend. Token-wise a mid-size refactor epic: estimated 2–3 implementer
 4. **BL-003 superseded** (dropped at the gate).
 5. **BL-002 drop committed** with the gate record.
 
-## Planner advisory POV (Codex) — PENDING
+## Planner advisory POV (Codex, 2026-07-02) — SUBMITTED
 
-*(Non-binding feasibility/risk/effort view per the workflow; PO + Architect weigh it, then the Planner does
-the task breakdown.)*
+Non-binding feasibility/risk/effort view per the workflow; PO + Architect weigh this before task breakdown.
+
+**Verdict:** **GO, with two tightening changes before implementation planning.** The epic is feasible and is the
+right first arbiter epic: the advancement authority is concentrated enough that a pure extraction can preserve
+Mode B byte-identically. The main risk is not the extraction itself; it is overclaiming what the identity proof
+proves, and letting BL-008's emission cleanup quietly widen from "one mechanism, same shapes" into a bridge or
+wire-contract change.
+
+**Feasibility.** The current surface matches the inception map: `setPlanningPhase` is the forward-spine funnel,
+`emitProtocolEvent` is the off-spine observer for `endorsed` / `eject` / `correction`, and both are already
+re-emitted by the registry. A default Facilitator can start as a deterministic policy object whose vocabulary is
+today's transition decisions only. It should not import the spike's judge verdict vocabulary yet; that belongs to
+BL-010 / the next arbiter epic.
+
+**Replay-diff bar.** Replay-diff is necessary, but as written it is not sufficient by itself as a byte-identity
+proof. The existing recording/playback path replays recorded runtime snapshots; it does not re-execute the
+coordinator against an input log, and the recorder does not currently persist `team_planning_phase` or
+`team_protocol_event` directly. T1 should therefore define a normalized identity stream before the refactor:
+strip volatile `taskId` / `teamId` / timestamps / `atMs`, compare task status, planning-complete state,
+transcript payloads, final plan, and the phase/protocol observer events captured by a harness-level listener. The
+claim should be "observable engine output is identical on this corpus", not "all internal behavior is proven
+identical." The remaining gap should be closed with focused unit/path tests that exercise all six transition
+sites and the three off-spine events.
+
+**BL-008 / emission unification.** Keep it in M14, but keep it as its own gated task after the Facilitator
+extraction. It is behavior-adjacent because the existing tests deliberately pin two separate hooks and the
+DiagramTalk bridge consumes their re-emitted shapes. The safe version is: one internal emission mechanism at the
+Facilitator boundary, adapters preserve `onPhaseChange` and `onProtocolEvent` payloads exactly, and
+`registry.ts`, bridge code, MCP contracts, and client surfaces stay untouched. If implementation discovers that
+consumer-visible shapes or ordering must change, that is not M14 cleanup; it is a show-stopper requiring PO
+scope direction.
+
+**Scope pressure.** The allowed surfaces are mostly right. I would tighten the plan text so "replay-diff harness"
+does not imply modifying the shared recording/playback infrastructure unless the specific task names that file.
+Prefer a standalone script/harness that attaches listeners to the registry or coordinator in-process and writes
+M14-owned baselines. Also explicitly forbid changing existing hook tests except additive assertions; those tests
+are behavior contracts for the bridge-facing surface.
+
+**Effort.** Medium refactor, likely three implementation tasks as sketched, with T1 doing more design work than
+the name suggests. The risky task is T3, not T2. If T1's harness cannot produce stable normalized output without
+touching shared recording infra, stop and rescope before extraction rather than weakening the identity bar.
