@@ -68,3 +68,20 @@ here.**
   right altitude — provenance belongs in descriptions, not states. Related: an excluded-class finding (F-5,
   soft-rejects invisible in recordings) is spike GOLD, not a failure to route around — it's already shaping
   Epic 1's event surface.
+
+### 2026-07-02 — AS-L1 labeled + AS-T2 verified/fixed/merged; three hats in one session
+- **As architect (labeling): read every transcript before proposing a single label.** The corpus's own payloads
+  held two facts no claim mentioned (`live-success-1` terminates `refused`; `sample-success` carries a literal
+  `null` opinion) and forced the judge-frame ruling that defines the whole metric. Also: gotchas I wrote into the
+  implementer primer (dual payload shape) became the exact review probe that caught a crash one task later —
+  minutes spent writing down a trap repay themselves at the next gate.
+- **As reviewer: probe past the claimed bar, and check the artifact against its consumers.** T2-C1 only required
+  "one entry runs", but running the *other* shape (live) found the crash + the swallowed-error exit; diffing the
+  judge's vocabulary against `labels.schema.json` (its consumer contract) found the drift. Claims-only review
+  would have VERIFIED a judge that inflates its own agreement score. When Fausto said "I haven't the faintest
+  clue," the plain-language reset (referee/answer-key analogy) unblocked a stalled gate in one turn — altitude
+  matching is reviewer work too.
+- **As temporary implementer: prefer structural fixes over value-sync fixes.** Loading `VERDICT_ENUM` from the
+  schema at runtime made vocabulary drift *impossible*, where copying the nine strings would have just deferred
+  it. And the PO later codified the reviewer-fix exception *narrower* (typo-class only) than my PO-granted
+  behavior-touching fixes — right call: anything that changes behavior should keep needing an explicit grant.
