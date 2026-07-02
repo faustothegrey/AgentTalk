@@ -1323,3 +1323,29 @@ no scope change to the probe plan otherwise. The plan stays DRAFT-for-review aft
   map by design), `[Human]` origin tag now "PO" hat (the human is PO, not Architect).
 - **Note:** the Architect deliberately has **no session-primer/handshake** — it is not a primer-keyed role. If we
   later want cold-start Architect priming, that's a separate mechanism change.
+
+### LB-49 · 2026-07-02 — [infra] Hermes⇄agent tmux channel: why Hermes cannot read Claude's replies (3 defects, measured)
+- **Trigger:** PO reported the SM flow "devastatingly blocked" — Hermes sends fine but cannot see what Claude
+  streams back through tmux. Full-depth investigation (Claude, reviewer+architect session, PO-directed; the
+  earlier file-report workaround was explicitly rejected in favour of root-causing).
+- **Transport anatomy:** Hermes → `~/.hermes/scripts/tmux-metrics.sh` (char counters in `~/.hermes/heartbeat/`)
+  → `~/.local/bin/agentctl` → tmux. Sessions: `agent-{claude,codex,agy}-<pid>`, 201×48, history-limit 2000.
+- **Defect 1 — FATAL for claude, unfixable by capture flags: alternate screen.** Claude Code's TUI runs in
+  tmux's alternate screen (`alternate_on=1`; codex/agy = 0). Alt-screen apps never push lines into tmux
+  history (`history_size=0` for claude vs 855/706 for codex/agy), so the visible viewport is ALL tmux can ever
+  see. **Measured:** `capture-pane -p` = 1,385 chars; `capture-pane -p -S -` = byte-identical 1,385. Long
+  replies scroll inside the TUI and are unrecoverable from tmux.
+- **Defect 2 — capture is viewport-only for everyone:** `agentctl` `cmd_capture` (line ~714) runs
+  `capture-pane -p` with no `-S`. For codex/agy the full reply IS in tmux history but gets discarded;
+  `-S - -J` would fix those two (not claude, per defect 1).
+- **Defect 3 — Escape-before-send is destructive:** `cmd_send` (line ~674) fires `send-keys Escape` before
+  every message "to close TUI modals". In Claude Code (and codex), Esc **interrupts the in-flight turn** — a
+  Hermes send racing a generation aborts the reply at the source.
+- **Design-intent note:** `agentctl`'s own docstring says tmux sessions are *the user's workspaces* and
+  "Hermes orchestra via delegate_task" — screen-scraping agent replies via `agentctl capture` was never the
+  designed return channel.
+- **Lossless alternative (verified to exist, not yet adopted):** Claude Code writes the full structured
+  transcript to `~/.claude/projects/<project-slug>/<session>.jsonl` live (1.1 MB for the current session) —
+  every assistant message, machine-readable, zero tmux. Codex/agy have equivalents to verify.
+- **Status:** diagnosis only — remediation is a PO decision (options: fix `-S`/Escape in agentctl for
+  codex/agy; transcript-tail channel for claude; or return to the designed delegate_task/bus path).
