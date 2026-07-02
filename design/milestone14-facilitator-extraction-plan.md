@@ -1,7 +1,7 @@
 # Milestone 14 — Facilitator Extraction (Arbiter Epic 1)
 
-**Status:** 🟡 **INCEPTION — PO + Architect complete; Planner POV submitted (Codex) and dispositioned by the
-Architect (both conditions ACCEPTED, folded into the plan, 2026-07-02). Awaiting PO go for task breakdown.**
+**Status:** 🟢 **GO FOR TASK BREAKDOWN (PO, 2026-07-02).** The plan's goal/fence/DoD bar is stable;
+> Planner (Codex) refines the 3-task sketch into proper task specs in the M14 ledger.
 No branch, no code yet.
 **PO:** Fausto · **Architect:** Claude · **Planner:** Codex · **Implementer:** Gemini (live default) ·
 **Reviewer:** Claude (reviewer + architect dual-hat, declared per gate; planner ≠ reviewer holds).
