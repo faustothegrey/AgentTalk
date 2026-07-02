@@ -1355,3 +1355,18 @@ no scope change to the probe plan otherwise. The plan stays DRAFT-for-review aft
   chars vs ~1.4k viewport); the blind pre-send Escape is removed (accepted cost: an open modal may swallow a
   paste). Hermes call sites unchanged — the fix is entirely inside `agentctl capture`/`send`. Verified live:
   claude capture returned in-progress turn text that never appeared in any tmux screenful.
+
+### LB-50 · 2026-07-02 — [process] Hermes retired from the workflow; Codex = Scrum Master + Planner; PO batons manually until M15
+- **Trigger:** PO decision after the LB-49 transport failures compounded: Hermes's agent loop wedged
+  (last-response frozen ~15:50 while `awaiting_agent`), batons and reports were dying in the tmux channel,
+  and the M14-T2 baton went out while its prerequisite ordering (T1b) was bypassed. "Hermes alone can't do
+  the arbiter via agentctl."
+- **Decisions (PO, Fausto, 2026-07-02):** (1) **Hermes is out of the process entirely** — `[Hermes]` tag
+  retired, no authority; its heartbeat endpoints and git record remain as history. (2) **Codex holds Scrum
+  Master + Planner** (declared dual role; seats' disciplines separate; reviewer stays Claude — no
+  self-review). (3) **Interim until M15 closes: the PO batons manually via the terminal**, tagging relayed
+  SM instructions `[Codex]`. (4) The M15 target picture makes AgentTalk itself the coordination substrate
+  (agents attach over MCP; the arbiter holds the threads) — the structural replacement for tmux scraping.
+- **Records updated:** `AGENT.md` (SM-status bullet, Origin Tag Protocol rewritten),
+  `design/collaboration-workflow.md` §1 (canonical SM standing), planner primer re-minted for the dual role
+  (key `20260702-1654-2bd94e`).

@@ -30,8 +30,8 @@ orchestration migration, so it can be reviewed, refined, and reused deliberately
     behalf** — the PO can always overrule, redirect, reassign, or reclaim it. **And because the PO is the figure
     immediately above the SM, it *subsumes* it: the PO may exercise any SM power directly itself** (backlog gate,
     priority, operational go/no-go, halt/rescope, baton) — not only overrule the SM's use of it.
-  - **By default the human (Fausto) holds the PO role**; the SM function is, **as of 2026-06-29, delegated
-    by default to Hermes** (the PO can reclaim or overrule it at any moment). A non-human PO would be an explicit,
+  - **By default the human (Fausto) holds the PO role**; the SM function is, **as of 2026-07-02, delegated
+    to Codex** (dual role with Planner; the PO can reclaim or overrule it at any moment). A non-human PO would be an explicit,
     documented delegation by the human — the same discipline
     that governs a delegated SM. *(`AGENT.md` carries the short statement of this role; this is the canonical one.)*
 - **Architect** — **the technical authority, distinct from the PO and subordinate to it** (split from the fused
@@ -70,14 +70,18 @@ orchestration migration, so it can be reviewed, refined, and reused deliberately
   Product Owner's authority, not the SM's** (the SM facilitates; it does not reshuffle the role map). A
   non-human SM or PO must document the reason for each go/no-go, assignment, or de-assignment in the appropriate
   durable project artifact. The function may be held by a human or by a designated agent; the current holder/delegates are named in
-  the project instructions. **Current standing (Fausto, 2026-06-29): the PO (Fausto) has delegated the SM function
-  by default to Hermes, with full *operational* authority on the PO's behalf — convening the backlog gate, setting
-  priority/sequencing and operational go/no-go, resource warn/halt/rescope, and baton facilitation; under the Origin
-  Tag Protocol a `[Hermes]` message is now binding for operational/process matters. The human (Fausto) remains the
-  PO/apex who can overrule, redirect, or reclaim the SM at any moment, and PO-level acts — role assign/reassign,
-  product scope/direction/epics, and merges — stay with the human. A non-human SM documents its reasons in a durable
-  artifact. See the Hermes-status note under the Scrum Master bullet in `AGENT.md`.** *(This supersedes the
-  2026-06-27 co-pilot-only standing.)*
+  the project instructions. **Current standing (Fausto, 2026-07-02): the PO (Fausto) has delegated the SM function
+  to Codex — a declared dual role alongside its Planner seat (each seat's gate and discipline kept separately;
+  reviewer stays Claude, so Codex never reviews its own planning) — with full *operational* authority on the PO's
+  behalf: convening the backlog gate, setting priority/sequencing and operational go/no-go, resource
+  warn/halt/rescope, and baton facilitation; under the Origin Tag Protocol a `[Codex]` message is binding for
+  operational/process matters. **Hermes is retired from the process entirely** (its agent loop wedged and its tmux
+  transport proved structurally lossy — LB-49); `[Hermes]` messages carry no authority. **Interim, until M15
+  closes: the PO batons manually via the terminal** (the communication-channel function reverts to the human).
+  The human (Fausto) remains the PO/apex who can overrule, redirect, or reclaim the SM at any moment, and PO-level
+  acts — role assign/reassign, product scope/direction/epics, and merges — stay with the human. A non-human SM
+  documents its reasons in a durable artifact. See the SM-status note under the Scrum Master bullet in
+  `AGENT.md`.** *(This supersedes the 2026-06-29 Hermes delegation.)*
   - **Standing duties** *(proactive — the SM does these on its own initiative, beyond resolving ambiguity on
     request)*:
     1. **Bring forth the backlog.** Keep the team from idling or guessing what's next: surface parked items from

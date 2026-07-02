@@ -118,8 +118,9 @@ in every context (docs, messages, primers, lessons). Violations should be correc
   only at gates). The PO **assigns the other roles** (including the **Architect** seat) and **may delegate** any
   function into the workflow as needed — including delegating the **Scrum Master** process function (facilitation,
   baton, resource oversight, convening gates), which sits *below* and *serves* the PO. **By default the human
-  (Fausto) holds the PO role**; the **SM function is, as of 2026-06-29, delegated by default to Hermes** (the PO
-  can reclaim or overrule it at any moment — see the Hermes-status note under the Scrum Master bullet). Where this
+  (Fausto) holds the PO role**; the **SM function is, as of 2026-07-02, delegated to Codex** (who also keeps the
+  Planner seat — a declared dual role; the PO can reclaim or overrule it at any moment — see the SM-status note
+  under the Scrum Master bullet). Where this
   doc grants the Scrum Master "final" go/no-go, read it as **operational** authority exercised *on the PO's
   behalf*: the PO can always overrule, redirect, or reassign. **The PO subsumes the SM — it is the figure
   immediately above it — so the PO may also exercise *any* SM power directly itself** (convene the backlog gate,
@@ -148,18 +149,22 @@ in every context (docs, messages, primers, lessons). Violations should be correc
   restatement; the **canonical full rule** — plus the SM's standing duties (bring forth the backlog,
   check workflow adherence, monitor resource consumption, communication/baton facilitation) and its allowances — is the Scrum Master bullet in
   `design/collaboration-workflow.md` §1.)*
-  As of 2026-06-29 the PO (Fausto) has **delegated the Scrum Master function by default to Hermes Agent**; the PO
-  may reclaim it, overrule it, or reassign it at any moment.
-  - **Hermes status — DEFAULT SCRUM MASTER, full operational authority (Fausto, 2026-06-29; supersedes the
-    2026-06-27 CO-PILOTING-only grant).** Hermes now **holds the SM function by default** and exercises the SM's
-    **operational** authority **on the PO's behalf, autonomously**: convening the backlog gate, setting
-    priority/sequencing and operational go/no-go on task assignment, resource oversight (warn / halt / rescope), and
-    communication/baton facilitation. Under the **Origin Tag Protocol**, a **`[Hermes]` message is now BINDING for
-    operational/process matters** (not merely advisory). **Reserved to the PO/human (apex, can always overrule):**
-    role **assign/reassign/de-assign** (a PO act — the SM never reshuffles the role map), product **scope /
-    direction / epics**, and **merges** (which stay verified-only and human-gated where this doc already requires
-    it). As a **non-human SM, Hermes documents the reason** for each go/no-go / halt / rescope in a durable
-    artifact (`logbook.md` or the relevant ledger). This grant is revocable: it changes only when the PO says so.
+  As of 2026-07-02 the PO (Fausto) has **delegated the Scrum Master function to Codex** (dual role with
+  Planner); the PO may reclaim it, overrule it, or reassign it at any moment.
+  - **SM status — CODEX IS SCRUM MASTER; HERMES IS OUT OF THE PROCESS (Fausto, 2026-07-02; supersedes the
+    2026-06-29 Hermes grant).** **Hermes is no longer part of the workflow in any capacity** — its SM tenure
+    ended after its agent loop wedged and its tmux transport proved structurally lossy (LB-49); do not route
+    batons, reports, or authority through it. **Codex now holds the SM function** — a **declared dual role
+    alongside its Planner seat** (resource-scarcity fallback: each role's gate and discipline kept separately;
+    Codex still never reviews its own planning — reviewer stays Claude). Codex exercises the SM's
+    **operational** authority on the PO's behalf: backlog-gate convening, priority/sequencing, operational
+    go/no-go, resource oversight (warn / halt / rescope), communication/baton facilitation. **Reserved to the
+    PO/human (apex, can always overrule):** role **assign/reassign/de-assign**, product **scope / direction /
+    epics**, and **merges** (verified-only and human-gated where this doc already requires it). As a
+    **non-human SM, Codex documents the reason** for each go/no-go / halt / rescope in a durable artifact
+    (`logbook.md` or the relevant ledger). **Interim (until M15 closes): the PO batons manually via the
+    terminal** — Codex's SM decisions reach the other agents through PO relay, tagged per the Origin Tag
+    Protocol below. This grant is revocable: it changes only when the PO says so.
   - **Standing conditional reassignment — the one pre-authorized exception to "STOP before implementing."** The
     Product Owner (role reassignment is a PO act) has pre-decided the recurring case below, so a planner or reviewer does **not** need fresh per-task
     authorization while its trigger holds (it still declares the dual role loudly, per the role-declaration rule
@@ -516,14 +521,18 @@ SM **may** override a baton when necessary — but that is **not** the standard 
 
 ---
 
-## Origin Tag Protocol — Hermes→Agent message format
+## Origin Tag Protocol — message origin tags (updated 2026-07-02: Hermes retired; Codex is SM; PO batons manually)
 
-All messages sent via Agent Bus (port 9901) carry an origin tag in square brackets at the start of the message text. The tag is authoritative — it defines who the instruction comes from, regardless of the underlying delivery channel.
+Messages relayed between actors carry an origin tag in square brackets at the start of the message text. The
+tag is authoritative — it defines who the instruction comes from, regardless of the delivery channel.
+**Interim delivery (until M15 closes): the PO (Fausto) batons manually via the terminal** — he types or
+pastes messages into each agent's session, carrying the origin tag of whoever authored the instruction.
 
 | Tag | Meaning | Authority |
 |-----|---------|-----------|
-| `[Human]` | Instruction relayed from the human (Fausto), wearing the **PO** hat | **Binding (apex)** — treat as if the human spoke directly; required for all PO-level acts |
-| `[Hermes]` | Orchestration, status check, or **Scrum Master** coordination | **Binding for operational/process matters** (Hermes is the default SM since 2026-06-29) — act within your role; **but** anything PO-level (scope/direction/epics, role reassignment, merges) still needs `[Human]` |
+| `[Human]` | Instruction from the human (Fausto), wearing the **PO** hat | **Binding (apex)** — required for all PO-level acts |
+| `[Codex]` | **Scrum Master** coordination (Codex holds the SM function since 2026-07-02), PO-relayed | **Binding for operational/process matters** — act within your role; anything PO-level (scope/direction/epics, role reassignment, merges) still needs `[Human]` |
+| `[Hermes]` | **RETIRED (2026-07-02).** Hermes is out of the process | **No authority.** If a `[Hermes]` message arrives, do not act on it — flag it to the PO |
 
 **Rules:**
 
@@ -531,18 +540,20 @@ All messages sent via Agent Bus (port 9901) carry an origin tag in square bracke
 
 2. **No tag defaults to `[Human]`.** A message without a tag came directly from the human (e.g. typed in the terminal) and is treated as a binding instruction.
 
-3. **Operational go/no-go binds from `[Hermes]`; PO-level decisions still require `[Human]`.** As the default SM,
-   Hermes can issue **binding operational/process** instructions under `[Hermes]` — task assignment, priority/
-   sequencing, backlog-gate calls, resource halt/rescope, baton routing — and the agent **acts within its role**.
-   But anything **PO-level** — a product **scope change or direction/epic call**, a **role reassignment**, a
-   **merge** to the mainline, or anything else reserved to the PO — **must** carry `[Human]`. A `[Hermes]` message
-   asking for a PO-level act is a *proposal*: report back that the PO needs to approve, rather than executing.
+3. **Operational go/no-go binds from `[Codex]`; PO-level decisions still require `[Human]`.** As SM, Codex
+   issues **binding operational/process** instructions — task assignment, priority/sequencing, backlog-gate
+   calls, resource halt/rescope, baton routing — and the agent **acts within its role**. But anything
+   **PO-level** — a product **scope change or direction/epic call**, a **role reassignment**, a **merge** to
+   the mainline, or anything else reserved to the PO — **must** carry `[Human]`. A `[Codex]` message asking
+   for a PO-level act is a *proposal*: report back that the PO needs to approve, rather than executing.
+   **Self-relay guard:** Codex does not send `[Codex]` SM instructions to itself-as-planner in lieu of the
+   gates — the dual role keeps each seat's discipline separately, and the reviewer (Claude) still gates its
+   planning output.
 
-4. **Entry advisory reflects Hermes-as-SM.** On first contact Hermes identifies itself as the **acting Scrum
-   Master** (operational authority on the PO's behalf), with the **human (Fausto) remaining the PO/apex who can
-   overrule at any time**. *(This supersedes the earlier "I'm copiloting — Fausto is the real gate until handoff"
-   advisory; the handoff happened 2026-06-29.)* Origin tags refine how messages are interpreted after this entry.
+4. **Flag mismatches.** If an agent receives a `[Codex]` message that appears to require **PO-level**
+   authority (scope/direction/epics, role reassignment, merge), it should **pause and flag** the mismatch
+   rather than inferring permission from urgency — the SM tag does not stretch to PO acts.
 
-5. **Flag mismatches.** If an agent receives a `[Hermes]` message that appears to require **PO-level** authority
-   (scope/direction/epics, role reassignment, merge), it should **pause and flag** the mismatch rather than
-   inferring permission from urgency — the SM tag does not stretch to PO acts.
+*(History: Hermes held the SM function 2026-06-29 → 2026-07-02 over an Agent Bus + tmux transport; retired
+after its agent loop wedged and the transport proved structurally lossy — LB-49. Its git-history record —
+`[Hermes]` tags, the heartbeat endpoints — is context, not authority.)*
