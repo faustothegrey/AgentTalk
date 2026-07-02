@@ -1,8 +1,13 @@
 # M14 - Facilitator Extraction (Arbiter Epic 1) - Implementation Ledger
 
-> **Status:** 🟢 **OPEN — M14-T1 MERGED ✅ (2026-07-02, `[Human]` go, reviewer-merged; ledger conflict
-> resolved in master's favour with branch claims folded in). NEXT: M14-T2 (facilitator extraction,
-> implementer Gemini) — identity baselines are now the committed reference. Gate 1 APPROVED ✅ 2026-07-02.**
+> **Status:** ⬛ **CLOSED — RESCOPED (PO direct decision, 2026-07-02 in session). T1 delivered & MERGED ✅
+> (`36fa888`); its identity harness/baselines now serve as the regression pin for the FROZEN protocol path.
+> T2/T3 SUPERSEDED before start by the direct-path arbiter epic (M15,
+> `design/milestone15-arbiter-consensus-plan.md`): preserving Mode B byte-identically while extracting was
+> judged too costly — the protocol machine stays intact-but-dormant and M15 builds a parallel coordinator
+> around it. Implementer (agy) stood down cleanly (was primed for T2, never started; branch deleted, 0
+> commits). T1b (harness worktree-leak fix) deprioritized with the harness's demotion to rare-use — reopen
+> if it becomes a regular gate again.**
 > **Plan:** `design/milestone14-facilitator-extraction-plan.md`
 > **Base:** `master` at `e24f07c` (2026-07-02), with M14 docs commits after it.
 > **Backlog:** BL-011 (`doing`)

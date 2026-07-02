@@ -1,6 +1,6 @@
 ---
 role: planner
-key: 20260702-1240-6ce461
+key: 20260702-1646-5d1db9
 written: 2026-07-02 by Claude (architect, minting for the planner seat)
 ---
 
@@ -10,36 +10,33 @@ AgentTalk is a multi-agent orchestration/control plane: it launches provider-bac
 gemini/claude/codex), routes structured planning/work messages through a centralized brain, and observes
 consensus/team execution via runtime events and UI surfaces.
 
-**Roles:** Fausto is PO (apex — scope, direction, role assignment, merges). Planner is Claude or Codex (default
-Codex); reviewer is Claude or Codex, ≠ planner per task; implementer is Gemini; architect for the arbiter
-program is Claude (it authored the direction and this epic's inception, so it must NOT take the planner seat —
-your independence is the point). Hermes is default Scrum Master (`[Hermes]` binds on operational matters).
-**This primer is for the planner; Codex is the expected taker.**
+**Roles:** Fausto is PO (apex). Planner: Codex (you, expected). Reviewer + Architect: Claude (dual-hat this
+epic, declared per gate; it authored the M15 direction, so planner independence is the point of your seat).
+Implementer: Gemini (idle, stood down from M14-T2, awaiting M15 baton). Hermes is default SM but currently
+**degraded** (its response loop wedged ~15:50 2026-07-02; LB-49 records the transport fixes) — expect the PO
+to relay batons directly.
 
-**Workflow / source of truth:** `design/collaboration-workflow.md`. Stable scope in `*-plan.md`, live state in
-`*-implementation.md` ledgers, `design/backlog.md` (validate edits with `npm run backlog:check`), shared facts
-in `design/logbook.md`. Verify every load-bearing claim below against those artifacts before relying on it.
+**Workflow / source of truth:** `design/collaboration-workflow.md`; backlog via `npm run backlog:check`.
+Verify every load-bearing claim below against the repo before relying on it.
 
-**Active epic: M14 — Facilitator Extraction (Arbiter Epic 1), backlog item BL-011 (`doing`).** The Arbiter
-Shadow Spike closed PROMOTED (merged `a905b2e`); PO + Architect finalized the M14 inception 2026-07-02 with a
-**leaner scope: extraction only, all judge-touching work parked to BL-010** (reopen: next arbiter epic's gate).
+**BIG CONTEXT SHIFT (verify, then internalize): M14 was CLOSED-RESCOPED by PO direct decision.** T1 merged
+(`36fa888` — its identity harness now pins the FROZEN protocol path); T2/T3 superseded before start. The new
+active epic is **M15 — Arbiter Consensus, Direct Path** (BL-012 `doing`): a **parallel ArbiterCoordinator**
+(free-form NL debate, hard turn budget, LLM arbiter at readiness-triggered cadence, arbiter AUTHORS the plan
+on `converged`, existing `awaiting_confirmation` gate ratifies, worker path unchanged). Protocol machine
+frozen, not removed. Judge: `gpt-4o-mini` via OpenRouter (PO decision).
 
 **Your assignment (two stages, gated):**
-1. **Advisory POV first** — read `design/milestone14-facilitator-extraction-plan.md` (goal, scope fence,
-   feasibility map, task sketch, DoD skeleton) and append your non-binding feasibility/risk/effort view to its
-   "Planner advisory POV" section. Program context: `design/arbiter-consensus-draft.md` §7/§8/§10 (your
-   predecessor's spike POV is §8 there); spike evidence: `design/arbiter-shadow-spike-implementation.md`
-   (especially the AS-T4 addendum). Attack the sketch, don't bless it: is the replay-diff bar sufficient as an
-   identity proof? Is T3's emission unification (BL-008 residual) safe riding with the extraction, or should it
-   be its own gated task? Is anything under- or over-scoped?
-2. **Task breakdown only after** the PO weighs the POV and gives the go — do not pre-empt it.
+1. **Advisory POV** on `design/milestone15-arbiter-consensus-plan.md` — append to its POV section. Attack
+   it: is the bypass architecture sound? Is the `consensusMode` routing touch really minimal? Are C1–C5
+   independently verifiable? Is 3 tasks the right cut? Your spike POV (draft §8) argued "shadow first, never
+   untestable oracle" — M15 makes the arbiter primary with the human gate as ratifier; if you think that
+   trade is wrong, say so plainly (non-binding, but the PO weighs it).
+2. **Breakdown only after the PO weighs the POV.**
 
-**Where state lives:** the M14 plan + `design/backlog.md` (gate record 2026-07-02), not chat.
+**Where state lives:** the M15 plan, `design/backlog.md` (second 2026-07-02 gate), the M14 ledger
+(CLOSED-RESCOPED status) — not chat.
 
-**Op notes:**
-- The epic is a **pure deterministic refactor**: zero LLM calls, byte-identical behaviour. The scope fence in
-  the plan is hard — any advancement/tolerance *rule* change is a show-stopper.
-- Baseline verified at inception: tsc 0, suite **269/269** on `master` (`e24f07c`; the M14 docs commit follows
-  it — check `git log`).
-- Poll `node scripts/usage.mjs` at start (best-effort, never blocking); skim `design/lessons/codex-lessons.md`.
-- Your private key store: `~/.codex/agenttalk-session-primer-key.json`.
+**Op notes:** poll `node scripts/usage.mjs` (best-effort); skim `design/lessons/codex-lessons.md`; your key
+store `~/.codex/agenttalk-session-primer-key.json`. Baseline at mint: suite 269/269, identity `--check`
+green, master pushed.

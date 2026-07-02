@@ -1,7 +1,8 @@
 # Milestone 14 — Facilitator Extraction (Arbiter Epic 1)
 
-**Status:** 🟢 **GATE 1 APPROVED (reviewer, 2026-07-02) — implementation open, starting M14-T1.** Live state
-lives in the ledger: `design/milestone14-facilitator-extraction-implementation.md`.
+**Status:** ⬛ **CLOSED — RESCOPED (PO, 2026-07-02): T1 delivered/merged; T2/T3 superseded by M15
+(`design/milestone15-arbiter-consensus-plan.md`, direct-path arbiter consensus).** History in the ledger:
+`design/milestone14-facilitator-extraction-implementation.md`.
 **PO:** Fausto · **Architect:** Claude · **Planner:** Codex · **Implementer:** Gemini (live default) ·
 **Reviewer:** Claude (reviewer + architect dual-hat, declared per gate; planner ≠ reviewer holds).
 **Program:** the arbiter direction — `design/arbiter-consensus-draft.md` (§7/§8/§10 decomposition); evidence

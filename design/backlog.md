@@ -40,6 +40,24 @@ show-done/show-dropped toggles ride this param). The response's `total` field al
 
 ---
 
+### Backlog gate — 2026-07-02, second gate (opening M15 · architect: Claude)
+
+Per §3b, dispositioned before opening **M15 — Arbiter Consensus, Direct Path**
+(`design/milestone15-arbiter-consensus-plan.md`). Context: **PO direct decision in session** — preserving the
+protocol machine byte-identically while extracting (M14's approach) proved too costly in practice; M15 builds
+a **parallel ArbiterCoordinator** and freezes (not removes) the protocol path. Inception ceremony compressed
+by PO: direct PO↔Architect discussion in session replaces the formal inception doc round; Planner advisory
+POV (Codex) still runs before breakdown.
+
+| Item | Disposition for this gate |
+|---|---|
+| **BL-011 M14** | **CLOSED as done-partial:** T1 delivered & merged (`36fa888`) — the identity harness now pins the frozen protocol path; T2/T3 superseded before start (PO). agy stood down cleanly; empty T2 branch deleted. T1b deprioritized (harness demoted to rare use). |
+| **BL-010 parked judge work** | **PARTIALLY ABSORBED → M15-T2:** the vocabulary gloss + judge-frame line (probe-proven) become part of M15's judge wiring. Transport fix (gemini-as-judge) + second-model spot-check **stay deferred** — reopen if/when the judge model choice is revisited. Shadow wiring is **superseded** (the arbiter is now primary, not shadow). |
+| **BL-005 / BL-007** | Unchanged — deferred, not arbiter-adjacent. |
+| **BL-012** (new) | **NEW `doing`** — M15 itself (the single doing item). |
+
+*Judge model decision (PO, this gate): `gpt-4o-mini` via OpenRouter (spike-proven, temp 0, cents).*
+
 ### Backlog gate — 2026-07-02 (opening M14 · architect: Claude)
 
 Per §3b, every item dispositioned before opening **M14 — Facilitator Extraction (Arbiter Epic 1)**,
@@ -371,13 +389,32 @@ tags: [consensus, arbiter, architecture, heavyweight]
 ### Doing (exactly one)
 
 <!-- @item
-id: BL-011
+id: BL-012
 status: doing
+date: 2026-07-02
+epic: M15
+tags: [consensus, arbiter, direct-path]
+-->
+- [doing · opened at the 2026-07-02 second gate — PO direct-path decision] — **M15 — Arbiter Consensus,
+  Direct Path** — build a **parallel `ArbiterCoordinator`**: free-form natural-language planning turns (no
+  `message_type` protocol), hard turn budget, LLM arbiter judging at readiness-triggered cadence
+  (spike-proven), **arbiter authors the plan on `converged`** → existing `awaiting_confirmation` human gate
+  ratifies → unchanged worker path. Protocol machine **frozen, not removed** (269-test suite + M14-T1
+  identity baselines pin it; later protocol reattempt reopens a working machine). Absorbs BL-010's gloss +
+  judge-frame. Target use: AgentTalk as the scrum-team coordination substrate (replacing tmux scraping —
+  LB-49). Plan: `design/milestone15-arbiter-consensus-plan.md`. **Source:** PO ↔ Architect direct session,
+  2026-07-02.
+
+<!-- @item
+id: BL-011
+status: done
 date: 2026-07-02
 epic: M14
 tags: [consensus, arbiter, facilitator, refactor]
 -->
-- [doing · opened at the 2026-07-02 gate] — **M14 — Facilitator Extraction (Arbiter Epic 1)** — extract the
+- [done · was: doing · CLOSED-RESCOPED 2026-07-02 (PO): T1 delivered+merged `36fa888` (identity harness =
+  regression pin for the frozen protocol path); T2/T3 superseded before start by M15 (BL-012)] — **M14 —
+  Facilitator Extraction (Arbiter Epic 1)** — extract the
   phase-advancement decision authority out of `team-coordinator.ts` behind a **Facilitator interface**; default
   implementation reproduces today's deterministic rules **byte-identically** (zero behaviour change, zero LLM
   calls). Absorbs the BL-008 residual (unify the two protocol event-emission shapes — same surface). Leaner
