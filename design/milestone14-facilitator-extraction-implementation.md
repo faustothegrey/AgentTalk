@@ -1,8 +1,8 @@
 # M14 - Facilitator Extraction (Arbiter Epic 1) - Implementation Ledger
 
-> **Status:** 🟢 **OPEN — Gate 1 APPROVED ✅ (reviewer, 2026-07-02). Next: M14-T1 (identity harness +
-> baselines, implementer Gemini). No task after T1 starts until the reviewer verifies T1's committed
-> baselines + harness command.**
+> **Status:** 🟢 **OPEN — M14-T1 VERIFIED ✅ (reviewer, round 2, 2026-07-02) on `m14-t1-identity-harness`;
+> merge awaits `[Human]` per the Origin Tag Protocol. On merge: M14-T2 opens (facilitator extraction,
+> implementer Gemini). Gate 1 APPROVED ✅ 2026-07-02.**
 > **Plan:** `design/milestone14-facilitator-extraction-plan.md`
 > **Base:** `master` at `e24f07c` (2026-07-02), with M14 docs commits after it.
 > **Backlog:** BL-011 (`doing`)
@@ -119,6 +119,43 @@ trap (IP-9 class): two committed baselines exist, but one records the wrong clas
 - budget:      claude weekly ~14%, session ~55% at gate end [per /usage; approximate]
 - gate:        tsc 0, suite 269/269, pollution clean, negative test run
 - outcome:     REFUTED ❌ — back to implementer on `m14-t1-identity-harness`
+
+### Reviewer Gate 2 record — round 2: **VERIFIED ✅, merge awaits `[Human]`** (Claude, reviewer + architect dual-hat declared, 2026-07-02)
+
+Fix commit `c6ee2c7` re-reviewed, everything reviewer-run on the branch:
+
+- **T1-C3 flips to VERIFIED ✅:** success baseline signature now exact — full spine
+  (`protocol_ack_pending>fact_collection>discussion>proposal_pending_endorsement>submittal_pending`),
+  protocol events = `endorsed` only, final `completed`, `planningComplete: true`, plan non-null. Failure
+  baseline unchanged and valid (`correction,correction,eject` → `awaiting_operator`). The root-cause fix is
+  real: corrected submittal trigger (`advanced to "submit_plan"`) + the harness plays operator via
+  `confirmPlan` on `awaiting_confirmation` — legitimate harness behaviour, deterministic.
+- **T1-C4 flips to VERIFIED ✅:** command documented in the branch ledger's claim row (the home the round-1
+  record offered); compare logic untouched by the fix diff, so the round-1 negative test (perturbed
+  baseline → exit 1) stands as evidence.
+- **Re-verified this round:** determinism 3/3 `--check`; volatile-leak probe clean (ids + ISO dates);
+  `npx tsc -b` exit 0; `npm test` **269/269**; `c6ee2c7` file list fence-clean (harness + success baseline +
+  branch ledger only).
+- **Claims filed this round on the branch ledger** (IP-11 answered). All five DoD rows are now VERIFIED —
+  the round-1 verdicts above stand for C1/C2/C5; this record supersedes C3/C4.
+- **Nits (recorded, non-blocking):** leftover debug `console.log`s in `mockSuccess` (harmless — console
+  output is not captured in baselines); the optional third eject-rich baseline was not kept (was optional);
+  the repo was again left checked out on the task branch (reviewer returned it to `master` again).
+  **Merge note:** the branch's ledger copy is stale (pre-refutation) — the merge must keep master's gate
+  records and fold the branch's claim-row text in.
+- **Implementer signals disposed (symmetry):** all six fix-round points accepted; point 4 ("eject-rich
+  failure-stream naturally captured") read as referring to the existing valid failure stream — accepted.
+
+**Merge NOT performed** — reserved to `[Human]` per the Origin Tag Protocol. On the PO's go the reviewer
+merges `m14-t1-identity-harness` (resolving the ledger in master's favour), and **M14-T2 opens**.
+
+**Telemetry (task closure, pending merge):**
+- task:        M14-T1 (rounds 1–2)
+- wall-clock:  2026-07-02 ~12:50 → ~16:10 (two review rounds + implementer fix round)
+- budget:      claude weekly ~14%→~15%, session ~55%→~65% [per /usage; approximate]
+- gate:        tsc 0, suite 269/269, determinism 3/3, negative test exit 1 (round 1), pollution clean
+- diff:        branch: 2 commits (`a1b0bf7`, `c6ee2c7`); 3 files at branch HEAD
+- outcome:     VERIFIED ✅ — merge awaits `[Human]`
 
 ## M14-T2 - Facilitator Interface + Extraction
 
