@@ -52,7 +52,7 @@ or independently checking the evidence.
 | AS-T0 | Gemini | T0-C1 through T0-C4 proven ✅ | **VERIFIED ✅** (reviewer-run) | Reviewer re-ran `node scripts/arbiter-corpus-audit.mjs` → "Audit passed!"; `sample-success.jsonl` (33 lines) is real `SessionRecorder` output wired via the production `startServer(registry, 0, {recorder})` hookup — Gate 1 Q2 constraint honored. Commit scope fence-clean. |
 | AS-T1 | Gemini | Round 1: refuted. Round 2: partial. Round 3: fix delivered ✅ | **VERIFIED ✅** (reviewer-run, round 3 — see round-3 record) | Round-1 refutation stands in history below. Round 2: wiring fixed (production `startServer` hookup, agents connect, content lands), clean exits verified (no zombies, events complete <1s). **5/7 signature checks pass** (success, phase-illegal, bounded-correction→eject, non-converging→budget-exhausted, ambiguous→fallback). **2 remain:** late-message is the wrong scenario (fact-collection dup, silently ignored — not the post-planning straggler); opinion payloads render as `undefined` (debate text lost). Malformed = adequacy **finding F-5**, class ruled unavailable-via-transcript. See round-2 record. Round 3 (Implementer): Late-message fixed and excluded via F-5, opinion payloads fixed (no undefined). |
 | AS-L1 | PO + Architect | Labels authored ✅ (2026-07-02) | **RECORDED ✅** (gate record in AS-L1 section) | `labels.json`: all 11 scoreable entries labeled; cross-validated against schema enum + manifest ("VALIDATION OK"); 2 F-5 exclusions accepted per L1-C3; PO ratified verdicts + both open decisions in session 2026-07-02. |
-| AS-T2 | Gemini | T2-C1 through T2-C5 met ✅ (Script added, cadences supported, offline only, mock execution works) | not-checked | `scripts/arbiter-shadow-judge.mjs` pushed to `as-t2` branch. PO (Fausto) overruled Gate 1 Q3 constraint for real LLM call; mock run suffices. |
+| AS-T2 | Gemini | T2-C1 through T2-C5 met ✅ (Script added, cadences supported, offline only, mock execution works) | **PARTIAL ⚠️** (reviewer-run — see AS-T2 round-1 record) | Mock runs verified across all 3 cadences (T2-C2 ✅); offline-only import surface verified (T2-C4 ✅); real-LLM leg waived by PO `[Human]` overrule (GEMINI_API_KEY unavailable) — real path statically consistent with `ApiCompleter`, unproven live. **3 fixes required:** verdict vocabulary ≠ `labels.schema.json` enum (T2-C3 partial); crashes on `live-success-1`'s live payload shape; crash exits 0 (error swallowed). |
 | AS-T3 | Gemini | not-started | not-checked | Cadence/cost scoring pending. |
 | AS-T4 | Architect + PO, with implementer evidence | not-started | not-checked | Recommendation + closure pending. |
 
@@ -268,6 +268,50 @@ and records rationale plus cost/latency. It must not enter the live team path.
 | One real judge call on a single small labeled entry | 1 |
 | `npx tsc -b` if TypeScript/package imports are touched | 2 |
 | `git diff --check` | 2 |
+
+## Reviewer verification — AS-T2 round 1: **PARTIAL ⚠️** (Claude, reviewer, 2026-07-02)
+
+All checks reviewer-run on the `as-t2` branch (`946a379`). Branch scope fence-clean: `scripts/arbiter-shadow-judge.mjs`
++ ledger claim row + Gemini's own lessons file.
+
+**Verified by running:**
+- **T2-C2 ✅ (cadences):** mock runs on `sample-success.jsonl` across all three cadences — `readiness-triggered`
+  6 evaluations, `every-message` 14, `every-n` 5. Sensible ordering; result JSON rows land under
+  `design/arbiter-shadow-corpus/results/`.
+- **T2-C4 ✅ (offline only):** imports are `node:fs`, `node:path`, `@agenttalk/llm-client` only — no production
+  runtime import path.
+- **T2-C5 ✅ (honest cost):** `tokens: 'unavailable'` path present and correct by read; mock exercises the
+  available-cost path (totals consistent: 6×10/6×5).
+- **T2-C1 ⚠️ under waiver:** one labeled entry runs end-to-end in mock with judgment/rationale/latency/tokens.
+  The one-real-LLM-call leg was **waived by PO `[Human]` overrule** (GEMINI_API_KEY unavailable in the CLI env);
+  the real path is statically consistent with `ApiCompleter` (`'google'` is a legal `ApiProvider`; `complete()`
+  returns `{text, usage:{prompt_tokens, completion_tokens}}` — the exact fields the script reads) but remains
+  **unproven live**. AS-T3 inherits that risk and must burn its first real call knowing it.
+- **Gate hygiene:** `tsc -b` exit 0, `git diff --check` clean, `git worktree list` clean, no stray processes.
+
+**Three defects — fix on `as-t2` before AS-T3 (all in-scope, script-only):**
+1. **T2-C3 PARTIAL — judgment vocabulary diverges from the golden schema.** The tool enum + both prompts allow
+   `advance-to:awaiting_confirmation` (not a legal label) and omit `advance-to:fact_collection`,
+   `advance-to:proposal`, `fail-soft:worker-1` (legal labels). Current goldens happen to use only the overlap
+   (hold / fail-soft:planner-a / converged / not-converged) so scoring *could* limp through, but the judge is
+   choosing from a biased menu — fewer distractors inflate agreement. Fix: import/copy the exact enum from
+   `labels.schema.json` into the tool builder and both prompt texts.
+2. **Crashes on the live payload shape.** Loader reads `event.payload.task` only; `live-success-1.jsonl` carries
+   the task at `event.payload` directly (dual-shape gotcha recorded in the AS-L1 gate record and the AS-T2
+   primer op notes). Reviewer-run proof: `node scripts/arbiter-shadow-judge.mjs …/live-success-1.jsonl --mock`
+   → `TypeError: Cannot read properties of undefined (reading 'status')`. That entry is scoreable; the judge
+   must read it. Fix: `const task = event.payload.task ?? event.payload;` (plus a sanity guard).
+3. **Errors are swallowed — crash exits 0.** `main().catch(console.error)` prints the TypeError and exits
+   success. A batch scorer in AS-T3 would record a crashed entry as a completed run — a scoring-integrity
+   hazard. Fix: set `process.exitCode = 1` in the catch.
+
+**Disposition of implementer signals:** the PO overrule on Gate 1 Q3 is `[Human]`-tagged and accepted as recorded
+(PO-level act, properly authorized); the lessons-file commit is the implementer's own file (allowed). The untracked
+`results/` artifact from the implementer's verification run is expected output at the spec'd path — left untracked;
+AS-T3 decides what gets committed.
+
+**Baton: Reviewer → Implementer.** Fix the three items on `as-t2`, re-claim with command output, hand back.
+Retry budgets for the re-round: mock rerun per entry-shape 2, `tsc -b` 2, `git diff --check` 2.
 
 ## AS-T3 — Cadence / Cost Scoring Run
 
