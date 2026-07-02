@@ -133,12 +133,12 @@ tags: [auto-handoff, turn-scheduler]
 
 <!-- @item
 id: BL-003
-status: open
+status: deferred
 date: 2026-06-20
 epic: M07
 tags: [live-smoke, quota-blocked]
 -->
-- [open] 2026-06-20 — **Re-run the M07-T2 live smoke** (`scripts/test-live-api-team.mjs`, all-Google
+- [deferred · re-statused open→deferred 2026-07-02 (PO ordering review); trigger unchanged] 2026-06-20 — **Re-run the M07-T2 live smoke** (`scripts/test-live-api-team.mjs`, all-Google
   `gemini-2.5-flash`, 2 planners + worker in-process) **after the Google daily quota resets** — the
   deferred T2.4 / IMP-1. T2 was allowed to close without it (T2.3 mocked proves the flow
   deterministically). **Reopen condition:** if this live run fails or surfaces a defect → **reopen
@@ -251,12 +251,12 @@ tags: [consensus, robustness]
 
 <!-- @item
 id: BL-005
-status: open
+status: deferred
 date: 2026-06-21
 epic: M08
 tags: [worktree, worker-prompt]
 -->
-- [open · deferred, adjacent to M08-T3] 2026-06-21 — **Worker-prompt worktree cleanup (FIND-T3b2-1)** — the worker prompt
+- [deferred · adjacent to M08-T3; re-statused open→deferred 2026-07-02 (PO ordering review)] 2026-06-21 — **Worker-prompt worktree cleanup (FIND-T3b2-1)** — the worker prompt
   (`in-process-driver.ts` `handleTeamWorkAssign`) still tells agy *"you must use strictly `git worktree`…
   or refuse,"* but the orchestrator **already** runs the worker inside a per-task worktree (its `cwd`). So
   agy creates a **nested** worktree (`./worker-worktree`) and the real change lands one level deeper than
@@ -338,12 +338,12 @@ tags: [registry, test-coverage]
 
 <!-- @item
 id: BL-007
-status: open
+status: deferred
 date: 2026-06-23
 epic: null
 tags: [recovery, awaiting-operator]
 -->
-- [open · future · own milestone, 2026-06-23] — **Operator abort / recovery for `awaiting_operator` tasks** —
+- [deferred · future · own milestone; re-statused open→deferred 2026-07-02 (PO ordering review)] 2026-06-23 — **Operator abort / recovery for `awaiting_operator` tasks** —
   split OUT of M08-T3 (Fausto's call, 2026-06-23). M08-T3 now ships the **fence only** (worker crash mid-exec →
   `awaiting_operator` → record + surface → **kill nobody**); the *recovery gesture* an operator makes afterwards
   is deferred to its own milestone. **Why deferred (Fausto):** the abort splits in two — **"stop ASAP"** is cheap
