@@ -1,8 +1,8 @@
 # Milestone 14 — Facilitator Extraction (Arbiter Epic 1)
 
-**Status:** 🟢 **GO FOR TASK BREAKDOWN (PO, 2026-07-02).** The plan's goal/fence/DoD bar is stable;
-> Planner (Codex) refines the 3-task sketch into proper task specs in the M14 ledger.
-No branch, no code yet.
+**Status:** 🟡 **TASK BREAKDOWN DRAFTED (Codex planner, 2026-07-02); awaiting Reviewer Gate 1 before
+implementation.** No branch, no code yet. Ledger:
+`design/milestone14-facilitator-extraction-implementation.md`.
 **PO:** Fausto · **Architect:** Claude · **Planner:** Codex · **Implementer:** Gemini (live default) ·
 **Reviewer:** Claude (reviewer + architect dual-hat, declared per gate; planner ≠ reviewer holds).
 **Program:** the arbiter direction — `design/arbiter-consensus-draft.md` (§7/§8/§10 decomposition); evidence
