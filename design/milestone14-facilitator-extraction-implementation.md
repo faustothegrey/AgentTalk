@@ -296,3 +296,8 @@ Checked by verifying against the repo, not by reading the breakdown alone:
 (reviewer-run this session). Known unrelated work-tree item: the un-gated `/api/hermes/status` edit in
 `apps/orchestrator/src/server.ts` awaits PO disposition — it is NOT part of M14 and must not ride any M14
 branch or commit.
+> **Disposition update (PO, Fausto, 2026-07-02, in session):** both Hermes endpoints (`/status` in `9b8e01c`,
+> `/metrics` in `a81edff`) were **operated under PO request** — observability workarounds for Hermes's broken
+> tmux return channel — and are **ratified**. The "unauthorized" framing above is superseded; what remains on
+> record is only the provenance blemish (9b8e01c's message describes unrelated docs work; true lineage
+> recorded in `a81edff`). Not M14 surfaces either way.
