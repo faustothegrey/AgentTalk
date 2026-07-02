@@ -10,6 +10,19 @@ vi.mock('@agenttalk/llm-client/api-client.js', async (importOriginal) => {
   };
 });
 
+vi.mock('child_process', () => ({
+  default: { execSync: vi.fn() },
+  execSync: vi.fn(),
+}));
+
+vi.mock('fs', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('fs')>();
+  return {
+    ...actual,
+    existsSync: vi.fn().mockReturnValue(false),
+  };
+});
+
 describe('ArbiterCoordinator', () => {
   let registry: Registry;
 
@@ -40,7 +53,7 @@ describe('ArbiterCoordinator', () => {
     expect(team.consensusMode).toBe('protocol');
 
     const task = await registry.assignTeamTask(team.id, 'test task');
-    
+
     const transcript = task.transcript;
     expect(transcript.length).toBeGreaterThan(0);
     const systemPrompt = transcript.find(t => t.kind === 'system' && String(t.payload).includes('Arbiter Mode'));
@@ -61,11 +74,11 @@ describe('ArbiterCoordinator', () => {
       { agentId: plannerB.id, role: 'planner' },
       { agentId: worker.id, role: 'worker' }
     ], undefined, 'arbiter');
-    
+
     expect(team.consensusMode).toBe('arbiter');
 
     const task = await registry.assignTeamTask(team.id, 'test task');
-    
+
     const transcript = task.transcript;
     const systemPrompt = transcript.find(t => t.kind === 'system' && String(t.payload).includes('Arbiter Mode'));
     expect(systemPrompt).toBeDefined();
@@ -111,7 +124,7 @@ describe('ArbiterCoordinator', () => {
     });
 
     await registry.handleMcpToolCall(plannerA.id, 'send_to_agent', { to: plannerB.id, payload: 'turn 1' });
-    
+
     // We need to trigger readiness so that judge is called
     (registry.getAgent(plannerA.id) as any).status = 'ready';
     (registry.getAgent(plannerB.id) as any).status = 'ready';
@@ -120,7 +133,7 @@ describe('ArbiterCoordinator', () => {
     await new Promise(r => setTimeout(r, 50));
 
     await registry.handleMcpToolCall(plannerB.id, 'send_to_agent', { to: plannerA.id, payload: 'turn 2' });
-    
+
     (registry.getAgent(plannerA.id) as any).status = 'ready';
     (registry.getAgent(plannerB.id) as any).status = 'ready';
     registry.emit('status', { id: plannerA.id, status: 'ready' });
@@ -181,7 +194,7 @@ describe('ArbiterCoordinator', () => {
     (registry.getAgent(plannerB.id) as any).status = 'ready';
     registry.emit('status', { id: plannerA.id, status: 'ready' });
     registry.emit('status', { id: plannerB.id, status: 'ready' });
-    
+
     // Wait for the async judge and synthesis to complete
     await new Promise(r => setTimeout(r, 100));
 
@@ -193,5 +206,60 @@ describe('ArbiterCoordinator', () => {
     expect(task.plan).toBe('# Final Plan\nThis is the plan.');
     expect(task.arbiterJudgeUsage?.prompt_tokens).toBe(20);
     expect(task.arbiterSynthesisUsage?.completion_tokens).toBe(15);
+  });
+
+  it('confirms a converged plan via Registry and passes to worker', async () => {
+    const plannerA = await registry.createAgent('planner-a', { provider: 'mcp', providerName: 'mock', model: 'planner-a' });
+    const plannerB = await registry.createAgent('planner-b', { provider: 'mcp', providerName: 'mock', model: 'planner-b' });
+    const worker = await registry.createAgent('worker-1', { provider: 'mcp', providerName: 'mock', model: 'worker-1' });
+
+    await registry.activateAgent(plannerA.id);
+    await registry.activateAgent(plannerB.id);
+    await registry.activateAgent(worker.id);
+
+    const team = registry.createTeam([
+      { agentId: plannerA.id, role: 'planner' },
+      { agentId: plannerB.id, role: 'planner' },
+      { agentId: worker.id, role: 'worker' }
+    ], undefined, 'arbiter');
+
+    const task = await registry.assignTeamTask(team.id, 'test task', 10);
+
+    vi.mocked(callApi).mockImplementation(async (args: any) => {
+      const messages = args.messages;
+      const lastMsg = messages[messages.length - 1].content;
+      if (lastMsg.includes('Arbiter Judge')) {
+        return {
+          text: JSON.stringify({ verdict: 'converged', rationale: 'good' }),
+          usage: { prompt_tokens: 10, completion_tokens: 10 }
+        } as any;
+      }
+      if (lastMsg.includes('Arbiter Synthesizer')) {
+        return {
+          text: '# Confirmed Plan',
+          usage: { prompt_tokens: 10, completion_tokens: 10 }
+        } as any;
+      }
+      return { text: 'mock', usage: {} } as any;
+    });
+
+    await registry.handleMcpToolCall(plannerA.id, 'send_to_agent', { to: plannerB.id, payload: 'agree' });
+
+    (registry.getAgent(plannerA.id) as any).status = 'ready';
+    (registry.getAgent(plannerB.id) as any).status = 'ready';
+    registry.emit('status', { id: plannerA.id, status: 'ready' });
+    registry.emit('status', { id: plannerB.id, status: 'ready' });
+
+    await new Promise(r => setTimeout(r, 100));
+
+    expect(task.status).toBe('awaiting_confirmation');
+
+    // Worker shouldn't be working yet
+    expect(team.status).toBe('awaiting_confirmation');
+
+    await registry.confirmTeamPlan(task.id);
+
+    expect(task.status).toBe('delegated');
+    expect(team.status).toBe('working');
   });
 });

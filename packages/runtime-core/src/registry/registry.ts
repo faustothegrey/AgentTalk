@@ -684,14 +684,23 @@ export class Registry extends EventEmitter {
   }
 
   async confirmTeamPlan(taskId: string): Promise<void> {
+    if (this.arbiterCoordinator.hasTask(taskId)) {
+      return this.arbiterCoordinator.confirmPlan(taskId);
+    }
     return this.teamCoordinator.confirmPlan(taskId);
   }
 
   async rejectTeamPlan(taskId: string, feedback: string): Promise<void> {
+    if (this.arbiterCoordinator.hasTask(taskId)) {
+      return this.arbiterCoordinator.rejectPlan(taskId, feedback);
+    }
     return this.teamCoordinator.rejectPlan(taskId, feedback);
   }
 
   async sendTeamMessage(taskId: string, targetRole: TeamRole, message: string): Promise<void> {
+    if (this.arbiterCoordinator.hasTask(taskId)) {
+      return this.arbiterCoordinator.sendUserMessage(taskId, targetRole, message);
+    }
     return this.teamCoordinator.sendUserMessage(taskId, targetRole, message);
   }
 

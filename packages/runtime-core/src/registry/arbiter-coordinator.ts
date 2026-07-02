@@ -141,7 +141,7 @@ export class ArbiterCoordinator {
     }
 
     const messageText = typeof payload === 'string' ? payload : JSON.stringify(payload);
-    
+
     const peerIds = team.members
       .filter((m) => m.role === 'planner' && m.agentId !== senderAgentId)
       .map((m) => m.agentId);
@@ -170,27 +170,27 @@ export class ArbiterCoordinator {
     }
 
     this.deps.emitTeamTask(task);
-    
+
     return true;
   }
 
   async handleAgentStatus(agentId: string, status: string) {
     if (status !== 'ready') return;
-    
+
     for (const task of this.tasks.values()) {
       if (task.status !== 'planning') continue;
-      
+
       const team = this.deps.getTeam(task.teamId);
       if (!team || team.consensusMode !== 'arbiter') continue;
-      
+
       const planners = team.members.filter(m => m.role === 'planner');
       if (!planners.some(p => p.agentId === agentId)) continue;
-      
+
       const allReady = planners.every(p => {
         const agent = this.deps.getAgent(p.agentId);
         return agent?.status === 'ready';
       });
-      
+
       if (allReady) {
         this.evaluateConvergence(team, task).catch(err => {
             this.deps.logError(`[ArbiterCoordinator] Evaluation failed for task ${task.id}:`, err);
@@ -204,13 +204,13 @@ export class ArbiterCoordinator {
       return;
     }
     this.evaluatingTasks.add(task.id);
-    
+
     try {
        const messages = task.transcript.map(t => ({
            role: (t.from === 'user' || t.from === 'system') ? 'system' : 'user',
            content: `[${t.from}]: ${t.payload}`
        }));
-       
+
        messages.push({
            role: 'system',
            content: JUDGE_PROMPT
@@ -231,7 +231,7 @@ export class ArbiterCoordinator {
        const response = JSON.parse(res.text);
        const verdict = response.verdict;
        const rationale = response.rationale;
-       
+
        const now = new Date().toISOString();
        task.transcript.push({
          kind: 'system',
@@ -267,7 +267,7 @@ export class ArbiterCoordinator {
            role: (t.from === 'user' || t.from === 'system') ? 'system' : 'user',
            content: `[${t.from}]: ${t.payload}`
        }));
-       
+
        messages.push({
            role: 'system',
            content: SYNTHESIS_PROMPT
@@ -297,7 +297,7 @@ export class ArbiterCoordinator {
        task.planningComplete = true;
        task.status = 'awaiting_confirmation';
        task.updatedAt = now;
-       
+
        team.status = 'awaiting_confirmation';
        team.updatedAt = now;
 
@@ -316,7 +316,7 @@ export class ArbiterCoordinator {
       payload: `Arbiter failed-soft (not-converged): ${reason}`,
     });
     task.updatedAt = now;
-    
+
     team.status = 'interrupted';
     team.updatedAt = now;
 
@@ -330,5 +330,122 @@ export class ArbiterCoordinator {
          reason,
        });
     }
+  }
+
+  hasTask(taskId: string): boolean {
+    return this.tasks.has(taskId);
+  }
+
+  async confirmPlan(taskId: string): Promise<void> {
+    const task = this.getTask(taskId);
+    if (!task) throw new Error(`Arbiter task ${taskId} not found`);
+    const team = this.deps.getTeam(task.teamId);
+    if (!team) throw new Error(`Team ${task.teamId} not found`);
+
+    if (task.status !== 'awaiting_confirmation') {
+      throw new Error(`Cannot confirm plan: task status is ${task.status}`);
+    }
+
+    const worker = team.members.find(m => m.role === 'worker');
+    if (!worker) throw new Error('Worker not found');
+
+    task.planConfirmed = true;
+    task.status = 'delegated';
+
+    const now = new Date().toISOString();
+    task.transcript.push({
+      kind: 'system',
+      timestamp: now,
+      from: 'user',
+      to: worker.agentId,
+      payload: 'Plan confirmed. Delegating to worker.',
+    });
+
+    team.status = 'working';
+    team.updatedAt = now;
+    task.updatedAt = now;
+
+    this.deps.emitTeam(team);
+    this.deps.emitTeamTask(task);
+
+    const GIT_WORKTREE_REQUIREMENT = [
+      'Execution requirement: use strictly `git worktree` for this task.',
+      'If you cannot or will not use a git worktree, refuse the assignment and abort the task.',
+    ].join(' ');
+
+    await this.deps.sendProtocol(worker.agentId, 'EVT', {
+      type: 'team_work_assign',
+      teamId: team.id,
+      taskId: task.id,
+      role: 'worker',
+      plan: `${task.plan!}\n\n${GIT_WORKTREE_REQUIREMENT}`,
+      description: task.description,
+    });
+  }
+
+  async rejectPlan(taskId: string, feedback: string): Promise<void> {
+    const task = this.getTask(taskId);
+    if (!task) throw new Error(`Arbiter task ${taskId} not found`);
+    const team = this.deps.getTeam(task.teamId);
+    if (!team) throw new Error(`Team ${task.teamId} not found`);
+
+    if (task.status !== 'awaiting_confirmation') {
+      throw new Error(`Cannot reject plan: task status is ${task.status}`);
+    }
+
+    task.status = 'planning';
+    task.planningComplete = false;
+    delete task.plan;
+
+    const now = new Date().toISOString();
+    task.transcript.push({
+      kind: 'system',
+      timestamp: now,
+      from: 'user',
+      to: 'system',
+      payload: `Plan rejected by operator: ${feedback}`,
+    });
+
+    team.status = 'planning';
+    team.updatedAt = now;
+    task.updatedAt = now;
+
+    this.deps.emitTeam(team);
+    this.deps.emitTeamTask(task);
+
+    const planners = team.members.filter(m => m.role === 'planner');
+    for (const planner of planners) {
+      await this.deps.sendProtocol(planner.agentId, 'EVT', {
+        type: 'message_received',
+        from: 'user',
+        payload: `Your plan was rejected. Feedback: ${feedback}\n\nPlease revise your plan and discuss further.`,
+      });
+    }
+  }
+
+  async sendUserMessage(taskId: string, targetRole: 'planner' | 'worker', message: string): Promise<void> {
+    const task = this.getTask(taskId);
+    if (!task) throw new Error(`Arbiter task ${taskId} not found`);
+    const team = this.deps.getTeam(task.teamId);
+    if (!team) throw new Error(`Team ${task.teamId} not found`);
+    const member = team.members.find(m => m.role === targetRole);
+    if (!member) throw new Error(`Member with role ${targetRole} not found`);
+
+    const now = new Date().toISOString();
+    task.transcript.push({
+      kind: 'message',
+      timestamp: now,
+      from: 'user',
+      to: member.agentId,
+      payload: message,
+    });
+
+    this.deps.emitTeamTask(task);
+
+    await this.deps.sendProtocol(member.agentId, 'EVT', {
+      type: 'message_received',
+      from: 'user',
+      payload: message,
+    });
   }
 }
