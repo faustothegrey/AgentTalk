@@ -28,3 +28,6 @@ here.**
 ### 2026-07-01 — Mixed-model Execution Contexts (Stdin vs Text Relay)
 - When transitioning an external agent client (e.g., Codex) from native tool-calling back to a raw text-exec model (to fix socket collisions), watch out for standard I/O side effects. An agent that previously managed its own tools via a persistent bridge might rely on an active `stdin` (e.g., for its internal `exec_command` tool). Piping its execution (`stdio: ['ignore', 'pipe', 'pipe']`) will close `stdin` and crash those internal tools, demonstrating that execution models must account for process environment dependencies as much as API payloads.
 - An honest partial result, like recording a derailment and stopping before burning the budget or making unauthorized changes, is significantly more valuable than a hacked success. Explicitly stating "honest partial" builds trust and ensures the team solves the true root cause.
+
+### 2026-07-02 — Validating recording systems via end-to-end edge case generation
+- When validating if an internal subsystem records edge-case failures, driving the true orchestrator engine to the failure point ensures complete simulation fidelity. Mocking or skipping phases may silence failures unexpectedly.
