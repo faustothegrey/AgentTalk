@@ -226,7 +226,7 @@ export function startServer(
   app.get('/api/backlog', (req, res) => {
     console.log('[Server] GET /api/backlog');
     const { items, warnings } = readBacklog();
-    // Default view = the live queue (doing + todo); pass ?all=true for done/dropped too
+    // Default view = the live queue (doing + todo); pass ?all=true for done/dropped/deferred too
     // (the future UI toggles ride this param).
     const all = req.query.all === 'true';
     const visible = all ? items : activeBacklogItems(items);

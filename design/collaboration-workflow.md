@@ -218,7 +218,7 @@ written down does not survive the handoff.
 | **Caveats / discussion agenda** | Consolidated open issues, severity-tagged, with a resolution-status table after each revision and a readiness verdict. |
 | **`<name>-plan.md`** *(from M07)* | The stable plan for one milestone/epic. **Authored by the Planner**, with its **architecture decisions owned by the Architect**. Scope, decisions, acceptance criteria, **Definition of Done**. Changes only on a real design change — **no status churn here**. |
 | **`<name>-implementation.md`** *(from M07)* | The volatile **status ledger** for that epic. A claim/verdict table (below) + an append-only log. The **implementer** records claims; the **reviewer** records verified/refuted verdicts. |
-| **`backlog.md`** *(from M07; redefined by the PO 2026-07-02)* | **The ordered task list of the project — the dashboard.** Tasks **done**, the **one** task being worked on (**doing**), and tasks **to be done next, in sequence** (**todo**) — plus **dropped** for work deliberately abandoned. **Four states, period: `todo · doing · done · dropped`.** File order IS the timeline (done on top → doing → todo queue in planned order); provenance/triggers/lineage live in item *descriptions*, never in states. Served at `GET /api/backlog`. See §3b's loud definition. |
+| **`backlog.md`** *(from M07; redefined by the PO 2026-07-02; `deferred` added 2026-07-02)* | **The ordered task list of the project — the dashboard.** Tasks **done**, the **one** task being worked on (**doing**), tasks **deferred** (intentionally parked, with a reopen condition), tasks **to be done next, in sequence** (**todo**), and **dropped** (deliberately abandoned). **Five states, period: `todo · doing · deferred · done · dropped`.** File order IS the timeline (done on top → doing → deferred → todo queue in planned order); provenance/triggers/lineage live in item *descriptions*, never in states. Served at `GET /api/backlog`. See §3b's loud definition. |
 | **`logbook.md`** *(from M07)* | Append-only, dated log of cross-cutting **findings/gotchas** not tied to one task (environment, providers, real system behaviour). Backlog is *work to do*; the logbook is *facts we learned*. |
 | **`implementer-pitfalls.md`** *(from M07)* | Append-only **case law** for the Implementer Rules of Engagement: reviewer-observed *behavioural* anti-patterns (hasty claims, misread scope, weakened bars), each as gist + concrete cases (stable `IP-N` ids). The logbook is *facts we learned*; this is *how we slipped*. Implementer skims it as part of the Rule-6 scope declaration; reviewer appends a case on every behavioural miss. |
 | **`lessons/<agent>-lessons.md`** *(from 2026-06-27)* | **Per-agent, self-authored** append-only lessons learned (Claude/Codex/Gemini/Hermes — "each its own"). Written at **session close**, **skimmed at session start** so each agent sharpens over time. Self-reflection on *how I work* — distinct from the logbook (shared *facts*) and implementer-pitfalls (reviewer case law on the *implementer*). |
@@ -310,9 +310,14 @@ smallest independently reviewable + mergeable unit; a.k.a. a "story"). Each task
 supersedes the earlier "rolling parking lot" model).** `backlog.md` is **the ordered task list of the
 project**: tasks **done**, the task **currently being worked on**, and tasks **to be done next, in
 sequence**. That is the whole model. Its rules:
-1. **Exactly four states — `todo · doing · done · dropped`. Period.** No open/parked/deferred/
-   promoted/absorbed — an item is waiting its turn (`todo`), being worked (`doing`), finished
-   (`done`), or deliberately abandoned (`dropped`, never silently).
+1. **Exactly five states — `todo · doing · deferred · done · dropped`. Period.** No open/parked/
+   promoted/absorbed — an item is waiting its turn (`todo`), being worked (`doing`), intentionally
+   parked with a reopen condition (`deferred`), finished (`done`), or deliberately abandoned
+   (`dropped`, never silently).
+2. **A `deferred` item MUST carry a reopen condition in its description** — the concrete event,
+   condition, or trigger that would bring it back to `todo`. Without one, the item is actually
+   `dropped`. This is the discipline that keeps `deferred` honest: a parked item rots only if
+   nobody checks the trigger.
 2. **Exactly one item is `doing` at any time.** It is the project's current task.
 3. **File order IS the sequence** — done history on top, the `doing` item after it, then the `todo`
    queue **in planned order** (first `todo` = next up). Inserting a `todo` is a priority decision.

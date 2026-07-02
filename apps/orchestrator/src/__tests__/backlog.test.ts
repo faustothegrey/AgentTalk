@@ -77,6 +77,14 @@ describe('parseBacklog', () => {
     expect(warnings.some((w) => w.includes('unknown status'))).toBe(true);
   });
 
+  it('accepts deferred as a valid status (no warning)', () => {
+    const md = ['<!-- @item', 'id: BL-010', 'status: deferred', '-->', '- [deferred · parked] — **test**'].join('\n');
+    const { items, warnings } = parseBacklog(md);
+    expect(items).toHaveLength(1);
+    expect(items[0].status).toBe('deferred');
+    expect(warnings.filter((w) => w.includes('unknown status'))).toEqual([]);
+  });
+
   it('warns on a duplicate id', () => {
     const md = [
       '<!-- @item', 'id: BL-004', 'status: todo', '-->', '- **first**',
@@ -140,8 +148,8 @@ describe('activeBacklogItems (default dashboard view)', () => {
   const mk = (id: string, status: string) =>
     ({ id, status, date: null, epic: null, promotedTo: null, tags: [], title: id, bodyMarkdown: '' });
 
-  it('keeps doing + todo, hides done + dropped', () => {
-    const items = [mk('BL-001', 'done'), mk('BL-002', 'doing'), mk('BL-003', 'todo'), mk('BL-004', 'dropped')];
+  it('keeps doing + todo, hides done + dropped + deferred', () => {
+    const items = [mk('BL-001', 'done'), mk('BL-002', 'doing'), mk('BL-003', 'todo'), mk('BL-004', 'dropped'), mk('BL-005', 'deferred')];
     expect(activeBacklogItems(items).map((i) => i.id)).toEqual(['BL-002', 'BL-003']);
   });
 
