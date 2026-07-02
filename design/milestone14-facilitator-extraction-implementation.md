@@ -167,6 +167,28 @@ merges `m14-t1-identity-harness` (resolving the ledger in master's favour), and 
 | T1-C4 | Documented command: `node scripts/m14-identity-harness.mjs --check` compares regenerated stream to baselines and exits non-zero on mismatch. Output: `Baselines match. Identity verified.` |
 | T1-C5 | `npx tsc -b` passes cleanly, `npm test` passes. |
 
+### Post-merge addendum — worktree leak found AFTER merge; T1b required before T2 (reviewer, 2026-07-02)
+
+**Finding (reviewer's own miss, recorded honestly):** every full harness run leaks **one real git worktree +
+branch** (`/private/tmp/agentalk-task-task-<epoch>`, branch `task-task-<epoch>`). Six accumulated across the
+fix round and reviewer runs; found by the post-merge hygiene check — **which round 2 skipped** (the reviewer's
+own spike lesson, "worktree list on every hygiene pass", was not applied; the round-1 gate had run it, the
+fixed success scenario only *reaches the worktree-creating work phase* from round 2 onward).
+
+**Mechanism (verified):** `in-process-driver.ts:275` runs `execSync('git worktree add …')`; the package
+compiles to ESM, where the driver's **named import binds the original `execSync`** — the harness's
+monkey-patch on the `child_process` namespace object (`cp.execSync = …`) never affects that binding. The
+`existsSync` patch is equally inert. The mocks silently do nothing.
+
+**Merge validity:** unaffected — the leaked paths never enter the captured streams (proven: 3 reviewer
+`--check` runs + post-merge run all byte-identical), determinism and all T1 verdicts stand. The defect is
+repo pollution only. Six leaked worktrees + branches removed by the reviewer (hygiene, throwaway artifacts).
+
+**T1b (required, before T2 starts):** small in-fence fix on a new branch — replace the inert monkey-patches
+with **cleanup-at-exit** (remove any `agentalk-task-task-*` worktrees + `task-task-*` branches the run
+created), since ESM named bindings cannot be patched this way. T2 will run the compare command repeatedly;
+without T1b every gate run pollutes the repo. Owner: implementer (Gemini); same T1 fence and budgets.
+
 ## M14-T2 - Facilitator Interface + Extraction
 
 **Goal.** Extract phase-advancement decision authority from `team-coordinator.ts` behind a Facilitator interface.
