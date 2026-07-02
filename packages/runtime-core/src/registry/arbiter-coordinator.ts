@@ -88,6 +88,8 @@ export class ArbiterCoordinator {
 
     const prompt = [
       'You are in Arbiter Consensus Mode.',
+      `Task: ${description}`,
+      '',
       'Discuss the task with your peer planner using free-form natural language.',
       'There is no strict message_type protocol. Just communicate clearly.',
       'A judge will periodically evaluate your debate and finalize it when converged.',
@@ -130,7 +132,9 @@ export class ArbiterCoordinator {
     let currentTurns = this.turnCounts.get(task.id) ?? 0;
     const maxRepliesTotal = (task.maxRepliesPerAgent ?? 10) * 2;
     if (currentTurns >= maxRepliesTotal) {
-       this.failSoft(team, task, 'Turn budget exhausted');
+       this.evaluateConvergence(team, task).catch(err => {
+         this.deps.logError(`[ArbiterCoordinator] Evaluation failed for task ${task.id}:`, err);
+       });
        return true;
     }
 

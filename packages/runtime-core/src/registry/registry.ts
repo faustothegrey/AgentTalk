@@ -678,7 +678,9 @@ export class Registry extends EventEmitter {
   async assignTeamTask(teamId: string, description: string, maxRepliesPerAgent?: number): Promise<TeamTask> {
     const team = this.getTeams().find(t => t.id === teamId);
     if (team?.consensusMode === 'arbiter' && team.composition === 'planner-planner-worker') {
-      return this.arbiterCoordinator.assignTask(team, description, maxRepliesPerAgent ?? 10);
+      const task = await this.arbiterCoordinator.assignTask(team, description, maxRepliesPerAgent ?? 10);
+      (this.teamCoordinator as any).tasks.set(task.id, task);
+      return task;
     }
     return this.teamCoordinator.assignTask(teamId, description, maxRepliesPerAgent);
   }
