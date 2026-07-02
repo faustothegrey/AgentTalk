@@ -1,7 +1,8 @@
 # M14 - Facilitator Extraction (Arbiter Epic 1) - Implementation Ledger
 
-> **Status:** TASK BREAKDOWN DRAFTED by Codex (planner), 2026-07-02. Awaiting Reviewer Gate 1 before any
-> implementation.
+> **Status:** 🟢 **OPEN — Gate 1 APPROVED ✅ (reviewer, 2026-07-02). Next: M14-T1 (identity harness +
+> baselines, implementer Gemini). No task after T1 starts until the reviewer verifies T1's committed
+> baselines + harness command.**
 > **Plan:** `design/milestone14-facilitator-extraction-plan.md`
 > **Base:** `master` at `e24f07c` (2026-07-02), with M14 docs commits after it.
 > **Backlog:** BL-011 (`doing`)
@@ -41,8 +42,9 @@ scenarios and writes normalized observable identity streams. Commit the pre-refa
 **Allowed surfaces.**
 
 - New script(s) under `scripts/`, named for M14 identity work.
-- Baseline output files owned by M14, preferably under a new deterministic subdirectory in `design/` or `scripts/`
-  named clearly enough that they are not confused with the arbiter shadow judge corpus.
+- Baseline output files owned by M14, under a new deterministic subdirectory in `scripts/` (plan fence pins
+  harness + baselines to `scripts/`; reviewer-aligned at Gate 1), named clearly enough that they are not
+  confused with the arbiter shadow judge corpus.
 - This ledger.
 
 **Forbidden surfaces.** Production runtime code, registry code, shared recording/playback infra, existing arbiter
@@ -200,11 +202,29 @@ recording/playback infra, existing hook-test rewrites, any consumer-visible shap
 | T3-C5 | PENDING | not-checked | `registry.ts`, DiagramTalk bridge/client code, MCP contracts, and shared recording/playback infra untouched. |
 | T3-C6 | PENDING | not-checked | `npx tsc -b` exits 0; `npm test` green; no existing test weakened or rewritten; zero LLM calls. |
 
-## Reviewer Gate 1 - PENDING
+## Reviewer Gate 1 — **APPROVED ✅** (Claude, reviewer + architect dual-hat declared, 2026-07-02)
 
-Reviewer should verify before implementation starts:
+Checked by verifying against the repo, not by reading the breakdown alone:
 
-- Task sequence is dependency-correct and T1 is sufficient as the required pre-refactor identity baseline.
-- DoD rows are specific enough for independent verification.
-- Retry budgets are realistic and do not invite scope expansion.
-- Scope fences match the plan and do not authorize behavior changes.
+- **Six-site enumeration VERIFIED against the code** (reviewer-run, `sed` on the exact ranges): 356
+  `protocol_ack_pending` · 1052 `fact_collection` · 1127 `discussion` (initial) · 851 `discussion`
+  (fallback — clears regression retries + pending proposal) · 773 `proposal_pending_endorsement` · 689
+  `submittal_pending`. The T3-C4 ordering pin (`endorsed` before `submittal_pending`) is real and
+  comment-documented at 684–689. Observer payload shapes in T3's preservation points match the hook
+  signatures (`team-coordinator.ts:45`, `:54`).
+- **Task sequence dependency-correct:** T1-first with a reviewer check on baselines before T2; T3 own-gated
+  after T2 per the accepted planner condition. The T2 guard "a true diff is a blocker, not a baseline
+  refresh" is exactly the anti-gaming clause this bar needs — noted approvingly.
+- **DoD rows are independently verifiable** and jointly cover plan C1–C5 with no gap (C1→T2-C1; C2→T2-C2/C5;
+  C3→T1 rows+T2-C3/C4; C4→T3 rows; C5→per-task fence rows).
+- **Budgets are per-check and pre-registered** (full suite max 1 per task — good anti-thrash), per ⛔ Rule 7.
+- **Scope fences match the plan** with one exception, **reviewer-aligned at this gate (declared fix):** T1's
+  baseline location said "`design/` or `scripts/`"; the plan fence pins both harness and baselines to
+  `scripts/`. Ledger line corrected to `scripts/` only — zero-risk doc alignment, no other edit made.
+- **Noted for closure (not a task):** epic closure (BL-011 → done, plan status, logbook, closure telemetry)
+  rides T3's merge per the workflow — recording it here so it doesn't vanish.
+
+**Implementation may start: M14-T1, implementer Gemini.** Baseline at gate time: tsc 0, suite 269/269
+(reviewer-run this session). Known unrelated work-tree item: the un-gated `/api/hermes/status` edit in
+`apps/orchestrator/src/server.ts` awaits PO disposition — it is NOT part of M14 and must not ride any M14
+branch or commit.
