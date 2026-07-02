@@ -27,6 +27,7 @@ export interface Team {
   id: string;
   composition: TeamComposition;
   provider?: AgentProvider | undefined;
+  consensusMode?: 'protocol' | 'arbiter';
   members: TeamMember[];
   status: TeamStatus;
   currentTaskId?: string;
@@ -57,6 +58,8 @@ export interface TeamTask {
   workerRefusalReason?: string;
   maxRepliesPerAgent?: number;
   replyCounts?: Record<string, number>;
+  arbiterJudgeUsage?: { prompt_tokens: number; completion_tokens: number };
+  arbiterSynthesisUsage?: { prompt_tokens: number; completion_tokens: number };
   status: TeamTaskStatus;
   transcript: TranscriptEntry[];
   createdAt: string;

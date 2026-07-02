@@ -23,6 +23,7 @@ import type {
 } from '@agenttalk/contracts/types';
 import { ConversationCoordinator } from './conversation-coordinator.js';
 import { TeamCoordinator } from './team-coordinator.js';
+import { ArbiterCoordinator } from './arbiter-coordinator.js';
 import { resolveRegistryConfig, type RegistryConfig } from './config.js';
 import { type StructuredMessageType, buildProtocolToolSchema } from '../agents/response-schema.js';
 
@@ -102,6 +103,7 @@ export class Registry extends EventEmitter {
   private readonly conversations: ConversationStore;
   private readonly conversationCoordinator: ConversationCoordinator;
   private readonly teamCoordinator: TeamCoordinator;
+  private readonly arbiterCoordinator: ArbiterCoordinator;
   private readonly healthchecks = new HealthcheckManager();
   private readonly config: RegistryConfig;
   private reconnectTimeouts = new Map<string, NodeJS.Timeout>();
@@ -133,6 +135,20 @@ export class Registry extends EventEmitter {
       onPhaseChange: (evt) => this.emit('team_planning_phase', evt),
       onProtocolEvent: (evt) => this.emit('team_protocol_event', evt),
       logError: (message, err) => console.error(message, err),
+    });
+
+    this.arbiterCoordinator = new ArbiterCoordinator({
+      getAgent: (id) => this.getAgent(id),
+      getTeam: (id) => this.getTeams().find(t => t.id === id),
+      sendProtocol: (id, type, payload) => this.sendProtocol(id, type, payload),
+      emitTeam: (team) => this.emit('team', team),
+      emitTeamTask: (task) => this.emit('team_task', task),
+      logError: (message, err) => console.error(message, err),
+      emitEvent: (evt) => this.emit('arbiter_event', evt),
+    });
+
+    this.on('status', (evt) => {
+      this.arbiterCoordinator?.handleAgentStatus(evt.id, evt.status);
     });
 
     this.idleCheckInterval = setInterval(() => this.checkIdleAgents(), 30000);
@@ -357,6 +373,12 @@ export class Registry extends EventEmitter {
 
 
         const senderTeam = this.teamCoordinator.findTeamByAgent(agent.id);
+        if (senderTeam && senderTeam.consensusMode === 'arbiter' && senderTeam.composition === 'planner-planner-worker') {
+             await this.arbiterCoordinator.handlePlanningMessage(agent.id, senderTeam, payload, replyToMessageId);
+             this.markTerminalActionComplete(agent);
+             return { content: [{ type: 'text', text: 'Message sent successfully' }] };
+        }
+
         if (
           senderTeam &&
           senderTeam.composition === 'planner-planner-worker' &&
@@ -408,6 +430,13 @@ export class Registry extends EventEmitter {
         const { action, payload } = args;
         const expectedResponseTypes = getExpectedResponseTypes(args);
         
+        const team = this.teamCoordinator.findTeamByAgent(agent.id);
+        if (team && team.consensusMode === 'arbiter' && team.composition === 'planner-planner-worker') {
+            await this.arbiterCoordinator.handlePlanningMessage(agent.id, team, payload || args, payload?.replyToMessageId);
+            this.markTerminalActionComplete(agent);
+            return { content: [{ type: 'text', text: `Action ${action} submitted successfully` }] };
+        }
+
         try {
           switch (action) {
             case 'opinion':
@@ -640,11 +669,17 @@ export class Registry extends EventEmitter {
 
   // ── Team methods ──────────────────────────────────────────────
 
-  createTeam(members: TeamMember[], provider?: AgentProvider): Team {
-    return this.teamCoordinator.createTeam(members, provider);
+  createTeam(members: TeamMember[], provider?: AgentProvider, consensusMode?: 'protocol' | 'arbiter'): Team {
+    const team = this.teamCoordinator.createTeam(members, provider);
+    team.consensusMode = consensusMode ?? 'protocol';
+    return team;
   }
 
   async assignTeamTask(teamId: string, description: string, maxRepliesPerAgent?: number): Promise<TeamTask> {
+    const team = this.getTeams().find(t => t.id === teamId);
+    if (team?.consensusMode === 'arbiter' && team.composition === 'planner-planner-worker') {
+      return this.arbiterCoordinator.assignTask(team, description, maxRepliesPerAgent ?? 10);
+    }
     return this.teamCoordinator.assignTask(teamId, description, maxRepliesPerAgent);
   }
 
