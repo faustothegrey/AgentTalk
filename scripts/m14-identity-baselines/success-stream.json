@@ -180,62 +180,63 @@
   },
   {
     "event": "team_task_update",
-    "status": "planning",
-    "planningComplete": false,
+    "status": "awaiting_confirmation",
+    "planningComplete": true,
+    "plan": "1. implement this change in src/index.ts",
     "newTranscript": [
       {
         "kind": "system",
-        "from": "system",
-        "to": "planner-b",
-        "payload": "You sent action \"opinion\", but planning has already advanced to \"submit_plan\". Did you really intend to go back to \"opinion\", or did you misstep the action? If this was a mistake, please resend with the correct action using consensus_respond. If you genuinely want to regress, send \"opinion\" again — but note that confirming a regression will end the planning session. (confirmation attempt 1/2)"
+        "from": "planner-a",
+        "to": "user",
+        "payload": "Planner finished and submitted the final plan."
+      },
+      {
+        "kind": "message",
+        "from": "planner-a",
+        "to": "user",
+        "payload": "1. implement this change in src/index.ts"
       }
     ]
   },
   {
-    "event": "team_protocol_event",
-    "taskId": "task-ID",
-    "kind": "correction",
-    "phase": "submittal_pending",
-    "agentId": "planner-b"
-  },
-  {
     "event": "team_task_update",
-    "status": "planning",
-    "planningComplete": false,
+    "status": "delegated",
+    "planningComplete": true,
+    "plan": "1. implement this change in src/index.ts",
     "newTranscript": [
       {
         "kind": "system",
-        "from": "system",
-        "to": "planner-b",
-        "payload": "You sent action \"agreement_acceptance\", but planning has already advanced to \"submit_plan\". Did you really intend to go back to \"agreement_acceptance\", or did you misstep the action? If this was a mistake, please resend with the correct action using consensus_respond. If you genuinely want to regress, send \"agreement_acceptance\" again — but note that confirming a regression will end the planning session. (confirmation attempt 2/2)"
+        "from": "user",
+        "to": "worker-1",
+        "payload": "Plan confirmed. Delegating to worker."
       }
     ]
   },
   {
-    "event": "team_protocol_event",
-    "taskId": "task-ID",
-    "kind": "correction",
-    "phase": "submittal_pending",
-    "agentId": "planner-b"
-  },
-  {
-    "event": "team_protocol_event",
-    "taskId": "task-ID",
-    "kind": "eject",
-    "phase": "submittal_pending",
-    "agentId": "planner-b",
-    "reason": "Protocol regression: confirmed \"agreement_acceptance\" after planning advanced to \"submit_plan\" (expected one of [submit_plan])."
+    "event": "team_task_update",
+    "status": "in_progress",
+    "planningComplete": true,
+    "plan": "1. implement this change in src/index.ts",
+    "newTranscript": [
+      {
+        "kind": "message",
+        "from": "worker-1",
+        "to": "user",
+        "payload": "Worker accepted the task."
+      }
+    ]
   },
   {
     "event": "team_task_update",
-    "status": "awaiting_operator",
-    "planningComplete": false,
+    "status": "completed",
+    "planningComplete": true,
+    "plan": "1. implement this change in src/index.ts",
     "newTranscript": [
       {
-        "kind": "system",
-        "from": "system",
-        "to": "planner-a,planner-b,worker-1",
-        "payload": "Planner planner-b ejected: Protocol regression: confirmed \"agreement_acceptance\" after planning advanced to \"submit_plan\" (expected one of [submit_plan]).. Surviving planner(s) kept alive; consensus needs 2 planners, so the round is frozen awaiting operator (no continue-solo in v1)."
+        "kind": "message",
+        "from": "worker-1",
+        "to": "user",
+        "payload": "I accept the work"
       }
     ]
   }

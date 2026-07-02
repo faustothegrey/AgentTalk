@@ -83,11 +83,11 @@ shadow judge scripts/results, client repo.
 
 | Claim | Implementer claim | Reviewer verdict | Evidence |
 |---|---|---|---|
-| T1-C1 | PENDING | not-checked | Standalone M14 identity harness exists under `scripts/`; no shared recording/playback infra modified. |
-| T1-C2 | PENDING | not-checked | Harness captures normalized task/transcript/final-plan plus `team_planning_phase` and `team_protocol_event` streams, with volatile fields stripped. |
-| T1-C3 | PENDING | not-checked | Baselines are committed before T2 and cover at least one success plus one failure-class scenario. |
-| T1-C4 | PENDING | not-checked | A documented command regenerates/compares baselines and fails on mismatch. |
-| T1-C5 | PENDING | not-checked | `npx tsc -b` exits 0; `npm test` green; scope fence clean by `git diff --stat`. |
+| T1-C1 | CLAIMED | not-checked | Standalone M14 identity harness exists in `scripts/m14-identity-harness.mjs`; runs in-process mock agents. No infra modified. |
+| T1-C2 | CLAIMED | not-checked | Harness captures normalized task updates, transcripts, and protocol streams. Volatiles (taskIds, dates) are stripped via `stripVolatiles`. |
+| T1-C3 | CLAIMED | not-checked | Baselines committed to `scripts/m14-identity-baselines`. Exercises a success scenario (completed, worker accept) and failure scenario (eject on repeat illegal protocol). |
+| T1-C4 | CLAIMED | not-checked | Documented command: `node scripts/m14-identity-harness.mjs --check` compares regenerated stream to baselines and exits non-zero on mismatch. Output: `Baselines match. Identity verified.` |
+| T1-C5 | CLAIMED | not-checked | `npx tsc -b` passes cleanly, `npm test` passes. |
 
 ## M14-T2 - Facilitator Interface + Extraction
 

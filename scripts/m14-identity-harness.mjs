@@ -115,6 +115,9 @@ async function runScenario(scenarioName, mockResponseFn) {
       if (task.status === 'error' || task.status === 'awaiting_operator') isFailure = true;
       break;
     }
+    if (task && task.status === 'awaiting_confirmation') {
+      await registry.teamCoordinator.confirmPlan(task.id);
+    }
     await new Promise(r => setTimeout(r, 100));
   }
 
@@ -126,34 +129,48 @@ async function runScenario(scenarioName, mockResponseFn) {
 }
 
 const mockSuccess = (agentId, prompt) => {
+  let result;
   if (prompt.includes('ack_planning_protocol')) {
-    return '{"message_type":"ack_planning_protocol","message_payload":{}}';
-  }
-  if (prompt.includes('fact_collection_begin') || prompt.includes('PLANNER')) {
+    result = '{"message_type":"ack_planning_protocol","message_payload":{}}';
+  } else if (prompt.includes('fact_collection_begin') || prompt.includes('PLANNER')) {
     if (prompt.includes('collect facts') || prompt.includes('fact_collection_begin')) {
-      return '{"message_type":"fact_collection_end","message_payload":{"summary":"facts"}}';
+      result = '{"message_type":"fact_collection_end","message_payload":{"summary":"facts"}}';
     }
   }
-  if (prompt.includes('WORKER_RESPONSE_INSTRUCTIONS') || prompt.includes('WORKER')) {
-    return '{"message_type":"work_accept","message_payload":{"text":"work completed"}}';
-  }
-  if (prompt.includes('One planner must call submit_plan') || prompt.includes('must call submit_plan')) {
+  if (!result && (prompt.includes('One planner must call submit_plan') || prompt.includes('advanced to "submit_plan"'))) {
     if (agentId === 'planner-a') {
-      return '{"message_type":"submit_plan","message_payload":{"plan":"success plan","proposal":"prop","text":"done"}}';
+      result = '{"message_type":"submit_plan","message_payload":{"plan":"1. implement this change in src/index.ts","proposal":"prop","text":"done"}}';
     } else {
-      return '{"message_type":"opinion","message_payload":{"text":"Waiting for planner-a to submit","proposal":null,"expected_response_types":[]}}';
+      result = '';
     }
   }
-  if (agentId === 'planner-a') {
-    return '{"message_type":"agreement_proposal","message_payload":{"proposal":"prop","text":"I propose this","expected_response_types":["agreement_acceptance", "opinion"]}}';
+  if (!result && agentId === 'planner-a') {
+    result = '{"message_type":"agreement_proposal","message_payload":{"proposal":"prop","text":"I propose this","expected_response_types":["agreement_acceptance", "opinion"]}}';
   }
-  if (agentId === 'planner-b') {
+  if (!result && agentId === 'planner-b') {
     if (prompt.includes('agreement_proposal') || prompt.includes('proposes')) {
-      return '{"message_type":"agreement_acceptance","message_payload":{"proposal":"prop","text":"I accept","expected_response_types":["submit_plan"]}}';
+      result = '{"message_type":"agreement_acceptance","message_payload":{"proposal":"prop","text":"I accept","expected_response_types":["submit_plan"]}}';
+    } else {
+      result = '{"message_type":"opinion","message_payload":{"text":"I think yes","proposal":null,"expected_response_types":["agreement_proposal"]}}';
     }
-    return '{"message_type":"opinion","message_payload":{"text":"I think yes","proposal":null,"expected_response_types":["agreement_proposal"]}}';
   }
-  return '{"message_type":"opinion","message_payload":{"text":"catch-all","proposal":null,"expected_response_types":["agreement_proposal"]}}';
+  if (!result && agentId === 'worker-1') {
+    result = '{"message_type":"work_accept","message_payload":{"text":"I accept the work"}}';
+  }
+  if (!result) {
+    result = '{"message_type":"opinion","message_payload":{"text":"catch-all","proposal":null,"expected_response_types":["agreement_proposal"]}}';
+  }
+  
+  if (agentId === 'planner-a' && result && result.includes('opinion') && prompt.includes('Reply limit reached')) {
+    console.log('--- ERROR: planner-a returning opinion after Reply limit reached ---');
+    console.log('Prompt:', prompt);
+  }
+  
+  if (agentId === 'planner-a' || agentId === 'planner-b') {
+    console.log(`[mockSuccess] ${agentId} returning: ${result}`);
+  }
+
+  return result;
 };
 
 let failCount = 0;
