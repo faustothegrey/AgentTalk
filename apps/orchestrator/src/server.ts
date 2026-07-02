@@ -275,6 +275,38 @@ export function startServer(
     res.json({ status, mode, lastActive, currentTask, updatedAt: new Date().toISOString() });
   });
 
+  app.get('/api/hermes/metrics', (_req, res) => {
+    const fs = require('fs');
+    const path = require('path');
+    const home = process.env.HOME || '/Users/fausto';
+    const base = path.join(home, '.hermes', 'heartbeat');
+    const readInt = (p: string) => { try { return parseInt(fs.readFileSync(p, 'utf8').trim(), 10); } catch { return 0; } };
+    const readJson = (p: string) => { try { return JSON.parse(fs.readFileSync(p, 'utf8')); } catch { return null; } };
+    // Read per-agent files
+    const agents: Record<string, { sent: number; received: number }> = {};
+    let totalSent = 0, totalRecv = 0;
+    if (fs.existsSync(base)) {
+      const files = fs.readdirSync(base);
+      for (const f of files) {
+        const sentMatch = f.match(/^tmux-sent-(.+)$/);
+        const recvMatch = f.match(/^tmux-recv-(.+)$/);
+        const match = sentMatch || recvMatch;
+        if (!match) continue;
+        const agent = match[1];
+        if (!agents[agent]) agents[agent] = { sent: 0, received: 0 };
+        const val = readInt(path.join(base, f));
+        if (sentMatch) { agents[agent].sent = val; totalSent += val; }
+        else { agents[agent].received = val; totalRecv += val; }
+      }
+    }
+    res.json({
+      agents,
+      total: { sent: totalSent, received: totalRecv },
+      lastSend: readJson(path.join(base, 'tmux-last-send')),
+      lastReceive: readJson(path.join(base, 'tmux-last-recv')),
+    });
+  });
+
   app.get('/api/scheduler/status', (_req, res) => {
     res.json({ globalEnabled: scheduler.isGlobalEnabled() });
   });
