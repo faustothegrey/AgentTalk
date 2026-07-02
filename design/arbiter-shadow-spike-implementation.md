@@ -4,7 +4,9 @@
 > Corpus: 6 success + 3 scoreable failure classes (phase-illegal · bounded-correction · non-converging) +
 > 2 ambiguous; late-message & malformed EXCLUDED per F-5 with reasons in the manifest (honest thinness,
 > recorded). AS-L1 RECORDED ✅ (2026-07-02 — golden labels authored by PO + Architect in `labels.json`;
-> F-5 thinness explicitly ACCEPTED per L1-C3). NEXT: AS-T2 — shadow judge script (implementer).**
+> F-5 thinness explicitly ACCEPTED per L1-C3). AS-T2 VERIFIED ✅ under PO waiver (2 rounds, merged `b0754e4`).
+> NEXT: AS-T3 — cadence/cost scoring run (implementer; first real LLM call happens here — the real path is
+> statically consistent but unproven live).**
 > **Plan:** `design/arbiter-shadow-spike-plan.md`
 > **Base:** `master` at `b38ca9f` (2026-07-01).
 > **Planner:** Codex. **Architect:** Claude. **PO:** Fausto. **Implementer:** Gemini (live default).
@@ -332,6 +334,14 @@ and every check below is a recorded command run, reproducible by anyone.
 
 **Regression:** `node --check` OK; `sample-success` mock runs across all three cadences byte-identical to
 round 1 (6 / 14 / 5 evaluations). Scope: `git diff` touches the judge script only.
+
+**Telemetry (task closure):**
+- task:        AS-T2 (rounds 1–2)
+- wall-clock:  2026-07-02 08:17 → 08:35 (~18 min across implementer build + 2 review rounds)
+- budget:      claude weekly ~7%→9% (Δ ~2%), session ~70%→83% (Δ ~13%) [per /usage; spans AS-L1 tail + AS-T2 review/fix]
+- gate:        tsc 0, suite 269/269, pollution: worktrees clean, no stray processes; `results/` mock artifacts left untracked (AS-T3 decides committal)
+- diff:        3 files, +259/−1 (branch, 5 commits), merge b0754e4 --no-ff
+- outcome:     MERGED ✅ (real-LLM leg waived by PO [Human] overrule — AS-T3 carries the unproven-live risk)
 
 ## AS-T3 — Cadence / Cost Scoring Run
 
