@@ -1,6 +1,6 @@
 ---
 role: reviewer
-key: 20260702-0706-14a3d2
+key: none
 written: 2026-07-02 by Claude (reviewer + architect, session close)
 ---
 

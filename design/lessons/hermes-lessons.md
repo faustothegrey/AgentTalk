@@ -47,3 +47,9 @@ here.**
 - M12: cross-provider consensus epic closed. T1/T2/T3 merged. C-PF1 fix: removed bridge MCP config from CodexPersistentExecutor — confirmed by PF2 (structured preflight with no 4001 errors).
 - T4 honest partial: Codex bridge collision resolved, but Codex's behavioral protocol compliance (R1 — prose/JSON mixing, deep exploration) remains a genuine finding. Connection model is fixed; behavioral gap is a separate concern.
 - Lesson: when implementing in a cross-repo fix, keep the scope tight. C-PF1 was a 3-line change — precisely scoped, and it worked.
+
+### 2026-07-02 — Session close: deferred backlog, AS-L1/AS-T2 done, workflow speed-ups
+- Full spike pipeline ran: AS-L1 (PO + Architect labels) → AS-T2 (shadow judge script, two review rounds, PO overruled real-LLM constraint) → merged. All four agents (me as SM, Claude as architect+reviewer, agy as implementer) cycled.
+- Three workflow speed-ups adopted by PO: branch commit freedom for agents, SM greenlights after priming (PO overrides), reviewer may fix zero-risk defects directly.
+- Lesson: this session I DID let agents write their lessons before killing — the protocol works. Keep doing this.
+- Lesson: the PO overrule mechanism is fast and effective for non-critical gates. Used it for the real-LLM fence in AS-T2. Don't default to it, but keep it available.

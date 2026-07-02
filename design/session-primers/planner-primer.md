@@ -1,6 +1,6 @@
 ---
 role: planner
-key: 20260701-2244-b4749e
+key: none
 written: 2026-07-01 by Claude (architect, minting for the planner seat)
 ---
 
