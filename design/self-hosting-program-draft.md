@@ -145,6 +145,20 @@ its foundation.
 - **Per-epic plans** (fences, full DoD tables, per-check budgets) get authored at each epic's own inception;
   the sketches above are altitude, not spec.
 
+## Candidate: role-skill injection (PO idea, 2026-07-02 midnight — draft altitude ONLY)
+
+**Idea (Fausto):** condense the scrum workflow (roles, gates, batons, origin tags, Rules of Engagement,
+primer handshake) into a **skill agents follow — injected**, so attached agents abide by their seat by
+construction, not by convention.
+**Architect read:** the degraded version already runs — `AGENT.md` auto-slurp, role primers, lessons files
+are file-based, local, driftable injection. The real move is **brain-served role briefs at attach time**,
+riding M17's session→identity→role mapping: on attach, the substrate serves "you are `<role>`; here is your
+law" — versioned from the repo, identical for every provider, recorded like any message. Converts workflow
+from per-CLI context files into something the channel administers; also collapses primer-handshake drift
+(the brain knows what's fresh).
+**Discipline:** rider-sized idea with epic-sized gravity — it does **NOT** enter M17's fence (Codex caution
+2 applies). Jul-8 gate decides: M18 rider, M19 candidate, or parked. No code before that.
+
 ## The program metric — relay count (Codex POV caution 5, adopted)
 
 **Definition (counting rule, fixed now so the metric can't be gamed later):** one relay = one manual PO act
