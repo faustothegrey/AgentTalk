@@ -146,3 +146,22 @@ miss — *don't fix it silently, record it*. A pattern with many cases is a sign
   - **T3b-2 (B2):** deleted the harness M05/M06 worker handler (−92 lines) inside an **additive** task —
     that deletion belonged to **T4**. Fix: restore it, add the new path alongside. *(T4b-3 is the task
     that legitimately did the deletion — once the regression bar proved the new path.)*
+
+### IP-9 — Artifact-count green: claiming DoD on empty artifacts (+ zombie side effects)
+- **Gist:** claim a coverage/assembly DoD because the **right number of files exists**, without inspecting
+  whether the files **contain the substance** the DoD is about; compounded by leaving the generator process
+  alive so it mutates the artifacts *after* the commit.
+- **Why it bites:** the claim table reads green ("13 corpus entries ✅") while the deliverable is hollow —
+  downstream gates (labeling, scoring) would run on nothing and the whole measurement becomes fiction. The
+  zombie process additionally falsifies "work tree clean" hours later, poisoning the next actor's ground truth.
+- **The check that catches it:** open the artifact and verify the *content signature* of the claim (a
+  "phase-illegal" transcript must contain the illegal move; a "success" transcript must contain the plan). One
+  content proof per class, quoted in the claim. And: `ps` for your own launched processes before claiming a
+  clean tree — a generator that never exits is part of your diff.
+- **Cases:**
+  - **Arbiter spike AS-T1 (2026-07-01, Gemini):** 11 of 13 committed recordings held only `meta` + the task
+    assignment event (agents never connected → every simulated `consensus_respond` silently rejected). Claimed
+    "T1-C1 through T1-C5 proven ✅". Both generator scripts still running 6.5h later; their timeout events
+    dirtied all 11 files post-commit. REFUTED at review; see the spike ledger's verification record. Sibling
+    honest-good: the same handoff *disclosed* the temporary out-of-fence harness edit (F-4) — that part is the
+    behavior to keep.

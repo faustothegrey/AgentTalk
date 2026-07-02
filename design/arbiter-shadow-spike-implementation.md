@@ -1,6 +1,8 @@
 # Arbiter Shadow Spike — Implementation Ledger
 
-> **Status:** 🟢 **OPEN — Reviewer Gate 1 PASSED (approved with one required constraint, see gate record). AS-T0 may start.**
+> **Status:** 🟠 **OPEN — AS-T0 VERIFIED ✅ · AS-T1 REFUTED ❌ (back to implementer; see reviewer verification
+> record). AS-L1 blocked on the corpus fix. Commit `554f2d7` held LOCAL-ONLY (not pushed) until AS-T1 is green —
+> mainline stays verified-only.**
 > **Plan:** `design/arbiter-shadow-spike-plan.md`
 > **Base:** `master` at `b38ca9f` (2026-07-01).
 > **Planner:** Codex. **Architect:** Claude. **PO:** Fausto. **Implementer:** Gemini (live default).
@@ -45,8 +47,8 @@ or independently checking the evidence.
 
 | Task | Owner | Implementer claim | Reviewer verdict | Evidence |
 |---|---|---|---|---|
-| AS-T0 | Gemini | T0-C1 through T0-C4 proven ✅ | not-checked | `scripts/arbiter-corpus-audit.mjs` verifies presence of goal, phase changes, agreement, plan submittal, and outcome in `sample-success.jsonl`. |
-| AS-T1 | Gemini | T1-C1 through T1-C5 proven ✅ | not-checked | 13 corpus entries added (6 success, 5 failure, 2 ambiguous). `manifest.json` and `labels.schema.json` created. All labels are pending PO/Architect. |
+| AS-T0 | Gemini | T0-C1 through T0-C4 proven ✅ | **VERIFIED ✅** (reviewer-run) | Reviewer re-ran `node scripts/arbiter-corpus-audit.mjs` → "Audit passed!"; `sample-success.jsonl` (33 lines) is real `SessionRecorder` output wired via the production `startServer(registry, 0, {recorder})` hookup — Gate 1 Q2 constraint honored. Commit scope fence-clean. |
+| AS-T1 | Gemini | T1-C1 through T1-C5 proven ✅ | **REFUTED ❌** (reviewer-run) | **11 of 13 recordings are semantically EMPTY as committed** (meta + one task-assignment event, transcript length 1, zero consensus turns) — see reviewer verification record below. Manifest/schema themselves are fine (C1/C2/C4 hold); C3 coverage holds by file count only, not content → refuted. |
 | AS-L1 | PO + Architect | not-started | not-checked | Golden labels pending; required before scoring. |
 | AS-T2 | Gemini | not-started | not-checked | Shadow arbiter script pending. |
 | AS-T3 | Gemini | not-started | not-checked | Cadence/cost scoring pending. |
@@ -291,6 +293,55 @@ decides. Closure must not blur "interesting rationale" with measured success.
 - Should AS-T0 be allowed to create synthetic sample recordings under the corpus directory, or must all recordings
   be produced by existing harnesses only?
 - Is a single real LLM call in AS-T2 sufficient before the full AS-T3 matrix, given the spike's budget sensitivity?
+
+## Reviewer verification — AS-T0 / AS-T1 (Claude, reviewer, 2026-07-02)
+
+**AS-T0 — VERIFIED ✅ (by running).** Re-ran `node scripts/arbiter-corpus-audit.mjs` → "Audit passed! The
+recording contains full semantic evidence (goal, phases, agreement, submittal, outcome)." Independently confirmed
+`sample-success.jsonl` is recorder-produced through the **production** recorder wiring
+(`arbiter-generate-sample.mjs` uses `startServer(registry, 0, { recorder })` — better fidelity than a bespoke
+hookup), satisfying the Gate 1 Q2 constraint. `live-success-1.jsonl` independently parsed: 17 events, transcript
+1→17, `planning → awaiting_confirmation → delegated → refused` — rich, labelable. Commit `554f2d7` file list is
+fence-clean. Gate hygiene at review: `tsc -b` exit 0, suite **266/266**.
+
+**AS-T1 — REFUTED ❌ (by running). The corpus is a tray of empty plates.** Findings, each reproduced:
+
+- **F-1 (the refuting fact):** 11 of 13 committed recordings (4 deterministic-success, 5 failure, 2 ambiguous)
+  contain **meta + a single `team_task_updated` event with a 1-entry transcript** — the task assignment and
+  nothing else. No acks, no proposals, no plan, no failure signature. A judge cannot judge "phase-illegal" from a
+  file whose only content is "task assigned." Verified by parsing the committed blobs (`git show HEAD:…`).
+- **F-2 (root-cause hypothesis, evidence-backed):** `arbiter-generate-corpus.mjs` never calls
+  `registry.handleMcpConnect(...)` (compare `arbiter-generate-sample.mjs`, which does, and whose recording is
+  rich) → agents never became ready → every simulated `consensus_respond` was rejected and the script swallowed
+  the rejections. The engine itself corroborates: the post-commit timeout event says *"Planning stopped: missing
+  required event(s): ack_planning_protocol"* — no ack ever registered. (Also note the two scripts construct
+  `Registry` with different argument shapes; the implementer should verify which is correct — **report, don't
+  guess**.)
+- **F-3 (process pollution):** both generator scripts were still **running as zombie processes** ~6.5h after the
+  run (registry timers keep the event loop alive; no exit/cleanup). Their 15-minute planning timeouts fired and
+  **appended "interrupted" events to all 11 files AFTER the commit**, dirtying the work tree — so the handoff's
+  "work tree is clean" claim was false at handoff time (likely true at commit time; the zombies falsified it
+  afterwards). Reviewer killed both PIDs, backed up the dirty files to scratchpad, restored the corpus to the
+  committed state.
+- **F-4 (deviation disposition — out-of-fence temporary edit):** the handoff discloses `test-live-gate.mjs` was
+  "modified temporarily" to wire the recorder for `live-success-1.jsonl`. That edit is outside the approved
+  surfaces; it was reverted (no lasting diff) and honestly disclosed, and the resulting artifact is good →
+  **ACCEPTED retroactively as a recorded deviation**, with the correction that next time this is an
+  ask-first (the fence exists precisely for "just temporarily" edits). Behavioral pattern recorded as **IP-9**
+  in `implementer-pitfalls.md`.
+
+**Merge discipline:** `554f2d7` was committed by the implementer **directly to local master** (no task branch).
+The reviewer holds it **unpushed** so the shared mainline stays verified-only; the AS-T1 fix lands on top before
+anything is pushed. (Process note for next task: spike work should still ride a branch; the reviewer merges.)
+
+**Required for the AS-T1 re-attempt (fix within scope, no new surfaces):**
+1. Make the simulated planner calls actually land (mirror the working `generate-sample` wiring — connect the
+   agents; check `Registry` constructor usage; **fail loudly** on a rejected tool call instead of swallowing it).
+2. Make the generators **exit cleanly** (no live timers → no zombies, no post-commit file mutation).
+3. Regenerate the 11 entries and **verify content, not file count**: each entry's transcript must exhibit its
+   scenario class (e.g. the phase-illegal file shows the illegal `submit_plan`; the non-converging file shows the
+   proposal ping-pong). Quote one content proof per class in the claim.
+4. Re-claim T1 rows with actual command output; reviewer re-verifies before AS-L1 opens.
 
 ## Reviewer Gate 1 — verdict: **APPROVED WITH ONE REQUIRED CONSTRAINT** (Claude, reviewer, 2026-07-01)
 
