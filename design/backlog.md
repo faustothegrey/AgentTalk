@@ -152,6 +152,23 @@ fault tolerance, plan at `design/milestone08-transport-fault-tolerance-plan.md`.
 ### Done
 
 <!-- @item
+id: BL-012
+status: done
+date: 2026-07-02
+epic: M15
+tags: [consensus, arbiter, direct-path]
+-->
+- [done · opened and closed 2026-07-02 — PO direct-path decision; merged & pushed `fdbd766` (fix) atop
+  `f70f23c`/`a329b19`/`f406feb`/`14a22f6`, PO merge go same evening] — **M15 — Arbiter Consensus, Direct
+  Path** — parallel `ArbiterCoordinator` delivered: free-form NL planning turns, hard turn budget,
+  readiness-triggered LLM arbiter (`gpt-4o-mini`/OpenRouter), arbiter-authored plan on `converged` →
+  existing `awaiting_confirmation` human gate → unchanged worker path. Protocol machine frozen-intact
+  (275/275 suite + M14 identity harness green at close). Live recorded proof
+  `design/m15-t3-live-arbiter.ndjson`. T3 closed by Codex as temporary implementer+reviewer (PO-requested);
+  Claude's independent review found + Codex fixed one work-routing regression (composition guard) before
+  merge. Ledger: `design/milestone15-arbiter-consensus-implementation.md`.
+
+<!-- @item
 id: BL-001
 status: done
 promoted_to: M12
@@ -388,22 +405,7 @@ tags: [consensus, arbiter, architecture, heavyweight]
 
 ### Doing (exactly one)
 
-<!-- @item
-id: BL-012
-status: doing
-date: 2026-07-02
-epic: M15
-tags: [consensus, arbiter, direct-path]
--->
-- [doing · opened at the 2026-07-02 second gate — PO direct-path decision] — **M15 — Arbiter Consensus,
-  Direct Path** — build a **parallel `ArbiterCoordinator`**: free-form natural-language planning turns (no
-  `message_type` protocol), hard turn budget, LLM arbiter judging at readiness-triggered cadence
-  (spike-proven), **arbiter authors the plan on `converged`** → existing `awaiting_confirmation` human gate
-  ratifies → unchanged worker path. Protocol machine **frozen, not removed** (269-test suite + M14-T1
-  identity baselines pin it; later protocol reattempt reopens a working machine). Absorbs BL-010's gloss +
-  judge-frame. Target use: AgentTalk as the scrum-team coordination substrate (replacing tmux scraping —
-  LB-49). Plan: `design/milestone15-arbiter-consensus-plan.md`. **Source:** PO ↔ Architect direct session,
-  2026-07-02.
+*(empty — M15/BL-012 closed 2026-07-02; next item is a PO/SM backlog-gate call)*
 
 <!-- @item
 id: BL-011

@@ -119,3 +119,19 @@ here.**
   PO's "bypass, don't dissect" cut (M15) shrank the epic and kept preservation for free (frozen path + suite +
   the very harness T1 built). I defended the careful path one epic too long — proportionality remains my
   recurring blind spot (see 2026-06-27 entry).
+
+### 2026-07-02 (fourth session) — M15 Gate 1 + independent T3 review; the guard-asymmetry catch
+- **As reviewer: when a fix adds a routing branch, diff its guard against every sibling guard.** Codex's T3
+  redelivery gated two new arbiter routes on `consensusMode` alone while four existing guards also required
+  `composition === 'planner-planner-worker'` — a grep for the sibling pattern made the asymmetry visible in
+  seconds, and a 40-line repro test confirmed the crash (`Arbiter task not found`) before I claimed it.
+  Self-review (Codex reviewed its own fix) missed exactly this class; the PO-requested independent pass caught
+  it pre-merge. Keep the repro in scratchpad and re-run the *same* repro after the fix — a flipped repro is
+  stronger evidence than a fresh green test.
+- **As reviewer: a file-diff fence doesn't catch foreign writes into frozen state.** Gemini satisfied "zero
+  `team-coordinator.ts` diff" while writing into its private task map via `(x as any).tasks.set(...)` from
+  registry.ts. Fence checks must include grepping for casts/pokes *at* the frozen surface, not just diffs *of* it.
+- **As reviewer: challenge the premise of a role change with the meter, then defer.** The PO's "you are low on
+  budget" was session-window pressure, not weekly; I said so once with fresh numbers, he clarified his real
+  reason (preserving my runway for architect calls), the decision stood, and I recorded it in the ledger with
+  the mitigation. Flag-once-then-comply kept the gate moving without burying the governance note.

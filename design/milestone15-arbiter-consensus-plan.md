@@ -1,9 +1,10 @@
 # Milestone 15 — Arbiter Consensus, Direct Path
 
-**Status:** 🟢 **OPEN — PO direct-path decision (2026-07-02, in session); Planner advisory POV accepted by
-PO; breakdown recorded and Reviewer Gate 1 approved; M15-T1 verified by PO override; M15-T2 verified by
-implementation reviewer; Claude found one T3 follow-up routing defect, now fixed and freeze-verified by Codex
-under direct PO request; awaiting PO closure/merge decision.**
+**Status:** ✅ **CLOSED — MERGED & PUSHED (PO `[Human]` merge go, 2026-07-02 late evening).** All three tasks
+done; epic on origin/master through `fdbd766`; BL-012 → done. Claude's independent T3 review caught one
+work-routing regression (composition guard), fixed by Codex and re-verified by Claude before the merge go.
+Freeze bar at close: suite 275/275, M14 identity harness green. Ledger:
+`design/milestone15-arbiter-consensus-implementation.md`.
 Inception ceremony compressed by the PO: the PO↔Architect direct discussion in session replaces the formal
 inception round; this plan is its record.
 **PO:** Fausto · **Architect:** Claude · **Planner:** Codex · **Implementer:** Gemini (stood down from

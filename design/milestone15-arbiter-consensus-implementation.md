@@ -1,8 +1,9 @@
 # M15 - Arbiter Consensus, Direct Path - Implementation Ledger
 
-> **Status:** 🟢 **OPEN - M15-T3 fixed and verified by Codex (temporary implementer + reviewer, PO-requested,
-> 2026-07-02); Claude's independent T3 review found one confirmed work-routing regression, now fixed by the
-> follow-up guard/test below. Freeze bar re-ran green; awaiting PO closure/merge decision.**
+> **Status:** ✅ **CLOSED - MERGED & PUSHED (PO `[Human]` merge go, 2026-07-02 late evening).** Epic commits
+> `14a22f6`/`f406feb`/`a329b19`/`f70f23c` + routing-regression fix `fdbd766` on origin/master; BL-012 → done.
+> Claude's independent T3 review found one confirmed work-routing regression; Codex fixed it and Claude
+> re-verified (repro passes, freeze bar 275/275 + identity green) before the merge go.
 > Reviewer annotations stand; the PO overruled the round-1 refutation on hygiene/claim-discipline grounds after
 > the functional/freeze bars were green. See the M15-T1 reviewer record and PO override record.
 > **Plan:** `design/milestone15-arbiter-consensus-plan.md`
@@ -107,7 +108,7 @@ the PO's `[Human]` gate.**
 
 - **M15-T1 (Arbiter Coordinator skeleton):** Done
 - **M15-T2 (Arbiter Judge & Synthesis via OpenRouter):** Done
-- **M15-T3 (Live recorded proof + closure):** Fixed and verified; awaiting PO closure/merge decision
+- **M15-T3 (Live recorded proof + closure):** Done — merged & pushed 2026-07-02 (PO `[Human]` go)
 
 ## Sequencing
 

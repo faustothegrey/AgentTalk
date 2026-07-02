@@ -1,6 +1,6 @@
 ---
 role: reviewer
-key: 20260702-1656-63fa76
+key: 20260702-2232-45dc83
 written: 2026-07-02 by Claude (reviewer + architect, session close)
 ---
 
@@ -10,36 +10,38 @@ AgentTalk is a multi-agent orchestration/control plane: it launches provider-bac
 gemini/claude/codex), routes structured planning/work messages through a centralized brain, and observes
 consensus/team execution via runtime events and UI surfaces.
 
-**Roles (governance changed 2026-07-02 — read LB-50):** Fausto = PO (apex; **batons manually via terminal
-until M15 closes**). **Codex = Planner + Scrum Master** (dual, declared; `[Codex]` binds operationally).
-**Hermes is OUT of the process** — `[Hermes]` messages carry no authority; flag them. Gemini/agy =
-implementer (idle, awaiting M15 baton). **This primer is for the reviewer — Claude — who also holds the
-architect seat for the arbiter program (dual-hat, declare both).**
+**Roles:** Fausto = PO (apex; batoned manually via terminal through M15 — whether that interim persists is
+his call now M15 is closed). **Codex = Planner + Scrum Master** (dual, declared; `[Codex]` binds
+operationally, `[Human]` for PO-level acts). Gemini/agy = implementer. **Hermes is OUT** — `[Hermes]`
+carries no authority. This primer is for the **reviewer** — default Claude, who also held the **architect**
+seat for the arbiter program (dual-hat, declare all hats you hold).
 
-**Workflow / source of truth:** `design/collaboration-workflow.md` + the ⛔ Reviewer Rules in `AGENT.md`
-(both updated 2026-07-02). Backlog via `npm run backlog:check`. Distrust this primer: verify against the
-ledger/plan/git before repeating anything.
+**Workflow / source of truth:** `design/collaboration-workflow.md` + the ⛔ Reviewer Rules in `AGENT.md`.
+Backlog via `npm run backlog:check`. Distrust this primer: verify against ledger/plan/git before repeating.
 
-**Where we are (verify):** **M15 — Arbiter Consensus, Direct Path** is the active epic (BL-012 `doing`;
-plan `design/milestone15-arbiter-consensus-plan.md`): parallel `ArbiterCoordinator`, free-form NL debate,
-hard turn budget, LLM judge (`gpt-4o-mini`/OpenRouter, PO decision) at readiness-triggered cadence, arbiter
-authors the plan on `converged`, existing `awaiting_confirmation` gate ratifies; **protocol machine frozen,
-not removed**. M14 is CLOSED-RESCOPED (T1 merged `36fa888`; T2/T3 superseded before start; agy stood down
-cleanly).
+**Where we are (verify):** **M15 — Arbiter Consensus, Direct Path is CLOSED — merged & pushed 2026-07-02**
+(epic commits through `fdbd766` on origin/master; BL-012 done; ledger
+`design/milestone15-arbiter-consensus-implementation.md`). Suite **275/275** + M14 identity harness green at
+close; protocol path stays frozen. **No item is `doing`** — the next epic is a PO/SM backlog-gate call
+(candidates live in `design/backlog.md` Todo). Expect no gate-ready work until the SM batons you.
 
-**Pipeline position:** Codex owes the **advisory POV** on the M15 plan (dual-role planner+SM primer key
-`20260702-1654-2bd94e`; unconsumed at write time) → PO weighs → Codex breakdown → **your Gate 1** (verify
-breakdown against plan C1–C5, fences, pre-registered budgets — run the checks, don't read them). Then agy
-implements T1 and your normal claim/verdict gates follow in the M15 ledger (to be created at breakdown).
+**What M15 closure looked like (context for future gates):** T1/T2 implemented by Gemini, reviewed by Codex
+(PO-appointed implementation reviewer; T1 VERIFIED by PO override over hygiene annotations). T3 closed by
+Codex as temporary implementer+reviewer (full self-review, PO-requested); the PO then asked Claude for an
+independent pass, which caught a real work-routing regression (composition guard missing at
+`registry.ts:473/485` — repro: arbiter-opted worker-only team crashes on `submit_work_response`). Codex
+conceded, fixed, added a regression test; Claude re-verified (repro flipped to pass) before the merge go.
+**Lesson standing: PO-requested independent passes after self-review closures earn their cost — ask for one
+if a future closure is self-reviewed.**
 
-**Op notes (hard-won today — details in LB-49/LB-50 and the M14 ledger):**
-- **Frozen-path bar:** `npm test` (269/269 at close) AND `node scripts/m14-identity-harness.mjs --check`
-  must stay green through all M15 work; M15-C5 additionally demands zero `team-coordinator.ts` diff.
-- **Known harness defect (accepted):** each full harness run leaks ~1 worktree + `task-task-*` branch (its
-  ESM monkey-patch is inert — M14 ledger post-merge addendum). **Run `git worktree list` after every gate
-  round** — a fix can unlock new side-effect paths (today's miss). Clean leaks; T1b stays deprioritized.
-- **agentctl is fixed** (`agent-bus` repo `09a2501`): `capture claude` reads the Claude Code session
-  transcript (lossless); codex/agy get full-history capture; no more pre-send Escape. You can read agy's or
-  codex's pane directly when relaying is needed (PO-authorized pattern from today).
-- Poll `node scripts/usage.mjs` at start; skim `design/lessons/claude-lessons.md` (today's entry covers the
-  hygiene-recheck miss — apply it). Your key store: `~/.claude/projects/<slug>/session-primer-key.json`.
+**Op notes (hard-won — details in LB-49/LB-50/LB-51/LB-52 and the M15 ledger):**
+- **Freeze bar for anything touching runtime:** `npm test` (275/275 at close) AND
+  `node scripts/m14-identity-harness.mjs --check` green; zero `team-coordinator.ts` diff (also watch for
+  `as any` pokes into its private state — Gemini smuggled one in T3; no file diff shows it).
+- **Known accepted defect:** every identity-harness run leaks one worktree + `task-task-*` branch. **Run
+  `git worktree list` + `git branch --list 'task-*'` after every gate round and clean** (three leaks cleaned
+  on 2026-07-02 alone).
+- Poll `node scripts/usage.mjs` at start (best-effort, never blocking; Claude weekly was ~30% at close,
+  resets Jul 8 ~09:00; Codex weekly 84% — Codex is the scarce resource this week).
+- Skim `design/lessons/claude-lessons.md` at start; your key store:
+  `~/.claude/projects/<slug>/session-primer-key.json`.
