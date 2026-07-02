@@ -1,7 +1,8 @@
 # Milestone 14 — Facilitator Extraction (Arbiter Epic 1)
 
-**Status:** 🟡 **INCEPTION — PO + Architect complete (2026-07-02); Planner advisory POV submitted (Codex);
-awaiting PO/Architect disposition; task breakdown after the PO weighs it.** No branch, no code yet.
+**Status:** 🟡 **INCEPTION — PO + Architect complete; Planner POV submitted (Codex) and dispositioned by the
+Architect (both conditions ACCEPTED, folded into the plan, 2026-07-02). Awaiting PO go for task breakdown.**
+No branch, no code yet.
 **PO:** Fausto · **Architect:** Claude · **Planner:** Codex · **Implementer:** Gemini (live default) ·
 **Reviewer:** Claude (reviewer + architect dual-hat, declared per gate; planner ≠ reviewer holds).
 **Program:** the arbiter direction — `design/arbiter-consensus-draft.md` (§7/§8/§10 decomposition); evidence
@@ -32,8 +33,9 @@ Mode A, any advancement/tolerance *rule* change, any change to what the protocol
 
 - **Allowed surfaces:** `packages/runtime-core/src/registry/team-coordinator.ts`; a new facilitator module
   beside it (e.g. `packages/runtime-core/src/registry/facilitator.ts`); new/extended tests under
-  `packages/runtime-core/src/registry/__tests__/`; a replay-diff harness under `scripts/`; this plan, the M14
-  ledger, backlog/logbook lines at closure.
+  `packages/runtime-core/src/registry/__tests__/` (existing hook tests: **additive assertions only**); the
+  standalone identity harness + its baselines under `scripts/` (M14-owned — it must not touch shared
+  recording/playback infra); this plan, the M14 ledger, backlog/logbook lines at closure.
 - **Forbidden:** any advancement/tolerance **rule** change (relocation only — a "while I'm here" improvement is
   a show-stopper per the ⛔ rules); `registry.ts` / `mcp-tools.ts` / wire contracts; the client repo; recording
   infrastructure (use, don't modify); weakening or rewriting any existing test (they are the behaviour
@@ -54,26 +56,41 @@ The extraction surface is small and centralized:
 - Decision inputs already centralized (`ADVANCEMENT_RANK`, the `handle*` methods).
 - Baseline: tsc 0, suite **269/269** (verified in the inception session).
 
-## The byte-identical bar
+## The identity bar *(tightened per planner POV, architect-accepted 2026-07-02)*
 
 Beyond `tsc` 0 and the suite unchanged-and-green:
 
-**Replay-diff identity proof.** Replay recorded consensus transcripts through the engine before and after the
-refactor and **diff the emitted event streams** — they must be identical. Uses the existing
-`AGENTTALK_DIAGRAM_RECORD` / `play-recording` infra (read-only); no LLM. The baseline capture must land
-**before** the refactor does (task-ordering constraint below). Suggested corpus: ≥1 recorded success + ≥1
-failure-class transcript (the arbiter-shadow corpus recordings are candidates).
+**Normalized observable-identity proof.** The original "replay-diff" wording overclaimed: the existing playback
+replays recorded snapshots (it does not re-execute the coordinator), and the recorder does not persist
+`team_planning_phase` / `team_protocol_event` at all (verified: `registry.ts:133-134` re-emits them; `server.ts`
+never records them). The corrected bar:
+
+- **T1 builds a standalone, M14-owned harness** that drives the engine in-process on deterministic scenarios and
+  captures a **normalized identity stream** via harness-level listeners on the registry/coordinator hooks —
+  task status, planning-complete state, transcript payloads, final plan, and every `team_planning_phase` /
+  `team_protocol_event` — with volatile fields (`taskId`/`teamId`/timestamps/`atMs`) stripped.
+- Baselines are captured **before** the refactor lands and committed as the identity reference.
+- The claim is **"observable engine output is identical on this corpus"** — not "all internal behaviour is
+  proven identical." The residual gap is closed by **focused unit/path tests exercising all 6 transition sites
+  and all 3 off-spine events**, which C1/C2 own.
+- **Shared recording/playback infrastructure is not modified.** If the harness cannot produce stable normalized
+  output without touching it, **stop and rescope** before extraction — do not weaken the bar.
 
 ## Task sketch (architect sizing — the Planner owns the real breakdown)
 
-1. **M14-T1 — Replay-diff identity harness + baseline capture.** Build the harness in `scripts/`, capture the
-   pre-refactor event-stream baselines, commit them as the identity reference. Must land first.
+1. **M14-T1 — Identity harness + baseline capture.** Build the standalone harness in `scripts/` (in-process
+   listeners, normalized stream — see the identity bar above), capture the pre-refactor baselines, commit them
+   as the identity reference. Must land first; more design work than the name suggests (planner POV).
 2. **M14-T2 — Facilitator interface + extraction.** Define the interface; move the 6 advancement decision
-   points behind it; default implementation = current rules verbatim. Interface vocabulary this epic is just
-   today's transitions — the spike's verdict vocabulary (`advance/hold/converged/…`) is *informative* for the
-   shape, not binding.
-3. **M14-T3 — Emission unification (BL-008 residual).** One mechanism for protocol state-change emission at
-   the seam; existing consumer-visible shapes unchanged (replay-diff covers this).
+   points behind it; default implementation = current rules verbatim (a deterministic policy object). Interface
+   vocabulary this epic is just today's transitions — the spike's verdict vocabulary (`advance/hold/converged/…`)
+   is *informative* for the shape, not binding, and must not be imported yet (planner POV concurs).
+3. **M14-T3 — Emission unification (BL-008 residual) — its own gated task, after T2** *(planner condition,
+   architect-accepted)*. One internal emission mechanism at the Facilitator boundary; **adapters preserve the
+   `onPhaseChange` and `onProtocolEvent` payloads exactly**; `registry.ts`, bridge code, MCP contracts, and
+   client surfaces stay untouched. Existing hook tests may gain **additive assertions only**. If implementation
+   discovers consumer-visible shapes or ordering must change, that is **not M14 cleanup — it is a show-stopper
+   requiring PO scope direction.** T3 gets its own review round; it is the epic's risky task, not T2.
 
 ## DoD claims skeleton (Planner finalizes)
 
@@ -81,8 +98,8 @@ failure-class transcript (the arbiter-shadow corpus recordings are candidates).
 |---|---|
 | C1 | All phase-advancement decisions flow through the Facilitator interface; no `setPlanningPhase` decision logic remains outside the seam/default impl. |
 | C2 | Default implementation reproduces current rules: tsc 0, full suite green, **no existing test modified or weakened**. |
-| C3 | Replay-diff identical on the committed baselines (≥1 success + ≥1 failure-class transcript). |
-| C4 | Protocol state-change emission unified; observable event shapes for existing consumers unchanged (replay-diff evidence). |
+| C3 | Normalized identity stream identical to the committed T1 baselines (≥1 success + ≥1 failure-class scenario); plus focused tests covering all 6 transition sites and 3 off-spine events. |
+| C4 | Emission unified behind one internal mechanism; `onPhaseChange`/`onProtocolEvent` payloads preserved exactly via adapters (identity-stream + hook-test evidence); `registry.ts`/bridge/contracts untouched. |
 | C5 | Zero LLM calls; scope fence clean (`git diff --stat` disposition per task). |
 
 ## Risks
@@ -106,6 +123,18 @@ Zero API spend. Token-wise a mid-size refactor epic: estimated 2–3 implementer
 3. **BL-008 residual absorbed** into this epic.
 4. **BL-003 superseded** (dropped at the gate).
 5. **BL-002 drop committed** with the gate record.
+
+## Architect disposition of the planner POV (Claude, 2026-07-02)
+
+Both load-bearing technical claims were **verified against the code before accepting** (reviewer discipline
+applied to the architect seat): (a) `registry.ts:133-134` re-emits `team_planning_phase`/`team_protocol_event`
+but `server.ts` has no `recorder.record` call for either — the recorder never persists them; (b) playback
+replays recorded snapshots, it does not re-execute the coordinator. Claim (a) refutes the inception draft's
+original replay-diff wording — the architect's C3 overclaimed, and the correction is Codex's, on the record.
+
+**Disposition: both conditions ACCEPTED and folded into the plan above** (identity-bar section, T1/T3 sketch,
+C3/C4). Status moves to: awaiting **PO go for task breakdown** (the plan's goal/fence/DoD bar is now stable;
+tasks are the planner's).
 
 ## Planner advisory POV (Codex, 2026-07-02) — SUBMITTED
 
