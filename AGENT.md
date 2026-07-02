@@ -337,8 +337,9 @@ to VERIFIED on the claim alone.** **BLOCKED ⛔** is for an *external* impedimen
 missing key) — it is **not** an escape hatch for a bar that was merely flaky, slow, or hard to observe (that misuse
 is `implementer-pitfalls.md` IP-2; the reviewer must not commit it either).
 
-**4. The MERGE is your ONLY branch action — and the mainline stays verified-only.** You do **not** create the task
-branch (that's the implementer's job). You merge to the mainline **only when every DoD row is VERIFIED** — or
+**4. The MERGE is your primary branch action — and the mainline stays verified-only.** You do **not** create the task
+branch (that's the implementer's job). You may also make **punctual zero-risk fixes** (per Rule 6 exception) directly
+on the branch. You merge to the mainline **only when every DoD row is VERIFIED** — or
 explicitly **DEFERRED** with the human's sign-off and a reopen condition (§3c). REFUTED work **stays on the branch**
 and is fixed there. The merge *is* the task's closure (§3b).
 
@@ -350,9 +351,11 @@ cold-start verify rule, applied every review.
 
 **6. Record behavioural misses — never fix them silently.** When you catch a recurring *process* anti-pattern (a
 hasty claim, a misread scope, a weakened bar), **append a case to `design/implementer-pitfalls.md`** (stable `IP-N`
-id) — the case law is reviewer-authored. Do **not** quietly do the implementer's work to force a green: **REFUTE and
-hand back.** If a fix genuinely needs *you*, that is a role-boundary / Scrum-Master question (you'd be acting as
-implementer), **not** a silent reviewer edit.
+id) — the case law is reviewer-authored. **REFUTE and hand back** for substantive defects. **EXCEPTION (PO Fausto,
+2026-07-02): the reviewer MAY fix punctual, zero-risk defects directly** — a typo, a wrong import path, a
+misaligned comment, a missing semicolon — where the fix is trivial and the risk of side effects is provably nil.
+The fix must be declared in the verdict row (e.g. `VERIFIED ✅ (reviewer fixed import path)`), and if the reviewer
+is unsure whether the fix is zero-risk, it is not zero-risk — REFUTE instead.
 
 **7. Symmetry — dispose of EVERY implementer signal.** The implementer's *notes & deviations* (deviation / opinion
 / question — §3c) are the mirror of your verdict column: you **must** dispose of each one (accept / reject → REFUTED
@@ -450,7 +453,7 @@ normally:
 > **Critical rule.** When you load a **key-matched `fresh` role-primer** (per **First Entry Point**), you MUST NOT take any action — **no code, edits, builds, test runs, scripts, or commits**
 > (the lone exception: consuming the key in your private key store, which lives *outside* the repo). Your *only* output is a **report of your understanding**:
 > what the project is, which epic/task is active, where it stands per the ledger, and what you believe the next step is —
-> nothing more. Then **STOP and WAIT** for the human's explicit go. **Naming the next step is context, not permission.**
+> nothing more. Then **STOP and WAIT** for the **Scrum Master's go**. **The SM checks correctness of the priming report and may greenlight the agent to continue; the PO may override at any time.** Naming the next step is context, not permission.
 >
 > **Do NOT trust the Primer blindly — verify it against the project, now.** The Primer is a *claim about state*, written
 > at some past moment; it can be stale, wrong, or written by an over-optimistic predecessor. Before you report, **ground
@@ -465,7 +468,7 @@ normally:
 > Codex are eligible for planner — and for reviewer). This is expected — the key does **not** route to one of them; it's a
 > freshness token they all share. If each started developing on receipt they'd collide — duplicate branches, racing live
 > runs, stray worktrees/processes, lost work. So **reporting-only-then-STOP is the actual collision guard**: each
-> eligible reader independently reports and stops, and **the human decides who proceeds**. *(This rule is about the
+> eligible reader independently reports and stops, and **the SM decides who proceeds (the PO may override)**. *(This rule is about the
 > Primer/cold-start only — a mid-session **baton** to you as implementer/reviewer is a normal task assignment, not a cold start.)*
 
 ### Re-priming from an older primer (human-gated)

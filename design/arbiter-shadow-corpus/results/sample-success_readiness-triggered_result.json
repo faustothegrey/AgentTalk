@@ -1,0 +1,14 @@
+{
+  "entry": "sample-success.jsonl",
+  "cadence": "readiness-triggered",
+  "evaluations": 6,
+  "judgment": {
+    "verdict": "converged",
+    "rationale": "Mock judgment"
+  },
+  "latency_ms": 0,
+  "tokens": {
+    "prompt": 60,
+    "completion": 30
+  }
+}

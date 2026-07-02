@@ -296,13 +296,14 @@ smallest independently reviewable + mergeable unit; a.k.a. a "story"). Each task
 `<EPIC>-T<N>` and its DoD as claim/verdict rows in the epic's `-implementation.md`.
 - The **implementer creates the branch** (off the current mainline) named
   **`<epic-lower>-t<N>-<slug>`** (e.g. `m07-t1-api-agent-driver`) — **branch creation is the
-  implementer's responsibility, not the reviewer's** — and commits **claim-only** there: small,
-  ideally one per DoD item. A commit records progress and makes the diff reviewable; it must **not
-  self-close**: no ticking DoD boxes, no editing `CLAUDE.md`/`AGENT.md`, no "milestone complete".
+  implementer's responsibility, not the reviewer's** — and **commits freely** there: agents may commit
+  as often as they like after completing a piece of work. Only **merging to master** remains
+  **PO-gated** (task closure is still PO-gated). A commit must **not self-close**: no ticking DoD
+  boxes, no editing `CLAUDE.md`/`AGENT.md`, no "milestone complete".
 - The **reviewer** verifies the branch **by running it**, fills the *verdict* column, and **merges
   to the mainline only when every row is VERIFIED — or explicitly DEFERRED** (the merge *is* the
-  task's closure). REFUTED work stays on the branch and is fixed there. **The reviewer's only branch
-  action is the merge — it never creates the branch.** *(These duties are the short imperative
+  task's closure). REFUTED work stays on the branch and is fixed there. **The reviewer's primary branch
+  action is the merge — it does not create the branch, but may make punctual zero-risk fixes on it (see AGENT.md → Reviewer Rule 6 exception).** *(These duties are the short imperative
   contract in `AGENT.md → ⛔ REVIEWER RULES OF ENGAGEMENT`; this section is the method detail it points back to.)*
 - **The mainline stays verified-only.** The branch is the claim; the merge is the verdict.
 
