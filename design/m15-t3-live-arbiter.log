@@ -1,5 +1,8 @@
 Starting live MCP arbiter mode smoke test...
-[Server] MCP server on ws://localhost:59000/
+[Test] AGENTTALK_DIAGRAM_RECORD=1
+[Test] Runtime recording path: design/m15-t3-live-arbiter.ndjson
+[Test] DiagramTalk recording requested at http://localhost:3000, but the endpoint was unavailable.
+[Server] MCP server on ws://localhost:60382/
 [Registry] Creating agent planner-a...
 [Registry] Creating agent planner-b...
 [Registry] Creating agent worker-1...
@@ -15,29 +18,29 @@ Starting live MCP arbiter mode smoke test...
 [Agent worker-1] creating -> starting
 [Registry] Starting InProcessAgentDriver for mcp-backed agent worker-1
 [Agent worker-1] starting -> ready
-[llm-agent-a-err] [llm-agent] Provider: gemini, Model: default, Token Limit: 2097152, Execution Mode: persistent -> persistent
-[McpClient] Connecting to ws://localhost:59000/?agentId=planner-a
-[llm-agent-w-err] [llm-agent] Provider: gemini, Model: default, Token Limit: 2097152, Execution Mode: persistent -> persistent
-[McpClient] Connecting to ws://localhost:59000/?agentId=worker-1
 [llm-agent-b-err] [llm-agent] Provider: gemini, Model: default, Token Limit: 2097152, Execution Mode: persistent -> persistent
-[McpClient] Connecting to ws://localhost:59000/?agentId=planner-b
-[McpServer] Connection established for agentId=planner-a
-[McpServer] Connection established for agentId=planner-b
+[llm-agent-w-err] [llm-agent] Provider: gemini, Model: default, Token Limit: 2097152, Execution Mode: persistent -> persistent
+[llm-agent-b-err] [McpClient] Connecting to ws://localhost:60382/?agentId=planner-b
+[llm-agent-w-err] [McpClient] Connecting to ws://localhost:60382/?agentId=worker-1
+[llm-agent-a-err] [llm-agent] Provider: gemini, Model: default, Token Limit: 2097152, Execution Mode: persistent -> persistent
+[McpClient] Connecting to ws://localhost:60382/?agentId=planner-a
 [McpServer] Connection established for agentId=worker-1
-[llm-agent-a-err] [McpClient] Connected.
-[llm-agent-b-err] [McpClient] Connected.
+[McpServer] Connection established for agentId=planner-b
+[McpServer] Connection established for agentId=planner-a
 [llm-agent-w-err] [McpClient] Connected.
-[llm-agent-a-err] [llm-agent] Waiting for turn...
-[Registry] MCP tool call from planner-a: await_turn {}
-[Registry] MCP tool call from planner-b: await_turn {}
-[llm-agent-b-err] [llm-agent] Waiting for turn...
-[Registry] MCP tool call from worker-1: await_turn {}
+[llm-agent-b-err] [McpClient] Connected.
+[llm-agent-a-err] [McpClient] Connected.
 [llm-agent-w-err] [llm-agent] Waiting for turn...
+[Registry] MCP tool call from worker-1: await_turn {}
+[llm-agent-b-err] [llm-agent] Waiting for turn...
+[Registry] MCP tool call from planner-b: await_turn {}
+[Registry] MCP tool call from planner-a: await_turn {}
+[llm-agent-a-err] [llm-agent] Waiting for turn...
 [Test] Creating team...
 [Test] Starting team in arbiter mode...
-[Registry] Sending EVT to agent planner-a: {"type":"message_received","from":"system","payload":"You are in Arbiter Consensus Mode.\nTask: Please quickly agree to write a python hello world script. You have a very limited turn budget. Just say \"I agree to the python hello world\" and nothing else.\n\nDiscuss the task with your peer planner using free-form natural language.\nThere is no strict message_type protocol. Just communicate clearly.\nA judge will periodically evaluate your debate and finalize it when converged.","messageId":"msg-1783011100024-1"}
+[Registry] Sending EVT to agent planner-a: {"type":"message_received","from":"system","payload":"You are in Arbiter Consensus Mode.\nTask: Please quickly agree to write a python hello world script. You have a very limited turn budget. Just say \"I agree to the python hello world\" and nothing else.\n\nDiscuss the task with your peer planner using free-form natural language.\nThere is no strict message_type protocol. Just communicate clearly.\nA judge will periodically evaluate your debate and finalize it when converged.","messageId":"msg-1783012017583-1"}
 [Agent planner-a] ready -> busy
-[Registry] Sending EVT to agent planner-b: {"type":"message_received","from":"system","payload":"You are in Arbiter Consensus Mode.\nTask: Please quickly agree to write a python hello world script. You have a very limited turn budget. Just say \"I agree to the python hello world\" and nothing else.\n\nDiscuss the task with your peer planner using free-form natural language.\nThere is no strict message_type protocol. Just communicate clearly.\nA judge will periodically evaluate your debate and finalize it when converged.","messageId":"msg-1783011100025-2"}
+[Registry] Sending EVT to agent planner-b: {"type":"message_received","from":"system","payload":"You are in Arbiter Consensus Mode.\nTask: Please quickly agree to write a python hello world script. You have a very limited turn budget. Just say \"I agree to the python hello world\" and nothing else.\n\nDiscuss the task with your peer planner using free-form natural language.\nThere is no strict message_type protocol. Just communicate clearly.\nA judge will periodically evaluate your debate and finalize it when converged.","messageId":"msg-1783012017583-2"}
 [Agent planner-b] ready -> busy
 [llm-agent-a-err] [llm-agent] Received turn: {
   type: 'exec_rpc',
@@ -57,19 +60,6 @@ Starting live MCP arbiter mode smoke test...
     'There is no strict message_type protocol. Just communicate clearly.\n' +
     'A judge will periodically evaluate your debate and finalize it when converged.'
 }
-[Registry] MCP tool call from planner-a: submit_exec_result {
-  text: 'I agree to the python hello world\n',
-  usage: { prompt_tokens: 0, completion_tokens: 0 }
-}
-[Registry] MCP tool call from planner-a: send_to_agent {
-  to: 'system',
-  payload: 'I agree to the python hello world\n',
-  replyToMessageId: 'msg-1783011100024-1'
-}
-[Registry] Sending EVT to agent planner-b: {"type":"message_received","from":"planner-a","payload":"I agree to the python hello world\n","replyToMessageId":"msg-1783011100024-1","messageId":"msg-1783011107435-3"}
-[Agent planner-a] busy -> ready
-[llm-agent-a-err] [llm-agent] Waiting for turn...
-[Registry] MCP tool call from planner-a: await_turn {}
 [Registry] MCP tool call from planner-b: submit_exec_result {
   text: 'I agree to the python hello world\n',
   usage: { prompt_tokens: 0, completion_tokens: 0 }
@@ -77,34 +67,9 @@ Starting live MCP arbiter mode smoke test...
 [Registry] MCP tool call from planner-b: send_to_agent {
   to: 'system',
   payload: 'I agree to the python hello world\n',
-  replyToMessageId: 'msg-1783011100025-2'
+  replyToMessageId: 'msg-1783012017583-2'
 }
-[Registry] Sending EVT to agent planner-a: {"type":"message_received","from":"planner-b","payload":"I agree to the python hello world\n","replyToMessageId":"msg-1783011100025-2","messageId":"msg-1783011109815-4"}
-[Agent planner-a] ready -> busy
-[Agent planner-b] busy -> ready
-[Agent planner-b] ready -> busy
-[llm-agent-a-err] [llm-agent] Received turn: {
-  type: 'exec_rpc',
-  prompt: 'Now respond to the latest message:\n' +
-    '[planner-b]: I agree to the python hello world\n'
-}
-[llm-agent-b-err] [llm-agent] Waiting for turn...
-[Registry] MCP tool call from planner-b: await_turn {}
-[llm-agent-b-err] [llm-agent] Received turn: {
-  type: 'exec_rpc',
-  prompt: 'Now respond to the latest message:\n' +
-    '[planner-a]: I agree to the python hello world\n'
-}
-[Registry] MCP tool call from planner-b: submit_exec_result {
-  text: 'I agree to the python hello world\n',
-  usage: { prompt_tokens: 0, completion_tokens: 0 }
-}
-[Registry] MCP tool call from planner-b: send_to_agent {
-  to: 'planner-a',
-  payload: 'I agree to the python hello world\n',
-  replyToMessageId: 'msg-1783011107435-3'
-}
-[Registry] Sending EVT to agent planner-a: {"type":"message_received","from":"planner-b","payload":"I agree to the python hello world\n","replyToMessageId":"msg-1783011107435-3","messageId":"msg-1783011116469-5"}
+[Registry] Sending EVT to agent planner-a: {"type":"message_received","from":"planner-b","payload":"I agree to the python hello world\n","replyToMessageId":"msg-1783012017583-2","messageId":"msg-1783012026494-3"}
 [Agent planner-b] busy -> ready
 [llm-agent-b-err] [llm-agent] Waiting for turn...
 [Registry] MCP tool call from planner-b: await_turn {}
@@ -113,11 +78,11 @@ Starting live MCP arbiter mode smoke test...
   usage: { prompt_tokens: 0, completion_tokens: 0 }
 }
 [Registry] MCP tool call from planner-a: send_to_agent {
-  to: 'planner-b',
+  to: 'system',
   payload: 'I agree to the python hello world\n',
-  replyToMessageId: 'msg-1783011109815-4'
+  replyToMessageId: 'msg-1783012017583-1'
 }
-[Registry] Sending EVT to agent planner-b: {"type":"message_received","from":"planner-a","payload":"I agree to the python hello world\n","replyToMessageId":"msg-1783011109815-4","messageId":"msg-1783011116860-6"}
+[Registry] Sending EVT to agent planner-b: {"type":"message_received","from":"planner-a","payload":"I agree to the python hello world\n","replyToMessageId":"msg-1783012017583-1","messageId":"msg-1783012027006-4"}
 [Agent planner-b] ready -> busy
 [Agent planner-a] busy -> ready
 [Agent planner-a] ready -> busy
@@ -133,18 +98,6 @@ Starting live MCP arbiter mode smoke test...
   prompt: 'Now respond to the latest message:\n' +
     '[planner-b]: I agree to the python hello world\n'
 }
-[Registry] MCP tool call from planner-b: submit_exec_result {
-  text: 'I agree to the python hello world\n',
-  usage: { prompt_tokens: 0, completion_tokens: 0 }
-}
-[Registry] MCP tool call from planner-b: send_to_agent {
-  to: 'planner-a',
-  payload: 'I agree to the python hello world\n',
-  replyToMessageId: 'msg-1783011116860-6'
-}
-[Agent planner-b] busy -> ready
-[Registry] MCP tool call from planner-b: await_turn {}
-[llm-agent-b-err] [llm-agent] Waiting for turn...
 [Registry] MCP tool call from planner-a: submit_exec_result {
   text: 'I agree to the python hello world\n',
   usage: { prompt_tokens: 0, completion_tokens: 0 }
@@ -152,15 +105,67 @@ Starting live MCP arbiter mode smoke test...
 [Registry] MCP tool call from planner-a: send_to_agent {
   to: 'planner-b',
   payload: 'I agree to the python hello world\n',
-  replyToMessageId: 'msg-1783011116469-5'
+  replyToMessageId: 'msg-1783012026494-3'
+}
+[Registry] Sending EVT to agent planner-b: {"type":"message_received","from":"planner-a","payload":"I agree to the python hello world\n","replyToMessageId":"msg-1783012026494-3","messageId":"msg-1783012035682-5"}
+[Agent planner-a] busy -> ready
+[llm-agent-a-err] [llm-agent] Waiting for turn...
+[Registry] MCP tool call from planner-a: await_turn {}
+[Registry] MCP tool call from planner-b: submit_exec_result {
+  text: 'I agree to the python hello world\n',
+  usage: { prompt_tokens: 0, completion_tokens: 0 }
+}
+[Registry] MCP tool call from planner-b: send_to_agent {
+  to: 'planner-a',
+  payload: 'I agree to the python hello world\n',
+  replyToMessageId: 'msg-1783012027006-4'
+}
+[Registry] Sending EVT to agent planner-a: {"type":"message_received","from":"planner-b","payload":"I agree to the python hello world\n","replyToMessageId":"msg-1783012027006-4","messageId":"msg-1783012036800-6"}
+[Agent planner-a] ready -> busy
+[Agent planner-b] busy -> ready
+[Agent planner-b] ready -> busy
+[llm-agent-a-err] [llm-agent] Received turn: {
+  type: 'exec_rpc',
+  prompt: 'Now respond to the latest message:\n' +
+    '[planner-b]: I agree to the python hello world\n'
+}
+[llm-agent-b-err] [llm-agent] Waiting for turn...
+[Registry] MCP tool call from planner-b: await_turn {}
+[llm-agent-b-err] [llm-agent] Received turn: {
+  type: 'exec_rpc',
+  prompt: 'Now respond to the latest message:\n' +
+    '[planner-a]: I agree to the python hello world\n'
+}
+[Registry] MCP tool call from planner-a: submit_exec_result {
+  text: 'I agree to the python hello world\n',
+  usage: { prompt_tokens: 0, completion_tokens: 0 }
+}
+[Registry] MCP tool call from planner-a: send_to_agent {
+  to: 'planner-b',
+  payload: 'I agree to the python hello world\n',
+  replyToMessageId: 'msg-1783012036800-6'
 }
 [Agent planner-a] busy -> ready
 [llm-agent-a-err] [llm-agent] Waiting for turn...
 [Registry] MCP tool call from planner-a: await_turn {}
+[Registry] MCP tool call from planner-b: submit_exec_result {
+  text: 'I agree to the python hello world\n',
+  usage: { prompt_tokens: 0, completion_tokens: 0 }
+}
+[Registry] MCP tool call from planner-b: send_to_agent {
+  to: 'planner-a',
+  payload: 'I agree to the python hello world\n',
+  replyToMessageId: 'msg-1783012035682-5'
+}
+[Agent planner-b] busy -> ready
+[llm-agent-b-err] [llm-agent] Waiting for turn...
+[Registry] MCP tool call from planner-b: await_turn {}
 [Test] Plan submitted/synthesized by Arbiter. Confirming plan...
 [Test] Candidate Plan:
- undefined
-[Registry] Sending EVT to agent worker-1: {"type":"team_work_assign","teamId":"team-1783011100023","taskId":"task-1783011100024","role":"worker","plan":"```python\nprint(\"Hello, World!\")\n```\n\nExecution requirement: use strictly `git worktree` for this task. If you cannot or will not use a git worktree, refuse the assignment and abort the task.","description":"Please quickly agree to write a python hello world script. You have a very limited turn budget. Just say \"I agree to the python hello world\" and nothing else."}
+ ```python
+print("Hello, World!")
+```
+[Registry] Sending EVT to agent worker-1: {"type":"team_work_assign","teamId":"team-1783012017582","taskId":"task-1783012017582","role":"worker","plan":"```python\nprint(\"Hello, World!\")\n```\n\nExecution requirement: use strictly `git worktree` for this task. If you cannot or will not use a git worktree, refuse the assignment and abort the task.","description":"Please quickly agree to write a python hello world script. You have a very limited turn budget. Just say \"I agree to the python hello world\" and nothing else."}
 [Agent worker-1] ready -> busy
 [llm-agent-w-err] [llm-agent] Received turn: {
   type: 'exec_rpc',
@@ -190,16 +195,18 @@ Starting live MCP arbiter mode smoke test...
     '  Payload: `{ "reason": "why you cannot execute the plan" }`\n' +
     '\n' +
     'Respond with exactly one JSON object. No other text.',
-  cwd: '/tmp/agentalk-task-task-1783011100024',
+  cwd: '/tmp/agentalk-task-task-1783012017582',
   timeoutMs: 600000
 }
 [Registry] MCP tool call from worker-1: submit_exec_result {
-  text: '{\n' +
+  text: '```json\n' +
+    '{\n' +
     '  "message_type": "work_accept",\n' +
     '  "message_payload": {\n' +
     '    "text": "I agree to the python hello world"\n' +
     '  }\n' +
-    '}\n',
+    '}\n' +
+    '```\n',
   usage: { prompt_tokens: 0, completion_tokens: 0 }
 }
 [Registry] MCP tool call from worker-1: submit_work_response { accepted: true }
@@ -208,10 +215,10 @@ Starting live MCP arbiter mode smoke test...
 [llm-agent-w-err] [llm-agent] Waiting for turn...
 [Registry] MCP tool call from worker-1: await_turn {}
 TEST PASSED: Arbiter Consensus E2E reached awaiting_confirmation and worker completed task
-[Test] Arbiter Judge Usage: { prompt_tokens: 329, completion_tokens: 39 }
-[Test] Arbiter Synthesis Usage: { prompt_tokens: 204, completion_tokens: 10 }
-[McpServer] Connection closed for agentId=worker-1 (code: 1006)
-[Registry] Cleared 1 stale await_turn waiter(s) for agent worker-1
-[Registry] Cleared 1 stale exec-turn waiter(s) for agent worker-1
-[Registry] MCP connection dropped for agent worker-1 (code undefined). Allowing 30s reconnect...
-[Agent worker-1] ready -> reconnecting
+[Test] Arbiter Judge Usage: { prompt_tokens: 329, completion_tokens: 41 }
+[Test] Arbiter Synthesis Usage: { prompt_tokens: 205, completion_tokens: 10 }
+[McpServer] Connection closed for agentId=planner-b (code: 1006)
+[Registry] Cleared 1 stale await_turn waiter(s) for agent planner-b
+[Registry] Cleared 1 stale exec-turn waiter(s) for agent planner-b
+[Registry] MCP connection dropped for agent planner-b (code undefined). Allowing 30s reconnect...
+[Agent planner-b] ready -> reconnecting

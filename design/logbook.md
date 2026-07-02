@@ -1370,3 +1370,120 @@ no scope change to the probe plan otherwise. The plan stays DRAFT-for-review aft
 - **Records updated:** `AGENT.md` (SM-status bullet, Origin Tag Protocol rewritten),
   `design/collaboration-workflow.md` §1 (canonical SM standing), planner primer re-minted for the dual role
   (key `20260702-1654-2bd94e`).
+
+### LB-51 · 2026-07-02 — [process] SM next-step call for BL-012 / M15
+- **Finding / call:** `npm run backlog:check` reports **BL-012 M15 — Arbiter Consensus, Direct Path** as the
+  single `doing` item; BL-010/BL-005/BL-007 remain `deferred`, and there is no `todo` queue item ahead of M15.
+- **Operational decision (Codex as SM):** proceed inside M15, not to any deferred backlog item. The immediate
+  next action is **Codex planner advisory POV** in `design/milestone15-arbiter-consensus-plan.md`; breakdown and
+  implementer baton wait until the PO weighs that POV, per the M15 plan status.
+- **Resource read at call:** Codex weekly 71%, 5h 17%; Claude weekly 27%, session 83%; antigravity 39% (best-effort
+  `node scripts/usage.mjs`, 2026-07-02 17:03 Europe/Rome).
+
+### LB-52 · 2026-07-02 — [process] SM go for M15 breakdown after PO accepts advisory POV
+- **Finding / call:** The M15 planner advisory POV was advisory only; PO accepted proceeding to breakdown in
+  session. This satisfies the M15 plan's "PO weighs POV before breakdown" gate.
+- **Operational decision (Codex as SM):** Codex proceeds in the planner seat to create
+  `design/milestone15-arbiter-consensus-implementation.md` and update the M15 plan status. Implementation remains
+  blocked until Claude's Reviewer Gate 1 approves the breakdown.
+- **Resource read at call:** Codex weekly 71%, 5h 18%; Claude weekly 27%, session 86%; antigravity 39% (best-effort
+  `node scripts/usage.mjs`, 2026-07-02 17:15 Europe/Rome).
+
+### LB-53 · 2026-07-02 — [process] M15 Gate 1 approved; implementer baton authorized for T1
+- **Finding / call:** Claude approved the M15 breakdown at Gate 1 with three non-blocking notes; two required
+  planner disposition before the implementer baton. Codex dispositioned all three in the M15 ledger.
+- **Operational decision (Codex as SM):** mint the implementer primer for **M15-T1 - ArbiterCoordinator skeleton
+  + routing** only. T2/T3 stay blocked until T1 is implemented and reviewer-verified.
+- **Resource read at call:** Codex weekly 72%, 5h 25%; Claude weekly 28%, session 92%; antigravity 39% (best-effort
+  `node scripts/usage.mjs`, 2026-07-02 17:27 Europe/Rome).
+
+### LB-54 · 2026-07-02 — [process] PO appoints Codex as implementation reviewer for this session
+- **Finding / call:** PO appointed Codex as implementer's reviewer for this session because Claude's 5h window is
+  too tight. Claude has already completed the independent Gate 1 review of Codex's M15 breakdown.
+- **Operational effect:** Codex now holds planner + SM + implementation reviewer for this session, with each
+  discipline kept separate. This is an explicit PO appointment; merge remains human-gated. Future implementation
+  review gates remain a PO call unless the appointment is extended.
+- **Resource read at call:** Codex weekly 72%, 5h 25%; Claude weekly 28%, session 92%; antigravity 39% (best-effort
+  `node scripts/usage.mjs`, 2026-07-02 17:27 Europe/Rome).
+
+### LB-55 · 2026-07-02 — [process] PO overrules M15-T1 refutation; T1 accepted
+- **Finding / call:** Reviewer-run M15-T1 functional/freeze evidence was green (targeted arbiter test 4/4,
+  `npx tsc -b` 0, M14 identity `--check` green, full suite 273/273, forbidden-surface check clean), but the
+  reviewer refuted on hygiene/claim-discipline grounds (`git diff --check` whitespace, leaked `task-task-*`
+  worktrees cleaned after, claims not filed in the table).
+- **PO decision:** Fausto overruled the refutation on those grounds: all annotations stand, but T1 is
+  **VERIFIED by PO override**.
+- **Operational effect:** M15-T2 is unblocked for assignment. T2/T3 gates remain unchanged; merge remains
+  human-gated.
+
+### LB-56 · 2026-07-02 — [process] M15-T2 reviewer gate refuted; redelivery required
+- **Finding / call:** Codex, acting as PO-appointed implementation reviewer for this session, independently ran
+  the targeted arbiter vitest and `npx tsc -b` successfully, then reproduced a blocking functional failure:
+  arbiter-owned tasks reach `awaiting_confirmation`, but `Registry.confirmTeamPlan(task.id)` delegates only to
+  `TeamCoordinator.confirmPlan()` and returns `Task <id> not found`.
+- **Operational decision (Codex as reviewer/SM):** M15-T2 is **REFUTED**. T3 remains blocked. The next baton is
+  T2 redelivery only: make the existing registry confirmation/rejection path work for arbiter-owned tasks,
+  add a deterministic confirmation-gate test, file proper claim evidence, and clean committed whitespace.
+- **Resource read at call:** Codex weekly 75%, 5h 5%; Claude weekly 28%, session 93%; antigravity 42%
+  (best-effort `node scripts/usage.mjs`, 2026-07-02 18:03 Europe/Rome).
+
+### LB-57 · 2026-07-02 — [process] M15-T2 redelivery verified; T3 unblocked
+- **Finding / call:** Codex reviewed Gemini's M15-T2 redelivery (`f406feb` implementation + `a329b19` claim).
+  Round 1's blocker is fixed: arbiter-owned tasks now route `Registry.confirmTeamPlan(task.id)` through
+  `ArbiterCoordinator`, and reviewer repro printed
+  `CONFIRM_OK awaiting_confirmation/awaiting_confirmation => working/delegated planConfirmed=true`.
+- **Verification run:** targeted arbiter vitest 5/5, `npx tsc -b` 0, full `npm test` 274/274 across 47 files,
+  M14 identity `--check` matched, committed whitespace checks clean, forbidden-surface check clean.
+- **Operational decision (Codex as reviewer/SM):** M15-T2 is **VERIFIED**. M15-T3 is unblocked for PO/SM
+  assignment. One leaked implementer worktree and two reviewer-created worker-assignment worktrees were cleaned;
+  final pollution check showed only the main checkout.
+- **Resource read at call:** Codex weekly 78%, 5h 27%; Claude weekly 28%, session 93%; antigravity 43%
+  (best-effort `node scripts/usage.mjs`, 2026-07-02 18:15 Europe/Rome).
+
+### LB-58 · 2026-07-02 — [process] M15-T3 reviewer gate refuted; redelivery required
+- **Finding / call:** Codex reviewed Gemini's M15-T3 delivery (`f70f23c`). The live log is useful evidence: it
+  reached `awaiting_confirmation`, confirmed the plan, completed worker execution, and reported judge/synthesis
+  usage. However, T3 also silently changed production runtime code after discovering a live blocker, including a
+  private `TeamCoordinator` task-map write from `Registry`; the script/log do not prove
+  `AGENTTALK_DIAGRAM_RECORD` was enabled; `git show --check HEAD` fails on committed trailing whitespace; and
+  leaked `task-task-*` branches were present before reviewer cleanup.
+- **Verification run:** targeted arbiter vitest 5/5 and `npx tsc -b` 0 passed. Full suite, M14 identity, backlog
+  check, and reviewer live rerun were not executed after the show-stopping scope/recording/whitespace findings.
+- **Operational decision (Codex as reviewer/SM):** M15-T3 is **REFUTED**. Redelivery must either remove the
+  runtime changes or get explicit PO scope authorization for a follow-up implementation task, prove
+  `AGENTTALK_DIAGRAM_RECORD`, clean committed whitespace, and leave no task branch/worktree pollution.
+- **Resource read at call:** Codex weekly 80%, 5h 34%; Claude weekly 28%, session 93%; antigravity 49%
+  (best-effort `node scripts/usage.mjs`, 2026-07-02 18:50 Europe/Rome).
+
+### LB-59 · 2026-07-02 — [process] Codex fixes M15-T3 by PO request; M15 awaits PO closure
+- **Finding / call:** PO asked Codex to fix M15-T3 directly after the reviewer refutation. Codex declared
+  temporary implementer + reviewer. The fix removed the invalid private `TeamCoordinator` task-map write and routed
+  arbiter worker response/result handling explicitly through `ArbiterCoordinator`.
+- **Verification run:** live proof passed with
+  `AGENTTALK_DIAGRAM_RECORD=1 AGENTTALK_RECORDING_PATH=design/m15-t3-live-arbiter.ndjson node scripts/m15-live-arbiter.mjs`;
+  refreshed `design/m15-t3-live-arbiter.log`; wrote 52-line `design/m15-t3-live-arbiter.ndjson`; judge usage
+  `{ prompt_tokens: 329, completion_tokens: 41 }`; synthesis usage `{ prompt_tokens: 205, completion_tokens: 10 }`.
+  Targeted arbiter vitest 5/5, `npx tsc -b` 0, full `npm test` 274/274, M14 identity `--check` matched,
+  `npm run backlog:check` OK, diff whitespace clean, final pollution clean.
+- **Residual note:** `AGENTTALK_DIAGRAM_RECORD=1` was enabled and logged, but local DiagramTalk at
+  `http://localhost:3000` was unavailable, so no DiagramTalk recording id was returned. The runtime NDJSON artifact
+  is the committed auditable recording for this proof.
+- **Operational decision (Codex as SM):** M15-T3 is **VERIFIED** under the PO-requested resource fallback. M15 is
+  ready for the PO merge/closure decision; merge remains human-gated.
+- **Resource read at call:** Codex weekly 80%, 5h 40%; Claude weekly 28%, session 93%; antigravity 58%
+  (best-effort `node scripts/usage.mjs`, 2026-07-02 19:02 Europe/Rome).
+
+### LB-60 · 2026-07-02 — [process] Claude T3 follow-up defect fixed; M15 awaits PO closure
+- **Finding / call:** Claude independently reviewed Codex's M15-T3 redelivery and found one confirmed regression:
+  arbiter-opted non-PPW teams routed `submit_work_response` / `submit_work_result` into `ArbiterCoordinator`
+  because the registry guard checked only `consensusMode === 'arbiter'`. Codex agreed with the finding.
+- **Fix:** `Registry` now routes worker response/result handling to `ArbiterCoordinator` only for
+  `planner-planner-worker` arbiter teams, matching the sibling arbiter guards. Added a regression test proving an
+  arbiter-opted `worker-only` team stays on the `TeamCoordinator` work path through completion.
+- **Verification run:** targeted arbiter vitest 6/6, `npx tsc -b` 0, full `npm test` 275/275 across 47 files,
+  M14 identity `--check` matched, `npm run backlog:check` OK, diff whitespace clean. The M14 harness created two
+  task worktrees/branches during verification; Codex removed both, and the final pollution check was clean.
+- **Operational decision (Codex as SM):** Claude's blocker is fixed. M15-T3 returns to **VERIFIED** status and
+  M15 again awaits the PO closure/merge decision; merge remains human-gated.
+- **Resource read at call:** Codex weekly 84%, 5h 61%; Claude weekly 29%, session 0%; antigravity 49%
+  (best-effort `node scripts/usage.mjs`, 2026-07-02 22:09 Europe/Rome).

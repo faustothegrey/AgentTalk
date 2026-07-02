@@ -261,5 +261,39 @@ describe('ArbiterCoordinator', () => {
 
     expect(task.status).toBe('delegated');
     expect(team.status).toBe('working');
+
+    await registry.handleMcpToolCall(worker.id, 'submit_work_response', { accepted: true });
+    expect(task.status).toBe('in_progress');
+    expect(team.status).toBe('working');
+
+    await registry.handleMcpToolCall(worker.id, 'submit_work_result', { result: 'worker completed' });
+    expect(task.status).toBe('completed');
+    expect(team.status).toBe('completed');
+    expect(team.currentTaskId).toBeUndefined();
+  });
+
+  it('keeps arbiter-opted worker-only teams on the TeamCoordinator work path', async () => {
+    const worker = await registry.createAgent('worker-1', { provider: 'mcp', providerName: 'mock', model: 'worker-1' });
+    (registry.getAgent(worker.id) as any).status = 'ready';
+
+    const team = registry.createTeam([
+      { agentId: worker.id, role: 'worker' }
+    ], undefined, 'arbiter');
+
+    expect(team.consensusMode).toBe('arbiter');
+    expect(team.composition).toBe('worker-only');
+
+    const task = await registry.assignTeamTask(team.id, 'worker-only arbiter opt-in should remain worker-only');
+
+    expect(task.status).toBe('delegated');
+    expect(team.status).toBe('working');
+
+    await registry.handleMcpToolCall(worker.id, 'submit_work_response', { accepted: true });
+    expect(task.status).toBe('in_progress');
+
+    await registry.handleMcpToolCall(worker.id, 'submit_work_result', { result: 'worker-only completed' });
+    expect(task.status).toBe('completed');
+    expect(team.status).toBe('completed');
+    expect(team.currentTaskId).toBeUndefined();
   });
 });

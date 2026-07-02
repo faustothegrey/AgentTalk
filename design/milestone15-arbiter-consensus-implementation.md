@@ -1,6 +1,8 @@
 # M15 - Arbiter Consensus, Direct Path - Implementation Ledger
 
-> **Status:** 🟢 **OPEN - M15-T2 VERIFIED by implementation reviewer (Codex, 2026-07-02); T3 unblocked for assignment.**
+> **Status:** 🟢 **OPEN - M15-T3 fixed and verified by Codex (temporary implementer + reviewer, PO-requested,
+> 2026-07-02); Claude's independent T3 review found one confirmed work-routing regression, now fixed by the
+> follow-up guard/test below. Freeze bar re-ran green; awaiting PO closure/merge decision.**
 > Reviewer annotations stand; the PO overruled the round-1 refutation on hygiene/claim-discipline grounds after
 > the functional/freeze bars were green. See the M15-T1 reviewer record and PO override record.
 > **Plan:** `design/milestone15-arbiter-consensus-plan.md`
@@ -16,6 +18,74 @@
 
 This ledger is the task-level handoff for M15. The plan owns the epic goal and fence; this file owns task
 sequencing, implementer claims, reviewer verdicts, gate evidence, and closure telemetry.
+
+## T3 Independent Review (Claude, reviewer, PO-requested, 2026-07-02 evening) — **REFUTED then FIXED ✅**
+
+**Context.** Codex closed T3 wearing both temporary-implementer and reviewer hats (full self-review); the PO
+asked Claude for an independent pass over the T3 delivery (commit `f70f23c` + the uncommitted redelivery in
+the working tree).
+
+**Verified by running (all at `f70f23c` + working tree):**
+- **Freeze bar green:** `npx tsc -b` → 0 errors; `npm test` → **274/274 (47 files)**; `node
+  scripts/m14-identity-harness.mjs --check` → "Baselines match. Identity verified."; `npm run backlog:check`
+  ran clean; `git diff --check` → no whitespace errors. Zero `team-coordinator.ts` diff across
+  `881a9cc..HEAD` **and** the working tree (checked both).
+- **The `as any` private-state poke is really gone:** Gemini's `f70f23c` wrote
+  `(this.teamCoordinator as any).tasks.set(task.id, task)` into the frozen coordinator's private map — a
+  fence violation in spirit (no file diff, but foreign writes into frozen state). Codex's redelivery removes
+  it and routes `submit_work_response`/`submit_work_result` explicitly. Correct call, correctly reported.
+- **Live evidence signature checks out:** `design/m15-t3-live-arbiter.ndjson` (52 lines) contains the real
+  progression — `planning` → `awaiting_confirmation` (×2) → `delegated` → `in_progress` → `working` →
+  `completed` — not just a file that exists.
+- **New deterministic test drives the real MCP path** (`handleMcpToolCall` → accept → result → team
+  `completed`, `currentTaskId` cleared).
+- **Hygiene:** identity-harness worktree+branch leak reproduced and cleaned twice this session (Gate 1 +
+  this review); final `git worktree list` = main checkout only.
+
+**CONFIRMED defect (repro run, then repro file removed):** the redelivery's work routing at
+`registry.ts:473` and `:485` guards on `team.consensusMode === 'arbiter'` **alone**, while the four sibling
+guards (`registry.ts:376,384,434,690`) all also require `composition === 'planner-planner-worker'`. A
+worker-only (or planner-worker) team created with `consensusMode: 'arbiter'` therefore gets its task
+assigned via the protocol `TeamCoordinator`, but its work submissions route into `ArbiterCoordinator`,
+whose task map never saw the task → **throw `Arbiter task <id> not found`**
+(`arbiter-coordinator.ts:535` via `registry.ts:474`; reviewer repro test failed with exactly this error).
+At `f70f23c` (pre-redelivery) the same call worked. This regresses T1's required behavior — "worker-only
+and single-planner flows keep their existing behavior" — for arbiter-opted teams. The **default protocol
+path is NOT affected** (requires explicit arbiter opt-in with a non-PPW composition).
+
+**Disposition at review time:** REFUTED on that one point, handed back — the fix is two one-line guard changes (add the
+composition check at `registry.ts:473` and `:485`, mirroring the siblings) **plus a regression test** for
+an arbiter-opted non-PPW team. Not applied by the reviewer: it is a behavior change, outside the zero-risk
+(typo-class) reviewer-fix exception. Everything else in T3 stands verified. **Merge should wait for this
+fix + one re-run of the freeze bar.**
+
+**Codex follow-up fix (temporary implementer, PO-requested, same evening):** AGREED with Claude's finding and
+applied the narrow guard fix. `Registry.submit_work_response` and `submit_work_result` now route to
+`ArbiterCoordinator` only when `team.consensusMode === 'arbiter'` **and**
+`team.composition === 'planner-planner-worker'`, matching the sibling arbiter guards. Added deterministic
+coverage for an arbiter-opted `worker-only` team, proving assignment and work completion stay on the
+`TeamCoordinator` path.
+
+**Follow-up verification run:**
+- `npx vitest run packages/runtime-core/src/registry/__tests__/arbiter-coordinator.test.ts` -> **6/6 passed**.
+- `npx tsc -b` -> exit 0.
+- `npm test` -> **47 files passed, 275 tests passed**.
+- `node scripts/m14-identity-harness.mjs --check` -> `Baselines match. Identity verified.`
+- `npm run backlog:check` -> backlog structure OK, BL-012 still `doing`.
+- `git diff --check` -> exit 0.
+- Pollution check after removing two M14-created verification worktrees/branches -> main checkout only.
+
+**Claude re-verification of the follow-up fix (independent, ran everything, 2026-07-02 late evening) —
+VERIFIED ✅.** Guards at `registry.ts:473/485` now include the composition check, matching the four
+siblings. **The reviewer's original repro test — rebuilt from scratchpad and run against the amended code —
+now PASSES** (1/1; the strongest possible confirmation, since it failed with `Arbiter task not found`
+pre-fix; repro file removed again after the run). Codex's regression test
+(`keeps arbiter-opted worker-only teams on the TeamCoordinator work path`) is present and covers the class.
+Freeze bar re-run independently: `npx tsc -b` 0, `npm test` **275/275 (47 files)**, identity harness
+"Baselines match. Identity verified.", `npm run backlog:check` clean, `git diff --check` clean. Harness's
+usual worktree+branch leak reproduced and cleaned (third time today); final `git worktree list` = main
+checkout only. **The T3 REFUTED point is closed. From the reviewer's side M15 is merge-ready; merge remains
+the PO's `[Human]` gate.**
 
 ## Global M15 Rules
 
@@ -37,7 +107,7 @@ sequencing, implementer claims, reviewer verdicts, gate evidence, and closure te
 
 - **M15-T1 (Arbiter Coordinator skeleton):** Done
 - **M15-T2 (Arbiter Judge & Synthesis via OpenRouter):** Done
-- **M15-T3 (Live recorded proof + closure):** Done
+- **M15-T3 (Live recorded proof + closure):** Fixed and verified; awaiting PO closure/merge decision
 
 ## Sequencing
 
@@ -60,7 +130,7 @@ running or independently checking the evidence.
 |---|---|---|---|---|
 | M15-T1 | Gemini | NOT FILED (telemetry-only note appended; no claim rows with command output) | **VERIFIED ✅ by PO override** | Reviewer-run functional/freeze bars passed: targeted arbiter vitest 4/4, `npx tsc -b` 0, full `npm test` 273/273, M14 identity `--check` green, forbidden-surface check clean. Reviewer annotations stand for diff hygiene, pollution, and claim filing; PO overruled those as non-blocking and accepted T1. |
 | M15-T2 | Gemini | **FILED** - Implemented confirmation path in `Registry` and `ArbiterCoordinator`. Whitespace cleaned, tests and TS pass (274 tests). Mocked `fs` and `child_process` in tests to prevent git worktree leaks. M14 harness verifies identity baseline matches. | **VERIFIED ✅** | Round 2 reviewer-run evidence: targeted arbiter vitest 5/5, `npx tsc -b` 0, independent registry confirmation repro printed `CONFIRM_OK awaiting_confirmation/awaiting_confirmation => working/delegated planConfirmed=true`, full `npm test` 274/274 across 47 files, M14 identity `--check` matched, `git show --check` clean for both redelivery commits, forbidden-surface check found zero `team-coordinator.ts` diff. Initial implementer-leaked `task-task-*` worktree and reviewer-created worktrees were cleaned; final `git worktree list` showed only the main checkout. |
-| M15-T3 | Gemini | NOT FILED | not-checked | Blocked on T2 verified. |
+| M15-T3 | Gemini + Codex | Gemini filed the initial live script/log; Codex, by direct PO request, redelivered the fix as temporary implementer: removed the private `TeamCoordinator` task-map write, routed arbiter worker response/result handling explicitly, added deterministic worker-completion coverage, refreshed the live log, and added runtime NDJSON evidence. Claude then found one non-PPW work-routing regression; Codex agreed and narrowed the worker-result arbiter guard to PPW teams only. | **VERIFIED ✅ after Claude follow-up fix (awaiting PO closure/merge)** | Live proof passed: `AGENTTALK_DIAGRAM_RECORD=1 AGENTTALK_RECORDING_PATH=design/m15-t3-live-arbiter.ndjson node scripts/m15-live-arbiter.mjs` reached `awaiting_confirmation`, confirmed, worker completed; 52-line NDJSON artifact written. Final freeze bar after Claude's finding: targeted arbiter vitest 6/6, `npx tsc -b` 0, full `npm test` 275/275, M14 identity `--check` matched, `npm run backlog:check` OK, diff whitespace clean, pollution clean after removing M14-created verification worktrees/branches. |
 
 ## M15-T1 - ArbiterCoordinator Skeleton + Routing
 
@@ -456,3 +526,126 @@ and T2-C6 are verified. M15-T3 is unblocked for PO/SM assignment.
 - task:        M15-T3
 - telemetry:   unavailable (token API offline/unreliable during closure)
 - closure:     merged (human-gated / script verified)
+
+## M15-T3 - Reviewer Gate 3 Record (Round 1)
+
+**Verdict:** REFUTED.
+
+**Reviewer role:** Codex acting as implementation reviewer by PO appointment for this session; planner/SM/reviewer
+roles kept separate.
+
+**What passed / useful evidence:**
+
+- `design/m15-t3-live-arbiter.log` records a live run that reached `awaiting_confirmation`, confirmed the
+  candidate plan, and reached worker completion. The log reports judge usage
+  `{ prompt_tokens: 329, completion_tokens: 39 }` and synthesis usage
+  `{ prompt_tokens: 204, completion_tokens: 10 }`.
+- `npx vitest run packages/runtime-core/src/registry/__tests__/arbiter-coordinator.test.ts` -> 5/5 passed.
+- `npx tsc -b` -> exit 0.
+
+**Blocking finding 1: T3 silently made production runtime changes after discovering a live blocker.**
+T3's allowed surfaces were a live-smoke script, result artifacts/pointers, and closure docs. Production runtime
+changes were permitted only for fixes explicitly authorized after a T3 blocker. The delivered commit changes
+`packages/runtime-core/src/registry/registry.ts` and `packages/runtime-core/src/registry/arbiter-coordinator.ts`
+without a prior stop/authorization record.
+
+The most concerning change is `packages/runtime-core/src/registry/registry.ts:681`, which inserts arbiter-owned
+tasks into `TeamCoordinator`'s private task map via `(this.teamCoordinator as any).tasks.set(task.id, task)`. This
+crosses the intended coordinator boundary and is an unreviewed behavior/architecture change. The claim text itself
+says "the `task not found` bug was fixed" during T3, which should have been reported as a blocker for PO/reviewer
+scope authorization before code changes.
+
+`packages/runtime-core/src/registry/arbiter-coordinator.ts:134` also changes budget exhaustion behavior from
+immediate fail-soft to another convergence evaluation. That may be a legitimate design, but it is a runtime
+behavior change outside the live-proof task unless explicitly authorized.
+
+**Blocking finding 2: the required recording mode is not evidenced.**
+T3 required the live run with `AGENTTALK_DIAGRAM_RECORD` enabled. `scripts/m15-live-arbiter.mjs` does not set or
+assert that variable, and `design/m15-t3-live-arbiter.log` contains no evidence that it was enabled. The delivered
+artifact is a console log, not a verified DiagramTalk recording pointer.
+
+**Blocking finding 3: committed whitespace check fails.**
+`git show --check --stat --oneline HEAD` exits 2 with trailing whitespace in `scripts/m15-live-arbiter.mjs` lines
+35, 67, 96, 98, and 104. The working-tree `git diff --check` is clean because the whitespace is already committed,
+so the committed artifact must be checked directly.
+
+**Pollution finding:** `git branch --list 'task-task-*'` initially showed eight leaked task branches:
+`task-task-1783010397782`, `task-task-1783010676082`, `task-task-1783010735705`,
+`task-task-1783010831747`, `task-task-1783011012413`, `task-task-1783011100024`,
+`task-task-1783011197225`, and `task-task-1783011228699`. All pointed at `a329b19` and had no registered
+worktrees. Reviewer removed them; final `git worktree list` showed only the main checkout.
+
+**Commands independently run:**
+
+- `git show --check --stat --oneline HEAD` -> exit 2; committed trailing whitespace in
+  `scripts/m15-live-arbiter.mjs`.
+- `rg -n "AGENTTALK_DIAGRAM_RECORD|TEST PASSED|Arbiter Judge Usage|Arbiter Synthesis Usage|openai/gpt-4o-mini|teamCoordinator as any" ...`
+  -> live pass/usage and model references found; no `AGENTTALK_DIAGRAM_RECORD` evidence found; private
+  `teamCoordinator` task-map write found.
+- `npx vitest run packages/runtime-core/src/registry/__tests__/arbiter-coordinator.test.ts` -> 5/5 passed.
+- `npx tsc -b` -> exit 0.
+- `git diff --check` -> exit 0 for the current working tree.
+- `git branch -vv --list 'task-task-*'` -> eight leaked branches before cleanup.
+
+Full `npm test`, M14 identity, backlog check, and a reviewer live rerun were not executed after the show-stopping
+scope/recording/committed-whitespace findings.
+
+**Required redelivery:**
+
+1. Revert or explicitly isolate the T3 runtime changes unless the PO authorizes a scoped follow-up implementation
+   task for worker-result routing and budget semantics. Do not use private `TeamCoordinator` internals through
+   `as any` without an approved design.
+2. Re-run the live proof with `AGENTTALK_DIAGRAM_RECORD` enabled and record an auditable recording pointer, not only
+   console output.
+3. Clean committed whitespace (`git show --check HEAD` must pass), leave no `task-task-*` branches/worktrees, and
+   file exact freeze-check outputs.
+4. If the live proof exposes another runtime blocker, stop and report it before changing production code.
+
+## M15-T3 - Codex Redelivery + Verification Record
+
+**Verdict:** VERIFIED by Codex as temporary implementer + reviewer, by direct PO request. This is intentionally
+not an independent review; the human merge/closure gate remains the independent check.
+
+**Implementation fix:**
+
+- Removed the invalid private `TeamCoordinator` task-map write from the arbiter assignment path.
+- Routed `submit_work_response` and `submit_work_result` to `ArbiterCoordinator` when the worker belongs to an
+  arbiter-mode team.
+- Added `ArbiterCoordinator.handleWorkResponse()` and `handleWorkResult()` with local worker lifecycle handling.
+- Extended the arbiter deterministic test so registry confirmation, worker acceptance, and worker result completion
+  are all covered.
+- Updated `scripts/m15-live-arbiter.mjs` to set and log `AGENTTALK_DIAGRAM_RECORD=1`, refresh the live console
+  log, and write `design/m15-t3-live-arbiter.ndjson` via `SessionRecorder`.
+
+**Live proof:**
+
+- Command: `AGENTTALK_DIAGRAM_RECORD=1 AGENTTALK_RECORDING_PATH=design/m15-t3-live-arbiter.ndjson node scripts/m15-live-arbiter.mjs`
+- Outcome: `TEST PASSED: Arbiter Consensus E2E reached awaiting_confirmation and worker completed task`.
+- Console log: `design/m15-t3-live-arbiter.log`.
+- Runtime recording: `design/m15-t3-live-arbiter.ndjson` (52 lines).
+- DiagramTalk: `AGENTTALK_DIAGRAM_RECORD=1` was enabled; local `http://localhost:3000` DiagramTalk endpoint was
+  unavailable, so no DiagramTalk recording id was returned.
+- Judge usage: `{ prompt_tokens: 329, completion_tokens: 41 }`.
+- Synthesis usage: `{ prompt_tokens: 205, completion_tokens: 10 }`.
+
+**Freeze / closure commands run:**
+
+- `node --check scripts/m15-live-arbiter.mjs` -> exit 0.
+- `npx vitest run packages/runtime-core/src/registry/__tests__/arbiter-coordinator.test.ts` -> 6/6 passed
+  after adding the arbiter-opted worker-only regression test from Claude's review.
+- `npx tsc -b` -> exit 0.
+- `npm test` -> 47 files passed, 275 tests passed.
+- `node scripts/m14-identity-harness.mjs --check` -> `Baselines match. Identity verified.`
+- `npm run backlog:check` -> backlog structure OK, BL-012 still `doing`.
+- `git diff --check` -> exit 0.
+- `git worktree list && git branch --list 'task-task-*'` -> clean after removing worker-created task branches and
+  worktrees from the live proof / M14 harness. Follow-up `--check` verification created two more M14 task
+  worktrees/branches, both removed before closure.
+
+**Telemetry (task closure):**
+- task:        M15-T3
+- wall-clock:  2026-07-02 18:50 -> 2026-07-02 19:02 Europe/Rome
+- budget:      weekly 80%->84% (Delta ~4%), 5h 34%->61% (Delta ~27%) [Codex, best-effort `/usage`]
+- gate:        tsc 0, suite 275/275, pollution clean after cleanup
+- diff:        10 files changed including runtime fix, live script, live log, runtime NDJSON, docs
+- outcome:     VERIFIED ✅ after Claude follow-up fix; awaiting PO closure/merge decision

@@ -452,4 +452,89 @@ export class ArbiterCoordinator {
       payload: message,
     });
   }
+
+  handleWorkResponse(agentId: string, team: Team, accepted: boolean, reason?: string): void {
+    const task = this.getActiveTaskForWorker(agentId, team);
+
+    if (task.status !== 'delegated') {
+      throw new Error(`Cannot respond to work: task status is ${task.status}`);
+    }
+
+    task.workerAccepted = accepted;
+
+    const now = new Date().toISOString();
+    if (accepted) {
+      task.status = 'in_progress';
+      task.transcript.push({
+        kind: 'message',
+        timestamp: now,
+        from: agentId,
+        to: 'user',
+        payload: 'Worker accepted the task.',
+      });
+      team.status = 'working';
+    } else {
+      task.status = 'refused';
+      if (reason) {
+        task.workerRefusalReason = reason;
+      }
+      task.transcript.push({
+        kind: 'message',
+        timestamp: now,
+        from: agentId,
+        to: 'user',
+        payload: `Worker refused: ${reason ?? 'No reason given'}`,
+      });
+      team.status = 'error';
+    }
+
+    team.updatedAt = now;
+    task.updatedAt = now;
+    this.deps.emitTeam(team);
+    this.deps.emitTeamTask(task);
+  }
+
+  handleWorkResult(agentId: string, team: Team, result: string): void {
+    const task = this.getActiveTaskForWorker(agentId, team);
+
+    if (task.status !== 'in_progress') {
+      throw new Error(`Cannot submit result: task status is ${task.status}`);
+    }
+
+    const now = new Date().toISOString();
+    task.status = 'completed';
+    task.transcript.push({
+      kind: 'message',
+      timestamp: now,
+      from: agentId,
+      to: 'user',
+      payload: result,
+    });
+
+    team.status = 'completed';
+    delete team.currentTaskId;
+    team.updatedAt = now;
+    task.updatedAt = now;
+
+    this.deps.emitTeam(team);
+    this.deps.emitTeamTask(task);
+  }
+
+  private getActiveTaskForWorker(agentId: string, team: Team): TeamTask {
+    const worker = team.members.find((m) => m.role === 'worker');
+    if (!worker || worker.agentId !== agentId) {
+      throw new Error(`Agent ${agentId} is not the worker for team ${team.id}`);
+    }
+
+    if (!team.currentTaskId) {
+      throw new Error(`Team ${team.id} has no active task`);
+    }
+
+    const task = this.getTask(team.currentTaskId);
+    if (!task) {
+      throw new Error(`Arbiter task ${team.currentTaskId} not found`);
+    }
+
+    return task;
+  }
 }

@@ -469,14 +469,24 @@ export class Registry extends EventEmitter {
 
       case 'submit_work_response': {
         if (this.isDuplicateTerminalAction(agent)) return { content: [{ type: 'text', text: 'Action accepted (deduplicated)' }] };
-        this.teamCoordinator.handleWorkResponse(agent.id, args.accepted, args.reason);
+        const team = this.teamCoordinator.findTeamByAgent(agent.id);
+        if (team && team.consensusMode === 'arbiter' && team.composition === 'planner-planner-worker') {
+          this.arbiterCoordinator.handleWorkResponse(agent.id, team, args.accepted, args.reason);
+        } else {
+          this.teamCoordinator.handleWorkResponse(agent.id, args.accepted, args.reason);
+        }
         this.markTerminalActionComplete(agent);
         return { content: [{ type: 'text', text: 'Work response submitted successfully' }] };
       }
 
       case 'submit_work_result': {
         if (this.isDuplicateTerminalAction(agent)) return { content: [{ type: 'text', text: 'Action accepted (deduplicated)' }] };
-        this.teamCoordinator.handleWorkResult(agent.id, args.result);
+        const team = this.teamCoordinator.findTeamByAgent(agent.id);
+        if (team && team.consensusMode === 'arbiter' && team.composition === 'planner-planner-worker') {
+          this.arbiterCoordinator.handleWorkResult(agent.id, team, args.result);
+        } else {
+          this.teamCoordinator.handleWorkResult(agent.id, args.result);
+        }
         this.markTerminalActionComplete(agent);
         return { content: [{ type: 'text', text: 'Work result submitted successfully' }] };
       }
@@ -679,7 +689,6 @@ export class Registry extends EventEmitter {
     const team = this.getTeams().find(t => t.id === teamId);
     if (team?.consensusMode === 'arbiter' && team.composition === 'planner-planner-worker') {
       const task = await this.arbiterCoordinator.assignTask(team, description, maxRepliesPerAgent ?? 10);
-      (this.teamCoordinator as any).tasks.set(task.id, task);
       return task;
     }
     return this.teamCoordinator.assignTask(teamId, description, maxRepliesPerAgent);
