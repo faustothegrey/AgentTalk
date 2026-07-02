@@ -52,3 +52,19 @@ here.**
 - **Proportionality, as PO-directed.** Fausto explicitly collapsed the role ceremony ("fai tutto tu, troppo
   context sharing for something this pointed"). Wearing all hats for a small additive tooling epic was the right
   call — I should propose that compression myself next time instead of defaulting to the full gate dance.
+
+### 2026-07-02 — arbiter spike rounds 1–3; the PO's simple model beats my taxonomy
+- **As reviewer: verify the content signature, not the artifact count.** Two review rounds in a row, the
+  corpus looked done by file count and failed by content (empty transcripts, then `undefined` debate text).
+  The check that works: parse the actual payload and demand the class's signature (the illegal move, the
+  ejection, the ping-pong) quoted per file. Also: `ps` AND `git worktree list` on every hygiene pass — I
+  caught the zombie generators but missed a stray worktree in round 1. Minted IP-9.
+- **As reviewer: the held-unpushed-stack works, but branch unrelated work.** Holding refuted spike commits
+  local kept the mainline verified-only — good. But mid-hold the backlog overhaul landed on the same local
+  master, so unrelated verified work got hostage-held behind the spike's re-review. Next time: unrelated
+  work goes on its own branch even when I'm the one doing it.
+- **As architect: when the PO is confused by a state machine, fix the state machine, not the PO.** I defended
+  promoted/absorbed/deferred purity for two turns; Fausto's "todo·doing·done·dropped, period" was simply the
+  right altitude — provenance belongs in descriptions, not states. Related: an excluded-class finding (F-5,
+  soft-rejects invisible in recordings) is spike GOLD, not a failure to route around — it's already shaping
+  Epic 1's event surface.
