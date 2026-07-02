@@ -155,7 +155,7 @@ merges `m14-t1-identity-harness` (resolving the ledger in master's favour), and 
 - budget:      claude weekly ~14%→~15%, session ~55%→~65% [per /usage; approximate]
 - gate:        tsc 0, suite 269/269, determinism 3/3, negative test exit 1 (round 1), pollution clean
 - diff:        branch: 2 commits (`a1b0bf7`, `c6ee2c7`); 3 files at branch HEAD
-- outcome:     VERIFIED ✅ — merge awaits `[Human]`
+- outcome:     MERGED ✅ (`36fa888`, `[Human]` go 2026-07-02; post-merge gate green; see post-merge addendum for the T1b follow-up)
 
 **Implementer claims as filed on the branch (round 2, merged here for the record — verdicts above supersede):**
 
