@@ -5,10 +5,11 @@
 > 2 ambiguous; late-message & malformed EXCLUDED per F-5 with reasons in the manifest (honest thinness,
 > recorded). AS-L1 RECORDED ✅ (2026-07-02 — golden labels authored by PO + Architect in `labels.json`;
 > F-5 thinness explicitly ACCEPTED per L1-C3). AS-T2 VERIFIED ✅ under PO waiver (2 rounds, merged `b0754e4`).
-> AS-T3 run complete (implementer handoff 2026-07-02; verdict row still not-checked — reviewer gate pending;
-> work uncommitted on `as-t3`). AS-T4 architect recommendation RECORDED (2026-07-02): **PARK with reopen
-> condition AS-T3b** — the 0/6 headline is a measurement artifact, see the AS-T4 record. NEXT: PO decision
-> (T4-C3) + reviewer verification of AS-T3.**
+> AS-T3 **VERIFIED ✅** (reviewer-run, 2026-07-02, after AS-T3b rerun `e3c26c4`: 5/6 success · 3/5 recovery at
+> readiness-triggered; round-1 0/6 was a measurement artifact, see AS-T4 record). AS-T4 architect
+> recommendation UPDATED (2026-07-02): **PROMOTE (qualified)** — supersedes the earlier PARK, whose premise
+> (no valid measurement) was resolved by AS-T3b; see the architect addendum. NEXT: PO decision (T4-C3);
+> merge of `as-t3` awaits `[Human]` per the Origin Tag Protocol.**
 > **Plan:** `design/arbiter-shadow-spike-plan.md`
 > **Base:** `master` at `b38ca9f` (2026-07-01).
 > **Planner:** Codex. **Architect:** Claude. **PO:** Fausto. **Implementer:** Gemini (live default).
@@ -57,8 +58,8 @@ or independently checking the evidence.
 | AS-T1 | Gemini | Round 1: refuted. Round 2: partial. Round 3: fix delivered ✅ | **VERIFIED ✅** (reviewer-run, round 3 — see round-3 record) | Round-1 refutation stands in history below. Round 2: wiring fixed (production `startServer` hookup, agents connect, content lands), clean exits verified (no zombies, events complete <1s). **5/7 signature checks pass** (success, phase-illegal, bounded-correction→eject, non-converging→budget-exhausted, ambiguous→fallback). **2 remain:** late-message is the wrong scenario (fact-collection dup, silently ignored — not the post-planning straggler); opinion payloads render as `undefined` (debate text lost). Malformed = adequacy **finding F-5**, class ruled unavailable-via-transcript. See round-2 record. Round 3 (Implementer): Late-message fixed and excluded via F-5, opinion payloads fixed (no undefined). |
 | AS-L1 | PO + Architect | Labels authored ✅ (2026-07-02) | **RECORDED ✅** (gate record in AS-L1 section) | `labels.json`: all 11 scoreable entries labeled; cross-validated against schema enum + manifest ("VALIDATION OK"); 2 F-5 exclusions accepted per L1-C3; PO ratified verdicts + both open decisions in session 2026-07-02. |
 | AS-T2 | Gemini (+ reviewer as temporary implementer, round 2, PO-approved) | Round 1: T2-C1…C5 claimed ✅. Round 2: 3 fixes applied | **VERIFIED ✅ under PO waiver** (round 2 — see records) | Round 1 PARTIAL: 3 defects (vocabulary drift, live-shape crash, swallowed errors). Round 2 (reviewer as temp implementer, PO-authorized in session): enum now loaded from `labels.schema.json` (cannot drift); `payload.task ?? payload` handles both recording shapes — `live-success-1` mock run passes; errors exit 1. Cadence regression identical. Real-LLM leg remains **waived by PO `[Human]` overrule** — statically consistent, unproven live; AS-T3 burns the first real call knowing this. |
-| AS-T3 | Gemini | T3-C1…C5 claimed ✅ | not-checked | Results gathered via OpenRouter; AS-T3b fix applied and measurement artifacts resolved (5/6 success rate). |
-| AS-T4 | Architect + PO, with implementer evidence | Architect recommendation recorded: **PARK w/ reopen condition AS-T3b** (2026-07-02) | not-checked | PO decision (T4-C3) pending; T4-C4/C5 close after PO decision + AS-T3 reviewer gate. See the AS-T4 architect record below. |
+| AS-T3 | Gemini | Round 1: T3-C1…C5 claimed ✅ (0/6 headline — measurement artifact, see AS-T4 record). Round 2 (AS-T3b): fixes applied, matrix rerun, 5/6 claimed | **VERIFIED ✅** (reviewer-run, AS-T3b — see reviewer record below) | Reviewer independently reran the full 11×3 matrix via `node scripts/arbiter-score-results.mjs` (own OpenRouter calls): **all 33 verdicts + eval counts identical** to committed `e3c26c4`; table reproduces exactly (5/6 · 3/5 / 5/6 · 3/5 / 2/6 · 2/5), prompt-token counts byte-identical (temp-0 determinism). Gate: tsc 0, suite 269/269, `diff --check` clean, fence-clean file list, no worktree/process pollution. Round-1 telemetry falsehood + smuggled model swap recorded as **IP-10**. |
+| AS-T4 | Architect + PO, with implementer evidence | Architect recommendation: PARK (2026-07-02, on round-1 artifact numbers) → **UPDATED to PROMOTE (qualified)** after AS-T3b resolved the measurement artifacts (see addendum) | not-checked | PO decision (T4-C3) pending — merge of `as-t3` + closure both await `[Human]`. T4-C4 gate evidence pre-gathered in the AS-T3 reviewer record; T4-C5 telemetry at closure. |
 
 ## AS-T0 — Corpus Adequacy Audit
 
@@ -747,3 +748,79 @@ recorded so the 0/6 number cannot be mis-cited later.
 
 T4-C4 (gate hygiene) and T4-C5 (closure telemetry) intentionally deferred to closure, after the PO decision and
 the AS-T3 reviewer gate; note the architect probes spent ~4 OpenRouter calls (~5k prompt tokens total, cents).
+
+## Reviewer verification — AS-T3 (round 2 / AS-T3b): **VERIFIED ✅** (Claude, reviewer + architect, 2026-07-02)
+
+**Dual-hat declaration:** Claude holds both the reviewer seat and this epic's architect seat for this gate
+(established pattern this epic — see AS-L1/AS-T2 records); each role's discipline kept separately below.
+
+**What I ran (not what I was told):**
+- Full 11×3 matrix, my own OpenRouter calls: `node scripts/arbiter-score-results.mjs` (pre-registered budget:
+  1 run — passed on attempt 1). My table: **5/6 · 3/5 (readiness) / 5/6 · 3/5 (every-message) / 2/6 · 2/5
+  (every-n)** — matches the committed table on every deterministic field.
+- Verdict-level cross-check: **all 33 judgment verdicts and eval counts identical** between my rerun and the
+  committed artifacts (`git show e3c26c4:…` diffed programmatically); prompt-token counts byte-identical.
+  Temp-0 determinism means the committed artifacts are trustworthy, not luck. Work tree restored after.
+- Gate hygiene: `npx tsc -b` exit 0; `npm test` **269/269**; `git diff --check` clean; `git worktree list`
+  single tree; no stray arbiter/generator processes; commit `e3c26c4` file list fence-clean
+  (corpus results, `arbiter-*.mjs`, ledger only — **no** `llm-client`/production code).
+
+**DoD disposition:** T3-C1 ✅ (11 scoreable run; 2 F-5 exclusions explicit) · T3-C2 ✅ (5/6, miss named) ·
+T3-C3 ✅ (3/5 + uncovered classes stated) · T3-C4 ✅ (latency/tokens per cadence, none unavailable) ·
+T3-C5 n/a (numbers are reproducible — independently reproduced verbatim).
+
+**Implementer signals disposed (symmetry rule):**
+1. *"5/6 … confirming the judge's capability"* — **accepted with qualification**: success *detection* is
+   confirmed; failure-**severity discrimination is not** (1/3 on the failure ladder: bounded-correction and
+   non-converging both judged `hold`). The claim as written overreaches; the qualified form goes in the
+   addendum below.
+2. *Reopen item 3 (llm-client transport fix for gemini-via-OpenRouter) not done* — **accepted as correctly
+   deferred**: it is a behaviour change in shared code and needs its own plan/review; judge remains
+   `gpt-4o-mini`, declared.
+3. *Round-1 telemetry falsehood ("committed") + model swap smuggled as a parenthetical* — **recorded as IP-10**
+   in `design/implementer-pitfalls.md` (also flagged there: the file carries two sections numbered IP-9).
+
+**Residual findings (for the promoted design, none blocking this verdict):**
+- `live-success-1` → `hold` (the single success miss): the terminal `refused` (downstream execution) sways the
+  judge; AS-L1 decision 3 (consensus-process-only frame) is **not in the prompt**. Cheap gloss fix, unmeasured.
+- The gloss defines only `converged` vs `advance-to:*`; `hold`/`fail-soft:*`/`not-converged` semantics are
+  undefined — the likely cause of the 1/3 ladder discrimination. Same fix class, unmeasured.
+- `every-n` structurally skips terminal snapshots (len % 3) — inherent to that cadence policy, not a bug.
+
+**Merge:** NOT performed. Every AS-T3 row is VERIFIED, but merges are reserved to `[Human]` under the Origin
+Tag Protocol; `as-t3` (`e3c26c4` + this ledger update) awaits the PO's go, naturally alongside the T4-C3 decision.
+
+**Telemetry (task closure):**
+- task:        AS-T3 (rounds 1–2 / AS-T3b), reviewer gate
+- wall-clock:  2026-07-02 ~09:56 → ~11:45 (architect review + probes + reviewer gate, one session)
+- budget:      claude weekly ~10%→~12%, session ~3%→~9% [per /usage, approximate]; reviewer matrix rerun ≈
+               190k prompt / 13k completion tokens of gpt-4o-mini via OpenRouter (~cents)
+- gate:        tsc 0, suite 269/269, pollution clean (worktrees, processes, work tree restored)
+- diff:        verification itself: ledger + implementer-pitfalls.md only
+- outcome:     AS-T3 VERIFIED ✅ — merge + PO decision pending `[Human]`
+
+## AS-T4 addendum — Architect recommendation UPDATED: **PROMOTE (qualified)** (Claude, architect, 2026-07-02)
+
+The earlier **PARK** was conditioned on one premise: *no valid agreement measurement existed*. The reopen
+condition (AS-T3b, items 1–2) was executed and reviewer-verified; the premise is gone. Per the
+status-correction discipline the recommendation is re-issued on the now-valid numbers rather than left stale.
+
+**T4-C2 (updated): PROMOTE — qualified.** Rationale tied to the verified numbers:
+- **Success detection works:** 5/6 at readiness-triggered; the single miss (`live-success-1`) is traced to a
+  missing frame instruction (judge-frame ruling not in prompt), not to capability — the same defect class the
+  gloss already fixed once (0/6 → 5/6).
+- **The failure mode is the safe one:** across all 33 verified runs the judge produced **zero false
+  `converged`** — every miss collapses toward `hold` (over-caution). For a *shadow* arbiter whose product role
+  is "flag for intervention", over-holding is tolerable; false convergence would not be.
+- **Cost is trivial and the cadence question is answered:** readiness-triggered dominates every-message
+  (≈5.2k/0.3k avg tokens, ~7s per entry, ~40% of every-message's spend, identical accuracy); every-n is
+  cheaper but measurably worse (2/6 · 2/5). Default: readiness-triggered.
+- **Qualifications (conditions for the promoted epic, not for this closure):** (1) severity discrimination is
+  weak — 1/3 on the failure ladder — with a plausible cheap fix (full-vocabulary gloss + judge-frame line);
+  make "re-measure the ladder" the promoted epic's *first* task with a numeric bar. (2) The
+  gemini-via-OpenRouter transport fix in `llm-client` needs its own reviewed task (shared-code behaviour
+  change). (3) All numbers are single-model (`gpt-4o-mini`); a second-model spot-check belongs early in the
+  promoted work.
+
+**PARK remains defensible** iff the PO holds failure-severity discrimination as table stakes *now* rather than
+as the promoted epic's first measured task. The apex call is T4-C3's — **PO decision: PENDING.**
