@@ -6,7 +6,7 @@
  *
  *   <!-- @item
  *   id: BL-001
- *   status: open
+ *   status: todo
  *   date: 2026-06-20
  *   epic: M07
  *   tags: [live-smoke, quota-blocked]
@@ -21,14 +21,7 @@
 import { readFileSync, existsSync } from 'fs';
 import { dirname, join } from 'path';
 
-export type BacklogStatus =
-  | 'open'
-  | 'parked'
-  | 'promoted'
-  | 'absorbed'
-  | 'deferred'
-  | 'dropped'
-  | 'done';
+export type BacklogStatus = 'todo' | 'doing' | 'done' | 'dropped';
 
 export interface BacklogItem {
   id: string;
@@ -46,15 +39,7 @@ export interface BacklogParseResult {
   warnings: string[];
 }
 
-const VALID_STATUS = new Set<string>([
-  'open',
-  'parked',
-  'promoted',
-  'absorbed',
-  'deferred',
-  'dropped',
-  'done',
-]);
+const VALID_STATUS = new Set<string>(['todo', 'doing', 'done', 'dropped']);
 
 const ITEM_OPEN = '<!-- @item';
 const HEADER_END = '-->';

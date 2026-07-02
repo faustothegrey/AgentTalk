@@ -6,12 +6,12 @@ describe('parseBacklog', () => {
     const md = [
       '<!-- @item',
       'id: BL-001',
-      'status: open',
+      'status: todo',
       'date: 2026-06-20',
       'epic: M07',
       'tags: [live-smoke, quota-blocked]',
       '-->',
-      '- [open] 2026-06-20 — **Re-run the live smoke** — the deferred T2.4.',
+      '- [todo] 2026-06-20 — **Re-run the live smoke** — the deferred T2.4.',
       '',
       '*(add new items above this line)*',
     ].join('\n');
@@ -21,13 +21,13 @@ describe('parseBacklog', () => {
     expect(items).toHaveLength(1);
     expect(items[0]).toEqual({
       id: 'BL-001',
-      status: 'open',
+      status: 'todo',
       date: '2026-06-20',
       epic: 'M07',
       promotedTo: null,
       tags: ['live-smoke', 'quota-blocked'],
       title: 'Re-run the live smoke',
-      bodyMarkdown: '- [open] 2026-06-20 — **Re-run the live smoke** — the deferred T2.4.',
+      bodyMarkdown: '- [todo] 2026-06-20 — **Re-run the live smoke** — the deferred T2.4.',
     });
   });
 
@@ -35,12 +35,12 @@ describe('parseBacklog', () => {
     const md = [
       '<!-- @item',
       'id: BL-002',
-      'status: promoted',
+      'status: done',
       'promoted_to: M11',
       'epic: null',
       'tags: []',
       '-->',
-      '- [promoted→M11] — **Consensus robustness** — moved to its own epic.',
+      '- [done · was: promoted→M11] — **Consensus robustness** — became its own epic, now closed.',
     ].join('\n');
 
     const { items } = parseBacklog(md);
@@ -64,7 +64,7 @@ describe('parseBacklog', () => {
   });
 
   it('warns and skips an item missing an id', () => {
-    const md = ['<!-- @item', 'status: open', '-->', '- **No id here**'].join('\n');
+    const md = ['<!-- @item', 'status: todo', '-->', '- **No id here**'].join('\n');
     const { items, warnings } = parseBacklog(md);
     expect(items).toEqual([]);
     expect(warnings.some((w) => w.includes('no "id"'))).toBe(true);
@@ -79,8 +79,8 @@ describe('parseBacklog', () => {
 
   it('warns on a duplicate id', () => {
     const md = [
-      '<!-- @item', 'id: BL-004', 'status: open', '-->', '- **first**',
-      '<!-- @item', 'id: BL-004', 'status: open', '-->', '- **second**',
+      '<!-- @item', 'id: BL-004', 'status: todo', '-->', '- **first**',
+      '<!-- @item', 'id: BL-004', 'status: todo', '-->', '- **second**',
     ].join('\n');
     const { warnings } = parseBacklog(md);
     expect(warnings.some((w) => w.includes('Duplicate backlog id "BL-004"'))).toBe(true);
@@ -88,17 +88,17 @@ describe('parseBacklog', () => {
 
   it('warns when the header status drifts from the prose [STATUS] tag', () => {
     const md = [
-      '<!-- @item', 'id: BL-005', 'status: open', '-->',
-      '- [done] 2026-06-01 — **Stale prose** — header says open, prose says done.',
+      '<!-- @item', 'id: BL-005', 'status: todo', '-->',
+      '- [done] 2026-06-01 — **Stale prose** — header says todo, prose says done.',
     ].join('\n');
     const { warnings } = parseBacklog(md);
     expect(warnings.some((w) => w.includes('drift'))).toBe(true);
   });
 
-  it('does NOT warn when header status matches a promoted→X prose tag', () => {
+  it('does NOT warn when the prose tag carries free notes after the status word', () => {
     const md = [
-      '<!-- @item', 'id: BL-006', 'status: promoted', 'promoted_to: M11', '-->',
-      '- [promoted→M11] — **matches** — no drift expected.',
+      '<!-- @item', 'id: BL-006', 'status: done', 'promoted_to: M11', '-->',
+      '- [done · was: promoted→M11] — **matches** — no drift expected.',
     ].join('\n');
     const { warnings } = parseBacklog(md);
     expect(warnings.filter((w) => w.includes('drift'))).toEqual([]);
@@ -106,10 +106,10 @@ describe('parseBacklog', () => {
 
   it('ends an item body at the next @item boundary', () => {
     const md = [
-      '<!-- @item', 'id: BL-007', 'status: open', '-->',
+      '<!-- @item', 'id: BL-007', 'status: todo', '-->',
       '- **first** body line one',
       '  continued body line two',
-      '<!-- @item', 'id: BL-008', 'status: open', '-->',
+      '<!-- @item', 'id: BL-008', 'status: todo', '-->',
       '- **second**',
     ].join('\n');
     const { items } = parseBacklog(md);
@@ -119,7 +119,7 @@ describe('parseBacklog', () => {
   });
 
   it('warns on an unterminated header', () => {
-    const md = ['<!-- @item', 'id: BL-009', 'status: open', '- **oops no close**'].join('\n');
+    const md = ['<!-- @item', 'id: BL-009', 'status: todo', '- **oops no close**'].join('\n');
     const { warnings } = parseBacklog(md);
     expect(warnings.some((w) => w.includes('Unterminated'))).toBe(true);
   });
