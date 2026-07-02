@@ -83,11 +83,42 @@ shadow judge scripts/results, client repo.
 
 | Claim | Implementer claim | Reviewer verdict | Evidence |
 |---|---|---|---|
-| T1-C1 | PENDING | not-checked | Standalone M14 identity harness exists under `scripts/`; no shared recording/playback infra modified. |
-| T1-C2 | PENDING | not-checked | Harness captures normalized task/transcript/final-plan plus `team_planning_phase` and `team_protocol_event` streams, with volatile fields stripped. |
-| T1-C3 | PENDING | not-checked | Baselines are committed before T2 and cover at least one success plus one failure-class scenario. |
-| T1-C4 | PENDING | not-checked | A documented command regenerates/compares baselines and fails on mismatch. |
-| T1-C5 | PENDING | not-checked | `npx tsc -b` exits 0; `npm test` green; scope fence clean by `git diff --stat`. |
+| T1-C1 | **NOT FILED** (handoff arrived via SM message only) | **VERIFIED ✅** (reviewer-run) | `scripts/m14-identity-harness.mjs` + baselines, branch `m14-t1-identity-harness` (`a1b0bf7`), file list fence-clean (3 files, all `scripts/`); recording/playback infra untouched. Harness monkey-patches `execSync`/`existsSync` locally — harness-level mocking, not shared-infra change; applies identically pre/post refactor. |
+| T1-C2 | NOT FILED | **VERIFIED ✅** (reviewer-run) | Both baselines carry task status, `planningComplete`, transcript kind/from/to/payload/messageType, plan field, and both `team_planning_phase` + `team_protocol_event` streams. Volatile-leak probe clean (no un-normalized `task-`/`team-` ids). Deterministic: 3 consecutive reviewer `--check` runs all pass. |
+| T1-C3 | NOT FILED | **REFUTED ❌** (reviewer-run, content signature) | The "success" baseline is **not a success**: full phase spine, then `correction,correction,eject` → final status `awaiting_operator`, `planningComplete:false`, **no plan**. `mockSuccess`'s submit-plan trigger never fires, so planner-a goes phase-illegal at `submittal_pending` and is ejected. Corpus = two failure-class streams, **zero successful consensus**. (The failure baseline itself is valid: correction×2 → eject.) |
+| T1-C4 | NOT FILED | **PARTIAL ⚠️** (reviewer-run) | Command exists and behaves: `node scripts/m14-identity-harness.mjs --check` exits 0 on match; reviewer negative test (perturbed copy, restored from backup byte-identical) exits **1**. But "documented" is unmet — the command is written down nowhere (no README/ledger/claim line). |
+| T1-C5 | NOT FILED | **VERIFIED ✅** (reviewer-run) | `npx tsc -b` exit 0; `npm test` **269/269** on the branch; `git diff --check` clean; single worktree; no stray harness processes. |
+
+### Reviewer Gate 2 record — M14-T1: **REFUTED ❌, stays on branch** (Claude, reviewer + architect dual-hat declared, 2026-07-02)
+
+**What passed:** the harness itself is sound — right shape (in-process registry, listeners on both hooks,
+normalization verified leak-free), deterministic across three reviewer runs, `--check` proven to fail on
+mismatch by negative test, suite green, fence-clean. T1-C1/C2/C5 VERIFIED.
+
+**Why refuted:** T1-C3 — the corpus contains **no successful consensus**. The success mock's trigger
+(`prompt.includes('One planner must call submit_plan')`) never matches the actual submittal prompt, so the
+"success" run ends in ejection/`awaiting_operator` with no plan. This is the artifact-count-vs-content-signature
+trap (IP-9 class): two committed baselines exist, but one records the wrong class.
+
+**Required for re-delivery (in-scope, on the same branch):**
+1. Fix `mockSuccess` so the scenario completes: final `team_task_update` must show a completed/planning-complete
+   state with a non-null plan (that is the content signature the re-review will check first).
+2. Regenerate both baselines; keep determinism (re-run `--check` ≥2×).
+3. **Consider keeping the current eject-rich stream as a third baseline** (`failure-submittal-eject`?) — it
+   exercises `endorsed` + corrections at `submittal_pending`, which the plain failure stream does not. Optional,
+   in-scope, implementer's call.
+4. Add the one-line command documentation (T1-C4) — the ledger's T1 section is an acceptable home.
+5. **File implementer claims in this ledger with command output** — this round's claims column reads NOT FILED;
+   the handoff arrived only as an SM chat message. Recorded as **IP-11** in `design/implementer-pitfalls.md`.
+
+**Hygiene note:** the shared repo was left checked out on the task branch; reviewer returned it to `master`.
+
+**Telemetry (gate, not closure):**
+- task:        M14-T1 (round 1), reviewer gate
+- wall-clock:  2026-07-02 ~13:05 → ~13:25
+- budget:      claude weekly ~14%, session ~55% at gate end [per /usage; approximate]
+- gate:        tsc 0, suite 269/269, pollution clean, negative test run
+- outcome:     REFUTED ❌ — back to implementer on `m14-t1-identity-harness`
 
 ## M14-T2 - Facilitator Interface + Extraction
 

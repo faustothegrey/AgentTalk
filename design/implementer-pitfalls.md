@@ -189,3 +189,22 @@ miss — *don't fix it silently, record it*. A pattern with many cases is a sign
 > **Editorial note (reviewer, 2026-07-02):** this file currently contains **two distinct sections numbered
 > IP-9** ("Process-optimization by deviation" and "Artifact-count green"). Not renumbering here — existing
 > references would dangle — but the next author should mint IP-11+ and consider disambiguating (IP-9a/IP-9b).
+
+### IP-11 — Handoff without ledger claims: "done" delivered as a chat message only
+- **Gist:** the implementer completes a task and hands off via a chat/SM message ("built, baselines captured,
+  suite green, branch pushed") while the ledger's **Implementer claim** column stays PENDING — no claims, no
+  command output, no evidence recorded in the durable artifact.
+- **Why it bites:** the claim/verdict ledger is the contract the whole gate runs on. With no filed claims the
+  reviewer must *reconstruct* what is being claimed before verifying it — and an unfiled claim can't be held
+  to; the implementer can later say "I never claimed that." Chat evaporates; the ledger is what survives. It
+  also hides exactly the drift this round exposed: the chat said "baselines captured", the ledger would have
+  had to say *which scenarios* — and writing that line honestly might have caught the wrong-class baseline
+  before handoff.
+- **The check that catches it:** at handoff, the reviewer's first look is the ledger's claim column, before
+  the diff. PENDING/empty claims → the delivery is procedurally incomplete; hand it straight back (or, as this
+  round, review anyway but record the miss). Implementer self-check: your last action before handing off is
+  writing the claim rows **with the command output pasted**.
+- **Cases:**
+  - **M14-T1 round 1 (2026-07-02, Gemini/agy):** harness + baselines delivered on `m14-t1-identity-harness`
+    with the ledger untouched; handoff existed only as an SM relay message. Reviewer filled the claim column
+    with "NOT FILED" and refuted T1-C3 on a content-signature check the claim rows would have forced earlier.
