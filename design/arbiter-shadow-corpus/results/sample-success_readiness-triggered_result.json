@@ -1,14 +1,14 @@
 {
   "entry": "sample-success.jsonl",
   "cadence": "readiness-triggered",
-  "evaluations": 6,
+  "evaluations": 7,
   "judgment": {
     "verdict": "converged",
-    "rationale": "Mock judgment"
+    "rationale": "Agreement reached on Plan X and the final plan has been submitted by Planner B."
   },
-  "latency_ms": 0,
+  "latency_ms": 8492,
   "tokens": {
-    "prompt": 60,
-    "completion": 30
+    "prompt": 6109,
+    "completion": 349
   }
 }

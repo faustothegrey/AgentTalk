@@ -4,11 +4,11 @@
   "evaluations": 5,
   "judgment": {
     "verdict": "converged",
-    "rationale": "Mock judgment"
+    "rationale": "Agreement reached on Plan X and the final plan has been submitted by Planner B. The process has successfully concluded with a confirmed plan."
   },
-  "latency_ms": 0,
+  "latency_ms": 6960,
   "tokens": {
-    "prompt": 50,
-    "completion": 25
+    "prompt": 4386,
+    "completion": 259
   }
 }

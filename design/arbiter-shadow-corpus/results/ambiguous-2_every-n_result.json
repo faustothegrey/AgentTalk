@@ -1,0 +1,14 @@
+{
+  "entry": "ambiguous-2.jsonl",
+  "cadence": "every-n",
+  "evaluations": 3,
+  "judgment": {
+    "verdict": "advance-to:discussion",
+    "rationale": "The planners have completed the fact collection phase and are now entering the discussion phase, as evidenced by planner-a proposing an agreement."
+  },
+  "latency_ms": 3679,
+  "tokens": {
+    "prompt": 1973,
+    "completion": 157
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "entry": "deterministic-success-1.jsonl",
+  "cadence": "every-n",
+  "evaluations": 3,
+  "judgment": {
+    "verdict": "advance-to:discussion",
+    "rationale": "The planning process has successfully transitioned from fact collection to the discussion phase, with planner-a proposing an agreement (Plan X). Planner-b is now prompted to either accept the proposal or continue the discussion."
+  },
+  "latency_ms": 4321,
+  "tokens": {
+    "prompt": 1986,
+    "completion": 171
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "entry": "live-success-1.jsonl",
+  "cadence": "every-n",
+  "evaluations": 5,
+  "judgment": {
+    "verdict": "converged",
+    "rationale": "Agreement reached between planners to add a file named plan.md with the content 'hello'. The final plan was submitted successfully, containing the required text 'add plan.md'."
+  },
+  "latency_ms": 6156,
+  "tokens": {
+    "prompt": 5326,
+    "completion": 302
+  }
+}
