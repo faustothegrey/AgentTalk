@@ -142,8 +142,8 @@ async function runNonConverging() {
   await simulateCall(registry, 'planner-b', 'fact_collection_end', { summary: 'y' });
   
   for (let i = 0; i < 15; i++) {
-    await simulateCall(registry, 'planner-a', 'opinion', { message: 'A' });
-    await simulateCall(registry, 'planner-b', 'opinion', { message: 'B' });
+    await simulateCall(registry, 'planner-a', 'opinion', { text: 'A' });
+    await simulateCall(registry, 'planner-b', 'opinion', { text: 'B' });
   }
   
   await delay(500);
@@ -159,9 +159,17 @@ async function runLateMessage() {
   await simulateCall(registry, 'planner-a', 'ack_planning_protocol');
   await simulateCall(registry, 'planner-b', 'ack_planning_protocol');
   
-  // Simulate out-of-turn message by calling it twice for A
   await simulateCall(registry, 'planner-a', 'fact_collection_end', { summary: 'done' });
-  await simulateCall(registry, 'planner-a', 'fact_collection_end', { summary: 'late message' });
+  await simulateCall(registry, 'planner-b', 'fact_collection_end', { summary: 'done' });
+  
+  await simulateCall(registry, 'planner-a', 'agreement_proposal', { proposal: 'Plan X' });
+  await simulateCall(registry, 'planner-b', 'agreement_acceptance', { proposal: 'Plan X', reason: 'ok' });
+  
+  await simulateCall(registry, 'planner-a', 'submit_plan', { plan: VALID_PLAN_TEXT, proposal: 'Plan X', text: 'Submitting' });
+  
+  // At this point, the task is awaiting_confirmation and planning is complete.
+  // Simulate a late out-of-turn message (straggler)
+  await simulateCall(registry, 'planner-b', 'opinion', { text: 'late message' });
   
   await delay(500);
   await recorder.close();
@@ -181,11 +189,11 @@ async function runAmbiguous(fileName, flip) {
   
   if (flip) {
     await simulateCall(registry, 'planner-a', 'agreement_proposal', { proposal: 'Plan' });
-    await simulateCall(registry, 'planner-b', 'opinion', { message: 'I prefer Plan modified' });
+    await simulateCall(registry, 'planner-b', 'opinion', { text: 'I prefer Plan modified' });
     await simulateCall(registry, 'planner-a', 'agreement_acceptance', { proposal: 'Plan', reason: 'ok' });
   } else {
     await simulateCall(registry, 'planner-b', 'agreement_proposal', { proposal: 'Plan' });
-    await simulateCall(registry, 'planner-a', 'opinion', { message: 'I prefer Plan modified' });
+    await simulateCall(registry, 'planner-a', 'opinion', { text: 'I prefer Plan modified' });
     await simulateCall(registry, 'planner-b', 'agreement_acceptance', { proposal: 'Plan', reason: 'ok' });
   }
   
