@@ -195,6 +195,14 @@ export function parseBacklog(markdown: string): BacklogParseResult {
   return { items, warnings };
 }
 
+/**
+ * The default dashboard view: the live queue only (`doing` + `todo`).
+ * Unknown statuses stay visible — a typo'd state should surface, not vanish.
+ */
+export function activeBacklogItems(items: BacklogItem[]): BacklogItem[] {
+  return items.filter((i) => i.status !== 'done' && i.status !== 'dropped');
+}
+
 /** Walk up from cwd to locate `design/backlog.md` (CJS/ESM agnostic). */
 export function defaultBacklogPath(): string {
   let dir = process.cwd();

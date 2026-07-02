@@ -10,7 +10,7 @@ const wireContract = require('@agenttalk/contracts/wire-contract.json');
 
 import { Registry } from '@agenttalk/runtime-core/registry/registry';
 import { McpServer } from '@agenttalk/mcp-transport';
-import { readBacklog } from './backlog.js';
+import { activeBacklogItems, readBacklog } from './backlog.js';
 import { AGENTTALK_MCP_TOOLS } from '@agenttalk/runtime-core/registry/mcp-tools';
 import type { AgentProvider } from '@agenttalk/contracts/types';
 import type { ScenarioDefinition } from '@agenttalk/runtime-scenarios/scenarios/types';
@@ -223,11 +223,17 @@ export function startServer(
     res.json(topics);
   });
 
-  app.get('/api/backlog', (_req, res) => {
+  app.get('/api/backlog', (req, res) => {
     console.log('[Server] GET /api/backlog');
     const { items, warnings } = readBacklog();
-    console.log(`[Server] Returning ${items.length} backlog items (${warnings.length} warnings)`);
-    res.json({ items, warnings, generatedAt: new Date().toISOString() });
+    // Default view = the live queue (doing + todo); pass ?all=true for done/dropped too
+    // (the future UI toggles ride this param).
+    const all = req.query.all === 'true';
+    const visible = all ? items : activeBacklogItems(items);
+    console.log(
+      `[Server] Returning ${visible.length}/${items.length} backlog items (${warnings.length} warnings)`,
+    );
+    res.json({ items: visible, total: items.length, warnings, generatedAt: new Date().toISOString() });
   });
 
   app.get('/api/backlog/:id', (req, res) => {

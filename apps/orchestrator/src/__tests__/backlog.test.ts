@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseBacklog, readBacklog } from '../backlog.js';
+import { activeBacklogItems, parseBacklog, readBacklog } from '../backlog.js';
 
 describe('parseBacklog', () => {
   it('parses a well-formed item with all header fields', () => {
@@ -133,5 +133,20 @@ describe('readBacklog (real file)', () => {
       expect(item.id).toMatch(/^BL-\d+$/);
       expect(item.title.length).toBeGreaterThan(0);
     }
+  });
+});
+
+describe('activeBacklogItems (default dashboard view)', () => {
+  const mk = (id: string, status: string) =>
+    ({ id, status, date: null, epic: null, promotedTo: null, tags: [], title: id, bodyMarkdown: '' });
+
+  it('keeps doing + todo, hides done + dropped', () => {
+    const items = [mk('BL-001', 'done'), mk('BL-002', 'doing'), mk('BL-003', 'todo'), mk('BL-004', 'dropped')];
+    expect(activeBacklogItems(items).map((i) => i.id)).toEqual(['BL-002', 'BL-003']);
+  });
+
+  it('keeps an unknown status visible (mistakes must surface, not vanish)', () => {
+    const items = [mk('BL-005', 'wibble'), mk('BL-006', 'done')];
+    expect(activeBacklogItems(items).map((i) => i.id)).toEqual(['BL-005']);
   });
 });

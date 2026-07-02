@@ -34,7 +34,9 @@ tags: [a, b]          # optional; free labels for UI filtering
 
 The **header is authoritative for the API**; if it disagrees with the prose `[STATUS]` tag the parser
 emits a drift warning (surfaced at the §3b gate). Validate with `npm run backlog:check` after any edit.
-Parser + endpoint: `apps/orchestrator/src/backlog.ts`.
+Parser + endpoint: `apps/orchestrator/src/backlog.ts`. **The API's default view is the live queue only
+(`doing` + `todo`); `GET /api/backlog?all=true` includes `done`/`dropped`** (the UI's future
+show-done/show-dropped toggles ride this param). The response's `total` field always counts all items.
 
 ---
 
