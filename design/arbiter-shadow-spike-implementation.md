@@ -1,8 +1,9 @@
 # Arbiter Shadow Spike — Implementation Ledger
 
-> **Status:** 🟠 **OPEN — AS-T0 VERIFIED ✅ · AS-T1 re-attempt PARTIAL ⚠️ (5 of 7 signature checks pass; 2
-> targeted fixes remain — see round-2 re-verification record). New adequacy finding F-5 (soft-reject
-> invisibility). AS-L1 still blocked. All spike commits held LOCAL-ONLY until AS-T1 is green.**
+> **Status:** 🟢 **OPEN — AS-T0 VERIFIED ✅ · AS-T1 VERIFIED ✅ (round 3, merged to master by the reviewer).
+> Corpus: 6 success + 3 scoreable failure classes (phase-illegal · bounded-correction · non-converging) +
+> 2 ambiguous; late-message & malformed EXCLUDED per F-5 with reasons in the manifest (honest thinness,
+> recorded). NEXT: AS-L1 — golden labeling gate (PO + Architect author labels).**
 > **Plan:** `design/arbiter-shadow-spike-plan.md`
 > **Base:** `master` at `b38ca9f` (2026-07-01).
 > **Planner:** Codex. **Architect:** Claude. **PO:** Fausto. **Implementer:** Gemini (live default).
@@ -48,7 +49,7 @@ or independently checking the evidence.
 | Task | Owner | Implementer claim | Reviewer verdict | Evidence |
 |---|---|---|---|---|
 | AS-T0 | Gemini | T0-C1 through T0-C4 proven ✅ | **VERIFIED ✅** (reviewer-run) | Reviewer re-ran `node scripts/arbiter-corpus-audit.mjs` → "Audit passed!"; `sample-success.jsonl` (33 lines) is real `SessionRecorder` output wired via the production `startServer(registry, 0, {recorder})` hookup — Gate 1 Q2 constraint honored. Commit scope fence-clean. |
-| AS-T1 | Gemini | Round 1: refuted. Round 2: partial. Round 3: fix delivered ✅ | **PARTIAL ⚠️** (reviewer-run, round 2) | Round-1 refutation stands in history below. Round 2: wiring fixed (production `startServer` hookup, agents connect, content lands), clean exits verified (no zombies, events complete <1s). **5/7 signature checks pass** (success, phase-illegal, bounded-correction→eject, non-converging→budget-exhausted, ambiguous→fallback). **2 remain:** late-message is the wrong scenario (fact-collection dup, silently ignored — not the post-planning straggler); opinion payloads render as `undefined` (debate text lost). Malformed = adequacy **finding F-5**, class ruled unavailable-via-transcript. See round-2 record. Round 3 (Implementer): Late-message fixed and excluded via F-5, opinion payloads fixed (no undefined). |
+| AS-T1 | Gemini | Round 1: refuted. Round 2: partial. Round 3: fix delivered ✅ | **VERIFIED ✅** (reviewer-run, round 3 — see round-3 record) | Round-1 refutation stands in history below. Round 2: wiring fixed (production `startServer` hookup, agents connect, content lands), clean exits verified (no zombies, events complete <1s). **5/7 signature checks pass** (success, phase-illegal, bounded-correction→eject, non-converging→budget-exhausted, ambiguous→fallback). **2 remain:** late-message is the wrong scenario (fact-collection dup, silently ignored — not the post-planning straggler); opinion payloads render as `undefined` (debate text lost). Malformed = adequacy **finding F-5**, class ruled unavailable-via-transcript. See round-2 record. Round 3 (Implementer): Late-message fixed and excluded via F-5, opinion payloads fixed (no undefined). |
 | AS-L1 | PO + Architect | not-started | not-checked | Golden labels pending; required before scoring. |
 | AS-T2 | Gemini | not-started | not-checked | Shadow arbiter script pending. |
 | AS-T3 | Gemini | not-started | not-checked | Cadence/cost scoring pending. |
@@ -472,3 +473,30 @@ Proof of `opinion` payloads rendering correctly (no `undefined`):
 **Gate hygiene:** `npm test` passes, `ps` shows no zombie node processes, `git status` is clean on `as-t1-fix` branch, and `git worktree list` shows only the main tree.
 
 **Status:** AS-T1 is now ready for final verification. Passing the baton back to Reviewer.
+
+## Reviewer re-verification — AS-T1 round 3: **VERIFIED ✅** (Claude, reviewer, 2026-07-02)
+
+All checks reviewer-run against the `as-t1-fix` branch content before merging:
+
+- **Fix 1 (late-message) — escape hatch executed correctly.** `runLateMessage` now implements the true
+  post-planning straggler (success flow → `submit_plan` → `awaiting_confirmation` → late `opinion`); the
+  recording confirms the straggler's warn+no-op is **invisible in the transcript** (console-only), so the entry
+  is **EXCLUDED with the F-5 reason stated in the manifest** — exactly the honesty path the round-2 record
+  prescribed. F-5 now covers two classes (malformed, late-message), both with explicit `exclusion_reason`.
+- **Fix 2 (opinion payloads) — verified.** `grep -c undefined` = **0 across all 13 corpus files**; the
+  non-converging debate shows real proposal text (A/B ping-pong → "turn budget exhausted (6/6)" → `interrupted`).
+- **Hygiene:** branch scope fence-clean (corpus + `arbiter-generate-corpus.mjs` + ledger + own lessons file);
+  generator ends with `process.exit(0)` (no zombies — `ps` clean); `git worktree list` clean; branch discipline
+  followed this round (`as-t1-fix`, unpushed, reviewer merged).
+- **Final scoreable corpus (thinness stated plainly, per DoD honesty clauses):** 6 success (4 deterministic
+  near-duplicates + `sample-success` + `live-success-1`) · **3 of 5 failure classes** (phase-illegal,
+  bounded-correction→eject, non-converging) · 2 ambiguous (near-duplicate pair). The 2 excluded failure classes
+  reduce the recovery-metric coverage — **AS-L1 (PO+Architect) must explicitly accept or stop on this** (L1-C3).
+
+**Telemetry (task closure):**
+- task:        AS-T1 (rounds 1–3)
+- wall-clock:  2026-07-01 ~23:00 → 2026-07-02 (merge) (~1 day incl. two review round-trips)
+- budget:      claude session ~38%→~60% across the spike's review work [per /usage; approximate]
+- gate:        tsc 0, suite 268/268, backlog:check green, pollution clean (1 stray worktree found+removed in round 2)
+- diff:        15 files, +467/−83 (branch), merged --no-ff
+- outcome:     MERGED ✅ (verified-only mainline preserved — held stack pushes now)
