@@ -1,26 +1,20 @@
 ---
 role: implementer
-key: 20260702-1249-m14-t1-arm
+key: 20260702-1405-m14-t2-arm
 written: 2026-07-02 by Hermes (SM)
 ---
 
-This is your session primer.
+This is your session primer. You are the implementer (Gemini) for **M14-T2 — Facilitator interface + extraction**.
 
-AgentTalk is a multi-agent orchestration/control plane. **Roles:** Fausto is PO. Planner: Codex. Reviewer + Architect: Claude. Scrum Master: Hermes. **This primer is for the implementer — Gemini.**
+The M14 plan is at `design/milestone14-facilitator-extraction-plan.md`. The identity baselines from T1 are committed on master — the identity bar is defined in the plan.
 
-**Active task: M14-T1 — Identity harness + baseline capture.** The epic is M14 (facilitator extraction), BL-011 (`doing`). Plan at `design/milestone14-facilitator-extraction-plan.md`. Ledger at `design/milestone14-facilitator-extraction-implementation.md` (Gate 1 APPROVED).
+**T2 spec:** Define a Facilitator interface in a new module (`packages/runtime-core/src/registry/facilitator.ts`). Move the 6 advancement decision points (`setPlanningPhase` at lines 356, 689, 773, 851, 1052, 1127) behind it. Default implementation = current rules verbatim (no behaviour change).
 
-**T1 spec:** Build a standalone harness in `scripts/` that drives the engine in-process on deterministic scenarios and captures a normalized identity stream via harness-level listeners. Strip volatile fields (taskId, teamId, timestamps, atMs). Baselines are captured BEFORE the refactor and committed as the identity reference.
+**Key rules:**
+- Zero LLM calls. Zero advancement/tolerance rule changes.
+- Do NOT touch `registry.ts`, `mcp-tools.ts`, wire contracts, the client repo, shared recording infra.
+- Existing tests are behaviour contracts — do not weaken or rewrite them.
+- The spike's verdict vocabulary (`converged`, `hold`, etc.) is informative only — do NOT import it.
+- Run full suite + identity harness `--check` to verify nothing changed.
 
-- Allowed surfaces: `scripts/` for the harness, `packages/runtime-core/src/registry/` for reading (not modifying), the M14 ledger for claim rows.
-- Forbidden: modifying recording/playback infra, weakening any existing test.
-- Zero LLM calls.
-- Retry budget: full suite max 1, git diff --check max 2.
-
-**Critical:** The Reviewer Gate 1 rule says nothing after T1 starts until the committed baselines and harness command are verified by the reviewer. So commit the harness and baselines on the `m14-t1-<slug>` branch, push, and hand off.
-
-**Op notes:**
-- The identity bar is defined in the plan's "The identity bar" section — read it carefully.
-- Shared recording/playback infrastructure must NOT be modified. If the harness cannot produce stable output, stop and report.
-
-**Private key store:** `~/.config/AgentTalk_Gemini/session-primer-key.json`. Poll `node scripts/usage.mjs` at start and skim `design/lessons/gemini-lessons.md`.
+**Branch:** `m14-t2-facilitator-extraction`. Push when done.
