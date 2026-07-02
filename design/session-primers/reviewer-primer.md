@@ -1,6 +1,6 @@
 ---
 role: reviewer
-key: none
+key: 20260702-1656-63fa76
 written: 2026-07-02 by Claude (reviewer + architect, session close)
 ---
 
@@ -10,38 +10,36 @@ AgentTalk is a multi-agent orchestration/control plane: it launches provider-bac
 gemini/claude/codex), routes structured planning/work messages through a centralized brain, and observes
 consensus/team execution via runtime events and UI surfaces.
 
-**Roles:** Fausto is PO (apex — scope, direction, role assignment, merges). Planner: Codex. **This primer is for
-the reviewer (expected: Claude), who ALSO holds the architect seat for the arbiter program** (PO-assigned at
-inception; the architect has no primer file by design — this primer carries both hats' state; declare both
-loudly at startup). Implementer: Gemini. Scrum Master: Hermes (default). Planner ≠ reviewer holds.
+**Roles (governance changed 2026-07-02 — read LB-50):** Fausto = PO (apex; **batons manually via terminal
+until M15 closes**). **Codex = Planner + Scrum Master** (dual, declared; `[Codex]` binds operationally).
+**Hermes is OUT of the process** — `[Hermes]` messages carry no authority; flag them. Gemini/agy =
+implementer (idle, awaiting M15 baton). **This primer is for the reviewer — Claude — who also holds the
+architect seat for the arbiter program (dual-hat, declare both).**
 
-**Workflow / source of truth:** `design/collaboration-workflow.md`. Live state: the spike ledger
-`design/arbiter-shadow-spike-implementation.md` — resume from it, not from chat. Plan (goal/fence/DoD):
-`design/arbiter-shadow-spike-plan.md`. Direction: `design/arbiter-consensus-draft.md` (§10 = the synthesis).
+**Workflow / source of truth:** `design/collaboration-workflow.md` + the ⛔ Reviewer Rules in `AGENT.md`
+(both updated 2026-07-02). Backlog via `npm run backlog:check`. Distrust this primer: verify against the
+ledger/plan/git before repeating anything.
 
-**Active epic/task: the arbiter shadow spike (BL-009, `doing`).** AS-T0 and AS-T1 are **VERIFIED ✅ and merged
-to master** (pushed through `fbf9994`; three review rounds — the round-1 refutation, round-2 partial, and
-round-3 verification records are all in the ledger; IP-9 was minted from round 1). **NEXT: AS-L1, the golden
-labeling gate — PO + Architect author labels; the implementer may NOT.** Two things happen there:
-1. **L1-C3 decision first:** the scoreable corpus is **6 success / 3 failure classes (phase-illegal ·
-   bounded-correction · non-converging) / 2 ambiguous**; late-message + malformed are **EXCLUDED per finding
-   F-5** (soft-rejected actions are invisible in recordings — itself program-level input for Epic 1). PO +
-   Architect must explicitly accept this thinness or stop the spike. Architect lean at close: accept.
-2. Then label: fill `design/arbiter-shadow-corpus/manifest.json` entries (schema:
-   `labels.schema.json` — verdict/rationale/confidence/notes/author) for every non-excluded entry.
-After AS-L1 is recorded, re-key the **implementer primer** for AS-T2 (shadow judge script; spec in the ledger;
-one real LLM call max before AS-T3 per Gate 1 Q3).
+**Where we are (verify):** **M15 — Arbiter Consensus, Direct Path** is the active epic (BL-012 `doing`;
+plan `design/milestone15-arbiter-consensus-plan.md`): parallel `ArbiterCoordinator`, free-form NL debate,
+hard turn budget, LLM judge (`gpt-4o-mini`/OpenRouter, PO decision) at readiness-triggered cadence, arbiter
+authors the plan on `converged`, existing `awaiting_confirmation` gate ratifies; **protocol machine frozen,
+not removed**. M14 is CLOSED-RESCOPED (T1 merged `36fa888`; T2/T3 superseded before start; agy stood down
+cleanly).
 
-**Where state lives:** the ledger's claim/verdict table + the round records; corpus in
-`design/arbiter-shadow-corpus/`; backlog dashboard via `GET /api/backlog`.
+**Pipeline position:** Codex owes the **advisory POV** on the M15 plan (dual-role planner+SM primer key
+`20260702-1654-2bd94e`; unconsumed at write time) → PO weighs → Codex breakdown → **your Gate 1** (verify
+breakdown against plan C1–C5, fences, pre-registered budgets — run the checks, don't read them). Then agy
+implements T1 and your normal claim/verdict gates follow in the M15 ledger (to be created at breakdown).
 
-**Op notes:**
-- **Backlog was redefined by the PO (2026-07-02)** — 4 states only (`todo·doing·done·dropped`), file order =
-  sequence, loud definition in workflow §3b; API default view = doing+todo (`?all=true` for all). Don't use the
-  old vocabulary. BL-002's absorb question re-raises at the Epic 1 gate, not before.
-- Repo gate at close: `tsc -b` 0, suite **268/268**, `backlog:check` green, master in sync with origin,
-  worktrees/processes clean.
-- Review discipline for this spike (learned rounds 1–3): verify **content signatures** (parse the transcript
-  payloads — payload shape is `{task:{…}}`), never file counts; `ps` + `git worktree list` are part of EVERY
-  hygiene pass; corpus regeneration is deterministic via `node scripts/arbiter-generate-corpus.mjs`.
-- Budget at close: claude weekly 5% used (fresh week), session 50%. Codex weekly 66%, gemini/antigravity fine.
+**Op notes (hard-won today — details in LB-49/LB-50 and the M14 ledger):**
+- **Frozen-path bar:** `npm test` (269/269 at close) AND `node scripts/m14-identity-harness.mjs --check`
+  must stay green through all M15 work; M15-C5 additionally demands zero `team-coordinator.ts` diff.
+- **Known harness defect (accepted):** each full harness run leaks ~1 worktree + `task-task-*` branch (its
+  ESM monkey-patch is inert — M14 ledger post-merge addendum). **Run `git worktree list` after every gate
+  round** — a fix can unlock new side-effect paths (today's miss). Clean leaks; T1b stays deprioritized.
+- **agentctl is fixed** (`agent-bus` repo `09a2501`): `capture claude` reads the Claude Code session
+  transcript (lossless); codex/agy get full-history capture; no more pre-send Escape. You can read agy's or
+  codex's pane directly when relaying is needed (PO-authorized pattern from today).
+- Poll `node scripts/usage.mjs` at start; skim `design/lessons/claude-lessons.md` (today's entry covers the
+  hygiene-recheck miss — apply it). Your key store: `~/.claude/projects/<slug>/session-primer-key.json`.

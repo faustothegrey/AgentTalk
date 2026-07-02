@@ -102,3 +102,20 @@ here.**
   overwrites evidence artifacts must end with `git restore` so the implementer's committed evidence stays the
   evidence. Also minted IP-10 (telemetry asserting un-happened facts; deviations smuggled as parentheticals —
   the "prompt tweak" aside nearly buried the transport 400, which was spike gold).
+
+### 2026-07-02 (third session) — M14 open→close in one day; LB-49 root cause; the pivot to M15
+- **As reviewer: re-run EVERY hygiene check EVERY round — a fix can unlock new side-effect paths.** Round 1's
+  worktree check was clean because the broken success scenario never reached the worktree-creating work phase;
+  the round-2 fix made it reach it, and I skipped the recheck (violating my own spike lesson, written five days
+  earlier). Six leaked worktrees surfaced only at the post-merge sweep. Hygiene checks are per-round invariants,
+  not one-time boxes — especially after a fix changes which code paths execute.
+- **As architect: measure the transport before blaming the process.** "Hermes can't see Claude" felt like flaky
+  orchestration; an hour of measuring (alternate_on=1, history_size=0, capture -p == capture -S - byte-identical)
+  turned it into three concrete defects with three concrete fixes (LB-49). Also: the PO rejecting my file-report
+  workaround in favour of full-depth investigation was right — the workaround would have papered over the
+  alt-screen fact that made ALL tmux capture of Claude structurally hopeless.
+- **As architect: when preserving old behaviour costs more than the seam is worth, say so before the PO does.**
+  M14's byte-identical extraction burned three gate rounds on a harness for behaviour we intend to replace; the
+  PO's "bypass, don't dissect" cut (M15) shrank the epic and kept preservation for free (frozen path + suite +
+  the very harness T1 built). I defended the careful path one epic too long — proportionality remains my
+  recurring blind spot (see 2026-06-27 entry).
