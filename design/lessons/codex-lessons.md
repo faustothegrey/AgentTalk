@@ -47,3 +47,11 @@ here.**
   gate-approved planning; this lets the idea mature without accidentally opening implementation scope.
 - When closing after a side-track ideation update, the primer should preserve the real active epic pointer and call
   out that the ideation artifact opens no work by itself.
+
+### 2026-07-02 — M15 dual-role closure and independent review
+- As temporary implementer + reviewer, a green self-review still missed a narrow composition regression; when I hold
+  multiple hats, I need to add adversarial tests for every sibling guard, not only the path I just fixed.
+- As Scrum Master, keeping Claude's refutation intact and adding a follow-up fix record below it made the audit trail
+  cleaner than rewriting the earlier verdict.
+- Verification commands that allocate worker task worktrees need an immediate pollution check; identity `--check`
+  can leave cleanup work even when it passes.

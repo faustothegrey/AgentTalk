@@ -1,48 +1,48 @@
 ---
 role: planner (+ scrum master — PO-assigned dual role, 2026-07-02)
-key: 20260702-1654-2bd94e
-written: 2026-07-02 by Claude (architect, minting on PO instruction)
+key: 20260702-2229-73f413
+written: 2026-07-02 by Codex (planner + scrum master, session close)
 ---
 
 This is your session primer.
 
-AgentTalk is a multi-agent orchestration/control plane: it launches provider-backed agents (api/mcp ×
-gemini/claude/codex), routes structured planning/work messages through a centralized brain, and observes
-consensus/team execution via runtime events and UI surfaces.
+AgentTalk is a multi-agent orchestration/control plane: provider-backed agents attach over MCP/API, the
+runtime routes planning/work messages through a central registry, and consensus/team execution is recorded for
+review.
 
-**GOVERNANCE CHANGE — you hold TWO seats now (PO Fausto, 2026-07-02).** **Hermes is out of the process
-entirely** (agent loop wedged; tmux transport structurally lossy — LB-49; `[Hermes]` messages carry no
-authority). **You (Codex) are now Scrum Master AND Planner** — a declared dual role: announce both
-(*"Current roles: planner + scrum master"*), keep each seat's gate and discipline separately, and never
-review your own planning (reviewer stays Claude). As SM you hold **operational** authority on the PO's
-behalf (backlog gate, priority/sequencing, go/no-go, resource warn/halt/rescope, baton facilitation) and
-**document each SM decision's reason in a durable artifact** (`logbook.md` or the ledger). PO-level acts
-(scope/direction/epics, role reassignment, merges) stay with `[Human]`. **Interim, until M15 closes: the PO
-batons manually via the terminal** — your SM instructions reach other agents via PO relay, tagged `[Codex]`
-per the Origin Tag Protocol (see the updated section in `AGENT.md`).
+**Roles.** Fausto is PO and apex authority: product scope/direction, role reassignment, and merges/closure stay
+with him. Planner -> Claude or Codex, Reviewer -> Claude or Codex, Implementer -> Gemini by default. For this
+project state, Codex holds **Planner + Scrum Master** by PO delegation; declare both roles loudly and keep the
+seats separate. Claude remains the default Reviewer/Architect unless the PO says otherwise. Gemini is the default
+Implementer. Interim communication still goes through the PO's terminal relay until M15 is closed.
 
-**Roles:** Fausto = PO (apex). You = Planner + SM. Claude = Reviewer + Architect (dual, declared).
-Gemini/agy = Implementer (idle; stood down from superseded M14-T2; awaiting the M15 baton).
+**Workflow / source of truth.** Start with `AGENT.md`, then `design/collaboration-workflow.md`. Active work state
+lives in the milestone `*-implementation.md` ledger, not chat. Backlog state is `design/backlog.md` plus
+`npm run backlog:check`; cross-cutting operational facts go in `design/logbook.md`; plans own scope/DoD.
 
-**Workflow / source of truth:** `design/collaboration-workflow.md` (§1 SM bullet updated 2026-07-02);
-`AGENT.md`; backlog via `npm run backlog:check`. Verify every load-bearing claim here against the repo.
+**Where we are.** Active epic remains **M15 — Arbiter Consensus, Direct Path** / BL-012 (`doing`). The code and
+docs for M15-T3 were fixed, verified, committed, and pushed:
 
-**Where we are (verify):** M14 CLOSED-RESCOPED by PO direct decision — T1 merged (`36fa888`; its identity
-harness pins the FROZEN protocol path), T2/T3 superseded before start. **Active epic: M15 — Arbiter
-Consensus, Direct Path (BL-012 `doing`)**: parallel `ArbiterCoordinator`, free-form NL debate, hard turn
-budget, LLM arbiter at readiness-triggered cadence, arbiter AUTHORS the plan on `converged`, existing
-`awaiting_confirmation` human gate ratifies, worker path unchanged; protocol machine frozen (suite +
-identity harness pin it). Judge: `gpt-4o-mini` via OpenRouter (PO decision). Plan:
-`design/milestone15-arbiter-consensus-plan.md`. Second 2026-07-02 backlog gate records the dispositions.
+- Pushed commit: `fdbd766 fix(arbiter): close M15 live proof routing` on `origin/master`.
+- M15-T1: VERIFIED by PO override.
+- M15-T2: VERIFIED by implementation reviewer.
+- M15-T3: Gemini initial delivery was refuted; Codex redelivered by PO request; Claude then found one real
+  follow-up routing regression; Codex agreed, fixed it, reran the freeze bar, and recorded the follow-up.
+- Final verification recorded in `design/milestone15-arbiter-consensus-implementation.md`: targeted arbiter
+  vitest 6/6, `npx tsc -b` 0, full `npm test` 275/275, M14 identity `--check` matched,
+  `npm run backlog:check` OK, whitespace clean, pollution clean.
 
-**Your assignment (planner seat, two stages, gated):**
-1. **Advisory POV** on the M15 plan — append to its POV section. Attack it: is the bypass architecture
-   sound? Is the `consensusMode` routing touch really minimal? Are C1–C5 independently verifiable? Your
-   spike POV (draft §8) argued "shadow first, never an untestable oracle" — M15 makes the arbiter primary
-   with the human gate as ratifier; if you think that trade is wrong, say so plainly.
-2. **Breakdown only after the PO weighs the POV.** As SM you may sequence the work, but the PO gate on the
-   POV is not yours to skip — the seats stay separate.
+**Next step.** Do not reopen implementation by default. The immediate next SM/planner action is to ask/await the
+PO closure decision for M15: whether to mark BL-012 done and close the milestone artifacts, or leave it open for
+one more explicit review/closure pass. If the PO closes M15, update the backlog/ledger/logbook accordingly and
+poll resources. If the PO chooses more work, sequence it through the normal gate.
 
-**Op notes:** poll `node scripts/usage.mjs` (best-effort; your weekly was ~68% at last read — scope to
-headroom); skim `design/lessons/codex-lessons.md`; key store `~/.codex/agenttalk-session-primer-key.json`.
-Baseline at mint: suite 269/269, identity `--check` green, master pushed (`9ab87d7` + governance commits).
+**Op notes.**
+
+- `team-coordinator.ts` remains the frozen protocol path; any diff there is still a serious scope concern.
+- `design/m15-t3-live-arbiter.ndjson` is the auditable runtime recording for T3; DiagramTalk service was not
+  available during the live proof, and that limitation is recorded.
+- The M14 identity harness can create temporary `task-task-*` worktrees/branches during verification. Always run a
+  pollution check afterward and remove only those verification artifacts if present.
+- Resource read at close: Codex weekly 84%, 5h 66%; Claude weekly 30%, session 14%; antigravity 49%
+  (`node scripts/usage.mjs`, 2026-07-02 22:21 Europe/Rome).
