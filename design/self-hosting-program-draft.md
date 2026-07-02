@@ -1,8 +1,10 @@
 # Self-Hosting Program (M16 → M18) — AgentTalk improves itself
 
 **Status:** 🟡 **DRAFT — PO↔Architect inception recorded (2026-07-02 late session, compressed ceremony per
-M15 precedent); awaiting Codex (planner) advisory POV and the ~2026-07-08 backlog gate.** Build starts after
-Codex's weekly reset (Jul 7 ~07:14) unless the PO says otherwise.
+M15 precedent); Codex (planner) advisory POV RECORDED (PO-relayed, same night — see §POV below; direction
+endorsed, five cautions, two folded into this draft); SP-WAKE probe A PASS, idle probe in flight; awaiting
+the ~2026-07-08 backlog gate.** Build starts after Codex's weekly reset (Jul 7 ~07:14) unless the PO says
+otherwise.
 **PO:** Fausto · **Architect:** Claude (author) · **Planner + SM:** Codex · **Implementer:** Gemini/agy ·
 **Reviewer:** per-epic PO call (M15 note: independent review after any self-reviewed closure).
 **Sacred goal (PO, 2026-07-02):** set AgentTalk up so it **incrementally improves itself**.
@@ -69,8 +71,13 @@ still works.
 the brain enforces** (a `[Codex]` operational instruction vs. `[Human]` PO act is machine-checkable, not
 square-bracket convention). PO relay burden shrinks to poking idle agents (or nothing, if SP-WAKE says
 blocking waits hold).
-**Scope sketch.** Message metadata schema + enforcement at routing; gate events surfaced in UI/recording;
-workflow docs updated to name the channel as primary and terminal as fallback.
+**Framing (Codex POV caution 3, adopted):** tag enforcement is **workflow-authority correctness, NOT
+adversarial security.** Its real substance is the mapping **attached session → agent identity → role
+assignment**, with `[Human]` kept a distinct trusted channel. M17's plan must spec that mapping first; the
+refusal test is a consequence of it, not the feature.
+**Scope sketch.** Session→identity→role mapping; message metadata schema + enforcement at routing; gate
+events surfaced in UI/recording; workflow docs updated to name the channel as primary and terminal as
+fallback.
 **DoD claim sketch.** C1: a real reviewer verdict and a real SM go delivered and recorded over the channel.
 C2: a PO-level act attempted with a non-`[Human]` tag is refused by the brain (negative test). C3: freeze
 bar green.
@@ -116,6 +123,38 @@ Codex not required.
   SM with the PO — not pre-created here; this draft is the inception artifact the gate consumes.
 - **Per-epic plans** (fences, full DoD tables, per-check budgets) get authored at each epic's own inception;
   the sketches above are altitude, not spec.
+
+## The program metric — relay count (Codex POV caution 5, adopted)
+
+**Definition (counting rule, fixed now so the metric can't be gamed later):** one relay = one manual PO act
+of **pasting a baton/report between sessions, typing a relayed instruction on another actor's behalf, or
+poking an idle agent to make it check anything**. Reading the UI is free; `[Human]` decisions are free (they
+are PO acts, not relays); pokes count (they are relay residue — M16's pull-on-poke fallback keeps them
+countable on purpose).
+**Baseline (M15, honest approximation):** the entire M15 epic ran PO-relayed — every planner/reviewer/
+implementer baton, gate hand-back, and fix round crossed Fausto's terminal; order of magnitude **~20–30
+relays in one day** (exact count unrecoverable; the point of this program is that from M16 on the recording
+counts it for us). **Each epic's closure telemetry records its relay count; the program succeeds iff the
+number falls epic over epic.**
+
+## Planner advisory POV (Codex, PO-relayed, 2026-07-02 night) — RECORDED
+
+Direction endorsed: *"M16→M18 attacks the actual bottleneck we just experienced… use AgentTalk for one tiny
+coordination act, record the friction, then fix the worst friction with evidence."* Five cautions, with the
+architect's dispositions:
+1. **SP-WAKE before M16; if wake breaks, design around pull-on-poke, not hope.** — Agreed; already the
+   draft's rule (M16 "shape decided by the spike's evidence"). Spike running at POV time.
+2. **M16 stays embarrassingly small** (no gates, no enforcement, no UI ambitions). — Agreed; already the
+   fence. Standing guard: any M16 scope growth is an automatic hand-back at Gate 1.
+3. **M17 tags are workflow authority, not security; the real work is session→identity→role mapping,
+   `[Human]` a distinct trusted channel.** — **Adopted; M17 section amended** (mapping first, refusal test
+   as consequence).
+4. **DiagramTalk rides M18 only if genuinely cheap — dessert, not the meal.** — Agreed; rider stays
+   explicitly droppable, M18's DoD unchanged without it.
+5. **Define relay-count now; M15 is the painful baseline.** — **Adopted; metric section added above**
+   (counting rule + M15 baseline + per-epic telemetry).
+Sequencing rec (SP-WAKE observation-only → Jul-8 gate opens M16 shaped by spike result → M17/M18 stay
+draft-altitude until M16 evidence) — matches the draft; adopted as written.
 
 ## Risks (stated at this altitude)
 
