@@ -52,7 +52,7 @@ or independently checking the evidence.
 | AS-T0 | Gemini | T0-C1 through T0-C4 proven ✅ | **VERIFIED ✅** (reviewer-run) | Reviewer re-ran `node scripts/arbiter-corpus-audit.mjs` → "Audit passed!"; `sample-success.jsonl` (33 lines) is real `SessionRecorder` output wired via the production `startServer(registry, 0, {recorder})` hookup — Gate 1 Q2 constraint honored. Commit scope fence-clean. |
 | AS-T1 | Gemini | Round 1: refuted. Round 2: partial. Round 3: fix delivered ✅ | **VERIFIED ✅** (reviewer-run, round 3 — see round-3 record) | Round-1 refutation stands in history below. Round 2: wiring fixed (production `startServer` hookup, agents connect, content lands), clean exits verified (no zombies, events complete <1s). **5/7 signature checks pass** (success, phase-illegal, bounded-correction→eject, non-converging→budget-exhausted, ambiguous→fallback). **2 remain:** late-message is the wrong scenario (fact-collection dup, silently ignored — not the post-planning straggler); opinion payloads render as `undefined` (debate text lost). Malformed = adequacy **finding F-5**, class ruled unavailable-via-transcript. See round-2 record. Round 3 (Implementer): Late-message fixed and excluded via F-5, opinion payloads fixed (no undefined). |
 | AS-L1 | PO + Architect | Labels authored ✅ (2026-07-02) | **RECORDED ✅** (gate record in AS-L1 section) | `labels.json`: all 11 scoreable entries labeled; cross-validated against schema enum + manifest ("VALIDATION OK"); 2 F-5 exclusions accepted per L1-C3; PO ratified verdicts + both open decisions in session 2026-07-02. |
-| AS-T2 | Gemini | T2-C1 through T2-C5 met ✅ (Script added, cadences supported, offline only, mock execution works) | **PARTIAL ⚠️** (reviewer-run — see AS-T2 round-1 record) | Mock runs verified across all 3 cadences (T2-C2 ✅); offline-only import surface verified (T2-C4 ✅); real-LLM leg waived by PO `[Human]` overrule (GEMINI_API_KEY unavailable) — real path statically consistent with `ApiCompleter`, unproven live. **3 fixes required:** verdict vocabulary ≠ `labels.schema.json` enum (T2-C3 partial); crashes on `live-success-1`'s live payload shape; crash exits 0 (error swallowed). |
+| AS-T2 | Gemini (+ reviewer as temporary implementer, round 2, PO-approved) | Round 1: T2-C1…C5 claimed ✅. Round 2: 3 fixes applied | **VERIFIED ✅ under PO waiver** (round 2 — see records) | Round 1 PARTIAL: 3 defects (vocabulary drift, live-shape crash, swallowed errors). Round 2 (reviewer as temp implementer, PO-authorized in session): enum now loaded from `labels.schema.json` (cannot drift); `payload.task ?? payload` handles both recording shapes — `live-success-1` mock run passes; errors exit 1. Cadence regression identical. Real-LLM leg remains **waived by PO `[Human]` overrule** — statically consistent, unproven live; AS-T3 burns the first real call knowing this. |
 | AS-T3 | Gemini | not-started | not-checked | Cadence/cost scoring pending. |
 | AS-T4 | Architect + PO, with implementer evidence | not-started | not-checked | Recommendation + closure pending. |
 
@@ -312,6 +312,26 @@ AS-T3 decides what gets committed.
 
 **Baton: Reviewer → Implementer.** Fix the three items on `as-t2`, re-claim with command output, hand back.
 Retry budgets for the re-round: mock rerun per entry-shape 2, `tsc -b` 2, `git diff --check` 2.
+
+## AS-T2 round 2 — fixes applied by reviewer-as-temporary-implementer: **VERIFIED ✅** (Claude, 2026-07-02)
+
+**Role note (declared loudly):** the PO authorized the reviewer to apply the three round-1 fixes directly
+("if defects are minor, fix them yourself" — session, 2026-07-02). Claude therefore wore **reviewer + temporary
+implementer** for this round. **Self-review caveat recorded:** the verifier and the fixer are the same actor;
+mitigations — the fix list was specified *before* the grant (round-1 record above), the fixes are mechanical,
+and every check below is a recorded command run, reproducible by anyone.
+
+**Fixes applied (`scripts/arbiter-shadow-judge.mjs` only):**
+1. **Vocabulary:** `VERDICT_ENUM` is now read from `labels.schema.json` at startup and injected into the tool
+   builder and both prompts — the judge's menu *is* the golden enum, structurally unable to drift. Verified: no
+   stale enum literal remains in the source; printed schema enum matches.
+2. **Dual payload shape:** `const task = event.payload.task ?? event.payload;` + type guard. Verified:
+   `live-success-1.jsonl --mock` → 6 evaluations, clean result row (was: TypeError).
+3. **Fail loudly:** catch now sets `process.exitCode = 1`. Verified: run against a nonexistent file → ENOENT
+   printed, exit 1 (was: exit 0).
+
+**Regression:** `node --check` OK; `sample-success` mock runs across all three cadences byte-identical to
+round 1 (6 / 14 / 5 evaluations). Scope: `git diff` touches the judge script only.
 
 ## AS-T3 — Cadence / Cost Scoring Run
 

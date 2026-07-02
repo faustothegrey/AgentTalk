@@ -2,6 +2,11 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { ApiCompleter } from '@agenttalk/llm-client';
 
+// The judgment vocabulary is the golden-label enum — loaded from the schema so it cannot drift from it.
+const LABELS_SCHEMA_URL = new URL('../design/arbiter-shadow-corpus/labels.schema.json', import.meta.url);
+const VERDICT_ENUM = JSON.parse(await fs.readFile(LABELS_SCHEMA_URL, 'utf8'))
+  .properties.labels.additionalProperties.properties.verdict.enum;
+
 const JUDGE_TOOL_BUILDER = () => ({
   type: 'function',
   function: {
@@ -12,15 +17,7 @@ const JUDGE_TOOL_BUILDER = () => ({
       properties: {
         verdict: {
           type: 'string',
-          enum: [
-            'advance-to:discussion', 
-            'advance-to:awaiting_confirmation', 
-            'hold', 
-            'fail-soft:planner-a', 
-            'fail-soft:planner-b', 
-            'converged', 
-            'not-converged'
-          ],
+          enum: VERDICT_ENUM,
           description: 'The judgment verdict.'
         },
         rationale: {
@@ -74,7 +71,9 @@ async function main() {
   for (const line of lines) {
     const event = JSON.parse(line);
     if (event.kind === 'event' && event.event === 'team_task_updated') {
-      const task = event.payload.task;
+      // Deterministic recordings wrap the task ({payload:{task:{…}}}); live-gate recordings carry it directly.
+      const task = event.payload.task ?? event.payload;
+      if (!task || typeof task !== 'object') continue;
       if (task.status) {
         currentPhase = task.status;
       }
@@ -105,7 +104,7 @@ async function main() {
 Goal: ${goal}
 Current Phase: ${currentPhase}
 
-Allowed judgment verdicts: ['advance-to:discussion', 'advance-to:awaiting_confirmation', 'hold', 'fail-soft:planner-a', 'fail-soft:planner-b', 'converged', 'not-converged']
+Allowed judgment verdicts: ${JSON.stringify(VERDICT_ENUM)}
 
 Transcript so far:
 ${JSON.stringify(currentTranscript, null, 2)}
@@ -142,7 +141,7 @@ Provide your judgment using the allowed vocabulary.`;
 Goal: ${goal}
 Current Phase: ${currentPhase}
 
-Allowed judgment verdicts: ['advance-to:discussion', 'advance-to:awaiting_confirmation', 'hold', 'fail-soft:planner-a', 'fail-soft:planner-b', 'converged', 'not-converged']
+Allowed judgment verdicts: ${JSON.stringify(VERDICT_ENUM)}
 
 Transcript:
 ${JSON.stringify(currentTranscript, null, 2)}
@@ -186,4 +185,7 @@ Provide your judgment using the allowed vocabulary.`;
   console.log(JSON.stringify(output));
 }
 
-main().catch(console.error);
+main().catch((err) => {
+  console.error(err);
+  process.exitCode = 1;
+});
