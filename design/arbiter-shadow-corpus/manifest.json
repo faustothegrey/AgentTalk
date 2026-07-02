@@ -54,7 +54,8 @@
       "scenario_class": "failure-malformed",
       "source_command": "node scripts/arbiter-generate-corpus.mjs",
       "recording_path": "design/arbiter-shadow-corpus/failure-malformed.jsonl",
-      "label_status": "needs-po-architect-label"
+      "label_status": "excluded",
+      "exclusion_reason": "F-5: malformed actions are not recorded in transcript"
     },
     {
       "id": "failure-bounded-correction",
@@ -73,9 +74,10 @@
     {
       "id": "failure-late-message",
       "scenario_class": "failure-late-message",
-      "source_command": "node scripts/arbiter-generate-corpus-append.mjs",
+      "source_command": "node scripts/arbiter-generate-corpus.mjs",
       "recording_path": "design/arbiter-shadow-corpus/failure-late-message.jsonl",
-      "label_status": "needs-po-architect-label"
+      "label_status": "excluded",
+      "exclusion_reason": "F-5: late straggler actions trigger console.warn but are invisible in the recording"
     },
     {
       "id": "ambiguous-1",
