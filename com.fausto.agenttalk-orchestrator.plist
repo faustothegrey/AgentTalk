@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.fausto.agenttalk-orchestrator</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/usr/local/bin/node</string>
+    <string>dist/index.js</string>
+  </array>
+
+  <key>WorkingDirectory</key>
+  <string>/Users/fausto/Software/AgentTalk/apps/orchestrator</string>
+
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PORT</key>
+    <string>3741</string>
+    <key>PATH</key>
+    <string>/usr/local/bin:/usr/bin:/bin</string>
+  </dict>
+
+  <key>RunAtLoad</key>
+  <true/>
+
+  <key>KeepAlive</key>
+  <true/>
+
+  <key>StandardOutPath</key>
+  <string>/Users/fausto/.hermes/logs/agenttalk-orchestrator.log</string>
+
+  <key>StandardErrorPath</key>
+  <string>/Users/fausto/.hermes/logs/agenttalk-orchestrator.err.log</string>
+</dict>
+</plist>
