@@ -1,113 +1,197 @@
 import { Registry } from '../packages/runtime-core/dist/registry/registry.js';
 import { SessionRecorder } from '../packages/observability/dist/recordings/session-recorder.js';
+import { startServer } from '../apps/orchestrator/dist/server.js';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const delay = (ms) => new Promise(r => setTimeout(r, ms));
+
+const VALID_PLAN_TEXT = '1. Update src/index.js to add a new feature.';
 
 async function createRegistryWithRecorder(fileName) {
   const filePath = path.join(__dirname, '../design/arbiter-shadow-corpus', fileName);
-  if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
-  const recorder = new SessionRecorder(filePath);
-  const adapter = { spawn() {}, sendText() {}, onData() {}, onExit() {}, kill() {} };
-  const registry = new Registry(adapter, { readinessTimeoutMs: 5000 });
+  if (fs.existsSync(filePath)) fs.rmSync(filePath);
   
-  registry.on('team_task', (task) => recorder.record('orchestrator', 'team_task_updated', task));
-  registry.on('agent_spawned', (agent) => recorder.record('orchestrator', 'agent_spawned', agent));
+  const recorder = new SessionRecorder(filePath);
+  const registry = new Registry({ readinessTimeoutMs: 1000 });
+  const server = startServer(registry, 0, { recorder });
   
   await registry.createAgent('planner-a', { provider: 'mcp', providerName: 'mock' });
   await registry.createAgent('planner-b', { provider: 'mcp', providerName: 'mock' });
   await registry.createAgent('worker-1', { provider: 'mcp', providerName: 'mock' });
+  
   await registry.activateAgent('planner-a');
   await registry.activateAgent('planner-b');
   await registry.activateAgent('worker-1');
   
-  const team = await registry.createTeam([
+  registry.handleMcpConnect('planner-a');
+  registry.handleMcpConnect('planner-b');
+  registry.handleMcpConnect('worker-1');
+  
+  const team = registry.createTeam([
     { agentId: 'planner-a', role: 'planner' },
     { agentId: 'planner-b', role: 'planner' },
     { agentId: 'worker-1', role: 'worker' }
   ]);
   
-  return { registry, team };
+  return { registry, team, recorder, server };
 }
 
-async function simulatePlannerCall(registry, agentId, payloadStr) {
-  await registry.handleMcpToolCall(agentId, 'consensus_respond', { payload: payloadStr });
+async function simulateCall(registry, agentId, action, payload = {}) {
+  try {
+    await registry.handleMcpToolCall(agentId, 'consensus_respond', { action, payload });
+  } catch (e) {
+    console.error(`Error simulating call for ${agentId}:`, e);
+  }
+  await delay(200);
 }
-
-// Scenarios
 
 async function runSuccess(fileName) {
-  const { registry, team } = await createRegistryWithRecorder(fileName);
-  await registry.assignTeamTask(team.id, 'Collaborative planning task: Create a plan');
+  const { registry, team, recorder, server } = await createRegistryWithRecorder(fileName);
+  await registry.assignTeamTask(team.id, 'Collaborative planning task');
+  await delay(100);
   
-  await simulatePlannerCall(registry, 'planner-a', JSON.stringify({ message_type: 'ack_planning_protocol', message_payload: { text: 'ok' } }));
-  await simulatePlannerCall(registry, 'planner-b', JSON.stringify({ message_type: 'ack_planning_protocol', message_payload: { text: 'ok' } }));
+  await simulateCall(registry, 'planner-a', 'ack_planning_protocol');
+  await simulateCall(registry, 'planner-b', 'ack_planning_protocol');
   
-  await simulatePlannerCall(registry, 'planner-a', JSON.stringify({ message_type: 'fact_collection_end', message_payload: { summary: 'done' } }));
-  await simulatePlannerCall(registry, 'planner-b', JSON.stringify({ message_type: 'fact_collection_end', message_payload: { summary: 'done' } }));
+  await simulateCall(registry, 'planner-a', 'fact_collection_end', { summary: 'done' });
+  await simulateCall(registry, 'planner-b', 'fact_collection_end', { summary: 'done' });
   
-  await simulatePlannerCall(registry, 'planner-a', JSON.stringify({ message_type: 'agreement_proposal', message_payload: { text: 'Plan X', proposal: 'Plan X', expected_response_types: ['agreement_acceptance', 'agreement_proposal'] } }));
-  await simulatePlannerCall(registry, 'planner-b', JSON.stringify({ message_type: 'agreement_acceptance', message_payload: { text: 'I agree', proposal: 'Plan X', expected_response_types: ['submit_plan'] } }));
+  await simulateCall(registry, 'planner-a', 'agreement_proposal', { proposal: 'Plan X' });
+  await simulateCall(registry, 'planner-b', 'agreement_acceptance', { proposal: 'Plan X', reason: 'ok' });
   
-  await simulatePlannerCall(registry, 'planner-a', JSON.stringify({ message_type: 'submit_plan', message_payload: { plan: '1. Update src', text: 'Plan submitted', proposal: 'Plan X' } }));
+  await simulateCall(registry, 'planner-a', 'submit_plan', { plan: VALID_PLAN_TEXT, proposal: 'Plan X', text: 'Submitting' });
+  
+  await delay(500);
+  await recorder.close();
+  server.close();
 }
 
 async function runPhaseIllegal() {
-  const { registry, team } = await createRegistryWithRecorder('failure-phase-illegal.jsonl');
+  const { registry, team, recorder, server } = await createRegistryWithRecorder('failure-phase-illegal.jsonl');
   await registry.assignTeamTask(team.id, 'Task');
-  await simulatePlannerCall(registry, 'planner-a', JSON.stringify({ message_type: 'ack_planning_protocol', message_payload: { text: 'ok' } }));
-  await simulatePlannerCall(registry, 'planner-b', JSON.stringify({ message_type: 'ack_planning_protocol', message_payload: { text: 'ok' } }));
-  // Illegal: proposer tries to submit plan during fact collection
-  await simulatePlannerCall(registry, 'planner-a', JSON.stringify({ message_type: 'submit_plan', message_payload: { plan: '1. Update', text: 'skip', proposal: 'X' } }));
+  await delay(100);
+  
+  await simulateCall(registry, 'planner-a', 'ack_planning_protocol');
+  await simulateCall(registry, 'planner-b', 'ack_planning_protocol');
+
+  await simulateCall(registry, 'planner-a', 'fact_collection_end', { summary: 'done' });
+  await simulateCall(registry, 'planner-b', 'fact_collection_end', { summary: 'done' });
+
+  // Illegal: submit plan during discussion
+  await simulateCall(registry, 'planner-a', 'submit_plan', { plan: VALID_PLAN_TEXT, text: 'skip', proposal: 'X' });
+
+  await delay(500);
+  await recorder.close();
+  server.close();
 }
 
 async function runMalformed() {
-  const { registry, team } = await createRegistryWithRecorder('failure-malformed.jsonl');
+  const { registry, team, recorder, server } = await createRegistryWithRecorder('failure-malformed.jsonl');
   await registry.assignTeamTask(team.id, 'Task');
-  await simulatePlannerCall(registry, 'planner-a', JSON.stringify({ message_type: 'ack_planning_protocol', message_payload: { text: 'ok' } }));
-  await simulatePlannerCall(registry, 'planner-b', JSON.stringify({ message_type: 'ack_planning_protocol', message_payload: { text: 'ok' } }));
-  // Malformed: missing payload fields
-  await simulatePlannerCall(registry, 'planner-a', JSON.stringify({ message_type: 'fact_collection_end', message_payload: {} }));
+  await delay(100);
+  
+  await simulateCall(registry, 'planner-a', 'ack_planning_protocol');
+  await simulateCall(registry, 'planner-b', 'ack_planning_protocol');
+  
+  await simulateCall(registry, 'planner-a', 'fact_collection_end', { summary: 'done' });
+  await simulateCall(registry, 'planner-b', 'fact_collection_end', { summary: 'done' });
+  
+  await simulateCall(registry, 'planner-a', 'agreement_proposal', { proposal: 'Plan X' });
+  await simulateCall(registry, 'planner-b', 'agreement_acceptance', { proposal: 'Plan X', reason: 'ok' });
+  
+  // Malformed: submit plan missing required fields
+  await simulateCall(registry, 'planner-a', 'submit_plan', { text: 'no plan field' });
+  
+  await delay(500);
+  await recorder.close();
+  server.close();
 }
 
 async function runBoundedCorrection() {
-  const { registry, team } = await createRegistryWithRecorder('failure-bounded-correction.jsonl');
+  const { registry, team, recorder, server } = await createRegistryWithRecorder('failure-bounded-correction.jsonl');
   await registry.assignTeamTask(team.id, 'Task');
-  await simulatePlannerCall(registry, 'planner-a', JSON.stringify({ message_type: 'ack_planning_protocol', message_payload: { text: 'ok' } }));
-  await simulatePlannerCall(registry, 'planner-b', JSON.stringify({ message_type: 'ack_planning_protocol', message_payload: { text: 'ok' } }));
+  await delay(100);
+  
+  await simulateCall(registry, 'planner-a', 'ack_planning_protocol');
+  await simulateCall(registry, 'planner-b', 'ack_planning_protocol');
+
+  await simulateCall(registry, 'planner-a', 'fact_collection_end', { summary: 'done' });
+  await simulateCall(registry, 'planner-b', 'fact_collection_end', { summary: 'done' });
+  
   for (let i = 0; i < 5; i++) {
-    await simulatePlannerCall(registry, 'planner-a', JSON.stringify({ message_type: 'fact_collection_end', message_payload: {} }));
+    await simulateCall(registry, 'planner-a', 'submit_plan', { plan: VALID_PLAN_TEXT, text: 'wrong phase', proposal: 'Plan X' });
   }
+  
+  await delay(500);
+  await recorder.close();
+  server.close();
 }
 
 async function runNonConverging() {
-  const { registry, team } = await createRegistryWithRecorder('failure-non-converging.jsonl');
+  const { registry, team, recorder, server } = await createRegistryWithRecorder('failure-non-converging.jsonl');
   await registry.assignTeamTask(team.id, 'Task');
-  await simulatePlannerCall(registry, 'planner-a', JSON.stringify({ message_type: 'ack_planning_protocol', message_payload: { text: 'ok' } }));
-  await simulatePlannerCall(registry, 'planner-b', JSON.stringify({ message_type: 'ack_planning_protocol', message_payload: { text: 'ok' } }));
-  await simulatePlannerCall(registry, 'planner-a', JSON.stringify({ message_type: 'fact_collection_end', message_payload: { summary: 'x' } }));
-  await simulatePlannerCall(registry, 'planner-b', JSON.stringify({ message_type: 'fact_collection_end', message_payload: { summary: 'y' } }));
-  // Loop proposals back and forth without agreement
+  await delay(100);
+  
+  await simulateCall(registry, 'planner-a', 'ack_planning_protocol');
+  await simulateCall(registry, 'planner-b', 'ack_planning_protocol');
+  
+  await simulateCall(registry, 'planner-a', 'fact_collection_end', { summary: 'x' });
+  await simulateCall(registry, 'planner-b', 'fact_collection_end', { summary: 'y' });
+  
   for (let i = 0; i < 15; i++) {
-    await simulatePlannerCall(registry, 'planner-a', JSON.stringify({ message_type: 'agreement_proposal', message_payload: { text: 'A', proposal: 'A', expected_response_types: ['agreement_acceptance'] } }));
-    await simulatePlannerCall(registry, 'planner-b', JSON.stringify({ message_type: 'agreement_proposal', message_payload: { text: 'B', proposal: 'B', expected_response_types: ['agreement_acceptance'] } }));
+    await simulateCall(registry, 'planner-a', 'opinion', { message: 'A' });
+    await simulateCall(registry, 'planner-b', 'opinion', { message: 'B' });
   }
+  
+  await delay(500);
+  await recorder.close();
+  server.close();
 }
 
-async function runAmbiguous(fileName) {
-  const { registry, team } = await createRegistryWithRecorder(fileName);
+async function runLateMessage() {
+  const { registry, team, recorder, server } = await createRegistryWithRecorder('failure-late-message.jsonl');
   await registry.assignTeamTask(team.id, 'Task');
-  await simulatePlannerCall(registry, 'planner-a', JSON.stringify({ message_type: 'ack_planning_protocol', message_payload: { text: 'ok' } }));
-  await simulatePlannerCall(registry, 'planner-b', JSON.stringify({ message_type: 'ack_planning_protocol', message_payload: { text: 'ok' } }));
-  await simulatePlannerCall(registry, 'planner-a', JSON.stringify({ message_type: 'fact_collection_end', message_payload: { summary: 'done' } }));
-  await simulatePlannerCall(registry, 'planner-b', JSON.stringify({ message_type: 'fact_collection_end', message_payload: { summary: 'done' } }));
-  await simulatePlannerCall(registry, 'planner-a', JSON.stringify({ message_type: 'agreement_proposal', message_payload: { text: 'Plan', proposal: 'Plan', expected_response_types: ['agreement_acceptance'] } }));
-  await simulatePlannerCall(registry, 'planner-b', JSON.stringify({ message_type: 'agreement_proposal', message_payload: { text: 'Plan modified', proposal: 'Plan', expected_response_types: ['agreement_acceptance'] } }));
-  // Ambiguous: agreement reached but for slightly different text?
-  await simulatePlannerCall(registry, 'planner-a', JSON.stringify({ message_type: 'agreement_acceptance', message_payload: { text: 'ok', proposal: 'Plan', expected_response_types: ['submit_plan'] } }));
-  // Ambiguous state...
+  await delay(100);
+  
+  await simulateCall(registry, 'planner-a', 'ack_planning_protocol');
+  await simulateCall(registry, 'planner-b', 'ack_planning_protocol');
+  
+  // Simulate out-of-turn message by calling it twice for A
+  await simulateCall(registry, 'planner-a', 'fact_collection_end', { summary: 'done' });
+  await simulateCall(registry, 'planner-a', 'fact_collection_end', { summary: 'late message' });
+  
+  await delay(500);
+  await recorder.close();
+  server.close();
+}
+
+async function runAmbiguous(fileName, flip) {
+  const { registry, team, recorder, server } = await createRegistryWithRecorder(fileName);
+  await registry.assignTeamTask(team.id, 'Task');
+  await delay(100);
+  
+  await simulateCall(registry, 'planner-a', 'ack_planning_protocol');
+  await simulateCall(registry, 'planner-b', 'ack_planning_protocol');
+  
+  await simulateCall(registry, 'planner-a', 'fact_collection_end', { summary: 'done' });
+  await simulateCall(registry, 'planner-b', 'fact_collection_end', { summary: 'done' });
+  
+  if (flip) {
+    await simulateCall(registry, 'planner-a', 'agreement_proposal', { proposal: 'Plan' });
+    await simulateCall(registry, 'planner-b', 'opinion', { message: 'I prefer Plan modified' });
+    await simulateCall(registry, 'planner-a', 'agreement_acceptance', { proposal: 'Plan', reason: 'ok' });
+  } else {
+    await simulateCall(registry, 'planner-b', 'agreement_proposal', { proposal: 'Plan' });
+    await simulateCall(registry, 'planner-a', 'opinion', { message: 'I prefer Plan modified' });
+    await simulateCall(registry, 'planner-b', 'agreement_acceptance', { proposal: 'Plan', reason: 'ok' });
+  }
+  
+  await delay(500);
+  await recorder.close();
+  server.close();
 }
 
 async function main() {
@@ -121,9 +205,11 @@ async function main() {
   await runMalformed();
   await runBoundedCorrection();
   await runNonConverging();
-  await runAmbiguous('ambiguous-1.jsonl');
-  await runAmbiguous('ambiguous-2.jsonl');
+  await runLateMessage();
+  await runAmbiguous('ambiguous-1.jsonl', false);
+  await runAmbiguous('ambiguous-2.jsonl', true);
   console.log('Done.');
+  process.exit(0);
 }
 
-main().catch(console.error);
+main().catch(e => { console.error(e); process.exit(1); });
