@@ -40,6 +40,27 @@ show-done/show-dropped toggles ride this param). The response's `total` field al
 
 ---
 
+### Backlog gate — 2026-07-02 (opening M14 · architect: Claude)
+
+Per §3b, every item dispositioned before opening **M14 — Facilitator Extraction (Arbiter Epic 1)**,
+plan at `design/milestone14-facilitator-extraction-plan.md`. Inception closed by the PO in session
+(2026-07-02): **leaner scope — extraction only; all judge-touching work parked**; naming = milestone
+series (M14); BL-008 residual absorbed; BL-003 superseded; BL-010 confirmed; the pending BL-002 drop
+committed with this gate record.
+
+| Item | Disposition for this gate |
+|---|---|
+| **BL-001 / BL-004 / BL-006 / BL-009** | Terminal (done) — confirmed, no action. BL-009's promotion completed: the spike closed PROMOTED (`a905b2e`); M14 is the program's first epic. |
+| **BL-002 auto-handoff** | **Dropped** (PO, 2026-07-02) — not a separate item; handled step by step in the normal workflow. The drop edit sat uncommitted in the work tree since the decision; committed with this gate record. |
+| **BL-003 M07-T2 live smoke** | **DROPPED — superseded** (PO ratified at this gate, per the standing recommendation): the strict-protocol live bar it guards is exactly what the arbiter direction replaces; semantic advancement judgment makes the old bar moot. |
+| **BL-005 worker-prompt worktree** | Unchanged — deferred with explicit trigger. Not arbiter-adjacent. |
+| **BL-007 operator abort/recovery** | Unchanged — deferred, experience-triggered. Not arbiter-adjacent. |
+| **BL-008 residual** (two protocol event-emission shapes) | **ABSORBED → M14 scope** (PO, this gate) — the extraction refactors exactly that surface; unification gets its own DoD row + the replay-diff bar. Closes the "compose with arbiter Epic 1" reminder from the 2026-07-01 gate. |
+| **BL-010** (new) | **NEW `deferred`** — the spike's parked judge qualifications (ladder re-measure w/ numeric bar, `llm-client` transport fix, shadow wiring, second-model spot-check). Reopen condition: the §3b gate that opens the next arbiter epic. |
+| **BL-011** (new) | **NEW `doing`** — M14 itself (the single doing item). |
+
+*Nothing else touched.*
+
 ### Backlog gate — 2026-07-01 (opening the arbiter shadow spike · architect: Claude)
 
 Per §3b, every item dispositioned before opening the first arbiter macro unit (the shadow-mode spike,
@@ -327,8 +348,6 @@ tags: [protocol, events, tech-debt]
   spike doc's "owed piece remaining" status were both stale**; ground-truth check against git found the work already
   merged (the three-layer staleness LB-47 records). **Source:** Fausto ↔ Claude, 2026-06-26/27.
 
-### Doing (exactly one)
-
 <!-- @item
 id: BL-009
 status: done
@@ -349,16 +368,52 @@ tags: [consensus, arbiter, architecture, heavyweight]
   only — may father one or more epics; PO revisits with more input.** Absorbs/supersedes the M11 "referee"/tolerance
   thread and composes with the SP1 affordance spike. **Source:** Fausto ↔ Claude (architect), 2026-07-01.
 
+### Doing (exactly one)
+
+<!-- @item
+id: BL-011
+status: doing
+date: 2026-07-02
+epic: M14
+tags: [consensus, arbiter, facilitator, refactor]
+-->
+- [doing · opened at the 2026-07-02 gate] — **M14 — Facilitator Extraction (Arbiter Epic 1)** — extract the
+  phase-advancement decision authority out of `team-coordinator.ts` behind a **Facilitator interface**; default
+  implementation reproduces today's deterministic rules **byte-identically** (zero behaviour change, zero LLM
+  calls). Absorbs the BL-008 residual (unify the two protocol event-emission shapes — same surface). Leaner
+  scope per PO (2026-07-02): all judge-touching work parked → BL-010. Plan:
+  `design/milestone14-facilitator-extraction-plan.md`. Program: `design/arbiter-consensus-draft.md` §7/§8/§10.
+  **Source:** PO + Architect inception, 2026-07-02.
+
 ### Deferred (intentionally parked — each carries a reopen condition)
 
 <!-- @item
-id: BL-002
+id: BL-010
 status: deferred
+date: 2026-07-02
+epic: null
+tags: [arbiter, judge, llm-client, shadow-mode]
+-->
+- [deferred · parked at M14 inception (PO, 2026-07-02) — the spike's PROMOTE qualifications, bundled] — **Judge
+  hardening + shadow wiring (parked from Arbiter Epic 1)** — the four judge-touching items the leaner M14 scope
+  excluded: (1) full-vocabulary gloss + judge-frame line in the judge prompt, then **re-measure the failure
+  ladder** on the 11×3 matrix with a pre-registered numeric bar (suggested: success ≥5/6 AND ladder ≥2/3 at
+  readiness-triggered); (2) **`llm-client` transport fix** — omit `response_format` when tools are forced on the
+  google-via-OpenRouter path (shared-code behaviour change, own plan/DoD; restores `gemini-2.5-flash` as judge
+  candidate); (3) **shadow wiring** — the judge rides the Facilitator interface read-only at readiness-triggered
+  cadence, logging judgment-vs-machine per decision point; (4) **second-model spot-check** (all spike numbers are
+  single-model `gpt-4o-mini`). Evidence base: `design/arbiter-shadow-spike-implementation.md` AS-T4 addendum.
+  **Reopen condition: the §3b gate that opens the next arbiter epic** (Epic 2 / the judge epic).
+  **Source:** spike PROMOTE (qualified) + PO leaner-scope decision, 2026-07-02.
+
+<!-- @item
+id: BL-002
+status: dropped
 date: 2026-06-30
 epic: null
 tags: [auto-handoff, turn-scheduler]
 -->
-- [deferred · was: deferred · own future epic, 2026-06-30] — **Auto-handoff between agents (remove the human
+- [dropped · PO decision 2026-07-02 — no longer a separate backlog item; done step by step in the normal workflow] — **Auto-handoff between agents (remove the human
   as turn-scheduler)** — re-evaluated 2026-06-29: Fausto confirmed this is **premature**,
   still DEFER for its own future epic. Reopen after M11 closes. (Seed text kept below for reference.)
   **Gate update 2026-07-01: the reopen trigger FIRED (M11 closed).** Architect recommendation at the gate:
@@ -369,12 +424,12 @@ tags: [auto-handoff, turn-scheduler]
 
 <!-- @item
 id: BL-003
-status: deferred
+status: dropped
 date: 2026-06-20
 epic: M07
 tags: [live-smoke, quota-blocked]
 -->
-- [deferred · was: deferred · re-statused open→deferred 2026-07-02 (PO ordering review); trigger unchanged] 2026-06-20 — **Re-run the M07-T2 live smoke** (`scripts/test-live-api-team.mjs`, all-Google
+- [dropped · superseded by the arbiter direction — PO ratified at the M14 gate 2026-07-02; the strict-protocol live bar is moot once advancement is judged semantically. History below kept for reference] 2026-06-20 — **Re-run the M07-T2 live smoke** (`scripts/test-live-api-team.mjs`, all-Google
   `gemini-2.5-flash`, 2 planners + worker in-process) **after the Google daily quota resets** — the
   deferred T2.4 / IMP-1. T2 was allowed to close without it (T2.3 mocked proves the flow
   deterministically). **Reopen condition:** if this live run fails or surfaces a defect → **reopen
