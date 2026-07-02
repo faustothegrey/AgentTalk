@@ -1,0 +1,243 @@
+[
+  {
+    "event": "team_task_update",
+    "status": "planning",
+    "planningComplete": false,
+    "newTranscript": [
+      {
+        "kind": "system",
+        "from": "user",
+        "to": "planner-a,planner-b",
+        "payload": "Collaborative planning task: Identity harness task"
+      }
+    ]
+  },
+  {
+    "event": "team_planning_phase",
+    "taskId": "task-ID",
+    "phase": "protocol_ack_pending"
+  },
+  {
+    "event": "team_task_update",
+    "status": "planning",
+    "planningComplete": false,
+    "newTranscript": [
+      {
+        "kind": "system",
+        "from": "planner-a",
+        "to": "system",
+        "payload": "Planning protocol acknowledged."
+      }
+    ]
+  },
+  {
+    "event": "team_task_update",
+    "status": "planning",
+    "planningComplete": false,
+    "newTranscript": [
+      {
+        "kind": "system",
+        "from": "planner-b",
+        "to": "system",
+        "payload": "Planning protocol acknowledged."
+      }
+    ]
+  },
+  {
+    "event": "team_planning_phase",
+    "taskId": "task-ID",
+    "phase": "fact_collection",
+    "previous": "protocol_ack_pending"
+  },
+  {
+    "event": "team_task_update",
+    "status": "planning",
+    "planningComplete": false,
+    "newTranscript": [
+      {
+        "kind": "system",
+        "from": "system",
+        "to": "planner-a,planner-b",
+        "payload": "Fact collection phase started."
+      }
+    ]
+  },
+  {
+    "event": "team_task_update",
+    "status": "planning",
+    "planningComplete": false,
+    "newTranscript": [
+      {
+        "kind": "system",
+        "from": "planner-a",
+        "to": "system",
+        "payload": "Fact collection completed. Summary: facts"
+      }
+    ]
+  },
+  {
+    "event": "team_task_update",
+    "status": "planning",
+    "planningComplete": false,
+    "newTranscript": [
+      {
+        "kind": "system",
+        "from": "planner-b",
+        "to": "system",
+        "payload": "Fact collection completed. Summary: facts"
+      }
+    ]
+  },
+  {
+    "event": "team_task_update",
+    "status": "planning",
+    "planningComplete": false,
+    "newTranscript": [
+      {
+        "kind": "system",
+        "from": "system",
+        "to": "planner-a,planner-b",
+        "payload": "All planners completed fact collection. Discussion phase starting."
+      }
+    ]
+  },
+  {
+    "event": "team_planning_phase",
+    "taskId": "task-ID",
+    "phase": "discussion",
+    "previous": "fact_collection"
+  },
+  {
+    "event": "team_task_update",
+    "status": "planning",
+    "planningComplete": false,
+    "newTranscript": [
+      {
+        "kind": "system",
+        "from": "planner-a",
+        "to": "system",
+        "payload": "Agreement proposed: prop"
+      }
+    ]
+  },
+  {
+    "event": "team_task_update",
+    "status": "planning",
+    "planningComplete": false,
+    "newTranscript": [
+      {
+        "kind": "system",
+        "from": "system",
+        "to": "planner-b",
+        "payload": "Your peer has proposed agreement. Please call agreement_acceptance to confirm, or continue discussing if you disagree. At every planning reply, explicitly motivate why your selected message_type matches the current protocol step. Be very coherent: do not decide on one message_type and then send another."
+      }
+    ]
+  },
+  {
+    "event": "team_planning_phase",
+    "taskId": "task-ID",
+    "phase": "proposal_pending_endorsement",
+    "previous": "discussion"
+  },
+  {
+    "event": "team_task_update",
+    "status": "planning",
+    "planningComplete": false,
+    "newTranscript": [
+      {
+        "kind": "system",
+        "from": "planner-b",
+        "to": "system",
+        "payload": "Agreement reached for proposal: prop"
+      }
+    ]
+  },
+  {
+    "event": "team_protocol_event",
+    "taskId": "task-ID",
+    "kind": "endorsed",
+    "phase": "proposal_pending_endorsement",
+    "agentId": "planner-b"
+  },
+  {
+    "event": "team_planning_phase",
+    "taskId": "task-ID",
+    "phase": "submittal_pending",
+    "previous": "proposal_pending_endorsement"
+  },
+  {
+    "event": "team_task_update",
+    "status": "planning",
+    "planningComplete": false,
+    "newTranscript": [
+      {
+        "kind": "system",
+        "from": "system",
+        "to": "planner-a,planner-b",
+        "payload": "Reply limit reached. One planner must call submit_plan within 120s. Planning is interrupted after 2 ignored urgency checks. At every planning reply, explicitly motivate why your selected message_type matches the current protocol step. Be very coherent: do not decide on one message_type and then send another."
+      }
+    ]
+  },
+  {
+    "event": "team_task_update",
+    "status": "awaiting_confirmation",
+    "planningComplete": true,
+    "plan": "1. implement this change in src/index.ts",
+    "newTranscript": [
+      {
+        "kind": "system",
+        "from": "planner-a",
+        "to": "user",
+        "payload": "Planner finished and submitted the final plan."
+      },
+      {
+        "kind": "message",
+        "from": "planner-a",
+        "to": "user",
+        "payload": "1. implement this change in src/index.ts"
+      }
+    ]
+  },
+  {
+    "event": "team_task_update",
+    "status": "delegated",
+    "planningComplete": true,
+    "plan": "1. implement this change in src/index.ts",
+    "newTranscript": [
+      {
+        "kind": "system",
+        "from": "user",
+        "to": "worker-1",
+        "payload": "Plan confirmed. Delegating to worker."
+      }
+    ]
+  },
+  {
+    "event": "team_task_update",
+    "status": "in_progress",
+    "planningComplete": true,
+    "plan": "1. implement this change in src/index.ts",
+    "newTranscript": [
+      {
+        "kind": "message",
+        "from": "worker-1",
+        "to": "user",
+        "payload": "Worker accepted the task."
+      }
+    ]
+  },
+  {
+    "event": "team_task_update",
+    "status": "completed",
+    "planningComplete": true,
+    "plan": "1. implement this change in src/index.ts",
+    "newTranscript": [
+      {
+        "kind": "message",
+        "from": "worker-1",
+        "to": "user",
+        "payload": "I accept the work"
+      }
+    ]
+  }
+]

@@ -1,0 +1,184 @@
+[
+  {
+    "event": "team_task_update",
+    "status": "planning",
+    "planningComplete": false,
+    "newTranscript": [
+      {
+        "kind": "system",
+        "from": "user",
+        "to": "planner-a,planner-b",
+        "payload": "Collaborative planning task: Identity harness task"
+      }
+    ]
+  },
+  {
+    "event": "team_planning_phase",
+    "taskId": "task-ID",
+    "phase": "protocol_ack_pending"
+  },
+  {
+    "event": "team_task_update",
+    "status": "planning",
+    "planningComplete": false,
+    "newTranscript": [
+      {
+        "kind": "system",
+        "from": "planner-a",
+        "to": "system",
+        "payload": "Planning protocol acknowledged."
+      }
+    ]
+  },
+  {
+    "event": "team_task_update",
+    "status": "planning",
+    "planningComplete": false,
+    "newTranscript": [
+      {
+        "kind": "system",
+        "from": "planner-b",
+        "to": "system",
+        "payload": "Planning protocol acknowledged."
+      }
+    ]
+  },
+  {
+    "event": "team_planning_phase",
+    "taskId": "task-ID",
+    "phase": "fact_collection",
+    "previous": "protocol_ack_pending"
+  },
+  {
+    "event": "team_task_update",
+    "status": "planning",
+    "planningComplete": false,
+    "newTranscript": [
+      {
+        "kind": "system",
+        "from": "system",
+        "to": "planner-a,planner-b",
+        "payload": "Fact collection phase started."
+      }
+    ]
+  },
+  {
+    "event": "team_task_update",
+    "status": "planning",
+    "planningComplete": false,
+    "newTranscript": [
+      {
+        "kind": "system",
+        "from": "planner-a",
+        "to": "system",
+        "payload": "Fact collection completed. Summary: facts"
+      }
+    ]
+  },
+  {
+    "event": "team_task_update",
+    "status": "planning",
+    "planningComplete": false,
+    "newTranscript": [
+      {
+        "kind": "system",
+        "from": "planner-b",
+        "to": "system",
+        "payload": "Fact collection completed. Summary: facts"
+      }
+    ]
+  },
+  {
+    "event": "team_task_update",
+    "status": "planning",
+    "planningComplete": false,
+    "newTranscript": [
+      {
+        "kind": "system",
+        "from": "system",
+        "to": "planner-a,planner-b",
+        "payload": "All planners completed fact collection. Discussion phase starting."
+      }
+    ]
+  },
+  {
+    "event": "team_planning_phase",
+    "taskId": "task-ID",
+    "phase": "discussion",
+    "previous": "fact_collection"
+  },
+  {
+    "event": "team_task_update",
+    "status": "planning",
+    "planningComplete": false,
+    "newTranscript": [
+      {
+        "kind": "message",
+        "from": "planner-a",
+        "to": "planner-b",
+        "payload": "normal talk"
+      }
+    ]
+  },
+  {
+    "event": "team_task_update",
+    "status": "planning",
+    "planningComplete": false,
+    "newTranscript": [
+      {
+        "kind": "system",
+        "from": "system",
+        "to": "planner-b",
+        "payload": "You sent action \"submit_plan\", which is not a valid move at the current protocol step (current phase: discussion). The expected legal action set is [opinion, agreement_proposal]. Resend by calling consensus_respond with action set to one of [opinion, agreement_proposal] and payload matching that action. (correction attempt 1/2)"
+      }
+    ]
+  },
+  {
+    "event": "team_protocol_event",
+    "taskId": "task-ID",
+    "kind": "correction",
+    "phase": "discussion",
+    "agentId": "planner-b"
+  },
+  {
+    "event": "team_task_update",
+    "status": "planning",
+    "planningComplete": false,
+    "newTranscript": [
+      {
+        "kind": "system",
+        "from": "system",
+        "to": "planner-b",
+        "payload": "You sent action \"submit_plan\", which is not a valid move at the current protocol step (current phase: discussion). The expected legal action set is [opinion, agreement_proposal]. Resend by calling consensus_respond with action set to one of [opinion, agreement_proposal] and payload matching that action. (correction attempt 2/2)"
+      }
+    ]
+  },
+  {
+    "event": "team_protocol_event",
+    "taskId": "task-ID",
+    "kind": "correction",
+    "phase": "discussion",
+    "agentId": "planner-b"
+  },
+  {
+    "event": "team_protocol_event",
+    "taskId": "task-ID",
+    "kind": "eject",
+    "phase": "discussion",
+    "agentId": "planner-b",
+    "reason": "Illegal protocol move: repeated \"submit_plan\" not in the expected set [opinion, agreement_proposal]."
+  },
+  {
+    "event": "team_task_update",
+    "status": "awaiting_operator",
+    "planningComplete": false,
+    "newTranscript": [
+      {
+        "kind": "system",
+        "from": "system",
+        "to": "planner-a,planner-b,worker-1",
+        "payload": "Planner planner-b ejected: Illegal protocol move: repeated \"submit_plan\" not in the expected set [opinion, agreement_proposal].. Surviving planner(s) kept alive; consensus needs 2 planners, so the round is frozen awaiting operator (no continue-solo in v1)."
+      }
+    ]
+  }
+]
