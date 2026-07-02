@@ -1,11 +1,11 @@
 # Backlog — the project's ordered task list
 
 **What the backlog IS (PO definition, Fausto, 2026-07-02 — supersedes the "parking lot" model):**
-the ordered task list of the project — **tasks done, the task being worked on, and tasks to be done
-next, in sequence.** An item has exactly one of **four states — `todo · doing · done · dropped` —
-period.** Where a task came from (an epic it fathered, an item it was folded into, the trigger it
+the ordered task list of the project — **tasks done, the task being worked on, tasks intentionally
+parked (with a reopen condition), and tasks to be done next, in sequence.** An item has exactly
+one of **five states — `todo · doing · deferred · done · dropped` — period.** Where a task came from (an epic it fathered, an item it was folded into, the trigger it
 waits on) is the **description's** job, not a state. The file order IS the timeline: **done history
-on top, the single `doing` item in the middle, `todo` queue below in planned order.** Exactly one
+**done history on top, the single `doing` item after that, then `deferred` items (in trigger-priority order), then the `todo` queue below in planned order.**
 item is `doing` at a time. A refinement that belongs to an open epic goes in that epic's
 `implementation.md` instead, not here. Canonical statement: `design/collaboration-workflow.md` §3b.
 
@@ -349,16 +349,16 @@ tags: [consensus, arbiter, architecture, heavyweight]
   only — may father one or more epics; PO revisits with more input.** Absorbs/supersedes the M11 "referee"/tolerance
   thread and composes with the SP1 affordance spike. **Source:** Fausto ↔ Claude (architect), 2026-07-01.
 
-### Todo (next first)
+### Deferred (intentionally parked — each carries a reopen condition)
 
 <!-- @item
 id: BL-002
-status: todo
+status: deferred
 date: 2026-06-30
 epic: null
 tags: [auto-handoff, turn-scheduler]
 -->
-- [todo · was: deferred · own future epic, 2026-06-30] — **Auto-handoff between agents (remove the human
+- [deferred · was: deferred · own future epic, 2026-06-30] — **Auto-handoff between agents (remove the human
   as turn-scheduler)** — re-evaluated 2026-06-29: Fausto confirmed this is **premature**,
   still DEFER for its own future epic. Reopen after M11 closes. (Seed text kept below for reference.)
   **Gate update 2026-07-01: the reopen trigger FIRED (M11 closed).** Architect recommendation at the gate:
@@ -369,12 +369,12 @@ tags: [auto-handoff, turn-scheduler]
 
 <!-- @item
 id: BL-003
-status: todo
+status: deferred
 date: 2026-06-20
 epic: M07
 tags: [live-smoke, quota-blocked]
 -->
-- [todo · was: deferred · re-statused open→deferred 2026-07-02 (PO ordering review); trigger unchanged] 2026-06-20 — **Re-run the M07-T2 live smoke** (`scripts/test-live-api-team.mjs`, all-Google
+- [deferred · was: deferred · re-statused open→deferred 2026-07-02 (PO ordering review); trigger unchanged] 2026-06-20 — **Re-run the M07-T2 live smoke** (`scripts/test-live-api-team.mjs`, all-Google
   `gemini-2.5-flash`, 2 planners + worker in-process) **after the Google daily quota resets** — the
   deferred T2.4 / IMP-1. T2 was allowed to close without it (T2.3 mocked proves the flow
   deterministically). **Reopen condition:** if this live run fails or surfaces a defect → **reopen
@@ -388,12 +388,12 @@ tags: [live-smoke, quota-blocked]
 
 <!-- @item
 id: BL-005
-status: todo
+status: deferred
 date: 2026-06-21
 epic: M08
 tags: [worktree, worker-prompt]
 -->
-- [todo · was: deferred · adjacent to M08-T3; re-statused open→deferred 2026-07-02 (PO ordering review)] 2026-06-21 — **Worker-prompt worktree cleanup (FIND-T3b2-1)** — the worker prompt
+- [deferred · was: deferred · adjacent to M08-T3; re-statused open→deferred 2026-07-02 (PO ordering review)] 2026-06-21 — **Worker-prompt worktree cleanup (FIND-T3b2-1)** — the worker prompt
   (`in-process-driver.ts` `handleTeamWorkAssign`) still tells agy *"you must use strictly `git worktree`…
   or refuse,"* but the orchestrator **already** runs the worker inside a per-task worktree (its `cwd`). So
   agy creates a **nested** worktree (`./worker-worktree`) and the real change lands one level deeper than
@@ -404,12 +404,12 @@ tags: [worktree, worker-prompt]
 
 <!-- @item
 id: BL-007
-status: todo
+status: deferred
 date: 2026-06-23
 epic: null
 tags: [recovery, awaiting-operator]
 -->
-- [todo · was: deferred · future · own milestone; re-statused open→deferred 2026-07-02 (PO ordering review)] 2026-06-23 — **Operator abort / recovery for `awaiting_operator` tasks** —
+- [deferred · was: deferred · future · own milestone; re-statused open→deferred 2026-07-02 (PO ordering review)] 2026-06-23 — **Operator abort / recovery for `awaiting_operator` tasks** —
   split OUT of M08-T3 (Fausto's call, 2026-06-23). M08-T3 now ships the **fence only** (worker crash mid-exec →
   `awaiting_operator` → record + surface → **kill nobody**); the *recovery gesture* an operator makes afterwards
   is deferred to its own milestone. **Why deferred (Fausto):** the abort splits in two — **"stop ASAP"** is cheap
@@ -425,5 +425,7 @@ tags: [recovery, awaiting-operator]
   don't let the pause path's UI/transcript wording promise an "abort" button that doesn't exist yet.
   - **Trigger to promote:** a handful of observed real `awaiting_operator` pauses (so the recovery model is
     grounded in actual partial-effect cases, not guessed). **Source:** Fausto ↔ Claude T3 decisions, 2026-06-23.
+
+### Todo (next first)
 
 *(add new items above this line)*

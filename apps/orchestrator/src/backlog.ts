@@ -21,7 +21,7 @@
 import { readFileSync, existsSync } from 'fs';
 import { dirname, join } from 'path';
 
-export type BacklogStatus = 'todo' | 'doing' | 'done' | 'dropped';
+export type BacklogStatus = 'todo' | 'doing' | 'deferred' | 'done' | 'dropped';
 
 export interface BacklogItem {
   id: string;
@@ -39,7 +39,7 @@ export interface BacklogParseResult {
   warnings: string[];
 }
 
-const VALID_STATUS = new Set<string>(['todo', 'doing', 'done', 'dropped']);
+const VALID_STATUS = new Set<string>(['todo', 'doing', 'deferred', 'done', 'dropped']);
 
 const ITEM_OPEN = '<!-- @item';
 const HEADER_END = '-->';
@@ -197,10 +197,11 @@ export function parseBacklog(markdown: string): BacklogParseResult {
 
 /**
  * The default dashboard view: the live queue only (`doing` + `todo`).
+ * `done`, `dropped`, and `deferred` are filtered out (use `?all=true` for the full set).
  * Unknown statuses stay visible — a typo'd state should surface, not vanish.
  */
 export function activeBacklogItems(items: BacklogItem[]): BacklogItem[] {
-  return items.filter((i) => i.status !== 'done' && i.status !== 'dropped');
+  return items.filter((i) => i.status !== 'done' && i.status !== 'dropped' && i.status !== 'deferred');
 }
 
 /** Walk up from cwd to locate `design/backlog.md` (CJS/ESM agnostic). */
