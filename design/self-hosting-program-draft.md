@@ -111,6 +111,27 @@ first.
 **Resources.** Cents-scale LLM cost (none expected — plumbing only), one session slot on Claude or agy;
 Codex not required.
 
+### SP-WAKE layer (a) — RESULT: PASS ✅ (Claude, 2026-07-02 night, PO go in session)
+
+**Run:** real `agentalk-mcp-client` (`llm-agent.mjs`, persistent mode) attached to a real `McpExecServer`
+(60s WS keepalive), provider replaced by the fake persistent bridge (zero LLM spend) — the layer-(a)
+apparatus derived from `scripts/smoke-mcp-exec-server.mjs`. Dry run (5s idle) validated the apparatus, then
+the full run:
+- **Probe A (immediate turn): PASS** — round-trip 190ms.
+- **Probe B (wake after 600s true idle): PASS** — round-trip **3ms**; client held `await_turn` through the
+  whole window (keepalive pings only), no disconnect, no death.
+- **Probe C (consecutive turn, same attachment): PASS** — 54ms.
+- Exit 0; teardown clean (no stray processes, no temp dirs, repo untouched).
+
+**Finding:** the **client-side long-lived blocking model holds** — `await_turn` survives ≥10 min of silence
+and wakes instantly. **M16 may be designed around blocking `await_turn`;** pull-on-poke demotes from
+"probable shape" to "declared fallback." **Caveats, honestly:** (1) server side was `McpExecServer`
+in-process, not the full orchestrator attach server — same wire protocol, but M16's live proof must run
+against the orchestrator; (2) 10 minutes ≠ hours — an overnight-scale idle remains unproven (cheap optional
+layer-(a2) probe if the Jul-8 gate wants it); (3) layer (b) — a *native* interactive CLI session (e.g.
+Claude Code itself) attaching without the client shim — is untested and remains M16's stretch question, not
+its foundation.
+
 ## Sequencing & resources (inception record)
 
 - **Build waits for full strength: ~Jul 8** (Codex weekly resets Jul 7 ~07:14; at inception Codex 84% weekly,
