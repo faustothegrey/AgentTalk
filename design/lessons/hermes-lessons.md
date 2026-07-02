@@ -53,3 +53,10 @@ here.**
 - Three workflow speed-ups adopted by PO: branch commit freedom for agents, SM greenlights after priming (PO overrides), reviewer may fix zero-risk defects directly.
 - Lesson: this session I DID let agents write their lessons before killing — the protocol works. Keep doing this.
 - Lesson: the PO overrule mechanism is fast and effective for non-critical gates. Used it for the real-LLM fence in AS-T2. Don't default to it, but keep it available.
+
+### 2026-07-02 — Session close: Arbiter Shadow Spike PROMOTED ✅
+- Full spike cycle: AS-T0 → AS-T1 → AS-L1 → AS-T2 → AS-T3 → AS-T3b → AS-T4 → PROMOTE.
+  Agreement rate went from 0/6 to 5/6 after fixing measurement artifacts.
+- Autonomous pipeline worked: SM batons between implementer and reviewer without PO intervention for routine turns. PO only needed for merge gate and architecture decisions.
+- Lesson: heartbeat mechanism with cron jobs failed — 5min cycle too slow for fast agents, and fresh sessions have no memory of prior state to detect "just finished" vs "idle." Dropped the approach. Will check manually.
+- Lesson: OpenRouter is a reliable fallback when Gemini's direct API key isn't available in CLI env. Judge model swap was transparent to findings (provider-agnostic design proved sound).

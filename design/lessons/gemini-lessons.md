@@ -34,3 +34,7 @@ here.**
 
 ### 2026-07-02 — API Key Availability in CLI Environment
 - When building tools that require external API access (like llm-client), explicitly verify if the current non-interactive shell or CLI runner actually has the API keys (e.g., GEMINI_API_KEY) exported. Without it, mock/dry-run paths become the only way to satisfy CI/CD constraints unless the PO steps in to provide keys or overrule real-execution gates.
+
+### 2026-07-02 — API Compatibility and Measurement Artifacts
+- When using wrapper APIs like OpenRouter, identical tool-calling schemas (e.g. `response_format: { type: 'json_object' }` + `tool_choice: 'required'`) can trigger different errors depending on the underlying provider. Hard-coded fallback structures in generic LLM clients must be tested against the actual provider backend before drawing conclusions about model capability.
+- If an evaluation script produces an anomalously low performance metric (like 0/6 success agreement), investigate the prompt structure and snapshot triggers first. Missing terminal states or undefined semantic criteria in the prompt are more likely culprits than fundamental model incapability.

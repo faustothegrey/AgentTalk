@@ -1,6 +1,6 @@
 ---
 role: implementer
-key: 20260702-0947-as-t3-arm
+key: none
 written: 2026-07-02 by Hermes (SM)
 ---
 

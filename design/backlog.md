@@ -331,13 +331,13 @@ tags: [protocol, events, tech-debt]
 
 <!-- @item
 id: BL-009
-status: doing
+status: done
 promoted_to: arbiter-shadow-spike
 date: 2026-07-01
 epic: null
 tags: [consensus, arbiter, architecture, heavyweight]
 -->
-- [doing · was: promoted→arbiter-shadow-spike · OPEN — PO go 2026-07-01] — **Semantic arbiter & the two consensus modes** —
+- [done · was: doing · PROMOTED 2026-07-02 — spike complete, merged to master (a905b2e)] — **Semantic arbiter & the two consensus modes** —
   promoted at the 2026-07-01 gate: first macro unit is the shadow-mode spike
   (`design/arbiter-shadow-spike-plan.md` — inception complete: architect draft + planner POV + disposition + PO
   go; planner task breakdown next); program decomposition stays in the draft

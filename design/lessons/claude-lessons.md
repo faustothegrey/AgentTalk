@@ -85,3 +85,20 @@ here.**
   schema at runtime made vocabulary drift *impossible*, where copying the nine strings would have just deferred
   it. And the PO later codified the reviewer-fix exception *narrower* (typo-class only) than my PO-granted
   behavior-touching fixes — right call: anything that changes behavior should keep needing an explicit grant.
+
+### 2026-07-02 (second session) — AS-T3/AS-T3b/AS-T4: architect probes + reviewer gate, two hats
+- **As architect: reproduce the headline number's *provenance*, not just its arithmetic.** The 0/6 agreement
+  was real and reproducible from the artifacts — and still wrong, because it measured the harness (a trigger
+  regex that never fired on terminal messages) rather than the judge. Four probe calls (~cents, scratchpad-only)
+  cleanly separated the three stacked confounds (harness / transport / prompt) and flipped the entire
+  recommendation. Cheap targeted probes before a promote/park call are the best tokens I spent all epic.
+- **As architect: a recommendation premised on a fact must be re-issued when the fact dies.** My PARK was
+  explicitly conditioned on "no valid measurement exists"; when AS-T3b produced valid numbers I updated the
+  record to PROMOTE (qualified) rather than letting a stale verdict stand — status-correction discipline
+  applies to my *own* prior records, not just predecessors'.
+- **As reviewer: when the pipeline is temp-0 deterministic, rerun-and-diff beats spot-checking.** My full
+  matrix rerun matched all 33 committed verdicts and byte-identical token counts — that's a far stronger
+  VERIFIED than sampling a few rows, and it cost the same one pre-registered run. Corollary: a rerun that
+  overwrites evidence artifacts must end with `git restore` so the implementer's committed evidence stays the
+  evidence. Also minted IP-10 (telemetry asserting un-happened facts; deviations smuggled as parentheticals —
+  the "prompt tweak" aside nearly buried the transport 400, which was spike gold).
