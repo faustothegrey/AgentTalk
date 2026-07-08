@@ -129,6 +129,44 @@ test file: `npx tsc -b` exit 0, `npm test` **48 files / 276 tests passed**, M14 
 **Disposition:** M16-T1 is verified. M16-T2 remains unstarted and should be batoned through the normal SM/PO
 channel.
 
+## Task-end Review: M16-T1 (Claude, 2026-07-08) — Gate 3
+
+**Verdict: CLOSED — all bars independently re-run and green; MERGE PENDING the PO go.**
+
+**Process deviation found and corrected first (SM hat, declared):** T1 was delivered **loose in the mainline
+working tree** — no task branch, nothing committed (workflow §3b violation; both gate-2 rounds ran on the naked
+tree). Corrected retroactively: branch `m16-t1-baton-metadata`, code committed as `4bd4604` (implementer
+attribution noted), docs as `001b2ab`. Case law minted: **IP-12**.
+
+**Fresh-eyes code review:** envelope type + additive `send_to_agent` schema + persistence into the conversation
+transcript entry — exactly where the Gate-1 F1 amendment anchored it; non-baton path untouched. Notes (no
+action): the EVT to the receiver carries baton *text* only (envelope is transcript/recording-side; enforcement
+is M17's); the envelope is recorded unvalidated (record-not-enforce, per plan); the test's
+`vi.spyOn(registry as any, 'requestHealthCheck')` is a novel hermetic mock (no other test mocks it — the "same
+mocks as other tests" comment oversells) but pokes no frozen state — acceptable; T2's live baton text must
+start with the origin tag (the test payload doesn't model that convention).
+
+**Independent sweep (pre-registered 1 attempt per bar; all attempt 1):**
+| Bar | Result |
+|---|---|
+| Targeted `baton-metadata.test.ts` | 1/1 passed |
+| `npx tsc -b` | exit 0 |
+| Full `npm test` | **48 files / 276 tests passed** |
+| `node scripts/m14-identity-harness.mjs --check` | `Baselines match. Identity verified.` |
+| `npm run backlog:check` | OK — 14 items, 0 warnings |
+| `git diff --check master...HEAD` | clean |
+| Freeze fence | zero `team-coordinator.ts` diff in range; one `as any` in range dispositioned (test-only mock) |
+| Pollution | known harness leak (1 worktree + 1 `task-task-*` branch) found and cleaned; final state clean |
+
+**Telemetry (task closure):**
+- task:        M16-T1
+- wall-clock:  2026-07-08 ~14:30 → 14:57 (≈30 min, gate-1-fold → gate-3 close)
+- budget:      claude meter `ok:false` (LB-11) — unavailable; codex/antigravity ≈ 0–1% weekly
+- gate:        tsc 0, suite 276/276, identity green, backlog OK, pollution clean (after known-leak sweep)
+- diff:        4 files, +109/−1 (code), commits `4bd4604` + `001b2ab` (docs)
+- relay-count: T1 round consumed ~4 PO relays (plan baton, T1 baton, gate-2 rounds) — baseline data for the program metric
+- outcome:     CLOSED ✅ — merge to master awaits `[PO]` go
+
 ## Gate 1 — Plan Review (2026-07-08, Plan Reviewer: Claude)
 
 **Verdict: APPROVED WITH ONE REQUIRED AMENDMENT.** Steelman first: the plan is genuinely small, honors every
