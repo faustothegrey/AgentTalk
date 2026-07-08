@@ -38,3 +38,8 @@ here.**
 ### 2026-07-02 — API Compatibility and Measurement Artifacts
 - When using wrapper APIs like OpenRouter, identical tool-calling schemas (e.g. `response_format: { type: 'json_object' }` + `tool_choice: 'required'`) can trigger different errors depending on the underlying provider. Hard-coded fallback structures in generic LLM clients must be tested against the actual provider backend before drawing conclusions about model capability.
 - If an evaluation script produces an anomalously low performance metric (like 0/6 success agreement), investigate the prompt structure and snapshot triggers first. Missing terminal states or undefined semantic criteria in the prompt are more likely culprits than fundamental model incapability.
+
+### 2026-07-08 — Orchestrator Port Conflicts and Provider Stringency
+- Unclosed server processes and attached agent clients frequently leave lingering ports (e.g., `EADDRINUSE` on 3000 or 9898). Actively monitor `lsof` and kill lingering orchestrator processes explicitly in tests, as autorun and detached processes do not always reliably exit.
+- Registry services implement strict validation for agent instantiation. Ensure required fields (e.g., `provider: 'mcp'`) precisely match the schema to avoid early rejection before assuming issues are transport-related.
+- When orchestrating exchanges over a live websocket server, prerequisite conversation state must be established. Sending metadata (like a workflow baton) without first initializing an active "pair conversation" will result in silently dropped or unrecorded turns.
