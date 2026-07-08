@@ -29,8 +29,9 @@ telemetry for M16. The plan owns the epic goal and scope fence.
 
 ## Current Status
 
-- **M16-T1 (Baton metadata and deterministic recording proof):** Ready for implementer - Gate 1 amendment folded.
-- **M16-T2 (Live orchestrator attach proof + closure):** Not started - depends on T1 verification.
+- **M16-T1 (Baton metadata and deterministic recording proof):** **MERGED ✅** — `c5b7212` on master
+  ([PO] go 2026-07-08; gates 2+3 green; task branch deleted after merge).
+- **M16-T2 (Live orchestrator attach proof + closure):** Ready for implementer — baton pending.
 
 ## Sequencing
 
