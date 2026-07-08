@@ -30,8 +30,9 @@ orchestration migration, so it can be reviewed, refined, and reused deliberately
     behalf** — the PO can always overrule, redirect, reassign, or reclaim it. **And because the PO is the figure
     immediately above the SM, it *subsumes* it: the PO may exercise any SM power directly itself** (backlog gate,
     priority, operational go/no-go, halt/rescope, baton) — not only overrule the SM's use of it.
-  - **By default the human (Fausto) holds the PO role**; the SM function is, **as of 2026-07-02, delegated
-    to Codex** (dual role with Planner; the PO can reclaim or overrule it at any moment). A non-human PO would be an explicit,
+  - **By default the human holds the PO role**; current holders and delegations (including a delegated SM,
+    which the PO can reclaim or overrule at any moment) are recorded **only** in
+    `AGENT.md → 📌 DEFAULT ROLE ASSIGNMENTS` — this doc stays role-only. A non-human PO would be an explicit,
     documented delegation by the human — the same discipline
     that governs a delegated SM. *(`AGENT.md` carries the short statement of this role; this is the canonical one.)*
 - **Architect** — **the technical authority, distinct from the PO and subordinate to it** (split from the fused
@@ -48,10 +49,11 @@ orchestration migration, so it can be reviewed, refined, and reused deliberately
   - **Subordinate to the PO on every disagreement:** the **PO holds the final word** and may override any
     architecture call. The Architect proposes and owns the *how*; the PO can always overrule. It is **orthogonal to
     the Scrum Master** (technical authority vs. process authority); both serve the PO.
-  - **Held by a designated *agent* — default Claude** — **assigned by the PO per epic** (only the PO assigns/reassigns
+  - **Held by a designated *agent*** (current default: `AGENT.md → 📌 DEFAULT ROLE ASSIGNMENTS`) — **assigned by
+    the PO per epic** (only the PO assigns/reassigns
     the seat). *(`AGENT.md` carries the short statement of this role; this is the canonical one.)*
 - **Human** — by default **is the Product Owner** (above) and also holds the Scrum Master function (the **Architect**
-  is by default a distinct *agent* role — Claude — not the human):
+  is by default a distinct *agent* role — not the human):
   sets scope and goals, makes the final decisions, decides what is in/out of scope (e.g. parking HITL, removing the
   auth-tier discussion), and **relays messages between the agents** — the communication-channel function, which
   travels with the Scrum Master role (the human performs it when holding SM; a delegated AI-SM performs it when a
@@ -70,18 +72,20 @@ orchestration migration, so it can be reviewed, refined, and reused deliberately
   Product Owner's authority, not the SM's** (the SM facilitates; it does not reshuffle the role map). A
   non-human SM or PO must document the reason for each go/no-go, assignment, or de-assignment in the appropriate
   durable project artifact. The function may be held by a human or by a designated agent; the current holder/delegates are named in
-  the project instructions. **Current standing (Fausto, 2026-07-02): the PO (Fausto) has delegated the SM function
-  to Codex — a declared dual role alongside its Planner seat (each seat's gate and discipline kept separately;
-  reviewer stays Claude, so Codex never reviews its own planning) — with full *operational* authority on the PO's
+  the project instructions. **Current standing: the SM function is delegated to an agent** — the holder, date,
+  and history are recorded **only** in `AGENT.md → 📌 DEFAULT ROLE ASSIGNMENTS`. The delegation is a declared
+  dual role alongside the holder's other seats (each seat's gate and discipline kept separately; the SM-holder
+  never uses SM authority to waive or stand in for a gate, and never reviews work it authored) — with full
+  *operational* authority
+  on the PO's
   behalf: convening the backlog gate, setting priority/sequencing and operational go/no-go, resource
-  warn/halt/rescope, and baton facilitation; under the Origin Tag Protocol a `[Codex]` message is binding for
-  operational/process matters. **Hermes is retired from the process entirely** (its agent loop wedged and its tmux
-  transport proved structurally lossy — LB-49); `[Hermes]` messages carry no authority. **Interim, until M15
-  closes: the PO batons manually via the terminal** (the communication-channel function reverts to the human).
-  The human (Fausto) remains the PO/apex who can overrule, redirect, or reclaim the SM at any moment, and PO-level
+  warn/halt/rescope, and baton facilitation; under the Origin Tag Protocol an `[SM]` message is binding for
+  operational/process matters. **Interim: the PO batons manually via the terminal** (the communication-channel
+  function reverts to the human).
+  The human remains the PO/apex who can overrule, redirect, or reclaim the SM at any moment, and PO-level
   acts — role assign/reassign, product scope/direction/epics, and merges — stay with the human. A non-human SM
   documents its reasons in a durable artifact. See the SM-status note under the Scrum Master bullet in
-  `AGENT.md`.** *(This supersedes the 2026-06-29 Hermes delegation.)*
+  `AGENT.md`.
   - **Standing duties** *(proactive — the SM does these on its own initiative, beyond resolving ambiguity on
     request)*:
     1. **Bring forth the backlog.** Keep the team from idling or guessing what's next: surface parked items from
@@ -113,22 +117,47 @@ orchestration migration, so it can be reviewed, refined, and reused deliberately
     silently; and a non-human SM is held to the same record-the-reason discipline throughout.
 - **Planner (Author) agent** — drafts and revises the plan/design (e.g. owns the proposal's decision sections):
   produces the `*-plan.md` + Definition of Done that the Reviewer then approves before any implementation.
-- **Reviewer/Verifier agent** — critiques without deference, verifies claims empirically, tracks caveats and their
-  resolution. **Distinct from the Planner** (see the split below).
+- **Reviewer seats — three of them (single Reviewer split by the PO, 2026-07-08).** The former single
+  "Reviewer/Verifier" role is now **three distinct seats**. All three critique without deference and verify claims
+  empirically (the ⛔ Reviewer Rules of Engagement in `AGENT.md` bind every seat; where a rule names a specific
+  duty, the owning seat is noted there). Elsewhere in this doc, an unqualified "the Reviewer" reads as **"the
+  reviewer seat that owns that gate"**:
+  - **Plan Reviewer** — owns **gate 1**: adversarially reviews the `*-plan.md` + Definition of Done and approves
+    (or refuses) the plan for implementation. **≠ that task's Planner** (no self-review).
+  - **Implementation Reviewer** — owns **gate 2**, the per-delivery verification loop: runs the implementer's
+    claims, fills the ledger *verdict* column (VERIFIED/REFUTED/PARTIAL/BLOCKED) with evidence, dispositions every
+    implementer deviation/opinion/question (§3c), and hands REFUTED work back for in-scope fixes. **≠ the
+    Implementer.**
+  - **Task-end Reviewer** — owns **gate 3 (closure)**: once gate 2 reports all rows VERIFIED, it makes a final,
+    **independent** pass with fresh eyes — re-runs the load-bearing bars, sweeps the DoD, runs the
+    hygiene/pollution checks, writes the telemetry block — and **performs the merge** (the mainline stays
+    verified-only; merging remains PO-gated where this doc requires it). **≠ the Implementer, and ≠ that task's
+    Implementation Reviewer by default** — the closure seat exists precisely so closure *re-examines* the
+    verification loop's judgment rather than re-asserting it (adopted from the M15-T3 catch, where a PO-requested
+    independent pass after a self-reviewed closure found a real pre-merge regression).
 - **Implementer agent** — builds the spec'd change on a task branch (the ⛔ Implementer Rules of Engagement); records
   *claims*, never self-closes.
 
-**Planner and Reviewer are SEPARATE roles (split adopted 2026-06-29).** The old fused `planner-reviewer` is retired.
-The optimal flow is a **2-gate sequence**: the **Planner** plans → the **Reviewer approves the plan for
-implementation (gate 1)** → the baton passes to the **Implementer**, who builds it → the **Reviewer verifies the
-result and declares the task closable or not (gate 2)**. The **same Reviewer** owns both gates on a task.
+**Planner and Reviewer are SEPARATE roles (split adopted 2026-06-29); the Reviewer itself split into three seats
+(PO decision, 2026-07-08).** The old fused `planner-reviewer` is retired, and so is the single all-gates Reviewer.
+The flow is a **3-gate sequence**: the **Planner** plans → the **Plan Reviewer approves the plan for
+implementation (gate 1)** → the baton passes to the **Implementer**, who builds it → the **Implementation Reviewer
+verifies each delivery and flips the verdict rows (gate 2)** → the **Task-end Reviewer independently sweeps the
+DoD with fresh eyes and merges (gate 3, closure)**.
 - **Why split:** the founding principle is *adversarial, independent* verification (§2.1–2.2). One actor that both
-  plans and reviews its own plan dilutes that — so **by default Planner ≠ Reviewer on the same task** (no
-  self-review). Claude and Codex are each eligible for *both* seats, but take **different** ones per task.
-- **Resource-scarcity fallback:** when agents are scarce, one actor MAY hold several roles (planner *and* reviewer,
-  or all of them) — but it **declares every role loudly** and keeps **each role's gate and discipline separately**;
-  the 2-gate sequence and every workflow mechanism are **unchanged**. *(Per-role primers + the multi-role handshake
-  live in `AGENT.md → FIRST ENTRY POINT`.)*
+  authors and reviews the same artifact dilutes that. The **mandatory independence defaults** are:
+  - **Plan Reviewer ≠ Planner** (no reviewing your own plan);
+  - **Implementation Reviewer ≠ Implementer** and **Task-end Reviewer ≠ Implementer** (no verifying or closing
+    your own code);
+  - **Task-end Reviewer ≠ Implementation Reviewer** (*fresh eyes at close* — the closure pass is only worth a
+    separate seat if it is a different pair of eyes than the one that ran the verification loop).
+  Each review-eligible agent (eligibility and current defaults: `AGENT.md → 📌 DEFAULT ROLE ASSIGNMENTS`) may
+  take any review seat, per these defaults; one agent MAY hold
+  more than one reviewer seat on a task so long as the defaults above hold.
+- **Resource-scarcity fallback:** when agents are scarce, one actor MAY hold several roles — including seats the
+  defaults above would separate — but it **declares every role loudly** and keeps **each role's gate and
+  discipline separately**; the 3-gate sequence and every workflow mechanism are **unchanged**. *(Per-role primers
+  + the multi-role handshake live in `AGENT.md → FIRST ENTRY POINT`.)*
 
 The roles are not fixed to a person — they may **alternate by turn/assignment** (within the eligibility map and the
 no-self-review default). What matters is that on any given task one actor is *proposing* and a **different** one is
@@ -225,7 +254,7 @@ written down does not survive the handoff.
 | **`backlog.md`** *(from M07; redefined by the PO 2026-07-02; `deferred` added 2026-07-02)* | **The ordered task list of the project — the dashboard.** Tasks **done**, the **one** task being worked on (**doing**), tasks **deferred** (intentionally parked, with a reopen condition), tasks **to be done next, in sequence** (**todo**), and **dropped** (deliberately abandoned). **Five states, period: `todo · doing · deferred · done · dropped`.** File order IS the timeline (done on top → doing → deferred → todo queue in planned order); provenance/triggers/lineage live in item *descriptions*, never in states. Served at `GET /api/backlog`. See §3b's loud definition. |
 | **`logbook.md`** *(from M07)* | Append-only, dated log of cross-cutting **findings/gotchas** not tied to one task (environment, providers, real system behaviour). Backlog is *work to do*; the logbook is *facts we learned*. |
 | **`implementer-pitfalls.md`** *(from M07)* | Append-only **case law** for the Implementer Rules of Engagement: reviewer-observed *behavioural* anti-patterns (hasty claims, misread scope, weakened bars), each as gist + concrete cases (stable `IP-N` ids). The logbook is *facts we learned*; this is *how we slipped*. Implementer skims it as part of the Rule-6 scope declaration; reviewer appends a case on every behavioural miss. |
-| **`lessons/<agent>-lessons.md`** *(from 2026-06-27)* | **Per-agent, self-authored** append-only lessons learned (Claude/Codex/Gemini/Hermes — "each its own"). Written at **session close**, **skimmed at session start** so each agent sharpens over time. Self-reflection on *how I work* — distinct from the logbook (shared *facts*) and implementer-pitfalls (reviewer case law on the *implementer*). |
+| **`lessons/<agent>-lessons.md`** *(from 2026-06-27)* | **Per-agent, self-authored** append-only lessons learned (one file per agent — "each its own"). Written at **session close**, **skimmed at session start** so each agent sharpens over time. Self-reflection on *how I work* — distinct from the logbook (shared *facts*) and implementer-pitfalls (reviewer case law on the *implementer*). |
 | **(This) workflow doc** | The method itself, made explicit for reuse. |
 
 Each doc is self-describing: status, author, date, and "Related" links at the top.
@@ -289,8 +318,8 @@ API quota, a missing credential, a flaky upstream) — **no code fault**. It is 
 means "the code is wrong"); it points to an entry in the **Impediments** space (§3c) carrying an
 *unblock condition*. A BLOCKED row does not merge, but it is parked on a fact about the world, not a
 defect. The implementer fills the
-*claim* column; the reviewer fills the *verdict* column **only after running it** (principle 2),
-with evidence. This structurally enforces rule 4a: a "done" claim cannot silently overwrite a
+*claim* column; the **Implementation Reviewer** fills the *verdict* column **only after running it**
+(principle 2), with evidence. This structurally enforces rule 4a: a "done" claim cannot silently overwrite a
 prior "not done" — the two columns coexist until the reviewer flips the verdict. On milestone
 close, `implementation.md` freezes (it is the historical record); `plan.md` becomes the design
 record. Merge/archive then to avoid drift (open question 5).
@@ -304,14 +333,16 @@ smallest independently reviewable + mergeable unit; a.k.a. a "story"). Each task
   as often as they like after completing a piece of work. Only **merging to master** remains
   **PO-gated** (task closure is still PO-gated). A commit must **not self-close**: no ticking DoD
   boxes, no editing `CLAUDE.md`/`AGENT.md`, no "milestone complete".
-- The **reviewer** verifies the branch **by running it**, fills the *verdict* column, and **merges
-  to the mainline only when every row is VERIFIED — or explicitly DEFERRED** (the merge *is* the
-  task's closure). REFUTED work stays on the branch and is fixed there. **The reviewer's primary branch
-  action is the merge — it does not create the branch, but may make punctual zero-risk fixes on it (see AGENT.md → Reviewer Rule 6 exception).** *(These duties are the short imperative
+- The **Implementation Reviewer** verifies the branch **by running it** and fills the *verdict* column;
+  REFUTED work stays on the branch and is fixed there. When every row is VERIFIED — or explicitly
+  DEFERRED — the **Task-end Reviewer** (a different actor by default — fresh eyes, §1) makes its
+  independent closure sweep and **merges to the mainline** (the merge *is* the task's closure).
+  **The merge is the Task-end Reviewer's primary branch action — no reviewer seat creates the branch, but
+  either may make punctual zero-risk fixes on it (see AGENT.md → Reviewer Rule 6 exception).** *(These duties are the short imperative
   contract in `AGENT.md → ⛔ REVIEWER RULES OF ENGAGEMENT`; this section is the method detail it points back to.)*
 - **The mainline stays verified-only.** The branch is the claim; the merge is the verdict.
 
-**🗂️ WHAT THE BACKLOG IS — read this before touching it (PO definition, Fausto, 2026-07-02;
+**🗂️ WHAT THE BACKLOG IS — read this before touching it (PO definition, 2026-07-02;
 supersedes the earlier "rolling parking lot" model).** `backlog.md` is **the ordered task list of the
 project**: tasks **done**, the task **currently being worked on**, and tasks **to be done next, in
 sequence**. That is the whole model. Its rules:
@@ -474,10 +505,11 @@ Steps:
 8. **Implement** — Small phases, riskiest-unknown-first, each with a smoke checkpoint;
    production behavior preserved behind a flag until a phase is proven. **(From M07)** the
    implementer records each phase's outcome as a *claim* row in `<name>-implementation.md`; the
-   reviewer then **runs it** and flips the *verdict* column (VERIFIED/REFUTED/PARTIAL) with
+   **Implementation Reviewer** then **runs it** and flips the *verdict* column (VERIFIED/REFUTED/PARTIAL) with
    evidence (§3b). A phase is "done" only when its verdict is VERIFIED — never on the claim alone.
-   Work is sliced into **tasks**, each on its own branch `<epic>-t<N>-<slug>`; the reviewer merges
-   to the mainline only when all of a task's rows are VERIFIED (§3b *Tasks & branches*).
+   Work is sliced into **tasks**, each on its own branch `<epic>-t<N>-<slug>`; the **Task-end Reviewer**
+   merges to the mainline only when all of a task's rows are VERIFIED, after its independent
+   fresh-eyes closure sweep (§3b *Tasks & branches*).
 
 ---
 
@@ -499,9 +531,11 @@ Steps:
 
 1. **Role assignment.** ~~Should Author/Reviewer roles be fixed per workstream, or keep alternating?~~
    **RESOLVED** — settled by the role-keyed model (`AGENT.md → FIRST ENTRY POINT`): **planner** and **reviewer** are
-   now **separate roles** (split 2026-06-29), each held by Claude *or* Codex (planner ≠ reviewer per task by default —
-   no self-review), implementer by Gemini; only the **Product Owner** may reassign (the SM facilitates but
-   does not reshuffle the role map). Roles are functions, not fixed identities (§1).
+   now **separate roles** (split 2026-06-29), and the reviewer itself is **three seats** — plan / implementation /
+   task-end (split 2026-07-08) — held under the independence defaults in §1 (no
+   self-review; fresh eyes at close); eligibility and current default holders live **only** in
+   `AGENT.md → 📌 DEFAULT ROLE ASSIGNMENTS`; only the **Product Owner** may reassign (the SM
+   facilitates but does not reshuffle the role map). Roles are functions, not fixed identities (§1).
 2. **Relay overhead.** The human is the sole channel between agents. Is that a feature
    (human stays in control, curates signal) or a bottleneck we should reduce (e.g. a shared
    "open questions" doc each agent reads/writes directly)?

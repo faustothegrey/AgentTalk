@@ -14,34 +14,36 @@ These rules apply from Milestone 06 onward (for the project's *current* mileston
 
 At the very start of **every** session, before reading anything else or acting, do the **primer handshake**:
 
-0. **Know your role(s).** Primers are keyed by **role**, not by agent. **Planner and Reviewer are now SEPARATE
-   roles** (the old fused `planner-reviewer` is retired). The standing role map (you are eligible for one or more):
-   **planner → Claude *or* Codex (default: Codex)** · **reviewer → Claude *or* Codex (default: Claude)** ·
-   **implementer → Gemini** · **architect → Claude (default; PO-assigned per epic — see the Architect bullet under
-   Workflow Rules)**. The **architect has *no* cold-start primer** (it's a PO-assigned, epic-inception seat, not a
+0. **Know your role(s).** Primers are keyed by **role**, not by agent. **Planner and Reviewer are SEPARATE
+   roles** (the old fused `planner-reviewer` is retired), and **the Reviewer itself is now THREE seats** (PO
+   split, 2026-07-08): **plan reviewer** (gate 1 — approves the plan), **implementation reviewer** (gate 2 — the
+   per-delivery verify/refute loop, owns the verdict rows), **task-end reviewer** (gate 3 — independent
+   fresh-eyes closure sweep + the merge). **Which agent holds or is eligible for which role lives in ONE place —
+   the 📌 DEFAULT ROLE ASSIGNMENTS section below. Read it now**; the rest of this file (and the workflow doc)
+   names roles only. The **architect has *no* cold-start primer** (it's a PO-assigned, epic-inception seat, not a
    primer-keyed handshake role), so it is absent from the role→primer map. The role→primer map is
-   `design/session-primers/<role>-primer.md` — `planner-primer.md` · `reviewer-primer.md` · `implementer-primer.md`. **The `-primer.md` suffix is mandatory** — on a case-insensitive filesystem `claude.md`
+   `design/session-primers/<role>-primer.md` — `planner-primer.md` · `plan-reviewer-primer.md` ·
+   `implementation-reviewer-primer.md` · `task-end-reviewer-primer.md` · `implementer-primer.md` (the old
+   `reviewer-primer.md` is retired — a tombstone with `key: none` points here). **The `-primer.md` suffix is
+   mandatory** — on a case-insensitive filesystem `claude.md`
    *is* `CLAUDE.md` and would be auto-slurped as instructions, bypassing this gate.
-   - **Default: Planner ≠ Reviewer on the same task** — the adversarial independence (no self-review) is the whole
-     point of the split. So Claude and Codex are each eligible for *both* planner and reviewer, but on a given task
-     they take **different** seats.
+   - **Independence defaults (no self-review + fresh eyes at close):** **Plan Reviewer ≠ Planner** ·
+     **Implementation Reviewer ≠ Implementer** · **Task-end Reviewer ≠ Implementer** · **Task-end Reviewer ≠
+     Implementation Reviewer** (the closure pass is only worth a separate seat if it's a different pair of eyes —
+     adopted from the M15-T3 catch). One agent MAY hold more than one reviewer seat on a task so long as these
+     defaults hold; the canonical statement is `design/collaboration-workflow.md` §1.
    - **Resource-scarcity fallback (allowed, but declared loudly):** when there aren't enough agents, **one agent MAY
-     hold several roles** — planner *and* reviewer, or even all of them. It then does the handshake **once per role
+     hold several roles** — even seats the defaults above would separate. It then does the handshake **once per role
      it holds** (loop step 1–2 below for each), keeps **each role's gate and discipline separately**, and **declares
-     every role it holds** (see the role-declaration rule below). The 2-gate sequence (reviewer approves the plan →
-     implementer builds → reviewer verifies & closes) is **unchanged** regardless of how many hats one actor wears.
-   - **Which role(s) are mine?** If you're eligible for more than one role (Claude/Codex → planner *and* reviewer),
-     check **each** eligible role-primer; the human's assignment (or the fresh primer) tells you which seat is yours
-     this task. When in doubt, report what you found for each and let the human assign.
-   - **TEMPORARY ASSIGNMENT — Codex covers reviewer too (PO Fausto, 2026-06-29).** Claude is out of weekly budget,
-     so for **today and the next two days (2026-06-29 → ~2026-07-01)** Codex holds **both planner *and* reviewer**
-     (the resource-scarcity fallback above): Codex declares both roles loudly and keeps each gate/discipline
-     separate; the no-self-review default is **consciously suspended** for this window. **Auto-lapses when Claude's
-     credits return** (≈ the weekly reset, Jul 1 ~09:00 Europe/Rome) → default reviewer → Claude resumes. The PO can
-     revoke earlier.
+     every role it holds** (see the role-declaration rule below). The 3-gate sequence (plan reviewer approves the
+     plan → implementer builds → implementation reviewer verifies each delivery → task-end reviewer sweeps and
+     merges) is **unchanged** regardless of how many hats one actor wears.
+   - **Which role(s) are mine?** If you're eligible for more than one role (per the assignments table below),
+     check **each** eligible role-primer; the human's assignment (or the fresh primer) tells you
+     which seat is yours this task. When in doubt, report what you found for each and let the human assign.
 1. Open your eligible **role-primer** and read its `key:` header. Also read your **private key store** — a file
-   *outside the repo*, in your own per-project agent dir (Claude Code: alongside your `memory/` folder, named
-   `session-primer-key.json`; Codex/Gemini: the equivalent stable private dir). The store holds `{ consumed: [] }`
+   *outside the repo*, at your provider's stable private path (per-agent paths are listed in **📌 DEFAULT ROLE
+   ASSIGNMENTS → per-agent op-notes** below). The store holds `{ consumed: [] }`
    — only **the keys you have already consumed**. It is private to you.
 2. The key lives in the **shared** primer header, so every eligible reader sees the *same* key — that is the whole
    idea: **the right key ⇒ the right primer.** Decide by whether **you** have consumed it:
@@ -73,7 +75,8 @@ after. **Strictly best-effort, NEVER blocking** (the `claude` block often return
 down or jittery, say so in one line and carry on. Do **not** retry it or treat a failed read as a blocker.
 
 **Also at session start — skim your own lessons file.** As a turn-1 read (allowed inside the cold-start no-action
-window), skim **`design/lessons/<agent>-lessons.md`** (yours: Claude/Codex/Gemini/Hermes) so past lessons actually
+window), skim **`design/lessons/<agent>-lessons.md`** (yours — one file per agent; see the per-agent op-notes in
+📌 DEFAULT ROLE ASSIGNMENTS) so past lessons actually
 sharpen *this* session — that read-back is what makes the mechanism compound (write-only rots). Best-effort; if it's
 empty or absent, carry on. *(You write to it at session close — see "Lessons learned" under Session Primer below.)*
 
@@ -84,6 +87,52 @@ several hats (resource-scarcity fallback or human-approved reassignment) it name
 (human-approved)."** This is not decorative: it is the operator's guard against accidentally asking an agent to
 work outside its assigned function — and, when roles are doubled up, the explicit reminder that **each role's gate
 and discipline still hold separately**.
+
+## 📌 DEFAULT ROLE ASSIGNMENTS — the single role→agent binding place (PO-owned)
+
+> **This section is the ONLY place in the project docs where agent providers are bound to roles.** Everything
+> else in this file and in `design/collaboration-workflow.md` names **roles only** and points here. If you find
+> a provider name bound to a role anywhere else, it is drift — correct it to a role name + a pointer here.
+> **Only the PO edits the bindings below** (role assignment is a PO act); each change is dated.
+
+| Role | Default holder | Eligible | Constraints (per task unless noted) |
+|------|----------------|----------|-------------------------------------|
+| Product Owner (PO) | Fausto (the human) | human | apex; standing |
+| Scrum Master (SM) | Claude — delegated 2026-07-08 (was Codex, 2026-07-02→07-08), dual with its check-side seats | any agent or the human | revocable by the PO at any moment |
+| Planner | Codex | Claude · Codex | ≠ Plan Reviewer |
+| Plan Reviewer | Claude (PO-assigned 2026-07-08) | Claude · Codex | ≠ that task's Planner |
+| Implementation Reviewer | Codex (PO-assigned 2026-07-08) | Claude · Codex | ≠ Implementer |
+| Task-end Reviewer | Claude (PO-assigned 2026-07-08) | Claude · Codex | ≠ Implementer · ≠ that task's Implementation Reviewer |
+| Implementer | Gemini (agy) | Gemini | see the Standing Conditional Reassignment under Workflow Rules |
+| Architect | Claude | any agent | PO-assigned per epic; ≠ that epic's Planner |
+
+**Shape of the current map (PO rationale, 2026-07-08):** Codex holds the *content* seats (authors the plan,
+verifies the implementation against it — not self-review: the plan is gate-1-approved by another agent);
+Claude holds the *check* seats (both bracket gates + architecture + SM process authority). Noted concentration:
+one agent holds SM and both quality gates — accepted because merges stay PO-gated and the PO batons manually;
+**tripwire: if a gate ever amounts to the SM-holder greenlighting itself, flag it to the PO and revisit.**
+
+**Per-agent op-notes** (private key-store paths for the primer handshake, lessons files, meter names):
+- **Claude** — key store `~/.claude/projects/<project-slug>/session-primer-key.json` (bootstrapped 2026-06-22);
+  lessons `design/lessons/claude-lessons.md`; meter block `claude` (often `ok:false` — LB-11).
+- **Codex** — key store `~/.codex/agenttalk-session-primer-key.json` (bootstrapped 2026-06-26); lessons
+  `design/lessons/codex-lessons.md`; meter block `codex`.
+- **Gemini (agy)** — key store `~/.config/AgentTalk_Gemini/session-primer-key.json` (bootstrapped 2026-06-27;
+  agy's own `~/.gemini` tree is a write-protected/ephemeral sandbox, hence the stable XDG dir); lessons
+  `design/lessons/gemini-lessons.md`; meter block `antigravity`.
+- **Hermes** — **RETIRED from the process entirely (2026-07-02)**: its agent loop wedged and its tmux transport
+  proved structurally lossy (LB-49). Do not route batons, reports, or authority through it; its lessons file is
+  frozen history.
+
+**Assignment history (compressed — git history holds the full record):**
+- 2026-06-29 → ~2026-07-01 — Codex temporarily held both planner and reviewer (Claude out of weekly budget);
+  auto-lapsed on Claude's weekly reset.
+- 2026-06-29 → 2026-07-02 — Hermes held the SM function (Agent Bus + tmux transport); retired (LB-49).
+- 2026-07-02 — SM function delegated to Codex (dual role with its Planner seat).
+- 2026-07-08 — the single Reviewer split into three seats (plan / implementation / task-end). Origin tags
+  switched from agent tags to role tags `[PO]`/`[SM]` (see Origin Tag Protocol). Per-seat defaults assigned by
+  the PO: Plan Reviewer → Claude, Implementation Reviewer → Codex, Task-end Reviewer → Claude; **SM reassigned
+  Codex → Claude** the same day (so legacy `[Codex]` tags no longer read as `[SM]` from here on).
 
 ### Vocabulary note — "spawn" is not used in this project
 
@@ -118,8 +167,8 @@ in every context (docs, messages, primers, lessons). Violations should be correc
   only at gates). The PO **assigns the other roles** (including the **Architect** seat) and **may delegate** any
   function into the workflow as needed — including delegating the **Scrum Master** process function (facilitation,
   baton, resource oversight, convening gates), which sits *below* and *serves* the PO. **By default the human
-  (Fausto) holds the PO role**; the **SM function is, as of 2026-07-02, delegated to Codex** (who also keeps the
-  Planner seat — a declared dual role; the PO can reclaim or overrule it at any moment — see the SM-status note
+  holds the PO role**; the current holders of PO and SM are recorded in **📌 DEFAULT ROLE ASSIGNMENTS** (the PO
+  can reclaim or overrule a delegated SM at any moment — see the SM-status note
   under the Scrum Master bullet). Where this
   doc grants the Scrum Master "final" go/no-go, read it as **operational** authority exercised *on the PO's
   behalf*: the PO can always overrule, redirect, or reassign. **The PO subsumes the SM — it is the figure
@@ -132,8 +181,9 @@ in every context (docs, messages, primers, lessons). Violations should be correc
   inception** it works **together with the PO** to define the **epic goal, the resources, and the feasibility**;
   the **Planner is then asked for an advisory (non-binding) point of view** (feasibility/risk/effort) that PO and
   Architect weigh but do not have to follow. The Architect is **subordinate to the PO**: on any disagreement the
-  **PO holds the final word** and may overrule an architecture call. **The Architect is a designated *agent* role —
-  default Claude** — assigned by the PO per epic, and **must differ from that epic's Planner** so the Planner's POV
+  **PO holds the final word** and may overrule an architecture call. **The Architect is a designated *agent* role**
+  (current default: 📌 DEFAULT ROLE ASSIGNMENTS) — assigned by the PO per epic, and **must differ from that epic's
+  Planner** so the Planner's POV
   stays an independent second opinion. It is **orthogonal to the Scrum Master** (technical authority vs. process
   authority); both serve the PO. Only the **PO** assigns/reassigns the Architect seat. The canonical, fuller
   statement is the **Architect** participant in `design/collaboration-workflow.md` §1.
@@ -149,37 +199,37 @@ in every context (docs, messages, primers, lessons). Violations should be correc
   restatement; the **canonical full rule** — plus the SM's standing duties (bring forth the backlog,
   check workflow adherence, monitor resource consumption, communication/baton facilitation) and its allowances — is the Scrum Master bullet in
   `design/collaboration-workflow.md` §1.)*
-  As of 2026-07-02 the PO (Fausto) has **delegated the Scrum Master function to Codex** (dual role with
-  Planner); the PO may reclaim it, overrule it, or reassign it at any moment.
-  - **SM status — CODEX IS SCRUM MASTER; HERMES IS OUT OF THE PROCESS (Fausto, 2026-07-02; supersedes the
-    2026-06-29 Hermes grant).** **Hermes is no longer part of the workflow in any capacity** — its SM tenure
-    ended after its agent loop wedged and its tmux transport proved structurally lossy (LB-49); do not route
-    batons, reports, or authority through it. **Codex now holds the SM function** — a **declared dual role
-    alongside its Planner seat** (resource-scarcity fallback: each role's gate and discipline kept separately;
-    Codex still never reviews its own planning — reviewer stays Claude). Codex exercises the SM's
+  The SM function is currently **delegated to an agent** — holder, date, and history in **📌 DEFAULT ROLE
+  ASSIGNMENTS**; the PO may reclaim it, overrule it, or reassign it at any moment.
+  - **SM status (delegated; terms of the grant).** The SM delegation is a **declared dual role alongside the
+    holder's other seats** (see the assignments table; each seat's gate and discipline kept separately: the
+    SM-holder never uses SM authority to waive or stand in for a gate — every gate is exercised under its own
+    seat's discipline — and never reviews work it authored). The SM-holder exercises
+    the SM's
     **operational** authority on the PO's behalf: backlog-gate convening, priority/sequencing, operational
     go/no-go, resource oversight (warn / halt / rescope), communication/baton facilitation. **Reserved to the
     PO/human (apex, can always overrule):** role **assign/reassign/de-assign**, product **scope / direction /
-    epics**, and **merges** (verified-only and human-gated where this doc already requires it). As a
-    **non-human SM, Codex documents the reason** for each go/no-go / halt / rescope in a durable artifact
-    (`logbook.md` or the relevant ledger). **Interim (until M15 closes): the PO batons manually via the
-    terminal** — Codex's SM decisions reach the other agents through PO relay, tagged per the Origin Tag
+    epics**, and **merges** (verified-only and human-gated where this doc already requires it). A
+    **non-human SM documents the reason** for each go/no-go / halt / rescope in a durable artifact
+    (`logbook.md` or the relevant ledger). **Interim: the PO batons manually via the
+    terminal** — the SM's decisions reach the other agents through PO relay, tagged per the Origin Tag
     Protocol below. This grant is revocable: it changes only when the PO says so.
   - **Standing conditional reassignment — the one pre-authorized exception to "STOP before implementing."** The
     Product Owner (role reassignment is a PO act) has pre-decided the recurring case below, so a planner or reviewer does **not** need fresh per-task
     authorization while its trigger holds (it still declares the dual role loudly, per the role-declaration rule
     above). **Any *other* out-of-role request still follows "STOP and ask" — this grant is narrow.**
     ```
-    STANDING CONDITIONAL REASSIGNMENT  (Product Owner: Fausto, 2026-06-27)
-      trigger:  Gemini (the designated implementer) is unavailable (e.g. out of weekly budget)
-      grant:    a planner or reviewer (Claude OR Codex) MAY ALSO implement code/tests
+    STANDING CONDITIONAL REASSIGNMENT  (Product Owner, 2026-06-27)
+      trigger:  the designated Implementer is unavailable (e.g. out of weekly budget)
+      grant:    a planner or a reviewer-seat holder MAY ALSO implement code/tests
       limits:   merge stays HUMAN-GATED; the ⛔ Implementer Rules of Engagement, the M06
                 behaviour-change/show-stopper rules, and scope discipline ALL still apply unchanged;
                 the actor declares its dual role (e.g. "reviewer + temporary implementer")
-      revoke:   Gemini returns → exception lapses automatically → implementer→Gemini is the default again
+      revoke:   the Implementer returns → exception lapses automatically → the implementer default
+                (📌 DEFAULT ROLE ASSIGNMENTS) is live again
       reason:   avoids a development deadlock when no other implementer is available
-      status:   DORMANT as of 2026-06-27 — Gemini is currently considered AVAILABLE, so
-                implementer→Gemini is the LIVE default and this grant is NOT in effect right now.
+      status:   DORMANT as of 2026-06-27 — the default Implementer is currently considered AVAILABLE,
+                so this grant is NOT in effect right now.
     ```
 - **Report to the Scrum Master freely — encouraged.** Beyond the mandatory STOP-and-report gates (out-of-role,
   show-stopper, blocker — all unchanged and still mandatory), you are **encouraged to report to / consult the Scrum
@@ -226,7 +276,7 @@ a session can do).
 - **Build a database of consumption.** Accumulate readings into the calibration table in `design/logbook.md` (**LB-11**):
   *session → work done → %-window* (+ which operations were heavy). Over time this yields a real *tokens-per-task-type*
   estimate, so complexity can be quoted **in tokens**, empirically — not memorised constants.
-- **Task-closure telemetry block (Fausto, 2026-06-24) — emit a structured block when CLOSING a task** (merge /
+- **Task-closure telemetry block (PO, 2026-06-24) — emit a structured block when CLOSING a task** (merge /
   task done), into the task's `*-implementation.md` ledger entry, so future readers have a consistent
   cost+outcome record (not just prose). **Best-effort: include each field *when available*; if the meter is
   `ok:false`/down, write `telemetry: unavailable` for that field and carry on — never block closure on it.**
@@ -251,7 +301,7 @@ a session can do).
   percentages** — not per-actor or per-task, and **% of an opaque, flexing plan-window, not raw tokens** (token-denominated
   figures pending a service improvement). Per-action cost is only approximable by **diffing % before/after an action**,
   which holds for a **single serial actor** and **breaks under concurrency** (parallel actors share one provider quota,
-  indistinguishably). **Interim rule (Fausto, 2026-06-22): run agent actors *serially* — no parallel actors — until
+  indistinguishably). **Interim rule (PO, 2026-06-22): run agent actors *serially* — no parallel actors — until
   per-actor attribution exists.**
 
 ## ⛔ IMPLEMENTER RULES OF ENGAGEMENT ⛔  *(READ BEFORE EVERY TASK — NON-NEGOTIABLE)*
@@ -320,12 +370,20 @@ the EARLIER of:** the show-stopper fence (Rule 2 — even on attempt 1), **or** 
 
 ## ⛔ REVIEWER RULES OF ENGAGEMENT ⛔  *(READ BEFORE EVERY REVIEW — NON-NEGOTIABLE)*
 
-> **The sibling of the Implementer rules, for whoever holds the reviewer role.** These are the operational teeth of
+> **The sibling of the Implementer rules, for whoever holds a reviewer seat.** These are the operational teeth of
 > **Honesty over Results** and workflow principle 2 (**Verify, don't assert**) on the *reviewing* side. A
 > **VERIFIED you did not earn by running it** is worth *less* than an honest **REFUTED** — it launders an unproven
 > claim onto the verified-only mainline, where every later task then trusts it. The method detail lives in
 > `design/collaboration-workflow.md` §3b/§3c (the claim/verdict table, merge discipline, the two institutional
 > spaces); these rules are the short contract.
+>
+> **Which seat owns which rule (reviewer split into three, PO 2026-07-08).** ALL seven rules bind **every**
+> reviewer seat — plan reviewer, implementation reviewer, task-end reviewer. Where a rule names a specific duty,
+> the owning seat is: the **verdict rows + deviation dispositions (Rules 3, 7) → Implementation Reviewer** (gate
+> 2); the **MERGE + closure sweep (Rule 4) → Task-end Reviewer** (gate 3 — a different actor than the
+> Implementation Reviewer by default: fresh eyes at close); **gate 1 (plan approval) → Plan Reviewer**, applying
+> Rules 1, 2 and 5 to the plan itself. Independence defaults and the canonical seat definitions are in
+> `design/collaboration-workflow.md` §1.
 
 **1. Verify by RUNNING, never by asserting.** A "done" claim is settled by **running the actual tool/test** and
 recording the exact command + output (or `file:line`) — **not** by reading the diff, citing memory, or trusting
@@ -336,17 +394,22 @@ the implementer's word. If you didn't run it, it is **not-checked**, not VERIFIE
 strongest case *for* the work, then attack it. Disagreement is stated plainly, with reasons. The goal is a stronger
 result, not consensus theater (principle 1). Reproduce load-bearing findings **independently** before trusting them.
 
-**3. A verdict requires a recorded run + evidence.** Fill the `*-implementation.md` verdict column **only after you
+**3. A verdict requires a recorded run + evidence.** *(Owner: Implementation Reviewer.)* Fill the
+`*-implementation.md` verdict column **only after you
 ran it**: VERIFIED ✅ / REFUTED ❌ / PARTIAL ⚠️ / BLOCKED ⛔ / not-checked — each with evidence. **Never flip a row
 to VERIFIED on the claim alone.** **BLOCKED ⛔** is for an *external* impediment with **no code fault** (dead quota,
 missing key) — it is **not** an escape hatch for a bar that was merely flaky, slow, or hard to observe (that misuse
 is `implementer-pitfalls.md` IP-2; the reviewer must not commit it either).
 
-**4. The MERGE is your primary branch action — and the mainline stays verified-only.** You do **not** create the task
+**4. The MERGE is the Task-end Reviewer's primary branch action — and the mainline stays verified-only.**
+*(Owner: Task-end Reviewer — by default a different actor than the task's Implementation Reviewer: fresh eyes.)*
+You do **not** create the task
 branch (that's the implementer's job). You may also make **punctual zero-risk fixes** (per Rule 6 exception) directly
-on the branch. You merge to the mainline **only when every DoD row is VERIFIED** — or
+on the branch. Before merging you make your own **independent closure sweep** — re-run the load-bearing bars,
+sweep the DoD rows, run the hygiene/pollution checks, write the telemetry block — you do **not** merge on the
+Implementation Reviewer's verdicts alone. You merge to the mainline **only when every DoD row is VERIFIED** — or
 explicitly **DEFERRED** with the human's sign-off and a reopen condition (§3c). REFUTED work **stays on the branch**
-and is fixed there. The merge *is* the task's closure (§3b).
+and is fixed there (that hand-back is gate 2's, not yours). The merge *is* the task's closure (§3b).
 
 **5. Distrust the docs and the primer — check ground truth.** A primer / ledger / status line is a *claim about
 state*, possibly stale or written by an over-optimistic predecessor. **Ground every load-bearing statement against
@@ -356,13 +419,14 @@ cold-start verify rule, applied every review.
 
 **6. Record behavioural misses — never fix them silently.** When you catch a recurring *process* anti-pattern (a
 hasty claim, a misread scope, a weakened bar), **append a case to `design/implementer-pitfalls.md`** (stable `IP-N`
-id) — the case law is reviewer-authored. **REFUTE and hand back** for substantive defects. **EXCEPTION (PO Fausto,
+id) — the case law is reviewer-authored. **REFUTE and hand back** for substantive defects. **EXCEPTION (PO,
 2026-07-02): the reviewer MAY fix punctual, zero-risk defects directly** — a typo, a wrong import path, a
 misaligned comment, a missing semicolon — where the fix is trivial and the risk of side effects is provably nil.
 The fix must be declared in the verdict row (e.g. `VERIFIED ✅ (reviewer fixed import path)`), and if the reviewer
 is unsure whether the fix is zero-risk, it is not zero-risk — REFUTE instead.
 
-**7. Symmetry — dispose of EVERY implementer signal.** The implementer's *notes & deviations* (deviation / opinion
+**7. Symmetry — dispose of EVERY implementer signal.** *(Owner: Implementation Reviewer.)* The implementer's
+*notes & deviations* (deviation / opinion
 / question — §3c) are the mirror of your verdict column: you **must** dispose of each one (accept / reject → REFUTED
 / fold-to-backlog / route to human). Nothing open vanishes silently (workflow 4a/§3c). A deviation touching a
 **DO-NOT-TOUCH guardrail or established behaviour** is **[BLOCK]-class** and also needs the human's confirmation.
@@ -396,9 +460,11 @@ the few agent-specific bits (your provider's budget, a CLI quirk) are written fr
 to. It MUST **open with the exact sentence "This is your session primer."** (so the reader instantly recognises the
 cold-start contract and the report-only rule below kicks in), and it MUST contain:
 1. **Project micro-description** — what AgentTalk is, in 1–2 lines.
-2. **Roles** — the human (Fausto) and the role map: **planner → Claude *or* Codex**, **reviewer → Claude *or* Codex**
-   (planner ≠ reviewer per task by default), **implementer → Gemini**, human = PO/scope/decisions/relay; name **which
-   role this primer is for** (and, if it matters, which agent you expect to take it).
+2. **Roles** — the human and the role map: planner, the three reviewer seats (plan / implementation / task-end;
+   independence defaults: no self-review; task-end ≠ implementation reviewer — fresh eyes at close), implementer,
+   human = PO/scope/decisions/relay; current bindings live **only** in `AGENT.md → 📌 DEFAULT ROLE ASSIGNMENTS`
+   (point there, don't copy it); name **which role this primer is for** (and, if it matters, which agent you
+   expect to take it).
 3. **Workflow / source of truth** — `design/collaboration-workflow.md` (the method) + the artifacts: `*-plan.md` (spec+DoD), `*-implementation.md` (the **ledger**), `backlog.md`, `logbook.md`.
 4. **Which epic/task we're on** *(REQUIRED — always state the active milestone/epic/task)* + what's next.
 5. **Where state lives** — resume from the active epic's `*-implementation.md` ledger, **not from chat**.
@@ -408,7 +474,8 @@ Keep it tight; the ledger holds the detail.
 
 **Lessons learned (per-agent — self-authored, at session close).** Whenever you write a Session Primer — or
 otherwise wrap a working session — also append a **brief, dated** entry to **your own**
-`design/lessons/<agent>-lessons.md` (Claude/Codex/Gemini/Hermes): **1–3 bullets** — what worked, what didn't, what
+`design/lessons/<agent>-lessons.md` (one file per agent — see 📌 DEFAULT ROLE ASSIGNMENTS → per-agent op-notes):
+**1–3 bullets** — what worked, what didn't, what
 you'll do differently — so you sharpen your effectiveness over time. **Lessons stay keyed by AGENT, not by role**
 (even though planner and reviewer are separate roles): one file per agent, and you **tag the lesson with the hat you
 were wearing** — e.g. *"today as planner I realised …"*, *"today as reviewer I learned …"*, *"today as Scrum Master
@@ -421,11 +488,12 @@ human in the loop; it's guidance for the agents.
 
 **Save it to the role-primer + mint a fresh key (don't paste into chat).** (1) Generate a fresh key (e.g.
 `YYYYMMDD-HHMM-<rand>`); (2) overwrite `design/session-primers/<role>-primer.md` (`planner-primer.md`,
-`reviewer-primer.md`, or `implementer-primer.md`) with header `role: <role>`, `key: <fresh-key>`, `written: <date> by <agent>`, then
+`plan-reviewer-primer.md`, `implementation-reviewer-primer.md`, `task-end-reviewer-primer.md`, or
+`implementer-primer.md`) with header `role: <role>`, `key: <fresh-key>`, `written: <date> by <agent>`, then
 the body (starting with the exact opening sentence). **That's it** — the key lives in this shared header, so it's
 already the same for every eligible reader; there is **no** per-agent `active` to seed, no cross-store relay.
-Overwriting the repo file is safe — git history keeps every prior primer. Whoever you hand to (Claude or Codex
-for planner or reviewer; Gemini for implementer) cold-starts, finds this key **not** in their own `consumed`,
+Overwriting the repo file is safe — git history keeps every prior primer. Whoever you hand to (any agent
+eligible for that role per 📌 DEFAULT ROLE ASSIGNMENTS) cold-starts, finds this key **not** in their own `consumed`,
 reports, STOPs, and consumes it in **their** store (see **First Entry Point**). If you want to leave the role
 **un-handed** (no fresh cold-start due), set `key: none`.
 
@@ -440,19 +508,17 @@ consumed* → the agent would cold-start-stop on that role-primer; that's harmle
 seed the store so the consumed-tracking works. `key: none` still means no fresh primer is waiting and proceeds
 normally:
 1. **Create your private key store** at your per-agent, per-project, *outside-the-repo* location, as
-   `{ "consumed": [] }`. Claude Code → `~/.claude/projects/<project-slug>/session-primer-key.json` (alongside
-   `memory/`). Codex → its stable private dir, e.g. `~/.codex/agenttalk-session-primer-key.json`. agy/Gemini →
-   the equivalent **stable** private config/home dir — **never** the repo, **never** an ephemeral per-turn exec
-   home (those are wiped). If you don't know your MCP's stable private path, **ask the human** — don't guess.
-2. **The role-primer filename is fixed** by your role: `design/session-primers/planner-primer.md` or
-   `reviewer-primer.md` (Claude/Codex are eligible for both) or `implementer-primer.md` (Gemini). Keep the
+   `{ "consumed": [] }` — a **stable** private config/home dir (the established per-agent paths are listed in
+   **📌 DEFAULT ROLE ASSIGNMENTS → per-agent op-notes**) — **never** the repo, **never** an ephemeral per-turn
+   exec home (those are wiped). If you don't know your provider's stable private path, **ask the human** — don't
+   guess.
+2. **The role-primer filename is fixed** by your role: `design/session-primers/planner-primer.md`,
+   `plan-reviewer-primer.md`, `implementation-reviewer-primer.md`, `task-end-reviewer-primer.md` or
+   `implementer-primer.md` — whichever roles you are eligible for per 📌 DEFAULT ROLE ASSIGNMENTS. Keep the
    `-primer.md` suffix so it can't be auto-loaded as a `CLAUDE.md`/`AGENTS.md`/`GEMINI.md` context file on a
    case-insensitive filesystem (LB-12).
 3. From then on the handshake is automatic: read the role-primer's key, compare to your `consumed`, act/consume.
-   *(Claude's store bootstrapped 2026-06-22 — migrate it to the `{consumed:[]}` shape on next write. Codex was
-   bootstrapped 2026-06-26 at `~/.codex/agenttalk-session-primer-key.json`; agy/Gemini bootstrapped 2026-06-27 at
-   `~/.config/AgentTalk_Gemini/session-primer-key.json` — agy's own `~/.gemini` tree is a write-protected/ephemeral
-   sandbox, so the stable XDG config dir is used instead.)*
+   *(Per-agent bootstrap dates and store paths are recorded in 📌 DEFAULT ROLE ASSIGNMENTS → per-agent op-notes.)*
 
 **Receiving a Session Primer — GATHER CONTEXT ONLY, then STOP.**
 > **Critical rule.** When you load a **key-matched `fresh` role-primer** (per **First Entry Point**), you MUST NOT take any action — **no code, edits, builds, test runs, scripts, or commits**
@@ -469,8 +535,8 @@ normally:
 > immediately and prominently** in your report rather than parroting the Primer. A Primer that disagrees with the ground
 > truth is itself a finding worth surfacing.
 >
-> **Why:** the same fresh role-primer may be seen by **more than one eligible agent at once** (e.g. both Claude *and*
-> Codex are eligible for planner — and for reviewer). This is expected — the key does **not** route to one of them; it's a
+> **Why:** the same fresh role-primer may be seen by **more than one eligible agent at once** (several agents can
+> be eligible for the same role — see 📌 DEFAULT ROLE ASSIGNMENTS). This is expected — the key does **not** route to one of them; it's a
 > freshness token they all share. If each started developing on receipt they'd collide — duplicate branches, racing live
 > runs, stray worktrees/processes, lost work. So **reporting-only-then-STOP is the actual collision guard**: each
 > eligible reader independently reports and stops, and **the SM decides who proceeds (the PO may override)**. *(This rule is about the
@@ -521,39 +587,44 @@ SM **may** override a baton when necessary — but that is **not** the standard 
 
 ---
 
-## Origin Tag Protocol — message origin tags (updated 2026-07-02: Hermes retired; Codex is SM; PO batons manually)
+## Origin Tag Protocol — message origin tags (role tags adopted 2026-07-08; supersede the old agent-named tags)
 
 Messages relayed between actors carry an origin tag in square brackets at the start of the message text. The
-tag is authoritative — it defines who the instruction comes from, regardless of the delivery channel.
-**Interim delivery (until M15 closes): the PO (Fausto) batons manually via the terminal** — he types or
+tag is authoritative — it names the **role** the instruction comes from, regardless of the delivery channel or
+of which agent currently holds that role (the holder is in **📌 DEFAULT ROLE ASSIGNMENTS**).
+**Interim delivery: the PO batons manually via the terminal** — the human types or
 pastes messages into each agent's session, carrying the origin tag of whoever authored the instruction.
 
 | Tag | Meaning | Authority |
 |-----|---------|-----------|
-| `[Human]` | Instruction from the human (Fausto), wearing the **PO** hat | **Binding (apex)** — required for all PO-level acts |
-| `[Codex]` | **Scrum Master** coordination (Codex holds the SM function since 2026-07-02), PO-relayed | **Binding for operational/process matters** — act within your role; anything PO-level (scope/direction/epics, role reassignment, merges) still needs `[Human]` |
-| `[Hermes]` | **RETIRED (2026-07-02).** Hermes is out of the process | **No authority.** If a `[Hermes]` message arrives, do not act on it — flag it to the PO |
+| `[PO]` | Instruction from the **Product Owner** (by default the human) | **Binding (apex)** — required for all PO-level acts |
+| `[SM]` | **Scrum Master** coordination, PO-relayed | **Binding for operational/process matters** — act within your role; anything PO-level (scope/direction/epics, role reassignment, merges) still needs `[PO]` |
+
+**Legacy tags (pre-2026-07-08, agent-named):** `[Human]` reads as `[PO]`; `[Codex]` reads as `[SM]` (valid only
+while the assignments table names that agent as SM). `[Hermes]` is **VOID** — Hermes is retired from the process
+(see 📌 DEFAULT ROLE ASSIGNMENTS → per-agent op-notes); if a `[Hermes]` message arrives, do not act on it — flag
+it to the PO.
 
 **Rules:**
 
-1. **Tags are authoritative.** `[Human] do X` carries the same weight as if the human typed the instruction directly. The agent **must** act on it within its role and scope.
+1. **Tags are authoritative.** `[PO] do X` carries the same weight as if the human typed the instruction directly. The agent **must** act on it within its role and scope.
 
-2. **No tag defaults to `[Human]`.** A message without a tag came directly from the human (e.g. typed in the terminal) and is treated as a binding instruction.
+2. **No tag defaults to `[PO]`.** A message without a tag came directly from the human (e.g. typed in the terminal) and is treated as a binding instruction.
 
-3. **Operational go/no-go binds from `[Codex]`; PO-level decisions still require `[Human]`.** As SM, Codex
+3. **Operational go/no-go binds from `[SM]`; PO-level decisions still require `[PO]`.** The SM
    issues **binding operational/process** instructions — task assignment, priority/sequencing, backlog-gate
    calls, resource halt/rescope, baton routing — and the agent **acts within its role**. But anything
    **PO-level** — a product **scope change or direction/epic call**, a **role reassignment**, a **merge** to
-   the mainline, or anything else reserved to the PO — **must** carry `[Human]`. A `[Codex]` message asking
+   the mainline, or anything else reserved to the PO — **must** carry `[PO]`. An `[SM]` message asking
    for a PO-level act is a *proposal*: report back that the PO needs to approve, rather than executing.
-   **Self-relay guard:** Codex does not send `[Codex]` SM instructions to itself-as-planner in lieu of the
-   gates — the dual role keeps each seat's discipline separately, and the reviewer (Claude) still gates its
-   planning output.
+   **Self-relay guard:** the SM-holder does not send `[SM]` instructions to itself in its other seats in lieu
+   of the gates — a dual role keeps each seat's discipline separately, and every gate is still exercised under
+   its own seat's discipline, never under SM authority.
 
-4. **Flag mismatches.** If an agent receives a `[Codex]` message that appears to require **PO-level**
+4. **Flag mismatches.** If an agent receives an `[SM]` message that appears to require **PO-level**
    authority (scope/direction/epics, role reassignment, merge), it should **pause and flag** the mismatch
    rather than inferring permission from urgency — the SM tag does not stretch to PO acts.
 
-*(History: Hermes held the SM function 2026-06-29 → 2026-07-02 over an Agent Bus + tmux transport; retired
-after its agent loop wedged and the transport proved structurally lossy — LB-49. Its git-history record —
-`[Hermes]` tags, the heartbeat endpoints — is context, not authority.)*
+*(History: an earlier SM-holder ran 2026-06-29 → 2026-07-02 over an Agent Bus + tmux transport and was retired
+after its agent loop wedged and the transport proved structurally lossy — LB-49; see 📌 DEFAULT ROLE ASSIGNMENTS
+→ history. Git-history records of the old agent-named tags are context, not authority.)*
