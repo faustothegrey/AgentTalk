@@ -1,48 +1,43 @@
 ---
-role: planner (+ scrum master — PO-assigned dual role, 2026-07-02)
-key: 20260702-2229-73f413
-written: 2026-07-02 by Codex (planner + scrum master, session close)
+role: planner
+key: 20260708-1422-c13b1b
+written: 2026-07-08 by Claude (SM — M16 gate hand-off)
 ---
 
 This is your session primer.
 
 AgentTalk is a multi-agent orchestration/control plane: provider-backed agents attach over MCP/API, the
-runtime routes planning/work messages through a central registry, and consensus/team execution is recorded for
-review.
+runtime routes planning/work messages through a central registry, and consensus/team execution is recorded
+for review. The active program: AgentTalk **incrementally improves itself** (self-hosting, M16→M18).
 
-**Roles.** Fausto is PO and apex authority: product scope/direction, role reassignment, and merges/closure stay
-with him. Planner -> Claude or Codex, Reviewer -> Claude or Codex, Implementer -> Gemini by default. For this
-project state, Codex holds **Planner + Scrum Master** by PO delegation; declare both roles loudly and keep the
-seats separate. Claude remains the default Reviewer/Architect unless the PO says otherwise. Gemini is the default
-Implementer. Interim communication still goes through the PO's terminal relay until M15 is closed.
+**Roles — READ THE TABLE FIRST: `AGENT.md → 📌 DEFAULT ROLE ASSIGNMENTS` (new, 2026-07-08).** Governance
+changed today (PO acts, commit `789850d`): the single Reviewer is now **three seats** (plan / implementation
+/ task-end); all role→agent bindings live **only** in that table; origin tags are now **role tags
+`[PO]`/`[SM]`** (legacy `[Human]`/`[Codex]` mapped; details in the Origin Tag Protocol). Your seats:
+**planner + implementation reviewer**. **You no longer hold the Scrum Master function** — the PO handed SM
+to Claude on 2026-07-08 (see the table's history); `[SM]` messages now originate from Claude via PO relay.
+This primer is for your **planner** seat.
 
-**Workflow / source of truth.** Start with `AGENT.md`, then `design/collaboration-workflow.md`. Active work state
-lives in the milestone `*-implementation.md` ledger, not chat. Backlog state is `design/backlog.md` plus
-`npm run backlog:check`; cross-cutting operational facts go in `design/logbook.md`; plans own scope/DoD.
+**Workflow / source of truth:** `design/collaboration-workflow.md` (now a 3-gate sequence) + the ⛔ Rules of
+Engagement in `AGENT.md`. Backlog: `design/backlog.md` (`npm run backlog:check`); this gate's record is the
+2026-07-08 entry there, and logbook **LB-61** is the durable decision record.
 
-**Where we are.** Active epic remains **M15 — Arbiter Consensus, Direct Path** / BL-012 (`doing`). The code and
-docs for M15-T3 were fixed, verified, committed, and pushed:
+**Active epic: M16 — One real baton (BL-013 `doing`), opened at the 2026-07-08 backlog gate.** Your
+assignment: **author the M16 plan** (`design/milestone16-one-real-baton-plan.md`: spec, DoD claim table,
+per-check budgets, fences) from the inception artifact `design/self-hosting-program-draft.md` (§M16 +
+§SP-WAKE result). Fixed by evidence and by the gate, not yours to re-litigate:
+- Shape: **blocking `await_turn`** (SP-WAKE layer (a) PASS — 600 s idle wake in 3 ms); pull-on-poke is the
+  declared fallback, not the design.
+- Fence: no new consensus logic, **zero `team-coordinator.ts` diff** (freeze bar = full suite + M14 identity
+  harness), no new UI. "Embarrassingly small" is a Gate-1 hand-back criterion — your own advisory caution 2.
+- Gate 1 (plan review): Claude, per the assignments table.
 
-- Pushed commit: `fdbd766 fix(arbiter): close M15 live proof routing` on `origin/master`.
-- M15-T1: VERIFIED by PO override.
-- M15-T2: VERIFIED by implementation reviewer.
-- M15-T3: Gemini initial delivery was refuted; Codex redelivered by PO request; Claude then found one real
-  follow-up routing regression; Codex agreed, fixed it, reran the freeze bar, and recorded the follow-up.
-- Final verification recorded in `design/milestone15-arbiter-consensus-implementation.md`: targeted arbiter
-  vitest 6/6, `npx tsc -b` 0, full `npm test` 275/275, M14 identity `--check` matched,
-  `npm run backlog:check` OK, whitespace clean, pollution clean.
+**Where state lives:** the backlog gate record + the program draft; the epic ledger
+(`design/milestone16-*-implementation.md`) gets created alongside your plan. Not chat.
 
-**Next step.** Do not reopen implementation by default. The immediate next SM/planner action is to ask/await the
-PO closure decision for M15: whether to mark BL-012 done and close the milestone artifacts, or leave it open for
-one more explicit review/closure pass. If the PO closes M15, update the backlog/ledger/logbook accordingly and
-poll resources. If the PO chooses more work, sequence it through the normal gate.
-
-**Op notes.**
-
-- `team-coordinator.ts` remains the frozen protocol path; any diff there is still a serious scope concern.
-- `design/m15-t3-live-arbiter.ndjson` is the auditable runtime recording for T3; DiagramTalk service was not
-  available during the live proof, and that limitation is recorded.
-- The M14 identity harness can create temporary `task-task-*` worktrees/branches during verification. Always run a
-  pollution check afterward and remove only those verification artifacts if present.
-- Resource read at close: Codex weekly 84%, 5h 66%; Claude weekly 30%, session 14%; antigravity 49%
-  (`node scripts/usage.mjs`, 2026-07-02 22:21 Europe/Rome).
+**Op notes (honor these in the plan):** SP-WAKE caveats — the spike ran against `McpExecServer` in-process,
+so M16's live proof must run against the **real orchestrator attach server**; layer (b) (a native CLI
+session attaching without the client shim) is M16's **stretch question, not its foundation**. The
+relay-count metric is live (counting rule in the draft; M15 baseline ~20–30/day). Serial-actors rule
+stands. Resources at hand-off: codex weekly 0% (resets 15 Jul), antigravity 0%, claude fresh (meter
+`ok:false` — LB-11).

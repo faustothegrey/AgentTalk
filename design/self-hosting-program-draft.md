@@ -1,11 +1,12 @@
 # Self-Hosting Program (M16 → M18) — AgentTalk improves itself
 
-**Status:** 🟡 **DRAFT — PO↔Architect inception recorded (2026-07-02 late session, compressed ceremony per
-M15 precedent); Codex (planner) advisory POV RECORDED (PO-relayed, same night — see §POV below; direction
-endorsed, five cautions, two folded into this draft); SP-WAKE probe A PASS, idle probe in flight; awaiting
-the ~2026-07-08 backlog gate.** Build starts after Codex's weekly reset (Jul 7 ~07:14) unless the PO says
-otherwise.
-**PO:** Fausto · **Architect:** Claude (author) · **Planner + SM:** Codex · **Implementer:** Gemini/agy ·
+**Status:** 🟢 **ACTIVE — M16 OPENED at the 2026-07-08 backlog gate (BL-013 `doing`; SM: Claude, PO go in
+session).** Role-skill injection ruled **M19 candidate** (BL-014); SP-WAKE layer (a2) skipped (M16's live
+proof covers realistic idle). Planner authors the M16 plan next; gate 1 (plan review) follows.
+**Roles:** per `AGENT.md → 📌 DEFAULT ROLE ASSIGNMENTS` (2026-07-08 model — three reviewer seats; SM handed
+Codex → Claude). *(Inception-time roles line preserved below as the 2026-07-02 record.)*
+**Inception record (2026-07-02) — PO:** Fausto · **Architect:** Claude (author) · **Planner + SM (then):**
+Codex · **Implementer:** Gemini/agy ·
 **Reviewer:** per-epic PO call (M15 note: independent review after any self-reviewed closure).
 **Sacred goal (PO, 2026-07-02):** set AgentTalk up so it **incrementally improves itself**.
 
@@ -142,6 +143,7 @@ its foundation.
   removed, inside this program (per-actor attribution is itself a likely early friction→backlog item).
 - **Backlog:** M16 (and the program pointer) to be gated into `backlog.md` at the ~Jul-8 backlog gate by the
   SM with the PO — not pre-created here; this draft is the inception artifact the gate consumes.
+  **DONE (2026-07-08): BL-013 `doing` (M16) + BL-014 `todo` (M19 candidate); gate record in `backlog.md`.**
 - **Per-epic plans** (fences, full DoD tables, per-check budgets) get authored at each epic's own inception;
   the sketches above are altitude, not spec.
 
@@ -158,6 +160,7 @@ from per-CLI context files into something the channel administers; also collapse
 (the brain knows what's fresh).
 **Discipline:** rider-sized idea with epic-sized gravity — it does **NOT** enter M17's fence (Codex caution
 2 applies). Jul-8 gate decides: M18 rider, M19 candidate, or parked. No code before that.
+**DECIDED (2026-07-08 gate): M19 candidate — filed as BL-014 (`todo`); re-gate after M17 evidence.**
 
 ## The program metric — relay count (Codex POV caution 5, adopted)
 

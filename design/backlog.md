@@ -40,6 +40,25 @@ show-done/show-dropped toggles ride this param). The response's `total` field al
 
 ---
 
+### Backlog gate — 2026-07-08 (opening M16 · SM: Claude, PO go in session)
+
+Per §3b, dispositioned before opening **M16 — One real baton** (self-hosting program M16→M18; inception
+artifact `design/self-hosting-program-draft.md`, PO↔Architect 2026-07-02, planner advisory POV recorded).
+First gate under the **2026-07-08 governance model**: reviewer split into three seats, role-only docs with
+the single bindings table (`AGENT.md → 📌 DEFAULT ROLE ASSIGNMENTS`), role tags `[PO]`/`[SM]`, SM handed
+Codex → Claude (commit `789850d`). SP-WAKE layer (a) **PASS** (600 s idle `await_turn` wake in 3 ms) fixes
+M16's shape: **blocking `await_turn`**; pull-on-poke demoted to declared fallback.
+
+| Item | Disposition for this gate |
+|---|---|
+| **BL-005 / BL-007 / BL-010** | Unchanged — deferred; none touched by M16's fence. Re-examine when the flywheel starts filing friction items (M18's true DoD). |
+| **Todo queue** | Empty at gate open — nothing else to disposition. |
+| **BL-013** (new) | **NEW `doing`** — M16 itself (the single doing item). |
+| **BL-014** (new) | **NEW `todo`** — role-skill injection, ruled **M19 candidate** at this gate (options per the draft: M18 rider / M19 candidate / parked). Not an M18 rider — it structurally rides M17's session→identity→role mapping, which doesn't exist yet; not parked — the PO wants it in durable memory. Re-gate after M17 evidence. |
+
+*SP-WAKE layer (a2) (overnight-scale idle probe): **SKIPPED** (SM rec, PO in session) — M16's live proof
+exercises realistic idle against the real orchestrator anyway; a separate probe is ceremony (program risk #3).*
+
 ### Backlog gate — 2026-07-02, second gate (opening M15 · architect: Claude)
 
 Per §3b, dispositioned before opening **M15 — Arbiter Consensus, Direct Path**
@@ -405,7 +424,21 @@ tags: [consensus, arbiter, architecture, heavyweight]
 
 ### Doing (exactly one)
 
-*(empty — M15/BL-012 closed 2026-07-02; next item is a PO/SM backlog-gate call)*
+<!-- @item
+id: BL-013
+status: doing
+date: 2026-07-08
+epic: M16
+tags: [self-hosting, attach-mode, baton]
+-->
+- [doing · opened at the 2026-07-08 backlog gate (SM: Claude, PO go in session)] — **M16 — One real baton
+  (self-hosting program, epic 1 of M16→M18)** — two live agent sessions attach (planner-seat and
+  reviewer-seat); **one origin-tagged, role→role baton** travels through the brain, is recorded (NDJSON,
+  tag visible), and the PO watches it land in the UI instead of pasting it. Shape fixed by SP-WAKE layer (a)
+  PASS: **blocking `await_turn`** (pull-on-poke = declared fallback). Fence: no new consensus logic, zero
+  `team-coordinator.ts` diff (freeze bar = full suite + M14 identity harness), no new UI. Inception:
+  `design/self-hosting-program-draft.md`. Plan: to be authored by the Planner next (gate 1 — plan review —
+  follows).
 
 <!-- @item
 id: BL-011
@@ -521,5 +554,22 @@ tags: [recovery, awaiting-operator]
     grounded in actual partial-effect cases, not guessed). **Source:** Fausto ↔ Claude T3 decisions, 2026-06-23.
 
 ### Todo (next first)
+
+<!-- @item
+id: BL-014
+status: todo
+date: 2026-07-08
+epic: null
+tags: [self-hosting, role-skill, governance]
+-->
+- [todo · M19 candidate — ruled at the 2026-07-08 gate (options were M18 rider / M19 candidate / parked);
+  re-gate after M17 delivers the session→identity→role mapping] — **Role-skill injection — brain-served
+  role briefs at attach** — condense the scrum workflow (roles, gates, batons, origin tags, Rules of
+  Engagement, primer handshake) into a brief the substrate serves at attach time: "you are `<role>`; here
+  is your law" — versioned from the repo, identical for every provider, recorded like any message. Rides
+  M17's session→identity→role mapping; would collapse primer-handshake drift (the brain knows what's fresh)
+  and administer the 2026-07-08 role-only governance model (`AGENT.md → 📌 DEFAULT ROLE ASSIGNMENTS`) over
+  the channel instead of per-CLI context files. Source: PO idea 2026-07-02 + architect read,
+  `design/self-hosting-program-draft.md` §Candidate.
 
 *(add new items above this line)*

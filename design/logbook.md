@@ -1487,3 +1487,21 @@ no scope change to the probe plan otherwise. The plan stays DRAFT-for-review aft
   M15 again awaits the PO closure/merge decision; merge remains human-gated.
 - **Resource read at call:** Codex weekly 84%, 5h 61%; Claude weekly 29%, session 0%; antigravity 49%
   (best-effort `node scripts/usage.mjs`, 2026-07-02 22:09 Europe/Rome).
+
+### LB-61 · 2026-07-08 — [process] Governance reset (three-seat reviewer, role-only docs, [PO]/[SM] tags) + M16 opened
+- **Governance (PO acts, in session):** the single Reviewer split into **three seats** — plan / implementation /
+  task-end (independence: no self-review + fresh-eyes-at-close, from the M15-T3 catch); **all role→provider
+  bindings centralized** in `AGENT.md → 📌 DEFAULT ROLE ASSIGNMENTS` (both governance docs role-only elsewhere;
+  `collaboration-workflow.md` now provider-free/portable); **origin tags are role tags `[PO]`/`[SM]`** (legacy
+  `[Human]`/`[Codex]` mapped; `[Hermes]` void). Seats assigned: Codex = planner + implementation reviewer;
+  Claude = plan reviewer + task-end reviewer + architect + **SM (handed Codex → Claude)**; agy = implementer.
+  Authority-concentration tripwire recorded next to the table. Commit `789850d`.
+- **Operational decision (Claude as SM, PO go in session):** **M16 — One real baton OPENED** (BL-013 `doing`);
+  role-skill injection ruled **M19 candidate** (BL-014 `todo`); SP-WAKE layer (a2) skipped; deferred items
+  unchanged. Reason: todo queue empty, self-hosting inception + planner POV + SP-WAKE(a) PASS all in place,
+  all providers at fresh weekly windows — the draft's own start condition (post-Jul-7 Codex reset) is met.
+  Gate record: `backlog.md` § Backlog gate 2026-07-08.
+- **Baton:** fresh keyed planner primer written (M16 plan authoring; carries the SM-handover notice). Gate 1
+  (plan review, Claude) follows the plan.
+- **Resource read at call:** codex weekly 0% (resets 15 Jul), 5h 1%; antigravity 0%; claude meter `ok:false`
+  (LB-11) — fresh weekly window by reset schedule (best-effort, 2026-07-08 ~11:25 Europe/Rome).
