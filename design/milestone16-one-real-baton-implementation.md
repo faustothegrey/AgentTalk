@@ -35,9 +35,10 @@ telemetry for M16. The plan owns the epic goal and scope fence.
 
 - **M16-T1 (Baton metadata and deterministic recording proof):** **MERGED ✅** — `c5b7212` on master
   ([PO] go 2026-07-08; gates 2+3 green; task branch deleted after merge).
-- **M16-T2a (Healthcheck ACK runtime unblocker):** **Gate 1 APPROVED** (binding addition: client wire-contract
-  sync rides T2a — Gate-1 cross-repo grant). Ready for implementer.
-- **M16-T2 (Live orchestrator attach proof + closure):** Paused until T2a is verified.
+- **M16-T2a (Healthcheck ACK runtime unblocker):** **MERGED ✅** — `624110d` on master ([PO] go 2026-07-08;
+  gates 2+3 green; client contract synced v7, committed cross-repo `2d908b3`; task branch deleted).
+- **M16-T2 (Live orchestrator attach proof + closure):** **RESUMED** — ready for implementer on
+  `m16-t2-live-baton-proof` (WIP proof script already pinned there); rebase/re-anchor on master `624110d`.
 
 ## Sequencing
 
