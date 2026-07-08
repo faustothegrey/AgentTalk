@@ -1,43 +1,40 @@
 ---
 role: planner
-key: 20260708-1422-c13b1b
-written: 2026-07-08 by Claude (SM — M16 gate hand-off)
+key: 20260708-2051-acc419
+written: 2026-07-08 by Claude (SM, session close — M16 closed same-day)
 ---
 
 This is your session primer.
 
 AgentTalk is a multi-agent orchestration/control plane: provider-backed agents attach over MCP/API, the
 runtime routes planning/work messages through a central registry, and consensus/team execution is recorded
-for review. The active program: AgentTalk **incrementally improves itself** (self-hosting, M16→M18).
+for review. Active program: AgentTalk **incrementally improves itself** (self-hosting, M16→M18).
 
-**Roles — READ THE TABLE FIRST: `AGENT.md → 📌 DEFAULT ROLE ASSIGNMENTS` (new, 2026-07-08).** Governance
-changed today (PO acts, commit `789850d`): the single Reviewer is now **three seats** (plan / implementation
-/ task-end); all role→agent bindings live **only** in that table; origin tags are now **role tags
-`[PO]`/`[SM]`** (legacy `[Human]`/`[Codex]` mapped; details in the Origin Tag Protocol). Your seats:
-**planner + implementation reviewer**. **You no longer hold the Scrum Master function** — the PO handed SM
-to Claude on 2026-07-08 (see the table's history); `[SM]` messages now originate from Claude via PO relay.
-This primer is for your **planner** seat.
+**Roles:** current bindings live ONLY in `AGENT.md → 📌 DEFAULT ROLE ASSIGNMENTS` (2026-07-08 model: three
+reviewer seats; role tags `[PO]`/`[SM]`; SM = Claude). This primer is for the **planner** seat (you likely
+also hold implementation reviewer — check the table and declare all your hats).
 
-**Workflow / source of truth:** `design/collaboration-workflow.md` (now a 3-gate sequence) + the ⛔ Rules of
-Engagement in `AGENT.md`. Backlog: `design/backlog.md` (`npm run backlog:check`); this gate's record is the
-2026-07-08 entry there, and logbook **LB-61** is the durable decision record.
+**Workflow / source of truth:** `design/collaboration-workflow.md` (3-gate sequence) + `AGENT.md` RoE.
+Backlog `design/backlog.md` + `npm run backlog:check`; logbook `design/logbook.md` (read LB-61/LB-62).
 
-**Active epic: M16 — One real baton (BL-013 `doing`), opened at the 2026-07-08 backlog gate.** Your
-assignment: **author the M16 plan** (`design/milestone16-one-real-baton-plan.md`: spec, DoD claim table,
-per-check budgets, fences) from the inception artifact `design/self-hosting-program-draft.md` (§M16 +
-§SP-WAKE result). Fixed by evidence and by the gate, not yours to re-litigate:
-- Shape: **blocking `await_turn`** (SP-WAKE layer (a) PASS — 600 s idle wake in 3 ms); pull-on-poke is the
-  declared fallback, not the design.
-- Fence: no new consensus logic, **zero `team-coordinator.ts` diff** (freeze bar = full suite + M14 identity
-  harness), no new UI. "Embarrassingly small" is a Gate-1 hand-back criterion — your own advisory caution 2.
-- Gate 1 (plan review): Claude, per the assignments table.
+**Where we are (verify against the repo — don't trust me):** **M16 — One real baton is CLOSED** (2026-07-08,
+same-day epic; BL-013 done; merges `c5b7212`/`624110d`/`1604b5c`; ledger
+`design/milestone16-one-real-baton-implementation.md` is frozen). Suite 281/281 at close. **No item is
+`doing`** — the next epic is a PO call. Expected next: **M17 inception** (PO+Architect first, per
+`design/self-hosting-program-draft.md` §M17); your planner act there is the **advisory POV**, then plan
+authoring after the gate opens it.
 
-**Where state lives:** the backlog gate record + the program draft; the epic ledger
-(`design/milestone16-*-implementation.md`) gets created alongside your plan. Not chat.
+**Two owed inputs already named for M17 (carry them into your POV/plan):**
+1. **The exec-bridge translation layer cannot carry `baton` args** (M16 gate-3 deviation D1, LB-62) — real
+   CLI sessions via `agentalk-mcp-client` cannot send workflow batons yet; M16's proof used direct SDK MCP
+   clients. M17's session→identity→role mapping touches the same surface.
+2. **Contract-hash coupling:** the orchestrator hard-rejects mismatched client contract hashes at attach;
+   M16-T2a's v7 bump needed a manual Gate-1 cross-repo sync grant. M17 should decide: manual PO act vs
+   versioned negotiation.
 
-**Op notes (honor these in the plan):** SP-WAKE caveats — the spike ran against `McpExecServer` in-process,
-so M16's live proof must run against the **real orchestrator attach server**; layer (b) (a native CLI
-session attaching without the client shim) is M16's **stretch question, not its foundation**. The
-relay-count metric is live (counting rule in the draft; M15 baseline ~20–30/day). Serial-actors rule
-stands. Resources at hand-off: codex weekly 0% (resets 15 Jul), antigravity 0%, claude fresh (meter
-`ok:false` — LB-11).
+**Op notes:** freeze bar unchanged (full suite + M14 identity harness + zero `team-coordinator.ts` diff; the
+harness leaks one worktree + `task-task-*` branch per run — sweep after). Fresh case law: IP-12 (work loose
+on master — always task-branch first), IP-13 (a mock you need in a test is a product finding). Deviations get
+§3c rows — two were glossed at M16 gate 2 and only caught at gate 3. Relay-count metric live (M16: ~15 vs M15
+~20–30/day). BL-014 (role-skill injection) and BL-015 (scope fences + design note) sit in todo for M19-era
+gates; BL-015 L0 is an M18-rider candidate.

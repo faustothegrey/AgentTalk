@@ -135,3 +135,23 @@ here.**
   budget" was session-window pressure, not weekly; I said so once with fresh numbers, he clarified his real
   reason (preserving my runway for architect calls), the decision stood, and I recorded it in the ledger with
   the mitigation. Flag-once-then-comply kept the gate moving without burying the governance note.
+
+### 2026-07-08 — governance reset + M16 same-day epic; four hats, three merges, two IP cases
+- **As SM/architect: centralize the binding, then everything else is a one-line edit.** The reviewer 3-way
+  split + role-only sweep landed in one morning *because* all role→provider bindings moved into one PO-owned
+  table first — the same-day SM handover (Codex→me) and three seat assignments each cost one table row, and
+  the sweep itself exposed three stale "reviewer stays Claude" drift lines the old scattered model had bred.
+  Same move worked twice more within hours: origin tags became role tags, and the PO's scope-fence idea
+  (BL-015) turned out to be the third face of "the substrate administers the law" (with M17 identity and
+  BL-014 role briefs) — naming that convergence is what made the idea land as a program piece, not a gadget.
+- **As task-end reviewer: reproduce the load-bearing bar yourself and verify its *semantics*, not its exit
+  code.** Running the T2 live proof first-hand (not re-reading gate-2's run) is what revealed D2's true
+  nature (the server blocks; the script's poll was stacked-blocking, the 'No turn available' catch dead code)
+  and let me accept it instead of refuting on appearance. Fresh eyes at close caught what gate 2 glossed in
+  BOTH tasks it passed (T1 branch-less delivery → IP-12; T2's undispositioned deviations D1/D2) — the
+  fresh-eyes-at-close independence default earned its cost on its first day of existence.
+- **As plan reviewer: verify the plan's claims against the code BEFORE approving — both catches were
+  pre-implementation.** F1 (batons outside a conversation are delivered but never recorded/shown) would have
+  failed the live proof by design; the T2a publication chain (publish tool → contract hash bump → orchestrator
+  hard-rejects the unmodified client at attach) turned a yes/no gate question into the binding cross-repo
+  addition that kept T2 alive. Minutes of grepping at gate 1 saved whole implementer rounds — again.
