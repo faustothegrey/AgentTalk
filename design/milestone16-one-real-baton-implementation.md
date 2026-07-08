@@ -215,6 +215,48 @@ only that verification artifact. Final pollution check should be clean.
 
 **Disposition:** M16-T2a is verified. M16-T2 may resume after the normal SM/PO baton.
 
+## Task-end Review: M16-T2a (Claude, 2026-07-08) — Gate 3
+
+**Verdict: CLOSED — all bars independently re-run and green; MERGE PENDING the PO go.**
+
+**Process: markedly improved this round.** Dedicated task branch `m16-t2a-healthcheck-ack` off master, clean
+tree, three commits (fix `7d593d8` → claim `c7ada0f` → review `107ead9`) — the IP-12 lesson landed.
+
+**Fresh-eyes code review:** the diff matches the Gate-1-approved amendment exactly — registry
+`healthcheck_ack` case throws on missing/stale token (Q2 ruling honored; token↔agent binding delegated to
+`HealthcheckManager.resolve`); runtime call-name fix is one line; contracts change is additive (old
+`ack_healthcheck` interface + parse case preserved — Q1); tool published with `token` required, `message`
+optional; wire-contract regenerated v6→v7. The test's `(registry as any).healthchecks` accesses construct the
+precondition directly rather than mocking around behavior — legitimate setup, not an IP-13 pattern.
+
+**Binding addition verified (Gate-1 cross-repo grant):** in-repo and client `wire-contract.json` byte-identical
+at v7; **both** verify scripts pass. Found the client-side sync **uncommitted** in the client repo (IP-12's
+pattern crossing repos) — committed it there under the grant (`2d908b3`, artifact-only; note it landed on the
+client repo's current branch `m12-c-pf1-codex-bridge-fix`, no remote configured — branch housekeeping is the
+PO's).
+
+**Independent sweep (pre-registered 1 attempt per bar; all attempt 1):**
+| Bar | Result |
+|---|---|
+| Targeted `healthcheck-ack.test.ts` | 5/5 passed |
+| `npx tsc -b` | exit 0 |
+| Full `npm test` | **49 files / 281 tests passed** (+1 file/+5 tests vs T1 close — consistent) |
+| `node scripts/m14-identity-harness.mjs --check` | `Baselines match. Identity verified.` |
+| `npm run backlog:check` | OK — 15 items, 0 warnings |
+| `git diff --check 05ee686...HEAD` | clean |
+| Freeze fence | zero `team-coordinator.ts` diff; all 5 `as any` hits test-only, dispositioned |
+| Both contract verify scripts | v7 verified, in-repo + client |
+| Pollution | known harness leak (1 worktree + 1 branch) found and cleaned; final state clean |
+
+**Telemetry (task closure):**
+- task:        M16-T2a
+- wall-clock:  2026-07-08 ~17:30 → ~18:15 (bug report → gate-3 close; amendment round included)
+- budget:      claude meter `ok:false` (LB-11) — unavailable
+- gate:        tsc 0, suite 281/281, identity green, backlog OK, pollution clean (after known-leak sweep)
+- diff:        6 code files, +180/−5 (excl. ledger), commits `7d593d8`/`c7ada0f`/`107ead9` + client `2d908b3`
+- relay-count: ~3 relays this round (bug-report baton, gate-1 baton, verified baton)
+- outcome:     CLOSED ✅ — merge to master awaits `[PO]` go; T2 resumes after merge
+
 ## Task-end Review: M16-T1 (Claude, 2026-07-08) — Gate 3
 
 **Verdict: CLOSED — all bars independently re-run and green; MERGE PENDING the PO go.**
