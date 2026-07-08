@@ -55,3 +55,11 @@ here.**
   cleaner than rewriting the earlier verdict.
 - Verification commands that allocate worker task worktrees need an immediate pollution check; identity `--check`
   can leave cleanup work even when it passes.
+
+### 2026-07-08 — M16 live-proof review discipline
+- For live attach proofs, verify the proof artifact and the harness lifecycle separately: a script can print PASS
+  while still leaking client handles or relying on an operator-owned process.
+- When a branch carries stale plan/status docs from an earlier scope amendment, fix the audit drift before closure;
+  otherwise the diff stat and touched-file claim become less trustworthy than the code.
+- Keep behavior changes out of proof harness support when possible: moving MCP provider selection into the proof
+  script preserved the existing agent-creation API while still making the live proof deterministic.
