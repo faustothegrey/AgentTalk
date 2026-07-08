@@ -37,6 +37,15 @@ export interface AckHealthcheckRequestPayload {
   };
 }
 
+export interface HealthcheckAckRequestPayload {
+  id: string;
+  call: 'healthcheck_ack';
+  args: {
+    token: string;
+    message: unknown;
+  };
+}
+
 export interface ConsensusRespondRequestPayload {
   id: string;
   call: 'consensus_respond';
@@ -76,6 +85,7 @@ export type RequestPayload =
   | ListAgentsRequestPayload
   | SendToAgentRequestPayload
   | AckHealthcheckRequestPayload
+  | HealthcheckAckRequestPayload
   | ConsensusRespondRequestPayload
   | SubmitWorkResponseRequestPayload
   | SubmitWorkResultRequestPayload
@@ -255,6 +265,20 @@ export function parseRequestPayload(value: unknown): RequestPayload | null {
       return {
         id: value.id,
         call: 'ack_healthcheck',
+        args: {
+          token: value.args.token,
+          message: value.args.message,
+        },
+      };
+
+    case 'healthcheck_ack':
+      if (!isRecord(value.args) || typeof value.args.token !== 'string' || !('message' in value.args)) {
+        return null;
+      }
+
+      return {
+        id: value.id,
+        call: 'healthcheck_ack',
         args: {
           token: value.args.token,
           message: value.args.message,

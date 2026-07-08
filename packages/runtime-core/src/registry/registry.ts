@@ -358,6 +358,18 @@ export class Registry extends EventEmitter {
         return { content: [{ type: 'text', text: JSON.stringify(turn) }] };
       }
 
+      case 'healthcheck_ack': {
+        const { token, message } = args;
+        if (typeof token !== 'string') {
+          throw new Error('Missing or invalid token in healthcheck_ack');
+        }
+        const resolved = this.healthchecks.resolve(token, agent.id, message);
+        if (!resolved) {
+          throw new Error(`Invalid or stale healthcheck token for agent ${agent.id}`);
+        }
+        return { content: [{ type: 'text', text: 'Healthcheck acknowledged successfully' }] };
+      }
+
       case 'send_to_agent': {
         if (this.isDuplicateTerminalAction(agent)) return { content: [{ type: 'text', text: 'Action accepted (deduplicated)' }] };
         const { to, payload, replyToMessageId, baton } = args;

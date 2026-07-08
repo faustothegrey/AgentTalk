@@ -556,6 +556,34 @@ tags: [recovery, awaiting-operator]
 ### Todo (next first)
 
 <!-- @item
+id: BL-015
+status: todo
+date: 2026-07-08
+epic: null
+tags: [self-hosting, scope-fence, governance, harness]
+-->
+- [todo · PO+Architect, 2026-07-08 (mid-M16) — evidence-driven from a live violation; slot deliberately at a
+  future gate; L2 shares the M19 gate with BL-014] — **Deterministic scope fences — machine-readable per-task
+  scope manifest + layered enforcement** — move the implementer scope fence from *policy* (prose RoE +
+  self-discipline) to *mechanism* (the environment refuses or loudly flags out-of-scope acts). Design note:
+  `design/scope-fences-design-note.md`. **Evidence:**
+  during M16-T2a an implementer found a real bug, spec'd the fix, then made changes beyond task scope
+  (acknowledged after); same failure class as IP-2 / IP-9 / IP-12 / IP-13 — different agents, same broken
+  behavioral rule. **Policy source already exists:** each ledger task's "Allowed/Forbidden surfaces" prose —
+  formalize it as a per-task scope manifest (allowed/forbidden globs). **Layered shape (build in order):**
+  **L0** manifest + `scope-check` script diffing the tree against it (detective; run at implementer Rule-5
+  self-check, gates, CI — ≈a day, candidate M18 rider); **L1** provider-level preventive guards (e.g. Claude
+  Code PreToolUse hook blocking out-of-manifest writes; per-provider, weakest portability); **L2**
+  substrate-administered: the baton carries the manifest, the launch machinery provisions a fenced worktree
+  (kills IP-12 as a side effect), violations become recorded runtime events the flywheel counts —
+  **two halves of one thing with BL-014 role-skill injection: the seat's law, served AND enforced at attach —
+  gate them together (M19).** **Design principles (binding):** stopping must be cheaper than proceeding (the
+  fence message IS the deviation-report template); fences amended only at gates (the T2a flow, made physical);
+  fence product code, keep tests/scratch free; file fences are necessary-not-sufficient (semantic pokes like
+  the M15 `as any` and IP-13 mock-arounds remain reviewer work). Also consider a time/tool-call circuit
+  breaker as backstop (proxy signal — rank below file fences).
+
+<!-- @item
 id: BL-014
 status: todo
 date: 2026-07-08

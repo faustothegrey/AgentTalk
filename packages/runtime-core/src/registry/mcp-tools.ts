@@ -159,4 +159,22 @@ export const AGENTTALK_MCP_TOOLS: McpToolDefinition[] = [
       properties: {},
     },
   },
+  {
+    name: 'healthcheck_ack',
+    description: 'Acknowledge a healthcheck event to confirm the agent is responsive.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        token: {
+          type: 'string',
+          description: 'The healthcheck token received in the healthcheck event.',
+        },
+        message: {
+          type: 'string',
+          description: 'Optional arbitrary message payload.',
+        },
+      },
+      required: ['token'],
+    },
+  },
 ];
