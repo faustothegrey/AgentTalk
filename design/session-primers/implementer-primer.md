@@ -1,56 +1,66 @@
 ---
 role: implementer
-key: 20260702-1731-m15-t1
-written: 2026-07-02 by Codex (planner + scrum master)
+key: 20260708-1437-m16-t1
+written: 2026-07-08 by Codex (planner - M16-T1 implementer handoff after Gate 1)
 ---
 
 This is your fresh implementer assignment.
 
-**Role / authority.** You are the **Implementer** (Gemini/agy). Codex holds Planner + Scrum Master, and is also
-the implementation reviewer for this session per PO appointment recorded in the M15 ledger. Claude independently
-approved the M15 breakdown at Gate 1 before that reviewer switch. Merge remains human-gated.
+**Role / authority.** You are the **Implementer** (Gemini/agy). Codex is Planner and Implementation Reviewer;
+Claude is Scrum Master, Plan Reviewer, Task-end Reviewer, and Architect. Merge remains PO-gated. Follow
+`AGENT.md`, `design/collaboration-workflow.md`, and the Implementer Rules of Engagement before touching files.
 
-**Active epic.** **M15 — Arbiter Consensus, Direct Path** (BL-012 `doing`).
-- Plan: `design/milestone15-arbiter-consensus-plan.md`
-- Ledger / task contract: `design/milestone15-arbiter-consensus-implementation.md`
-- Gate 1: APPROVED by Claude, with notes dispositioned by Codex in the ledger.
+**Active epic.** **M16 - One real baton** (BL-013 `doing`).
+- Plan: `design/milestone16-one-real-baton-plan.md`
+- Ledger / task contract: `design/milestone16-one-real-baton-implementation.md`
+- Gate 1: APPROVED WITH REQUIRED AMENDMENT FOLDED. The amendment is the active pair-conversation dependency:
+  baton metadata must persist on the conversation transcript entry, and the live proof must start a pair
+  conversation before sending the baton.
 
-**Your task: M15-T1 only — ArbiterCoordinator skeleton + routing.**
+**Your task: M16-T1 only - Baton metadata and deterministic recording proof.**
 
 Implement only the T1 scope from the ledger:
-- Add `consensusMode: 'protocol' | 'arbiter'` as an opt-in/defaulted surface.
-- Keep existing/default calls on the protocol path.
-- Route arbiter opt-in multi-planner planning to a new `ArbiterCoordinator`.
-- Build the free-form arbiter debate skeleton, transcript recording, and hard turn-budget fail-soft path.
-- Use only injected deterministic mock judge behavior in tests. No real LLM calls in T1.
+- Add the smallest durable optional baton metadata path.
+- Preferred shape: optional `baton` envelope on ordinary `send_to_agent`:
+  `{ kind: 'workflow_baton', originTag: '[PO]' | '[SM]', fromRole, toRole, batonId }`.
+- Persist the baton envelope on the active conversation transcript entry.
+- Add targeted deterministic coverage that drives the real registry/MCP handler path:
+  `handleMcpToolCall(sender, 'send_to_agent', { ..., baton })`.
+- In the test, start an active pair conversation first and set `maxRepliesPerAgent` comfortably above the proof
+  need, so the baton cannot hit the reply cap.
+- Prove ordinary non-baton `send_to_agent` behavior is unchanged.
 
 **Hard fences.**
 - Do **not** edit `packages/runtime-core/src/registry/team-coordinator.ts`.
-- Do **not** edit protocol payload/tool definitions, `mcp-tools.ts`,
-  `packages/runtime-core/src/agents/in-process-driver.ts`, `@agenttalk/llm-client`, client repos, or
-  recording/playback infrastructure.
-- Do **not** implement T2 judge/synthesis wiring or T3 live proof.
-- Do **not** broaden scope if a default-protocol regression appears. Stop and report.
+- Do **not** change consensus, arbiter, planning-protocol behavior, `consensus_respond`, or workflow enforcement.
+- Do **not** add UI.
+- Do **not** edit the external `agentalk-mcp-client` repo.
+- Do **not** implement M16-T2 live proof or closure.
+- Do **not** broaden scope if the metadata path exposes a larger recording or identity problem. Stop and report.
 
-**Gate 1 note dispositions you must honor.**
-- The forbidden `in-process-driver` path is `packages/runtime-core/src/agents/in-process-driver.ts`.
-- In arbiter mode, `advance-to:*` verdicts are progress hints only: treat as `hold`/continue, record the verdict,
-  and do not map them onto protocol phases.
-- T1-C4 visibility means a task update plus emitted runtime event; a log line alone does not satisfy it.
+**Allowed surfaces for T1.**
+- `packages/contracts/src/types.ts` for optional baton metadata types on transcript/message records.
+- `packages/runtime-core/src/registry/mcp-tools.ts` if `send_to_agent` schema needs optional baton metadata.
+- `packages/runtime-core/src/registry/registry.ts` and `conversation-coordinator.ts` only for preserving and
+  emitting metadata through existing message/conversation flow.
+- Focused tests under `packages/runtime-core/src/registry/__tests__/`.
+- Orchestrator server recording glue only if the existing `conversation` event cannot prove metadata in NDJSON;
+  report before widening if that becomes more than minimal.
+- The M16 plan and ledger for claims.
 
 **Required verification budgets (pre-registered in the ledger).**
-- New targeted arbiter routing/skeleton vitest: max 3 attempts.
-- Default-protocol regression vitest/assertion: max 2 attempts.
-- `node scripts/m14-identity-harness.mjs --check`: max 2 attempts.
+- Targeted baton metadata test: max 3 attempts.
+- Existing direct-message/conversation regression test: max 2 attempts.
 - `npx tsc -b`: max 2 attempts.
 - Full `npm test`: max 1 attempt.
+- `node scripts/m14-identity-harness.mjs --check`: max 2 attempts.
 - `git diff --check`: max 2 attempts.
-- `git worktree list` pollution check: max 1 attempt.
+- Pollution check (`git worktree list` + `git branch --list 'task-*'`): max 1 attempt.
 
-**Before coding.** Follow the Implementer Rules of Engagement: declare scope, done, first approach, and per-check
-retry budgets in your own words before touching files. Skim `design/implementer-pitfalls.md` and
-`design/lessons/gemini-lessons.md`. Poll `node scripts/usage.mjs` best-effort.
+**Before coding.** Declare in your own words: scope, done, first approach, and the per-check retry budgets. Skim
+`design/implementer-pitfalls.md` and `design/lessons/gemini-lessons.md`. Poll `node scripts/usage.mjs`
+best-effort.
 
-**When done or blocked.** File implementer claims in the M15 ledger with exact command output, `git diff --stat`,
-touched-file scope disposition, and any blocker. If a check hits its budget or exposes an out-of-scope behavior
-change, STOP and report.
+**When done or blocked.** File the implementer claim in the M16 ledger with exact command output, `git diff
+--stat`, touched-file scope disposition, zero `team-coordinator.ts` diff confirmation, pollution check, and any
+blocker. If a check hits its budget or exposes an out-of-scope behavior change, STOP and report.
