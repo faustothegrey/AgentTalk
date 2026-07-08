@@ -171,6 +171,23 @@ fault tolerance, plan at `design/milestone08-transport-fault-tolerance-plan.md`.
 ### Done
 
 <!-- @item
+id: BL-013
+status: done
+date: 2026-07-08
+epic: M16
+tags: [self-hosting, attach-mode, baton]
+-->
+- [done · was: doing · opened AND closed 2026-07-08 (one day, three tasks); merges `c5b7212` (T1) + `624110d`
+  (T2a) + `1604b5c` (T2/epic), each PO-gated] — **M16 — One real baton (self-hosting program, epic 1 of
+  M16→M18)** — DELIVERED: one `[SM]`-tagged role→role baton through the real orchestrator attach server,
+  recorded (`design/m16-one-real-baton.ndjson`, full `workflow_baton` envelope in the conversation transcript).
+  Rider finding: the mandatory healthcheck path was dead in every mode (zero production resolvers) — fixed as
+  scope amendment M16-T2a (first working resolver + wire-contract v7, synced cross-repo). Deviations D1/D2
+  recorded+accepted at gate 3; **owed piece for M17: the exec-bridge translation layer cannot carry `baton`
+  args** (real CLI sessions can't send envelopes yet). Epic relay count ~15 vs M15 baseline ~20–30/day.
+  Ledger: `design/milestone16-one-real-baton-implementation.md`.
+
+<!-- @item
 id: BL-012
 status: done
 date: 2026-07-02
@@ -424,21 +441,7 @@ tags: [consensus, arbiter, architecture, heavyweight]
 
 ### Doing (exactly one)
 
-<!-- @item
-id: BL-013
-status: doing
-date: 2026-07-08
-epic: M16
-tags: [self-hosting, attach-mode, baton]
--->
-- [doing · opened at the 2026-07-08 backlog gate (SM: Claude, PO go in session)] — **M16 — One real baton
-  (self-hosting program, epic 1 of M16→M18)** — two live agent sessions attach (planner-seat and
-  reviewer-seat); **one origin-tagged, role→role baton** travels through the brain, is recorded (NDJSON,
-  tag visible), and the PO watches it land in the UI instead of pasting it. Shape fixed by SP-WAKE layer (a)
-  PASS: **blocking `await_turn`** (pull-on-poke = declared fallback). Fence: no new consensus logic, zero
-  `team-coordinator.ts` diff (freeze bar = full suite + M14 identity harness), no new UI. Inception:
-  `design/self-hosting-program-draft.md`. Plan: to be authored by the Planner next (gate 1 — plan review —
-  follows).
+*(empty — M16/BL-013 closed 2026-07-08; next item is a PO/SM backlog-gate call)*
 
 <!-- @item
 id: BL-011

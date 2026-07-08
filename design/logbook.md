@@ -1505,3 +1505,21 @@ no scope change to the probe plan otherwise. The plan stays DRAFT-for-review aft
   (plan review, Claude) follows the plan.
 - **Resource read at call:** codex weekly 0% (resets 15 Jul), 5h 1%; antigravity 0%; claude meter `ok:false`
   (LB-11) — fresh weekly window by reset schedule (best-effort, 2026-07-08 ~11:25 Europe/Rome).
+
+### LB-62 · 2026-07-08 — [process+product] M16 CLOSED — the flywheel's first live catch; healthcheck path was dead
+- **Epic closed same-day it opened** (three tasks, three PO-gated merges: T1 `c5b7212`, T2a `624110d`, T2+epic
+  `1604b5c`). Deliverable: one `[SM]`-tagged role→role baton through the real orchestrator attach server,
+  recorded with the full `workflow_baton` envelope (`design/m16-one-real-baton.ndjson`).
+- **Product finding (the epic's biggest side-catch):** the mandatory conversation healthcheck path was
+  **dead-on-arrival in every mode** — `healthchecks.resolve` had zero production callers; no `healthcheck_ack`
+  MCP handler; the in-process runtime emitted the wrong call name. Survived multiple epics because tests mock
+  around it (IP-13 minted). Fixed as scope amendment M16-T2a: first working resolver, tool published,
+  wire-contract v6→v7 synced cross-repo to `agentalk-mcp-client` (`2d908b3` there — Gate-1 cross-repo grant).
+- **Owed piece named for M17 inception:** the exec-bridge translation layer cannot carry `baton` args — real
+  CLI sessions (via `agentalk-mcp-client`) cannot send workflow batons yet; T2's proof used direct SDK MCP
+  clients (deviation D1, accepted+recorded at gate 3).
+- **Program metric:** epic relay count ~15 (vs M15 baseline ~20–30/day). First epic run fully under the
+  2026-07-08 governance model (three reviewer seats, [PO]/[SM] role tags, assignments table): 2 REFUTE/amend
+  rounds caught real defects pre-merge; case law grew IP-12/IP-13.
+- **Resource read at close:** claude meter `ok:false` (LB-11); codex/antigravity on fresh weekly windows
+  (best-effort, 2026-07-08 ~19:00 Europe/Rome).

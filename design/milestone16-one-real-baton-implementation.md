@@ -1,8 +1,8 @@
 # M16 - One real baton - Implementation Ledger
 
-> **Status:** T2a **APPROVED at Gate 1** (2026-07-08, with one binding addition: the cross-repo wire-contract
-> sync — see § Gate 1 Review: M16-T2a). Implementer may start T2a on its own task branch. M16-T1 is merged;
-> M16-T2 live proof resumes only after T2a is implemented and verified.
+> **Status:** **M16 CLOSED ✅ (2026-07-08)** — all three tasks merged, PO-gated: T1 `c5b7212`, T2a `624110d`,
+> T2 + epic `1604b5c`. BL-013 done. This ledger is now the frozen historical record (§3b). Owed piece for M17
+> inception: the exec-bridge translation layer cannot carry `baton` args (gate-3 D1).
 > **Plan:** `design/milestone16-one-real-baton-plan.md`
 > **Backlog:** BL-013 (`doing`)
 > **Base:** `master` at `838367a` (2026-07-08)

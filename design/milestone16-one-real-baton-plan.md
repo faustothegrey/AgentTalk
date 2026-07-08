@@ -1,8 +1,8 @@
 # Milestone 16 - One real baton
 
-**Status:** M16-T2 live proof VERIFIED at Gate 2 by the Implementation Reviewer (2026-07-08). M16-T1 and
-M16-T2a are merged; M16 awaits task-end review / closure.
-**Backlog:** BL-013 (`doing`) - opened at the 2026-07-08 backlog gate.
+**Status:** **M16 CLOSED ✅ (2026-07-08)** — all tasks merged (T1 `c5b7212`, T2a `624110d`, T2+epic `1604b5c`);
+this plan is now the design record (§3b). Owed piece for M17: exec-bridge translation can't carry `baton` args.
+**Backlog:** BL-013 (`done` — closed 2026-07-08).
 **Program:** `design/self-hosting-program-draft.md` (self-hosting M16 -> M18).
 **Ledger:** `design/milestone16-one-real-baton-implementation.md`.
 **PO:** Fausto. **SM:** Claude. **Architect:** Claude. **Planner:** Codex.
