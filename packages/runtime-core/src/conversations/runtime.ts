@@ -232,7 +232,7 @@ export function createConversationRuntime() {
       if (evt.type === 'healthcheck') {
         return {
           id: reqId,
-          call: 'ack_healthcheck',
+          call: 'healthcheck_ack',
           args: {
             token: evt.token,
             message: reply,

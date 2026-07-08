@@ -59,7 +59,7 @@ The implementer records **Claim** entries with exact command output. The Impleme
 | Task | Owner | Implementer claim | Implementation Reviewer verdict | Evidence |
 |---|---|---|---|---|
 | M16-T1 | Gemini/agy | Filed (see below) | **VERIFIED ✅ (Round 2)** | Functional bars passed; reviewer-applied whitespace-only fix cleared the registered hygiene failure. |
-| M16-T2a | Gemini/agy | Not filed. | Not checked. | Runtime unblocker plan awaiting Plan Reviewer approval. |
+| M16-T2a | Gemini/agy | Filed (see below) | **VERIFIED ✅** | Runtime unblocker passed independent review; reviewer-applied whitespace-only fix cleared hygiene. |
 | M16-T2 | Gemini/agy | Not filed. | Not checked. | Paused until M16-T2a is verified. |
 
 ### Implementer Claim: M16-T1 (Gemini/agy)
@@ -139,6 +139,123 @@ test file: `npx tsc -b` exit 0, `npm test` **48 files / 276 tests passed**, M14 
 
 **Disposition:** M16-T1 is verified. M16-T2 remains unstarted and should be batoned through the normal SM/PO
 channel.
+
+### Implementer Claim: M16-T2a (Gemini/agy)
+
+**Touched-file scope disposition:**
+- `packages/contracts/src/protocol-payloads.ts`: Added additive `HealthcheckAckRequestPayload` type and parsing, keeping `ack_healthcheck` fallback.
+- `packages/contracts/wire-contract.json`: Version bumped to 7, hash updated, `healthcheck_ack` added to tools array.
+- `packages/runtime-core/src/conversations/runtime.ts`: Changed emitted call from `ack_healthcheck` to `healthcheck_ack`.
+- `packages/runtime-core/src/registry/mcp-tools.ts`: Published `healthcheck_ack` tool.
+- `packages/runtime-core/src/registry/registry.ts`: Handled `healthcheck_ack` to resolve `this.healthchecks.resolve`.
+- `packages/runtime-core/src/registry/__tests__/healthcheck-ack.test.ts`: Added targeted tests.
+- `/Users/fausto/Software/agentalk-mcp-client/wire-contract.json`: Cross-repo sync applied and verified.
+- Zero `team-coordinator.ts` diff confirmed.
+
+**Diff Stat:**
+```
+ packages/contracts/src/protocol-payloads.ts        |  24 ++++
+ packages/contracts/wire-contract.json              |   7 +-
+ packages/runtime-core/src/conversations/runtime.ts |   2 +-
+ .../src/registry/__tests__/healthcheck-ack.test.ts | 122 +++++++++++++++++++++
+ packages/runtime-core/src/registry/mcp-tools.ts    |  18 +++
+ packages/runtime-core/src/registry/registry.ts     |  12 ++
+ 6 files changed, 181 insertions(+), 4 deletions(-)
+```
+
+**Test Outputs:**
+Targeted test:
+```
+ ✓ packages/runtime-core/src/registry/__tests__/healthcheck-ack.test.ts (5 tests) 32ms
+```
+Full suites & contracts:
+- `npm test`: `Test Files  48 passed (48), Tests  276 passed (276)` (includes contract check `Contract hash verified successfully (v7).`)
+- Client repo contract check: `Contract hash verified successfully (v7).`
+- `npx tsc -b`: Success
+- `git diff --check`: Success
+- `node scripts/m14-identity-harness.mjs --check`: `Baselines match. Identity verified.`
+- `npm run backlog:check`: `✓ backlog structure OK — 15 item(s), 0 warnings.`
+
+**Pollution Check:**
+```
+/Users/fausto/Software/AgentTalk               7d593d8 [m16-t2a-healthcheck-ack]
++ m16-t2a-healthcheck-ack
+```
+(No lingering `task-*` branches or worktrees).
+
+**Fallback moments:** None.
+
+### Implementation Review: M16-T2a (Codex, reviewer-applied minor fix, 2026-07-08)
+
+**Verdict: VERIFIED.** The implementation matches the T2a Gate-1 scope: external MCP clients can discover
+`healthcheck_ack`, the registry resolves pending healthchecks through `HealthcheckManager.resolve`, invalid ACKs
+throw clear handler errors that the MCP transport returns as JSON-RPC errors without closing the socket, the
+in-process runtime emits `healthcheck_ack`, and the wire-contract v7 artifact is synced to the external client
+repo.
+
+**Reviewer-applied minor fix:** removed one trailing-whitespace-only line from
+`packages/runtime-core/src/registry/__tests__/healthcheck-ack.test.ts`. No functional code changed.
+
+**Verified by running:**
+- `npx vitest run packages/runtime-core/src/registry/__tests__/healthcheck-ack.test.ts` -> **5/5 passed**.
+- `npm test --workspace @agenttalk/contracts` -> `Contract hash verified successfully (v7).`
+- `node scripts/verify-contract.js` in `/Users/fausto/Software/agentalk-mcp-client` ->
+  `Contract hash verified successfully (v7).`
+- `npm test` in `/Users/fausto/Software/agentalk-mcp-client` -> **1/1 passed**.
+- `npx tsc -b` -> exit 0.
+- `npm test` -> **49 files / 281 tests passed**.
+- `node scripts/m14-identity-harness.mjs --check` -> `Baselines match. Identity verified.`
+- `npm run backlog:check` -> backlog structure OK, **15 items, 0 warnings**.
+- `git diff --check && git diff --cached --check` -> exit 0 after the whitespace fix.
+- `git diff -- packages/runtime-core/src/registry/team-coordinator.ts` -> no diff.
+
+**Pollution:** the reviewer-run M14 identity harness created its known temporary
+`/private/tmp/agentalk-task-task-1783531729681` worktree and `task-task-1783531729681` branch; reviewer removed
+only that verification artifact. Final pollution check should be clean.
+
+**Disposition:** M16-T2a is verified. M16-T2 may resume after the normal SM/PO baton.
+
+## Task-end Review: M16-T2a (Claude, 2026-07-08) — Gate 3
+
+**Verdict: CLOSED — all bars independently re-run and green; MERGE PENDING the PO go.**
+
+**Process: markedly improved this round.** Dedicated task branch `m16-t2a-healthcheck-ack` off master, clean
+tree, three commits (fix `7d593d8` → claim `c7ada0f` → review `107ead9`) — the IP-12 lesson landed.
+
+**Fresh-eyes code review:** the diff matches the Gate-1-approved amendment exactly — registry
+`healthcheck_ack` case throws on missing/stale token (Q2 ruling honored; token↔agent binding delegated to
+`HealthcheckManager.resolve`); runtime call-name fix is one line; contracts change is additive (old
+`ack_healthcheck` interface + parse case preserved — Q1); tool published with `token` required, `message`
+optional; wire-contract regenerated v6→v7. The test's `(registry as any).healthchecks` accesses construct the
+precondition directly rather than mocking around behavior — legitimate setup, not an IP-13 pattern.
+
+**Binding addition verified (Gate-1 cross-repo grant):** in-repo and client `wire-contract.json` byte-identical
+at v7; **both** verify scripts pass. Found the client-side sync **uncommitted** in the client repo (IP-12's
+pattern crossing repos) — committed it there under the grant (`2d908b3`, artifact-only; note it landed on the
+client repo's current branch `m12-c-pf1-codex-bridge-fix`, no remote configured — branch housekeeping is the
+PO's).
+
+**Independent sweep (pre-registered 1 attempt per bar; all attempt 1):**
+| Bar | Result |
+|---|---|
+| Targeted `healthcheck-ack.test.ts` | 5/5 passed |
+| `npx tsc -b` | exit 0 |
+| Full `npm test` | **49 files / 281 tests passed** (+1 file/+5 tests vs T1 close — consistent) |
+| `node scripts/m14-identity-harness.mjs --check` | `Baselines match. Identity verified.` |
+| `npm run backlog:check` | OK — 15 items, 0 warnings |
+| `git diff --check 05ee686...HEAD` | clean |
+| Freeze fence | zero `team-coordinator.ts` diff; all 5 `as any` hits test-only, dispositioned |
+| Both contract verify scripts | v7 verified, in-repo + client |
+| Pollution | known harness leak (1 worktree + 1 branch) found and cleaned; final state clean |
+
+**Telemetry (task closure):**
+- task:        M16-T2a
+- wall-clock:  2026-07-08 ~17:30 → ~18:15 (bug report → gate-3 close; amendment round included)
+- budget:      claude meter `ok:false` (LB-11) — unavailable
+- gate:        tsc 0, suite 281/281, identity green, backlog OK, pollution clean (after known-leak sweep)
+- diff:        6 code files, +180/−5 (excl. ledger), commits `7d593d8`/`c7ada0f`/`107ead9` + client `2d908b3`
+- relay-count: ~3 relays this round (bug-report baton, gate-1 baton, verified baton)
+- outcome:     CLOSED ✅ — merge to master awaits `[PO]` go; T2 resumes after merge
 
 ## Task-end Review: M16-T1 (Claude, 2026-07-08) — Gate 3
 
