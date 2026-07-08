@@ -1,7 +1,8 @@
 # M16 - One real baton - Implementation Ledger
 
-> **Status:** READY FOR IMPLEMENTATION - Gate 1 **APPROVED WITH REQUIRED AMENDMENT FOLDED** (2026-07-08).
-> Implementer starts with M16-T1 only.
+> **Status:** T2a **APPROVED at Gate 1** (2026-07-08, with one binding addition: the cross-repo wire-contract
+> sync — see § Gate 1 Review: M16-T2a). Implementer may start T2a on its own task branch. M16-T1 is merged;
+> M16-T2 live proof resumes only after T2a is implemented and verified.
 > **Plan:** `design/milestone16-one-real-baton-plan.md`
 > **Backlog:** BL-013 (`doing`)
 > **Base:** `master` at `838367a` (2026-07-08)
@@ -26,21 +27,29 @@ telemetry for M16. The plan owns the epic goal and scope fence.
 - **Terminal fallback remains.** A live failure is a finding; do not remove or weaken manual relay.
 - **Implementation claims must include:** exact command output, `git diff --stat`, touched-file scope disposition,
   zero `team-coordinator.ts` diff confirmation, pollution check, and any fallback moments.
+- **Healthcheck fix is an explicit scope amendment.** T2 uncovered runtime defects in the mandatory conversation
+  healthcheck path. Do not treat the T2 live script as blocked forever, and do not bury runtime fixes inside the
+  script. Fix and verify the runtime unblocker as M16-T2a first.
 
 ## Current Status
 
 - **M16-T1 (Baton metadata and deterministic recording proof):** **MERGED ✅** — `c5b7212` on master
   ([PO] go 2026-07-08; gates 2+3 green; task branch deleted after merge).
-- **M16-T2 (Live orchestrator attach proof + closure):** Ready for implementer — baton pending.
+- **M16-T2a (Healthcheck ACK runtime unblocker):** **Gate 1 APPROVED** (binding addition: client wire-contract
+  sync rides T2a — Gate-1 cross-repo grant). Ready for implementer.
+- **M16-T2 (Live orchestrator attach proof + closure):** Paused until T2a is verified.
 
 ## Sequencing
 
 1. Plan Reviewer approves or refutes `design/milestone16-one-real-baton-plan.md`.
 2. Implementer builds M16-T1 only.
 3. Implementation Reviewer verifies or refutes M16-T1.
-4. Implementer builds M16-T2 only after M16-T1 is VERIFIED.
-5. Implementation Reviewer verifies or refutes M16-T2.
-6. Task-end Reviewer performs fresh-eyes closure, writes telemetry, and handles the PO-gated merge.
+4. Plan Reviewer approves or refutes the M16-T2a scope amendment.
+5. Implementer builds M16-T2a only after Plan Reviewer approval.
+6. Implementation Reviewer verifies or refutes M16-T2a.
+7. Implementer resumes M16-T2 only after M16-T2a is VERIFIED.
+8. Implementation Reviewer verifies or refutes M16-T2.
+9. Task-end Reviewer performs fresh-eyes closure, writes telemetry, and handles the PO-gated merge.
 
 ## Claim / Verdict Ledger
 
@@ -50,7 +59,8 @@ The implementer records **Claim** entries with exact command output. The Impleme
 | Task | Owner | Implementer claim | Implementation Reviewer verdict | Evidence |
 |---|---|---|---|---|
 | M16-T1 | Gemini/agy | Filed (see below) | **VERIFIED ✅ (Round 2)** | Functional bars passed; reviewer-applied whitespace-only fix cleared the registered hygiene failure. |
-| M16-T2 | Gemini/agy | Not filed. | Not checked. | Depends on M16-T1 verification. |
+| M16-T2a | Gemini/agy | Not filed. | Not checked. | Runtime unblocker plan awaiting Plan Reviewer approval. |
+| M16-T2 | Gemini/agy | Not filed. | Not checked. | Paused until M16-T2a is verified. |
 
 ### Implementer Claim: M16-T1 (Gemini/agy)
 
@@ -264,6 +274,151 @@ handler path.
 | T1-C3 | Recorded artifact or test fixture shows baton text plus `originTag`, `fromRole`, `toRole`, and `batonId`. |
 | T1-C4 | No tag/role enforcement was added; M17 remains the enforcement milestone. |
 | T1-C5 | Freeze checks run and scope report confirms zero `team-coordinator.ts` diff. |
+
+## M16-T2a - Healthcheck ACK Runtime Unblocker
+
+**Status.** Planner scope amendment drafted after the M16-T2 live proof hit the blocker documented in
+`design/m16-t2-bug-report.md`. Awaiting Plan Reviewer approval before implementation.
+
+**Goal.** Restore the mandatory conversation healthcheck path so `registry.startConversation` can complete
+against both external MCP clients and in-process drivers before the M16-T2 live baton proof resumes.
+
+**Evidence basis.**
+
+- `packages/runtime-core/src/registry/registry.ts` advertises `healthcheck_ack` in `supportedMcpTools` but
+  `handleMcpToolCall` has no `case 'healthcheck_ack'`, so the call falls to `Unknown MCP tool call`.
+- `HealthcheckManager.resolve(token, agentId, message)` is present but is not reached from the registry handler,
+  so pending healthchecks time out.
+- `packages/runtime-core/src/conversations/runtime.ts` emits `call: 'ack_healthcheck'` for healthcheck protocol
+  requests, while the structured response schema and registry support path use `healthcheck_ack`.
+- `packages/runtime-core/src/registry/mcp-tools.ts` does not currently publish a `healthcheck_ack` MCP tool even
+  though external attached clients need that tool to answer a healthcheck.
+- `packages/contracts/src/protocol-payloads.ts` still parses the old `ack_healthcheck` request name. Treat this as
+  a compatibility edge: additive `healthcheck_ack` support is allowed if required by build/test evidence, but
+  removing old compatibility is not approved in this slice.
+
+**Allowed surfaces.**
+
+- `packages/runtime-core/src/registry/registry.ts` for the `healthcheck_ack` handler only.
+- `packages/runtime-core/src/conversations/runtime.ts` for the healthcheck call-name typo only.
+- `packages/runtime-core/src/registry/mcp-tools.ts` and generated wire-contract artifact(s) only to publish the
+  `healthcheck_ack` MCP tool if tests or live-client behavior require it.
+- `packages/contracts/src/protocol-payloads.ts` only for additive parsing/type support for `healthcheck_ack`, with
+  old `ack_healthcheck` compatibility preserved unless the Plan Reviewer or PO explicitly approves removal.
+- Focused tests under existing runtime-core/contract test locations.
+- This M16 ledger and plan.
+
+**Forbidden surfaces.**
+
+- `packages/runtime-core/src/registry/team-coordinator.ts`.
+- Consensus/arbiter/protocol-coordinator behavior.
+- M17 identity, role, or origin-tag enforcement.
+- UI components or new workflow panels.
+- External `agentalk-mcp-client` repository changes.
+- Broad documentation/vocabulary cleanup unrelated to the T2 healthcheck blocker.
+
+**Required behavior.**
+
+- `handleMcpToolCall(agentId, 'healthcheck_ack', { token, message })` resolves only the pending healthcheck for
+  that same `agentId` and token.
+- Wrong-agent, missing-token, or stale-token ACKs must not complete a healthcheck. Return an MCP error result or
+  throw a clear scoped error according to the registry's existing handler style; do not silently succeed.
+- The successful ACK response should be small and deterministic, e.g. success text/data that does not alter
+  conversation state beyond resolving the pending healthcheck.
+- The in-process runtime emits `call: 'healthcheck_ack'` for `evt.type === 'healthcheck'`.
+- External clients can discover the `healthcheck_ack` tool through the orchestrator MCP tool list if the live path
+  depends on advertised tools.
+- Existing non-healthcheck MCP calls remain unchanged.
+
+**Implementation approach.**
+
+1. Add the `healthcheck_ack` case near the other registry MCP request handlers. Validate `args.token` as a string,
+   pass `args.message` through unchanged, call `this.healthchecks.resolve(token, agent.id, message)`, and surface a
+   clear error for false returns.
+2. Change `buildProtocolRequest` in `runtime.ts` so the healthcheck branch emits `healthcheck_ack`.
+3. Publish `healthcheck_ack` in `AGENTTALK_MCP_TOOLS` with required `token` and optional/freeform `message`, and
+   update any wire-contract drift artifact via the repository's existing contract update path if the drift guard
+   requires it.
+4. Add focused tests before resuming the live proof:
+   - registry/external-MCP path: start a conversation or directly create a pending healthcheck, deliver
+     `healthcheck_ack`, and prove the pending promise resolves for the right agent;
+   - wrong-token or wrong-agent negative path proves no false completion;
+   - runtime/in-process path proves a healthcheck event builds `call: 'healthcheck_ack'`;
+   - MCP tool drift guard proves the published tool list and wire contract agree if the tool list changes.
+
+**Pre-registered verification budgets.**
+
+| Check | Max attempts |
+|---|---:|
+| Targeted registry healthcheck ACK test | 3 |
+| Runtime healthcheck request-name test | 2 |
+| MCP tool/wire-contract drift test, if tool list changes | 2 |
+| `npx tsc -b` | 2 |
+| Full `npm test` | 1 |
+| `node scripts/m14-identity-harness.mjs --check` | 1 |
+| `npm run backlog:check` | 1 |
+| `git diff --check` | 2 |
+| Pollution check: `git worktree list` + `git branch --list 'task-*'` | 1 |
+
+**DoD rows.**
+
+| Claim | Required evidence |
+|---|---|
+| T2a-C1 | External MCP handler path accepts `healthcheck_ack` and resolves a pending healthcheck for the correct agent/token. |
+| T2a-C2 | Wrong-agent/wrong-token ACKs do not resolve the pending healthcheck and report an error clearly. |
+| T2a-C3 | In-process runtime emits `healthcheck_ack`, not `ack_healthcheck`, for healthcheck events. |
+| T2a-C4 | Published MCP tool list and wire contract are consistent if the tool list is touched. |
+| T2a-C5 | Freeze checks run and scope report confirms zero `team-coordinator.ts` diff and no consensus/protocol behavior changes. |
+
+**Plan Reviewer questions.**
+
+1. Is additive `healthcheck_ack` support in `packages/contracts/src/protocol-payloads.ts` approved if the drift
+   guard or live client path proves it is needed, while preserving old `ack_healthcheck` compatibility?
+2. Should a stale/wrong-agent `healthcheck_ack` return an MCP `isError: true` result or throw an exception from
+   `handleMcpToolCall`? The planner recommendation is `isError: true` if compatible with `McpServer`, because it
+   keeps the connection alive while still refusing the ACK.
+3. Is publishing `healthcheck_ack` in `AGENTTALK_MCP_TOOLS` within T2a scope? The planner recommendation is yes,
+   because external clients cannot reliably answer a mandatory healthcheck with an undiscoverable tool.
+
+### Gate 1 Review: M16-T2a (Claude, Plan Reviewer, 2026-07-08)
+
+**Verdict: APPROVED — with one BINDING ADDITION (cross-repo contract sync) and the three questions ruled below.**
+This amendment is the show-stopper fence working as designed: the implementer hit a runtime defect, stopped, filed
+`design/m16-t2-bug-report.md`, the planner spec'd a scoped unblocker. The behavior change is sanctioned through
+exactly this gate.
+
+**Evidence basis — all five claims CONFIRMED against the code** (`registry.ts:51` advertises, no
+`case 'healthcheck_ack'` exists; `runtime.ts:235` emits the old name; the tool is unpublished;
+`protocol-payloads.ts:33/250/257` parse the old name). One deepening finding: **`healthchecks.resolve` has ZERO
+production callers** — the healthcheck path is dead-on-arrival in every mode and can only time out; T2a's registry
+case will be its first real resolver. Also verified: `HealthcheckManager.resolve` already enforces the
+token↔agent binding and returns `false` on mismatch (`healthcheck-manager.ts:36`), so T2a-C1/C2 map directly onto
+existing semantics — the registry case must only translate `false` into a clear error.
+
+**Question rulings:**
+1. **Additive `protocol-payloads.ts` support — APPROVED, additive-only.** Old `ack_healthcheck` parsing stays;
+   removal is refused in this slice (compat surface for the api-mode protocol path).
+2. **Throw, don't hand-craft `isError`.** Verified: the transport catches handler throws and answers a JSON-RPC
+   error **without closing the socket** (`mcp-server.ts:186-193`) — the planner's keep-the-connection-alive
+   concern is already satisfied by the existing mechanism, and throwing matches the registry's handler style
+   (cf. the target-agent-state throw in `send_to_agent`). A second in-band error convention buys nothing.
+3. **Publish the tool — APPROVED, and it is MANDATORY, not optional:** `tools/call` hard-rejects unpublished
+   names before they reach the registry (`mcp-server.ts:180-183`), so an external client literally cannot ACK
+   without publication. **BINDING ADDITION (Gate-1 cross-repo scope grant):** publication changes the in-repo
+   `packages/contracts/wire-contract.json` data → its hash must be recomputed + version bumped
+   (`verify-contract.js`) → the orchestrator then expects the NEW hash at `initialize` (`server.ts:826`) → an
+   unmodified external client is **rejected at attach** (`mcp-server.ts:151-155`), which would wedge the very
+   T2 live proof this amendment unblocks. Therefore Gate 1 explicitly grants the narrow cross-repo scope the
+   top-level plan reserves to it: **an artifact-only sync of the regenerated `wire-contract.json` to
+   `agentalk-mcp-client`** (no client code changes), verified by running both repos' `verify-contract` scripts.
+   **T2a-C4 is extended accordingly:** published tool list, in-repo wire contract, AND the client repo's copy
+   all agree; evidence = both verify scripts' output.
+
+**Retrospective note → case law:** T1's test needed
+`vi.spyOn(registry as any, 'requestHealthCheck')` to get a conversation started — that novel mock was this very
+defect's first symptom, smuggled past three reviewers (including this one, who noted the novelty at gate 3 and
+did not dig). Minted **IP-13**: a workaround you need in your test is a finding about the product — report it,
+don't just mock it.
 
 ## M16-T2 - Live Orchestrator Attach Proof + Closure
 

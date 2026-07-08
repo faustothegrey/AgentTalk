@@ -222,3 +222,19 @@ miss — *don't fix it silently, record it*. A pattern with many cases is a sign
   including a reviewer-applied staged fix — all on the naked tree. Caught at gate 3: the Task-end Reviewer
   created `m16-t1-baton-metadata` retroactively and committed code (`4bd4604`) and docs (`001b2ab`) before
   the closure sweep. Watch for it whenever a claim's pollution check prints `[master]` as the current branch.
+
+### IP-13 — Mocking around a defect: the workaround in your test is a finding about the product
+- **Gist:** the implementer's test needs a workaround (a mock/spy of a runtime piece, a forced status, a
+  sleep) to make legitimate product behavior reachable — and the workaround ships as unremarkable test
+  plumbing instead of being reported as a probable product defect.
+- **Why it bites:** the mock makes the suite green while the product path it papered over stays broken; the
+  defect then resurfaces downstream (typically in the first *live* bar) at a more expensive gate. The moment
+  "I need to mock X or my test can't even reach the behavior under test," X's necessity is itself evidence —
+  Rule 4 (report what you didn't clear) applies to test scaffolding too.
+- **Case (M16-T1→T2, 2026-07-08):** the T1 test needed `vi.spyOn(registry as any, 'requestHealthCheck')` to
+  get `startConversation` past the healthcheck — because the entire healthcheck ACK path was dead
+  (`healthchecks.resolve` had zero production callers; no `healthcheck_ack` handler; wrong call name emitted).
+  The spy — mislabeled "same mocks as other tests" (no other test mocks it) — passed gate 2 twice and gate 3
+  once; the defect surfaced only when T2's live proof timed out, costing a scope amendment round (M16-T2a).
+  Reviewer tell: a mock of a *private* method via `as any`, or a mock no sibling test needs, is a question to
+  ask, not a pattern to wave through.
