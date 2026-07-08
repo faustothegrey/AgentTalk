@@ -66,6 +66,14 @@ export interface TeamTask {
   updatedAt: string;
 }
 
+export interface WorkflowBatonMetadata {
+  kind: 'workflow_baton';
+  originTag: '[PO]' | '[SM]';
+  fromRole: string;
+  toRole: string;
+  batonId: string;
+}
+
 export interface TranscriptEntry {
   kind: 'system' | 'message';
   timestamp: string;
@@ -75,6 +83,7 @@ export interface TranscriptEntry {
   messageType?: string;
   model?: string;
   provider?: AgentProvider;
+  baton?: WorkflowBatonMetadata;
 }
 
 export interface Conversation {

@@ -41,6 +41,18 @@ export const AGENTTALK_MCP_TOOLS: McpToolDefinition[] = [
           items: { type: 'string' },
           description: 'Optional array of expected response types.',
         },
+        baton: {
+          type: 'object',
+          description: 'Optional workflow baton metadata.',
+          properties: {
+            kind: { type: 'string', enum: ['workflow_baton'] },
+            originTag: { type: 'string', enum: ['[PO]', '[SM]'] },
+            fromRole: { type: 'string' },
+            toRole: { type: 'string' },
+            batonId: { type: 'string' },
+          },
+          required: ['kind', 'originTag', 'fromRole', 'toRole', 'batonId'],
+        },
       },
       required: ['to', 'payload'],
     },

@@ -208,3 +208,17 @@ miss — *don't fix it silently, record it*. A pattern with many cases is a sign
   - **M14-T1 round 1 (2026-07-02, Gemini/agy):** harness + baselines delivered on `m14-t1-identity-harness`
     with the ledger untouched; handoff existed only as an SM relay message. Reviewer filled the claim column
     with "NOT FILED" and refuted T1-C3 on a content-signature check the claim rows would have forced earlier.
+
+### IP-12 — Task delivered loose in the mainline working tree: no task branch, nothing committed
+- **Gist:** the implementer builds the task directly in the mainline checkout and claims done with the work
+  sitting **uncommitted on `master`'s working tree** — no `<epic>-t<N>-<slug>` branch (workflow §3b: branch
+  creation is the implementer's responsibility), no commits, evidence anchored to nothing.
+- **Why it bites:** verified work is one stray `git checkout -- .`/reset away from silent loss (a reviewer
+  restoring a file for a negative test would wipe it — see Claude's 2026-07-01 near-miss); the claim/verdict
+  evidence points at a tree state that nothing pins; the mainline's verified-only property is bypassed while
+  unverified code shares the working tree with unrelated doc edits; and the gate-2 reviewer inherits mixed
+  staged/unstaged state where "restage" becomes part of a verdict.
+- **Case (M16-T1, 2026-07-08):** agy delivered T1 (4 files) loose on `master`; gate 2 ran two rounds —
+  including a reviewer-applied staged fix — all on the naked tree. Caught at gate 3: the Task-end Reviewer
+  created `m16-t1-baton-metadata` retroactively and committed code (`4bd4604`) and docs (`001b2ab`) before
+  the closure sweep. Watch for it whenever a claim's pollution check prints `[master]` as the current branch.

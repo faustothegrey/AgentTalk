@@ -1,7 +1,7 @@
 # Milestone 16 - One real baton
 
-**Status:** DRAFT - authored by the Planner for Gate 1 review (2026-07-08). No implementation starts until
-the Plan Reviewer approves this plan.
+**Status:** GATE 1 APPROVED - amended by the Planner after Plan Reviewer F1 (2026-07-08). Implementation may
+start with M16-T1 only.
 **Backlog:** BL-013 (`doing`) - opened at the 2026-07-08 backlog gate.
 **Program:** `design/self-hosting-program-draft.md` (self-hosting M16 -> M18).
 **Ledger:** `design/milestone16-one-real-baton-implementation.md`.
@@ -23,8 +23,9 @@ declared fallback if the live orchestrator proof exposes a different failure.
 
 ## Goal
 
-Two attached agent sessions representing workflow seats exchange one origin-tagged role-to-role baton through the
-existing orchestrator attach channel. The baton is:
+Two attached agent sessions representing workflow seats exchange one origin-tagged role-to-role baton through an
+active pair conversation on the existing orchestrator attach channel. The active conversation is required because
+today's transcript recording and UI-visible conversation event are anchored there. The baton is:
 
 - delivered through the brain, not by terminal relay;
 - visible in the UI using existing message/conversation surfaces;
@@ -87,28 +88,35 @@ Implementer must stop and report. The acceptable fallback is to record the same 
 keeping `send_to_agent` text-only, but that fallback requires Implementation Reviewer disposition because it is
 less directly aligned with the "message shape carrying the tag as data" goal.
 
+The baton must be sent while an active pair conversation exists between the two workflow-seat agents. Outside an
+active conversation, current agent-to-agent delivery wakes the receiver but does not create the transcript entry
+or UI-visible conversation event M16 needs for C4/C5. The baton envelope therefore persists on the conversation
+transcript entry; M16 does not require a separate recorder path unless that transcript path proves insufficient.
+
 ## Task Breakdown
 
 1. **M16-T1 - Baton metadata and deterministic recording proof.**
    Add the smallest in-repo baton metadata path and targeted tests. The test drives the real registry/MCP handler
-   path (`handleMcpToolCall(..., 'send_to_agent', ...)`) between two agents or conversation participants, proves the
-   receiving side gets the baton text, and proves the persisted transcript or runtime event contains the baton
-   envelope. Existing message delivery without `baton` must remain unchanged.
+   path (`handleMcpToolCall(..., 'send_to_agent', ...)`) between two agents in an active pair conversation,
+   proves the receiving side gets the baton text, and proves the conversation transcript entry contains the baton
+   envelope. Existing message delivery without `baton` must remain unchanged. The test should set
+   `maxRepliesPerAgent` high enough that the baton is not blocked by the reply cap.
 2. **M16-T2 - Live orchestrator attach proof and closure.**
    Run one live proof against the real orchestrator attach server, not the in-process `McpExecServer` from SP-WAKE.
-   Two externally attached sessions named for workflow seats block on `await_turn`; one sends a `[SM]` baton to the
-   other; the receiving side gets it; the UI shows it through existing surfaces; NDJSON recording contains the baton
-   metadata. Record relay count and any fallback moments.
+   Two externally attached sessions named for workflow seats block on `await_turn`; an active pair conversation is
+   started between them with a comfortable reply cap; one sends a `[SM]` baton to the other; the receiving side gets
+   it; the UI shows it through existing conversation surfaces; NDJSON recording contains the baton metadata. Record
+   relay count and any fallback moments.
 
 ## DoD Claims
 
 | Claim | Bar |
 |---|---|
-| C1 | A baton can be sent through the existing attach/MCP path using `send_to_agent`, with origin tag and role metadata recorded as data. |
+| C1 | A baton can be sent through the existing attach/MCP path using `send_to_agent` inside an active pair conversation, with origin tag and role metadata recorded as data on the conversation transcript entry. |
 | C2 | Existing non-baton `send_to_agent` behavior is preserved, including ordinary user messages and pair conversations. |
 | C3 | The live proof uses the real orchestrator attach server with two externally attached sessions blocking on `await_turn`; the proof does not rely on the SP-WAKE in-process exec server. |
-| C4 | Runtime NDJSON evidence exists and contains the baton text, origin tag, from-role, to-role, and baton id. |
-| C5 | UI visibility is achieved through existing surfaces; no new UI is required for M16. |
+| C4 | Runtime NDJSON evidence exists and contains the conversation event with baton text, origin tag, from-role, to-role, and baton id. |
+| C5 | UI visibility is achieved through existing conversation surfaces; no new UI is required for M16. |
 | C6 | Freeze bar green: targeted tests, `npx tsc -b`, full `npm test`, M14 identity harness, `npm run backlog:check`, whitespace check, and pollution check. |
 | C7 | Scope fence clean: zero `team-coordinator.ts` diff, no consensus/protocol behavior changes, no client-repo changes unless Gate 1 explicitly approves them. |
 
@@ -120,10 +128,14 @@ The live proof should prefer this operator-observable path:
 2. Start the frontend so the PO can watch existing agent/conversation surfaces.
 3. Create or activate two attach-mode agents with stable ids such as `planner-seat` and `plan-reviewer-seat`.
 4. Launch two external `agentalk-mcp-client` sessions against the dedicated orchestrator MCP URL.
-5. Send one baton from the first session to the second through the brain:
+5. Start a pair conversation between `planner-seat` and `plan-reviewer-seat` using the existing conversation UI or
+   the existing `start_pair_chat` WebSocket message backed by `registry.startConversation`. Set
+   `maxRepliesPerAgent` comfortably above the proof need, e.g. 3 or more, so the single baton cannot hit the reply
+   cap.
+6. Send one baton from the first session to the second through the brain:
    `[SM] Baton to Plan Reviewer: M16 plan is ready for Gate 1 review.`
-6. Verify the receiver gets the turn, the UI shows the message, and the NDJSON recording contains the baton
-   envelope.
+7. Verify the receiver gets the turn, the UI shows the conversation message, and the NDJSON recording contains the
+   baton envelope on the conversation event.
 
 Provider choice is not the goal. If a real provider would burn unnecessary budget, the live proof may use the
 client's deterministic command override, as long as the real orchestrator attach server and two external client
@@ -152,15 +164,16 @@ real-provider rerun can be requested before closure.
    message/conversation surfaces.
 3. **Live proof may expose attach-client limitations.** That is an accepted finding. Do not patch the external
    client inside M16 unless Gate 1 explicitly expands scope.
-4. **Recorder coverage may be thinner than expected.** Prefer transcript-level metadata because existing
-   `conversation` recording captures it. Add only minimal recording glue if that is not enough.
+4. **Recorder coverage depends on an active conversation.** The implementer must start the conversation before
+   sending the baton and assert against the conversation transcript entry. Add only minimal recording glue if that
+   path is not enough.
 
-## Gate 1 Request
+## Gate 1 Rulings
 
-Plan Reviewer should approve or refute:
+Plan Reviewer ruled the three Gate 1 questions in `design/milestone16-one-real-baton-implementation.md`:
 
-- whether optional baton metadata on `send_to_agent` is the right minimal M16 shape;
-- whether deterministic command override is acceptable for the live proof if the real orchestrator attach server
-  and external client processes are used;
-- whether the two-task breakdown is small enough for the "one real baton" fence.
-
+- Optional baton metadata on `send_to_agent` is approved, with persistence anchored on the active conversation
+  transcript entry.
+- Deterministic command override is approved for the live proof, provided the real orchestrator attach server and
+  two external client processes are used.
+- The two-task breakdown is approved as small enough for the "one real baton" fence.

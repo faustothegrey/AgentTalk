@@ -360,7 +360,7 @@ export class Registry extends EventEmitter {
 
       case 'send_to_agent': {
         if (this.isDuplicateTerminalAction(agent)) return { content: [{ type: 'text', text: 'Action accepted (deduplicated)' }] };
-        const { to, payload, replyToMessageId } = args;
+        const { to, payload, replyToMessageId, baton } = args;
         const expectedResponseTypes = getExpectedResponseTypes(args);
 
         if (to === 'user') {
@@ -418,6 +418,7 @@ export class Registry extends EventEmitter {
             to,
             payload: String(payload),
             timestamp: new Date().toISOString(),
+            ...(baton ? { baton } : {}),
           });
         }
 
