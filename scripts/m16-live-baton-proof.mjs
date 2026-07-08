@@ -13,13 +13,13 @@ async function startAgent(agentId, isSender) {
   const req1 = await fetch(`${BASE_URL}/api/agents`, { method: 'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({id:agentId, provider:'mcp', executionMode:'auto'}) });
   if (!req1.ok) throw new Error(`Registration failed: ${await req1.text()}`);
   console.log(`[${agentId}] Activating...`);
-  const req2 = await fetch(`${BASE_URL}/api/agents/${agentId}/start`, { method: 'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({id:agentId}) });
+  const req2 = await fetch(`${BASE_URL}/api/agents/${agentId}/start`, { method: 'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ id: agentId, provider: 'mcp', executionMode: 'auto' }) });
   if (!req2.ok) throw new Error(`Activation failed: ${await req2.text()}`);
 
   console.log(`[${agentId}] Connecting via MCP WebSocket...`);
   const transport = new WebSocketClientTransport(new URL(`/?agentId=${agentId}`, WS_URL));
   const client = new Client({ name: `test-client-${agentId}`, version: '1.0.0', contractHash: 'ffa94e93e3182d44924ed28381870c7bd814c908279942022d5925a4865a9446' }, { capabilities: {} });
-  
+
   await client.connect(transport);
   console.log(`[${agentId}] Attached.`);
 
@@ -29,7 +29,7 @@ async function startAgent(agentId, isSender) {
       const turnRes = await client.callTool({ name: 'await_turn', arguments: { contractHash: 'ffa94e93e3182d44924ed28381870c7bd814c908279942022d5925a4865a9446' } });
       const textContent = turnRes.content && turnRes.content[0] ? turnRes.content[0].text : turnRes.text;
       const turnData = typeof textContent === 'string' ? JSON.parse(textContent) : turnRes;
-      
+
       // Safety guard against unexpected payloads
       if (!turnData || !turnData.prompt) {
         return;
@@ -77,12 +77,18 @@ async function startAgent(agentId, isSender) {
 
   // Poll loop
   const interval = setInterval(pollTurn, 1000);
-  return { client, stop: () => clearInterval(interval) };
+  return {
+    client,
+    stop: async () => {
+      clearInterval(interval);
+      await client.close().catch(() => {});
+    },
+  };
 }
 
 async function runLiveProof() {
   console.log("— Live smoke: Orchestrator Attach Server & Baton metadata —\n");
-  
+
   const recPath = path.join(process.cwd(), 'recordings');
 
   let receiver, sender;
@@ -101,7 +107,7 @@ async function runLiveProof() {
       uiWs.on('open', resolve);
       uiWs.on('error', reject);
     });
-    
+
     uiWs.send(JSON.stringify({
       type: 'start_pair_chat',
       agentIds: ['sender-9', 'receiver-9'],
@@ -113,16 +119,16 @@ async function runLiveProof() {
     await new Promise(r => setTimeout(r, 10000));
 
     console.log("Shutting down clients...");
-    sender.stop();
-    receiver.stop();
+    await sender.stop();
+    await receiver.stop();
     uiWs.close();
 
     if (!fs.existsSync(recPath)) {
       throw new Error('Recordings file not found. Was AGENTTALK_RECORDING_PATH set on the server?');
     }
-    
+
     const contents = fs.readFileSync(recPath, 'utf8');
-    
+
     if (contents.includes('"batonId":"baton-123"')) {
       console.log("\n✅ LIVE SMOKE PASSED: Baton metadata successfully transported through the attach server and recorded.");
     } else {
@@ -131,8 +137,8 @@ async function runLiveProof() {
     }
   } catch(e) {
     console.error("❌ Test script failed:", e);
-    if(sender) sender.stop();
-    if(receiver) receiver.stop();
+    if(sender) await sender.stop();
+    if(receiver) await receiver.stop();
     if(uiWs) uiWs.close();
     process.exit(1);
   }

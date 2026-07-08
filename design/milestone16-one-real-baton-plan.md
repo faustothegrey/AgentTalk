@@ -1,7 +1,7 @@
 # Milestone 16 - One real baton
 
-**Status:** GATE 1 APPROVED for M16-T1 - amended by the Planner after Plan Reviewer F1 (2026-07-08).
-M16-T2 is paused for a T2a healthcheck-runtime scope amendment pending Plan Reviewer approval.
+**Status:** M16-T2 live proof VERIFIED at Gate 2 by the Implementation Reviewer (2026-07-08). M16-T1 and
+M16-T2a are merged; M16 awaits task-end review / closure.
 **Backlog:** BL-013 (`doing`) - opened at the 2026-07-08 backlog gate.
 **Program:** `design/self-hosting-program-draft.md` (self-hosting M16 -> M18).
 **Ledger:** `design/milestone16-one-real-baton-implementation.md`.

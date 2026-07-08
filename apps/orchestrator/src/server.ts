@@ -597,7 +597,10 @@ export function startServer(
 
     try {
       const agentId = id || (provider ? `agent-${provider}-${Date.now()}` : `agent-${Date.now()}`);
-      const agent = await registry.createAgent(agentId, { requestedExecutionMode, provider });
+      const agent = await registry.createAgent(agentId, { requestedExecutionMode });
+      if (isUsageCaptureProvider(provider)) {
+        agent.provider = provider;
+      }
 
       if (model) {
         agent.model = model;

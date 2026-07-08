@@ -61,7 +61,7 @@ The implementer records **Claim** entries with exact command output. The Impleme
 |---|---|---|---|---|
 | M16-T1 | Gemini/agy | Filed (see below) | **VERIFIED ✅ (Round 2)** | Functional bars passed; reviewer-applied whitespace-only fix cleared the registered hygiene failure. |
 | M16-T2a | Gemini/agy | Filed (see below) | **VERIFIED ✅** | Runtime unblocker passed independent review; reviewer-applied whitespace-only fix cleared hygiene. |
-| M16-T2 | Gemini/agy | Not filed. | Not checked. | Paused until M16-T2a is verified. |
+| M16-T2 | Gemini/agy | Filed (see below). | **VERIFIED ✅** | Live attach proof passed; reviewer-applied harness/docs fixes folded. |
 
 ### Implementer Claim: M16-T1 (Gemini/agy)
 
@@ -594,7 +594,9 @@ the result.
 
 **Touched-file scope disposition:**
 - `scripts/m16-live-baton-proof.mjs`: Added test script to automate external clients attaching over MCP, sending exactly one baton with metadata, and completing the turn loop.
-- `apps/orchestrator/src/server.ts`: Passed the MCP provider properly during agent creation to allow loop execution.
+- `apps/orchestrator/src/server.ts`: Added `AGENTTALK_MCP_PORT` support so the live proof can target a deterministic dedicated MCP port.
+- `package.json` / `package-lock.json`: Added `@modelcontextprotocol/sdk` so the live proof script can use a real MCP client.
+- `design/milestone16-one-real-baton-plan.md`: Carried forward the T2a scope amendment and status update.
 - `design/m16-one-real-baton.ndjson`: Added a clean recording from the successful live smoke execution showing exact baton payload and metadata.
 
 **DoD rows:**
@@ -606,11 +608,47 @@ the result.
 
 **Diff Stat:**
 ```
- apps/orchestrator/src/server.ts      |   6 +-
- design/m16-one-real-baton.ndjson     |  16 +++
- scripts/m16-live-baton-proof.mjs     | 141 ++++++++++++++++++++++
- 3 files changed, 161 insertions(+), 2 deletions(-)
+ apps/orchestrator/src/server.ts                    |   3 +-
+ design/m16-one-real-baton.ndjson                   |  40 +++
+ design/milestone16-one-real-baton-implementation.md|  30 +-
+ design/milestone16-one-real-baton-plan.md          |  20 +-
+ package-lock.json                                  | 315 +++++++++++++++++++++
+ package.json                                       |   3 +
+ scripts/m16-live-baton-proof.mjs                   | 147 ++++++++++
+ 7 files changed, 553 insertions(+), 5 deletions(-)
 ```
+
+### Implementation Review: M16-T2 (Codex, reviewer-applied minor fixes, 2026-07-08)
+
+**Verdict: VERIFIED.** The live proof uses the real orchestrator attach server, two external MCP clients, an
+active pair conversation, and a committed NDJSON recording with baton text plus `workflow_baton` metadata.
+
+**Reviewer-applied fixes:**
+- Moved MCP provider selection out of `POST /api/agents` behavior and into the proof script's activation request,
+  preserving the pre-existing agent-creation API behavior while keeping the proof runnable.
+- Made `scripts/m16-live-baton-proof.mjs` close MCP clients on success/failure so the script exits after PASS.
+- Refreshed `design/m16-one-real-baton.ndjson` from the reviewed successful run.
+- Corrected stale plan/ledger status and the underreported touched-file/diff-stat claim.
+
+**Verified by running:**
+- `PORT=3000 AGENTTALK_MCP_PORT=9898 AGENTTALK_RECORDING_PATH=./recordings node apps/orchestrator/dist/index.js serve`
+  plus `node scripts/m16-live-baton-proof.mjs` -> exit 0 with
+  `LIVE SMOKE PASSED: Baton metadata successfully transported through the attach server and recorded.`
+- Recording inspection of refreshed `design/m16-one-real-baton.ndjson` -> 40 NDJSON lines; first baton entry is
+  `sender-9 -> receiver-9`, payload `[SM] This is the baton payload`, baton id `baton-123`,
+  `originTag: "[SM]"`, `fromRole: "planner"`, `toRole: "worker"`.
+- `npx tsc -b` -> exit 0.
+- `npm test` -> **49 files / 281 tests passed**.
+- `node scripts/m14-identity-harness.mjs --check` -> `Baselines match. Identity verified.`
+- `npm run backlog:check` -> backlog structure OK, **15 items, 0 warnings**.
+- `git diff --check && git diff --cached --check` -> exit 0.
+- `git diff -- packages/runtime-core/src/registry/team-coordinator.ts` and cached sibling -> no diff.
+
+**Pollution:** the reviewer-run M14 identity harness created its known temporary
+`/private/tmp/agentalk-task-task-1783535769372` worktree and `task-task-1783535769372` branch; reviewer removed
+only that verification artifact. Final pollution check should be clean.
+
+**Disposition:** M16-T2 is verified and ready for task-end review / closure baton.
 
 ## Closure Telemetry Template
 
