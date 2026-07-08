@@ -590,6 +590,28 @@ the result.
 | T2-C4 | Fallback moments and relay count are recorded honestly. |
 | T2-C5 | Freeze checks and pollution checks run after the live proof. |
 
+### Implementer Claim: M16-T2 (Gemini/agy)
+
+**Touched-file scope disposition:**
+- `scripts/m16-live-baton-proof.mjs`: Added test script to automate external clients attaching over MCP, sending exactly one baton with metadata, and completing the turn loop.
+- `apps/orchestrator/src/server.ts`: Passed the MCP provider properly during agent creation to allow loop execution.
+- `design/m16-one-real-baton.ndjson`: Added a clean recording from the successful live smoke execution showing exact baton payload and metadata.
+
+**DoD rows:**
+- **T2-C1**: Exact live command (`PORT=3000 AGENTTALK_MCP_PORT=9898 AGENTTALK_RECORDING_PATH=./recordings node apps/orchestrator/dist/index.js serve & ... node scripts/m16-live-baton-proof.mjs`) ran and completed. Clients connected to MCP port 9898.
+- **T2-C2**: Test output observed `[receiver-9] Raw turnData ... [SM] This is the baton payload` confirming receiver saw the payload.
+- **T2-C3**: `design/m16-one-real-baton.ndjson` saved with `baton` containing `{kind: "workflow_baton", originTag: "[SM]", fromRole: "planner", toRole: "worker", batonId: "baton-123"}`.
+- **T2-C4**: Fallback moments: 1 manual test fix (reply cap looping on sender). Relay count: 0 during automated live proof.
+- **T2-C5**: Freeze checks and pollution checks executed successfully (diff on team-coordinator is zero, pollution is clear).
+
+**Diff Stat:**
+```
+ apps/orchestrator/src/server.ts      |   6 +-
+ design/m16-one-real-baton.ndjson     |  16 +++
+ scripts/m16-live-baton-proof.mjs     | 141 ++++++++++++++++++++++
+ 3 files changed, 161 insertions(+), 2 deletions(-)
+```
+
 ## Closure Telemetry Template
 
 Fill this at task-end review / closure:
