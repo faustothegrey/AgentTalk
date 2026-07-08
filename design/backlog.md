@@ -556,6 +556,29 @@ tags: [recovery, awaiting-operator]
   - **Trigger to promote:** a handful of observed real `awaiting_operator` pauses (so the recovery model is
     grounded in actual partial-effect cases, not guessed). **Source:** Fausto ↔ Claude T3 decisions, 2026-06-23.
 
+### Deferred (recent additions)
+
+<!-- @item
+id: BL-016
+status: deferred
+date: 2026-07-08
+epic: null
+tags: [workflow, scrum-master, retrospective, growth]
+-->
+- [deferred · PO hint 2026-07-08, explicitly NOT operational — deferred by the PO to a more mature phase to
+  avoid process bloat; reopen condition: PO calls it, OR an IP class recurs despite existing mechanisms] —
+  **SM growth function — event-triggered micro-retrospectives** — extend SM duty 2 one step: *close the
+  learning loop*. On a real event only (a REFUTE, a late-caught deviation, an IP mint) the SM runs a short
+  evidence-anchored debrief **with** the erring agent — its reasoning at the time first, then a proposed
+  *mechanism* (not a resolution) — dialogic, never a reprimand. Key reframe (architect): agents don't persist,
+  so "growth" = improving the **artifacts the next instance reads** (elicited lessons in the agent's own
+  words — agy's M16 close proved unguided reflection skips the behavioral lesson) and the **system around the
+  agents** (root causes are often ours: e.g. the claim template has no mandatory "Deviations:" field — that's
+  what let D1/D2 go unfiled). Guards: evidence-anchored to avoid contrition theater; each agent still writes
+  only its own lessons file (SM elicits, never writes it for them); yardstick = **IP-class recurrence rate**.
+  Third instrument of one theme: fences enforce (BL-015), briefs instruct (BL-014), **debriefs adapt**.
+  Trial informally at the next real REFUTE before any doc change.
+
 ### Todo (next first)
 
 <!-- @item
