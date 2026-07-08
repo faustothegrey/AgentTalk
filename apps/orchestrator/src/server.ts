@@ -601,6 +601,7 @@ export function startServer(
       if (isUsageCaptureProvider(provider)) {
         agent.provider = provider;
       }
+
       if (model) {
         agent.model = model;
       }
@@ -840,7 +841,7 @@ export function startServer(
     // non-matching upgrades (including `/mcp`), so the MCP endpoint never receives
     // connections and agents silently fall back to the legacy protocol. A dedicated port
     // avoids the collision entirely. (Fix: WS-collision bug found in live test 2026-06-18.)
-    mcpServer.start(0).then((mcpPort) => {
+    mcpServer.start(process.env.AGENTTALK_MCP_PORT ? Number(process.env.AGENTTALK_MCP_PORT) : 0).then((mcpPort) => {
       process.env.AGENTTALK_PERSISTENT_MCP_URL = `ws://localhost:${mcpPort}/`;
       console.log(`[Server] AgentTalk WebSocket MCP server listening on ws://localhost:${mcpPort}/`);
       console.log(`[Server] AgentTalk MCP server URL set to: ${process.env.AGENTTALK_PERSISTENT_MCP_URL}`);

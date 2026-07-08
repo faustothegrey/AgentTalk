@@ -1,7 +1,7 @@
 # Milestone 16 - One real baton
 
-**Status:** GATE 1 APPROVED - amended by the Planner after Plan Reviewer F1 (2026-07-08). Implementation may
-start with M16-T1 only.
+**Status:** M16-T2 live proof VERIFIED at Gate 2 by the Implementation Reviewer (2026-07-08). M16-T1 and
+M16-T2a are merged; M16 awaits task-end review / closure.
 **Backlog:** BL-013 (`doing`) - opened at the 2026-07-08 backlog gate.
 **Program:** `design/self-hosting-program-draft.md` (self-hosting M16 -> M18).
 **Ledger:** `design/milestone16-one-real-baton-implementation.md`.
@@ -48,6 +48,9 @@ today's transcript recording and UI-visible conversation event are anchored ther
 - Minimal contract additions for optional baton metadata on direct agent messages/transcript entries.
 - Minimal MCP tool schema extension, if needed, to carry optional baton metadata on `send_to_agent`.
 - Registry/conversation routing needed to persist that metadata and emit existing conversation updates.
+- Minimal healthcheck ACK runtime unblocker needed before the live proof can start: `healthcheck_ack` MCP handler,
+  the runtime healthcheck protocol request name, the published MCP tool list/wire-contract if needed, and focused
+  regression tests.
 - Orchestrator recording/broadcast glue only if existing `conversation`/`agent_message` recording cannot prove the
   baton metadata.
 - A deterministic targeted test for baton metadata delivery/recording.
@@ -59,6 +62,8 @@ today's transcript recording and UI-visible conversation event are anchored ther
 - `packages/runtime-core/src/registry/team-coordinator.ts`.
 - Arbiter/protocol coordinator behavior changes.
 - New consensus tools or changes to `consensus_respond`.
+- Broad healthcheck/protocol vocabulary cleanup beyond the live-proof unblocker; keep any old-name compatibility
+  decision explicit if tests expose it.
 - UI redesign or new workflow panels.
 - Changes in `agentalk-mcp-client` unless Gate 1 explicitly approves cross-repo scope. The default plan treats the
   client as an existing external executable.
@@ -101,7 +106,15 @@ transcript entry; M16 does not require a separate recorder path unless that tran
    proves the receiving side gets the baton text, and proves the conversation transcript entry contains the baton
    envelope. Existing message delivery without `baton` must remain unchanged. The test should set
    `maxRepliesPerAgent` high enough that the baton is not blocked by the reply cap.
-2. **M16-T2 - Live orchestrator attach proof and closure.**
+2. **M16-T2a - Healthcheck ACK runtime unblocker.**
+   Fix the runtime defects documented in `design/m16-t2-bug-report.md` before resuming the live proof. The
+   external MCP path must be able to publish and accept `healthcheck_ack`, resolve the pending
+   `HealthcheckManager` token for the calling agent, and reject stale/wrong-agent tokens without falsely
+   completing the healthcheck. The in-process runtime must emit `call: 'healthcheck_ack'` for healthcheck
+   responses. If implementation discovers that `packages/contracts/src/protocol-payloads.ts` still blocks the
+   wire path with the old `ack_healthcheck` request name, the allowed move is additive `healthcheck_ack`
+   support; do not remove old compatibility without Plan Reviewer/PO approval.
+3. **M16-T2 - Live orchestrator attach proof and closure.**
    Run one live proof against the real orchestrator attach server, not the in-process `McpExecServer` from SP-WAKE.
    Two externally attached sessions named for workflow seats block on `await_turn`; an active pair conversation is
    started between them with a comfortable reply cap; one sends a `[SM]` baton to the other; the receiving side gets
@@ -147,6 +160,7 @@ real-provider rerun can be requested before closure.
 | Check | Max attempts |
 |---|---:|
 | Targeted baton metadata test | 3 |
+| Targeted healthcheck ACK registry/runtime tests | 3 |
 | Existing direct-message/conversation regression test | 2 |
 | Live orchestrator attach proof | 2 |
 | `npx tsc -b` | 2 |
