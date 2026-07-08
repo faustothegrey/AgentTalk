@@ -59,7 +59,7 @@ The implementer records **Claim** entries with exact command output. The Impleme
 | Task | Owner | Implementer claim | Implementation Reviewer verdict | Evidence |
 |---|---|---|---|---|
 | M16-T1 | Gemini/agy | Filed (see below) | **VERIFIED ✅ (Round 2)** | Functional bars passed; reviewer-applied whitespace-only fix cleared the registered hygiene failure. |
-| M16-T2a | Gemini/agy | Filed (see below) | Not checked. | Runtime unblocker implemented, tested, and contract synced to client repo. |
+| M16-T2a | Gemini/agy | Filed (see below) | **VERIFIED ✅** | Runtime unblocker passed independent review; reviewer-applied whitespace-only fix cleared hygiene. |
 | M16-T2 | Gemini/agy | Not filed. | Not checked. | Paused until M16-T2a is verified. |
 
 ### Implementer Claim: M16-T1 (Gemini/agy)
@@ -184,6 +184,36 @@ Full suites & contracts:
 (No lingering `task-*` branches or worktrees).
 
 **Fallback moments:** None.
+
+### Implementation Review: M16-T2a (Codex, reviewer-applied minor fix, 2026-07-08)
+
+**Verdict: VERIFIED.** The implementation matches the T2a Gate-1 scope: external MCP clients can discover
+`healthcheck_ack`, the registry resolves pending healthchecks through `HealthcheckManager.resolve`, invalid ACKs
+throw clear handler errors that the MCP transport returns as JSON-RPC errors without closing the socket, the
+in-process runtime emits `healthcheck_ack`, and the wire-contract v7 artifact is synced to the external client
+repo.
+
+**Reviewer-applied minor fix:** removed one trailing-whitespace-only line from
+`packages/runtime-core/src/registry/__tests__/healthcheck-ack.test.ts`. No functional code changed.
+
+**Verified by running:**
+- `npx vitest run packages/runtime-core/src/registry/__tests__/healthcheck-ack.test.ts` -> **5/5 passed**.
+- `npm test --workspace @agenttalk/contracts` -> `Contract hash verified successfully (v7).`
+- `node scripts/verify-contract.js` in `/Users/fausto/Software/agentalk-mcp-client` ->
+  `Contract hash verified successfully (v7).`
+- `npm test` in `/Users/fausto/Software/agentalk-mcp-client` -> **1/1 passed**.
+- `npx tsc -b` -> exit 0.
+- `npm test` -> **49 files / 281 tests passed**.
+- `node scripts/m14-identity-harness.mjs --check` -> `Baselines match. Identity verified.`
+- `npm run backlog:check` -> backlog structure OK, **15 items, 0 warnings**.
+- `git diff --check && git diff --cached --check` -> exit 0 after the whitespace fix.
+- `git diff -- packages/runtime-core/src/registry/team-coordinator.ts` -> no diff.
+
+**Pollution:** the reviewer-run M14 identity harness created its known temporary
+`/private/tmp/agentalk-task-task-1783531729681` worktree and `task-task-1783531729681` branch; reviewer removed
+only that verification artifact. Final pollution check should be clean.
+
+**Disposition:** M16-T2a is verified. M16-T2 may resume after the normal SM/PO baton.
 
 ## Task-end Review: M16-T1 (Claude, 2026-07-08) — Gate 3
 

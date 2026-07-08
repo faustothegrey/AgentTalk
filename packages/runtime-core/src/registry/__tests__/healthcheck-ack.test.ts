@@ -106,7 +106,7 @@ describe('M16-T2a Healthcheck ACK handling', () => {
   describe('Runtime in-process driver', () => {
     it('emits healthcheck_ack tool name for healthcheck events', () => {
       const runtime = createConversationRuntime();
-      
+
       const req = runtime.buildProtocolRequest(
         { type: 'healthcheck', token: 'token-123' },
         'reply message'
