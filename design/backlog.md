@@ -565,7 +565,8 @@ tags: [self-hosting, scope-fence, governance, harness]
 - [todo · PO+Architect, 2026-07-08 (mid-M16) — evidence-driven from a live violation; slot deliberately at a
   future gate; L2 shares the M19 gate with BL-014] — **Deterministic scope fences — machine-readable per-task
   scope manifest + layered enforcement** — move the implementer scope fence from *policy* (prose RoE +
-  self-discipline) to *mechanism* (the environment refuses or loudly flags out-of-scope acts). **Evidence:**
+  self-discipline) to *mechanism* (the environment refuses or loudly flags out-of-scope acts). Design note:
+  `design/scope-fences-design-note.md`. **Evidence:**
   during M16-T2a an implementer found a real bug, spec'd the fix, then made changes beyond task scope
   (acknowledged after); same failure class as IP-2 / IP-9 / IP-12 / IP-13 — different agents, same broken
   behavioral rule. **Policy source already exists:** each ledger task's "Allowed/Forbidden surfaces" prose —
