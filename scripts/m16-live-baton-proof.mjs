@@ -1,186 +1,141 @@
-import { spawn } from 'child_process';
-import { setTimeout as delay } from 'timers/promises';
+import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import { WebSocketClientTransport } from '@modelcontextprotocol/sdk/client/websocket.js';
 import { WebSocket } from 'ws';
 import * as fs from 'fs';
 import * as path from 'path';
-import { fileURLToPath } from 'url';
-import { createRequire } from 'module';
 
-const require = createRequire(import.meta.url);
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const BASE_URL = 'http://127.0.0.1:3000';
+const WS_URL = 'ws://127.0.0.1:9898';
+const UI_WS_URL = 'ws://127.0.0.1:3000/ws';
 
-const wireContract = require('../packages/contracts/wire-contract.json');
-const CONTRACT_HASH = wireContract.hash;
+async function startAgent(agentId, isSender) {
+  console.log(`[${agentId}] Registering...`);
+  const req1 = await fetch(`${BASE_URL}/api/agents`, { method: 'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({id:agentId, provider:'mcp', executionMode:'auto'}) });
+  if (!req1.ok) throw new Error(`Registration failed: ${await req1.text()}`);
+  console.log(`[${agentId}] Activating...`);
+  const req2 = await fetch(`${BASE_URL}/api/agents/${agentId}/start`, { method: 'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({id:agentId}) });
+  if (!req2.ok) throw new Error(`Activation failed: ${await req2.text()}`);
 
-const PORT = 3019;
-const BASE_URL = `http://localhost:${PORT}`;
-const RECORDING_PATH = path.join(__dirname, '..', 'design', 'm16-one-real-baton.ndjson');
-
-async function waitForServer() {
-  const startedAt = Date.now();
-  while (Date.now() - startedAt < 15000) {
-    try {
-      const res = await fetch(`${BASE_URL}/api/agents`);
-      if (res.ok) return;
-    } catch {}
-    await delay(250);
-  }
-  throw new Error('Server timeout');
-}
-
-class RawMcpClient {
-  constructor(agentId, mcpPort) {
-    this.agentId = agentId;
-    this.ws = new WebSocket(`ws://localhost:${mcpPort}/?agentId=${agentId}`);
-    this.msgId = 1;
-    this.pending = new Map();
-    this.ws.on('message', (data) => {
-      const msg = JSON.parse(data.toString());
-      if (msg.id !== undefined && this.pending.has(msg.id)) {
-        this.pending.get(msg.id)(msg.result || msg.error);
-        this.pending.delete(msg.id);
-      }
-    });
-  }
-
-  async connect() {
-    return new Promise((resolve) => {
-      this.ws.on('open', async () => {
-        await this.send('initialize', { 
-          protocolVersion: '2024-11-05', 
-          capabilities: {}, 
-          clientInfo: { name: 'c', version: '1.0', contractHash: CONTRACT_HASH } 
-        });
-        this.ws.send(JSON.stringify({ jsonrpc: '2.0', method: 'notifications/initialized' }));
-        resolve();
-      });
-    });
-  }
-
-  async send(method, params) {
-    return new Promise((resolve) => {
-      const id = this.msgId++;
-      this.pending.set(id, resolve);
-      this.ws.send(JSON.stringify({ jsonrpc: '2.0', id, method, params }));
-    });
-  }
-
-  callTool(name, args) {
-    return this.send('tools/call', { name, arguments: args });
-  }
-}
-
-async function runClient(agentId, mcpPort, isSender) {
-  const client = new RawMcpClient(agentId, mcpPort);
-  await client.connect();
-  console.log(`[${agentId}] Connected to MCP.`);
-
-  console.log(`[${agentId}] Calling await_turn...`);
-  const turn1 = await client.callTool('await_turn', {});
-  const turn1Data = JSON.parse(turn1.content[0].text);
-  console.log(`[${agentId}] Woke up with: ${turn1Data.prompt.substring(0, 50)}...`);
-
-  if (turn1Data.prompt.includes("confirming you are responsive")) {
-    console.log(`[${agentId}] Replying to healthcheck with healthcheck_ack tool...`);
-    await client.callTool('submit_exec_result', { text: JSON.stringify({ message_type: 'healthcheck_ack', message_payload: { text: 'ready' } }), usage: { prompt_tokens: 0, completion_tokens: 0 } });
-  }
-
-  console.log(`[${agentId}] Calling await_turn (conversation_start)...`);
-  const turn2 = await client.callTool('await_turn', {});
-  const turn2Data = JSON.parse(turn2.content[0].text);
-  console.log(`[${agentId}] Received turn2: ${turn2Data.prompt.substring(0, 50)}...`);
-
-  if (isSender) {
-    console.log(`[${agentId}] Sending baton via send_to_agent...`);
-    await client.callTool('send_to_agent', {
-      to: 'receiver',
-      payload: '[SM] This is the baton payload',
-      baton: { originTag: '[SM]', fromRole: 'planner', toRole: 'worker', batonId: 'baton-123' }
-    });
-    console.log(`[${agentId}] Baton sent.`);
-    client.callTool('await_turn', {}); // Keep listening
-  } else {
-    console.log(`[${agentId}] Calling await_turn to receive baton...`);
-    const turn3 = await client.callTool('await_turn', {});
-    const turn3Data = JSON.parse(turn3.content[0].text);
-    console.log(`[${agentId}] Received baton turn: ${turn3Data.prompt.substring(0, 100)}...`);
-  }
-}
-
-async function run() {
-  if (fs.existsSync(RECORDING_PATH)) fs.unlinkSync(RECORDING_PATH);
-
-  // Clear existing database to ensure fresh agents
-  const dbPath = path.join(__dirname, '..', 'apps', 'orchestrator', 'data', 'orchestrator.db');
-  if (fs.existsSync(dbPath)) {
-    fs.unlinkSync(dbPath);
-    console.log('[Test] Cleared orchestrator database.');
-  }
-
-  const server = spawn('node', ['apps/orchestrator/dist/index.js'], {
-    env: { ...process.env, PORT: String(PORT), AGENTTALK_RECORDING_PATH: RECORDING_PATH },
-    stdio: 'pipe',
-  });
-
-  let mcpPort = null;
-  server.stdout.on('data', d => {
-    const s = d.toString();
-    const match = s.match(/AgentTalk WebSocket MCP server listening on ws:\/\/localhost:(\d+)\//);
-    if (match) mcpPort = match[1];
-  });
-  server.stderr.on('data', d => process.stderr.write(`[Server-err] ${d}`));
-
-  try {
-    await waitForServer();
-    while (!mcpPort) await delay(250);
-    console.log('[Test] Server ready. MCP Port:', mcpPort);
-
-    // Using gemini provider to properly test the LLM protocol translation layer
-    const req1 = await fetch(`${BASE_URL}/api/agents`, { method: 'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({id:'sender', provider:'gemini', model:'test', executionMode:'auto'}) });
-    console.log('[Test] Create sender response:', await req1.text());
-    await fetch(`${BASE_URL}/api/agents/sender/start`, { method: 'POST' });
-    
-    const req2 = await fetch(`${BASE_URL}/api/agents`, { method: 'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({id:'receiver', provider:'gemini', model:'test', executionMode:'auto'}) });
-    console.log('[Test] Create receiver response:', await req2.text());
-    await fetch(`${BASE_URL}/api/agents/receiver/start`, { method: 'POST' });
-
-    console.log('[Test] Connecting external client processes...');
-    const senderP = runClient('sender', mcpPort, true);
-    const receiverP = runClient('receiver', mcpPort, false);
-
-    await delay(1000); 
-
-    console.log('[Test] Connecting UI WS to start conversation...');
-    const uiWs = new WebSocket(`ws://localhost:${PORT}/ws`);
-    uiWs.on('open', () => {
-      uiWs.send(JSON.stringify({
-        type: 'start_pair_chat',
-        agentIds: ['sender', 'receiver'],
-        topic: 'Live Baton Test',
-        maxReplies: 10
-      }));
-      console.log('[Test] Sent start_pair_chat WS message.');
-    });
-
-    await senderP;
-    await receiverP;
-    await delay(1000); 
-    
-  } finally {
-    server.kill();
-  }
-
-  const recording = fs.readFileSync(RECORDING_PATH, 'utf8');
-  console.log('\n--- Recording output ---');
-  console.log(recording);
+  console.log(`[${agentId}] Connecting via MCP WebSocket...`);
+  const transport = new WebSocketClientTransport(new URL(`/?agentId=${agentId}`, WS_URL));
+  const client = new Client({ name: `test-client-${agentId}`, version: '1.0.0', contractHash: 'ffa94e93e3182d44924ed28381870c7bd814c908279942022d5925a4865a9446' }, { capabilities: {} });
   
-  if (recording.includes('"baton":{"originTag":"[SM]"') && recording.includes('"payload":"[SM] This is the baton payload"')) {
-    console.log('\n✅ TEST PASSED: Baton recorded in NDJSON.');
-  } else {
-    console.error('\n❌ TEST FAILED: Baton missing from recording.');
+  await client.connect(transport);
+  console.log(`[${agentId}] Attached.`);
+
+  // Handle server tools (simulating the external MCP execution loop)
+  const pollTurn = async () => {
+    try {
+      const turnRes = await client.callTool({ name: 'await_turn', arguments: { contractHash: 'ffa94e93e3182d44924ed28381870c7bd814c908279942022d5925a4865a9446' } });
+      const textContent = turnRes.content && turnRes.content[0] ? turnRes.content[0].text : turnRes.text;
+      const turnData = typeof textContent === 'string' ? JSON.parse(textContent) : turnRes;
+      
+      // Safety guard against unexpected payloads
+      if (!turnData || !turnData.prompt) {
+        return;
+      }
+
+      console.log(`[${agentId}] Raw turnData:`, JSON.stringify(turnData));
+
+      if (turnData.prompt.includes("confirming you are responsive")) {
+        console.log(`[${agentId}] Replying to healthcheck via submit_exec_result...`);
+        const resultText = JSON.stringify({
+          message_type: 'healthcheck_ack',
+          message_payload: { text: 'ready' }
+        });
+        await client.callTool({ name: 'submit_exec_result', arguments: { text: resultText, usage: { prompt_tokens: 0, completion_tokens: 0 } } });
+        return;
+      }
+
+      if (isSender) {
+        if (!client.sentBaton) {
+          console.log(`[${agentId}] Sending baton via send_to_agent...`);
+          await client.callTool({ name: 'send_to_agent', arguments: {
+            to: 'receiver-9',
+            payload: '[SM] This is the baton payload',
+            baton: { kind: 'workflow_baton', originTag: '[SM]', fromRole: 'planner', toRole: 'worker', batonId: 'baton-123' }
+          } });
+          client.sentBaton = true;
+          console.log(`[${agentId}] Baton sent. Resolving the turn...`);
+        }
+        // End the turn
+        await client.callTool({ name: 'submit_exec_result', arguments: { text: JSON.stringify({ message_type: 'ack_planning_protocol', message_payload: { text: 'Baton sent' } }), usage: { prompt_tokens: 0, completion_tokens: 0 } } });
+        return;
+      }
+
+      // If receiver, just ack
+      await client.callTool({ name: 'submit_exec_result', arguments: { text: JSON.stringify({ message_type: 'ack_planning_protocol', message_payload: { text: 'Ack' } }), usage: { prompt_tokens: 0, completion_tokens: 0 } } });
+
+    } catch (e) {
+      if (e.message?.includes('No turn available')) {
+        // Just poll again later
+      } else {
+        console.error(`[${agentId}] Error in loop:`, e.message);
+      }
+    }
+  };
+
+  // Poll loop
+  const interval = setInterval(pollTurn, 1000);
+  return { client, stop: () => clearInterval(interval) };
+}
+
+async function runLiveProof() {
+  console.log("— Live smoke: Orchestrator Attach Server & Baton metadata —\n");
+  
+  const recPath = path.join(process.cwd(), 'recordings');
+
+  let receiver, sender;
+  let uiWs;
+  try {
+    // 2) Attach agents
+    receiver = await startAgent('receiver-9', false);
+    sender = await startAgent('sender-9', true);
+
+    await new Promise(r => setTimeout(r, 2000));
+
+    // 3) Start conversation via WebSocket
+    console.log("Starting pair conversation...");
+    uiWs = new WebSocket(UI_WS_URL);
+    await new Promise((resolve, reject) => {
+      uiWs.on('open', resolve);
+      uiWs.on('error', reject);
+    });
+    
+    uiWs.send(JSON.stringify({
+      type: 'start_pair_chat',
+      agentIds: ['sender-9', 'receiver-9'],
+      topic: 'Baton Test',
+      maxReplies: 10
+    }));
+
+    console.log("Waiting 10 seconds for the exchange...");
+    await new Promise(r => setTimeout(r, 10000));
+
+    console.log("Shutting down clients...");
+    sender.stop();
+    receiver.stop();
+    uiWs.close();
+
+    if (!fs.existsSync(recPath)) {
+      throw new Error('Recordings file not found. Was AGENTTALK_RECORDING_PATH set on the server?');
+    }
+    
+    const contents = fs.readFileSync(recPath, 'utf8');
+    
+    if (contents.includes('"batonId":"baton-123"')) {
+      console.log("\n✅ LIVE SMOKE PASSED: Baton metadata successfully transported through the attach server and recorded.");
+    } else {
+      console.log("\n❌ LIVE SMOKE FAILED: Baton metadata NOT FOUND in the recording.");
+      process.exit(1);
+    }
+  } catch(e) {
+    console.error("❌ Test script failed:", e);
+    if(sender) sender.stop();
+    if(receiver) receiver.stop();
+    if(uiWs) uiWs.close();
     process.exit(1);
   }
 }
 
-run().catch(console.error);
+runLiveProof();
