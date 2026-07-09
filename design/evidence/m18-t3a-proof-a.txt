@@ -3,11 +3,10 @@
 [Env check] AGENTTALK_BATON: unset
 [Env check] AGENTTALK_WORKFLOW_EVENT: unset
 [CLI Command] claude -p 'Use the send_to_agent tool to send a message to "user" with payload "Door 1 A".' --mcp-config /tmp/claude-mcp-config-proofa.json --dangerously-skip-permissions
-[MCP Config] {"mcpServers":{"agentalk":{"command":"bash","args":["-c","node /Users/fausto/Software/agentalk-mcp-client/bridge.mjs \"ws://127.0.0.1:9897?agentId=claude-door1\" 2>>/tmp/bridge-proofa.log"]}}}
+[MCP Config] {"mcpServers":{"agentalk":{"command":"bash","args":["-c","node /Users/fausto/Software/agentalk-mcp-client/bridge.mjs \"ws://127.0.0.1:9897?agentId=claude-door1&contractHash=ffa94e93e3182d44924ed28381870c7bd814c908279942022d5925a4865a9446\" 2>>/tmp/bridge-proofa.log"]}}}
 
 --- Bridge Log (stderr) ---
-[mcp-bridge] URL lacks contractHash, relaying unchanged
-[mcp-bridge] ws open -> ws://127.0.0.1:9897?agentId=claude-door1
+[mcp-bridge] ws open -> ws://127.0.0.1:9897?agentId=claude-door1&contractHash=ffa94e93e3182d44924ed28381870c7bd814c908279942022d5925a4865a9446
 [mcp-bridge] ws close 1008
 
 --- Orchestrator Log ---
@@ -38,8 +37,8 @@ Ready to manage agents.
 [McpServer] Connection closed for agentId=claude-door1 (code: 1008)
 [Registry] Cleared 1 stale await_turn waiter(s) for agent claude-door1
 [Agent claude-door1] ready -> reconnecting
-[Registry] MCP connection dropped for agent claude-door1 (code 1008). Allowing 30s reconnect...
 [Server] Status claude-door1: reconnecting → 0 client(s)
+[Registry] MCP connection dropped for agent claude-door1 (code 1008). Allowing 30s reconnect...
 [Registry] Reconnect timeout expired for agent claude-door1 (in-flight turn: none) -> terminated
 [Agent claude-door1] reconnecting -> terminated
 [Server] Status claude-door1: terminated → 0 client(s)
