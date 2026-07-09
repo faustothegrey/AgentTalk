@@ -48,3 +48,37 @@ regresses preserved M16 baton behavior.
   orchestrator `SessionRecorder` runtime channel in the relevant M17 task. Refusals must be observable without
   relying on conversation transcripts.
 - Remove unapproved origin tags or obtain a Gate 1/PO scope ruling before keeping them.
+
+## Implementation Review: M17-T1 Round 2 (Codex, 2026-07-09)
+
+**Verdict: VERIFIED.** The Round 1 findings are addressed and M17-T1 is verified for Gate 2. The broader live proof
+and final workflow-doc updates remain later M17 tasks.
+
+**Verification run:**
+- `npx vitest run packages/runtime-core/src/registry/__tests__/m17-gate-channel.test.ts packages/runtime-core/src/registry/__tests__/baton-metadata.test.ts`
+  -> **2 files / 7 tests passed**.
+- `npx tsc -b` -> exit 0.
+- Direct M16 baton-shape probe against `send_to_agent` with payload `[SM] This is the baton payload` and
+  `workflow_baton` metadata -> **accepted** and delivered to the receiver EVT path.
+- Direct workflow gate-attempt event probe -> one accepted `[SM]` event and one refused `[PO]` event emitted through
+  `workflow_gate_attempt`, with refusal reason
+  `Unauthorized: PO-level workflow events can only originate from trusted human/API paths`.
+- `npm test` -> **50 files / 287 tests passed**.
+- `npm run backlog:check` -> backlog structure OK, **19 items, 0 warnings**.
+- `git diff --check && git diff --cached --check` -> exit 0.
+- Frozen/out-of-fence checks: zero `team-coordinator.ts` diff, zero `packages/contracts/wire-contract.json` diff,
+  and no diff in `/Users/fausto/Software/agentalk-mcp-client`.
+- Pollution check: `git worktree list` shows only `/Users/fausto/Software/AgentTalk`; `git branch --list 'task-*'`
+  shows only the active `task-M17-T1` branch.
+
+**Disposition of Round 1 findings:**
+1. **M16 baton preservation:** fixed. The aggressive bracket-text guard was removed; structured `workflowEvent`
+   metadata is now the authority-checked path, so M16 baton text is no longer rejected.
+2. **Runtime recorder path:** fixed for T1. `Registry` emits `workflow_gate_attempt` for accepted/refused workflow
+   gate attempts, and `apps/orchestrator/src/server.ts` records it through the `SessionRecorder` runtime channel and
+   broadcasts it.
+3. **Origin tag vocabulary:** fixed. `WorkflowOrigin` and MCP schema are back to `[Human] | [PO] | [SM]`.
+
+**Reviewer note for later M17 tasks:** accepted `workflow_gate_attempt` currently means the authority check accepted
+the event; it is emitted before target delivery checks. The live proof and UI/recording task should keep this
+semantics explicit when using the event as evidence.
