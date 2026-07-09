@@ -555,3 +555,35 @@ green. The remaining blocker is the load-bearing A/B proof: Proof A is not a run
 - Provide a true A/B artifact: with the same real CLI/orchestrator setup and URL containing `contractHash`, show the
   unfixed bridge failing with `got undefined`, then the fixed bridge passing via `injected contractHash from URL`.
   The existing no-hash passthrough proof may remain as the separate Gate 1 condition-1 evidence.
+
+### Gate 2 Review - Round 3 (Codex, 2026-07-09)
+
+**Verdict: VERIFIED.** Commit `b53bf2d` addresses the Round 2 A/B proof gap, and the T3a implementation is verified
+for Gate 2.
+
+**Evidence verified:**
+- Proof A uses the same real CLI/orchestrator shape and the same URL hash as Proof B, but the bridge log lacks the
+  fixed-branch injection line and the orchestrator rejects the attach with `got undefined`. This demonstrates the
+  unfixed bridge failure mode.
+- Proof B uses the same URL hash, shows `[mcp-bridge] injected contractHash from URL`, then records the real CLI
+  `send_to_agent` tool call with structured `baton` and `workflowEvent`, followed by the accepted M17 gate event.
+- Both proof files include run-bound `AGENTTALK_BATON` / `AGENTTALK_WORKFLOW_EVENT` unset checks.
+- The Gate 1 no-hash condition remains covered by the client test for URL-without-`contractHash` passthrough.
+
+**Verifier checks run:**
+- `npm test` in `agentalk-mcp-client`: PASS, 2 files / 2 tests.
+- `npm run build` in `agentalk-mcp-client`: PASS.
+- `git diff --check && git diff --cached --check && git show --check --oneline HEAD` in both repos: PASS.
+- `node scripts/scope-check.mjs` in AgentTalk: PASS; parsed `Allowed: 4`, `Forbidden: 3`, `Free: 1`.
+- `npm run backlog:check` in AgentTalk: PASS, 21 items / 0 warnings.
+- forbidden-surface diff in AgentTalk for `packages/mcp-transport/src/mcp-server.ts`, runtime-core, contracts, and
+  MCP tools: PASS, no diff.
+- client changed-file check: only `bridge.mjs` and `__tests__/bridge.test.mjs` changed; grep found no
+  `AGENTTALK_BATON` / `AGENTTALK_WORKFLOW_EVENT` code in the client diff.
+- full AgentTalk `npm test`: PASS, 52 files / 297 tests.
+- `node scripts/m14-identity-harness.mjs --check`: PASS, "Baselines match. Identity verified." The harness-created
+  `task-task-1783630414643` worktree/branch was swept after the run.
+- final pollution check in both repos: PASS, only the expected `task-M18-T3` archive branch and active
+  `task-M18-T3a` branch remain.
+
+**Hand-off:** M18-T3a is verified for Gate 2 and ready for Task-end Review.
