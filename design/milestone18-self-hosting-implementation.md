@@ -82,6 +82,40 @@
     - design/lessons/gemini-lessons.md
 ```
 
+## Implementation Review: M18-T2 Round 1 (Codex, 2026-07-09)
+
+**Verdict: VERIFIED.** Commit `2784c6a` addresses BL-020 inside the approved T2 fence and is verified for Gate 2
+handoff to Task-end Review.
+
+**Verification run:**
+- `node scripts/scope-check.mjs` -> exit 0. The T2 manifest accepted exactly the ledger plus
+  `packages/runtime-core/src/agents/in-process-driver.ts` and
+  `packages/runtime-core/src/agents/__tests__/in-process-driver.test.ts`.
+- Targeted preservation suite:
+  `npx vitest run packages/runtime-core/src/agents/__tests__/in-process-driver.test.ts apps/orchestrator/src/__tests__/m17-gate-recording.test.ts packages/runtime-core/src/registry/__tests__/m17-gate-channel.test.ts packages/runtime-core/src/registry/__tests__/baton-metadata.test.ts`
+  -> **4 files / 20 tests passed**.
+- `npx tsc -b` -> exit 0.
+- `git diff --check && git diff --cached --check && git show --check --oneline HEAD` -> exit 0.
+- `npm run backlog:check` -> backlog structure OK, **21 items, 0 warnings**.
+- `npm test` -> **52 files / 297 tests passed**.
+- `node scripts/m14-identity-harness.mjs --check` -> **Baselines match. Identity verified.** The known generated
+  harness worktree/branch was clean and swept after the run.
+- Out-of-fence checks: zero `packages/runtime-core/src/registry/team-coordinator.ts` diff; no files outside the T2
+  manifest changed.
+- Pollution check after sweep: `git worktree list` shows only `/Users/fausto/Software/AgentTalk`; `git branch --list
+  'task-*'` shows only active `task-M18-T2`.
+
+**Disposition of T2 bars:**
+1. **Disconnect-mid-turn regression:** verified by the new `BL-020 regression` test. The simulated transport marks
+   the agent `terminated` during the turn and throws; the driver logs the error and does not attempt the illegal
+   `terminated -> error` transition.
+2. **Normal exec-error / M08 preservation:** verified by the existing in-process driver M08 tests in the targeted
+   suite.
+3. **Clean termination and M17 preservation:** verified by targeted driver, M17 gate-channel/recording, and baton
+   metadata tests.
+4. **Scope:** production change is limited to `in-process-driver.ts`; no broad lifecycle redesign and no
+   `team-coordinator.ts` changes.
+
 ## Implementation Review: M18-T1 Round 1 (Codex, 2026-07-09)
 
 **Verdict: REFUTED.** The core script is present and the full existing suite is green, but the delivery is not
