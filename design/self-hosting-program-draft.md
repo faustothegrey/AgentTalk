@@ -105,6 +105,15 @@ was compressed to the recommendation line; full reasoning stayed in the planner'
 such, honestly.)* **M17 OPENED at the 2026-07-09 backlog gate — BL-019 `doing`; next act: the planner
 authors the plan, then Gate 1.**
 
+**M17 DELIVERED AND CLOSED same day (2026-07-09).** C1–C3 (plan C1–C7) all VERIFIED; merges `5e4ca27` /
+`59856f9` / `467bd4a`; ledger `design/milestone17-gate-over-channel-implementation.md` frozen. The negative
+test is live-proven: an attached session claiming `[PO]`/po-act is refused pre-delivery by the brain.
+**Relay count ≈15 — flat vs M16, honestly stated:** M17 built the gate over the channel but the *humans'*
+gates still relay via terminal until real CLI sessions can emit envelopes — the relay-count fall is
+BL-017/M18's claim. Pre-named M18 inception inputs: **BL-017** (exec-bridge baton gap — likely M18-T1),
+**BL-020** (orchestrator dies on attached-client disconnect — the substrate cannot host a real epic while it
+can be killed by a disconnect), plus the planner meta-concerns #3/#4 (2026-07-09).
+
 ### M18 — Self-hosting milestone *(the flywheel's first turn)*
 
 **Goal.** One full, deliberately small dev epic runs end-to-end on the substrate — planning baton, gates,

@@ -1,7 +1,12 @@
 # Milestone 17 Implementation Ledger
 
+> **Status:** **M17 CLOSED ✅ (2026-07-09)** — all three tasks merged, PO-gated: T1 `5e4ca27`, T2 `59856f9`,
+> T3 `467bd4a` (epic close). Epic DoD C1–C7 all VERIFIED at the T3 gate-3 closure sweep (see that section).
+> Same-day epic (~6h inception→close). Suite 291/291 at close; contract hash unchanged (v7). Rider findings
+> filed: BL-020 (crash on client disconnect), port-collision note. **This ledger is frozen.**
+
 **Epic:** The gate over the channel
-**Current Task:** M17-T3 (T1 MERGED ✅ `5e4ca27` · T2 MERGED ✅)
+**Current Task:** — (epic closed; next epic is a PO call — expected M18 inception, with BL-017 + BL-020 as pre-named inputs)
 
 ## §3c M17-T1 Implementer Claims Table
 

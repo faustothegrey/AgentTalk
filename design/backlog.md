@@ -189,6 +189,26 @@ fault tolerance, plan at `design/milestone08-transport-fault-tolerance-plan.md`.
 ### Done
 
 <!-- @item
+id: BL-019
+status: done
+date: 2026-07-09
+epic: M17
+tags: [self-hosting, identity, roles, enforcement]
+-->
+- [done · was: doing · opened AND closed 2026-07-09 (one day, three tasks); merges `5e4ca27` (T1) +
+  `59856f9` (T2) + `467bd4a` (T3/epic), each PO-gated] — **M17 — The gate over the channel (self-hosting
+  program, epic 2 of M16→M18)** — DELIVERED: session→identity→role mapping enforced by the brain
+  (registry-owned `workflowRole`; bracketed text never authoritative; `product-owner` unassignable to any
+  agent — Authority Invariant in the ledger); real reviewer verdict + SM go over the live attach channel,
+  recorded (`design/m17-gate-channel-proof.ndjson`); PO-level act from an attached session refused
+  pre-delivery (test-proven + live-recorded + UI-observed). Contract hash unchanged at v7 (send_to_agent
+  extension, hash-neutral by design). Gate catches: 2 gate-2 refutes + 2 gate-3 refutes (G3-1 tag-vs-act,
+  G3-2 provider≠trust-channel) — all pre-merge. Rider findings: BL-020 (orchestrator dies on client
+  disconnect — flywheel catch #2), port-9899/meter collision note. Epic relay count ≈15 — flat vs M16, as
+  expected: gates still relay via terminal until BL-017 (the fall is M18's claim, not M17's). Ledger:
+  `design/milestone17-gate-over-channel-implementation.md`.
+
+<!-- @item
 id: BL-013
 status: done
 date: 2026-07-08
@@ -459,21 +479,7 @@ tags: [consensus, arbiter, architecture, heavyweight]
 
 ### Doing (exactly one)
 
-<!-- @item
-id: BL-019
-status: doing
-date: 2026-07-09
-epic: M17
-tags: [self-hosting, identity, roles, enforcement]
--->
-- [doing · opened 2026-07-09 (backlog gate; SM: Claude, PO go in session); inception PO+Architect 2026-07-09,
-  planner advisory POV recorded same day] — **M17 — The gate over the channel (self-hosting program, epic 2
-  of M16→M18)** — session→identity→role mapping; origin tags become structured metadata the brain enforces at
-  routing; a real reviewer verdict and a real SM go flow through AgentTalk, recorded; negative test: a
-  PO-level act with a non-`[Human]` tag is refused. Fence (INCEPTION block, draft §M17): the mapping and its
-  enforcement, nothing more — exec-bridge baton gap explicitly out (BL-017), contract negotiation out
-  (BL-018); scope growth = automatic Gate-1 hand-back. Plan:
-  `design/milestone17-gate-over-channel-plan.md` authored by Codex → Gate 1.
+*(empty — M17/BL-019 closed 2026-07-09; next item is a PO/SM backlog-gate call)*
 
 <!-- @item
 id: BL-011
