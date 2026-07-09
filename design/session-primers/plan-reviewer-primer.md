@@ -1,6 +1,6 @@
 ---
 role: plan-reviewer
-key: 20260709-1231-9c5a1f
+key: none
 written: 2026-07-09 by Claude (session close — M17 closed; next gate-1 work is the M18 plan)
 ---
 
