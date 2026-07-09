@@ -480,3 +480,46 @@ change, any new MCP tool, wire-contract changes (stays v7).
 **Open question for the planner's spec (raised, not decided):** the real CLI needed `--mcp-config` pointing at
 `bridge.mjs`; a repo-committed `.mcp.json` template would make "attach a real session" a one-liner for the next
 epic. Rider-sized; drop it if it grows.
+
+### Gate 2 Review - Round 1 (Codex, 2026-07-09)
+
+**Verdict: REFUTED.** The client tests/build pass and the core code diff stays in the intended client surface, but
+the delivery does not satisfy the T3a Gate 2 bar yet.
+
+**Findings:**
+- **Committed whitespace check fails in `agentalk-mcp-client`.** `git diff --check && git diff --cached --check &&
+  git show --check --oneline HEAD` reports trailing whitespace in `__tests__/bridge.test.mjs` lines 17 and 29, and
+  `bridge.mjs` lines 45 and 65. This is a required bar in the T3a verification budget.
+- **The T3a `@scope` manifest is malformed and does not parse the fence it claims.** `node scripts/scope-check.mjs`
+  exits 0, but reports `Allowed: 9 patterns`, `Forbidden: 0`, and `Free: 0`. The ledger text visibly intends
+  forbidden/free entries, so the green scope-check is not meaningful even for the AgentTalk repo portion. This also
+  undermines Gate 1 condition 2's required honesty note about scope-check's limits.
+- **The live proof artifacts do not show the bridge-side cause of the A/B pass or the no-env condition.**
+  `m18-t3a-proof-a.txt` shows the expected pre-fix server rejection and `m18-t3a-proof-b.txt` shows a later accepted
+  server-side tool call, but the artifacts do not include the bridge stderr line (`injected contractHash from URL`),
+  the real CLI command/config used for each side, or a run-bound check that `AGENTTALK_BATON` and
+  `AGENTTALK_WORKFLOW_EVENT` were unset during the passing run. Given IP-15, the A/B proof needs enough context to
+  tie the pass to this bridge fix and to rule out env-var envelope injection.
+
+**Verifier checks run:**
+- `npm test` in `agentalk-mcp-client`: PASS, 2 files / 2 tests.
+- `npm run build` in `agentalk-mcp-client`: PASS.
+- `git diff --check && git diff --cached --check && git show --check --oneline HEAD` in `agentalk-mcp-client`:
+  FAIL, trailing whitespace as listed above.
+- `git diff --check && git diff --cached --check && git show --check --oneline HEAD` in AgentTalk: PASS.
+- `node scripts/scope-check.mjs` in AgentTalk: exits 0, but parsed `Forbidden: 0` / `Free: 0`, so the manifest needs
+  correction before this bar can count.
+- `npm run backlog:check` in AgentTalk: PASS, 21 items / 0 warnings.
+- forbidden-surface diff in AgentTalk for `packages/mcp-transport/src/mcp-server.ts`, runtime-core, contracts, and
+  MCP tools: PASS, no diff.
+- client changed-file check: only `bridge.mjs` and `__tests__/bridge.test.mjs` changed; grep found no
+  `AGENTTALK_BATON` / `AGENTTALK_WORKFLOW_EVENT` code in the client diff.
+- pollution check in both repos: PASS for worktrees; only the expected `task-M18-T3` archive branch and active
+  `task-M18-T3a` branch are present.
+
+**Required redelivery:**
+- Fix committed whitespace in the client repo.
+- Fix the T3a manifest indentation/shape so `scope-check` parses the intended allowed, forbidden, and free sections;
+  then rerun it and record the meaningful output.
+- Add run-bound proof context tying Proof B to `bridge.mjs` injecting the URL hash and showing the no-env condition
+  for envelope injection during the passing run.
