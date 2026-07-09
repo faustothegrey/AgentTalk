@@ -708,8 +708,13 @@ tags: [hygiene, pollution, gates, friction-m18]
   — **Gates cannot tell a leaked process from a managed service** — *(Original filing claimed `pid 3177` was an
   orchestrator leaked by the M18-T3 proof run, surviving 4+ hours across two gate-3 closures. **That was wrong.**
   At the PO's request I moved to kill it, identified it first, and found it was
-  **`com.fausto.agenttalk-orchestrator`, a launchd KeepAlive service the PO runs** — bound to non-default ports
-  (3741/49426), which is why no gate's port check ever saw it. launchd restarted it within seconds; no harm. The
+  **`com.fausto.agenttalk-orchestrator`, a launchd KeepAlive service the PO runs on purpose**: an always-on
+  orchestrator whose job is to **serve `GET /api/backlog` (port 3741) to a backlog UI that lives outside this
+  repo** — it reads `design/backlog.md` from the working tree, so uncommitted edits appear in that UI. No agent
+  has ever attached to it (16 boots, 7 days). It also opens an unused WebSocket MCP listener on a **random
+  ephemeral port each boot** (`AGENTTALK_MCP_PORT` unset — seen at 49288 / 49242 / 58733 / 49426), which is why
+  no gate's port check ever saw it, and why one could collide with the ephemeral range. Logs land in
+  `~/.hermes/logs/` — a path inherited from the retired Hermes era, not a live dependency. launchd restarted it within seconds; no harm. The
   reviewer who filed this — me — did exactly what **IP-15** warns about: inferred a cause from a correlation
   (`ppid 1`, cwd `apps/orchestrator`, right time window) without running the one command that would have refuted
   it.)* **The real, narrower gap stands:** the closure hygiene sweep checks worktrees and branches but **never
