@@ -646,6 +646,9 @@ tags: [self-hosting, robustness, attach-mode, runtime-core]
   the whole orchestrator process** (observed exit 1; full stack in the M17 ledger gate-3 close). Pre-existing
   `runtime-core` defect (M17 touched none of these files); out of M17's fence — recorded, not fixed. Fix
   surface: `packages/runtime-core/src/agents/in-process-driver.ts` error path must tolerate terminal states.
+
+<!-- @item
+id: BL-017
 status: todo
 date: 2026-07-09
 epic: null
