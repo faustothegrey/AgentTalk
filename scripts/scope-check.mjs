@@ -4,6 +4,24 @@
  * M18-T1 Scope Check
  * Parses the active task's @scope manifest from the design ledgers and compares
  * changed paths against `allowed`, `forbidden`, and `free` globs.
+ *
+ * USAGE — who runs it, and when (BL-015 L0, detective layer):
+ *   node scripts/scope-check.mjs
+ * Run from anywhere in the repo, on the task branch. It resolves the active
+ * branch, finds the `@scope` manifest for that branch in `design/*.md` (the
+ * task's ledger section), and checks every changed path — committed since
+ * `master...HEAD` (falling back to `origin/master...HEAD` when no local
+ * `master` exists, e.g. CI), plus staged/unstaged/untracked worktree files.
+ * Exit 0 = all changes in-scope; exit 1 = violations listed, one per line.
+ *
+ *   - IMPLEMENTER: run it as part of the Rule-5 self-check, BEFORE claiming
+ *     done — a non-zero exit is either a file to revert or a scope
+ *     conversation to have at the gate, never a manifest to widen (IP-14).
+ *   - IMPLEMENTATION REVIEWER (gate 2): run it on the delivered branch each
+ *     round; a violation is REFUTE evidence.
+ *   - TASK-END REVIEWER (gate 3): run it in the closure sweep alongside the
+ *     pollution checks.
+ * On `master`/`main` it exits 0 without checking (no task manifest applies).
  */
 
 import fs from 'fs';

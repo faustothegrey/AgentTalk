@@ -9,7 +9,7 @@
 
 ## M18-T1 - BL-015 L0: scope manifest and `scope-check`
 
-**Status:** `doing` (Implementer: Gemini)
+**Status:** `done` — merged 2026-07-09 (gate 3 VERIFIED, reviewer doc fix PO-authorized)
 **Branch:** `task-M18-T1`
 
 ### Coordination Evidence
@@ -25,7 +25,10 @@
   - `2026-07-09` - `gate-2 redelivery` (Implementer -> SM -> Implementation Reviewer) - T1 round 2 delivery
   - `2026-07-09` - `gate-2 VERIFIED report` (Implementation Reviewer -> SM -> Task-end Reviewer) - T1 round 2 verified
   - `2026-07-09` - `gate-3 refute` (Task-end Reviewer -> SM -> Implementer) - T1 round 1 gate-3 refuted
-- **Relay count:** 8 (3 seeded + 5)
+  - `2026-07-09` - `gate-2 recheck VERIFIED report` (Implementation Reviewer -> SM -> Task-end Reviewer) - T1 recheck after gate-3 refute
+- **Relay count:** 9 (3 seeded + 6) — **substrate events recorded: 0** (honest: all T1 coordination ran
+  over the terminal; expected while BL-017 is open — the workflow-event path had no attached CLI sender.
+  This is T1's baseline the C3 fall is measured against.)
 - **Proof pointer:** (Pending recordings)
 
 ### Rule 6/7 Declaration (Gemini, 2026-07-09)
@@ -225,3 +228,42 @@ for Gate 2 handoff to Task-end Review.
    T1 allowed list and are no longer part of the local-`master` changed set.
 3. **Missing T1 coordination rows:** fixed. The ledger now lists the five additional T1 terminal relays and updates
    the relay count to **8**.
+
+## Task-end Review: M18-T1 Round 2 (Claude, 2026-07-09)
+
+**Verdict: VERIFIED ✅ (reviewer added the missing usage doc — PO-authorized in session, on record) — MERGED.**
+
+**Full closure sweep, every check re-run this round (1 attempt each, all first-hand):**
+- Base fix confirmed in the diff (`master...HEAD` preferred; `origin/master` CI fallback) — the required shape exactly.
+- Manifest slimmed to the 5 real files; tool view == real diff (5 == 5).
+- Targeted tests `npx vitest run scripts/__tests__/scope-check.test.mjs` -> **5/5**.
+- `node scripts/scope-check.mjs` on the branch -> exit 0.
+- Fresh end-to-end negative probe (untracked `apps/web/gate3-probe2.ts`) -> caught, exit 1; probe removed.
+- `npx tsc -b` -> clean. Full `npm test` -> **52 files / 296 tests**. `npm run backlog:check` -> 21 items, 0 warnings.
+- `node scripts/m14-identity-harness.mjs --check` -> Baselines match; known leaked worktree+branch swept
+  (`git worktree list` + `git branch --list 'task-*'` clean after sweep).
+- Whitespace clean; fences clean (zero `runtime-core`/`team-coordinator.ts` diff; no `as any`); no L1/L2 shapes.
+- Coordination rows appended and honest; final T1 relay count **9**, substrate events **0** (declared above).
+
+**One gap found and closed under explicit PO authority:** the plan's T1 bullet "document how implementers and
+reviewers run it during Rule-5 self-check and gates" was unmet (script header described *what*, not *who/when*;
+no usage doc in ledger/README/AGENT.md/design note). Handing back a full round for a docs paragraph vs. reviewer
+completion was put to the PO as an explicit choice; **the PO authorized the reviewer fix** (option on record,
+2026-07-09 in session). Fix: USAGE block in the `scope-check.mjs` header (who runs it at Rule-5/gate-2/gate-3,
+exit semantics, base semantics, master no-op) — inside the T1 manifest's allowed surface. Declared here per
+Reviewer Rule 6; the narrow typo-class default remains unchanged for future tasks.
+
+**DoD sweep (plan T1 bars):** manifest syntax defined ✅ (ledger `@scope` block) · `scope-check` script ✅ ·
+usage documentation ✅ (post reviewer fix) · catches out-of-scope ✅ (gate-2 matcher probe + two independent
+gate-3 end-to-end probes) · passes in-scope ✅ (branch run exit 0) · hard fence held ✅ (zero `runtime-core`
+production changes; no provider hooks / fenced worktrees / baton-carried manifests / runtime fence events).
+C4 of the epic DoD is satisfied; BL-015 stays `todo` for L1/L2 (M19 gate with BL-014), per the gate record.
+
+**Telemetry (task closure):**
+- task:        M18-T1
+- wall-clock:  2026-07-09 ~13:30 (implementer baton) → 17:2x (merge) (~4h, 2 gate-2 rounds + 1 gate-3 refute round)
+- budget:      claude weekly 33%→38% (Δ ~5%), codex weekly 31%→36% (Δ ~5%), session claude 66%→11% (window reset 15:49)  [per scripts/usage.mjs]
+- gate:        tsc 0, suite 296/296 (52 files), pollution clean (post-sweep)
+- diff:        5 files, +454/-1 (incl. ledger), commits 166d1d1 · 31ca833 · 4793b23 · d60770c · 80cefeb · 582e734 (+ closure commit)
+- coordination: relays 9 (3 seeded pre-T1 + 6 in-task), substrate events 0 (BL-017 open — T1 baseline for C3)
+- outcome:     MERGED ✅ (PO-gated; PO merge authorization given with the reviewer-fix grant, 2026-07-09)
