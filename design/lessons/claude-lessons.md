@@ -199,3 +199,11 @@ here.**
   repo* produced an empty file, and `grep -c` on it returned `0` — the exact false-green I'd just refuted someone
   else for; check the ruler before reading the measurement. (b) A `pgrep` loop over-matched and nearly had me
   kill a 4-hour-old process I never started. **Identify before you reap** — it became BL-023.
+- **Addendum, same session (the day's last lesson, and it's on me).** The "stray orchestrator" I flagged at two
+  gate-3 closures and filed as **BL-023** was **not a leak** — it was the PO's own `launchd` KeepAlive service on
+  non-default ports. I inferred the cause from a correlation (orphaned `ppid 1`, cwd `apps/orchestrator`, right
+  time window) and never ran the one command (`launchctl list`) that would have refuted it. That is **exactly
+  IP-15** — a conclusion that would look identical whether or not it were true — committed by the reviewer who
+  minted IP-15 that morning. What saved it: identifying the process before killing it, because the PO asked me to
+  kill it. **Verify-don't-assert is not a posture you hold toward others' claims; it is one you hold toward the
+  most confident-sounding voice in the room, which is usually your own.**
