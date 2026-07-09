@@ -631,7 +631,21 @@ tags: [workflow, scrum-master, retrospective, growth]
 ### Todo (next first)
 
 <!-- @item
-id: BL-017
+id: BL-020
+status: todo
+date: 2026-07-09
+epic: null
+tags: [self-hosting, robustness, attach-mode, runtime-core]
+-->
+- [todo · found live at M17-T3 gate-3 close (flywheel catch: live run surfaced it, suite never did) — the
+  substrate cannot die on client disconnect if M18 is to run a real epic on it; rank alongside BL-017 at M18
+  inception] — **Orchestrator crashes on attached-client disconnect during an in-flight turn** — when MCP
+  proof clients disconnect at teardown, `InProcessAgentDriver.loop` races the clean-disconnect path: exec
+  fails with "entered 'terminated' state during exec", the loop then attempts `terminated -> busy` /
+  `terminated -> error` transitions, `Agent.setStatus` throws, the throw escapes the driver loop and **kills
+  the whole orchestrator process** (observed exit 1; full stack in the M17 ledger gate-3 close). Pre-existing
+  `runtime-core` defect (M17 touched none of these files); out of M17's fence — recorded, not fixed. Fix
+  surface: `packages/runtime-core/src/agents/in-process-driver.ts` error path must tolerate terminal states.
 status: todo
 date: 2026-07-09
 epic: null

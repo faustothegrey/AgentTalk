@@ -460,3 +460,65 @@ Retry Budget: 2 retries per step.
   the UI WebSocket path.
 
 **Disposition:** M17-T3 is verified for Gate 2 hand-back to Task-end Review.
+
+## Task-end Review: M17-T3 — CLOSURE SWEEP (Claude, 2026-07-09)
+
+**Verdict: VERIFIED ✅ — live proof reproduced first-hand, UI observed for real, epic DoD swept; merge
+requested from the PO.** All bars 1 attempt each, all green.
+
+**Live proof (re-run, attempt 1 of 1):** real orchestrator (`PORT=3001`, `AGENTTALK_MCP_PORT=9899`,
+recorder to a scratchpad path; script run from a scratch CWD so the committed evidence stays untouched) →
+**`✅ LIVE SMOKE PASSED`**. Fresh NDJSON: 3 `workflow_gate_attempt` events — gate-2 verdict
+(fromRole=implementation-reviewer, no tag) **accepted**; gate-1 go ([SM], scrum-master) **accepted**;
+gate-3 po-act ([PO], product-owner) **refused** pre-delivery; refused payload in **0** transcript events;
+no `[Reviewer]` tag. Committed `design/m17-gate-channel-proof.ndjson` re-parsed: **semantically identical**
+(same 3 events, same shapes).
+
+**UI observation (the owed T2 row — now actually observed, closing it):** watched the real web UI live
+during my proof run (vite dev proxying to the live orchestrator, Chrome). All three events rendered in the
+AGENT EVENTS sidebar exactly as spec'd: `Gate:gate-2 [accepted (pre-delivery)] reviewer-9
+(implementation-reviewer) action: verdict` · `Gate:gate-1 [accepted (pre-delivery)] sm-9 (scrum-master)
+action: go` · `Gate:gate-3 [refused] other-9 (product-owner) action: po-act`. Note: the T3 implementer
+response asserted this observation "based on the T2 setup" — that was inference, not observation; it is now
+observed fact.
+
+**Standard bars:** targeted 3 files/11 tests ✅ · `npx tsc -b` 0 ✅ · full `npm test` 51/291 ✅ ·
+`backlog:check` 0 warnings ✅ · whitespace ✅ · frozen surfaces 0-diff (`team-coordinator.ts`,
+`wire-contract.json`) ✅ · client repo clean ✅ · zero `as any` in branch diff ✅ · M14 harness "Baselines
+match. Identity verified." + leak swept ✅ · no stray processes/ports after run ✅.
+
+**Findings recorded at this close (none blocks T3):**
+1. **G3-3 (note, ports):** the proof hardcodes MCP port **9899 — already held by the standing usage meter**
+   (IPv4 `127.0.0.1`). It works because Node binds IPv6 `*:9899` alongside and `localhost` resolves to
+   `::1` first — verified live (`lsof`: both listeners simultaneously). Works-by-luck; the plan had said
+   9898. Next epic's runbook should pick a free port.
+2. **G3-4 (defect, pre-existing, out of fence → BL-020):** at proof teardown the **orchestrator process
+   crashed** (exit 1): `InProcessAgentDriver.loop` races clean client disconnect → `Agent.setStatus` throws
+   `Invalid transition: terminated -> busy` then `terminated -> error`, and the escaped throw kills the
+   server. Pre-existing `runtime-core` path — T3 touched none of it; evidence had already flushed (proof
+   unaffected). **Did NOT fix** (show-stopper fence). Filed **BL-020**; flywheel catch #2 (after M16's
+   healthcheck) — live runs keep finding what the suite cannot.
+3. **G3-5 (observation):** `POST /api/agents/:id/workflow-role` accepts arbitrary role strings (no enum
+   validation) — trusted path, low severity, noted for a future hardening pass.
+4. **Declared reviewer fix (zero-risk, docs):** added the BL-017 qualifier to both "primary channel"
+   sentences in `design/collaboration-workflow.md` — without it a cold reader would believe terminal relay
+   is deprecated *now*; the ledger's own limitation statement says otherwise. Restating that limitation for
+   the record: **the proof uses direct SDK MCP clients; real CLI sessions cannot yet emit these envelopes —
+   that remains BL-017.**
+
+**Epic DoD sweep (C1–C7, all VERIFIED at this close):**
+- C1 ✅ real reviewer verdict + SM go through AgentTalk, structured metadata, NDJSON-recorded (live run, twice — gate 2's and mine).
+- C2 ✅ PO-level act from an attached non-human session refused pre-delivery; test-proven (2 negatives + repro shapes) AND live-recorded AND UI-observed.
+- C3 ✅ registry-owned session→identity→role mapping enforces; bracketed text never authoritative (T1 + G3-1/G3-2 hardening; Authority Invariant in this ledger).
+- C4 ✅ non-workflow behavior preserved: full suite 291/291, M16 baton probe accepted (gate-2 R2), ordinary send_to_agent test green.
+- C5 ✅ gate events inspectable in recording (parsed) and UI (observed) with one small sidebar case added — no redesign.
+- C6 ✅ BL-017/BL-018 untouched (client repo clean, no negotiation code, contract hash unchanged at v7).
+- C7 ✅ freeze bar green end-to-end (this section's standard bars).
+
+**Telemetry (task closure):**
+- task:        M17-T3
+- wall-clock:  2026-07-09 ~11:55 (baton) → ~12:25 close (~30m; gate-2 2 rounds, gate-3 1 round)
+- budget:      claude weekly ~18%→~19% (session ~7%→~10%); codex weekly ~28%; gemini 5h ~17% [claude meter intermittent per LB-11]
+- gate:        tsc 0, suite 291/291, pollution clean (post-sweep, incl. processes/ports)
+- diff:        4 files product/script/docs +~290 (plus ledger), commits `798117c`→`fee0dbe` + close
+- outcome:     VERIFIED at gate 3 — merge pending PO go (T3 closes the epic's task list)
