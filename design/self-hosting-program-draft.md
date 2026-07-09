@@ -83,6 +83,21 @@ fallback.
 C2: a PO-level act attempted with a non-`[Human]` tag is refused by the brain (negative test). C3: freeze
 bar green.
 
+**INCEPTION (PO + Architect, 2026-07-09) — fence set, two dispositions recorded (PO adopted the architect's
+recommendations; written down here for future resurfacing at the PO's request):**
+1. **Fence = the mapping and its enforcement, nothing more.** Session→identity→role mapping; message
+   metadata schema + enforcement at routing; gate events surfaced in UI/recording; the C1–C3 claims above.
+   Any scope growth is an automatic Gate-1 hand-back (same standing guard M16 ran under).
+2. **The exec-bridge baton gap (M16 gate-3 deviation D1 — real CLI sessions can't carry `baton` args) is
+   NOT pulled into M17 by default.** The planner's advisory POV must assess feasibility: can M17's live
+   proof (C1) run without it — direct SDK MCP clients remaining acceptable proof vehicles, as in M16? If
+   the proof structurally requires the fix, escalate back to the PO for a fence decision *before* plan
+   authoring; otherwise the gap defers to M18-or-later (**tracked: BL-017**).
+3. **Cross-repo contract-hash evolution stays a manual, PO-gated act.** M17 *rules* on the question, it
+   does not *build*: at most a clearer version label on the wire contract. Versioned negotiation is
+   deliberately deferred (**tracked: BL-018**; reopen if a contract bump recurs and bites again) — building
+   auto-negotiation now would be process for a problem observed exactly once (program risk #3).
+
 ### M18 — Self-hosting milestone *(the flywheel's first turn)*
 
 **Goal.** One full, deliberately small dev epic runs end-to-end on the substrate — planning baton, gates,

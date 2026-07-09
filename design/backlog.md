@@ -559,6 +559,23 @@ tags: [recovery, awaiting-operator]
 ### Deferred (recent additions)
 
 <!-- @item
+id: BL-018
+status: deferred
+date: 2026-07-09
+epic: null
+tags: [self-hosting, wire-contract, cross-repo, governance]
+-->
+- [deferred · M17 inception disposition (PO+Architect, 2026-07-09) — contract evolution stays a manual,
+  PO-gated act; reopen condition: a wire-contract bump recurs and bites again (another manual cross-repo
+  sync grant needed), OR the PO calls it] — **Versioned wire-contract negotiation** — replace the
+  orchestrator's hard-reject on client contract-hash mismatch with versioned negotiation between
+  AgentTalk and `agentalk-mcp-client`, so cross-repo contract evolution no longer requires a synchronized
+  human act. Evidence so far: exactly one occurrence (M16-T2a's v7 bump, resolved via a Gate-1 cross-repo
+  sync grant) — building negotiation now would be process for a problem observed once (program risk #3).
+  M17 may at most add a clearer version label on the contract, no negotiation machinery. Source:
+  `design/self-hosting-program-draft.md` §M17 inception; architect remark parked 2026-07-08.
+
+<!-- @item
 id: BL-016
 status: deferred
 date: 2026-07-08
@@ -580,6 +597,23 @@ tags: [workflow, scrum-master, retrospective, growth]
   Trial informally at the next real REFUTE before any doc change.
 
 ### Todo (next first)
+
+<!-- @item
+id: BL-017
+status: todo
+date: 2026-07-09
+epic: null
+tags: [self-hosting, attach-mode, baton, exec-bridge]
+-->
+- [todo · M17 inception disposition (PO+Architect, 2026-07-09) — NOT in M17's fence by default; the M17
+  planner advisory POV must assess whether the M17 live proof can run without it (direct SDK MCP clients
+  stay acceptable proof vehicles, as in M16); if the proof structurally requires it, PO fence decision
+  before plan authoring] — **Exec-bridge carries `baton` args** — close M16 gate-3 deviation D1: the
+  `agentalk-mcp-client` exec-bridge translation layer cannot carry `baton` arguments, so real CLI sessions
+  (Claude Code / Codex CLI) attached over MCP cannot send workflow batons/envelopes — M16's live proof used
+  direct SDK MCP clients instead. Blocks the "real agents run the workflow over the channel" end-state
+  (M18) if left open. Source: M16 ledger D1, LB-62,
+  `design/self-hosting-program-draft.md` §M17 inception.
 
 <!-- @item
 id: BL-015
