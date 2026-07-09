@@ -20,7 +20,12 @@
   - `2026-07-09` - `planner POV relay` (SM -> Planner) - Pre-T1 coordination (plan inception)
   - `2026-07-09` - `plan baton` (SM -> Planner) - Pre-T1 coordination (plan execution)
   - `2026-07-09` - `Gate-1 result relay` (SM -> Implementer) - Pre-T1 coordination (hand-off to Implementer)
-- **Relay count:** 3 (seeded)
+  - `2026-07-09` - `implementer baton` (SM -> Implementer) - T1 starts
+  - `2026-07-09` - `gate-2 hand-back` (Implementation Reviewer -> SM -> Implementer) - T1 round 1 refuted
+  - `2026-07-09` - `gate-2 redelivery` (Implementer -> SM -> Implementation Reviewer) - T1 round 2 delivery
+  - `2026-07-09` - `gate-2 VERIFIED report` (Implementation Reviewer -> SM -> Task-end Reviewer) - T1 round 2 verified
+  - `2026-07-09` - `gate-3 refute` (Task-end Reviewer -> SM -> Implementer) - T1 round 1 gate-3 refuted
+- **Relay count:** 8 (3 seeded + 5)
 - **Proof pointer:** (Pending recordings)
 
 ### Rule 6/7 Declaration (Gemini, 2026-07-09)
@@ -66,9 +71,6 @@
     - design/milestone18-self-hosting-implementation.md
     - scripts/scope-check.mjs
     - scripts/__tests__/scope-check.test.mjs
-    - design/milestone18-self-hosting-plan.md
-    - design/self-hosting-program-draft.md
-    - design/backlog.md
     - vitest.config.ts
   forbidden:
     - packages/runtime-core/src/**/*.ts

@@ -36,11 +36,11 @@ function getActiveBranch() {
 function getChangedFiles() {
   const files = new Set();
   try {
-    const output = execSync('git diff --name-only origin/master...HEAD', { cwd: repoRoot, encoding: 'utf-8' });
+    const output = execSync('git diff --name-only master...HEAD', { cwd: repoRoot, encoding: 'utf-8' });
     output.split('\n').filter(Boolean).forEach(f => files.add(f));
   } catch (err) {
     try {
-      const output = execSync('git diff --name-only master...HEAD', { cwd: repoRoot, encoding: 'utf-8' });
+      const output = execSync('git diff --name-only origin/master...HEAD', { cwd: repoRoot, encoding: 'utf-8' });
       output.split('\n').filter(Boolean).forEach(f => files.add(f));
     } catch (e) {
       // Fallback to local unstaged/staged files if not tracking master
