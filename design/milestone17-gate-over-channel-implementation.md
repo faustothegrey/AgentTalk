@@ -119,3 +119,28 @@ Fixed Finding G3-1. Both `m17-gate-channel.test.ts` negatives are added.
 - **`action: 'po-act'`:** Blocked unconditionally in `registry.ts`'s `send_to_agent` validation. Any attempt from an attached session is rejected regardless of origin tag or role.
 - **`setWorkflowRole` product-owner assignment:** Chose to block the assignment directly. `setWorkflowRole` throws if attempting to assign `product-owner` to an attached non-human session (`provider !== 'api'`).
 - Both Repro A and B were added to `m17-gate-channel.test.ts` as negative tests.
+
+## Implementation Review: M17-T1 Round 3 / G3-1 Recheck (Codex, 2026-07-09)
+
+**Verdict: VERIFIED.** The task-end G3-1 authority hole is closed and M17-T1 is again verified for Gate 2 hand-back
+to Task-end Review.
+
+**Verification run:**
+- `npx vitest run packages/runtime-core/src/registry/__tests__/m17-gate-channel.test.ts packages/runtime-core/src/registry/__tests__/baton-metadata.test.ts`
+  -> **2 files / 9 tests passed**. This includes the two new G3-1 negatives.
+- `npx tsc -b` -> exit 0.
+- Rebuilt direct Repro A probe: tag-less `workflowEvent.action: "po-act"` from an attached `scrum-master` session
+  -> **rejected** with `Unauthorized: PO-level workflow events can only originate from trusted human/API paths`;
+  `workflow_gate_attempt` emitted `result: "refused"` and no delivery occurred.
+- Rebuilt direct Repro B probe: `setWorkflowRole("agent-1", "product-owner")` for an MCP attached agent ->
+  **rejected** with `Cannot assign product-owner role to an attached non-human agent`.
+- `npm test` -> **50 files / 289 tests passed**.
+- `npm run backlog:check` -> backlog structure OK, **19 items, 0 warnings**.
+- `git diff --check && git diff --cached --check` -> exit 0.
+- Out-of-fence checks: zero `team-coordinator.ts` diff, zero `packages/contracts/wire-contract.json` diff, and no
+  diff in `/Users/fausto/Software/agentalk-mcp-client`.
+- Pollution check: `git worktree list` shows only `/Users/fausto/Software/AgentTalk`; `git branch --list 'task-*'`
+  shows only the active `task-M17-T1` branch.
+
+**Disposition of G3-1:** verified fixed. `po-act` is blocked by act type, not only by origin tag spelling, and
+attached non-human sessions cannot be assigned `product-owner`.
