@@ -401,3 +401,53 @@ adoption — the adoption claim stays T3's.
 - gate:        tsc 0, suite 297/297 (52 files), pollution clean (post-sweep), live disconnect-survival proof PASSED
 - diff:        3 files, +137/-1, commits 2784c6a · 30966e1 (+ closure commit)
 - outcome:     MERGED ✅ (PO-gated; merging per the standing M18 flow — BL-020 flips done in backlog at merge)
+
+## M18-T3 — CLOSED: SUPERSEDED (not merged). Superseded by M18-T3a.
+
+**PO scope decision (2026-07-09, in session):** *"T3 just died and gave birth to T3a."* Recorded here per the
+SM's durable-artifact duty; the rescope is a PO act.
+
+**Disposition of the dead work.** T3's branches (`task-M18-T3` in **both** repos) stay unmerged and are the
+archive of the refute. **Nothing needs reverting: neither master ever received the code** (verified —
+`git show master:bridge.mjs | grep -c AGENTTALK_BATON` → 0). The mainline stayed verified-only throughout, which
+is exactly what gate-3's REFUTE is for. Six gate-2 green rounds did not put a single line of it on master.
+
+**Why it died (short form; full record in the gate-3 refute above + LB-66):**
+1. The delivered proof passed **identically on the pre-fix bridge** — it never discriminated fixed from unfixed
+   code (**IP-15**).
+2. Its mechanism (env-var injection) let the *operator* staple an envelope on, rather than the *agent* choosing
+   one per message — the wrong shape for a workflow verdict.
+3. **BL-017 itself was misdiagnosed.** The relay always carried structured args. The true blocker, live-observed
+   under PO authorization: a real CLI session **cannot attach at all** — `mcp-server.ts:150` requires
+   `params.clientInfo.contractHash` at `initialize`, a real CLI supplies its own `clientInfo` without it, and
+   `bridge.mjs` never injects it. Every prior "live proof" used SDK clients, which do set the hash, hiding the
+   wall for three epics.
+
+**What was proven instead (the epic's goal, demonstrated):** with the hash injected, a **real `claude` CLI
+session** attached and natively emitted `send_to_agent` carrying both a `baton` and a `workflowEvent`; the brain
+accepted the gate event and enforced M17 authority against the registry-owned role. Env vars **unset** during the
+run. Evidence: `design/evidence/m18-door1-real-cli-proof.ndjson`, LB-66. Bonus: the orchestrator survived the
+CLI's disconnect — M18-T2's fix, live, unprompted.
+
+## M18-T3a — BL-017 (re-scoped): the attach handshake
+
+**Status:** `todo` — **spec pending: planner authors the T3a plan section, then Gate 1 (plan reviewer).**
+**Branch:** *(not yet created; T3a starts fresh from `master`, not from the dead T3 branch.)*
+
+**Shape agreed at the rescope (PO decision + architect's live findings; the planner owns the actual spec):**
+1. `bridge.mjs` injects `contractHash` into `initialize.params.clientInfo`, sourced from the URL it **already
+   receives** (`?contractHash=...`) — preferred over a new env var. Client-side, transport-only: **no protocol
+   logic enters the relay** (the pure-relay principle holds).
+2. **No env-var envelope injection.** Not a revert (nothing merged) — simply not carried forward. Today's run
+   proved it unnecessary in principle: the agent supplies the envelope itself.
+3. Proof = the Door 1 demonstration, re-run as the task's own bar, with an **A/B discipline** per IP-15: show the
+   bar **failing** without the handshake fix (`contract hash mismatch ... got undefined`) and **passing** with it.
+4. Correct **BL-017's text** in the backlog to state the real defect (done at this rescope).
+
+**Fence:** `agentalk-mcp-client/bridge.mjs` + its tests; the AgentTalk ledger; evidence artifacts. **Forbidden:**
+`mcp-server.ts` handshake semantics (the server is right to demand the hash), any `runtime-core` production
+change, any new MCP tool, wire-contract changes (stays v7).
+
+**Open question for the planner's spec (raised, not decided):** the real CLI needed `--mcp-config` pointing at
+`bridge.mjs`; a repo-committed `.mcp.json` template would make "attach a real session" a one-liner for the next
+epic. Rider-sized; drop it if it grows.
