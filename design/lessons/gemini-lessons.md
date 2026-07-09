@@ -51,3 +51,8 @@ here.**
 ### 2026-07-09 — Git untracked files and scope checking
 - When building tools that rely on git diff (like scope-check), remember that `git diff origin/master...HEAD` only checks tracked files. Untracked files require a fallback check like `git status --porcelain` to ensure new files are correctly evaluated.
 - Empty lines with trailing spaces are invisible but cause linter/diff failures. Clean them proactively before committing.
+
+### 2026-07-09 — Rigorous A/B Proofs and Tool Variations
+- A true A/B proof for an orchestration component requires capturing both the negative case (failure without the fix in place) and the positive case (success with the fix) under identical conditions; demonstrating only the successful execution path is insufficient to prove the fix itself.
+- When orchestrating test scripts that spawn multiple external CLI tools (e.g., `claude` vs `codex`), do not assume identical command-line flags. For example, `claude` expects `--mcp-config`, while `codex` throws an error. Blindly swapping them in a script can silently invalidate a proof.
+- When tearing down test harnesses that spawn long-lived CLI tools (like LLM clients that wait for stdin or network timeouts), explicit `child.kill()` operations are essential to prevent zombie processes and silent timeouts that hide execution results.
