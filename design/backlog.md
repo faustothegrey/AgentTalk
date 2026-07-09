@@ -50,6 +50,7 @@ endorses the sequence; T3 must extend the existing `send_to_agent` argument path
 PO escalation); architect verified the POV's three file-level claims against both repos. SM go/no-go reason
 (durable, per the SM grant): inception + POV aligned with no open feasibility question, no competing `doing`
 item, budgets healthy (claude 33% / codex 31% / gemini 26% weekly at gate time).
+Plan authored after the gate: `design/milestone18-self-hosting-plan.md` (Gate 1 review: Claude).
 
 | Item | Disposition for this gate |
 |---|---|
@@ -518,7 +519,8 @@ tags: [self-hosting, flywheel, scope-fence, robustness, baton]
   count falls here). DoD per the draft §M18: every baton/gate in the recording; friction→backlog entries
   cite recording evidence (the program's true DoD); C3 reworded — relay count recorded per task, falls
   measurably after T3, every relay a declared fallback moment. Inception + planner POV (endorses, architect-
-  verified): `design/self-hosting-program-draft.md` §M18. **Source:** PO + Architect inception, 2026-07-09.
+  verified): `design/self-hosting-program-draft.md` §M18. Plan: `design/milestone18-self-hosting-plan.md`.
+  **Source:** PO + Architect inception, 2026-07-09.
 
 <!-- @item
 id: BL-011

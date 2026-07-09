@@ -1,8 +1,8 @@
 # Self-Hosting Program (M16 → M18) — AgentTalk improves itself
 
-**Status:** 🟢 **ACTIVE — M16 CLOSED (2026-07-08) · M17 CLOSED (2026-07-09) · M18 INCEPTED (2026-07-09:
-T1=BL-015-L0 shakedown · T2=BL-020 · T3=BL-017; C3 reworded; next: planner advisory POV, then the backlog
-gate opens M18).** Role-skill injection stays M19 (BL-014, re-gate on M17
+**Status:** 🟢 **ACTIVE — M16 CLOSED (2026-07-08) · M17 CLOSED (2026-07-09) · M18 OPENED (2026-07-09:
+BL-021 `doing`; plan authored in `design/milestone18-self-hosting-plan.md`; next: Gate 1 review by Claude).**
+Role-skill injection stays M19 (BL-014, re-gate on M17
 evidence — now available).
 **Roles:** per `AGENT.md → 📌 DEFAULT ROLE ASSIGNMENTS` (2026-07-08 model — three reviewer seats; SM handed
 Codex → Claude). *(Inception-time roles line preserved below as the 2026-07-02 record.)*
@@ -154,7 +154,8 @@ measurably after T3, every relay logged as a declared fallback moment.
    trips **BL-018's reopen condition** → escalate to the PO before plan authoring, per the M17 inception
    disposition 3.
 6. **Next act:** planner advisory POV (feasibility/risk/effort on the T1→T3 sequence; a fresh planner
-   primer is already keyed), then the backlog gate opens M18.
+   primer is already keyed), then the backlog gate opens M18. **Done same day:** POV recorded below; backlog
+   gate opened BL-021; plan authored in `design/milestone18-self-hosting-plan.md`; next Gate 1 review.
 
 **Planner advisory POV (Codex, PO-relayed, 2026-07-09) — RECORDED; endorses the sequence.** Feasibility:
 T1 right shakedown (additive, no runtime-core; hard boundary L1/L2 out — Gate-1 hand-back if they appear);
