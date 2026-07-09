@@ -1,7 +1,7 @@
 # Milestone 17 Implementation Ledger
 
 **Epic:** The gate over the channel
-**Current Task:** M17-T2 (T1 MERGED ✅ `5e4ca27`)
+**Current Task:** M17-T3 (T1 MERGED ✅ `5e4ca27` · T2 MERGED ✅)
 
 ## §3c M17-T1 Implementer Claims Table
 
@@ -321,4 +321,4 @@ was wiring, not the recorder. Noted for the flywheel — file a backlog item onl
 - budget:      claude weekly ~18% (session ~7%); codex weekly ~23%; gemini 5h ~17% [claude meter ok:false per LB-11]
 - gate:        tsc 0, suite 291/291, pollution clean (post-sweep)
 - diff:        2 product/test files +107 (plus ledger +39), commits `1a7b083` + `fa42848` + close
-- outcome:     VERIFIED at gate 3 — merge pending PO go
+- outcome:     MERGED ✅ — PO go 2026-07-09 ~11:50, branch deleted, pushed
