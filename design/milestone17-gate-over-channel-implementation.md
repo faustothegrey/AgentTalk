@@ -82,3 +82,32 @@ and final workflow-doc updates remain later M17 tasks.
 **Reviewer note for later M17 tasks:** accepted `workflow_gate_attempt` currently means the authority check accepted
 the event; it is emitted before target delivery checks. The live proof and UI/recording task should keep this
 semantics explicit when using the event as evidence.
+
+## Task-end Review: M17-T1 Round 1 (Claude, 2026-07-09)
+
+**Verdict: REFUTED ⛔ — merge declined; back to the implementer via Gate 2.** Fresh-eyes sweep found a
+substantive authority hole the five T1 tests do not cover; reproduced by running before ruling.
+
+**Finding G3-1 — a tag-less `po-act` is ACCEPTED from an attached session (T1 bar 4 violated).** The guard
+refuses the *tag* (`originTag: '[PO]'|'[Human]'`), not the *act*. Two repro tests (2/2 PASSED — archived in
+the task-end reviewer's scratchpad, shapes reproduced below in return scope):
+- **Repro A:** agent assigned `scrum-master` sends `action: 'po-act'`, `fromRole: 'scrum-master'`, **no
+  `originTag`** → `workflow_gate_attempt` emitted `accepted`, message **delivered** (EVT to target observed).
+- **Repro B:** `setWorkflowRole('agent-1', 'product-owner')` is permitted for an attached session; a tag-less
+  `po-act` with `fromRole: 'product-owner'` → **accepted + delivered**. An attached non-human session can be
+  made the PO and act as it.
+Plan bar violated: T1 bar 4 — "a non-human attached agent cannot emit a **PO-level** or `[Human]` workflow
+event" — the *act* (`action: 'po-act'`) is PO-level regardless of tag spelling; C2/C3's substance is that
+attached sessions can never carry PO authority. The existing test (line 75) only exercises the
+`originTag: '[PO]'` shape, so the suite stayed green over the hole.
+
+**Required return scope (in-fence, small):**
+1. Refuse `action: 'po-act'` from the attached `send_to_agent` path **unconditionally** (PO-level acts
+   originate only from the trusted human/API path — no tag or role combination reachable by an attached
+   session may pass).
+2. Close the `product-owner` assignment hole: `setWorkflowRole` must refuse assigning `product-owner` to an
+   attached agent (or the guard must make the role inert on this path) — pick one, state it in the ledger.
+3. Add both negative tests (repro A and B shapes) to `m17-gate-channel.test.ts`.
+
+**Not re-run this round (deliberate):** full suite / tsc / harness — pointless before the fix lands; the
+full task-end sweep (all bars, 1 attempt each) runs on redelivery.
