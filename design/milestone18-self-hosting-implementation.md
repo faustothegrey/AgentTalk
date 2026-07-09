@@ -304,7 +304,7 @@ C4 of the epic DoD is satisfied; BL-015 stays `todo` for L1/L2 (M19 gate with BL
 
 ## M18-T2 - BL-020: attached-client disconnect cannot kill the orchestrator
 
-**Status:** `doing` (Implementer: Gemini)
+**Status:** `done` — merged 2026-07-09 (gate 3 VERIFIED, live disconnect-survival proven)
 **Branch:** `task-M18-T2`
 
 ### Coordination Evidence
@@ -360,3 +360,44 @@ C4 of the epic DoD is satisfied; BL-015 stays `todo` for L1/L2 (M19 gate with BL
     - design/logbook.md
     - design/lessons/gemini-lessons.md
 ```
+
+## Task-end Review: M18-T2 Round 1 (Claude, 2026-07-09)
+
+**Verdict: VERIFIED ✅ — MERGED.** No reviewer fixes needed this round.
+
+**The live bar (the one gate 2 could not run from the suite alone — observation made, not derived):**
+re-ran the exact M17 apparatus whose teardown *discovered* BL-020: real orchestrator (`dist` confirmed to
+contain the T2 guard), ports **9897**/3001 per LB-63 (both families verified free; no 9899 luck), recorder
+to scratchpad, proof-script copy in scratchpad (committed evidence untouched). Result:
+- all three gate behaviors executed live (verdict accepted · go accepted · PO act refused pre-delivery);
+  fresh recording captured **3 `workflow_gate_attempt` events** — M17 semantics preserved under the fix;
+- at client teardown the disconnect race **fired** (caught stack in the log: `Agent.setStatus` from
+  `InProcessAgentDriver.loop`) and was **contained**: exactly 1 caught `error:` line, 0 uncaught/fatal,
+  **orchestrator survived** (same scenario = exit 1 pre-fix), then shut down cleanly on signal (exit 0),
+  ports swept. *(The proof script's own final check printed FAILED on its known-broken stale-file read —
+  M17 finding G2-1, out of T2's fence; the fresh-recorder parse above is the real evidence.)*
+
+**Code reading (fresh eyes on the two illegal transitions BL-020 named):** `terminated -> busy` (loop line
+71) throws inside the try and lands in the guarded catch; `ready` (line 74) is status-guarded; the catch
+itself can no longer throw — no escape path from `loop()` remains. Clean-disconnect semantics preserved
+(`terminated`, never forced to `error`); genuine faults still set `error` + break (not swallowed).
+
+**Standard bars, re-run first-hand (1 attempt each):** scope-check exit 0 (changed files = manifest exactly) ·
+targeted driver tests **9/9** (incl. the BL-020 regression) · `npx tsc -b` clean · full `npm test` **52
+files / 297 tests** · `backlog:check` 21/0 · whitespace clean · `team-coordinator.ts` zero-diff · zero
+`as any` in the branch diff · M14 harness "Baselines match. Identity verified." (leaked worktree+branch
+swept; hygiene clean after).
+
+**Coordination Evidence (final for T2):** relay rows: implementer baton (seeded) + gate-2 VERIFIED report
+(Implementation Reviewer -> SM -> Task-end Reviewer) = **relay count 2**; substrate events for M18's own
+coordination: **0** (BL-017 still open — the proof's recorded gate events are proof payloads, not epic
+coordination; counted honestly as such). T2 relay count 2 vs T1's 9: fewer review rounds, not substrate
+adoption — the adoption claim stays T3's.
+
+**Telemetry (task closure):**
+- task:        M18-T2
+- wall-clock:  2026-07-09 ~17:25 (baton) → 17:4x (merge) (~20 min in-session; 1 gate-2 round, 1 gate-3 round)
+- budget:      claude weekly 38%→38%, codex weekly 36%→38%, claude session 11%→16%  [per scripts/usage.mjs]
+- gate:        tsc 0, suite 297/297 (52 files), pollution clean (post-sweep), live disconnect-survival proof PASSED
+- diff:        3 files, +137/-1, commits 2784c6a · 30966e1 (+ closure commit)
+- outcome:     MERGED ✅ (PO-gated; merging per the standing M18 flow — BL-020 flips done in backlog at merge)
