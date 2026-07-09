@@ -193,3 +193,35 @@ as **IP-14** (manifest widened to absorb a measurement error), reviewer-authored
 redelivery, gate-2 VERIFIED report, this gate-3 refute) all crossed the terminal and are not yet in the
 fallback rows — the redelivery must append them (count with the PO; my reconstruction is ~5-6 relays for
 T1 so far beyond the 3 seeded).
+
+## Implementation Review: M18-T1 Round 3 / Gate-3 Refute Recheck (Codex, 2026-07-09)
+
+**Verdict: VERIFIED.** The Gate-3 refusal defects are addressed in commit `80cefeb`, and M18-T1 is again verified
+for Gate 2 handoff to Task-end Review.
+
+**Verification run:**
+- `npx vitest run scripts/__tests__/scope-check.test.mjs` -> **1 file / 5 tests passed**.
+- `node scripts/scope-check.mjs` -> exit 0. With the corrected local-`master` base, the checker saw **5** changed
+  files: `design/lessons/gemini-lessons.md`, `design/milestone18-self-hosting-implementation.md`,
+  `scripts/__tests__/scope-check.test.mjs`, `scripts/scope-check.mjs`, and `vitest.config.ts`.
+- Diff-base probe: `git diff --name-only master...HEAD` -> **5 files**; `git diff --name-only origin/master...HEAD`
+  still shows the stale **8-file** view including `design/backlog.md`, `design/milestone18-self-hosting-plan.md`,
+  and `design/self-hosting-program-draft.md`. This verifies the tool now uses the local merge target view that
+  Task-end Review required.
+- Planning-doc allowlist probe -> exit 0. `design/backlog.md`, `design/milestone18-self-hosting-plan.md`, and
+  `design/self-hosting-program-draft.md` no longer match the manifest's allowed set.
+- `git diff --check && git diff --cached --check && git show --check --oneline HEAD` -> exit 0.
+- `npx tsc -b` -> exit 0.
+- `npm test` -> **52 files / 296 tests passed**.
+- `npm run backlog:check` -> backlog structure OK, **21 items, 0 warnings**.
+- Out-of-fence checks: zero `packages/runtime-core/src/**` diff, including zero `team-coordinator.ts` diff.
+- Pollution check: `git worktree list` shows only `/Users/fausto/Software/AgentTalk`; `git branch --list
+  'task-*'` shows only active `task-M18-T1`.
+
+**Disposition of Gate-3 findings:**
+1. **Diff base preference:** fixed. `getChangedFiles()` now tries `master...HEAD` first and falls back to
+   `origin/master...HEAD` only if local `master` is unavailable.
+2. **Manifest widened to absorb stale origin diff:** fixed. The three planning/backlog docs were removed from the
+   T1 allowed list and are no longer part of the local-`master` changed set.
+3. **Missing T1 coordination rows:** fixed. The ledger now lists the five additional T1 terminal relays and updates
+   the relay count to **8**.
