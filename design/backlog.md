@@ -472,7 +472,8 @@ tags: [self-hosting, identity, roles, enforcement]
   routing; a real reviewer verdict and a real SM go flow through AgentTalk, recorded; negative test: a
   PO-level act with a non-`[Human]` tag is refused. Fence (INCEPTION block, draft §M17): the mapping and its
   enforcement, nothing more — exec-bridge baton gap explicitly out (BL-017), contract negotiation out
-  (BL-018); scope growth = automatic Gate-1 hand-back. Plan: to be authored (planner) → Gate 1.
+  (BL-018); scope growth = automatic Gate-1 hand-back. Plan:
+  `design/milestone17-gate-over-channel-plan.md` authored by Codex → Gate 1.
 
 <!-- @item
 id: BL-011
