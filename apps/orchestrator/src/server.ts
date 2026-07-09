@@ -1069,6 +1069,12 @@ export function startServer(
     );
   });
 
+  registry.on('workflow_gate_attempt', (eventData) => {
+    recorder?.record('runtime', 'workflow_gate_attempt', eventData);
+    const sent = broadcast({ type: 'workflow_gate_attempt', ...eventData });
+    console.log(`[Server] Workflow gate attempt by ${eventData.agentId} (${eventData.result}) → ${sent} client(s)`);
+  });
+
   server.listen(port, () => {
     const address = server.address();
     const actualPort = typeof address === 'object' && address ? address.port : port;

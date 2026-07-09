@@ -377,29 +377,21 @@ export class Registry extends EventEmitter {
         const expectedResponseTypes = getExpectedResponseTypes(args);
 
         if (workflowEvent && workflowEvent.kind === 'workflow_gate_event') {
-          if (workflowEvent.originTag === '[PO]' || workflowEvent.originTag === '[Human]') {
-            throw new Error(`Unauthorized: PO-level workflow events can only originate from trusted human/API paths`);
-          }
-          if (workflowEvent.originTag === '[SM]' && agent.workflowRole !== 'scrum-master') {
-            throw new Error(`Unauthorized: Agent ${agent.id} is not assigned the scrum-master workflow role`);
-          }
-          if (workflowEvent.fromRole && agent.workflowRole !== workflowEvent.fromRole) {
-             throw new Error(`Unauthorized: Agent ${agent.id} is assigned role ${agent.workflowRole || 'none'}, cannot act as ${workflowEvent.fromRole}`);
-          }
-        }
-
-        // Also block unstructured bracketed text spoofing if they aren't authorized
-        if (typeof payload === 'string') {
-          const spoofMatch = payload.match(/^(\[Human\]|\[PO\]|\[SM\])/i);
-          if (spoofMatch && spoofMatch[1]) {
-            const originTag = spoofMatch[1].toUpperCase();
-            if (originTag === '[PO]' || originTag === '[HUMAN]') {
+          try {
+            if (workflowEvent.originTag === '[PO]' || workflowEvent.originTag === '[Human]') {
               throw new Error(`Unauthorized: PO-level workflow events can only originate from trusted human/API paths`);
             }
-            if (originTag === '[SM]' && agent.workflowRole !== 'scrum-master') {
+            if (workflowEvent.originTag === '[SM]' && agent.workflowRole !== 'scrum-master') {
               throw new Error(`Unauthorized: Agent ${agent.id} is not assigned the scrum-master workflow role`);
             }
+            if (workflowEvent.fromRole && agent.workflowRole !== workflowEvent.fromRole) {
+               throw new Error(`Unauthorized: Agent ${agent.id} is assigned role ${agent.workflowRole || 'none'}, cannot act as ${workflowEvent.fromRole}`);
+            }
+          } catch (err: any) {
+            this.emit('workflow_gate_attempt', { agentId: agent.id, event: workflowEvent, result: 'refused', reason: err.message, payload });
+            throw err;
           }
+          this.emit('workflow_gate_attempt', { agentId: agent.id, event: workflowEvent, result: 'accepted', payload });
         }
 
         if (to === 'user') {

@@ -98,7 +98,7 @@ export interface Conversation {
   transcript: TranscriptEntry[];
 }
 
-export type WorkflowOrigin = '[Human]' | '[PO]' | '[SM]' | '[Reviewer]' | '[Implementer]' | '[Planner]';
+export type WorkflowOrigin = '[Human]' | '[PO]' | '[SM]';
 
 export type WorkflowRole =
   | 'planner'
@@ -114,7 +114,7 @@ export type WorkflowGateEvent = {
   kind: 'workflow_gate_event';
   gate: 'gate-1' | 'gate-2' | 'gate-3' | 'backlog-gate';
   action: 'verdict' | 'go' | 'no-go' | 'baton' | 'po-act';
-  originTag: WorkflowOrigin;
+  originTag?: WorkflowOrigin;
   fromAgentId?: string;
   fromRole: WorkflowRole;
   toAgentId?: string;
