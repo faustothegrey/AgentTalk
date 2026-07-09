@@ -40,6 +40,29 @@ show-done/show-dropped toggles ride this param). The response's `total` field al
 
 ---
 
+### Backlog gate — 2026-07-09 (opening M18 · SM: Claude, PO go `[PO]` in session)
+
+Per §3b, dispositioned before opening **M18 — Self-hosting milestone** (the program's flywheel-first-turn
+epic, 3 of M16→M18). Inception: `design/self-hosting-program-draft.md` §M18 **INCEPTION** block
+(PO+Architect, 2026-07-09 — T1=BL-015-L0 shakedown · T2=BL-020 · T3=BL-017; C3 reworded to
+relay-recorded/falls-after-T3). Planner advisory POV delivered same day (PO-relayed, recorded in the draft):
+endorses the sequence; T3 must extend the existing `send_to_agent` argument path (new tool ⇒ BL-018 reopen ⇒
+PO escalation); architect verified the POV's three file-level claims against both repos. SM go/no-go reason
+(durable, per the SM grant): inception + POV aligned with no open feasibility question, no competing `doing`
+item, budgets healthy (claude 33% / codex 31% / gemini 26% weekly at gate time).
+
+| Item | Disposition for this gate |
+|---|---|
+| **BL-021** (new) | **NEW `doing`** — M18 itself (the single doing item). |
+| **BL-015** | Stays `todo` — **L0 absorbed into M18-T1** (the guinea-pig shakedown); the item remains open for L1/L2, which stay gated at M19 with BL-014 (pulling them into T1 is an automatic Gate-1 hand-back). |
+| **BL-020** | Stays `todo`, **absorbed into M18-T2** — flips `done` when T2 merges. |
+| **BL-017** | Stays `todo`, **absorbed into M18-T3** — flips `done` when T3 merges (re-gate condition from the M17 record: satisfied — this IS the M18 re-gate). |
+| **BL-018** | Unchanged — deferred; reopen condition live for T3 (a new tool would bump the contract hash — escalate to the PO before plan authoring). |
+| **BL-014 / BL-016** | Unchanged — BL-014 re-gates at M19 (now paired with BL-015 L2); BL-016 stays deferred on PO call. |
+| **BL-005 / BL-007 / BL-010** | Unchanged — deferred; none touched by M18's fence. |
+
+*Nothing dropped. DiagramTalk repair stays a droppable rider-if-genuinely-cheap after T3 (not a backlog item; named in the draft §M18).*
+
 ### Backlog gate — 2026-07-09 (opening M17 · SM: Claude, PO go in session)
 
 Per §3b, dispositioned before opening **M17 — The gate over the channel** (self-hosting program epic 2 of
@@ -479,7 +502,23 @@ tags: [consensus, arbiter, architecture, heavyweight]
 
 ### Doing (exactly one)
 
-*(empty — M17/BL-019 closed 2026-07-09; next item is a PO/SM backlog-gate call)*
+<!-- @item
+id: BL-021
+status: doing
+date: 2026-07-09
+epic: M18
+tags: [self-hosting, flywheel, scope-fence, robustness, baton]
+-->
+- [doing · opened at the 2026-07-09 backlog gate (`[PO]` go in session) — the flywheel's first turn: one
+  real dev epic coordinated ON the substrate, PO babysitting the relay gap as declared fallback] —
+  **M18 — Self-hosting milestone (self-hosting program, epic 3 of M16→M18)** — T1: BL-015 **L0 only**
+  (scope-check script + per-task scope manifest; the guinea-pig process shakedown; L1/L2 stay M19-gated);
+  T2: BL-020 (orchestrator must survive attached-client disconnect mid-turn); T3: BL-017 (exec-bridge
+  carries baton/workflowEvent args — prefer extending `send_to_agent`, a new tool reopens BL-018; the relay
+  count falls here). DoD per the draft §M18: every baton/gate in the recording; friction→backlog entries
+  cite recording evidence (the program's true DoD); C3 reworded — relay count recorded per task, falls
+  measurably after T3, every relay a declared fallback moment. Inception + planner POV (endorses, architect-
+  verified): `design/self-hosting-program-draft.md` §M18. **Source:** PO + Architect inception, 2026-07-09.
 
 <!-- @item
 id: BL-011
@@ -643,9 +682,10 @@ date: 2026-07-09
 epic: null
 tags: [self-hosting, robustness, attach-mode, runtime-core]
 -->
-- [todo · found live at M17-T3 gate-3 close (flywheel catch: live run surfaced it, suite never did) — the
-  substrate cannot die on client disconnect if M18 is to run a real epic on it; rank alongside BL-017 at M18
-  inception] — **Orchestrator crashes on attached-client disconnect during an in-flight turn** — when MCP
+- [todo · **absorbed into M18-T2 at the 2026-07-09 gate (BL-021)** — flips done when T2 merges · found live
+  at M17-T3 gate-3 close (flywheel catch: live run surfaced it, suite never did) — the
+  substrate cannot die on client disconnect if M18 is to run a real epic on it] —
+  **Orchestrator crashes on attached-client disconnect during an in-flight turn** — when MCP
   proof clients disconnect at teardown, `InProcessAgentDriver.loop` races the clean-disconnect path: exec
   fails with "entered 'terminated' state during exec", the loop then attempts `terminated -> busy` /
   `terminated -> error` transitions, `Agent.setStatus` throws, the throw escapes the driver loop and **kills
@@ -660,10 +700,10 @@ date: 2026-07-09
 epic: null
 tags: [self-hosting, attach-mode, baton, exec-bridge]
 -->
-- [todo · M17 inception disposition (PO+Architect, 2026-07-09) — NOT in M17's fence by default; the M17
-  planner advisory POV must assess whether the M17 live proof can run without it (direct SDK MCP clients
-  stay acceptable proof vehicles, as in M16); if the proof structurally requires it, PO fence decision
-  before plan authoring] — **Exec-bridge carries `baton` args** — close M16 gate-3 deviation D1: the
+- [todo · **absorbed into M18-T3 at the 2026-07-09 gate (BL-021)** — flips done when T3 merges; prefer
+  extending `send_to_agent` args (hash-neutral), a new tool reopens BL-018 · was: M17 inception disposition
+  (PO+Architect, 2026-07-09) — NOT in M17's fence; re-gated at M18 inception as pre-named] —
+  **Exec-bridge carries `baton` args** — close M16 gate-3 deviation D1: the
   `agentalk-mcp-client` exec-bridge translation layer cannot carry `baton` arguments, so real CLI sessions
   (Claude Code / Codex CLI) attached over MCP cannot send workflow batons/envelopes — M16's live proof used
   direct SDK MCP clients instead. Blocks the "real agents run the workflow over the channel" end-state
@@ -677,8 +717,9 @@ date: 2026-07-08
 epic: null
 tags: [self-hosting, scope-fence, governance, harness]
 -->
-- [todo · PO+Architect, 2026-07-08 (mid-M16) — evidence-driven from a live violation; slot deliberately at a
-  future gate; L2 shares the M19 gate with BL-014] — **Deterministic scope fences — machine-readable per-task
+- [todo · **L0 absorbed into M18-T1 at the 2026-07-09 gate (BL-021)** — the guinea-pig shakedown epic; item
+  stays open for L1/L2, which share the M19 gate with BL-014 · PO+Architect, 2026-07-08 (mid-M16) —
+  evidence-driven from a live violation] — **Deterministic scope fences — machine-readable per-task
   scope manifest + layered enforcement** — move the implementer scope fence from *policy* (prose RoE +
   self-discipline) to *mechanism* (the environment refuses or loudly flags out-of-scope acts). Design note:
   `design/scope-fences-design-note.md`. **Evidence:**
