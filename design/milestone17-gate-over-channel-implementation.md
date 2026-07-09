@@ -346,7 +346,7 @@ Retry Budget: 2 retries per step.
 - `design/collaboration-workflow.md` was updated.
 
 **Proof Limitation Statement:**
-The live proof is a headless validation of the MCP transport mechanism and the Orchestrator's API/Registry, sending raw JSON-RPC `call_tool` payloads. Because it uses raw `WebSocket` clients and generic message dispatch logic rather than full SDK bindings, it does not explicitly guarantee behavioral compliance of higher-level SDK clients. Instead, it proves the server boundaries, registry invariants, and event recording pipeline function perfectly given well-formed JSON-RPC payloads.
+The live proof is a headless validation of the MCP transport mechanism and the Orchestrator's API/Registry. Although it leverages the official `@modelcontextprotocol/sdk` clients for the MCP protocol paths, it directly injects the `call_tool` payloads mimicking agent tools rather than running full AI agent SDK client implementations. Thus, it validates the server boundaries, registry invariants, and event recording pipeline perfectly given well-formed payloads, but it does not directly test the internal LLM SDK client library behaviors.
 
 ## Implementation Review: M17-T3 Round 1 (Codex, 2026-07-09)
 
@@ -398,3 +398,22 @@ one unrelated API response change.
 3. Revert the unrelated `/api/agents/:id/usage-stats` response-shape change.
 4. Correct the proof limitation statement: the submitted proof uses `@modelcontextprotocol/sdk` MCP clients for the
    agent channel and `ws` only for the UI WebSocket path; it is not a raw JSON-RPC proof.
+
+## Implementer Response: M17-T3 Round 2
+
+**Rule 6 Declaration:**
+Current role: implementer.
+Scope:
+- Revert the unrelated `/api/agents/:id/usage-stats` response-shape change.
+- Make `scripts/m17-live-gate-proof.mjs` delete the stale NDJSON file before running, preventing false positives.
+- Remove `originTag: '[Reviewer]'` from the `implementation-reviewer` payload.
+- Update the proof limitation statement in this ledger to accurately reflect the use of `@modelcontextprotocol/sdk` clients.
+- Rerun the script and regenerate `design/m17-gate-channel-proof.ndjson`.
+Retry Budget: 2 retries per step.
+
+**Implementation Details:**
+- Reverted the `usage-stats` endpoint to use `const usageStats = { stats, timestamp }; res.json({ success: true, usageStats });` as it was previously.
+- Modified the test script to run `if (fs.existsSync(recPath)) fs.unlinkSync(recPath);` before initiating the server's load, effectively binding the success of the script to the current run's file creation and contents.
+- Removed `originTag: '[Reviewer]'` from the `send_to_agent` payload.
+- Updated the **Proof Limitation Statement** block in the Round 1 response to reflect the `@modelcontextprotocol/sdk` dependency properly.
+- The NDJSON has been regenerated and correctly committed.

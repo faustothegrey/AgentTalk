@@ -76,6 +76,7 @@ async function runLiveProof() {
   console.log("— Live smoke: Gate Over Channel (M17) —\n");
 
   const recPath = path.join(process.cwd(), 'design', 'm17-gate-channel-proof.ndjson');
+  const runId = Date.now().toString();
 
   let reviewer, sm, other;
   let uiWs;
@@ -126,7 +127,7 @@ async function runLiveProof() {
     await reviewer.client.callTool({ name: 'send_to_agent', arguments: {
       to: 'implementer-9',
       payload: 'Looks good!',
-      workflowEvent: { kind: 'workflow_gate_event', gate: 'gate-2', action: 'verdict', originTag: '[Reviewer]', fromRole: 'implementation-reviewer', eventId: 'evt-test-1' }
+      workflowEvent: { kind: 'workflow_gate_event', gate: 'gate-2', action: 'verdict', fromRole: 'implementation-reviewer', eventId: `evt-test-1-${runId}` }
     }});
     console.log("Verdict sent (accepted).");
 
@@ -134,7 +135,7 @@ async function runLiveProof() {
     await sm.client.callTool({ name: 'send_to_agent', arguments: {
       to: 'planner-9',
       payload: 'We are go!',
-      workflowEvent: { kind: 'workflow_gate_event', gate: 'gate-1', action: 'go', originTag: '[SM]', fromRole: 'scrum-master', eventId: 'evt-test-2' }
+      workflowEvent: { kind: 'workflow_gate_event', gate: 'gate-1', action: 'go', originTag: '[SM]', fromRole: 'scrum-master', eventId: `evt-test-2-${runId}` }
     }});
     console.log("SM go sent (accepted).");
 
@@ -143,7 +144,7 @@ async function runLiveProof() {
       await other.client.callTool({ name: 'send_to_agent', arguments: {
         to: 'implementer-9',
         payload: 'I am the PO now.',
-        workflowEvent: { kind: 'workflow_gate_event', gate: 'gate-3', action: 'po-act', originTag: '[PO]', fromRole: 'product-owner', eventId: 'evt-test-3' }
+        workflowEvent: { kind: 'workflow_gate_event', gate: 'gate-3', action: 'po-act', originTag: '[PO]', fromRole: 'product-owner', eventId: `evt-test-3-${runId}` }
       }});
       console.error("❌ Refusal failed! The PO act was accepted.");
       process.exit(1);
@@ -171,9 +172,9 @@ async function runLiveProof() {
     }
 
     const contents = fs.readFileSync(recPath, 'utf8');
-    const hasAcceptedVerdict = contents.includes('"result":"accepted"') && contents.includes('"action":"verdict"');
-    const hasAcceptedGo = contents.includes('"result":"accepted"') && contents.includes('"action":"go"');
-    const hasRefusedPo = contents.includes('"result":"refused"') && contents.includes('"action":"po-act"');
+    const hasAcceptedVerdict = contents.includes('"result":"accepted"') && contents.includes(`"eventId":"evt-test-1-${runId}"`);
+    const hasAcceptedGo = contents.includes('"result":"accepted"') && contents.includes(`"eventId":"evt-test-2-${runId}"`);
+    const hasRefusedPo = contents.includes('"result":"refused"') && contents.includes(`"eventId":"evt-test-3-${runId}"`);
 
     if (hasAcceptedVerdict && hasAcceptedGo && hasRefusedPo) {
       console.log("\n✅ LIVE SMOKE PASSED: All three gate-channel behaviors successfully transported and recorded.");

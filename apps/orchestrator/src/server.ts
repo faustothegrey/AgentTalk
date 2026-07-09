@@ -669,9 +669,10 @@ export function startServer(
       // This endpoint is preserved to avoid breaking the UI, but returns a placeholder.
       const stats = "Usage stats capture is managed by the attached worker.";
       const timestamp = new Date().toISOString();
-      res.json({ success: true, timestamp, stats });
+      const usageStats = { stats, timestamp };
+      res.json({ success: true, usageStats });
     } catch (err) {
-      console.error(`[Server] Failed to fetch usage stats for ${id}:`, err);
+      console.error(`[Server] Failed to request usage stats for agent ${id}:`, err);
       res.status(getErrorStatus(err)).json({ error: err instanceof Error ? err.message : String(err) });
     }
   });
