@@ -679,14 +679,14 @@ tags: [workflow, scrum-master, retrospective, growth]
 
 <!-- @item
 id: BL-020
-status: todo
+status: done
 date: 2026-07-09
 epic: null
 tags: [self-hosting, robustness, attach-mode, runtime-core]
 -->
-- [todo · **absorbed into M18-T2 at the 2026-07-09 gate (BL-021)** — flips done when T2 merges · found live
-  at M17-T3 gate-3 close (flywheel catch: live run surfaced it, suite never did) — the
-  substrate cannot die on client disconnect if M18 is to run a real epic on it] —
+- [done · was: todo, absorbed into M18-T2 at the 2026-07-09 gate (BL-021); **CLOSED at the T2 merge
+  `872bfed` (2026-07-09)** — fix live-proven at gate 3 (disconnect race fired, contained, orchestrator
+  survived) · found live at M17-T3 gate-3 close (flywheel catch: live run surfaced it, suite never did)] —
   **Orchestrator crashes on attached-client disconnect during an in-flight turn** — when MCP
   proof clients disconnect at teardown, `InProcessAgentDriver.loop` races the clean-disconnect path: exec
   fails with "entered 'terminated' state during exec", the loop then attempts `terminated -> busy` /
