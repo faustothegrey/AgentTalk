@@ -522,3 +522,36 @@ the delivery does not satisfy the T3a Gate 2 bar yet.
   then rerun it and record the meaningful output.
 - Add run-bound proof context tying Proof B to `bridge.mjs` injecting the URL hash and showing the no-env condition
   for envelope injection during the passing run.
+
+### Gate 2 Review - Round 2 (Codex, 2026-07-09)
+
+**Verdict: REFUTED.** The Round 1 whitespace and manifest blockers are addressed, and the client/unit checks are
+green. The remaining blocker is the load-bearing A/B proof: Proof A is not a run against the unfixed bridge.
+
+**Findings:**
+- **The A/B proof still does not satisfy the IP-15 bar.** The T3a plan requires the Door 1 proof to fail on the
+  unfixed bridge and pass with the T3a fix using the same real CLI/orchestrator path. The new Proof A uses the fixed
+  bridge's new `URL lacks contractHash, relaying unchanged` code path and omits `contractHash` from the bridge URL.
+  That proves the Gate 1 no-hash passthrough condition, but it does not prove that the unfixed bridge fails when given
+  the same URL-hash setup that the fixed bridge turns into a passing attach.
+- **Proof B now has the missing context.** It includes the exact CLI command/config, `AGENTTALK_BATON` and
+  `AGENTTALK_WORKFLOW_EVENT` unset, the bridge stderr line `injected contractHash from URL`, and the accepted
+  `send_to_agent` tool call with structured `baton` and `workflowEvent`. That side of the proof is reviewable.
+
+**Verifier checks run:**
+- `npm test` in `agentalk-mcp-client`: PASS, 2 files / 2 tests.
+- `npm run build` in `agentalk-mcp-client`: PASS.
+- `git diff --check && git diff --cached --check && git show --check --oneline HEAD` in both repos: PASS.
+- `node scripts/scope-check.mjs` in AgentTalk: PASS; parsed `Allowed: 4`, `Forbidden: 3`, `Free: 1`.
+- `npm run backlog:check` in AgentTalk: PASS, 21 items / 0 warnings.
+- forbidden-surface diff in AgentTalk for `packages/mcp-transport/src/mcp-server.ts`, runtime-core, contracts, and
+  MCP tools: PASS, no diff.
+- client changed-file check: only `bridge.mjs` and `__tests__/bridge.test.mjs` changed; grep found no
+  `AGENTTALK_BATON` / `AGENTTALK_WORKFLOW_EVENT` code in the client diff.
+- pollution check in both repos: PASS for worktrees; only the expected `task-M18-T3` archive branch and active
+  `task-M18-T3a` branch are present.
+
+**Required redelivery:**
+- Provide a true A/B artifact: with the same real CLI/orchestrator setup and URL containing `contractHash`, show the
+  unfixed bridge failing with `got undefined`, then the fixed bridge passing via `injected contractHash from URL`.
+  The existing no-hash passthrough proof may remain as the separate Gate 1 condition-1 evidence.
