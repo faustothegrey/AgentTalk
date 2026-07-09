@@ -175,3 +175,27 @@ here.**
 - **Telemetry under meter outage: mark estimates loudly and reconcile when it returns.** While the claude
   block was ok:false I wrote frozen telemetry ~10 points under the real figures (est. 19% weekly vs. actual
   30% once it came back). Estimates in durable artifacts need an [est] tag and a reconciling note.
+
+### 2026-07-09 (second session) — M18 open→close; the question that killed a task; a three-epic-old diagnosis was wrong
+- **As task-end reviewer: ask "what would this proof print if I reverted the fix?"** M18-T3 arrived with six
+  green gate-2 rounds, a committed evidence log, and a confident ledger. I reverted the change, re-ran the same
+  JSON-RPC, and got byte-identical output — the proof had never discriminated fixed from unfixed code. That one
+  question is now **IP-15**, and it is the cheapest high-yield probe I have found: it costs one run and it
+  invalidates an entire class of credible-looking evidence. Corollary that paid twice today: **run the A-side
+  yourself**; when I re-verified T3a I extracted the baseline bridge from `master` rather than trusting the
+  implementer's A-side artifact.
+- **A backlog item is a claim about reality, and it can be wrong for three epics.** BL-017 ("the exec bridge
+  can't carry baton args") shaped M17's inception, two backlog gates, and all of M18 — and was **false**. Real
+  CLI sessions were blocked at the *handshake*, not the payload; every proof used SDK clients that happened to
+  set the contract hash. Verify-don't-assert (my 2026-06-27 lesson) applies to **the problem statement**, not
+  just to the status line. The tell was available all along: nobody had ever attached a real CLI. Next time an
+  item survives multiple epics unclosed, **try the thing it describes, once, by hand, before planning around it.**
+- **Honest closure beats a clean scoreboard.** M18 closed with C3 **DEFERRED (not met)**: 19 relays, **0**
+  substrate events. It would have been easy — and wrong — to call C3 green because T3a "unblocked" the fall.
+  Writing "the program's central claim is not yet earned" into the program status is the single most useful line
+  I wrote today; it makes M19's first duty unambiguous. Related: I flagged the relay metric's missing denominator
+  (BL-027) *before* it could flatter us, rather than after.
+- **Two small ones, both from near-misses I caught on myself:** (a) `git show master:bridge.mjs` in the *wrong
+  repo* produced an empty file, and `grep -c` on it returned `0` — the exact false-green I'd just refuted someone
+  else for; check the ruler before reading the measurement. (b) A `pgrep` loop over-matched and nearly had me
+  kill a 4-hour-old process I never started. **Identify before you reap** — it became BL-023.
