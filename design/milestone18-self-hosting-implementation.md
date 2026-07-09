@@ -267,3 +267,62 @@ C4 of the epic DoD is satisfied; BL-015 stays `todo` for L1/L2 (M19 gate with BL
 - diff:        5 files, +454/-1 (incl. ledger), commits 166d1d1 · 31ca833 · 4793b23 · d60770c · 80cefeb · 582e734 (+ closure commit)
 - coordination: relays 9 (3 seeded pre-T1 + 6 in-task), substrate events 0 (BL-017 open — T1 baseline for C3)
 - outcome:     MERGED ✅ (PO-gated; PO merge authorization given with the reviewer-fix grant, 2026-07-09)
+
+## M18-T2 - BL-020: attached-client disconnect cannot kill the orchestrator
+
+**Status:** `doing` (Implementer: Gemini)
+**Branch:** `task-M18-T2`
+
+### Coordination Evidence
+
+- **Substrate events recorded:**
+  - (Pending T2 deliveries and Gates)
+- **Terminal fallback rows:**
+  - `2026-07-09` - `implementer baton` (SM -> Implementer) - T2 starts
+- **Relay count:** 1 (seeded)
+- **Proof pointer:** (Pending recordings)
+
+### Rule 6/7 Declaration (Gemini, 2026-07-09)
+
+**Scope:**
+- Fix the in-process driver/lifecycle path so a disconnect during an in-flight turn cannot throw an illegal status transition out of the loop and kill the orchestrator process.
+- The expected fix surface is `packages/runtime-core/src/agents/in-process-driver.ts` and narrowly related tests.
+- **Fence:** Preserve existing lifecycle behavior for normal exec errors, clean termination, M08 transport-fault handling, and M17 workflow-gate authority/recording behavior. Broad lifecycle redesign is out of scope.
+
+**Approach:**
+1. Investigate `packages/runtime-core/src/agents/in-process-driver.ts` to find where it throws an illegal status transition on disconnect during a turn.
+2. The orchestrator likely transitions the agent to a 'terminated' or 'disconnected' state, but the driver loop might try to update its state back to 'ready' or similar when the turn resolves, causing an invalid transition. Or the driver doesn't catch the transport error.
+3. Catch the disconnect error, verify if the agent is already terminated or in a terminal state, and if so, gracefully exit the turn without throwing an unhandled exception or trying to update the agent's status to an invalid state.
+4. Add regression test for the mid-turn disconnect.
+5. Ensure tests for other lifecycle properties (normal errors, clean termination, M08, M17) pass.
+
+**Per-check Verification Budgets (M18-T2):**
+| Check | Max attempts | Current |
+|---|---:|---:|
+| disconnect-mid-turn regression | 3 | 1 |
+| normal exec-error preservation check | 2 | 1 |
+| clean termination preservation check | 2 | 1 |
+| M08 transport-fault preservation check | 2 | 1 |
+| M17 workflow-gate authority/recording preservation check | 2 | 1 |
+| `npx tsc -b` | 2 | 1 |
+| targeted relevant tests | 2 | 1 |
+| full `npm test` | 1 | 1 |
+| `node scripts/m14-identity-harness.mjs --check` | 1 | 1 |
+| `npm run backlog:check` | 1 | 1 |
+| `git diff --check && git diff --cached --check` | 2 | 2 |
+| pollution check: `git worktree list` + `git branch --list 'task-*'` | 1 | 1 |
+
+### M18-T2 Scope Manifest
+
+```yaml
+@scope:
+  allowed:
+    - design/milestone18-self-hosting-implementation.md
+    - packages/runtime-core/src/agents/in-process-driver.ts
+    - packages/runtime-core/src/agents/__tests__/in-process-driver.test.ts
+  forbidden:
+    - packages/runtime-core/src/registry/team-coordinator.ts
+  free:
+    - design/logbook.md
+    - design/lessons/gemini-lessons.md
+```
