@@ -1,0 +1,11 @@
+{"kind":"meta","version":1,"createdAt":"2026-07-09T19:48:09.556Z","cwd":"/Users/fausto/Software/AgentTalk/apps/orchestrator"}
+{"kind":"event","atMs":16,"channel":"runtime","event":"server_started","payload":{"port":3001}}
+{"kind":"event","atMs":6886,"channel":"api","event":"create_agent_request","payload":{"id":"claude-door1","requestedExecutionMode":"auto"}}
+{"kind":"event","atMs":6887,"channel":"runtime","event":"agent_created","payload":{"id":"claude-door1","status":"creating","requestedExecutionMode":"auto"}}
+{"kind":"event","atMs":59088,"channel":"runtime","event":"status","payload":{"id":"claude-door1","status":"terminated"}}
+{"kind":"event","atMs":100983,"channel":"api","event":"create_agent_request","payload":{"id":"claude-door2","requestedExecutionMode":"auto"}}
+{"kind":"event","atMs":100983,"channel":"runtime","event":"agent_created","payload":{"id":"claude-door2","status":"creating","requestedExecutionMode":"auto"}}
+{"kind":"event","atMs":120581,"channel":"runtime","event":"workflow_gate_attempt","payload":{"agentId":"claude-door2","event":{"kind":"workflow_gate_event","eventId":"door1-evt1","gate":"gate-2","action":"verdict","fromRole":"implementation-reviewer"},"result":"accepted","payload":"Door 1: real CLI session, real baton"}}
+{"kind":"event","atMs":120581,"channel":"runtime","event":"session_status","payload":{"id":"claude-door2","sessionStatus":"ready"}}
+{"kind":"event","atMs":120581,"channel":"runtime","event":"agent_message","payload":{"from":"claude-door2","payload":"Door 1: real CLI session, real baton"}}
+{"kind":"event","atMs":152112,"channel":"runtime","event":"status","payload":{"id":"claude-door2","status":"terminated"}}

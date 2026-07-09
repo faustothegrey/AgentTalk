@@ -1635,3 +1635,55 @@ gate-3 refute.
 **Proposed follow-ups (backlog candidates, not done here):** split `AgentProvider` into `transport` (`attached`
 | `in-process`) × `vendor` (`gemini` | `claude` | `codex` | `api`); move the gemini timeout to per-agent
 capability metadata rather than a vendor test in the engine; move driver selection behind an explicit factory.
+
+### LB-66 · 2026-07-09 — [product] **BL-017 was misdiagnosed: real CLI sessions can't ATTACH, not "can't carry batons"** (Door 1 live proof)
+
+PO-authorized live run (architect, gate-3 refute follow-up). Question: can a **real** CLI session emit a
+structured workflow envelope through `bridge.mjs`? Apparatus: real `claude` CLI (`-p`, `--mcp-config`,
+`--strict-mcp-config`), real orchestrator (`AGENTTALK_MCP_PORT=9897 PORT=3001`, LB-63-clean ports), fresh
+recorder to scratchpad; repo untouched (scratchpad-only artifacts).
+
+**Run 1 — the real blocker, live-observed.** The real CLI attached and the orchestrator **rejected it at the
+handshake**: `[McpServer] Rejecting agentId=claude-door1: contract hash mismatch. Expected ffa94e93…, got
+undefined` → `ws.close(1008)` → agent `creating -> terminated`. Cause: `mcp-server.ts:150` requires
+`params.clientInfo.contractHash` at `initialize`; a real CLI sends its **own** `clientInfo` (`claude-code`,
+version) and cannot know our hash; `bridge.mjs` is a verbatim relay and **never injects it** — even though the
+hash is handed to it in its own URL and `wire-contract.json` ships in that very repo. The nested CLI session
+reported honestly that the server never connected and refused to fake the tool call.
+
+**Run 2 — Door 1 works, given one injection.** Same real CLI, same bridge **plus** `clientInfo.contractHash`
+injected at `initialize` (scratchpad copy; client repo untouched). The brain received, from a genuine CLI
+session that chose the content itself:
+```
+[Registry] MCP tool call from claude-door2: send_to_agent {
+  to: 'user', payload: 'Door 1: real CLI session, real baton',
+  baton:        { kind: 'workflow_baton',     batonId: 'door1-b1',  fromRole: 'implementation-reviewer', toRole: 'worker', originTag: '[SM]' },
+  workflowEvent:{ kind: 'workflow_gate_event', eventId: 'door1-evt1', gate: 'gate-2', action: 'verdict', fromRole: 'implementation-reviewer' } }
+[Server] Workflow gate attempt by claude-door2 (accepted)
+```
+Fresh recording: 1 `workflow_gate_attempt`, `door1-evt1`, `result: accepted` — M17 authority enforced against
+the registry-owned role. **`AGENTTALK_BATON` and `AGENTTALK_WORKFLOW_EVENT` were both UNSET** during the run
+(verified) — the agent supplied both structures natively, per message, as tool-call arguments. Bonus: the
+orchestrator **survived** the CLI's disconnect (code 1006) — M18-T2's fix, observed again in the wild.
+
+**Findings.**
+1. **BL-017's diagnosis was wrong.** "The exec-bridge translation layer cannot carry `baton` args" is false as
+   a transport claim: the relay always carried them (IP-15 / M18-T3 gate-3). The true blocker for real CLI
+   sessions is the **contract-hash handshake** — they cannot connect at all. Symptom real, cause misattributed,
+   and every prior "live proof" that used SDK clients hid it (SDK clients set `clientInfo.contractHash`; real
+   CLIs cannot).
+2. **The T3 evidence cannot have come from a real CLI session.** A real CLI is rejected at `initialize`. Whatever
+   produced `agy-live-proof-3` was a hand-fed MCP client, not the "real live CLI agent" the ledger claims —
+   independent corroboration of gate-3 findings G3-1/G3-2.
+3. **The agent chooses the envelope per message** — the design question the PO posed is answered empirically:
+   env-var injection is unnecessary *and* unnecessary-in-principle. `bridge.mjs`'s env path should be reverted.
+4. **The real fix is one line in the right place:** `bridge.mjs` injects `contractHash` into
+   `initialize.params.clientInfo` (it already receives the hash in its URL and ships `wire-contract.json`).
+   Client-side, transport-only, no protocol logic in the relay — consistent with the pure-relay principle.
+   *(Design note: taking the hash from the URL is cleaner than a new env var.)*
+
+**Consequence for M18.** The epic's goal — real CLI sessions carrying workflow envelopes — is **reachable now**
+and was demonstrated today. T3 must be re-scoped to the handshake fix + this demonstration (and the env-var
+mechanism reverted). Also reopens the question of whether `llm-agent.mjs` (shape 3, LB-64) is needed at all —
+but note it *does* set `clientInfo.contractHash` via its SDK client, so it was never blocked. Related: LB-64,
+LB-65, IP-15, `design/milestone18-self-hosting-implementation.md` gate-3 refute.
