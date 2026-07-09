@@ -5,6 +5,7 @@ import type {
   AgentSessionStatus,
   AgentStatus,
   ResolvedExecutionMode,
+  WorkflowRole,
 } from '@agenttalk/contracts/types';
 import path from 'path';
 import { once } from 'events';
@@ -34,6 +35,7 @@ export class Agent {
   resolvedExecutionMode?: ResolvedExecutionMode;
   sessionStatus?: AgentSessionStatus;
   currentTurnId?: string | undefined;
+  workflowRole?: WorkflowRole;
 
   private pendingTurns: Array<Record<string, unknown>> = [];
   private turnResolvers: Array<(turn: Record<string, unknown>) => void> = [];

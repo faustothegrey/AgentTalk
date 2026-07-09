@@ -20,6 +20,7 @@ import type {
   TeamMember,
   TeamRole,
   TeamTask,
+  WorkflowRole,
 } from '@agenttalk/contracts/types';
 import { ConversationCoordinator } from './conversation-coordinator.js';
 import { TeamCoordinator } from './team-coordinator.js';
@@ -372,8 +373,34 @@ export class Registry extends EventEmitter {
 
       case 'send_to_agent': {
         if (this.isDuplicateTerminalAction(agent)) return { content: [{ type: 'text', text: 'Action accepted (deduplicated)' }] };
-        const { to, payload, replyToMessageId, baton } = args;
+        const { to, payload, replyToMessageId, baton, workflowEvent } = args;
         const expectedResponseTypes = getExpectedResponseTypes(args);
+
+        if (workflowEvent && workflowEvent.kind === 'workflow_gate_event') {
+          if (workflowEvent.originTag === '[PO]' || workflowEvent.originTag === '[Human]') {
+            throw new Error(`Unauthorized: PO-level workflow events can only originate from trusted human/API paths`);
+          }
+          if (workflowEvent.originTag === '[SM]' && agent.workflowRole !== 'scrum-master') {
+            throw new Error(`Unauthorized: Agent ${agent.id} is not assigned the scrum-master workflow role`);
+          }
+          if (workflowEvent.fromRole && agent.workflowRole !== workflowEvent.fromRole) {
+             throw new Error(`Unauthorized: Agent ${agent.id} is assigned role ${agent.workflowRole || 'none'}, cannot act as ${workflowEvent.fromRole}`);
+          }
+        }
+
+        // Also block unstructured bracketed text spoofing if they aren't authorized
+        if (typeof payload === 'string') {
+          const spoofMatch = payload.match(/^(\[Human\]|\[PO\]|\[SM\])/i);
+          if (spoofMatch && spoofMatch[1]) {
+            const originTag = spoofMatch[1].toUpperCase();
+            if (originTag === '[PO]' || originTag === '[HUMAN]') {
+              throw new Error(`Unauthorized: PO-level workflow events can only originate from trusted human/API paths`);
+            }
+            if (originTag === '[SM]' && agent.workflowRole !== 'scrum-master') {
+              throw new Error(`Unauthorized: Agent ${agent.id} is not assigned the scrum-master workflow role`);
+            }
+          }
+        }
 
         if (to === 'user') {
           this.setAgentBusyState(agent, false);
@@ -431,6 +458,7 @@ export class Registry extends EventEmitter {
             payload: String(payload),
             timestamp: new Date().toISOString(),
             ...(baton ? { baton } : {}),
+            ...(workflowEvent ? { workflowEvent } : {}),
           });
         }
 
@@ -688,6 +716,11 @@ export class Registry extends EventEmitter {
     const agent = this.agents.get(id);
     if (!agent) throw new Error(`Agent ${id} not found`);
     return agent;
+  }
+
+  setWorkflowRole(agentId: string, role: WorkflowRole): void {
+    const agent = this.getAgent(agentId);
+    agent.workflowRole = role;
   }
 
   // ── Team methods ──────────────────────────────────────────────
