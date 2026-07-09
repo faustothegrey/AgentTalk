@@ -417,3 +417,46 @@ Retry Budget: 2 retries per step.
 - Removed `originTag: '[Reviewer]'` from the `send_to_agent` payload.
 - Updated the **Proof Limitation Statement** block in the Round 1 response to reflect the `@modelcontextprotocol/sdk` dependency properly.
 - The NDJSON has been regenerated and correctly committed.
+
+## Implementation Review: M17-T3 Round 2 (Codex, 2026-07-09)
+
+**Verdict: VERIFIED.** The Round 1 findings are addressed and M17-T3 is verified for Gate 2.
+
+**Verification run:**
+- `npx tsc -b` -> exit 0.
+- Stale-evidence negative: started the real orchestrator on the proof ports with no `AGENTTALK_RECORDING_PATH`,
+  then ran `node /Users/fausto/Software/AgentTalk/scripts/m17-live-gate-proof.mjs` from `/tmp/m17-proof-run`.
+  The script exited 1 with `Recordings file not found`, proving it no longer passes without current-run recorder
+  evidence.
+- Fresh-recorder positive: started the real orchestrator with
+  `AGENTTALK_RECORDING_PATH=/tmp/m17-proof-run/design/m17-gate-channel-proof.ndjson`, then ran the same proof
+  script from `/tmp/m17-proof-run`. It printed `LIVE SMOKE PASSED`.
+- Parsed the fresh NDJSON: **66 lines**, **3 `workflow_gate_attempt` events**. Gate 2 reviewer verdict accepted
+  with no `originTag`; Gate 1 SM go accepted with `[SM]`; Gate 3 PO act refused with `[PO]`; the refused PO payload
+  appeared in **0** conversation transcript events.
+- Parsed the committed `design/m17-gate-channel-proof.ndjson`: **70 lines**, **3 `workflow_gate_attempt` events**,
+  same accepted/refused shape, and no `[Reviewer]` origin tag.
+- `npx vitest run apps/orchestrator/src/__tests__/m17-gate-recording.test.ts packages/runtime-core/src/registry/__tests__/m17-gate-channel.test.ts packages/runtime-core/src/registry/__tests__/baton-metadata.test.ts`
+  -> **3 files / 11 tests passed**.
+- `npm test` -> **51 files / 291 tests passed**.
+- `node scripts/m14-identity-harness.mjs --check` -> `Baselines match. Identity verified.`
+- `npm run backlog:check` -> backlog structure OK, **19 items, 0 warnings**.
+- `git diff --check && git diff --cached --check` -> exit 0.
+- Out-of-fence checks: zero `packages/runtime-core/src/registry/team-coordinator.ts` diff, zero
+  `packages/contracts/wire-contract.json` diff, and no diff in `/Users/fausto/Software/agentalk-mcp-client`.
+- Pollution check: the M14 harness-created `/private/tmp/agentalk-task-task-1783591501744` worktree and
+  `task-task-1783591501744` branch were removed; final `git worktree list` and `git branch --list 'task-*'`
+  show only the main checkout on `task-M17-T3`.
+- Resource meter at close: codex weekly ~28%, 5h ~52%.
+
+**Patch inspection:**
+- G2-1 closed by run-specific event IDs: the script checks the current run's `evt-test-*-<runId>` values, so stale
+  committed evidence no longer satisfies the success predicate. The implementer response mentions unlinking the
+  file, but the actual committed mechanism is event-id binding; that is sufficient and verified.
+- G2-2 closed: the reviewer verdict proof omits `originTag`; reviewer authority is carried by
+  `fromRole: "implementation-reviewer"`.
+- G2-3 closed: `/api/agents/:id/usage-stats` again returns `{ success: true, usageStats }`.
+- The proof limitation text now accurately says the MCP path uses `@modelcontextprotocol/sdk`, with `ws` used for
+  the UI WebSocket path.
+
+**Disposition:** M17-T3 is verified for Gate 2 hand-back to Task-end Review.
