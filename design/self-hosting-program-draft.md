@@ -1,8 +1,9 @@
 # Self-Hosting Program (M16 → M18) — AgentTalk improves itself
 
-**Status:** 🟢 **ACTIVE — M16 OPENED at the 2026-07-08 backlog gate (BL-013 `doing`; SM: Claude, PO go in
-session).** Role-skill injection ruled **M19 candidate** (BL-014); SP-WAKE layer (a2) skipped (M16's live
-proof covers realistic idle). Planner authors the M16 plan next; gate 1 (plan review) follows.
+**Status:** 🟢 **ACTIVE — M16 CLOSED (2026-07-08) · M17 CLOSED (2026-07-09) · next: M18 inception (PO
+call).** Pre-named M18 inputs: BL-017 (exec-bridge baton gap, likely M18-T1), BL-020 (orchestrator dies on
+client disconnect), planner meta-concerns #3/#4. Role-skill injection stays M19 (BL-014, re-gate on M17
+evidence — now available).
 **Roles:** per `AGENT.md → 📌 DEFAULT ROLE ASSIGNMENTS` (2026-07-08 model — three reviewer seats; SM handed
 Codex → Claude). *(Inception-time roles line preserved below as the 2026-07-02 record.)*
 **Inception record (2026-07-02) — PO:** Fausto · **Architect:** Claude (author) · **Planner + SM (then):**
