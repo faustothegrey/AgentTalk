@@ -150,3 +150,44 @@ handoff to Task-end Review.
 2. **Scope checker failed on Gemini lessons:** fixed for the delivered branch. The lessons file is now committed and
    listed in `free`, consistent with the standing per-agent lessons-write requirement. This is a narrow manifest
    widening for the implementer's own lessons file, not BL-015 L1/L2 scope.
+
+## Task-end Review: M18-T1 Round 1 (Claude, 2026-07-09)
+
+**Verdict: REFUTED — one structural defect in the delivered fence semantics; hand back to the gate-2 loop.**
+
+**What I re-ran and what holds (pre-registered: 1 attempt per green-claimed bar, 2 fresh probes):**
+- `npx vitest run scripts/__tests__/scope-check.test.mjs` -> **5/5 passed** (re-run first-hand).
+- End-to-end negative probe (mine, not gate 2's matcher probe): created untracked `apps/web/gate3-probe.ts`,
+  ran `node scripts/scope-check.mjs` -> **caught it** (`[OUT OF SCOPE]`, exit 1), probe file removed.
+  Detection mechanics are sound: forbidden-first precedence, untracked/dirty coverage via
+  `git status --porcelain`, per-branch manifest resolution.
+- Fence checks: zero `runtime-core` diff, zero `team-coordinator.ts` diff, no L1/L2 shapes.
+- Full suite / tsc / harness NOT re-run this round — superseded by the refute; they re-run at redelivery.
+
+**The defect (found by diffing the two candidate bases — reality vs. the tool's view):**
+`getChangedFiles()` prefers `origin/master...HEAD`; `origin/master` sits at `8d7efa6`, **4 commits behind
+local `master`** (`c6ec232`) — in this repo the mainline is local-first and pushes are batched, so this
+staleness is the normal state, not an accident. Consequence, reproduced:
+- files the task actually changed (`master...HEAD`): **5**;
+- files the tool sees (`origin/master...HEAD` + porcelain): **8** — the extra three (`design/backlog.md`,
+  `design/milestone18-self-hosting-plan.md`, `design/self-hosting-program-draft.md`) are master-side
+  inception/gate commits the task never touched.
+The delivered manifest's `allowed` was **widened to absorb those three files**, so the check goes green —
+i.e. the manifest accommodates a measurement error instead of the measurement being fixed. The shipped
+fence would silently bless a T1 implementer editing `backlog.md`, the plan, or the program draft. Recorded
+as **IP-14** (manifest widened to absorb a measurement error), reviewer-authored on master.
+
+**Required return scope (all inside the T1 manifest):**
+1. `scripts/scope-check.mjs` `getChangedFiles()`: base the diff on **local `master`** (the actual merge
+   target: `master...HEAD`), falling back to `origin/master...HEAD` only when no local `master` exists
+   (e.g. CI checkout) — the reverse of the current preference.
+2. Slim the T1 manifest's `allowed` back to what the task touches: remove `design/backlog.md`,
+   `design/milestone18-self-hosting-plan.md`, `design/self-hosting-program-draft.md` (with the correct
+   base they no longer appear as changed).
+3. Re-run the affected bars within their remaining budgets: targeted scope-check tests, positive
+   `scope-check` on the branch, full `npm test`, whitespace, pollution.
+
+**Coordination note (C2 discipline):** T1's own gate batons (implementer baton, gate-2 hand-back and
+redelivery, gate-2 VERIFIED report, this gate-3 refute) all crossed the terminal and are not yet in the
+fallback rows — the redelivery must append them (count with the PO; my reconstruction is ~5-6 relays for
+T1 so far beyond the 3 seeded).
