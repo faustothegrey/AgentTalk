@@ -669,11 +669,22 @@ export function startServer(
       // This endpoint is preserved to avoid breaking the UI, but returns a placeholder.
       const stats = "Usage stats capture is managed by the attached worker.";
       const timestamp = new Date().toISOString();
-      const usageStats = { stats, timestamp };
-      res.json({ success: true, usageStats });
+      res.json({ success: true, timestamp, stats });
     } catch (err) {
-      console.error(`[Server] Failed to request usage stats for agent ${id}:`, err);
+      console.error(`[Server] Failed to fetch usage stats for ${id}:`, err);
       res.status(getErrorStatus(err)).json({ error: err instanceof Error ? err.message : String(err) });
+    }
+  });
+
+  app.post('/api/agents/:id/workflow-role', async (req, res) => {
+    const { id } = req.params;
+    const { role } = req.body;
+    console.log(`[Server] POST /api/agents/${id}/workflow-role`, role);
+    try {
+      registry.setWorkflowRole(id, role);
+      res.json({ success: true, role });
+    } catch (err: any) {
+      res.status(400).json({ error: err.message });
     }
   });
 
