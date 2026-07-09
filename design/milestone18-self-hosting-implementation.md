@@ -1,6 +1,6 @@
 # Milestone 18 - Self-hosting Implementation Ledger
 
-**Status:** In Progress
+**Status:** **CLOSED 2026-07-09** — C1 PARTIAL, C3 DEFERRED (not met, PO sign-off + reopen condition), C2/C4–C8 VERIFIED. See EPIC CLOSURE at the end of this file.
 **Program:** `design/self-hosting-program-draft.md`
 **Plan:** `design/milestone18-self-hosting-plan.md`
 **PO:** Fausto. **SM:** Claude. **Architect:** Claude. **Planner:** Codex.
@@ -641,3 +641,56 @@ closure note.*
 - gate:        tsc 0, suite 297/297, client tests 2 files, pollution clean (post-sweep), live A/B PASSED (A fails, B passes)
 - diff:        AgentTalk 3 files (+247/-2, docs+evidence); client 2 files (+132/-3), commits 4e8c93b · 8c4dc95
 - outcome:     MERGED ✅ (PO-gated; BL-017 → done)
+
+---
+
+# M18 — EPIC CLOSURE (Task-end Reviewer + SM: Claude, 2026-07-09)
+
+**Status: CLOSED — with C3 DEFERRED (not met), PO sign-off in session.** Read the C3 row before citing this epic.
+
+## DoD sweep — swept from the ledger and evidence, not memory
+
+| Claim | Verdict | Evidence |
+|---|---|---|
+| C1 — M18's own batons/gates have recording evidence *wherever the substrate can carry them* | **PARTIAL ⚠️ (honest reading: vacuous)** | **Zero** substrate events carried this epic's own coordination. The qualifier saves the row only because the substrate genuinely *could not* carry them until T3a merged (real CLI sessions could not attach — LB-66). Counting this as VERIFIED would be exactly the "proof theater" the plan's risk 4 warned about. |
+| C2 — every relay/fallback logged, none silently omitted | **VERIFIED ✅** | Coordination Evidence blocks, T1/T2/T3a; fallback rows name sender/receiver roles and reason. |
+| C3 — relay count recorded per task **and falls measurably after T3a** | **DEFERRED ⛔ (NOT MET)** | Recorded: T1 **9**, T2 **2**, T3a **8** — the variation tracks *review rounds* (3 / 1 / 4), not adoption. Substrate events: **0** all epic. **T3a removed the blocker that made a fall impossible; it did not produce one.** Reopen condition below. |
+| C4 — T1 delivers BL-015 **L0 only** | **VERIFIED ✅** | Merge `7c9cdee`; L1/L2 untouched, still M19-gated with BL-014. |
+| C5 — T2 closes BL-020, prior lifecycle behaviour preserved | **VERIFIED ✅** | Merge `872bfed`; disconnect-survival reproduced live at gate 3 (and again, unprompted, during two later proof runs). |
+| C6 — T3a closes BL-017: real CLI attaches and carries `baton`+`workflowEvent` | **VERIFIED ✅** | Merges `e1a4346` / client `9af84c7`; independent A/B at gate 3 (A fails `got undefined`, B accepted). Contract unchanged (v7); no new MCP tool. |
+| C7 — SM files friction→backlog from the evidence (**the program-loop DoD**) | **VERIFIED ✅** | **BL-022 … BL-027** filed this sweep, each citing the run/artifact where it was observed (validator: 21→27 items, 0 warnings). |
+| C8 — freeze bar green at closure | **VERIFIED ✅** | `npx tsc -b` 0 · `npm test` **52 files / 297 tests** · `backlog:check` 27/0 · M14 harness "Baselines match" (leak swept) · whitespace both repos · `team-coordinator.ts` zero-diff · `wire-contract.json` v7 unchanged. |
+
+**C3 deferral — explicit, per ⛔ Reviewer Rule 4 / workflow §3c.** Deferred with PO sign-off (in session,
+2026-07-09) rather than claimed. **Reopen condition:** *the next epic must carry **at least one real role→role
+gate or baton over the substrate** (a recorded `workflow_gate_event` from an attached real CLI session doing
+actual coordination, not a proof), and report the **ratio** — substrate-carried hand-offs ÷ total hand-offs —
+beside the raw relay count (**BL-027**).* Until that happens the program's central claim — that the loop gets
+cheaper — remains **unproven**, and this epic must not be cited as evidence for it.
+
+## What M18 actually delivered (honest summary)
+
+It shipped three things (a scope fence, a disconnect fix, a working real-CLI attach) and **discovered a fourth
+that was worth more than all of them**: that BL-017 — carried across three epics, shaping M17's inception and two
+backlog gates — was **misdiagnosed**. Real CLI sessions were never blocked from *carrying* workflow envelopes;
+they were blocked from *connecting*, by a contract-hash handshake no CLI can satisfy and no bridge injected.
+Every prior "live proof" used SDK clients, which set the hash, so three epics stepped over the hole. The flywheel
+found it the only way it could be found: by trying to use the thing for real (LB-66).
+
+**The gates worked.** M18-T3 accumulated **six green gate-2 rounds** on a proof that passed identically on the
+unfixed code — and put **zero lines on master**. Gate 3's question ("what would this print if I reverted the
+fix?") refuted it, the PO rescoped it to T3a, and the honest fix landed the same day. The mainline stayed
+verified-only throughout. Case law grew: **IP-14** (widening a manifest to absorb a measurement error) and
+**IP-15** (the proof that passes without your change).
+
+## Telemetry (epic closure)
+
+- epic:        M18 (BL-021) — self-hosting milestone, the flywheel's first turn
+- wall-clock:  2026-07-09, inception → close, same day (~11 h): 4 merges (T1, T2, T3a ×2 repos), 1 task died
+- tasks:       T1 `7c9cdee` · T2 `872bfed` (BL-020 done) · ~~T3~~ CLOSED-SUPERSEDED (unmerged, archived on `task-M18-T3`, both repos) · T3a `e1a4346` + client `9af84c7` (BL-017 done)
+- gates:       gate-2 rounds 11 · gate-3 rounds 4 · **refutes: 2 at gate 3** (T1 IP-14, T3 IP-15) — both pre-merge
+- coordination: relays **19** (T1 9 + T2 2 + T3a 8) · **substrate events 0** · ratio **0/19** ← the number M19 must move
+- budget:      claude weekly 33%→[meter jitter, LB-11] · codex weekly 31%→51% (Δ ~20%) · gemini fresh
+- gate:        tsc 0, suite 297/297, backlog 27/0, pollution clean (worktrees/branches; **one stray process outlives the epic — BL-023**)
+- friction filed (C7): BL-022 · BL-023 · BL-024 · BL-025 · BL-026 · BL-027
+- outcome:     **CLOSED ✅ with C3 DEFERRED ⛔** (PO-gated; the loop's cost claim is not yet earned)

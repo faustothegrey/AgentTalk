@@ -678,6 +678,105 @@ tags: [workflow, scrum-master, retrospective, growth]
 ### Todo (next first)
 
 <!-- @item
+id: BL-022
+status: todo
+date: 2026-07-09
+epic: null
+tags: [scope-fence, tooling, cross-repo, friction-m18]
+-->
+- [todo · **M18 C7 friction item** — filed from evidence at epic close; the fence we shipped in M18-T1 has a
+  hole we hit in M18-T3a the same day] — **`scope-check` is single-repo blind** — `scripts/scope-check.mjs`
+  diffs only the AgentTalk working tree, so any task whose code lives in `agentalk-mcp-client` (or any other
+  repo) is **unfenced while reporting green**. M18-T3a's *primary* change was `bridge.mjs`; its `scope-check`
+  passed having inspected none of it. **Evidence:** M18-T3a Gate-1 condition 2 + the task-end review's declared
+  honesty note (`design/milestone18-self-hosting-implementation.md`). Fix sketch: manifest gains a per-repo
+  section; the script iterates declared repos. Until then a green `scope-check` must not be read as "the diff
+  was fenced."
+
+<!-- @item
+id: BL-023
+status: todo
+date: 2026-07-09
+epic: null
+tags: [hygiene, pollution, gates, friction-m18]
+-->
+- [todo · **M18 C7 friction item** — a stray process outlived three gates unnoticed] — **Gates check worktree
+  and branch pollution, but never *process* pollution** — the closure hygiene sweep runs `git worktree list` +
+  `git branch --list 'task-*'` and calls it clean. A leaked orchestrator (`pid 3177`, cwd `apps/orchestrator`)
+  from the M18-T3 proof run survived **4+ hours** across two gate-3 closures; gate 2 reported "pollution clean"
+  each time. **Evidence:** M18-T3 gate-3 hygiene finding; observed again at M18-T3a close (still running).
+  Fix sketch: add `pgrep -f dist/index.js` + a port check to the closure sweep, and give live-proof runbooks a
+  mandatory teardown assertion. Notable: only the actor that *started* a process may kill it — the sweep should
+  report, not reap.
+
+<!-- @item
+id: BL-024
+status: todo
+date: 2026-07-09
+epic: null
+tags: [architecture, brain, types, friction-m18]
+-->
+- [todo · **M18 C7 friction item** — PO asked "is the brain shielded from client shape?"; audit says no.
+  **M19 inception candidate**, pairs naturally with BL-014/BL-015-L2] — **The brain leaks client shape: `AgentProvider`
+  conflates transport with vendor** — `packages/contracts/src/types.ts:13` is
+  `'api' | 'mcp' | 'gemini' | 'claude' | 'codex'` — two shapes and three vendors in one union. It already caused
+  the M17 G3-2 refute (`provider: 'api'` read as "the human channel"). Two more leaks: `team-coordinator.ts:977-986`
+  bumps the fact-collection timeout `if (team.provider === 'gemini')` — **a vendor name changes protocol timing
+  inside the frozen engine**; `registry.ts:239-259` selects driver/completer by provider rather than behind a
+  factory. The *law* (authority, routing) is genuinely shape-blind and survives audit; the *plumbing* is not.
+  **Evidence:** **LB-65** (full audit with line refs). Fix sketch: `transport` (`attached` | `in-process`) ×
+  `vendor`; move the timeout to per-agent capability metadata; factory for driver selection.
+
+<!-- @item
+id: BL-025
+status: todo
+date: 2026-07-09
+epic: null
+tags: [live-proof, evidence, gates, friction-m18]
+-->
+- [todo · **M18 C7 friction item** — the highest-value lesson of the epic; a proof that cannot fail is not
+  evidence] — **Live proofs need a mandatory A/B baseline and a fresh-recorder assertion** — M18-T3 shipped a
+  passing live proof that **passed identically on the unfixed code** and survived six gate-2 rounds
+  (**IP-15**). Separately, `scripts/m17-live-gate-proof.mjs` asserts against a **committed** NDJSON file rather
+  than the run's own recorder output, so it can print `LIVE SMOKE PASSED` with no recorder attached (M17 finding
+  **G2-1**, still open — it printed a spurious FAILED during the M18-T2 gate-3 run). **Evidence:** M18-T3 gate-3
+  refute; M17 ledger G2-1; M18-T2 task-end review. Fix sketch: a live-proof convention — every proof states its
+  A-side (the bar failing on the pre-change baseline) and asserts on a **fresh** recording path unique to the run.
+
+<!-- @item
+id: BL-026
+status: todo
+date: 2026-07-09
+epic: null
+tags: [attach-mode, ergonomics, real-cli, friction-m18]
+-->
+- [todo · **M18 C7 friction item** — the rider T3a explicitly dropped, now re-filed *from evidence* exactly as
+  its Gate-1 record instructed] — **Attaching a real CLI session is a hand-assembled ritual** — every real-CLI
+  attach in M18 required hand-writing an `mcpServers` JSON with an absolute `bridge.mjs` path, a WS URL, an
+  `agentId`, and the contract hash — done ad hoc four times today (twice by the implementer, twice by the
+  task-end reviewer) with a `creating`-state trap waiting for anyone who forgets `POST /api/agents/:id/start`.
+  **Evidence:** LB-66; `design/evidence/m18-t3a-proof-a.txt` / `-b.txt`; M18-T3a Gate-1 condition 3.
+  **This is the friction standing between "the channel works" and "the team uses the channel"** — rank it high
+  for M19. Fix sketch: a committed `.mcp.json` template + an `attach-real-session` runbook/script that registers,
+  starts, assigns the role, and prints the config.
+
+<!-- @item
+id: BL-027
+status: todo
+date: 2026-07-09
+epic: null
+tags: [metric, program, self-hosting, friction-m18]
+-->
+- [todo · **M18 C7 friction item** — the program's headline metric can move for reasons that have nothing to do
+  with the program] — **Relay count has no denominator** — the counting rule (program draft) counts *relays*,
+  but a task's raw relay count also moves with **how many review rounds it happened to need**: M18-T1 = 9 relays
+  (3 gate rounds), M18-T2 = 2 (1 round), M18-T3a = 8 (4 rounds) — none of which reflects substrate adoption,
+  which stayed **0 substrate events all epic**. A smooth epic can therefore "prove" a relay fall it never earned.
+  **Evidence:** the three M18 Coordination Evidence blocks; PO↔architect exchange 2026-07-09. Fix sketch: report
+  the **ratio** — of all role→role hand-offs in a task, how many the substrate carried vs. the terminal — beside
+  the raw count. The ratio holds review-round noise fixed and measures the only thing the program changes.
+
+<!-- @item
 id: BL-020
 status: done
 date: 2026-07-09
