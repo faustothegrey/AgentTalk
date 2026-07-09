@@ -1,7 +1,7 @@
 ---
 role: implementation-reviewer
 key: none
-written: 2026-07-08 by Claude (seat created — reviewer role split into three by the PO; no hand-off pending)
+written: 2026-07-09 by Claude (SM, session close — M17 closed 2026-07-09; no fresh hand-off pending — next work arrives as a mid-session gate-2 baton during M18)
 ---
 
 This is your session primer.

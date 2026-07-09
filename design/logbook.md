@@ -1523,3 +1523,13 @@ no scope change to the probe plan otherwise. The plan stays DRAFT-for-review aft
   rounds caught real defects pre-merge; case law grew IP-12/IP-13.
 - **Resource read at close:** claude meter `ok:false` (LB-11); codex/antigravity on fresh weekly windows
   (best-effort, 2026-07-08 ~19:00 Europe/Rome).
+
+### LB-63 — Port 9899 is double-booked: usage meter (IPv4) + orchestrator MCP (IPv6) coexist by luck (2026-07-09)
+
+The standing usage meter holds `127.0.0.1:9899` (IPv4). `scripts/m17-live-gate-proof.mjs` hardcodes the
+orchestrator MCP server to the same port; Node binds IPv6 `*:9899` **alongside** it, and clients using
+`localhost` resolve to `::1` first — so both services answer 9899 simultaneously and the proof works by
+address-family luck (verified live with `lsof`: both LISTEN rows at once). Any IPv4-resolving client (e.g.
+`curl 127.0.0.1:9899`) reaches the *meter*, not the orchestrator. Rule of thumb going forward: **live-proof
+runbooks pick a port that `lsof -iTCP:<port>` shows free on BOTH families** (the M17 plan had said 9898).
+Related: gemini's M16 "ports" lesson; M17 ledger gate-3 close G3-3.

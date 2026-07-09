@@ -155,3 +155,23 @@ here.**
   failed the live proof by design; the T2a publication chain (publish tool → contract hash bump → orchestrator
   hard-rejects the unmodified client at attach) turned a yes/no gate question into the binding cross-repo
   addition that kept T2 alive. Minutes of grepping at gate 1 saved whole implementer rounds — again.
+
+### 2026-07-09 — M17 inception→close in one session; two conceptual-boundary refutes; the count is the check
+- **As task-end reviewer: authority guards fail at conceptual boundaries, not code mechanics — probe from
+  outside the error message's vocabulary.** Both refutes were category confusions the tests' own vocabulary
+  hid: G3-1 (the *tag* was blocked, the *act* wasn't), G3-2 (`provider: 'api'` treated as "human" when it's
+  an LLM completer). Method that made both hand-backs undisputable: write the repro FIRST, run it, archive
+  it in scratchpad, and re-run the same repro after the fix to watch it flip. Also: the T3 implementer
+  "observed" UI behavior it had only inferred from T2's wiring — verify observation claims by making the
+  observation (I drove the real UI in Chrome during my own live-proof run).
+- **As plan reviewer: minutes of code-grepping at gate 1 settle design debates whole rounds would relitigate.**
+  Verifying that `wire-contract.json` hashes tool *names* only answered "new tool vs. extended metadata"
+  definitively (extension is hash-neutral → no cross-repo sync) and kept the epic at v7. Same move as M16's
+  F1 catch — pre-implementation verification is the cheapest review there is.
+- **As backlog editor: read the validator's COUNT, not just its ✓.** My BL-020 insertion ate BL-017's
+  header; `backlog:check` stayed green (0 warnings) but said 19 items where 20 were expected. Echo of my
+  2026-06-27 staging lesson: after any structured-file edit, check the invariant that should have changed
+  (the count), not the absence of errors.
+- **Telemetry under meter outage: mark estimates loudly and reconcile when it returns.** While the claude
+  block was ok:false I wrote frozen telemetry ~10 points under the real figures (est. 19% weekly vs. actual
+  30% once it came back). Estimates in durable artifacts need an [est] tag and a reconciling note.

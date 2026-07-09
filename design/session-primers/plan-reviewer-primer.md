@@ -1,7 +1,7 @@
 ---
 role: plan-reviewer
-key: 20260708-2051-4f16fb
-written: 2026-07-08 by Claude (session close — M16 closed; next gate-1 work is the M17 plan)
+key: 20260709-1231-9c5a1f
+written: 2026-07-09 by Claude (session close — M17 closed; next gate-1 work is the M18 plan)
 ---
 
 This is your session primer.
@@ -15,21 +15,26 @@ reviewer** seat (gate 1; default Claude, who currently also holds task-end revie
 declare every hat, keep each gate's discipline separate; the ⛔ Reviewer Rules bind all seats).
 
 **Workflow / source of truth:** `design/collaboration-workflow.md` + `AGENT.md` ⛔ Reviewer Rules. Ledger of
-record for the last epic: `design/milestone16-one-real-baton-implementation.md` (frozen). Logbook LB-61/LB-62.
+record for the last epic: `design/milestone17-gate-over-channel-implementation.md` (frozen). Logbook LB-63.
 
-**Where we are (verify — this primer can be stale):** **M16 CLOSED** (2026-07-08; BL-013 done; suite 281/281;
-no `doing` item). Next expected gate-1 work: **the M17 plan** (session→identity→role mapping), authored by the
-planner after PO+Architect inception. The M16 Gate-1 record (in the frozen ledger) is your method template:
-verify the plan's load-bearing claims against the code before ruling — it caught the conversation-recording
-dependency (F1) and the wire-contract lockout chain, both of which would have wrecked live proofs.
+**Where we are (verify — this primer can be stale):** **M17 CLOSED** (2026-07-09; BL-019 done; suite
+291/291; no `doing` item). Next expected gate-1 work: **the M18 plan** (self-hosting milestone — one real
+dev epic runs on the substrate), authored by the planner after PO+Architect inception. Method template: the
+M17 Gate-1 record — verify load-bearing plan claims against the code *before* ruling (the wire-contract
+hash check settled tool-vs-metadata in minutes and kept v7).
 
-**Standing vigilance from this epic:** (1) demand §3c deviation rows — gate 2 glossed two deviations (D1/D2)
-that gate 3 had to catch; (2) IP-13: a mock the test *needs* is a product finding — ask why it's needed;
-(3) two M17 inputs are pre-named: the exec-bridge translation can't carry `baton` args (D1 owed piece), and
-contract-hash evolution is manual (v7 sync went through a Gate-1 cross-repo grant — should it become versioned
-negotiation?). A good M17 plan addresses both or explicitly defers them.
+**Standing vigilance from M17:**
+1. **BL-020 is a feasibility landmine for any M18 live proof:** the orchestrator dies on client disconnect
+   mid-turn. An M18 plan that runs a real epic on the substrate hits this immediately — it must be in-fence
+   (or the plan must explain why not). Same class: BL-017 (real CLI sessions can't send envelopes) is
+   probably M18-T1; without it M18's relay≈0 DoD is unreachable.
+2. Both M17 gate-3 refutes were **conceptual-boundary** holes (tag≠act; provider `api` ≠ human channel) —
+   review authority/trust claims from outside the implementation's own vocabulary.
+3. Demand §3c deviation rows and distrust asserted observations — the T3 implementer claimed a UI
+   observation it had only inferred; observations must be made, not derived.
+4. Port hygiene for live proofs: LB-63 (pick a port free on both address families; 9899 is the meter's).
 
 **Op notes:** freeze bar: full suite + M14 identity harness (leaks one worktree/branch per run — sweep) +
-zero `team-coordinator.ts` diff + grep for `as any` pokes. Budgets are pre-registered per check — hold
-yourself to 1 attempt per bar at task-end style re-verification. Meter: `node scripts/usage.mjs` best-effort
-(claude block often `ok:false` — LB-11).
+zero `team-coordinator.ts` diff + grep for `as any` pokes. Budgets pre-registered per check — 1 attempt per
+bar at task-end-style re-verification. Meter: `node scripts/usage.mjs` best-effort (LB-11); when it's down,
+tag telemetry figures as [est] and reconcile later (this session's estimates ran ~10 points low).

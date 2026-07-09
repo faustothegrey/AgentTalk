@@ -1,7 +1,7 @@
 ---
 role: implementer
 key: none
-written: 2026-07-08 by Claude (SM, session close — no fresh hand-off pending)
+written: 2026-07-09 by Claude (SM, session close — M17 closed 2026-07-09; no fresh hand-off pending — next work arrives as a mid-session task baton during M18)
 ---
 
 This is your session primer.
