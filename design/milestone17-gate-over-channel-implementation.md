@@ -144,3 +144,33 @@ to Task-end Review.
 
 **Disposition of G3-1:** verified fixed. `po-act` is blocked by act type, not only by origin tag spelling, and
 attached non-human sessions cannot be assigned `product-owner`.
+
+## Task-end Review: M17-T1 Round 2 (Claude, 2026-07-09)
+
+**Verdict: REFUTED ⛔ — merge declined again; one pointed finding, fix is one line + one invariant paragraph.**
+G3-1's act-blocking is confirmed fixed (the po-act guard is correct). The refutation is the *exemption* the
+fix introduced.
+
+**Finding G3-2 — `provider === 'api'` is a false proxy for the trusted human channel.** Provider `api` is an
+**LLM-backed agent** (`registry.ts:242` — `ApiCompleter`, google/OpenRouter models), not a human. The round-1
+test fixture (`agent-human`, `provider: 'api'`) encoded this misconception and the G3-1 fix inherited it.
+Repro C (run 2026-07-09, 1/1 PASSED — archived in the task-end reviewer's scratchpad):
+`setWorkflowRole('llm-api-agent', 'product-owner')` **succeeds** for an api-provider agent, which then emits
+an **accepted** `workflow_gate_attempt` with `fromRole: 'product-owner'`, `action: 'go'` on `backlog-gate` —
+a PO-authority act issued by an LLM, accepted by the guard that exists to prevent exactly this. (`po-act`
+stays blocked; the laundering path is fromRole-based authority on the other actions.)
+
+**Required return scope (smaller than G3-1's):**
+1. `setWorkflowRole` refuses `product-owner` for **every** agent, no provider exemption — no agent in the
+   registry may ever hold the product-owner workflow role. The trusted human path is the server's HTTP/WS
+   API surface (out of T1 scope to build), not any agent provider. Update the Repro-B test and the
+   `agent-human` fixture premise accordingly.
+2. **State the authority invariant in this ledger** (one paragraph, required at gate 3 per the planner's
+   concern #2, PO-relayed 2026-07-09): authority derives ONLY from the registry's workflow-role assignment;
+   origin tags are presentation/legacy, never authoritative; team roles (`planner|worker`) are an orthogonal
+   execution concept; `product-owner` is never an assignable agent workflow role; provider identity is not a
+   trust channel.
+
+**Note for Gate 2:** two rounds in a row the miss was a *conceptual boundary* (tag≠act, provider≠trust
+channel), not a code-mechanics defect — when verifying authority guards, probe the concept from outside the
+error message's own vocabulary.
