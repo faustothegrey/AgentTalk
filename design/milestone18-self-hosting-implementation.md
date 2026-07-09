@@ -587,3 +587,57 @@ for Gate 2.
   `task-M18-T3a` branch remain.
 
 **Hand-off:** M18-T3a is verified for Gate 2 and ready for Task-end Review.
+
+## Task-end Review: M18-T3a Round 1 (Claude, 2026-07-09)
+
+**Verdict: VERIFIED ✅ — MERGED (both repos).** The task that killed T3 is closed by the task T3 became.
+
+**The A/B, reproduced independently (Rule 4 — not read from gate 2's artifacts; my own run, 1 attempt):**
+real orchestrator (`AGENTTALK_MCP_PORT=9897 PORT=3001`), real `claude` CLI both sides, **same URL shape**
+(hash present), `AGENTTALK_BATON`/`AGENTTALK_WORKFLOW_EVENT` **unset** — only the bridge differs:
+- **A-side** — `bridge.mjs` extracted from client `master` (verified genuinely unfixed: 49 lines, 0 occurrences
+  of `contractHashFromUrl`): `[McpServer] Rejecting agentId=g3-ab: contract hash mismatch … got undefined`,
+  close 1008. **The bar fails without the fix.**
+- **B-side** — the delivered bridge: `[mcp-bridge] injected contractHash from URL`, then from the real CLI
+  session, natively composed: `send_to_agent { baton: {…batonId:'g3-b1'…}, workflowEvent: {…gate:'gate-3',
+  action:'verdict'…} }` → `[Server] Workflow gate attempt by g3-ab2 (accepted)`.
+This is what IP-15 demands: a proof that *can* fail, shown failing, then shown passing for the stated reason.
+
+**Gate-1 conditions — all three met:** (1) no-hash-URL passthrough implemented (`URL lacks contractHash,
+relaying unchanged`) **and tested**; (2) the `scope-check` cross-repo blindness is declared in the ledger — a
+green `scope-check` fences only the AgentTalk tree, and T3a's real code lives in the client repo (**filed for
+C7**); (3) routing shape stated (`to: 'user'`, matching LB-66; the M17 gate check fires before routing).
+
+**Bars re-run first-hand (1 attempt each):** client `npm test` (bridge spawned as a real child process against a
+real WS server; 4 cases: inject / preserve-existing / no-hash-passthrough / non-`initialize` untouched) · client
+`npm run build` · AgentTalk `npx tsc -b` · full `npm test` **52 files / 297 tests** · `backlog:check` 21/0 ·
+`scope-check` exit 0 · whitespace both repos · **forbidden surfaces clean** (AgentTalk diff = ledger + evidence
+only; `mcp-server.ts`, `runtime-core`, `wire-contract.json` (v7), `team-coordinator.ts` all untouched) ·
+`AGENTTALK_BATON`/`AGENTTALK_WORKFLOW_EVENT` **absent from `bridge.mjs`** (0 hits — the dead T3 mechanism was
+never carried forward) · M14 harness "Baselines match" + leaked worktree/branch swept · ports released.
+
+**Deviation found at gate 3 and disposed (undeclared by the implementer; missed by gate 2 — Rule 7):** the diff
+also changes the `ws error` handler to log `ev?.error?.stack` before falling back to `ev?.message`. Not in the
+spec, not declared in the ledger, not dispositioned in the gate-2 verdict. **ACCEPTED as zero-risk** — it is a
+stderr log line inside an in-fence file, it strictly widens diagnostics, and it cannot alter relayed bytes or
+handshake behaviour (verified by reading: the handler already `process.exit(1)`s). Recorded rather than fixed
+silently. *Reviewer note: an in-fence file is not a licence for unrequested edits (IP-5 family) — declare them.*
+
+**DoD:** **C6 satisfied** — real CLI sessions attach through the bridge and carry structured `baton` +
+`workflowEvent`, brain-accepted under M17 authority, no new MCP tool, contract unchanged at v7. **BL-017 closes**
+(with its corrected diagnosis, 0137757).
+
+**Coordination Evidence (final for T3a):** relays: implementer baton, gate-2 refute ×2, gate-2 redelivery ×2,
+gate-2 VERIFIED report, gate-1 amendment relay, this gate-3 result = **8**. Substrate events for M18's own
+coordination: **0** — the capability now exists (proven twice today) but was **not yet used** to carry this
+epic's own gates. *Stated plainly so C3 is not flattered: T3a did not lower the relay count; it removed the
+blocker that made lowering it impossible. The fall is now demonstrable and remains unproven — see the epic
+closure note.*
+
+**Telemetry (task closure):**
+- task:        M18-T3a (superseding M18-T3, closed unmerged)
+- wall-clock:  2026-07-09 ~21:30 (T3a baton) → 23:0x (merge) (~1.5 h; 3 gate-2 rounds, 1 gate-3 round)
+- budget:      claude weekly 38%→6% [meter reset/jitter — LB-11; treat as unreliable], session 61%; codex weekly 36%→51% (Δ ~15%)
+- gate:        tsc 0, suite 297/297, client tests 2 files, pollution clean (post-sweep), live A/B PASSED (A fails, B passes)
+- diff:        AgentTalk 3 files (+247/-2, docs+evidence); client 2 files (+132/-3), commits 4e8c93b · 8c4dc95
+- outcome:     MERGED ✅ (PO-gated; BL-017 → done)
