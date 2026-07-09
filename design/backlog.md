@@ -700,17 +700,25 @@ id: BL-017
 status: todo
 date: 2026-07-09
 epic: null
-tags: [self-hosting, attach-mode, baton, exec-bridge]
+tags: [self-hosting, attach-mode, baton, handshake, wire-contract]
 -->
-- [todo · **absorbed into M18-T3 at the 2026-07-09 gate (BL-021)** — flips done when T3 merges; prefer
-  extending `send_to_agent` args (hash-neutral), a new tool reopens BL-018 · was: M17 inception disposition
-  (PO+Architect, 2026-07-09) — NOT in M17's fence; re-gated at M18 inception as pre-named] —
-  **Exec-bridge carries `baton` args** — close M16 gate-3 deviation D1: the
-  `agentalk-mcp-client` exec-bridge translation layer cannot carry `baton` arguments, so real CLI sessions
-  (Claude Code / Codex CLI) attached over MCP cannot send workflow batons/envelopes — M16's live proof used
-  direct SDK MCP clients instead. Blocks the "real agents run the workflow over the channel" end-state
-  (M18) if left open. Source: M16 ledger D1, LB-62,
-  `design/self-hosting-program-draft.md` §M17 inception.
+- [todo · **DIAGNOSIS CORRECTED 2026-07-09 after the Door 1 live proof (LB-66)** — the original text below was
+  wrong; kept struck-through for the record · **absorbed into M18-T3a** (T3 died at gate 3, superseded — see the
+  M18 ledger); flips done when T3a merges] —
+  **Real CLI sessions cannot ATTACH: `bridge.mjs` never injects `contractHash` at `initialize`** — a real CLI
+  (Claude Code / Codex CLI / agy) sends its **own** `clientInfo` and cannot know our wire-contract hash;
+  `mcp-server.ts:150` requires `params.clientInfo.contractHash` at `initialize` and closes the socket (1008,
+  `got undefined`) — so real CLI sessions never connect, and therefore never send anything. Live-observed
+  2026-07-09 with a real `claude` session; with the hash injected, the **same** session natively emitted
+  `send_to_agent` carrying `baton` + `workflowEvent`, brain-accepted under M17 authority
+  (`design/evidence/m18-door1-real-cli-proof.ndjson`). **Fix:** the bridge injects the hash it already receives
+  in its URL (`?contractHash=...`); transport-only, no protocol logic in the relay.
+  ~~*Superseded diagnosis (M16 D1 / LB-62): "the exec-bridge translation layer cannot carry `baton` arguments."*~~
+  **False as a transport claim** — the relay always carried structured args verbatim (proven by A/B against the
+  pre-fix bridge; **IP-15**). Every prior "live proof" used SDK MCP clients, which **do** set
+  `clientInfo.contractHash`, which is why the real wall stayed hidden for three epics. Note `llm-agent.mjs` was
+  never blocked either (SDK client → sets the hash); its only limit is that it has no `send_to_agent` emission
+  path (LB-64/LB-65). Source: LB-66, M18-T3 gate-3 refute, IP-15; was M16 ledger D1, LB-62.
 
 <!-- @item
 id: BL-015
