@@ -505,13 +505,17 @@ tags: [consensus, arbiter, architecture, heavyweight]
 
 <!-- @item
 id: BL-021
-status: doing
+status: done
 date: 2026-07-09
 epic: M18
 tags: [self-hosting, flywheel, scope-fence, robustness, baton]
 -->
-- [doing · opened at the 2026-07-09 backlog gate (`[PO]` go in session) — the flywheel's first turn: one
-  real dev epic coordinated ON the substrate, PO babysitting the relay gap as declared fallback] —
+- [done · was: doing · **OPENED AND CLOSED 2026-07-09** (same day) — merges T1 `7c9cdee`, T2 `872bfed`,
+  T3a `e1a4346` (+ client `9af84c7`); T3 died at gate 3 and was superseded by T3a (archived unmerged).
+  **CLOSED WITH C3 DEFERRED (not met, PO sign-off):** relays 19, **substrate events 0** — T3a removed the
+  blocker (real CLI sessions could not attach: BL-017 was misdiagnosed, LB-66) but no gate has yet crossed the
+  channel. Reopen condition: the next epic carries ≥1 real gate/baton over the substrate and reports the
+  substrate-carried ratio (BL-027). Friction filed (C7): BL-022…BL-027. Case law: IP-14, IP-15] —
   **M18 — Self-hosting milestone (self-hosting program, epic 3 of M16→M18)** — T1: BL-015 **L0 only**
   (scope-check script + per-task scope manifest; the guinea-pig process shakedown; L1/L2 stay M19-gated);
   T2: BL-020 (orchestrator must survive attached-client disconnect mid-turn); T3: BL-017 (exec-bridge

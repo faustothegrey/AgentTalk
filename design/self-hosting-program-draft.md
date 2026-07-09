@@ -1,9 +1,14 @@
 # Self-Hosting Program (M16 → M18) — AgentTalk improves itself
 
-**Status:** 🟢 **ACTIVE — M16 CLOSED (2026-07-08) · M17 CLOSED (2026-07-09) · M18 OPENED (2026-07-09:
-BL-021 `doing`; plan authored in `design/milestone18-self-hosting-plan.md`; next: Gate 1 review by Claude).**
-Role-skill injection stays M19 (BL-014, re-gate on M17
-evidence — now available).
+**Status:** 🟢 **PROGRAM COMPLETE-AS-SCOPED, CLAIM UNPROVEN — M16 CLOSED (2026-07-08) · M17 CLOSED
+(2026-07-09) · M18 CLOSED (2026-07-09, same-day; C3 DEFERRED).** The three bootstrap epics shipped, but the
+program's central claim — *the loop gets cheaper each iteration* — is **not yet earned**: across M16→M18 the
+relay count stayed ~15 / ~15 / **19**, and **zero** gates have crossed the substrate. M18 proved *why*: BL-017
+was misdiagnosed for three epics — real CLI sessions could not **attach** (contract-hash handshake), not "could
+not carry batons" (**LB-66**). That is now fixed and live-proven (M18-T3a). **The next epic must carry ≥1 real
+gate/baton over the channel and report the substrate-carried ratio (BL-027)** — that is C3's reopen condition
+and the program's true first proof. Friction filed at M18 close: BL-022…BL-027. Role-skill injection stays M19
+(BL-014), now paired with BL-015-L2 and BL-024 (the brain's shape leaks).
 **Roles:** per `AGENT.md → 📌 DEFAULT ROLE ASSIGNMENTS` (2026-07-08 model — three reviewer seats; SM handed
 Codex → Claude). *(Inception-time roles line preserved below as the 2026-07-02 record.)*
 **Inception record (2026-07-02) — PO:** Fausto · **Architect:** Claude (author) · **Planner + SM (then):**
@@ -278,3 +283,32 @@ draft-altitude until M16 evidence) — matches the draft; adopted as written.
 3. **Meta-work creep** (Claude's recorded recurring blind spot): the program must not grow ceremony faster
    than it removes relay burden. Proportionality check at every gate: *did the PO's per-epic relay count go
    down?* If not, the program is failing regardless of green suites.
+
+---
+
+## M18 — CLOSED 2026-07-09 (same day). What the flywheel's first turn actually returned.
+
+**Delivered:** T1 scope-check + `@scope` manifests (BL-015 L0) · T2 orchestrator survives attached-client
+disconnect (BL-020) · T3a `bridge.mjs` injects `contractHash` at `initialize`, so **real CLI sessions can attach
+and natively emit `baton`/`workflowEvent`** (BL-017, live A/B-proven). T3 **died at gate 3** and was superseded.
+
+**The finding that outweighs the deliverables.** BL-017's diagnosis was wrong. Real CLI sessions were never
+blocked from *carrying* envelopes — the relay always passed them verbatim. They were blocked from **connecting**:
+the server demands `clientInfo.contractHash` at `initialize`, a real CLI cannot know it, and the bridge never
+injected it. Every live proof for three epics used SDK clients, which *do* set the hash — so the wall stayed
+invisible. It surfaced the only way it could: by attaching a real `claude` session and watching it get thrown
+out (LB-66). **This is the flywheel working exactly as designed** — the loop is worth running precisely because
+it finds what the suite and the plan cannot.
+
+**The gates worked too, and it cost a task to prove it.** M18-T3 collected **six green gate-2 rounds** on a proof
+that passed identically on the *unfixed* code, and landed **zero lines on master**. Gate 3's question — *what
+would this proof print if I reverted the fix?* — refuted it. Case law: **IP-15** (the proof that passes without
+your change) and **IP-14** (widening a manifest to absorb a measurement error). Fresh-eyes-at-close (a different
+actor at gate 3 than gate 2) earned its cost for the second epic running.
+
+**What is NOT proven.** C3 is **DEFERRED, not met**: relays 19, substrate events **0**. M18 removed the blocker
+that made a relay fall impossible; it did not produce one. The honest metric problem is filed as **BL-027** — a
+raw relay count moves with review rounds (T1: 9 over 3 rounds; T2: 2 over 1; T3a: 8 over 4), so only the
+**ratio** of substrate-carried hand-offs measures what this program changes. **M19's first duty is C3's reopen
+condition**, and BL-026 (attaching a real session is still a hand-assembled ritual) is the friction standing
+directly in its way.
