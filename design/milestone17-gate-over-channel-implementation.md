@@ -208,3 +208,18 @@ local edits on `task-M17-T1`. Gate 3 should not receive the task until those imp
 
 **Required return scope:** commit the verified working-tree changes, including the whitespace-only test fix and this
 ledger entry, then hand back for a quick commit-presence recheck.
+
+## Implementation Review: M17-T1 Round 4b / Commit-Presence Recheck (Codex, 2026-07-09)
+
+**Verdict: VERIFIED.** The previously verified G3-2 implementation/test changes are now committed.
+
+**Recheck evidence:**
+- `git status --short --branch` -> clean on `task-M17-T1`.
+- `git show --stat --oneline e2b4ac5` -> commit
+  `fix(M17-T1): block product-owner assignment from any agent`, touching only
+  `packages/runtime-core/src/registry/registry.ts` and
+  `packages/runtime-core/src/registry/__tests__/m17-gate-channel.test.ts`.
+- Patch inspection confirms the committed diff is the verified G3-2 fix: `setWorkflowRole` refuses
+  `product-owner` for every agent, the fixture is renamed `agent-api`, and Repro B covers both MCP and API agents.
+
+**Disposition:** commit-presence blocker cleared. M17-T1 is verified for Gate 2 hand-back to Task-end Review.
