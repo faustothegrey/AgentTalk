@@ -47,3 +47,7 @@ here.**
 ### 2026-07-09 — Async Teardown and State Transitions
 - When tearing down a server and its attached clients, background async processes (like MCP tools resolving or streams closing) can race against the teardown sequence. A driver that processes asynchronous network responses might attempt a state transition (e.g. `terminated -> busy`) after the agent was already marked terminated, resulting in an unhandled rejection if not explicitly caught.
 - Live proofs and smoke tests must execute cleanly without noisy process exits or unhandled rejections, as those errors can obscure the actual validation results and create false negatives in CI/CD environments.
+
+### 2026-07-09 — Git untracked files and scope checking
+- When building tools that rely on git diff (like scope-check), remember that `git diff origin/master...HEAD` only checks tracked files. Untracked files require a fallback check like `git status --porcelain` to ensure new files are correctly evaluated.
+- Empty lines with trailing spaces are invisible but cause linter/diff failures. Clean them proactively before committing.
