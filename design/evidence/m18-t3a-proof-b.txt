@@ -1,3 +1,17 @@
+
+--- Proof B Evidence ---
+[Env check] AGENTTALK_BATON: unset
+[Env check] AGENTTALK_WORKFLOW_EVENT: unset
+[CLI Command] claude -p 'Use the send_to_agent tool to send a message to "user" with payload "Door 1 B: real CLI session, real baton". Include the "baton" object: {"kind":"workflow_baton","batonId":"door1-b1","fromRole":"implementation-reviewer","toRole":"worker","originTag":"[SM]"} and the "workflowEvent" object: {"kind":"workflow_gate_event","eventId":"door1-evt1","gate":"gate-2","action":"verdict","fromRole":"implementation-reviewer"}. Do not do anything else. Just call the tool.' --mcp-config /tmp/claude-mcp-config-proofb.json --dangerously-skip-permissions
+[MCP Config] {"mcpServers":{"agentalk":{"command":"bash","args":["-c","node /Users/fausto/Software/agentalk-mcp-client/bridge.mjs \"ws://127.0.0.1:9897?agentId=claude-door1&contractHash=ffa94e93e3182d44924ed28381870c7bd814c908279942022d5925a4865a9446\" 2>>/tmp/bridge-proofb.log"]}}}
+
+--- Bridge Log (stderr) ---
+[mcp-bridge] injected contractHash from URL
+[mcp-bridge] ws open -> ws://127.0.0.1:9897?agentId=claude-door1&contractHash=ffa94e93e3182d44924ed28381870c7bd814c908279942022d5925a4865a9446
+[mcp-bridge] stdin closed
+[mcp-bridge] ws close 1005
+
+--- Orchestrator Log ---
 AgentTalk Orchestrator V1 started.
 Google Drive integration configured.
 [Server] Autorun scenario scheduler initialized (repeating every 1800s)
@@ -23,7 +37,7 @@ Ready to manage agents.
 [McpServer] Connection established for agentId=claude-door1
 [Registry] MCP tool call from claude-door1: send_to_agent {
   to: 'user',
-  payload: 'Door 1: real CLI session, real baton',
+  payload: 'Door 1 B: real CLI session, real baton',
   baton: {
     kind: 'workflow_baton',
     batonId: 'door1-b1',
@@ -41,4 +55,10 @@ Ready to manage agents.
 }
 [Server] Workflow gate attempt by claude-door1 (accepted) → 0 client(s)
 [Server] Session Status claude-door1: ready → 0 client(s)
-[Server] Agent message from claude-door1: "Door 1: real CLI session, real baton" → 0 client(s)
+[Server] Agent message from claude-door1: "Door 1 B: real CLI session, real baton" → 0 client(s)
+[McpServer] Connection closed for agentId=claude-door1 (code: 1005)
+[Registry] Cleared 1 stale await_turn waiter(s) for agent claude-door1
+[Registry] MCP connection closed cleanly for agent claude-door1 (code 1005) -> terminated
+[Agent claude-door1] ready -> terminated
+[Server] Status claude-door1: terminated → 0 client(s)
+Received SIGTERM. Shutting down...

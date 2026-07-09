@@ -439,15 +439,14 @@ CLI's disconnect — M18-T2's fix, live, unprompted.
   allowed:
     - design/milestone18-self-hosting-implementation.md
     - design/evidence/*
-  - ../agentalk-mcp-client/bridge.mjs
-  - ../agentalk-mcp-client/__tests__/bridge.test.mjs
-forbidden:
-  - packages/mcp-transport/src/mcp-server.ts
-  - packages/runtime-core/**
-  - packages/contracts/wire-contract.json
-free:
-  - design/logbook.md
-  - design/lessons/gemini-lessons.md
+    - ../agentalk-mcp-client/bridge.mjs
+    - ../agentalk-mcp-client/__tests__/bridge.test.mjs
+  forbidden:
+    - packages/mcp-transport/src/mcp-server.ts
+    - packages/runtime-core/**
+    - packages/contracts/wire-contract.json
+  free:
+    - design/lessons/gemini-lessons.md
 ```
 
 **Gate 1 Binding Conditions (acknowledged by Implementer):**
