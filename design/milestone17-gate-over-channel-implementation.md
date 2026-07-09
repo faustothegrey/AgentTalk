@@ -249,3 +249,76 @@ ledger entry, then hand back for a quick commit-presence recheck.
 - gate:        tsc 0, suite 289/289, pollution clean (post-sweep)
 - diff:        5 product/test files +~310/-7 (plus ledger), commits `12272ba`→`a55f9c7` + close
 - outcome:     MERGED ✅ — `5e4ca27` (PO go, 2026-07-09 ~11:35), branch deleted, pushed
+
+---
+
+## Implementer Response: M17-T2 Delivery
+
+**Rule 6 Declaration:**
+Current role: implementer.
+Scope:
+- Create tests in `apps/orchestrator/src/__tests__/m17-gate-recording.test.ts` to prove `workflow_gate_attempt` NDJSON shape sent to `SessionRecorder`.
+- Update `apps/web/src/App.tsx` to handle `workflow_gate_attempt` websocket events and push them to `SidebarEvents` with "accepted (pre-delivery)" and "refused" language clearly displayed.
+Retry Budget: 2 retries per test failure.
+
+**Implementation Details:**
+- Added `m17-gate-recording.test.ts` verifying that `server.ts` correctly feeds the `workflow_gate_attempt` NDJSON to `SessionRecorder` for both accepted and refused gate events.
+- Updated `handleWsMessage` in `App.tsx` to render `workflow_gate_attempt` events minimally in the `SidebarEvents` UI, capturing the `[accepted (pre-delivery)]` semantics, the acting role, agent ID, and gate action.
+- T1 correctly prevented refusals from reaching the conversation transcripts because `handleMcpToolCall` throws prior to appending to the conversation.
+
+## Implementation Review: M17-T2 Round 1 (Codex, 2026-07-09)
+
+**Verdict: VERIFIED.** The delivery satisfies M17-T2's Gate 2 bar: accepted and refused workflow-gate attempts ride the registry event path into `SessionRecorder` on the `runtime` channel, and the web UI surfaces those events without relying on conversation transcripts.
+
+**Verification run:**
+- `npx vitest run apps/orchestrator/src/__tests__/m17-gate-recording.test.ts packages/runtime-core/src/registry/__tests__/m17-gate-channel.test.ts packages/runtime-core/src/registry/__tests__/baton-metadata.test.ts`
+  -> **3 files / 11 tests passed**.
+- `npx tsc -b` -> exit 0.
+- `npm test` -> **51 files / 291 tests passed**.
+- `npm run backlog:check` -> backlog structure OK, **19 items, 0 warnings**.
+- `git diff --check && git diff --cached --check` -> exit 0.
+- Out-of-fence checks: zero `packages/runtime-core/src/registry/team-coordinator.ts` diff, zero
+  `packages/contracts/wire-contract.json` diff, and no diff in `/Users/fausto/Software/agentalk-mcp-client`.
+- Pollution check: `git worktree list` shows only `/Users/fausto/Software/AgentTalk`; `git branch --list 'task-*'`
+  shows only the active `task-M17-T2` branch.
+
+**Patch inspection:**
+- `apps/orchestrator/src/__tests__/m17-gate-recording.test.ts` proves both accepted and refused attempts are recorded through `SessionRecorder.record("runtime", "workflow_gate_attempt", ...)`, with refused attempts captured before the handler throws.
+- `apps/web/src/App.tsx` renders `workflow_gate_attempt` WebSocket messages into the sidebar as `accepted (pre-delivery)` or `refused`, including the acting agent, role, gate, and action.
+- The reviewer moved the M17-T2 implementer response below the M17-T1 closure block so ledger chronology matches the branch history; no product/test code was changed by the reviewer.
+
+**Disposition:** M17-T2 is verified for Gate 2 hand-back. M17-T3/live proof remains separate.
+
+## Task-end Review: M17-T2 (Claude, 2026-07-09)
+
+**Verdict: VERIFIED ✅ — all bars green first-hand, merge requested from the PO.** One-attempt-per-bar sweep:
+
+- **Real-recorder NDJSON probe (the gap both prior rounds left):** the T2 test mocks `SessionRecorder`, and
+  the real recorder has **no unit tests anywhere in the suite** — so "correct NDJSON shape" was proven only
+  pre-serialization. I drove the **real** `SessionRecorder` (dist build) with both gate payload shapes:
+  3 NDJSON lines (meta + accepted + refused), every line parses, all inspectable fields present
+  (agentId, fromRole, gate, action, result, reason). Probe artifact in the task-end reviewer's scratchpad.
+  The mock is legitimate boundary isolation — IP-13 considered and NOT triggered (the mock isolates, it does
+  not route around a product defect).
+- Targeted `m17-gate-recording` + `m17-gate-channel` + `baton-metadata`: **3 files / 11 tests passed**.
+- `npx tsc -b` → exit 0. Full `npm test` → **51 files / 291 tests passed**.
+- `npm run backlog:check` → 19 items, 0 warnings. Whitespace clean. Tree clean on `task-M17-T2`.
+- Frozen surfaces: **0 files** diff on `team-coordinator.ts` + `wire-contract.json`; client repo clean; the
+  single `as any` in the branch diff is the test's own mock-recorder cast (test-local, not a frozen-surface poke).
+- M14 identity harness → "Baselines match. Identity verified."; worktree/branch leak swept, pollution clean.
+
+**Honest limits of this close:** the `App.tsx` sidebar rendering is verified by code-read + compile + the
+WS broadcast test path only — no browser was driven this round. T3's live proof is the designed moment that
+exercises the full chain (registry → recorder + WS → UI) against the real orchestrator; if T3 skips the UI
+observation, this row reopens.
+
+**Observation (not a T2 defect, pre-existing):** `SessionRecorder` itself has zero unit tests; T2's fence
+was wiring, not the recorder. Noted for the flywheel — file a backlog item only if it bites again.
+
+**Telemetry (task closure):**
+- task:        M17-T2
+- wall-clock:  2026-07-09 ~11:32 (baton) → ~11:45 close (~15m, 1 gate-2 round, 1 gate-3 round — clean first pass)
+- budget:      claude weekly ~18% (session ~7%); codex weekly ~23%; gemini 5h ~17% [claude meter ok:false per LB-11]
+- gate:        tsc 0, suite 291/291, pollution clean (post-sweep)
+- diff:        2 product/test files +107 (plus ledger +39), commits `1a7b083` + `fa42848` + close
+- outcome:     VERIFIED at gate 3 — merge pending PO go
