@@ -98,6 +98,13 @@ recommendations; written down here for future resurfacing at the PO's request):*
    deliberately deferred (**tracked: BL-018**; reopen if a contract bump recurs and bites again) — building
    auto-negotiation now would be process for a problem observed exactly once (program risk #3).
 
+**Planner advisory POV (Codex, PO-relayed, 2026-07-09) — RECORDED.** On the inception's load-bearing
+question: the C1 live proof **can run with direct SDK MCP clients** as the proof vehicle — the exec-bridge
+fix (BL-017) need not enter the fence; recommendation to open M17 for plan authoring without it. *(The relay
+was compressed to the recommendation line; full reasoning stayed in the planner's session — recorded as
+such, honestly.)* **M17 OPENED at the 2026-07-09 backlog gate — BL-019 `doing`; next act: the planner
+authors the plan, then Gate 1.**
+
 ### M18 — Self-hosting milestone *(the flywheel's first turn)*
 
 **Goal.** One full, deliberately small dev epic runs end-to-end on the substrate — planning baton, gates,

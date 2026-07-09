@@ -40,6 +40,24 @@ show-done/show-dropped toggles ride this param). The response's `total` field al
 
 ---
 
+### Backlog gate — 2026-07-09 (opening M17 · SM: Claude, PO go in session)
+
+Per §3b, dispositioned before opening **M17 — The gate over the channel** (self-hosting program epic 2 of
+M16→M18). Inception: `design/self-hosting-program-draft.md` §M17 **INCEPTION** block (PO+Architect,
+2026-07-09 — fence + two dispositions). Planner advisory POV delivered same day (PO-relayed): the C1 live
+proof runs on **direct SDK MCP clients** — BL-017 need not enter the fence; recommendation to open for plan
+authoring. SM go/no-go reason (durable, per the SM grant): inception + POV both landed, the one open
+feasibility question (BL-017 in/out) is answered, no competing `doing` item, budgets healthy (all providers
+≤17% weekly at gate time).
+
+| Item | Disposition for this gate |
+|---|---|
+| **BL-017** (new at inception) | Stays `todo` — **confirmed out of M17's fence** by the planner POV (the live proof does not structurally require it). Re-gate at M18 inception. |
+| **BL-018** (new at inception) | Unchanged — deferred; reopen condition (a contract bump recurs) untouched by M17, which may add a version label only. |
+| **BL-014 / BL-015 / BL-016** | Unchanged — BL-014 re-gates after M17 evidence (ruled 2026-07-08); BL-015 L0 stays an M18-rider candidate; BL-016 stays deferred on PO call. |
+| **BL-005 / BL-007 / BL-010** | Unchanged — deferred; none touched by M17's fence. |
+| **BL-019** (new) | **NEW `doing`** — M17 itself (the single doing item). |
+
 ### Backlog gate — 2026-07-08 (opening M16 · SM: Claude, PO go in session)
 
 Per §3b, dispositioned before opening **M16 — One real baton** (self-hosting program M16→M18; inception
@@ -441,7 +459,20 @@ tags: [consensus, arbiter, architecture, heavyweight]
 
 ### Doing (exactly one)
 
-*(empty — M16/BL-013 closed 2026-07-08; next item is a PO/SM backlog-gate call)*
+<!-- @item
+id: BL-019
+status: doing
+date: 2026-07-09
+epic: M17
+tags: [self-hosting, identity, roles, enforcement]
+-->
+- [doing · opened 2026-07-09 (backlog gate; SM: Claude, PO go in session); inception PO+Architect 2026-07-09,
+  planner advisory POV recorded same day] — **M17 — The gate over the channel (self-hosting program, epic 2
+  of M16→M18)** — session→identity→role mapping; origin tags become structured metadata the brain enforces at
+  routing; a real reviewer verdict and a real SM go flow through AgentTalk, recorded; negative test: a
+  PO-level act with a non-`[Human]` tag is refused. Fence (INCEPTION block, draft §M17): the mapping and its
+  enforcement, nothing more — exec-bridge baton gap explicitly out (BL-017), contract negotiation out
+  (BL-018); scope growth = automatic Gate-1 hand-back. Plan: to be authored (planner) → Gate 1.
 
 <!-- @item
 id: BL-011
