@@ -677,6 +677,18 @@ export function startServer(
     }
   });
 
+  app.post('/api/agents/:id/workflow-role', async (req, res) => {
+    const { id } = req.params;
+    const { role } = req.body;
+    console.log(`[Server] POST /api/agents/${id}/workflow-role`, role);
+    try {
+      registry.setWorkflowRole(id, role);
+      res.json({ success: true, role });
+    } catch (err: any) {
+      res.status(400).json({ error: err.message });
+    }
+  });
+
   app.post('/api/usage-stats/capture', async (req, res) => {
     console.log('[Server] POST /api/usage-stats/capture (DEPRECATED)');
     try {

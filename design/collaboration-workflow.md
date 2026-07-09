@@ -80,8 +80,7 @@ orchestration migration, so it can be reviewed, refined, and reused deliberately
   on the PO's
   behalf: convening the backlog gate, setting priority/sequencing and operational go/no-go, resource
   warn/halt/rescope, and baton facilitation; under the Origin Tag Protocol an `[SM]` message is binding for
-  operational/process matters. **Interim: the PO batons manually via the terminal** (the communication-channel
-  function reverts to the human).
+  operational/process matters. **AgentTalk is the primary channel for gate and baton messages; the terminal is the fallback** *(until BL-017 closes the exec-bridge gap, real CLI sessions still relay via terminal — the channel is proven with SDK clients; see the M17 ledger's proof limitation)*.
   The human remains the PO/apex who can overrule, redirect, or reclaim the SM at any moment, and PO-level
   acts — role assign/reassign, product scope/direction/epics, and merges — stay with the human. A non-human SM
   documents its reasons in a durable artifact. See the SM-status note under the Scrum Master bullet in
@@ -106,9 +105,7 @@ orchestration migration, so it can be reviewed, refined, and reused deliberately
        **durable artifacts** — it **complements the bus, never replaces it** — and, when AI-held, records as it
        goes. The **baton stays role→role** (§ baton): the SM ensures it lands with the intended receiver and points
        at the right artifacts, but does **not** rewrite it (that reintroduces the pre-chewed-summary anti-pattern);
-       the SM *may* override a baton, but that is **not** the standard flow. *(How the channel is implemented is an
-       implementation detail and out of scope here; but with no channel in place an AI-SM cannot operate. Specific
-       rules of engagement TBD — the guiding principle is the above.)*
+       the SM *may* override a baton, but that is **not** the standard flow. **AgentTalk is the primary channel for gate and baton messages; the terminal is the fallback** *(until BL-017 closes the exec-bridge gap, real CLI sessions still relay via terminal — the channel is proven with SDK clients; see the M17 ledger's proof limitation)*.
   - **Allowances — only the SM may:** make the operational go/no-go calls (on the PO's behalf); convene the
     backlog gate and set priority/sequencing; **halt or rescope active work** for a workflow breach or a budget
     limit. **Role assign / reassign / de-assign is NOT an SM allowance — it belongs to the Product Owner**
