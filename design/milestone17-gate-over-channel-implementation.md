@@ -182,22 +182,6 @@ Fixed Finding G3-2. `setWorkflowRole` now unconditionally refuses assigning `pro
 **Authority Invariant:**
 Authority derives ONLY from the registry's workflow-role assignment; origin tags are presentation/legacy, never authoritative; team roles (`planner|worker`) are an orthogonal execution concept; `product-owner` is never an assignable agent workflow role; provider identity is not a trust channel.
 
----
-
-## Implementer Response: M17-T2 Delivery
-
-**Rule 6 Declaration:**
-Current role: implementer.
-Scope: 
-- Create tests in `apps/orchestrator/src/__tests__/m17-gate-recording.test.ts` to prove `workflow_gate_attempt` NDJSON shape sent to `SessionRecorder`.
-- Update `apps/web/src/App.tsx` to handle `workflow_gate_attempt` websocket events and push them to `SidebarEvents` with "accepted (pre-delivery)" and "refused" language clearly displayed.
-Retry Budget: 2 retries per test failure.
-
-**Implementation Details:**
-- Added `m17-gate-recording.test.ts` verifying that `server.ts` correctly feeds the `workflow_gate_attempt` NDJSON to `SessionRecorder` for both accepted and refused gate events.
-- Updated `handleWsMessage` in `App.tsx` to render `workflow_gate_attempt` events minimally in the `SidebarEvents` UI, capturing the `[accepted (pre-delivery)]` semantics, the acting role, agent ID, and gate action.
-- T1 correctly prevented refusals from reaching the conversation transcripts because `handleMcpToolCall` throws prior to appending to the conversation.
-
 ## Implementation Review: M17-T1 Round 4 / G3-2 Recheck (Codex, 2026-07-09)
 
 **Verdict: BLOCKED ON DELIVERY HYGIENE.** The G3-2 behavior is verified in the working tree, but the claimed
@@ -265,3 +249,42 @@ ledger entry, then hand back for a quick commit-presence recheck.
 - gate:        tsc 0, suite 289/289, pollution clean (post-sweep)
 - diff:        5 product/test files +~310/-7 (plus ledger), commits `12272ba`→`a55f9c7` + close
 - outcome:     MERGED ✅ — `5e4ca27` (PO go, 2026-07-09 ~11:35), branch deleted, pushed
+
+---
+
+## Implementer Response: M17-T2 Delivery
+
+**Rule 6 Declaration:**
+Current role: implementer.
+Scope:
+- Create tests in `apps/orchestrator/src/__tests__/m17-gate-recording.test.ts` to prove `workflow_gate_attempt` NDJSON shape sent to `SessionRecorder`.
+- Update `apps/web/src/App.tsx` to handle `workflow_gate_attempt` websocket events and push them to `SidebarEvents` with "accepted (pre-delivery)" and "refused" language clearly displayed.
+Retry Budget: 2 retries per test failure.
+
+**Implementation Details:**
+- Added `m17-gate-recording.test.ts` verifying that `server.ts` correctly feeds the `workflow_gate_attempt` NDJSON to `SessionRecorder` for both accepted and refused gate events.
+- Updated `handleWsMessage` in `App.tsx` to render `workflow_gate_attempt` events minimally in the `SidebarEvents` UI, capturing the `[accepted (pre-delivery)]` semantics, the acting role, agent ID, and gate action.
+- T1 correctly prevented refusals from reaching the conversation transcripts because `handleMcpToolCall` throws prior to appending to the conversation.
+
+## Implementation Review: M17-T2 Round 1 (Codex, 2026-07-09)
+
+**Verdict: VERIFIED.** The delivery satisfies M17-T2's Gate 2 bar: accepted and refused workflow-gate attempts ride the registry event path into `SessionRecorder` on the `runtime` channel, and the web UI surfaces those events without relying on conversation transcripts.
+
+**Verification run:**
+- `npx vitest run apps/orchestrator/src/__tests__/m17-gate-recording.test.ts packages/runtime-core/src/registry/__tests__/m17-gate-channel.test.ts packages/runtime-core/src/registry/__tests__/baton-metadata.test.ts`
+  -> **3 files / 11 tests passed**.
+- `npx tsc -b` -> exit 0.
+- `npm test` -> **51 files / 291 tests passed**.
+- `npm run backlog:check` -> backlog structure OK, **19 items, 0 warnings**.
+- `git diff --check && git diff --cached --check` -> exit 0.
+- Out-of-fence checks: zero `packages/runtime-core/src/registry/team-coordinator.ts` diff, zero
+  `packages/contracts/wire-contract.json` diff, and no diff in `/Users/fausto/Software/agentalk-mcp-client`.
+- Pollution check: `git worktree list` shows only `/Users/fausto/Software/AgentTalk`; `git branch --list 'task-*'`
+  shows only the active `task-M17-T2` branch.
+
+**Patch inspection:**
+- `apps/orchestrator/src/__tests__/m17-gate-recording.test.ts` proves both accepted and refused attempts are recorded through `SessionRecorder.record("runtime", "workflow_gate_attempt", ...)`, with refused attempts captured before the handler throws.
+- `apps/web/src/App.tsx` renders `workflow_gate_attempt` WebSocket messages into the sidebar as `accepted (pre-delivery)` or `refused`, including the acting agent, role, gate, and action.
+- The reviewer moved the M17-T2 implementer response below the M17-T1 closure block so ledger chronology matches the branch history; no product/test code was changed by the reviewer.
+
+**Disposition:** M17-T2 is verified for Gate 2 hand-back. M17-T3/live proof remains separate.
