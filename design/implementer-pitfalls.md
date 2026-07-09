@@ -256,3 +256,27 @@ miss — *don't fix it silently, record it*. A pattern with many cases is a sign
   twice; caught at gate 3 by diffing `master...HEAD` (5 files) against the tool's view (8 files).
   Reviewer tell: **an `allowed` list containing files the branch's real diff never touched is a question to
   ask, not manifest hygiene** — ask "why does the fence need this hole?" before waving it through.
+
+### IP-15 — The proof that passes without your change (evidence that never sees the defect)
+- **Gist:** the delivery ships a fix and a live proof, the proof passes, everyone believes the fix caused it —
+  but the proof was never run against the **unfixed** code, and in fact passes there too. The evidence
+  establishes that the *system* does something, not that the *change* enabled it.
+- **Why it bites:** it launders an unproven (or unnecessary, or wrong-layer) change onto the mainline with a
+  green live bar attached, which is the most credible-looking evidence the workflow has. Downstream tasks then
+  build on a capability nobody actually verified, and the real gap — still open — gets marked `done` in the
+  backlog. It also hides misdiagnosis: if the fix is at the wrong layer, a passing proof is exactly what you'd
+  see. The cure is an **A/B**: run the same proof against the pre-change baseline and show it *fails*. A bar
+  that cannot fail cannot verify (the sibling of IP-1's "green by subtraction" — here, green by
+  non-discrimination).
+- **Related:** when the proof's mechanism can produce the observed output *two different ways* (agent-supplied
+  vs. operator-injected), and the evidence records only the downstream side where they look identical, the
+  proof cannot support either claim. Demand evidence from the side where they differ.
+- **Case (M18-T3, 2026-07-09):** BL-017 says real CLI sessions can't send workflow envelopes. The delivery added
+  env-var injection to `bridge.mjs` and committed an orchestrator-side log showing `send_to_agent` arriving with
+  `baton`+`workflowEvent`, gate accepted. At gate 3 the reviewer ran the same JSON-RPC through the **pre-fix**
+  bridge against the real orchestrator: identical log lines. Pre-fix `bridge.mjs` was a verbatim line relay
+  (`ws.send(s)`) — structured args had always passed. Worse, the layer BL-017 actually named (`llm-agent.mjs`'s
+  exec-bridge, which only ever emits `submit_exec_result{text,usage}`) was never touched, and the committed log
+  could not distinguish an agent that chose the envelope from a bridge that stapled it on from the environment.
+  Passed gate 2 across six rounds. Reviewer tell: **"what would this proof print if I reverted the fix?"** — if
+  you can't answer, the proof isn't evidence yet.
