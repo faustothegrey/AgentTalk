@@ -119,3 +119,34 @@ configuration and the task's own scope checker currently fails on the dirty deli
   Gate-1/SM-approved scope amendment before including `design/lessons/gemini-lessons.md` in the T1 delivery.
 - Re-run the T1 verification bars affected by those fixes: targeted scope-check tests, positive `scope-check`,
   `npm test`, `npm run backlog:check`, whitespace check, and pollution check.
+
+## Implementation Review: M18-T1 Round 2 (Codex, 2026-07-09)
+
+**Verdict: VERIFIED.** The Round 1 findings are addressed in commit `31ca833`, and M18-T1 is verified for Gate 2
+handoff to Task-end Review.
+
+**Verification run:**
+- `npx vitest run scripts/__tests__/scope-check.test.mjs` -> **1 file / 5 tests passed**.
+- `node scripts/scope-check.mjs` -> exit 0. The checker found the manifest and accepted all changed files:
+  M18 docs/ledger, `scripts/scope-check.mjs`, `scripts/__tests__/scope-check.test.mjs`, `vitest.config.ts`, and
+  `design/lessons/gemini-lessons.md` via the `free` block.
+- Direct scope matcher probe -> exit 0. Verified a forbidden `packages/runtime-core/src/...` path matches the
+  forbidden glob, an allowed script path matches, the Gemini lessons path matches `free`, and an unrelated path does
+  not match the allowed set.
+- `git diff --check && git diff --cached --check && git show --check --oneline HEAD` -> exit 0.
+- `npx tsc -b` -> exit 0.
+- `npm test` -> **52 files / 296 tests passed**; the full suite now includes `scripts/__tests__/scope-check.test.mjs`.
+- `npm run backlog:check` -> backlog structure OK, **21 items, 0 warnings**.
+- `node scripts/m14-identity-harness.mjs --check` -> **Baselines match. Identity verified.** The known generated
+  harness worktree/branch was clean and swept after the run.
+- Out-of-fence checks: zero `packages/runtime-core/src/registry/team-coordinator.ts` diff; zero
+  `packages/runtime-core/src/**` diff.
+- Pollution check after sweep: `git worktree list` shows only `/Users/fausto/Software/AgentTalk`; `git branch --list
+  'task-*'` shows only active `task-M18-T1`.
+
+**Disposition of Round 1 findings:**
+1. **Targeted tests outside configured suite:** fixed. `vitest.config.ts` now includes
+   `scripts/__tests__/**/*.test.mjs`; targeted and full-suite runs both executed the new tests.
+2. **Scope checker failed on Gemini lessons:** fixed for the delivered branch. The lessons file is now committed and
+   listed in `free`, consistent with the standing per-agent lessons-write requirement. This is a narrow manifest
+   widening for the implementer's own lessons file, not BL-015 L1/L2 scope.
