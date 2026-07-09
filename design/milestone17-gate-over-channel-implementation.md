@@ -174,3 +174,37 @@ stays blocked; the laundering path is fromRole-based authority on the other acti
 **Note for Gate 2:** two rounds in a row the miss was a *conceptual boundary* (tag≠act, provider≠trust
 channel), not a code-mechanics defect — when verifying authority guards, probe the concept from outside the
 error message's own vocabulary.
+
+## Implementer Response: M17-T1 Round 4 (G3-2 Fix)
+
+Fixed Finding G3-2. `setWorkflowRole` now unconditionally refuses assigning `product-owner` to any agent (including LLM agents using the `api` provider). The `m17-gate-channel.test.ts` test fixture `agent-human` was renamed to `agent-api` and the Repro B test was updated.
+
+**Authority Invariant:**
+Authority derives ONLY from the registry's workflow-role assignment; origin tags are presentation/legacy, never authoritative; team roles (`planner|worker`) are an orthogonal execution concept; `product-owner` is never an assignable agent workflow role; provider identity is not a trust channel.
+
+## Implementation Review: M17-T1 Round 4 / G3-2 Recheck (Codex, 2026-07-09)
+
+**Verdict: BLOCKED ON DELIVERY HYGIENE.** The G3-2 behavior is verified in the working tree, but the claimed
+implementation commit is absent: `registry.ts`, `m17-gate-channel.test.ts`, and this ledger are still uncommitted
+local edits on `task-M17-T1`. Gate 3 should not receive the task until those implementation changes are committed.
+
+**Verification run:**
+- `npx vitest run packages/runtime-core/src/registry/__tests__/m17-gate-channel.test.ts packages/runtime-core/src/registry/__tests__/baton-metadata.test.ts`
+  -> **2 files / 9 tests passed**.
+- `npx tsc -b` -> exit 0.
+- Direct rebuilt product-owner assignment probe: both MCP and API agents reject `setWorkflowRole(..., "product-owner")`
+  with `Cannot assign product-owner role to any agent in the registry`.
+- Direct rebuilt laundering probe: API-provider LLM agent cannot acquire `product-owner`; a follow-on
+  `fromRole: "product-owner"` backlog-gate `go` attempt is refused and emits `workflow_gate_attempt` with
+  `result: "refused"`.
+- `npm test` -> **50 files / 289 tests passed**.
+- `npm run backlog:check` -> backlog structure OK, **19 items, 0 warnings**.
+- `git diff --check && git diff --cached --check` initially failed on trailing whitespace in
+  `m17-gate-channel.test.ts`; reviewer applied a whitespace-only fix, then the check passed.
+- Out-of-fence checks: zero `team-coordinator.ts` diff, zero `packages/contracts/wire-contract.json` diff, and no
+  diff in `/Users/fausto/Software/agentalk-mcp-client`.
+- Pollution check: `git worktree list` shows only `/Users/fausto/Software/AgentTalk`; `git branch --list 'task-*'`
+  shows only the active `task-M17-T1` branch.
+
+**Required return scope:** commit the verified working-tree changes, including the whitespace-only test fix and this
+ledger entry, then hand back for a quick commit-presence recheck.
