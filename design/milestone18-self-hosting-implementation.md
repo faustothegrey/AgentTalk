@@ -69,8 +69,53 @@
     - design/milestone18-self-hosting-plan.md
     - design/self-hosting-program-draft.md
     - design/backlog.md
+    - vitest.config.ts
   forbidden:
     - packages/runtime-core/src/**/*.ts
   free:
     - design/logbook.md
+    - design/lessons/gemini-lessons.md
 ```
+
+## Implementation Review: M18-T1 Round 1 (Codex, 2026-07-09)
+
+**Verdict: REFUTED.** The core script is present and the full existing suite is green, but the delivery is not
+ready for Gate 2 verification handoff because the claimed targeted tests are not runnable under the repo's Vitest
+configuration and the task's own scope checker currently fails on the dirty delivery worktree.
+
+**Verification run:**
+- `npx vitest run scripts/__tests__/scope-check.test.mjs` -> **exit 1**, no test files found. The active
+  `vitest.config.ts` include globs cover `apps/orchestrator/src/**/*.test.ts`,
+  `packages/runtime-core/src/**/*.test.ts`, `packages/llm-client/src/**/*.test.ts`,
+  `packages/mcp-transport/src/**/*.test.ts`, and `packages/mcp-exec-server/src/**/*.test.ts`; they do not include
+  `scripts/__tests__`.
+- `node scripts/scope-check.mjs` -> **exit 1**. It found the manifest and accepted the in-scope M18-T1 files, but
+  rejected `design/lessons/gemini-lessons.md` as `OUT OF SCOPE`; that file is modified in the worktree but not in
+  commit `166d1d1`.
+- `git diff --check && git diff --cached --check` -> exit 0.
+- `npx tsc -b` -> exit 0.
+- `npm test` -> **51 files / 291 tests passed**. Note: this does **not** include
+  `scripts/__tests__/scope-check.test.mjs` because of the Vitest include globs above.
+- `npm run backlog:check` -> backlog structure OK, **21 items, 0 warnings**.
+- `node scripts/m14-identity-harness.mjs --check` -> **Baselines match. Identity verified.** The known leaked
+  harness worktrees/branches were clean and swept after the run.
+- Out-of-fence check: zero `packages/runtime-core/src/registry/team-coordinator.ts` diff.
+- Pollution check after sweep: pending re-run after the implementer redelivery; this round still has the dirty
+  `design/lessons/gemini-lessons.md` worktree change.
+
+**Findings:**
+1. **Targeted tests are outside the configured test suite.** The delivery claims unit coverage in
+   `scripts/__tests__/scope-check.test.mjs`, but the repo's Vitest config does not discover that path. A direct
+   targeted run exits with "No test files found", and full `npm test` passes without running these tests. The
+   script therefore lacks executable, gate-visible targeted test coverage.
+2. **Delivery worktree fails its own scope check.** `node scripts/scope-check.mjs` rejects
+   `design/lessons/gemini-lessons.md` as out of scope. Because that file is dirty and absent from commit
+   `166d1d1`, the delivery is not clean and the T1 checker cannot currently produce its required in-scope pass.
+
+**Required return scope:**
+- Make the scope-check tests run under the repo's normal test machinery or move them to an included test location;
+  then re-run the targeted test command and `npm test`.
+- Clean the delivery worktree so `node scripts/scope-check.mjs` passes on the actual branch state, or obtain a
+  Gate-1/SM-approved scope amendment before including `design/lessons/gemini-lessons.md` in the T1 delivery.
+- Re-run the T1 verification bars affected by those fixes: targeted scope-check tests, positive `scope-check`,
+  `npm test`, `npm run backlog:check`, whitespace check, and pollution check.

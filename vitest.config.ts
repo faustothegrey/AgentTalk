@@ -16,7 +16,7 @@ export default defineConfig({
     },
   },
   test: {
-    include: ['apps/orchestrator/src/**/*.test.ts', 'packages/runtime-core/src/**/*.test.ts', 'packages/llm-client/src/**/*.test.ts', 'packages/mcp-transport/src/**/*.test.ts', 'packages/mcp-exec-server/src/**/*.test.ts'],
+    include: ['apps/orchestrator/src/**/*.test.ts', 'packages/runtime-core/src/**/*.test.ts', 'packages/llm-client/src/**/*.test.ts', 'packages/mcp-transport/src/**/*.test.ts', 'packages/mcp-exec-server/src/**/*.test.ts', 'scripts/__tests__/**/*.test.mjs'],
     exclude: ['**/dist/**', 'apps/web/**'],
   },
 });
