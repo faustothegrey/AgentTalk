@@ -43,3 +43,7 @@ here.**
 - Unclosed server processes and attached agent clients frequently leave lingering ports (e.g., `EADDRINUSE` on 3000 or 9898). Actively monitor `lsof` and kill lingering orchestrator processes explicitly in tests, as autorun and detached processes do not always reliably exit.
 - Registry services implement strict validation for agent instantiation. Ensure required fields (e.g., `provider: 'mcp'`) precisely match the schema to avoid early rejection before assuming issues are transport-related.
 - When orchestrating exchanges over a live websocket server, prerequisite conversation state must be established. Sending metadata (like a workflow baton) without first initializing an active "pair conversation" will result in silently dropped or unrecorded turns.
+
+### 2026-07-09 — Async Teardown and State Transitions
+- When tearing down a server and its attached clients, background async processes (like MCP tools resolving or streams closing) can race against the teardown sequence. A driver that processes asynchronous network responses might attempt a state transition (e.g. `terminated -> busy`) after the agent was already marked terminated, resulting in an unhandled rejection if not explicitly caught.
+- Live proofs and smoke tests must execute cleanly without noisy process exits or unhandled rejections, as those errors can obscure the actual validation results and create false negatives in CI/CD environments.
