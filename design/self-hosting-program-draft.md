@@ -1,8 +1,8 @@
 # Self-Hosting Program (M16 → M18) — AgentTalk improves itself
 
-**Status:** 🟢 **ACTIVE — M16 CLOSED (2026-07-08) · M17 CLOSED (2026-07-09) · next: M18 inception (PO
-call).** Pre-named M18 inputs: BL-017 (exec-bridge baton gap, likely M18-T1), BL-020 (orchestrator dies on
-client disconnect), planner meta-concerns #3/#4. Role-skill injection stays M19 (BL-014, re-gate on M17
+**Status:** 🟢 **ACTIVE — M16 CLOSED (2026-07-08) · M17 CLOSED (2026-07-09) · M18 INCEPTED (2026-07-09:
+T1=BL-015-L0 shakedown · T2=BL-020 · T3=BL-017; C3 reworded; next: planner advisory POV, then the backlog
+gate opens M18).** Role-skill injection stays M19 (BL-014, re-gate on M17
 evidence — now available).
 **Roles:** per `AGENT.md → 📌 DEFAULT ROLE ASSIGNMENTS` (2026-07-08 model — three reviewer seats; SM handed
 Codex → Claude). *(Inception-time roles line preserved below as the 2026-07-02 record.)*
@@ -124,8 +124,37 @@ DiagramTalk endpoint (unavailable since M15-T3) so recordings render as live dia
 dessert, PO's "spectacular diagrams" done properly. Post-epic: SM files friction→backlog from the
 recordings — **that act closes the loop and is the program's true DoD.**
 **DoD claim sketch.** C1: the epic's every baton/gate exists in the recording. C2: friction→backlog entries
-cite recording evidence. C3: PO relay count during the epic ≈ 0 (poke-only or none); fallback moments, if
-any, honestly logged.
+cite recording evidence. C3 *(reworded at inception — see below)*: relay count recorded per task, falls
+measurably after T3, every relay logged as a declared fallback moment.
+
+**INCEPTION (PO + Architect, 2026-07-09) — direction set, task sequence and one DoD rewording recorded:**
+1. **Direction (PO):** bootstrap on the substrate **as soon as possible**; the PO **babysits the relay gap
+   a little longer**; robustness is dealt with **within AgentTalk itself** — as self-hosted epics, not as
+   terminal-coordinated pre-work outside the flywheel.
+2. **Task sequence (PO picks, architect options):**
+   - **T1 = BL-015 L0 only** (`scope-check` script + per-task scope manifest) — the guinea-pig **process
+     shakedown**: additive tooling, zero `runtime-core` touch, ~a day, real spec/tests/consumer; big enough
+     to exercise the full 3-gate dance over the channel, small enough that a substrate failure strands
+     nothing. **L1/L2 stay M19-gated with BL-014** — pulling them in is an automatic Gate-1 hand-back.
+   - **T2 = BL-020** (orchestrator dies on attached-client disconnect) — the substrate stops dying under us.
+   - **T3 = BL-017** (exec-bridge carries baton/workflow envelopes) — real CLI sessions can emit envelopes;
+     **this is where the relay count falls.**
+   - Considered and set aside for T1: BL-020-first (PO chose the smaller shakedown before touching
+     `runtime-core` self-hosted); DiagramTalk repair (surface unassessed — stays the droppable
+     **rider-if-genuinely-cheap after T3**, per POV caution 4); a docs micro-task (weak shakedown signal —
+     gates over content nobody can meaningfully refute).
+3. **C3 reworded (PO-approved):** was "relay ≈ 0"; a babysat T1 cannot honestly meet it while BL-017 is
+   open, and we do not keep a DoD we know is unreachable. New C3 as stated above; **relay ≈ 0 moves to the
+   program end-state claim**, proven when it's proven.
+4. **Accepted risk, stated plainly:** during T1–T2 the substrate still carries the BL-020 crash — a
+   mid-turn disconnect can kill the orchestrator mid-epic. Tolerated: restart + honest fallback log (code
+   lives in worktrees; nothing strands), and a live crash during T1 is recorded evidence for T2's own fix.
+5. **BL-017 contract-shape note (for T3's planning):** wire contract v7 hashes tool *names* only —
+   extending `send_to_agent` args is hash-neutral (no cross-repo sync); a **new tool** bumps the hash and
+   trips **BL-018's reopen condition** → escalate to the PO before plan authoring, per the M17 inception
+   disposition 3.
+6. **Next act:** planner advisory POV (feasibility/risk/effort on the T1→T3 sequence; a fresh planner
+   primer is already keyed), then the backlog gate opens M18.
 
 ## SP-WAKE — preparatory spike (architect's side-dish pick; runs on PO go, pre-Jul-8 window)
 
