@@ -63,3 +63,11 @@ here.**
   otherwise the diff stat and touched-file claim become less trustworthy than the code.
 - Keep behavior changes out of proof harness support when possible: moving MCP provider selection into the proof
   script preserved the existing agent-creation API while still making the live proof deterministic.
+
+### 2026-07-09 — M17 proof evidence must be run-bound
+- A live proof is not proven by a committed NDJSON file unless the success predicate is tied to the current run;
+  include a negative check such as "server has no recorder configured" to catch stale-evidence false positives.
+- For authority metadata, verify the canonical vocabulary separately from role enforcement: a structurally accepted
+  event can still be a bad proof if it smuggles a non-canonical tag like a reviewer origin tag.
+- When reviewing proof-support code, scan for unrelated API response drift even if the main behavior passes; a
+  proof helper can accidentally change product surface outside the task fence.
