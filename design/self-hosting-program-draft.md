@@ -156,6 +156,20 @@ measurably after T3, every relay logged as a declared fallback moment.
 6. **Next act:** planner advisory POV (feasibility/risk/effort on the T1→T3 sequence; a fresh planner
    primer is already keyed), then the backlog gate opens M18.
 
+**Planner advisory POV (Codex, PO-relayed, 2026-07-09) — RECORDED; endorses the sequence.** Feasibility:
+T1 right shakedown (additive, no runtime-core; hard boundary L1/L2 out — Gate-1 hand-back if they appear);
+T2 right second (defect localized to the driver loop/error path in `in-process-driver.ts`; lifecycle risk
+moderate, belongs *inside* M18); T3 correctly last — **prefer extending the existing `send_to_agent`
+argument path** (server side already schemas optional `baton`/`workflowEvent`; a new tool reopens BL-018 →
+escalate before plan authoring). Named risks: T1 process risk (substrate crash mid-coordination —
+acceptable iff every relay/restart is logged per reworded C3, "part of the proof, not embarrassment to
+hide"); T2 shared failure-semantics risk (plan must require a disconnect-mid-turn regression + preserved
+behavior checks for normal errors/clean termination/M08+M17 paths); T3 cross-repo drift (client has **no**
+baton/workflowEvent handling yet, only generic tool-call plumbing — needs client-side proof that structured
+args survive the real CLI path). Effort: T1 ~a day, T2 ~a day, T3 one-two days. **Architect verification
+(same day): all three file-level claims checked against both repos — hold** (`mcp-tools.ts` baton/
+workflowEvent fields present; L0 note runtime-free; client-src grep zero hits).
+
 ## SP-WAKE — preparatory spike (architect's side-dish pick; runs on PO go, pre-Jul-8 window)
 
 **Question.** Can a long-lived interactive CLI session (Claude Code / Codex CLI) attach to AgentTalk over
