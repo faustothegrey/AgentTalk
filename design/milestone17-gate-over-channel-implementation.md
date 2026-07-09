@@ -347,3 +347,54 @@ Retry Budget: 2 retries per step.
 
 **Proof Limitation Statement:**
 The live proof is a headless validation of the MCP transport mechanism and the Orchestrator's API/Registry, sending raw JSON-RPC `call_tool` payloads. Because it uses raw `WebSocket` clients and generic message dispatch logic rather than full SDK bindings, it does not explicitly guarantee behavioral compliance of higher-level SDK clients. Instead, it proves the server boundaries, registry invariants, and event recording pipeline function perfectly given well-formed JSON-RPC payloads.
+
+## Implementation Review: M17-T3 Round 1 (Codex, 2026-07-09)
+
+**Verdict: REFUTED.** The core gate transport behavior ran successfully, and the committed NDJSON contains the three
+expected gate attempts, but the live proof as delivered is not yet a reliable proof artifact and the branch carries
+one unrelated API response change.
+
+**Findings:**
+- **G2-1: The live proof can pass against stale committed NDJSON, even with no active recorder.** The script hard-codes
+  `design/m17-gate-channel-proof.ndjson` as `recPath` (`scripts/m17-live-gate-proof.mjs:78`) and only checks whether
+  that pre-existing file contains broad substrings for accepted verdict/go and refused PO act (`scripts/m17-live-gate-proof.mjs:169-179`).
+  Repro: I started the real orchestrator on the proof ports with no `AGENTTALK_RECORDING_PATH`, then ran
+  `node scripts/m17-live-gate-proof.mjs`; it still printed `LIVE SMOKE PASSED`. A second repro with
+  `AGENTTALK_RECORDING_PATH=/tmp/m17-wrong-recording.ndjson` also passed while the script inspected the committed
+  design file instead of the live recording path. This does not satisfy C1/C2/C5 as a live proof because the success
+  condition is not tied to fresh runtime recorder output from the current run.
+- **G2-2: The proof emits a non-canonical origin tag for the reviewer verdict.** The Gate 1 ruling made `[PO]`
+  canonical, `[Human]` the legacy PO alias, and `[SM]` the process tag; reviewer authority comes from
+  `fromRole: "implementation-reviewer"`, not an origin tag. The script sends `originTag: "[Reviewer]"`
+  on the accepted Gate 2 verdict (`scripts/m17-live-gate-proof.mjs:129`), and the committed NDJSON records that
+  invalid tag. The proof should omit `originTag` for reviewer verdicts or use only the contract-allowed tags where
+  semantically valid, then regenerate the evidence.
+- **G2-3: `server.ts` changes an unrelated usage-stats response shape.** The M17-T3 branch changes the deprecated
+  `POST /api/agents/:id/usage-stats` endpoint from returning `{ success, usageStats: { stats, timestamp } }` to
+  `{ success, timestamp, stats }` (`apps/orchestrator/src/server.ts:664-672`). The endpoint comment says it is
+  preserved to avoid breaking UI, and existing web/API types still model `usageStats`. This is outside the live-proof
+  fence and should be reverted unless separately approved.
+
+**Verification run:**
+- `npx tsc -b` -> exit 0.
+- `npx vitest run apps/orchestrator/src/__tests__/m17-gate-recording.test.ts packages/runtime-core/src/registry/__tests__/m17-gate-channel.test.ts packages/runtime-core/src/registry/__tests__/baton-metadata.test.ts`
+  -> **3 files / 11 tests passed**.
+- `npm test` -> **51 files / 291 tests passed**.
+- `npm run backlog:check` -> backlog structure OK, **19 items, 0 warnings**.
+- `git diff --check && git diff --cached --check` -> exit 0.
+- Out-of-fence checks: zero `packages/runtime-core/src/registry/team-coordinator.ts` diff, zero
+  `packages/contracts/wire-contract.json` diff, and no diff in `/Users/fausto/Software/agentalk-mcp-client`.
+- Pollution check: `git worktree list` shows only `/Users/fausto/Software/AgentTalk`; `git branch --list 'task-*'`
+  shows only the active `task-M17-T3` branch.
+- Resource meter at review start: codex weekly ~27%, 5h ~42%.
+
+**Required return scope:**
+1. Make `scripts/m17-live-gate-proof.mjs` fail unless it validates fresh recorder output from the current proof run.
+   The evidence should be run-bound, for example by deleting/truncating the output before the run, using the same
+   path the server records to, checking the current run's unique event IDs, and failing if the active server has no
+   recorder configured.
+2. Remove `[Reviewer]` from workflow metadata in the proof; reviewer authority is expressed by `fromRole`.
+   Regenerate `design/m17-gate-channel-proof.ndjson`.
+3. Revert the unrelated `/api/agents/:id/usage-stats` response-shape change.
+4. Correct the proof limitation statement: the submitted proof uses `@modelcontextprotocol/sdk` MCP clients for the
+   agent channel and `ws` only for the UI WebSocket path; it is not a raw JSON-RPC proof.
