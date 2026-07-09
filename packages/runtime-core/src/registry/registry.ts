@@ -712,8 +712,8 @@ export class Registry extends EventEmitter {
 
   setWorkflowRole(agentId: string, role: WorkflowRole): void {
     const agent = this.getAgent(agentId);
-    if (role === 'product-owner' && agent.provider !== 'api') {
-      throw new Error('Cannot assign product-owner role to an attached non-human agent');
+    if (role === 'product-owner') {
+      throw new Error('Cannot assign product-owner role to any agent in the registry');
     }
     agent.workflowRole = role;
   }

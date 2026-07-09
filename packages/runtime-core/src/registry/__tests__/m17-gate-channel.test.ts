@@ -9,10 +9,10 @@ describe('M17 Gate Channel Workflow Checks', () => {
     registry = new Registry();
     await registry.createAgent('agent-1', { provider: 'mcp' });
     await registry.createAgent('agent-2', { provider: 'mcp' });
-    await registry.createAgent('agent-human', { provider: 'api' });
+    await registry.createAgent('agent-api', { provider: 'api' });
     await registry.activateAgent('agent-1');
     await registry.activateAgent('agent-2');
-    await registry.activateAgent('agent-human');
+    await registry.activateAgent('agent-api');
   });
 
   afterEach(async () => {
@@ -117,10 +117,15 @@ describe('M17 Gate Channel Workflow Checks', () => {
     })).rejects.toThrow('Unauthorized: PO-level workflow events can only originate from trusted human/API paths');
   });
 
-  it('prevents assigning product-owner role to an attached agent (Repro B)', () => {
+  it('prevents assigning product-owner role to any agent (Repro B)', () => {
     expect(() => {
       registry.setWorkflowRole('agent-1', 'product-owner');
-    }).toThrow('Cannot assign product-owner role to an attached non-human agent');
+    }).toThrow('Cannot assign product-owner role to any agent in the registry');
+
+    // Also applies to API agents, which are LLMs, not human channels
+    expect(() => {
+      registry.setWorkflowRole('agent-api', 'product-owner');
+    }).toThrow('Cannot assign product-owner role to any agent in the registry');
   });
 
   it('rejects if fromRole does not match assigned role', async () => {
