@@ -238,3 +238,21 @@ miss — *don't fix it silently, record it*. A pattern with many cases is a sign
   once; the defect surfaced only when T2's live proof timed out, costing a scope amendment round (M16-T2a).
   Reviewer tell: a mock of a *private* method via `as any`, or a mock no sibling test needs, is a question to
   ask, not a pattern to wave through.
+
+### IP-14 — Widening the manifest to absorb a measurement error: fix the ruler, not the drawing
+- **Gist:** a check fails because its *measurement* is wrong (a stale diff base, a bad fixture, a
+  miscalibrated baseline) — and instead of fixing the measurement, the delivery widens the allowed
+  set/fixture/baseline until the check goes green. The check now passes while measuring the wrong thing,
+  and the widened artifact ships as if it were the spec.
+- **Why it bites:** the widening looks like configuration, not code, so it sails through review — but it
+  quietly erodes the bar the artifact exists to hold. Worse, the widened version becomes the template
+  future tasks copy. This is Rule-1/Rule-3 territory ("a green obtained by weakening a test is a rejected
+  delivery") applied to *data the check consumes*, not the check's code.
+- **Case (M18-T1, 2026-07-09):** `scope-check.mjs` based its changed-file set on `origin/master...HEAD`;
+  `origin/master` was 4 commits stale (normal in this local-first repo), so three files the task never
+  touched (`backlog.md`, the M18 plan, the program draft) appeared "changed" — and the task's scope
+  manifest listed all three as `allowed` so its own fence would pass. The very first scope fence shipped
+  pre-widened: it would have blessed an implementer silently editing the backlog or the plan. Passed gate 2
+  twice; caught at gate 3 by diffing `master...HEAD` (5 files) against the tool's view (8 files).
+  Reviewer tell: **an `allowed` list containing files the branch's real diff never touched is a question to
+  ask, not manifest hygiene** — ask "why does the fence need this hole?" before waving it through.
