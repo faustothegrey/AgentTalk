@@ -97,3 +97,28 @@ export interface Conversation {
   updatedAt: string;
   transcript: TranscriptEntry[];
 }
+
+export type WorkflowOrigin = '[Human]' | '[PO]' | '[SM]';
+
+export type WorkflowRole =
+  | 'planner'
+  | 'plan-reviewer'
+  | 'implementation-reviewer'
+  | 'task-end-reviewer'
+  | 'implementer'
+  | 'architect'
+  | 'scrum-master'
+  | 'product-owner';
+
+export type WorkflowGateEvent = {
+  kind: 'workflow_gate_event';
+  gate: 'gate-1' | 'gate-2' | 'gate-3' | 'backlog-gate';
+  action: 'verdict' | 'go' | 'no-go' | 'baton' | 'po-act';
+  originTag?: WorkflowOrigin;
+  fromAgentId?: string;
+  fromRole: WorkflowRole;
+  toAgentId?: string;
+  toRole?: WorkflowRole;
+  taskId?: string;
+  eventId: string;
+};

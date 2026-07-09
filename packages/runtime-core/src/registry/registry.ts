@@ -20,6 +20,7 @@ import type {
   TeamMember,
   TeamRole,
   TeamTask,
+  WorkflowRole,
 } from '@agenttalk/contracts/types';
 import { ConversationCoordinator } from './conversation-coordinator.js';
 import { TeamCoordinator } from './team-coordinator.js';
@@ -372,8 +373,26 @@ export class Registry extends EventEmitter {
 
       case 'send_to_agent': {
         if (this.isDuplicateTerminalAction(agent)) return { content: [{ type: 'text', text: 'Action accepted (deduplicated)' }] };
-        const { to, payload, replyToMessageId, baton } = args;
+        const { to, payload, replyToMessageId, baton, workflowEvent } = args;
         const expectedResponseTypes = getExpectedResponseTypes(args);
+
+        if (workflowEvent && workflowEvent.kind === 'workflow_gate_event') {
+          try {
+            if (workflowEvent.action === 'po-act' || workflowEvent.originTag === '[PO]' || workflowEvent.originTag === '[Human]') {
+              throw new Error(`Unauthorized: PO-level workflow events can only originate from trusted human/API paths`);
+            }
+            if (workflowEvent.originTag === '[SM]' && agent.workflowRole !== 'scrum-master') {
+              throw new Error(`Unauthorized: Agent ${agent.id} is not assigned the scrum-master workflow role`);
+            }
+            if (workflowEvent.fromRole && agent.workflowRole !== workflowEvent.fromRole) {
+               throw new Error(`Unauthorized: Agent ${agent.id} is assigned role ${agent.workflowRole || 'none'}, cannot act as ${workflowEvent.fromRole}`);
+            }
+          } catch (err: any) {
+            this.emit('workflow_gate_attempt', { agentId: agent.id, event: workflowEvent, result: 'refused', reason: err.message, payload });
+            throw err;
+          }
+          this.emit('workflow_gate_attempt', { agentId: agent.id, event: workflowEvent, result: 'accepted', payload });
+        }
 
         if (to === 'user') {
           this.setAgentBusyState(agent, false);
@@ -431,6 +450,7 @@ export class Registry extends EventEmitter {
             payload: String(payload),
             timestamp: new Date().toISOString(),
             ...(baton ? { baton } : {}),
+            ...(workflowEvent ? { workflowEvent } : {}),
           });
         }
 
@@ -688,6 +708,14 @@ export class Registry extends EventEmitter {
     const agent = this.agents.get(id);
     if (!agent) throw new Error(`Agent ${id} not found`);
     return agent;
+  }
+
+  setWorkflowRole(agentId: string, role: WorkflowRole): void {
+    const agent = this.getAgent(agentId);
+    if (role === 'product-owner') {
+      throw new Error('Cannot assign product-owner role to any agent in the registry');
+    }
+    agent.workflowRole = role;
   }
 
   // ── Team methods ──────────────────────────────────────────────
