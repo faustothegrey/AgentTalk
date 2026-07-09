@@ -283,3 +283,42 @@ stated identically in three places; C1-C3/C7 are grounded in fixed ledger fields
 **One binding Gate-1 note:** the epic's relay counting starts at inception, not at T1's first commit. When
 the M18 ledger opens, its coordination baseline must seed the relays already spent (planner POV relay, plan
 baton, this Gate-1 result relay — ~3 at approval time). Next act: implementer baton for M18-T1.
+
+## Gate 1 Amendment Record — M18-T3a (Claude, plan reviewer, 2026-07-09) — APPROVED (3 conditions)
+
+**Verified against the code before ruling (Reviewer Rule 1/5 — the discipline T3 was refuted for lacking):**
+- `bridge.mjs:4` takes the WS URL as `argv[2]`; the server parses URL query params (`mcp-server.ts:67` reads
+  `agentId` there) and **ignores** `contractHash` — so carrying the hash in the URL is available, harmless, and
+  already how the runbooks pass it. The injection source the spec picks is sound.
+- `mcp-server.ts:149-156` is the handshake bar being satisfied (rejects on `params.clientInfo.contractHash`
+  mismatch/absent). Correctly placed **out of fence**: the server is right to demand the hash.
+- Client `master`'s `bridge.mjs` contains **zero** `AGENTTALK_BATON` / `AGENTTALK_WORKFLOW_EVENT` code (grep → 0),
+  so "no env-var envelope injection" is a *preservation* bar on a clean base, not a revert. T3a branches from
+  `master`, never from the dead T3 branch.
+- The A/B bar and the `no env-var` fence directly encode **IP-15** and the gate-3 refute. Budgets are per-check.
+
+**Ruling: APPROVED.** The spec is tight, the fence names the right forbidden surfaces, and the A/B bar makes the
+proof capable of failing — which is the whole lesson of T3. Three conditions bind the implementer; they are
+recorded here rather than sent back for a re-authoring round (SM call, proportionality — the plan is otherwise
+sound and the epic is one task from close):
+
+1. **REQUIRED extra bar (max 2 attempts): URL without `contractHash` → traffic passes through unchanged.** The
+   spec defines injection when `initialize` lacks the hash *and the URL has it*. Undefined today: URL lacks it
+   too. Required behavior: relay unchanged (server then rejects exactly as it does now) + one stderr log line. No
+   crash, no silent empty-string hash. A one-line test.
+2. **REQUIRED honesty note in the ledger: `scope-check` cannot see the client repo.** T1's tool diffs the
+   AgentTalk working tree only; T3a's *primary* code change is in `agentalk-mcp-client`, i.e. **outside the fence
+   tool's reach**. The manual bars (`git diff --check` + forbidden-surface diff in both repos) are what actually
+   fence T3a. Declare this in the ledger; do **not** let a green `scope-check` be read as "the client diff was
+   fenced." *(This single-repo blindness is itself a friction item for C7 — the SM will file it.)*
+3. **REQUIRED: state which routing shape the passing proof uses.** The spec's "and the message routes" is
+   ambiguous. **Gotcha, from the architect's own Door 1 run — read this before spending live budget:** a target
+   agent that was merely created is in `creating` state, and `send_to_agent` then fails with
+   `Target agent <id> is in creating state`. Either use `to: 'user'` (what LB-66's proof did — the M17 gate check
+   fires *before* routing, so authority evidence is unaffected) or activate the target first. Both are acceptable;
+   pick one and say so.
+
+**Advisory (not binding):** if the URL carries no hash, the bridge *could* fall back to the `wire-contract.json`
+it already ships. Cleaner, but it hard-links relay to contract version — I'd rather it stay dumb. Not for T3a.
+
+**Approved to proceed to implementation.** Next act: implementer baton for T3a (fresh branch from `master`).
