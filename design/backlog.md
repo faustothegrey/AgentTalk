@@ -704,14 +704,21 @@ date: 2026-07-09
 epic: null
 tags: [hygiene, pollution, gates, friction-m18]
 -->
-- [todo · **M18 C7 friction item** — a stray process outlived three gates unnoticed] — **Gates check worktree
-  and branch pollution, but never *process* pollution** — the closure hygiene sweep runs `git worktree list` +
-  `git branch --list 'task-*'` and calls it clean. A leaked orchestrator (`pid 3177`, cwd `apps/orchestrator`)
-  from the M18-T3 proof run survived **4+ hours** across two gate-3 closures; gate 2 reported "pollution clean"
-  each time. **Evidence:** M18-T3 gate-3 hygiene finding; observed again at M18-T3a close (still running).
-  Fix sketch: add `pgrep -f dist/index.js` + a port check to the closure sweep, and give live-proof runbooks a
-  mandatory teardown assertion. Notable: only the actor that *started* a process may kill it — the sweep should
-  report, not reap.
+- [todo · **M18 C7 friction item — PREMISE CORRECTED 2026-07-09 at session close, before anyone acted on it**]
+  — **Gates cannot tell a leaked process from a managed service** — *(Original filing claimed `pid 3177` was an
+  orchestrator leaked by the M18-T3 proof run, surviving 4+ hours across two gate-3 closures. **That was wrong.**
+  At the PO's request I moved to kill it, identified it first, and found it was
+  **`com.fausto.agenttalk-orchestrator`, a launchd KeepAlive service the PO runs** — bound to non-default ports
+  (3741/49426), which is why no gate's port check ever saw it. launchd restarted it within seconds; no harm. The
+  reviewer who filed this — me — did exactly what **IP-15** warns about: inferred a cause from a correlation
+  (`ppid 1`, cwd `apps/orchestrator`, right time window) without running the one command that would have refuted
+  it.)* **The real, narrower gap stands:** the closure hygiene sweep checks worktrees and branches but **never
+  processes or ports**, so it can neither catch a genuinely leaked orchestrator **nor recognise a legitimate
+  service** — the M18-T2/T3 live proofs each left this ambiguity unresolved. **Evidence:** this correction;
+  M18-T3 gate-3 hygiene finding (now known to have misidentified its subject). Fix sketch: the sweep reports
+  `pgrep -f dist/index.js` + listening ports **with each process's ppid/launchd origin**, and **reports rather
+  than reaps** — only the actor that started a process may kill it. Bonus lesson: a hygiene check that cannot
+  distinguish "leak" from "service" produces false findings, which is worse than no check.
 
 <!-- @item
 id: BL-024
