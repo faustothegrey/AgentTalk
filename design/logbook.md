@@ -1533,3 +1533,105 @@ address-family luck (verified live with `lsof`: both LISTEN rows at once). Any I
 `curl 127.0.0.1:9899`) reaches the *meter*, not the orchestrator. Rule of thumb going forward: **live-proof
 runbooks pick a port that `lsof -iTCP:<port>` shows free on BOTH families** (the M17 plan had said 9898).
 Related: gemini's M16 "ports" lesson; M17 ledger gate-3 close G3-3.
+
+### LB-64 · 2026-07-09 — [product] The three participant shapes (real CLI · in-process headless · external headless)
+
+Recorded verbatim at the PO's request (architect's answer to *"what is a headless client?"*, 2026-07-09),
+because the distinction decides BL-017's fate and whether `llm-agent.mjs` can be retired.
+
+> Right — so let me lay out the three shapes, because "headless" is the third one and it's the one your
+> question is really about.
+>
+> ```
+> 1 · REAL CLI SESSION          2 · IN-PROCESS HEADLESS      3 · EXTERNAL HEADLESS
+>    claude / codex / agy          "executionMode: auto"        llm-agent.mjs
+>    ┌──────────────┐              ┌────────────────────┐       ┌──────────────┐
+>    │ interactive  │              │  orchestrator      │       │ own process  │
+>    │ terminal,    │              │  runs the turn     │       │ runs provider│
+>    │ you're there │              │  itself, calling   │       │ CLI in a cwd │
+>    └──────┬───────┘              │  an LLM HTTP API   │       └──────┬───────┘
+>           │ MCP over WS          │  (no CLI, no files)│              │ exec_rpc
+>           │ (bridge.mjs = pipe)  └────────────────────┘              │
+>           └──────────────► AgentTalk ◄──────────────────────────────┘
+> ```
+>
+> **Headless just means: nobody is sitting at a terminal.** No interactive session, no human watching. It's a
+> program that receives "here's your turn," produces an answer by calling a model, and sends the answer back.
+> In our proofs, `worker-1` was exactly that — it never had a CLI.
+>
+> We have **two different headless implementations**, and that overlap is the interesting part:
+>
+> - **Shape 2 (in-process)** lives *inside* the orchestrator. It answers turns by calling an LLM's HTTP API —
+>   plain chat completion. It has no filesystem, no tools. It can think, but it cannot *do*. This is what
+>   `worker-1` is.
+> - **Shape 3 (`llm-agent.mjs`)** lives in its *own process*. It launches an actual provider CLI in an actual
+>   working directory — that's what all the `executor` / `cwd` / persistent-command machinery is for. It can
+>   read and write files. It can do real work.
+>
+> So `llm-agent.mjs` isn't a redundant copy of shape 2. It's the only existing way to have **a worker that
+> AgentTalk can launch programmatically and that can actually edit code.** That's not nothing — it's the
+> mechanism by which AgentTalk could someday create its own implementer instead of you starting Gemini by hand.
+>
+> **Which sharpens the "burn it" question into something answerable.** A real agy session (shape 1) can *also*
+> edit files — it's a real CLI with real file access; it just receives its turns over MCP instead of from you
+> typing. So shape 1 subsumes shape 3's *capability*. The one thing shape 1 does not give you is **who starts
+> it**: a human launches an interactive session; the orchestrator can launch a headless one on demand,
+> unattended.
+>
+> So the trade is precisely this: *do we ever want AgentTalk to launch its own workers without a human present?*
+>
+> - If **yes** — `llm-agent.mjs` is the only path that exists, and killing it deletes a capability we'd have to
+>   rebuild.
+> - If **no** — every participant is a human-launched CLI session, shape 3 is dead weight, and burning it is
+>   right.
+>
+> And here's the convergence: **the Door 1 demonstration answers both questions at once.** If a real agy session
+> attaches and sends a real baton, we learn (a) BL-017's premise was wrong and T3's code is unnecessary, and (b)
+> shape 1 really can carry the workflow — which is the precondition for retiring shape 3 safely.
+
+**Correction applied after the code audit (LB-65):** shape 3 is *not* on a separate door — `llm-agent.mjs` is
+itself an MCP client (`callTool('await_turn')`, `callTool('submit_exec_result')`). It reaches the same
+`registry.handleMcpToolCall` as shapes 1 and 2. Its limitation is purely **client-side**: it has no code path
+that ever emits `send_to_agent`, so it can only ever say "here is my text." The brain never blocks it.
+
+### LB-65 · 2026-07-09 — [product] Is the brain shielded from client shape? **No — three leaks, one behavioural**
+
+PO question before proceeding with M18 (*"the brain must be one, whether the client is a real CLI, a headless
+client, or an API client — this must be 100% certain"*). Audited the code; the honest answer is **not 100%**.
+
+**Where the brain IS shielded (verified, and it is the important half):**
+- **One tool door.** Attached MCP clients (shape 1) reach `registry.handleMcpToolCall` via
+  `apps/orchestrator/src/server.ts:841`; the in-process driver (shape 2) calls the *same* method directly
+  (`in-process-driver.ts:164,179,236…`); `llm-agent.mjs` (shape 3) is also an MCP client and lands there too.
+  **All three shapes enter through one function.**
+- **One authority rule.** The M17 workflow-gate check (`registry.ts:379-395`) reads **only** `agent.workflowRole`
+  (registry-owned) and the event's own fields. No provider, no execution mode, no transport check. `po-act` /
+  `[PO]` / `[Human]` are refused for **every** agent regardless of shape — which is exactly the M17 G3-2 fix.
+- **Routing** (`to` / `'user'`) is likewise shape-blind.
+
+**Where the brain is NOT shielded (three concrete leaks):**
+1. **`AgentProvider` conflates transport with vendor.** `packages/contracts/src/types.ts:13`:
+   `'api' | 'mcp' | 'gemini' | 'claude' | 'codex'`. Two of those are *shapes*, three are *vendors*. This single
+   union is the root cause of M17's G3-2 refute (`provider: 'api'` was read as "the human channel" when it is
+   merely an LLM completer). Any future authority or routing logic that touches `provider` inherits the bug.
+2. **Behavioural leak inside the frozen engine.** `team-coordinator.ts:977-986`: `if (team.provider === 'gemini')`
+   (and the same test per member) raises the fact-collection timeout. A **vendor name changes protocol timing**
+   in the engine. It is benign today (a timeout), but it is precisely the class of thing the brain should not know.
+3. **Activation branches on provider.** `registry.ts:239-259` picks the driver/completer by `agent.provider`
+   (`'api'` → `ApiCompleter`, etc.) and throws for unknown ones. Arguably legitimate — *someone* must know how to
+   run an agent — but it means the brain, not a factory/adapter boundary, holds the shape knowledge. Lifecycle is
+   similarly attach-aware (`handleMcpConnect` / `handleMcpDisconnect`) — necessarily so.
+
+**Reading.** The *law* (authority, routing, protocol semantics) is already shape-independent — that is the M17
+achievement and it holds under audit. The *plumbing* (activation, lifecycle, one engine timeout) is not, and the
+type system actively encourages the confusion by mixing shape and vendor in one union. Leak 2 is the only one
+that changes behaviour; leaks 1 and 3 are latent traps that have already bitten once (G3-2).
+
+**Consequence for BL-017.** The brain does not care what shape the client is, and never blocked shape 3. The
+gap is entirely client-side: `llm-agent.mjs` has no `send_to_agent` emission path. So BL-017 is **not** a brain
+defect and never was — it is "one client program can only say one sentence." Related: LB-64, IP-15, M18-T3
+gate-3 refute.
+
+**Proposed follow-ups (backlog candidates, not done here):** split `AgentProvider` into `transport` (`attached`
+| `in-process`) × `vendor` (`gemini` | `claude` | `codex` | `api`); move the gemini timeout to per-agent
+capability metadata rather than a vendor test in the engine; move driver selection behind an explicit factory.
