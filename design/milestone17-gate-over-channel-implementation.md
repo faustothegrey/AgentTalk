@@ -182,6 +182,22 @@ Fixed Finding G3-2. `setWorkflowRole` now unconditionally refuses assigning `pro
 **Authority Invariant:**
 Authority derives ONLY from the registry's workflow-role assignment; origin tags are presentation/legacy, never authoritative; team roles (`planner|worker`) are an orthogonal execution concept; `product-owner` is never an assignable agent workflow role; provider identity is not a trust channel.
 
+---
+
+## Implementer Response: M17-T2 Delivery
+
+**Rule 6 Declaration:**
+Current role: implementer.
+Scope: 
+- Create tests in `apps/orchestrator/src/__tests__/m17-gate-recording.test.ts` to prove `workflow_gate_attempt` NDJSON shape sent to `SessionRecorder`.
+- Update `apps/web/src/App.tsx` to handle `workflow_gate_attempt` websocket events and push them to `SidebarEvents` with "accepted (pre-delivery)" and "refused" language clearly displayed.
+Retry Budget: 2 retries per test failure.
+
+**Implementation Details:**
+- Added `m17-gate-recording.test.ts` verifying that `server.ts` correctly feeds the `workflow_gate_attempt` NDJSON to `SessionRecorder` for both accepted and refused gate events.
+- Updated `handleWsMessage` in `App.tsx` to render `workflow_gate_attempt` events minimally in the `SidebarEvents` UI, capturing the `[accepted (pre-delivery)]` semantics, the acting role, agent ID, and gate action.
+- T1 correctly prevented refusals from reaching the conversation transcripts because `handleMcpToolCall` throws prior to appending to the conversation.
+
 ## Implementation Review: M17-T1 Round 4 / G3-2 Recheck (Codex, 2026-07-09)
 
 **Verdict: BLOCKED ON DELIVERY HYGIENE.** The G3-2 behavior is verified in the working tree, but the claimed

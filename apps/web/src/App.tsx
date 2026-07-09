@@ -109,6 +109,15 @@ function App() {
       case 'team_planning_complete':
         setGlobalNotice(`Planner ${message.plannerAgentId} finished the plan.`);
         break;
+      case 'workflow_gate_attempt': {
+        const { agentId, event, result } = message;
+        const gate = event?.gate || 'unknown-gate';
+        const action = event?.action || 'unknown-action';
+        const role = event?.fromRole || 'unknown-role';
+        const displayResult = result === 'accepted' ? 'accepted (pre-delivery)' : 'refused';
+        pushSidebarEvent('in', `Gate:${gate}`, `[${displayResult}] ${agentId} (${role}) action: ${action}`);
+        break;
+      }
     }
   }, [updateAgentStatus, updateAgentUsage, pushSidebarEvent]);
 
