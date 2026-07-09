@@ -71,3 +71,11 @@ here.**
   event can still be a bad proof if it smuggles a non-canonical tag like a reviewer origin tag.
 - When reviewing proof-support code, scan for unrelated API response drift even if the main behavior passes; a
   proof helper can accidentally change product surface outside the task fence.
+
+### 2026-07-09 — M18 A/B proof discipline
+- A convincing live proof still needs a discriminating negative side: same setup, old code fails, new code passes.
+  If the negative run changes the URL, client, or mechanism, it may only prove a different condition.
+- Cross-repo scope fences need explicit manual checks until the tooling can see both repos; a green single-repo
+  `scope-check` is not enough when the primary implementation lives next door.
+- In review, keep asking which side of the boundary the evidence observes. Server logs can prove receipt, but bridge
+  logs and exact CLI config are what prove the transport fix caused the receipt.
