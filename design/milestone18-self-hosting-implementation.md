@@ -431,8 +431,36 @@ CLI's disconnect — M18-T2's fix, live, unprompted.
 
 ## M18-T3a — BL-017 (re-scoped): the attach handshake
 
-**Status:** `todo` — **spec pending: planner authors the T3a plan section, then Gate 1 (plan reviewer).**
-**Branch:** *(not yet created; T3a starts fresh from `master`, not from the dead T3 branch.)*
+**Status:** **IMPLEMENTATION** (Gate 1 approved, see Amendment Record in plan).
+**Branch:** `task-M18-T3a` (branched fresh from `master` in both `AgentTalk` and `agentalk-mcp-client`).
+
+```yaml
+@scope:
+  allowed:
+    - design/milestone18-self-hosting-implementation.md
+    - design/evidence/*
+    - ../agentalk-mcp-client/bridge.mjs
+    - ../agentalk-mcp-client/__tests__/bridge.test.mjs
+  forbidden:
+    - packages/mcp-transport/src/mcp-server.ts
+    - packages/runtime-core/**
+    - packages/contracts/wire-contract.json
+  free:
+    - design/lessons/gemini-lessons.md
+```
+
+**Gate 1 Binding Conditions (acknowledged by Implementer):**
+1. **Honesty note:** `scope-check` cannot see the client repo (`../agentalk-mcp-client`). The manual bars (`git diff --check` + forbidden-surface diff in both repos) are what actually fence T3a. A green `scope-check` only verifies the AgentTalk repo's scope.
+2. **Routing shape for passing proof:** The passing proof will use `to: 'user'` to avoid the `creating` state error, matching LB-66's proof. This ensures the M17 gate check fires cleanly without state validation blocking it.
+3. If the URL lacks `contractHash`, traffic passes through unchanged (no crash, no silent empty string) with one stderr log line.
+
+**Coordination Evidence (ongoing):**
+- **Substrate events recorded:** Yes, `door1-evt1` generated via the real CLI path `send_to_agent`.
+- **Terminal fallback rows:** 0
+- **Relay count:** 1
+- **Proof pointer:**
+  - `design/evidence/m18-t3a-proof-a.txt`: Real CLI path failing without the fix (`Rejecting agentId=claude-door1: contract hash mismatch. Expected ffa9..., got undefined`).
+  - `design/evidence/m18-t3a-proof-b.txt`: Real CLI path passing with the fix (`Workflow gate attempt by claude-door1 (accepted)`).
 
 **Shape agreed at the rescope (PO decision + architect's live findings; the planner owns the actual spec):**
 1. `bridge.mjs` injects `contractHash` into `initialize.params.clientInfo`, sourced from the URL it **already
@@ -451,3 +479,165 @@ change, any new MCP tool, wire-contract changes (stays v7).
 **Open question for the planner's spec (raised, not decided):** the real CLI needed `--mcp-config` pointing at
 `bridge.mjs`; a repo-committed `.mcp.json` template would make "attach a real session" a one-liner for the next
 epic. Rider-sized; drop it if it grows.
+
+### Gate 2 Review - Round 1 (Codex, 2026-07-09)
+
+**Verdict: REFUTED.** The client tests/build pass and the core code diff stays in the intended client surface, but
+the delivery does not satisfy the T3a Gate 2 bar yet.
+
+**Findings:**
+- **Committed whitespace check fails in `agentalk-mcp-client`.** `git diff --check && git diff --cached --check &&
+  git show --check --oneline HEAD` reports trailing whitespace in `__tests__/bridge.test.mjs` lines 17 and 29, and
+  `bridge.mjs` lines 45 and 65. This is a required bar in the T3a verification budget.
+- **The T3a `@scope` manifest is malformed and does not parse the fence it claims.** `node scripts/scope-check.mjs`
+  exits 0, but reports `Allowed: 9 patterns`, `Forbidden: 0`, and `Free: 0`. The ledger text visibly intends
+  forbidden/free entries, so the green scope-check is not meaningful even for the AgentTalk repo portion. This also
+  undermines Gate 1 condition 2's required honesty note about scope-check's limits.
+- **The live proof artifacts do not show the bridge-side cause of the A/B pass or the no-env condition.**
+  `m18-t3a-proof-a.txt` shows the expected pre-fix server rejection and `m18-t3a-proof-b.txt` shows a later accepted
+  server-side tool call, but the artifacts do not include the bridge stderr line (`injected contractHash from URL`),
+  the real CLI command/config used for each side, or a run-bound check that `AGENTTALK_BATON` and
+  `AGENTTALK_WORKFLOW_EVENT` were unset during the passing run. Given IP-15, the A/B proof needs enough context to
+  tie the pass to this bridge fix and to rule out env-var envelope injection.
+
+**Verifier checks run:**
+- `npm test` in `agentalk-mcp-client`: PASS, 2 files / 2 tests.
+- `npm run build` in `agentalk-mcp-client`: PASS.
+- `git diff --check && git diff --cached --check && git show --check --oneline HEAD` in `agentalk-mcp-client`:
+  FAIL, trailing whitespace as listed above.
+- `git diff --check && git diff --cached --check && git show --check --oneline HEAD` in AgentTalk: PASS.
+- `node scripts/scope-check.mjs` in AgentTalk: exits 0, but parsed `Forbidden: 0` / `Free: 0`, so the manifest needs
+  correction before this bar can count.
+- `npm run backlog:check` in AgentTalk: PASS, 21 items / 0 warnings.
+- forbidden-surface diff in AgentTalk for `packages/mcp-transport/src/mcp-server.ts`, runtime-core, contracts, and
+  MCP tools: PASS, no diff.
+- client changed-file check: only `bridge.mjs` and `__tests__/bridge.test.mjs` changed; grep found no
+  `AGENTTALK_BATON` / `AGENTTALK_WORKFLOW_EVENT` code in the client diff.
+- pollution check in both repos: PASS for worktrees; only the expected `task-M18-T3` archive branch and active
+  `task-M18-T3a` branch are present.
+
+**Required redelivery:**
+- Fix committed whitespace in the client repo.
+- Fix the T3a manifest indentation/shape so `scope-check` parses the intended allowed, forbidden, and free sections;
+  then rerun it and record the meaningful output.
+- Add run-bound proof context tying Proof B to `bridge.mjs` injecting the URL hash and showing the no-env condition
+  for envelope injection during the passing run.
+
+### Gate 2 Review - Round 2 (Codex, 2026-07-09)
+
+**Verdict: REFUTED.** The Round 1 whitespace and manifest blockers are addressed, and the client/unit checks are
+green. The remaining blocker is the load-bearing A/B proof: Proof A is not a run against the unfixed bridge.
+
+**Findings:**
+- **The A/B proof still does not satisfy the IP-15 bar.** The T3a plan requires the Door 1 proof to fail on the
+  unfixed bridge and pass with the T3a fix using the same real CLI/orchestrator path. The new Proof A uses the fixed
+  bridge's new `URL lacks contractHash, relaying unchanged` code path and omits `contractHash` from the bridge URL.
+  That proves the Gate 1 no-hash passthrough condition, but it does not prove that the unfixed bridge fails when given
+  the same URL-hash setup that the fixed bridge turns into a passing attach.
+- **Proof B now has the missing context.** It includes the exact CLI command/config, `AGENTTALK_BATON` and
+  `AGENTTALK_WORKFLOW_EVENT` unset, the bridge stderr line `injected contractHash from URL`, and the accepted
+  `send_to_agent` tool call with structured `baton` and `workflowEvent`. That side of the proof is reviewable.
+
+**Verifier checks run:**
+- `npm test` in `agentalk-mcp-client`: PASS, 2 files / 2 tests.
+- `npm run build` in `agentalk-mcp-client`: PASS.
+- `git diff --check && git diff --cached --check && git show --check --oneline HEAD` in both repos: PASS.
+- `node scripts/scope-check.mjs` in AgentTalk: PASS; parsed `Allowed: 4`, `Forbidden: 3`, `Free: 1`.
+- `npm run backlog:check` in AgentTalk: PASS, 21 items / 0 warnings.
+- forbidden-surface diff in AgentTalk for `packages/mcp-transport/src/mcp-server.ts`, runtime-core, contracts, and
+  MCP tools: PASS, no diff.
+- client changed-file check: only `bridge.mjs` and `__tests__/bridge.test.mjs` changed; grep found no
+  `AGENTTALK_BATON` / `AGENTTALK_WORKFLOW_EVENT` code in the client diff.
+- pollution check in both repos: PASS for worktrees; only the expected `task-M18-T3` archive branch and active
+  `task-M18-T3a` branch are present.
+
+**Required redelivery:**
+- Provide a true A/B artifact: with the same real CLI/orchestrator setup and URL containing `contractHash`, show the
+  unfixed bridge failing with `got undefined`, then the fixed bridge passing via `injected contractHash from URL`.
+  The existing no-hash passthrough proof may remain as the separate Gate 1 condition-1 evidence.
+
+### Gate 2 Review - Round 3 (Codex, 2026-07-09)
+
+**Verdict: VERIFIED.** Commit `b53bf2d` addresses the Round 2 A/B proof gap, and the T3a implementation is verified
+for Gate 2.
+
+**Evidence verified:**
+- Proof A uses the same real CLI/orchestrator shape and the same URL hash as Proof B, but the bridge log lacks the
+  fixed-branch injection line and the orchestrator rejects the attach with `got undefined`. This demonstrates the
+  unfixed bridge failure mode.
+- Proof B uses the same URL hash, shows `[mcp-bridge] injected contractHash from URL`, then records the real CLI
+  `send_to_agent` tool call with structured `baton` and `workflowEvent`, followed by the accepted M17 gate event.
+- Both proof files include run-bound `AGENTTALK_BATON` / `AGENTTALK_WORKFLOW_EVENT` unset checks.
+- The Gate 1 no-hash condition remains covered by the client test for URL-without-`contractHash` passthrough.
+
+**Verifier checks run:**
+- `npm test` in `agentalk-mcp-client`: PASS, 2 files / 2 tests.
+- `npm run build` in `agentalk-mcp-client`: PASS.
+- `git diff --check && git diff --cached --check && git show --check --oneline HEAD` in both repos: PASS.
+- `node scripts/scope-check.mjs` in AgentTalk: PASS; parsed `Allowed: 4`, `Forbidden: 3`, `Free: 1`.
+- `npm run backlog:check` in AgentTalk: PASS, 21 items / 0 warnings.
+- forbidden-surface diff in AgentTalk for `packages/mcp-transport/src/mcp-server.ts`, runtime-core, contracts, and
+  MCP tools: PASS, no diff.
+- client changed-file check: only `bridge.mjs` and `__tests__/bridge.test.mjs` changed; grep found no
+  `AGENTTALK_BATON` / `AGENTTALK_WORKFLOW_EVENT` code in the client diff.
+- full AgentTalk `npm test`: PASS, 52 files / 297 tests.
+- `node scripts/m14-identity-harness.mjs --check`: PASS, "Baselines match. Identity verified." The harness-created
+  `task-task-1783630414643` worktree/branch was swept after the run.
+- final pollution check in both repos: PASS, only the expected `task-M18-T3` archive branch and active
+  `task-M18-T3a` branch remain.
+
+**Hand-off:** M18-T3a is verified for Gate 2 and ready for Task-end Review.
+
+## Task-end Review: M18-T3a Round 1 (Claude, 2026-07-09)
+
+**Verdict: VERIFIED ✅ — MERGED (both repos).** The task that killed T3 is closed by the task T3 became.
+
+**The A/B, reproduced independently (Rule 4 — not read from gate 2's artifacts; my own run, 1 attempt):**
+real orchestrator (`AGENTTALK_MCP_PORT=9897 PORT=3001`), real `claude` CLI both sides, **same URL shape**
+(hash present), `AGENTTALK_BATON`/`AGENTTALK_WORKFLOW_EVENT` **unset** — only the bridge differs:
+- **A-side** — `bridge.mjs` extracted from client `master` (verified genuinely unfixed: 49 lines, 0 occurrences
+  of `contractHashFromUrl`): `[McpServer] Rejecting agentId=g3-ab: contract hash mismatch … got undefined`,
+  close 1008. **The bar fails without the fix.**
+- **B-side** — the delivered bridge: `[mcp-bridge] injected contractHash from URL`, then from the real CLI
+  session, natively composed: `send_to_agent { baton: {…batonId:'g3-b1'…}, workflowEvent: {…gate:'gate-3',
+  action:'verdict'…} }` → `[Server] Workflow gate attempt by g3-ab2 (accepted)`.
+This is what IP-15 demands: a proof that *can* fail, shown failing, then shown passing for the stated reason.
+
+**Gate-1 conditions — all three met:** (1) no-hash-URL passthrough implemented (`URL lacks contractHash,
+relaying unchanged`) **and tested**; (2) the `scope-check` cross-repo blindness is declared in the ledger — a
+green `scope-check` fences only the AgentTalk tree, and T3a's real code lives in the client repo (**filed for
+C7**); (3) routing shape stated (`to: 'user'`, matching LB-66; the M17 gate check fires before routing).
+
+**Bars re-run first-hand (1 attempt each):** client `npm test` (bridge spawned as a real child process against a
+real WS server; 4 cases: inject / preserve-existing / no-hash-passthrough / non-`initialize` untouched) · client
+`npm run build` · AgentTalk `npx tsc -b` · full `npm test` **52 files / 297 tests** · `backlog:check` 21/0 ·
+`scope-check` exit 0 · whitespace both repos · **forbidden surfaces clean** (AgentTalk diff = ledger + evidence
+only; `mcp-server.ts`, `runtime-core`, `wire-contract.json` (v7), `team-coordinator.ts` all untouched) ·
+`AGENTTALK_BATON`/`AGENTTALK_WORKFLOW_EVENT` **absent from `bridge.mjs`** (0 hits — the dead T3 mechanism was
+never carried forward) · M14 harness "Baselines match" + leaked worktree/branch swept · ports released.
+
+**Deviation found at gate 3 and disposed (undeclared by the implementer; missed by gate 2 — Rule 7):** the diff
+also changes the `ws error` handler to log `ev?.error?.stack` before falling back to `ev?.message`. Not in the
+spec, not declared in the ledger, not dispositioned in the gate-2 verdict. **ACCEPTED as zero-risk** — it is a
+stderr log line inside an in-fence file, it strictly widens diagnostics, and it cannot alter relayed bytes or
+handshake behaviour (verified by reading: the handler already `process.exit(1)`s). Recorded rather than fixed
+silently. *Reviewer note: an in-fence file is not a licence for unrequested edits (IP-5 family) — declare them.*
+
+**DoD:** **C6 satisfied** — real CLI sessions attach through the bridge and carry structured `baton` +
+`workflowEvent`, brain-accepted under M17 authority, no new MCP tool, contract unchanged at v7. **BL-017 closes**
+(with its corrected diagnosis, 0137757).
+
+**Coordination Evidence (final for T3a):** relays: implementer baton, gate-2 refute ×2, gate-2 redelivery ×2,
+gate-2 VERIFIED report, gate-1 amendment relay, this gate-3 result = **8**. Substrate events for M18's own
+coordination: **0** — the capability now exists (proven twice today) but was **not yet used** to carry this
+epic's own gates. *Stated plainly so C3 is not flattered: T3a did not lower the relay count; it removed the
+blocker that made lowering it impossible. The fall is now demonstrable and remains unproven — see the epic
+closure note.*
+
+**Telemetry (task closure):**
+- task:        M18-T3a (superseding M18-T3, closed unmerged)
+- wall-clock:  2026-07-09 ~21:30 (T3a baton) → 23:0x (merge) (~1.5 h; 3 gate-2 rounds, 1 gate-3 round)
+- budget:      claude weekly 38%→6% [meter reset/jitter — LB-11; treat as unreliable], session 61%; codex weekly 36%→51% (Δ ~15%)
+- gate:        tsc 0, suite 297/297, client tests 2 files, pollution clean (post-sweep), live A/B PASSED (A fails, B passes)
+- diff:        AgentTalk 3 files (+247/-2, docs+evidence); client 2 files (+132/-3), commits 4e8c93b · 8c4dc95
+- outcome:     MERGED ✅ (PO-gated; BL-017 → done)
