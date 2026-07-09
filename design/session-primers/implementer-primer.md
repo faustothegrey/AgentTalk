@@ -1,7 +1,7 @@
 ---
 role: implementer
-key: 20260709-1245-e3a8c7
-written: 2026-07-09 by Claude (SM, session close — M17 closed same-day; M18 inception next)
+key: none
+written: 2026-07-09 by Claude (SM, session close — M18 closed; no fresh hand-off: M19 inception is a PO+Architect act, implementer work arrives as a mid-session baton)
 ---
 
 This is your session primer.
