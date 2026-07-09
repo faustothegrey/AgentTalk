@@ -7,11 +7,11 @@
 
 | Claim | Result | Verdict | Evidence |
 |---|---|---|---|
-| An assigned Implementation Reviewer can emit a reviewer verdict event. | pass | CLAIMED | `m17-gate-channel.test.ts` line 22 |
-| The assigned SM can emit a go/no-go event. | pass | CLAIMED | `m17-gate-channel.test.ts` line 39 |
-| A non-SM attached agent cannot emit an `[SM]` workflow event. | pass | CLAIMED | `m17-gate-channel.test.ts` line 57 |
-| A non-human attached agent cannot emit a PO-level or `[Human]` workflow event. | pass | CLAIMED | `m17-gate-channel.test.ts` line 79 |
-| Ordinary non-workflow `send_to_agent` behavior is unchanged. | pass | CLAIMED | `m17-gate-channel.test.ts` line 101 |
+| An assigned Implementation Reviewer can emit a reviewer verdict event. | pass | VERIFIED ✅ | gate-2 R2/R4 + gate-3 close: targeted 9/9, full suite 289/289 (Claude re-ran, 2026-07-09) |
+| The assigned SM can emit a go/no-go event. | pass | VERIFIED ✅ | same runs |
+| A non-SM attached agent cannot emit an `[SM]` workflow event. | pass | VERIFIED ✅ | same runs |
+| A non-human attached agent cannot emit a PO-level or `[Human]` workflow event. | pass | VERIFIED ✅ | strengthened via G3-1/G3-2 (po-act act-blocked; product-owner unassignable); repros A/B/C all flipped |
+| Ordinary non-workflow `send_to_agent` behavior is unchanged. | pass | VERIFIED ✅ | same runs + M16 baton probe (gate-2 R2) |
 
 ## Implementation Review: M17-T1 Round 1 (Codex, 2026-07-09)
 
@@ -223,3 +223,29 @@ ledger entry, then hand back for a quick commit-presence recheck.
   `product-owner` for every agent, the fixture is renamed `agent-api`, and Repro B covers both MCP and API agents.
 
 **Disposition:** commit-presence blocker cleared. M17-T1 is verified for Gate 2 hand-back to Task-end Review.
+
+## Task-end Review: M17-T1 Round 3 — CLOSURE SWEEP (Claude, 2026-07-09)
+
+**Verdict: VERIFIED ✅ — all bars green, merge requested from the PO.** Every bar re-run first-hand
+(1 attempt each, as pre-registered):
+
+- **Repro C flipped:** the archived gate-3 repro now FAILS (1 failed / 1) — `product-owner` assignment
+  refused for the api-provider agent. The G3-2 fix is proven by the original repro, not a fresh test.
+- Targeted `m17-gate-channel` + `baton-metadata`: **9/9 passed** (includes both G3-1 negatives + reworked
+  Repro B covering MCP and API agents).
+- `npx tsc -b` → exit 0. Full `npm test` → **50 files / 289 tests passed**.
+- `npm run backlog:check` → 19 items, 0 warnings. Whitespace checks → clean. Tree clean on `task-M17-T1`.
+- Frozen surfaces: **0 files** diff on `team-coordinator.ts` + `wire-contract.json`; client repo clean;
+  no `as any` pokes in the branch diff.
+- M14 identity harness → "Baselines match. Identity verified."; its documented worktree/branch leak swept
+  (`git worktree list` + `task-*` branches clean after).
+- Ledger obligations met: authority-invariant paragraph present (Round 4 implementer response); §3c claims
+  table flipped to VERIFIED with evidence (this close).
+
+**Telemetry (task closure):**
+- task:        M17-T1
+- wall-clock:  2026-07-09 06:42 (ledger commit `50c9a0c`) → 11:30± close (~4h50m, 4 review rounds: 2× gate-2 refute/block, 2× gate-3 refute)
+- budget:      claude weekly ~17%→~18% (session ~2%→~6%); codex weekly 15%→23%; gemini 5h 15%→17% [meter `ok:false` for claude at close — per LB-11, figures from last good read]
+- gate:        tsc 0, suite 289/289, pollution clean (post-sweep)
+- diff:        5 product/test files +~310/-7 (plus ledger), commits `12272ba`→`a55f9c7` + close
+- outcome:     VERIFIED at gate 3 — merge pending PO go
