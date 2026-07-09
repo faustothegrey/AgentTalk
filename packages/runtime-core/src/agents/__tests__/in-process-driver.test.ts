@@ -232,4 +232,45 @@ describe('InProcessAgentDriver', () => {
     warnSpy.mockRestore();
     driver.stop();
   });
+
+  it('BL-020 regression: a disconnect mid-turn does not crash the orchestrator via illegal status transition', async () => {
+    const errorCompleter: Completer = {
+      maintainsSession: false,
+      complete: vi.fn().mockResolvedValue({ text: 'mock' }),
+    };
+
+    // Make registry.handleMcpToolCall throw and simulate the transport setting agent to terminated
+    registry.handleMcpToolCall = vi.fn().mockImplementation(async () => {
+      agent.setStatus('terminated');
+      throw new Error('transport disconnected');
+    });
+
+    const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    const driver = new InProcessAgentDriver(agent, registry, { completer: errorCompleter });
+    driver.start();
+
+    // Start a turn
+    agent.queueTurn({
+      type: 'message_received',
+      from: 'user',
+      payload: 'Hi'
+    });
+
+    // Wait for the event loop to process the turn, which will call registry.handleMcpToolCall
+    await new Promise(r => setTimeout(r, 50));
+
+    expect(errorCompleter.complete).toHaveBeenCalled();
+    expect(registry.handleMcpToolCall).toHaveBeenCalled();
+
+    // The driver should have caught the error and NOT thrown an illegal transition,
+    // and the agent should stay terminated.
+    expect(agent.status).toBe('terminated');
+
+    // Check that we logged the error
+    expect(errSpy).toHaveBeenCalledWith(expect.stringContaining('error:'), expect.any(Error));
+
+    errSpy.mockRestore();
+    driver.stop();
+  });
 });

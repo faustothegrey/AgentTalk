@@ -82,6 +82,40 @@
     - design/lessons/gemini-lessons.md
 ```
 
+## Implementation Review: M18-T2 Round 1 (Codex, 2026-07-09)
+
+**Verdict: VERIFIED.** Commit `2784c6a` addresses BL-020 inside the approved T2 fence and is verified for Gate 2
+handoff to Task-end Review.
+
+**Verification run:**
+- `node scripts/scope-check.mjs` -> exit 0. The T2 manifest accepted exactly the ledger plus
+  `packages/runtime-core/src/agents/in-process-driver.ts` and
+  `packages/runtime-core/src/agents/__tests__/in-process-driver.test.ts`.
+- Targeted preservation suite:
+  `npx vitest run packages/runtime-core/src/agents/__tests__/in-process-driver.test.ts apps/orchestrator/src/__tests__/m17-gate-recording.test.ts packages/runtime-core/src/registry/__tests__/m17-gate-channel.test.ts packages/runtime-core/src/registry/__tests__/baton-metadata.test.ts`
+  -> **4 files / 20 tests passed**.
+- `npx tsc -b` -> exit 0.
+- `git diff --check && git diff --cached --check && git show --check --oneline HEAD` -> exit 0.
+- `npm run backlog:check` -> backlog structure OK, **21 items, 0 warnings**.
+- `npm test` -> **52 files / 297 tests passed**.
+- `node scripts/m14-identity-harness.mjs --check` -> **Baselines match. Identity verified.** The known generated
+  harness worktree/branch was clean and swept after the run.
+- Out-of-fence checks: zero `packages/runtime-core/src/registry/team-coordinator.ts` diff; no files outside the T2
+  manifest changed.
+- Pollution check after sweep: `git worktree list` shows only `/Users/fausto/Software/AgentTalk`; `git branch --list
+  'task-*'` shows only active `task-M18-T2`.
+
+**Disposition of T2 bars:**
+1. **Disconnect-mid-turn regression:** verified by the new `BL-020 regression` test. The simulated transport marks
+   the agent `terminated` during the turn and throws; the driver logs the error and does not attempt the illegal
+   `terminated -> error` transition.
+2. **Normal exec-error / M08 preservation:** verified by the existing in-process driver M08 tests in the targeted
+   suite.
+3. **Clean termination and M17 preservation:** verified by targeted driver, M17 gate-channel/recording, and baton
+   metadata tests.
+4. **Scope:** production change is limited to `in-process-driver.ts`; no broad lifecycle redesign and no
+   `team-coordinator.ts` changes.
+
 ## Implementation Review: M18-T1 Round 1 (Codex, 2026-07-09)
 
 **Verdict: REFUTED.** The core script is present and the full existing suite is green, but the delivery is not
@@ -267,3 +301,103 @@ C4 of the epic DoD is satisfied; BL-015 stays `todo` for L1/L2 (M19 gate with BL
 - diff:        5 files, +454/-1 (incl. ledger), commits 166d1d1 · 31ca833 · 4793b23 · d60770c · 80cefeb · 582e734 (+ closure commit)
 - coordination: relays 9 (3 seeded pre-T1 + 6 in-task), substrate events 0 (BL-017 open — T1 baseline for C3)
 - outcome:     MERGED ✅ (PO-gated; PO merge authorization given with the reviewer-fix grant, 2026-07-09)
+
+## M18-T2 - BL-020: attached-client disconnect cannot kill the orchestrator
+
+**Status:** `done` — merged 2026-07-09 (gate 3 VERIFIED, live disconnect-survival proven)
+**Branch:** `task-M18-T2`
+
+### Coordination Evidence
+
+- **Substrate events recorded:**
+  - (Pending T2 deliveries and Gates)
+- **Terminal fallback rows:**
+  - `2026-07-09` - `implementer baton` (SM -> Implementer) - T2 starts
+- **Relay count:** 1 (seeded)
+- **Proof pointer:** (Pending recordings)
+
+### Rule 6/7 Declaration (Gemini, 2026-07-09)
+
+**Scope:**
+- Fix the in-process driver/lifecycle path so a disconnect during an in-flight turn cannot throw an illegal status transition out of the loop and kill the orchestrator process.
+- The expected fix surface is `packages/runtime-core/src/agents/in-process-driver.ts` and narrowly related tests.
+- **Fence:** Preserve existing lifecycle behavior for normal exec errors, clean termination, M08 transport-fault handling, and M17 workflow-gate authority/recording behavior. Broad lifecycle redesign is out of scope.
+
+**Approach:**
+1. Investigate `packages/runtime-core/src/agents/in-process-driver.ts` to find where it throws an illegal status transition on disconnect during a turn.
+2. The orchestrator likely transitions the agent to a 'terminated' or 'disconnected' state, but the driver loop might try to update its state back to 'ready' or similar when the turn resolves, causing an invalid transition. Or the driver doesn't catch the transport error.
+3. Catch the disconnect error, verify if the agent is already terminated or in a terminal state, and if so, gracefully exit the turn without throwing an unhandled exception or trying to update the agent's status to an invalid state.
+4. Add regression test for the mid-turn disconnect.
+5. Ensure tests for other lifecycle properties (normal errors, clean termination, M08, M17) pass.
+
+**Per-check Verification Budgets (M18-T2):**
+| Check | Max attempts | Current |
+|---|---:|---:|
+| disconnect-mid-turn regression | 3 | 1 |
+| normal exec-error preservation check | 2 | 1 |
+| clean termination preservation check | 2 | 1 |
+| M08 transport-fault preservation check | 2 | 1 |
+| M17 workflow-gate authority/recording preservation check | 2 | 1 |
+| `npx tsc -b` | 2 | 1 |
+| targeted relevant tests | 2 | 1 |
+| full `npm test` | 1 | 1 |
+| `node scripts/m14-identity-harness.mjs --check` | 1 | 1 |
+| `npm run backlog:check` | 1 | 1 |
+| `git diff --check && git diff --cached --check` | 2 | 2 |
+| pollution check: `git worktree list` + `git branch --list 'task-*'` | 1 | 1 |
+
+### M18-T2 Scope Manifest
+
+```yaml
+@scope:
+  allowed:
+    - design/milestone18-self-hosting-implementation.md
+    - packages/runtime-core/src/agents/in-process-driver.ts
+    - packages/runtime-core/src/agents/__tests__/in-process-driver.test.ts
+  forbidden:
+    - packages/runtime-core/src/registry/team-coordinator.ts
+  free:
+    - design/logbook.md
+    - design/lessons/gemini-lessons.md
+```
+
+## Task-end Review: M18-T2 Round 1 (Claude, 2026-07-09)
+
+**Verdict: VERIFIED ✅ — MERGED.** No reviewer fixes needed this round.
+
+**The live bar (the one gate 2 could not run from the suite alone — observation made, not derived):**
+re-ran the exact M17 apparatus whose teardown *discovered* BL-020: real orchestrator (`dist` confirmed to
+contain the T2 guard), ports **9897**/3001 per LB-63 (both families verified free; no 9899 luck), recorder
+to scratchpad, proof-script copy in scratchpad (committed evidence untouched). Result:
+- all three gate behaviors executed live (verdict accepted · go accepted · PO act refused pre-delivery);
+  fresh recording captured **3 `workflow_gate_attempt` events** — M17 semantics preserved under the fix;
+- at client teardown the disconnect race **fired** (caught stack in the log: `Agent.setStatus` from
+  `InProcessAgentDriver.loop`) and was **contained**: exactly 1 caught `error:` line, 0 uncaught/fatal,
+  **orchestrator survived** (same scenario = exit 1 pre-fix), then shut down cleanly on signal (exit 0),
+  ports swept. *(The proof script's own final check printed FAILED on its known-broken stale-file read —
+  M17 finding G2-1, out of T2's fence; the fresh-recorder parse above is the real evidence.)*
+
+**Code reading (fresh eyes on the two illegal transitions BL-020 named):** `terminated -> busy` (loop line
+71) throws inside the try and lands in the guarded catch; `ready` (line 74) is status-guarded; the catch
+itself can no longer throw — no escape path from `loop()` remains. Clean-disconnect semantics preserved
+(`terminated`, never forced to `error`); genuine faults still set `error` + break (not swallowed).
+
+**Standard bars, re-run first-hand (1 attempt each):** scope-check exit 0 (changed files = manifest exactly) ·
+targeted driver tests **9/9** (incl. the BL-020 regression) · `npx tsc -b` clean · full `npm test` **52
+files / 297 tests** · `backlog:check` 21/0 · whitespace clean · `team-coordinator.ts` zero-diff · zero
+`as any` in the branch diff · M14 harness "Baselines match. Identity verified." (leaked worktree+branch
+swept; hygiene clean after).
+
+**Coordination Evidence (final for T2):** relay rows: implementer baton (seeded) + gate-2 VERIFIED report
+(Implementation Reviewer -> SM -> Task-end Reviewer) = **relay count 2**; substrate events for M18's own
+coordination: **0** (BL-017 still open — the proof's recorded gate events are proof payloads, not epic
+coordination; counted honestly as such). T2 relay count 2 vs T1's 9: fewer review rounds, not substrate
+adoption — the adoption claim stays T3's.
+
+**Telemetry (task closure):**
+- task:        M18-T2
+- wall-clock:  2026-07-09 ~17:25 (baton) → 17:4x (merge) (~20 min in-session; 1 gate-2 round, 1 gate-3 round)
+- budget:      claude weekly 38%→38%, codex weekly 36%→38%, claude session 11%→16%  [per scripts/usage.mjs]
+- gate:        tsc 0, suite 297/297 (52 files), pollution clean (post-sweep), live disconnect-survival proof PASSED
+- diff:        3 files, +137/-1, commits 2784c6a · 30966e1 (+ closure commit)
+- outcome:     MERGED ✅ (PO-gated; merging per the standing M18 flow — BL-020 flips done in backlog at merge)

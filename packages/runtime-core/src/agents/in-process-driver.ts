@@ -76,7 +76,9 @@ export class InProcessAgentDriver {
       } catch (err) {
         console.error(`[InProcessAgentDriver ${this.agent.id}] error:`, err);
         if (this.isRunning) {
-          this.agent.setStatus('error');
+          if (this.agent.status !== 'error' && this.agent.status !== 'terminated') {
+            this.agent.setStatus('error');
+          }
           break; // Stop the loop on error to avoid infinite crash loops
         }
       }
