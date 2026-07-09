@@ -1,7 +1,7 @@
 # Milestone 17 Implementation Ledger
 
 **Epic:** The gate over the channel
-**Current Task:** M17-T1
+**Current Task:** M17-T2 (T1 MERGED ✅ `5e4ca27`)
 
 ## §3c M17-T1 Implementer Claims Table
 
@@ -248,4 +248,4 @@ ledger entry, then hand back for a quick commit-presence recheck.
 - budget:      claude weekly ~17%→~18% (session ~2%→~6%); codex weekly 15%→23%; gemini 5h 15%→17% [meter `ok:false` for claude at close — per LB-11, figures from last good read]
 - gate:        tsc 0, suite 289/289, pollution clean (post-sweep)
 - diff:        5 product/test files +~310/-7 (plus ledger), commits `12272ba`→`a55f9c7` + close
-- outcome:     VERIFIED at gate 3 — merge pending PO go
+- outcome:     MERGED ✅ — `5e4ca27` (PO go, 2026-07-09 ~11:35), branch deleted, pushed
