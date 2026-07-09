@@ -697,14 +697,16 @@ tags: [self-hosting, robustness, attach-mode, runtime-core]
 
 <!-- @item
 id: BL-017
-status: todo
+status: done
 date: 2026-07-09
 epic: null
 tags: [self-hosting, attach-mode, baton, handshake, wire-contract]
 -->
-- [todo · **DIAGNOSIS CORRECTED 2026-07-09 after the Door 1 live proof (LB-66)** — the original text below was
-  wrong; kept struck-through for the record · **absorbed into M18-T3a** (T3 died at gate 3, superseded — see the
-  M18 ledger); flips done when T3a merges] —
+- [done · was: todo · **CLOSED at the M18-T3a merge** (AgentTalk `e1a4346`, client `9af84c7`, 2026-07-09) —
+  gate 3 VERIFIED on an independently reproduced A/B (unfixed bridge rejected `got undefined`; fixed bridge
+  injected the hash and a real `claude` CLI natively emitted baton + workflowEvent, brain-accepted) ·
+  **DIAGNOSIS CORRECTED 2026-07-09 after the Door 1 live proof (LB-66)** — the original text below was wrong;
+  kept struck-through for the record · was absorbed into M18-T3a (T3 died at gate 3, superseded)] —
   **Real CLI sessions cannot ATTACH: `bridge.mjs` never injects `contractHash` at `initialize`** — a real CLI
   (Claude Code / Codex CLI / agy) sends its **own** `clientInfo` and cannot know our wire-contract hash;
   `mcp-server.ts:150` requires `params.clientInfo.contractHash` at `initialize` and closes the socket (1008,
