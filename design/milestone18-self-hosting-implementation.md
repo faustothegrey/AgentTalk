@@ -431,8 +431,37 @@ CLI's disconnect — M18-T2's fix, live, unprompted.
 
 ## M18-T3a — BL-017 (re-scoped): the attach handshake
 
-**Status:** `todo` — **spec pending: planner authors the T3a plan section, then Gate 1 (plan reviewer).**
-**Branch:** *(not yet created; T3a starts fresh from `master`, not from the dead T3 branch.)*
+**Status:** **IMPLEMENTATION** (Gate 1 approved, see Amendment Record in plan).
+**Branch:** `task-M18-T3a` (branched fresh from `master` in both `AgentTalk` and `agentalk-mcp-client`).
+
+```yaml
+@scope:
+  allowed:
+    - design/milestone18-self-hosting-implementation.md
+    - design/evidence/*
+  - ../agentalk-mcp-client/bridge.mjs
+  - ../agentalk-mcp-client/__tests__/bridge.test.mjs
+forbidden:
+  - packages/mcp-transport/src/mcp-server.ts
+  - packages/runtime-core/**
+  - packages/contracts/wire-contract.json
+free:
+  - design/logbook.md
+  - design/lessons/gemini-lessons.md
+```
+
+**Gate 1 Binding Conditions (acknowledged by Implementer):**
+1. **Honesty note:** `scope-check` cannot see the client repo (`../agentalk-mcp-client`). The manual bars (`git diff --check` + forbidden-surface diff in both repos) are what actually fence T3a. A green `scope-check` only verifies the AgentTalk repo's scope.
+2. **Routing shape for passing proof:** The passing proof will use `to: 'user'` to avoid the `creating` state error, matching LB-66's proof. This ensures the M17 gate check fires cleanly without state validation blocking it.
+3. If the URL lacks `contractHash`, traffic passes through unchanged (no crash, no silent empty string) with one stderr log line.
+
+**Coordination Evidence (ongoing):**
+- **Substrate events recorded:** Yes, `door1-evt1` generated via the real CLI path `send_to_agent`.
+- **Terminal fallback rows:** 0
+- **Relay count:** 1
+- **Proof pointer:**
+  - `design/evidence/m18-t3a-proof-a.txt`: Real CLI path failing without the fix (`Rejecting agentId=claude-door1: contract hash mismatch. Expected ffa9..., got undefined`).
+  - `design/evidence/m18-t3a-proof-b.txt`: Real CLI path passing with the fix (`Workflow gate attempt by claude-door1 (accepted)`).
 
 **Shape agreed at the rescope (PO decision + architect's live findings; the planner owns the actual spec):**
 1. `bridge.mjs` injects `contractHash` into `initialize.params.clientInfo`, sourced from the URL it **already

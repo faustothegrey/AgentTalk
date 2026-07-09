@@ -1,0 +1,44 @@
+AgentTalk Orchestrator V1 started.
+Google Drive integration configured.
+[Server] Autorun scenario scheduler initialized (repeating every 1800s)
+Ready to manage agents.
+[Server] AgentTalk Web UI Backend listening on http://localhost:3001
+[Server] AgentTalk WebSocket MCP server listening on ws://localhost:9897/
+[Server] AgentTalk MCP server URL set to: ws://localhost:9897/
+[Server] POST /api/agents { id: 'claude-door1', provider: 'mcp', executionMode: 'auto' }
+[Registry] Creating agent claude-door1...
+[Server] Agent created: claude-door1 (status: creating)
+[Server] POST /api/agents/claude-door1/start { provider: 'mcp', model: undefined, executionMode: 'auto' }
+[Server] Activating agent claude-door1 (current status: creating)...
+[Registry] Activating agent claude-door1 (waiting for MCP connection)
+[Agent claude-door1] creating -> starting
+[Server] Status claude-door1: starting → 0 client(s)
+[Server] Execution Mode claude-door1: auto -> pending → 0 client(s)
+[Server] Session Status claude-door1: starting → 0 client(s)
+[Server] Provider claude-door1: mcp → 0 client(s)
+[Registry] Starting InProcessAgentDriver for mcp-backed agent claude-door1
+[Agent claude-door1] starting -> ready
+[Server] Agent claude-door1 successfully started
+[Server] POST /api/agents/claude-door1/workflow-role implementation-reviewer
+[McpServer] Connection established for agentId=claude-door1
+[Registry] MCP tool call from claude-door1: send_to_agent {
+  to: 'user',
+  payload: 'Door 1: real CLI session, real baton',
+  baton: {
+    kind: 'workflow_baton',
+    batonId: 'door1-b1',
+    fromRole: 'implementation-reviewer',
+    toRole: 'worker',
+    originTag: '[SM]'
+  },
+  workflowEvent: {
+    kind: 'workflow_gate_event',
+    eventId: 'door1-evt1',
+    gate: 'gate-2',
+    action: 'verdict',
+    fromRole: 'implementation-reviewer'
+  }
+}
+[Server] Workflow gate attempt by claude-door1 (accepted) → 0 client(s)
+[Server] Session Status claude-door1: ready → 0 client(s)
+[Server] Agent message from claude-door1: "Door 1: real CLI session, real baton" → 0 client(s)

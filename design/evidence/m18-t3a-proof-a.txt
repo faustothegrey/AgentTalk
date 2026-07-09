@@ -1,0 +1,30 @@
+AgentTalk Orchestrator V1 started.
+Google Drive integration configured.
+[Server] Autorun scenario scheduler initialized (repeating every 1800s)
+Ready to manage agents.
+[Server] AgentTalk Web UI Backend listening on http://localhost:3001
+[Server] AgentTalk WebSocket MCP server listening on ws://localhost:9897/
+[Server] AgentTalk MCP server URL set to: ws://localhost:9897/
+[Server] POST /api/agents { id: 'claude-door1', provider: 'mcp', executionMode: 'auto' }
+[Registry] Creating agent claude-door1...
+[Server] Agent created: claude-door1 (status: creating)
+[Server] POST /api/agents/claude-door1/start { provider: 'mcp', model: undefined, executionMode: 'auto' }
+[Server] Activating agent claude-door1 (current status: creating)...
+[Registry] Activating agent claude-door1 (waiting for MCP connection)
+[Agent claude-door1] creating -> starting
+[Server] Status claude-door1: starting → 0 client(s)
+[Server] Execution Mode claude-door1: auto -> pending → 0 client(s)
+[Server] Session Status claude-door1: starting → 0 client(s)
+[Server] Provider claude-door1: mcp → 0 client(s)
+[Registry] Starting InProcessAgentDriver for mcp-backed agent claude-door1
+[Agent claude-door1] starting -> ready
+[Server] Agent claude-door1 successfully started
+[Server] POST /api/agents/claude-door1/workflow-role implementation-reviewer
+[McpServer] Connection established for agentId=claude-door1
+[McpServer] Rejecting agentId=claude-door1: contract hash mismatch. Expected ffa94e93e3182d44924ed28381870c7bd814c908279942022d5925a4865a9446, got undefined
+[McpServer] Connection closed for agentId=claude-door1 (code: 1008)
+[Registry] Cleared 1 stale await_turn waiter(s) for agent claude-door1
+[Agent claude-door1] ready -> reconnecting
+[Registry] MCP connection dropped for agent claude-door1 (code 1008). Allowing 30s reconnect...
+[Server] Status claude-door1: reconnecting → 0 client(s)
+Received SIGTERM. Shutting down...
