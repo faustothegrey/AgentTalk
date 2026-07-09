@@ -378,7 +378,7 @@ export class Registry extends EventEmitter {
 
         if (workflowEvent && workflowEvent.kind === 'workflow_gate_event') {
           try {
-            if (workflowEvent.originTag === '[PO]' || workflowEvent.originTag === '[Human]') {
+            if (workflowEvent.action === 'po-act' || workflowEvent.originTag === '[PO]' || workflowEvent.originTag === '[Human]') {
               throw new Error(`Unauthorized: PO-level workflow events can only originate from trusted human/API paths`);
             }
             if (workflowEvent.originTag === '[SM]' && agent.workflowRole !== 'scrum-master') {
@@ -712,6 +712,9 @@ export class Registry extends EventEmitter {
 
   setWorkflowRole(agentId: string, role: WorkflowRole): void {
     const agent = this.getAgent(agentId);
+    if (role === 'product-owner' && agent.provider !== 'api') {
+      throw new Error('Cannot assign product-owner role to an attached non-human agent');
+    }
     agent.workflowRole = role;
   }
 

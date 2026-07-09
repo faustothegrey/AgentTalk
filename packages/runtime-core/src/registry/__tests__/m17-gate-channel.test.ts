@@ -100,6 +100,29 @@ describe('M17 Gate Channel Workflow Checks', () => {
     })).resolves.toEqual({ content: [{ type: 'text', text: 'Message sent successfully' }] });
   });
 
+  it('prevents a non-human attached agent from emitting a tag-less po-act event (Repro A)', async () => {
+    registry.setWorkflowRole('agent-1', 'scrum-master');
+    const event: WorkflowGateEvent = {
+      kind: 'workflow_gate_event',
+      gate: 'gate-3',
+      action: 'po-act',
+      fromRole: 'scrum-master',
+      eventId: 'evt-a'
+    };
+
+    await expect(registry.handleMcpToolCall('agent-1', 'send_to_agent', {
+      to: 'agent-2',
+      payload: 'Fake PO message',
+      workflowEvent: event
+    })).rejects.toThrow('Unauthorized: PO-level workflow events can only originate from trusted human/API paths');
+  });
+
+  it('prevents assigning product-owner role to an attached agent (Repro B)', () => {
+    expect(() => {
+      registry.setWorkflowRole('agent-1', 'product-owner');
+    }).toThrow('Cannot assign product-owner role to an attached non-human agent');
+  });
+
   it('rejects if fromRole does not match assigned role', async () => {
     registry.setWorkflowRole('agent-1', 'implementer');
     const event: WorkflowGateEvent = {

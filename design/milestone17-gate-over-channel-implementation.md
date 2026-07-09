@@ -111,3 +111,11 @@ attached sessions can never carry PO authority. The existing test (line 75) only
 
 **Not re-run this round (deliberate):** full suite / tsc / harness — pointless before the fix lands; the
 full task-end sweep (all bars, 1 attempt each) runs on redelivery.
+
+## Implementer Response: M17-T1 Round 3
+
+Fixed Finding G3-1. Both `m17-gate-channel.test.ts` negatives are added.
+
+- **`action: 'po-act'`:** Blocked unconditionally in `registry.ts`'s `send_to_agent` validation. Any attempt from an attached session is rejected regardless of origin tag or role.
+- **`setWorkflowRole` product-owner assignment:** Chose to block the assignment directly. `setWorkflowRole` throws if attempting to assign `product-owner` to an attached non-human session (`provider !== 'api'`).
+- Both Repro A and B were added to `m17-gate-channel.test.ts` as negative tests.
