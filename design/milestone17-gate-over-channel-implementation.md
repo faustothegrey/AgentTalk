@@ -288,3 +288,37 @@ Retry Budget: 2 retries per test failure.
 - The reviewer moved the M17-T2 implementer response below the M17-T1 closure block so ledger chronology matches the branch history; no product/test code was changed by the reviewer.
 
 **Disposition:** M17-T2 is verified for Gate 2 hand-back. M17-T3/live proof remains separate.
+
+## Task-end Review: M17-T2 (Claude, 2026-07-09)
+
+**Verdict: VERIFIED ✅ — all bars green first-hand, merge requested from the PO.** One-attempt-per-bar sweep:
+
+- **Real-recorder NDJSON probe (the gap both prior rounds left):** the T2 test mocks `SessionRecorder`, and
+  the real recorder has **no unit tests anywhere in the suite** — so "correct NDJSON shape" was proven only
+  pre-serialization. I drove the **real** `SessionRecorder` (dist build) with both gate payload shapes:
+  3 NDJSON lines (meta + accepted + refused), every line parses, all inspectable fields present
+  (agentId, fromRole, gate, action, result, reason). Probe artifact in the task-end reviewer's scratchpad.
+  The mock is legitimate boundary isolation — IP-13 considered and NOT triggered (the mock isolates, it does
+  not route around a product defect).
+- Targeted `m17-gate-recording` + `m17-gate-channel` + `baton-metadata`: **3 files / 11 tests passed**.
+- `npx tsc -b` → exit 0. Full `npm test` → **51 files / 291 tests passed**.
+- `npm run backlog:check` → 19 items, 0 warnings. Whitespace clean. Tree clean on `task-M17-T2`.
+- Frozen surfaces: **0 files** diff on `team-coordinator.ts` + `wire-contract.json`; client repo clean; the
+  single `as any` in the branch diff is the test's own mock-recorder cast (test-local, not a frozen-surface poke).
+- M14 identity harness → "Baselines match. Identity verified."; worktree/branch leak swept, pollution clean.
+
+**Honest limits of this close:** the `App.tsx` sidebar rendering is verified by code-read + compile + the
+WS broadcast test path only — no browser was driven this round. T3's live proof is the designed moment that
+exercises the full chain (registry → recorder + WS → UI) against the real orchestrator; if T3 skips the UI
+observation, this row reopens.
+
+**Observation (not a T2 defect, pre-existing):** `SessionRecorder` itself has zero unit tests; T2's fence
+was wiring, not the recorder. Noted for the flywheel — file a backlog item only if it bites again.
+
+**Telemetry (task closure):**
+- task:        M17-T2
+- wall-clock:  2026-07-09 ~11:32 (baton) → ~11:45 close (~15m, 1 gate-2 round, 1 gate-3 round — clean first pass)
+- budget:      claude weekly ~18% (session ~7%); codex weekly ~23%; gemini 5h ~17% [claude meter ok:false per LB-11]
+- gate:        tsc 0, suite 291/291, pollution clean (post-sweep)
+- diff:        2 product/test files +107 (plus ledger +39), commits `1a7b083` + `fa42848` + close
+- outcome:     VERIFIED at gate 3 — merge pending PO go
