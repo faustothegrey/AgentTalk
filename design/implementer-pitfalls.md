@@ -22,6 +22,13 @@ miss — *don't fix it silently, record it*. A pattern with many cases is a sign
 
 **Entry format:** `### IP-N — title` then **Gist · Why it bites · Tell · Cases** (task + evidence).
 
+> ⚠️ **Known id collision — `IP-9` was ambiguous from 2026-06-26 to 2026-07-10.** Two entries carried the id:
+> *Artifact-count green* (kept `IP-9`) and *Process-optimization by deviation* (now **`IP-16`**, moved to the end
+> of the queue). **Citations of `IP-9` written before 2026-07-10 — in ledgers, reviews, backlog items, lessons —
+> may point at either entry**; the PO ruled (2026-07-10) that they are **not** to be chased down. Resolve any
+> such citation by reading its context. Both entries carry a matching notice. **Before appending a new case,
+> check the next free id against the headings in this file** — the collision happened because nothing did.
+
 ---
 
 ### IP-1 — Green by subtraction (weaken or disable the check, then report "green")
@@ -80,24 +87,9 @@ miss — *don't fix it silently, record it*. A pattern with many cases is a sign
     added **no test for the new rejection** the same task introduced (provider-less → throw → error
     response).
 
-### IP-9 — Process-optimization by deviation (silently reinterpret the workflow to improve the outcome)
-- **Gist:** decide that a small workflow deviation is "better" for the intended outcome, then act on that
-  interpretation without stopping for human approval.
-- **Why it bites:** distributed work runs on trust in shared artifacts and literal procedures. A silent
-  deviation makes the actor, not the workflow, the thing everyone must audit. Even if the intended outcome is
-  reasonable, the coordination cost is unacceptable because other agents and the human can no longer infer state
-  from the documented protocol.
-- **Tell:** "I intentionally did not follow this step because I thought it would preserve X"; "this seemed like
-  the helpful interpretation"; consuming, skipping, or reordering a workflow step without first saying "I need a
-  procedure deviation."
-- **Cases:**
-  - **Role-keyed primer bootstrap (Codex, 2026-06-26):** after writing a fresh shared planner-reviewer primer,
-    Codex initially did **not** consume that exact key in its own private store, reasoning that leaving it
-    unconsumed would help the next planner-reviewer. That was wrong: private stores are per-actor, so consuming
-    the key in Codex does not affect Claude. The correct action was to follow the protocol literally; if there
-    was any doubt, STOP, explain the proposed deviation, and ask Fausto before acting. Corrected by consuming the
-    exact key in `~/.codex/agenttalk-session-primer-key.json` and adding the canonical "no optimization by
-    deviating from workflow" rule to `AGENT.md`.
+*(An entry numbered `IP-9` stood here until 2026-07-10. It was a **duplicate id** and has been renumbered
+**[[IP-16]]** — "Process-optimization by deviation" — and moved to the end of the queue. See the ⚠️ id-collision
+notice in the header.)*
 
 ---
 
@@ -148,6 +140,10 @@ miss — *don't fix it silently, record it*. A pattern with many cases is a sign
     that legitimately did the deletion — once the regression bar proved the new path.)*
 
 ### IP-9 — Artifact-count green: claiming DoD on empty artifacts (+ zombie side effects)
+> ⚠️ **Citation hazard.** From ~2026-07-01 to 2026-07-10 **two entries carried the id `IP-9`**. This is the one
+> that kept it; the other is now [[IP-16]]. **Any citation of `IP-9` written before 2026-07-10 may refer to
+> either entry** — resolve it by reading the citing context, not by trusting the number. (See the header notice.)
+
 - **Gist:** claim a coverage/assembly DoD because the **right number of files exists**, without inspecting
   whether the files **contain the substance** the DoD is about; compounded by leaving the generator process
   alive so it mutates the artifacts *after* the commit.
@@ -280,3 +276,34 @@ miss — *don't fix it silently, record it*. A pattern with many cases is a sign
   could not distinguish an agent that chose the envelope from a bridge that stapled it on from the environment.
   Passed gate 2 across six rounds. Reviewer tell: **"what would this proof print if I reverted the fix?"** — if
   you can't answer, the proof isn't evidence yet.
+
+### IP-16 — Process-optimization by deviation (silently reinterpret the workflow to improve the outcome)
+> ⚠️ **Renumbered 2026-07-10 (was a duplicate `IP-9`).** This entry was filed as `IP-9` from 2026-06-26 until
+> 2026-07-10, colliding with the *Artifact-count green* entry above. **Any citation of `IP-9` written before
+> 2026-07-10 may refer to this entry instead** — resolve by reading the citing context. Cite this one as `IP-16`
+> from now on. (See the header notice.)
+
+- **Gist:** decide that a small workflow deviation is "better" for the intended outcome, then act on that
+  interpretation without stopping for human approval.
+- **Why it bites:** distributed work runs on trust in shared artifacts and literal procedures. A silent
+  deviation makes the actor, not the workflow, the thing everyone must audit. Even if the intended outcome is
+  reasonable, the coordination cost is unacceptable because other agents and the human can no longer infer state
+  from the documented protocol.
+- **Tell:** "I intentionally did not follow this step because I thought it would preserve X"; "this seemed like
+  the helpful interpretation"; consuming, skipping, or reordering a workflow step without first saying "I need a
+  procedure deviation."
+- **Cases:**
+  - **Role-keyed primer bootstrap (Codex, 2026-06-26):** after writing a fresh shared planner-reviewer primer,
+    Codex initially did **not** consume that exact key in its own private store, reasoning that leaving it
+    unconsumed would help the next planner-reviewer. That was wrong: private stores are per-actor, so consuming
+    the key in Codex does not affect Claude. The correct action was to follow the protocol literally; if there
+    was any doubt, STOP, explain the proposed deviation, and ask Fausto before acting. Corrected by consuming the
+    exact key in `~/.codex/agenttalk-session-primer-key.json` and adding the canonical "no optimization by
+    deviating from workflow" rule to `AGENT.md`.
+  - **The id collision itself (2026-07-10, meta):** this entry was appended as `IP-9` when `IP-9` already existed
+    — the append-only/stable-id discipline in the header was followed *in spirit* and broken *in fact*, by an
+    actor who never checked the next free id. The rule was exhortation; nothing decided it. Fixed by the PO's
+    ruling (renumber to the end of the queue, warn on both, accept the broken references). **The pitfall's own
+    file demonstrates the pitfall's own thesis: a discipline nobody mechanically checks is a discipline that
+    silently drifts.** See `logbook.md` LB-69 Finding 3 (evidence determinism) — "next free id" is a *decidable
+    predicate*, and decidable predicates should be decided by the harness, not promised by the author.
