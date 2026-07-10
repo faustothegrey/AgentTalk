@@ -207,3 +207,26 @@ here.**
   minted IP-15 that morning. What saved it: identifying the process before killing it, because the PO asked me to
   kill it. **Verify-don't-assert is not a posture you hold toward others' claims; it is one you hold toward the
   most confident-sounding voice in the room, which is usually your own.**
+
+## 2026-07-10 — as architect (out-of-band, unprimed: PO explicitly waived the handshake)
+
+- **I re-derived my own design note from scratch and didn't recognise it.** The PO floated "role-based deterministic
+  hardness" as a fresh idea; I spent a long, enthusiastic stretch building it up with him — chokepoint taxonomy,
+  denial-as-interrogation-trigger, over-fencing warnings, the escalation-path risk — before grepping and finding
+  **`design/scope-fences-design-note.md`, dated two days earlier, `Owner: Architect (Claude)`**, containing every one
+  of those points by name. Nothing was lost (the entry is better for the second pass), but I let the PO believe we
+  were inventing what we had already written. **Before agreeing that an idea is new, grep `design/` for it.** The
+  cost of the check is ten seconds; the cost of skipping it is a person's confidence in their own memory.
+- **The habit that saved it is the one I wrote down yesterday.** Verify-don't-assert caught it — I only reached for
+  `grep` because I was about to *assert novelty*. Yesterday's lesson (IP-15 committed by the reviewer who minted
+  IP-15) generalised correctly and fired one day later, on me, in a different costume. The read-back at session start
+  is not the mechanism; **the mechanism is refusing to let a confident sentence leave unchecked.**
+- **Two overclaims about an external system in one session, both from reading too little.** I said Traycer "has no
+  consensus" (proved only: not in their *open* contract — the host is a closed binary and their README advertises
+  agents that debate), and I opened by doubting the PO's "it's open software" when the repo was real. Both got
+  corrected within the session, but both were *stated first, checked second*. When surveying prior art, the sentence
+  "I do not know, and here is why I cannot know from source" is available at all times and costs nothing.
+- **What worked: cite `file:line`, then verify every anchor before shipping.** I checked the eight line refs in LB-67
+  and **two were wrong** (a range off by two lines; a harness list missing `traycer`). An entry whose citations don't
+  resolve is worse than no entry — it teaches the next reader that our refs can't be trusted. Verifying took one
+  command.
