@@ -1991,3 +1991,57 @@ land the timeout without the typed `reason`.** Fix-and-then-need-the-fix; the tw
 Related: LB-67 Finding 1 (typed non-reply reasons), LB-49 (Hermes wedged — the failure this would have caught),
 M03 failure propagation, M08-T3 effect-fence, IP-15, `design/backlog.md` **BL-028**. Reported by the architect;
 **no code, no behaviour change.**
+
+### LB-71 · 2026-07-10 — [process] **Backlog gate for M19, sat by PO + architect together. The gate found three things the epic's own author had missed — which is what gates are for.**
+
+**Why it was convened this way.** The gate was **skipped** when M19 was opened in `38672bc` (primers written,
+BL-028 filed, epic goal declared) — a workflow §3b breach by the architect/SM. The PO's question *"is M19 ready to
+be planned?"* caught it, along with two other errors (below). Because three of the four seats around this gate
+(SM convenes · architect dispositions · plan reviewer takes gate 1) are held by **one agent**, the `AGENT.md`
+concentration tripwire fired and the architect flagged it; **the PO elected to sit the gate personally.** That is
+the tripwire working as designed, and it is the first time it has been exercised.
+
+**Three errors corrected before any work started:**
+1. **"M19-T0 spike" is a category error.** Spikes are `SP<N>`, **numbered globally, independent of any epic**, and
+   are **always read-only/probe/docs — zero production code** (`collaboration-workflow.md:287-290`). Precedent: the
+   arbiter shadow spike carried its own `-plan.md` + `-implementation.md` pair. A spike is not a task inside an epic.
+2. **The spike must run BEFORE the epic is planned, not inside it.** Its answer (does consensus survive across real
+   attached CLIs?) *determines T1's shape*: consensus-protocol agreement vs. plain-baton agreement are different
+   tasks with different DoD rows. A spike inside the epic forces a **conditional plan** hedging on the very unknown
+   the spike exists to remove. Workflow:523 explicitly permits "isolated, zero-risk spikes to start early."
+3. **The backlog gate itself had not been convened.** Nine `todo` items, none dispositioned.
+
+**Dispositions (9 `todo`):** BL-014 → **deferred** (reopen: after M19 proves the substrate carries coordination —
+serving role briefs over a channel with 0 real hand-offs is premature; its own note asked for exactly this re-gate
+once M17 closed, and the ruling is *not yet*). BL-015 → **deferred** (PO ruled governance moves to a **ranking**
+model, not a fencing one; LB-69 F1/F4 attached to the item so nobody plans it naively). BL-027 → **doing** (M19 *is*
+this item's work; workflow:362). BL-022/023/024/025/026/028 → **todo**, three of them gaining binding constraints.
+
+**What the gate discovered — the payoff, and none of it was in the architect's head an hour earlier:**
+- **BL-024 is load-bearing for SP2.** `team-coordinator.ts:977-986` bumps the **fact-collection timeout** on
+  `if (team.provider === 'gemini')` — *a vendor name changes protocol timing inside the frozen engine*, and
+  `fact_collection` is the first phase SP2 measures. It is **unknown** what `provider` value a real attached CLI
+  carries (`'mcp'`, or the vendor name?); the union `'api'|'mcp'|'gemini'|'claude'|'codex'` admits both, and that
+  ambiguity already caused the M17 G3-2 refute. **SP2 must record each attached agent's `provider` value as a
+  first-class observation** — it cannot interpret its own result otherwise. Recording is a spike act; **fixing is not.**
+- **BL-025 carries a live defect that would void our evidence.** `scripts/m17-live-gate-proof.mjs` asserts against a
+  **committed** NDJSON rather than the run's own recorder, so it can print `LIVE SMOKE PASSED` **with no recorder
+  attached** (M17 G2-1, still open). Constraint: **SP2 and M19 must not use it as evidence**, and M19's DoD must say
+  how a recorded `workflow_gate_event` is distinguished from an **injected** one — the exact ambiguity that refuted
+  M18-T3, where the log could not tell an agent that *chose* the envelope from a bridge that *stapled it on*.
+- **BL-026 is half-discharged for free.** SP2 must perform the hand-assembled attach ritual anyway; because a spike
+  is docs-and-probe, it can **emit the runbook as a spike deliverable at zero production code**, written from
+  evidence rather than guessed. The `.mcp.json` template + script stay for M19-T1.
+- **BL-022's hole is dodged, not fixed.** `scope-check` is single-repo blind, so the **PO constrained M19-T1's
+  refactor target to the AgentTalk repo** — the fence is not blind for that task. One line of plan, no code.
+
+**Resulting sequence (supersedes the T0/T1 shape in `38672bc`):** backlog gate ✅ → **SP2** (`consensus over real
+attached CLIs`; own plan + ledger; zero production code) → **M19** planned *with SP2's answer in hand*.
+
+**The lesson, stated plainly because it cost nothing this time and would have cost an epic otherwise:** the architect
+who sets an epic's shape is the worst-placed actor to check whether that shape is legal. Three of these four findings
+were structural facts sitting in `collaboration-workflow.md`, unread, while the same actor wrote a primer sending the
+planner at the wrong target. **Convene the gate before you write the primer, not after.**
+
+Related: LB-67/68/69/70, BL-014/015/022/024/025/026/027, `collaboration-workflow.md` §3b/§3e, `AGENT.md` →
+📌 DEFAULT ROLE ASSIGNMENTS (concentration tripwire). Process only — no code, no behaviour change.

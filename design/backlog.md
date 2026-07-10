@@ -695,7 +695,8 @@ tags: [scope-fence, tooling, cross-repo, friction-m18]
   passed having inspected none of it. **Evidence:** M18-T3a Gate-1 condition 2 + the task-end review's declared
   honesty note (`design/milestone18-self-hosting-implementation.md`). Fix sketch: manifest gains a per-repo
   section; the script iterates declared repos. Until then a green `scope-check` must not be read as "the diff
-  was fenced."
+  was fenced." **2026-07-10 backlog gate:** rather than fix this for M19, the **PO constrained M19-T1's refactor
+  target to the AgentTalk repo** — so the fence is not blind for that task. The hole remains; ranked for after M19.
 
 <!-- @item
 id: BL-023
@@ -742,6 +743,13 @@ tags: [architecture, brain, types, friction-m18]
   factory. The *law* (authority, routing) is genuinely shape-blind and survives audit; the *plumbing* is not.
   **Evidence:** **LB-65** (full audit with line refs). Fix sketch: `transport` (`attached` | `in-process`) ×
   `vendor`; move the timeout to per-agent capability metadata; factory for driver selection.
+  **⚠️ 2026-07-10 backlog gate — this item is load-bearing for SP2 and nobody had noticed.** SP2's whole subject is
+  running `fact_collection → discussion → proposal` across two **real attached CLIs** — and the `provider === 'gemini'`
+  branch above **changes the timing of `fact_collection` itself, inside the frozen engine**. It is unknown what
+  `provider` value a real attached CLI carries (`'mcp'`? the vendor name?); the union admits both, and that ambiguity
+  already caused the M17 G3-2 refute. **SP2 must RECORD each attached agent's `provider` value as a first-class
+  observation** — the spike cannot interpret its own result without it. Recording is a spike act (read-only);
+  **fixing this is not, and is out of scope for SP2 and M19.**
 
 <!-- @item
 id: BL-025
@@ -758,6 +766,12 @@ tags: [live-proof, evidence, gates, friction-m18]
   **G2-1**, still open — it printed a spurious FAILED during the M18-T2 gate-3 run). **Evidence:** M18-T3 gate-3
   refute; M17 ledger G2-1; M18-T2 task-end review. Fix sketch: a live-proof convention — every proof states its
   A-side (the bar failing on the pre-change baseline) and asserts on a **fresh** recording path unique to the run.
+  **2026-07-10 backlog gate:** the **mechanism stays parked** (PO ruled the evidence-determinism work comes "in
+  time"), but two **constraints bind SP2 and M19 now**, because the defect in this item's body is live: (a) **do
+  not use `scripts/m17-live-gate-proof.mjs` as evidence** — it can print `LIVE SMOKE PASSED` with no recorder
+  attached; (b) M19's DoD must state **how a recorded `workflow_gate_event` is distinguished from an injected
+  one**. C3's reopen condition already demands "actual coordination, **not a proof**" for exactly this reason:
+  M18-T3's log could not tell an agent that *chose* the envelope from a bridge that *stapled it on*.
 
 <!-- @item
 id: BL-026
@@ -775,15 +789,23 @@ tags: [attach-mode, ergonomics, real-cli, friction-m18]
   **This is the friction standing between "the channel works" and "the team uses the channel"** — rank it high
   for M19. Fix sketch: a committed `.mcp.json` template + an `attach-real-session` runbook/script that registers,
   starts, assigns the role, and prints the config.
+  **2026-07-10 backlog gate — ranked #1 for M19-T1, and SP2 discharges half of it for free.** It is *not* strictly
+  necessary for SP2 (the ritual has been hand-performed four times; a fifth is possible). But a spike is
+  read-only/probe/**docs** by definition (workflow:289), so SP2 must perform the ritual anyway and can **emit the
+  runbook as a spike deliverable at zero production code** — written from evidence rather than guessed. The
+  `.mcp.json` template + script (production tooling) stay for M19-T1.
 
 <!-- @item
 id: BL-027
-status: todo
+status: doing
 date: 2026-07-09
-epic: null
+epic: M19
 tags: [metric, program, self-hosting, friction-m18]
 -->
-- [todo · **M18 C7 friction item** — the program's headline metric can move for reasons that have nothing to do
+- [doing · **→ `doing` at the 2026-07-10 backlog gate (PO + architect)**: M19 *is* this item's work. C3's
+  reopen condition requires reporting the ratio beside the raw count, so the epic cannot close without it
+  (workflow:362 — when an item's work opens as an epic, the item goes `doing`). · was: todo ·
+  **M18 C7 friction item** — the program's headline metric can move for reasons that have nothing to do
   with the program] — **Relay count has no denominator** — the counting rule (program draft) counts *relays*,
   but a task's raw relay count also moves with **how many review rounds it happened to need**: M18-T1 = 9 relays
   (3 gate rounds), M18-T2 = 2 (1 round), M18-T3a = 8 (4 rounds) — none of which reflects substrate adoption,
@@ -864,12 +886,32 @@ tags: [self-hosting, attach-mode, baton, handshake, wire-contract]
 
 <!-- @item
 id: BL-015
-status: todo
+status: deferred
 date: 2026-07-08
 epic: null
 tags: [self-hosting, scope-fence, governance, harness]
 -->
-- [todo · **L0 absorbed into M18-T1 at the 2026-07-09 gate (BL-021)** — the guinea-pig shakedown epic; item
+- [deferred · **DEFERRED at the 2026-07-10 backlog gate (PO + architect, sitting together)**. **PO ruling
+  (2026-07-10): governance moves to a *ranking* model, not a fencing one** — "external agent unfaithfulness is
+  uncontrollable by definition; we'll have a ranking system. If the agent is not fit for the role, just flip
+  do-not-use." L1/L2 are therefore not the road. **Reopen condition:** *when the ranking system needs a
+  detection signal a fence would supply, or on explicit PO revisit.*
+  **⚠️ TWO FACTS ANY FUTURE PLANNER MUST READ FIRST (LB-69, 2026-07-10) — this item is not safe to plan as
+  written:** (1) **an ownership hole**: this item's non-goals defer authority/identity enforcement to M17
+  (`scope-fences-design-note.md:72`), but M17 only refuses a *falsely-labelled* `workflowEvent` — and
+  `workflowEvent` is **optional** on `send_to_agent` (`mcp-tools.ts:74`, required = `['to','payload']`). M17
+  governs the truthfulness of a **claim**; it never binds a **role** to a **capability**. **Neither document
+  owns role→capability enforcement, and each believes the other does.** (2) **L2 contradicts M05**: L2 assumes
+  "launch machinery provisions the task branch + a fenced worktree," but M05's founding premise is that provider
+  MCPs are **externally launched by the operator**. *You cannot deterministically constrain a process you did not
+  launch.* L2 therefore requires attach mode to grow a **launched** variant — i.e. AgentTalk becomes a supervisor
+  owning process + filesystem, not merely a wire. That is precisely the road Traycer took, and their host is the
+  **closed** half of their repo (LB-67). **This is an unnamed architectural decision, and it is the PO's.**
+  **Also (LB-69 Finding 2, empirical):** classifying all 16 `IP-N` cases against a deterministic file fence gives
+  **3 prevented** (IP-5, IP-6, IP-12) and **≥7 untouched** (IP-1, IP-2, IP-3, IP-4/IP-8, IP-13, IP-15). The
+  untouched column is not "did a forbidden thing" — it is "**said a false thing**." Our dominant failure class is
+  **evidence dishonesty**, which no fence at any tier touches. This item's own principle 4 ("necessary, not
+  sufficient") is thereby quantified. · was: todo · **L0 absorbed into M18-T1 at the 2026-07-09 gate (BL-021)** — the guinea-pig shakedown epic; item
   stays open for L1/L2, which share the M19 gate with BL-014 · PO+Architect, 2026-07-08 (mid-M16) —
   evidence-driven from a live violation] — **Deterministic scope fences — machine-readable per-task
   scope manifest + layered enforcement** — move the implementer scope fence from *policy* (prose RoE +
@@ -893,13 +935,20 @@ tags: [self-hosting, scope-fence, governance, harness]
 
 <!-- @item
 id: BL-014
-status: todo
+status: deferred
 date: 2026-07-08
 epic: null
 tags: [self-hosting, role-skill, governance]
 -->
-- [todo · M19 candidate — ruled at the 2026-07-08 gate (options were M18 rider / M19 candidate / parked);
-  re-gate after M17 delivers the session→identity→role mapping] — **Role-skill injection — brain-served
+- [deferred · **DEFERRED at the 2026-07-10 backlog gate (PO + architect, sitting together)** — the re-gate its
+  own note called for has now happened: M17 closed and delivered the session→identity→role mapping, so this
+  item became rulable, and the ruling is *not yet*. **Reason:** serving role briefs over the substrate is
+  premature while the substrate has carried **zero** real role→role hand-offs (M18 closed with 0 substrate
+  events; C3 DEFERRED). Build the channel's first real use before administering governance over it.
+  **Reopen condition:** *after M19 demonstrates that the substrate carries actual coordination (C3's reopen
+  condition met — ≥1 recorded `workflow_gate_event` from a real attached CLI doing real work, plus the
+  BL-027 ratio).* · was: todo · M19 candidate — ruled at the 2026-07-08 gate (options were M18 rider / M19
+  candidate / parked); re-gate after M17 delivers the session→identity→role mapping] — **Role-skill injection — brain-served
   role briefs at attach** — condense the scrum workflow (roles, gates, batons, origin tags, Rules of
   Engagement, primer handshake) into a brief the substrate serves at attach time: "you are `<role>`; here
   is your law" — versioned from the repo, identical for every provider, recorded like any message. Rides
