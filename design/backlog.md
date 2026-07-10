@@ -793,6 +793,31 @@ tags: [metric, program, self-hosting, friction-m18]
   the raw count. The ratio holds review-round noise fixed and measures the only thing the program changes.
 
 <!-- @item
+id: BL-028
+status: todo
+date: 2026-07-10
+epic: null
+tags: [engine, m03, dead-code, false-claim, fault-tolerance]
+-->
+- [todo · **dead mechanism + false feature claim; found while scoping M19, PO-approved to file 2026-07-10**] —
+  **The idle timeout has never been able to fire** — `agentIdleTimeoutMs: 180000` is configured
+  (`registry/config.ts:12`) and swept every 30s (`registry.ts:155`), but `hasAgentTimedOut()` short-circuits on
+  `if (!agent.lastProgressAt) return false` (`registry.ts:663`) and **`lastProgressAt` is never assigned** —
+  declared at `agents/agent.ts:28`, read twice, written nowhere in either repo (exhaustive grep incl. dynamic
+  write paths). Doubly dead: only `status === 'busy'` agents are swept at all. **Consequence:** a *hung* agent is
+  never detected. Clean disconnect → `terminated` (M05) and explicit `error` propagation both still work; it is
+  wedging that goes unseen — verbatim the Hermes failure mode (LB-49). **No test covers it**: the only idle test
+  (`__tests__/team-worker-effect-fence.test.ts:70-71`) asserts the *exemption* predicate, so it passes identically
+  whether the timeout works or not — **IP-15 in our own suite**, shipped by M08-T3, which added a guard against a
+  timeout that could not occur. `AGENT.md`'s M03 "including idle timeouts" claim corrected 2026-07-10.
+  **Evidence:** LB-70. **Not a blocker for M19** (the sweep cannot kill a slow real-CLI conversation — we are
+  accidentally immune). **Fix sketch — and the ordering is load-bearing:** do **not** land the timeout alone. The
+  moment the sweep goes live, an agent paused `awaiting-input` (blocked on a human) is observationally identical to
+  a dead one and M03 kills the team task for an agent that behaved correctly. Land it **together with** the typed
+  non-reply `reason` from LB-67 Finding 1 (`turn-ended · exited · quiet · user-stopped · errored · awaiting-input ·
+  receiver-cancelled`). One piece of work, not two.
+
+<!-- @item
 id: BL-020
 status: done
 date: 2026-07-09

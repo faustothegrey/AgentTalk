@@ -153,7 +153,7 @@ in every context (docs, messages, primers, lessons). Violations should be correc
 - **Not yet (open follow-ups)**: multi-agent **consensus** mapping (the harness only emits `send_to_agent`, no `submit_plan`/agreement/work), clean **MCP-failure surfacing**, and the **native-loop/skill** path for claude/gemini. See `design/mcp-implementation-plan.md` (Phase 5) and `design/mcp-external-launch-proposal.md`.
 
 ### Milestone 03 Key Features
-- **Agent Failure Propagation**: Active team tasks are now immediately interrupted if an agent enters an `error` state (including idle timeouts), eliminating deadlocks.
+- **Agent Failure Propagation**: Active team tasks are now immediately interrupted if an agent enters an `error` state, eliminating deadlocks. ⚠️ **Corrected 2026-07-10:** this line previously read *"(including idle timeouts)"* — **that was false.** The idle timeout is **dead code**: `lastProgressAt` is declared and read but **never written**, so `hasAgentTimedOut()` always returns false (`registry.ts:663`; see **LB-70** / **BL-028**). A clean disconnect → `terminated` (M05) and an explicit `error` status do propagate; a **hung** agent is **not** detected. Do not rely on the idle timeout, and do not cite this milestone as evidence that it works.
 - **Refined Planning Protocol**: Protocol briefings are more direct and action-oriented, with explicit initiator/peer instructions and a "Proposal Priority" rule.
 - **Improved Observability**: Added regression tests to verify task interruption on agent failure across all phases.
 

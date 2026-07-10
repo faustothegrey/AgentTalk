@@ -1946,3 +1946,48 @@ Related: **BL-015** / `design/scope-fences-design-note.md` (the prior art *insid
 (role-skill injection — the note gates L2 with it at M19), LB-68 (the gate notarizes, it does not govern), LB-67
 (Traycer launches; we attach), M05 attach-mode premise, M17 workflow authority. Analysis only — **no code, no
 behaviour change, no backlog items created, `implementer-pitfalls.md` untouched.**
+
+### LB-70 · 2026-07-10 — [engine] **The idle timeout has never been able to fire: `lastProgressAt` is declared, read, and never written. M03's "including idle timeouts" is a false feature claim.**
+
+**How it surfaced.** Not by audit. The architect went looking for a *blocker* to M19-T1 — real CLI sessions are
+slow, and a 3-minute idle sweep marking a thinking agent `error` would trip M03's kill mid-task. The blocker does
+not exist, for a worse reason than the blocker would have been. Found while scoping, per the standing habit *try
+the thing before planning around it* (the BL-017 lesson). **No code was changed** — this is a behaviour change on
+shared engine code (⛔ RoE Rule 2, show-stopper fence); reported, not fixed.
+
+**The chain, verified in source (not read from the diff — grepped exhaustively across both repos):**
+1. `packages/runtime-core/src/registry/config.ts:12` — `agentIdleTimeoutMs: 180000` (3 min).
+2. `packages/runtime-core/src/registry/registry.ts:155` — a live sweep: `setInterval(() => this.checkIdleAgents(), 30000)`.
+3. `registry.ts:670-678` — `checkIdleAgents()` flags any agent for which `hasAgentTimedOut()` is true → `setAgentStatus(agent, 'error')` → M03 failure propagation interrupts the active team task.
+4. `registry.ts:646-667` — `hasAgentTimedOut()` opens `if (agent.status !== 'busy') return false;` then `if (!agent.lastProgressAt) return false;`
+5. **`lastProgressAt` is never assigned.** Declared `packages/runtime-core/src/agents/agent.ts:28` (`lastProgressAt?: number`), read twice in `registry.ts` (`:663`, `:667`), **written nowhere** — searched both repos, all file types (`.ts/.mjs/.js`), plus every dynamic write path (`Object.assign(agent, …)`, spreads, any `progress`-named writer). Zero hits.
+
+**Therefore:** the field is permanently `undefined`, the guard short-circuits on every 30s tick, and the timeout is
+**dead code**. It is doubly dead: even with the field set, only `status === 'busy'` agents are ever swept.
+
+**Finding 2 — a passing test that cannot fail (IP-15, in our own suite).** No test exercises the timeout firing.
+The only test mentioning idle is `packages/runtime-core/src/registry/__tests__/team-worker-effect-fence.test.ts:70-71`,
+which asserts `isTaskAwaitingOperator('worker-1') === true` — the **exemption** predicate. **M08-T3 added a guard
+to prevent a timeout that could not occur, and tested the guard.** That assertion passes identically whether the
+timeout works or not. We refuted M18-T3 for exactly this shape and shipped it ourselves three epics earlier.
+
+**Finding 3 — the doc claims it.** `AGENT.md` → *Milestone 03 Key Features*: *"Active team tasks are now immediately
+interrupted if an agent enters an `error` state (including idle timeouts)."* The parenthetical is **false**.
+Corrected in the same commit as this entry (docs follow reality — workflow principle 2). What *does* work: a clean
+disconnect marks the agent `terminated` (M05), and an explicit `error` status still propagates. What does **not**
+work: detecting a **hung** agent. A wedged agent blocks forever — which is, verbatim, the Hermes failure mode that
+retired it (LB-49).
+
+**Consequence for M19 (why this is good news today).** LB-67 Finding 1 — the typed non-reply `reason`, which I
+called the highest-value finding of the Traycer survey — describes a hazard **we are accidentally immune to**: the
+heuristic Traycer *retired* is one we never actually *ran*. So M19-T1's slow real-CLI conversation cannot be killed
+by the sweep, and **nothing about the idle timeout is essential to M19.** Filed as **BL-028**, not fixed.
+
+**Ordering note for whoever fixes it.** Implementing the timeout correctly *immediately* creates the need for
+LB-67 Finding 1: the moment the sweep is live, an agent paused `awaiting-input` (blocked on a human) becomes
+observationally identical to a dead one, and M03 kills the team task for an agent that behaved correctly. **Do not
+land the timeout without the typed `reason`.** Fix-and-then-need-the-fix; the two are one piece of work.
+
+Related: LB-67 Finding 1 (typed non-reply reasons), LB-49 (Hermes wedged — the failure this would have caught),
+M03 failure propagation, M08-T3 effect-fence, IP-15, `design/backlog.md` **BL-028**. Reported by the architect;
+**no code, no behaviour change.**

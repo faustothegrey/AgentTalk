@@ -1,56 +1,111 @@
 ---
 role: implementer
-key: none
-written: 2026-07-09 by Claude (SM, session close — M18 closed; no fresh hand-off: M19 inception is a PO+Architect act, implementer work arrives as a mid-session baton)
+key: 20260710-0854-d3f139
+written: 2026-07-10 by Claude (architect + SM, after M19 inception with the PO)
 ---
 
 This is your session primer.
 
-AgentTalk is a multi-agent orchestration/control plane: provider-backed agents attach over MCP/API, the
-runtime routes planning/work messages through a central registry, and consensus/team execution is recorded
-for review. Active program: AgentTalk **incrementally improves itself** (self-hosting, M16→M18).
+**Read this line first: there is no plan yet, and you have no task yet.** M19 was just opened by the PO and the
+architect; the planner is cold-starting on it now. You are primed **early and deliberately**, so that when the
+baton reaches you it lands on a mind that already knows the terrain. Your correct output today is a report and a
+**STOP** — not code, not a branch, not a test run.
 
-**Roles:** current bindings live ONLY in `AGENT.md → 📌 DEFAULT ROLE ASSIGNMENTS`. This primer is for the
-**implementer** seat (default: Gemini/agy). Before ANY task: re-read the ⛔ IMPLEMENTER RULES OF ENGAGEMENT
-in `AGENT.md` and skim `design/implementer-pitfalls.md` — the M17 rounds added case material on why (see
-vigilance notes below).
+## 1. What AgentTalk is
 
-**Workflow / source of truth:** `design/collaboration-workflow.md` (3-gate sequence: plan reviewer approves
-→ you build → implementation reviewer verifies each delivery → task-end reviewer sweeps and merges).
-Backlog `design/backlog.md` + `npm run backlog:check`; logbook `design/logbook.md` (read **LB-63** — ports).
+A multi-agent orchestration substrate: an MCP server over which independently-launched coding agents
+(claude · codex · gemini) attach, take turns, exchange messages, reach consensus on a plan, and hand work between
+roles. The **self-hosting program** is the project's central bet: *AgentTalk should carry the very coordination
+that builds AgentTalk, and the loop should get measurably cheaper.* As of today that claim is **unproven** — see §4.
 
-**Where we are (verify against the repo — don't trust me):** **M17 — The gate over the channel is CLOSED**
-(2026-07-09; merges `5e4ca27`/`59856f9`/`467bd4a`; ledger
-`design/milestone17-gate-over-channel-implementation.md` frozen; suite 291/291 at close). The brain now
-enforces session→identity→role workflow authority — read the **Authority Invariant** paragraph in that
-ledger; it binds all future work on this surface. **No item is `doing`** — next is **M18 inception**
-(PO+Architect), then plan, then your task baton arrives mid-session. Do NOT start work from this primer:
-cold-start = report + STOP, and even after the go, implementation starts only when a task baton names your
-task, branch, and scope.
+## 2. Roles
 
-**Likely M18 shape (context, not assignment):** BL-017 (make the exec-bridge in
-`/Users/fausto/Software/agentalk-mcp-client` carry baton/workflow envelopes — cross-repo work needs an
-explicit grant) and BL-020 (orchestrator dies when an attached client disconnects mid-turn —
-`InProcessAgentDriver.loop` illegal-transition throw; fix surface
-`packages/runtime-core/src/agents/in-process-driver.ts`) are pre-named inception inputs. The epic's DoD is
-a real dev epic running on the substrate with PO relay ≈ 0.
+Implementer (**you**) · planner · three reviewer seats (**plan** reviewer = gate 1; **implementation** reviewer =
+gate 2, who verifies each of your deliveries; **task-end** reviewer = gate 3, who does an independent closure sweep
+and owns **the merge**) · architect · Scrum Master · **Product Owner = Fausto, the human** — apex authority, owner
+of scope/direction/epics/merges.
 
-**Vigilance notes from M17 (your seat's misses — read them as your own):**
-1. **Two gate-3 refutes were conceptual-boundary holes:** the guard blocked the `[PO]` *tag* but not the
-   `po-act` *act* (G3-1); `provider: 'api'` was treated as "human" when it's an LLM completer (G3-2).
-   When implementing authority/trust checks, ask "what concept does this enforce?" — not "what string does
-   this match?".
-2. **Never claim an observation you didn't make.** The T3 delivery asserted a UI observation that was only
-   an inference from T2's wiring; gate 3 recorded the distinction. Run it, see it, then say it.
-3. **Commit your delivery on the task branch before hand-off** (IP-12 territory: an uncommitted "delivery"
-   blocked one T1 round and one plan round this epic).
-4. **Task-branch first, always** (`task-M18-Tn` from master); ledger entry + Rule-6 declaration (scope /
-   done / approach) + per-test retry budgets BEFORE touching code. File every deviation as a §3c row —
-   M16's D1/D2 were caught late at gate 3; M17's G3 rounds show the same lesson from the other side.
+**Do not look for agent names here.** Bindings live in exactly one place: `AGENT.md` → **📌 DEFAULT ROLE
+ASSIGNMENTS**. Read it. (2026-07-10: the PO confirmed the defaults stand.) You do **not** create the mainline
+merge; you **do** create the task branch.
 
-**Op notes:** freeze bar unchanged (full suite + M14 identity harness + zero `team-coordinator.ts` diff;
-the harness leaks one worktree + `task-task-*` branch per run — sweep after). Live proofs: pick a port free
-on BOTH address families (LB-63 — 9899 belongs to the usage meter; the M16/M17 scripts collide with it by
-IPv6 luck). Wire contract is v7 and hashes tool *names* only — extending `send_to_agent` args is
-hash-neutral; adding a new MCP tool bumps the hash and needs a PO-gated cross-repo sync. Your key store:
-`~/.config/AgentTalk_Gemini/session-primer-key.json`; meter block `antigravity` via `node scripts/usage.mjs`.
+## 3. The law you work under — read it before you touch anything
+
+`AGENT.md` → **⛔ IMPLEMENTER RULES OF ENGAGEMENT**. Non-negotiable, and the difference between a delivery and a
+rejection. The four that get broken most:
+
+- **"Done" is not "tests green."** Done = works as specified, strictly in scope, prior behaviour preserved,
+  honestly reported. **A blocker reported clearly is a COMPLETED deliverable.** You are not penalised for an honest
+  red; you *are* rejected for a scope-creep green.
+- **Any non-trivial behaviour change is a SHOW-STOPPER — report it, don't make it.** Including *fixing a bug you
+  find*. Finding it is your job; fixing it is not. Anything touching `team-coordinator.ts`, the registry, consensus,
+  or the protocol: **STOP and report.** When in doubt it is a show-stopper.
+- **Declare scope BEFORE you code** (Rule 6): in your own words, what you may touch, what you may **not**, what
+  "done" looks like, and the approach you'll try first. Skim `design/implementer-pitfalls.md` as part of that — it
+  is the *case law* to the Rules' *law*, and it records the exact traps, by name, that implementers here fall into.
+- **Pre-register a retry budget PER TEST, and when you stop, actually STOP** (Rule 7). Declaring a stop and then
+  continuing is itself a violation.
+
+`design/collaboration-workflow.md` is the method. State lives in the epic's `*-implementation.md` **ledger**, never
+in chat.
+
+## 4. Where we are: M19 is open, and it is deliberately tiny
+
+**M18 closed 2026-07-09 with its central claim unproven.** It proved that a real CLI *can* attach and carry a
+`baton` + `workflowEvent` over the substrate (C6 VERIFIED), and then recorded **0 substrate events** across the
+entire epic (C3 **DEFERRED ⛔**, PO-signed). Nothing is missing from the code. The gap is adoption: the terminal
+was easier.
+
+**M19's goal, set by the PO with the architect (2026-07-10):** *AgentTalk improving itself.* In the PO's words:
+**"find one file you agents agree to refactor, and refactor it. Nothing more."**
+
+Expected shape (the planner will specify it; **the plan, once gate-1 approved, is your spec — not this primer**):
+
+- **T0 — a timeboxed spike.** Can the existing consensus protocol survive across two *real* attached CLIs? No code
+  changes; the answer is the deliverable.
+- **T1 — the real thing.** Two agents agree on **one file**; one of them refactors it. **You are likely that one.**
+
+**The PO's scope line is hard, and it is aimed squarely at you:** *"Don't want to add any complexity unless it is
+strictly necessary at this point."* Parked, **out of M19**, and not yours to touch: typed non-reply `reason` ·
+thread-correlated `send_to_agent` · queue-and-replay on attach · truncation-recovery reads · structural-fingerprint
+contract negotiation · role→capability enforcement · the evidence-determinism mechanisms.
+
+## 5. Verify this primer before you trust it
+
+It is a claim about state, written at a past moment, and by definition it predates your plan. Ground every
+load-bearing line against the repo — the M18 ledger's **EPIC CLOSURE** and C3 row, `git log`, the files it names.
+If something is off — a merged claim absent from git, a missing file, a different C3 wording — **say so
+prominently** rather than repeating me.
+
+## 6. Op notes — the traps that are live right now
+
+- **A bug is already known and is NOT yours to fix. The idle timeout is dead code.** `agentIdleTimeoutMs: 180000`
+  is configured and swept every 30s, but `lastProgressAt` is **declared, read, and never written**, so
+  `hasAgentTimedOut()` always returns false (`registry.ts:663`). It is filed as **BL-028** / **LB-70**, the PO
+  knows, and **fixing it in M19 is a Rule-2 violation** — it is shared engine code and it needs the typed non-reply
+  `reason` landed alongside it. If you find yourself wanting to fix it, that impulse is the pitfall, not the
+  insight. (Bonus: it means a slow conversation between real CLIs **cannot** be killed by the sweep. Good news.)
+- **A passing test in our own suite proves nothing** — `__tests__/team-worker-effect-fence.test.ts:70-71` asserts an
+  *exemption* predicate for a timeout that can never fire, so it passes identically either way. That is **IP-15**
+  ("the proof that passes without your change"), shipped by us. Before you cite any bar as evidence your change
+  worked, ask the question that catches it: **"what would this print if I reverted my change?"** If you cannot
+  answer, it is not evidence yet. Expect gate 2 and gate 3 to ask you exactly this.
+- **The orchestrator has no write tools.** You edit files with **your own harness tools**; those edits never cross
+  AgentTalk's wire. Nothing mechanically stops you from touching an out-of-scope file. **Today that guardrail is
+  your character, not the system's** — the project knows this and has decided, for now, to trust it rather than
+  build a cage. `git diff --stat` before you claim done (Rule 5) is how you honour that.
+- **`IP-9` is ambiguous in citations written before 2026-07-10** — two entries shared the id; one is now `IP-16`.
+  Resolve by context.
+- **Lessons:** skim `design/lessons/<your-agent>-lessons.md` at start (see `AGENT.md` → per-agent op-notes for
+  yours), and append 1–3 dated bullets at session close. The read-back is the point; write-only rots.
+- **Budget:** poll `node scripts/usage.mjs` at start — best-effort, **never blocking**; if it's down, say so in one
+  line and carry on. At 2026-07-10 ~08:00 CEST: antigravity 38% (5h window), claude weekly 9%, codex weekly 1%.
+
+## 7. What to do now
+
+**Gather context, verify it against the repo, report your understanding, and STOP.** No code, no branch, no builds,
+no test runs, no commits. Consuming this key in your private key store — outside the repo — is the only write
+permitted in this window. Then wait: the SM greenlights, the PO may override, and your actual task will arrive as a
+**baton** once the planner's plan clears gate 1.
+
+When it does: the plan is your spec, this primer is only your map.
