@@ -1687,3 +1687,262 @@ and was demonstrated today. T3 must be re-scoped to the handshake fix + this dem
 mechanism reverted). Also reopens the question of whether `llm-agent.mjs` (shape 3, LB-64) is needed at all —
 but note it *does* set `clientInfo.contractHash` via its SDK client, so it was never blocked. Related: LB-64,
 LB-65, IP-15, `design/milestone18-self-hosting-implementation.md` gate-3 refute.
+
+### LB-67 · 2026-07-09 — [protocol] **Prior art: Traycer's agent protocol — convergent design, and three problems it has already solved that we have not**
+
+**Source.** `github.com/traycerai/traycer`, Apache-2.0, read at commit `90f0344` (committed 2026-07-09, i.e.
+actively developed *today*). Read as source, not marketing; every claim below carries a `file:line`. Surfaced by
+the PO; surveyed by the architect out-of-band (the architect seat has no cold-start primer, so no key was
+consumed). **No AgentTalk code was changed by this survey.**
+
+**What Traycer is.** A "nerve center for agentic coding": a host process that orchestrates multiple coding
+agents — harness ids `claude` · `codex` · `opencode` · `traycer` (native) · `cursor`
+(`protocol/src/host/agent/shared.ts:48-52`) —
+inside a shared Task, with a planning layer ("Epic mode"), a plan→handoff→verification loop, and agent-to-agent
+messaging. It is, structurally, the same animal as AgentTalk. It even carries the same `CLAUDE.md -> AGENTS.md`
+symlink at its repo root, for the same reason.
+
+**Finding 0 — the open-source scope is narrower than the headline.** The repo ships `protocol/` (~55k LOC, the
+wire contract) and `clients/` (~256k LOC: electron desktop, gui-app, CLI). The **host** — which their own docs
+define as "the Traycer process that owns workspace, terminal, file, and agent operations" — **is not in the
+repo**; it ships as a binary. `grep -ri 'consensus|debate|childAgent' --include='*.ts'` → **0 hits**. So the
+orchestration brain, the planner, and the verification engine are closed. *Implication:* there is no engine to
+copy — but the **contract is open, and a contract is where the operational scars are recorded.** Read the
+schemas, not the README.
+
+**Finding 1 (the important one) — peer non-reply is not one condition, it is seven.** Our M03 failure
+propagation is binary: an agent enters `error` (*including via idle timeout*) → the active team task is
+interrupted. Traycer's broker instead emits an inactivity notice carrying a `reason`
+(`protocol/src/host/agent/inbox.ts:129-137`), and each reason implies a **different obligation for the sender**:
+
+| `reason` | meaning | sender's move |
+|---|---|---|
+| `turn-ended` | Stop hook fired, no reply | accurate — the primary signal |
+| `exited` | receiver process died | definitive for this run |
+| `quiet` | long PTY silence (watchdog backstop) | **advisory** — may still be mid-turn |
+| `user-stopped` | a human stopped the turn | thread **stays open** |
+| `errored` | rate limit / API error (raw text in `detail`) | read `detail` |
+| `awaiting-input` | receiver is **blocked on a human** | **not a failure at all** |
+| `receiver-cancelled` | message dropped undelivered, thread closed | **must not re-send or launch a replacement** |
+
+Two cuts here are load-bearing and we make neither. (a) **`awaiting-input`**: an agent that paused to ask the
+human a question is observationally identical to a dead agent under an idle timeout — we would propagate it as
+an `error` and interrupt the team task, *killing a run because an agent behaved correctly*. (b)
+**`user-stopped` vs `receiver-cancelled`**: same observable (a stopped receiver), opposite instructions —
+in one the thread survives, in the other re-sending is a bug. Their own comment on `quiet` demotes PTY silence
+to advisory, and `inbox.ts:19-22` records that **monitor presence replaced "the older PTY-data heuristic"** as
+the authoritative reachability signal. *Implication:* **idle-timeout-as-error is the exact heuristic they
+retired; we still treat it as authoritative.* This is the single highest-value finding in this entry.
+
+**Finding 2 — request/reply correlation belongs in the type, not the convention.** `agent.sendMessage` is
+fire-and-forget; a reply travels back as a *separate* `agent.sendMessage`
+(`protocol/src/host/agent/contracts.ts:41-42`). Correlation is carried by a discriminated union —
+`{expectsReply: true, responseId}` | `{expectsReply: false}` (`inbox.ts:54-62`) — where `responseId` is a
+**broker-minted thread id the receiver must echo back**. Consequence they get for free: the inactivity sweep
+fires **only** for senders on `expectReply=true` (`inbox.ts:15-17`) — you are told your peer went silent only
+if you were actually waiting. *Implication:* our `send_to_agent` has **no thread correlation at all**. Survivable
+with two planners; not survivable with three, nor with nested delegation.
+
+**Finding 3 — two transport scars we will hit verbatim.**
+- **Backlog replay on open** (`inbox.ts:13-16`): "if no monitor is subscribed when a message lands, it queues
+  until one connects and the resolver replays the backlog on open." That is the attach-mode race — a message
+  sent before the agent finished attaching — solved at the broker rather than with a sleep.
+- **A retained ring for full-body re-reads** (`inbox.ts:208-217`): `agent.inbox.read` exists *because the
+  harness truncates background-output notifications*, so an agent can silently lose the tail of a long message;
+  the recovery path is a direct CLI read whose stdout is not capped. We push messages through MCP tool results —
+  **same truncation cliff, no recovery path.**
+
+**Finding 4 — their versioning framework is the answer to LB-66's contract-hash rejection.** We reject a real
+CLI at `initialize` on a **binary hash equality check** (`mcp-server.ts:150`; LB-66). Traycer negotiates instead:
+per-method `{major, minor}` schema versions, exchanged as a `ConnectionManifest` at open. The rules are enforced
+**at registry-load time, i.e. the build fails**: *minors within a major line must be purely additive; a major bump
+must carry at least one breaking change* — a purely-additive major is **rejected**
+(`framework/versioned-stream-rpc.ts:26-32`, `framework/json-schema-fingerprint.ts:232-234`). Enforcement is a
+**normalized JSON-Schema fingerprint** (object / enum / anyOf / array) that *structurally diffs* two schemas, so
+it can distinguish "additively different → still compatible" from "different → incompatible" — **which a hash
+cannot do, by construction.** Bridging is asymmetric: *the older side never transforms*
+(`framework/stream-compat.ts:145`); the newer side walks an `upgradeFromPreviousVersion` chain within a major or a
+`downgradePathsFromLatest` bridge across majors (`framework/compatibility-checker.ts:103-108`). Both peers run the
+same **pure, stateless, I/O-free** `check()` oracle, and failure yields a fatal `INCOMPATIBLE` frame carrying
+`incompatibleMethods` **and `upgradeGuidance`**. Their `protocol/README.md:42-56` further insists the npm package
+semver and the per-method schema version "are not the same number and must not be conflated."
+
+> **The sentence to keep:** *a contract hash tells you **that** something changed; a structural fingerprint tells
+> you **whether it matters**.* Our hash is a handshake with no protocol — which is precisely why a real CLI, which
+> cannot know our hash, cannot connect (LB-66).
+
+**Finding 5 — where AgentTalk is genuinely ahead, and must not regress.** Traycer's "agent-to-agent" is
+**delegation**, not consensus: create a child agent, send instructions, request a reply or fire-and-forget, read
+another agent's transcript. There is **no turn-taking, no agreement protocol, no consensus phase** anywhere in the
+open contract. Our `await_turn` pull-based turn loop and the `fact_collection → discussion → proposal` planner
+consensus are a strictly harder problem, and we are further along on it. *Implication:* everything above is the
+**substrate beneath** consensus (survivable messaging), not a substitute for it. The failure mode to guard against
+is reading a polished competitor and drifting toward its shape **because it ships** — it ships partly *because* the
+messaging layer is weaker in ambition and stronger in engineering. Take the engineering; keep the ambition.
+
+**One capability worth stealing outright, cheaply:** `agent.getTranscript`
+(`protocol/src/host/agent/contracts.ts:260`) — agents can **read another agent's transcript**. Our peers are blind
+to each other except through explicit messages. For a *consensus* protocol that is arguably not just a debugging
+convenience but a correctness affordance.
+
+**Backlog candidates (named, NOT created here — facts go in the logbook, work goes in `backlog.md`):**
+(a) replace the binary `error` state with a typed non-reply `reason`, and stop treating idle timeout as
+authoritative — *this one is a spike and it interacts with M03's contract*; (b) thread-correlate `send_to_agent`
+(`expectsReply` + orchestrator-minted `responseId`); (c) queue-and-replay on attach; (d) a truncation-recovery
+read path for long messages; (e) fold the structural-fingerprint idea into the M17 contract-coupling work, where
+it directly dissolves LB-66's handshake rejection. **Each needs a planner and a plan reviewer; none is authorized
+by this entry.**
+
+Related: LB-66 (contract-hash rejection — Finding 4 is its answer), LB-63/LB-64/LB-65, M03 failure propagation,
+M17 contract coupling, `design/backlog.md` BL-017. Prior-art survey only — no code, no behaviour change.
+
+### LB-68 · 2026-07-10 — [protocol] **The workflow gate notarizes claims; it does not govern acts. The orchestrator is not in the write path.**
+
+Follow-on to LB-67, same out-of-band architect session (PO-initiated; no primer consumed, no behaviour changed).
+Where LB-67 recorded facts about *their* system, this records two facts about **ours**, both verified in source
+today. Together they bound what "workflow authority" currently means — which is **less than the phrase suggests**.
+
+**Finding 1 — the M17 gate is opt-in, and it guards the envelope, not the effect.**
+`packages/runtime-core/src/registry/registry.ts:379-395` runs the authority check **only inside**
+`if (workflowEvent && workflowEvent.kind === 'workflow_gate_event')`, and
+`packages/runtime-core/src/registry/mcp-tools.ts:74` declares `send_to_agent`'s required fields as
+**`['to', 'payload']`** — `workflowEvent` is **optional**. Consequences, precisely:
+- An agent **cannot lie** about its role: a `fromRole` that disagrees with the registry-owned `agent.workflowRole`
+  throws, aborts the send, and emits `workflow_gate_attempt {result:'refused'}` (`registry.ts:387-393`). PO-level
+  events are refused from *any* agent path outright (`registry.ts:381-383`) — a genuinely good fence.
+- An agent **can simply not say**. Omit `workflowEvent` and the identical message is delivered with **no check at
+  all**. Nothing in the engine requires a gate act to be *labelled* as one.
+- The check therefore guards **the truthfulness of an annotation**, never an effect in the world. It is a
+  **notarization service, not a permission system**. *(Both properties are correct-as-built; the risk is
+  describing them as more than they are. Before any ledger or plan claims M17 "enforces workflow authority,"
+  check that sentence against these two line refs.)*
+
+**Finding 2 — the orchestrator has no visibility into the implementer's writes, by construction.** The MCP
+surface is `list_agents` · `send_to_agent` · `consensus_respond` · `submit_work_response` · `submit_work_result`
+(+ `await_turn`, healthcheck) — `grep` for `write_file|edit_file|writeFile` across the engine returns **nothing**.
+Under attach mode the implementer edits files with **its own harness tools**; those edits never cross AgentTalk's
+wire. *Implication:* the layer where role authority lives (the MCP registry) is **structurally incapable** of
+enforcing a scope guardrail like *"do not touch `team-coordinator.ts`."* Today that guardrail is enforced by the
+implementer's **character**, not by the system. This is the single most consequential structural fact about the
+current architecture, and it is not a defect — it is a boundary that was never named.
+
+**Corollary (the two facts compose).** Our governance today reaches exactly as far as what an agent *chooses to
+declare*. It makes the **ledger honest** — no agent can forge a role in a gate event — and it makes the ledger
+**silent about deeds**. An implementer that scope-creeps commits no protocol violation; it simply never mentions
+it. The ⛔ Rules of Engagement are, mechanically speaking, **unenforced** — Rule 5 (scope), Rule 7 (retry budget)
+and the independence defaults are all *decidable predicates* that nothing currently decides.
+
+**Chokepoint taxonomy (analysis, NOT a decision — no plan, no authorization).** "Do not touch that file" can only
+be enforced somewhere the write is observable. There are three such places, and they differ in kind:
+
+| chokepoint | fires | harness-agnostic | enforces |
+|---|---|---|---|
+| harness hook (e.g. `PreToolUse` deny) | before the write | ✗ (claude has hooks; codex/gemini differ) | prevention |
+| filesystem (task worktree + `chmod -w` on out-of-scope paths) | at the write, as `EPERM` | ✓ | prevention |
+| git at delivery (`git diff --stat` vs the plan's scope) | after the write | ✓ | detection; refuse the delivery |
+
+The filesystem row has a property the other two lack: **the denial is also the interrogation trigger.** The agent
+hits `EPERM`, cannot proceed, and must report — so *prevention* and *"you touched it, explain yourself"* stop being
+two mechanisms. It also sidesteps the harness zoo rather than solving it four times. Prerequisite: the plan's DoD
+rows must carry a **machine-readable `scope:` glob**, which they do not today.
+
+**Three constraints any such design must respect** (each learned, not invented):
+1. **Deny, but always record.** A silent fence destroys the signal it should generate: an implementer that *tried*
+   to open an out-of-scope file is reporting either a wrong plan scope or scope-creep, and those want opposite
+   responses. `registry.ts:391` already does this right by emitting `refused` rather than swallowing it. Repeated
+   refusals across tasks are `implementer-pitfalls.md` case law, generated mechanically.
+2. **Fence, not jail — the threat model is over-eagerness, not adversariality.** `chmod -w` suffices *even though*
+   `chmod +w` defeats it: an agent that chmods around a scope guard has committed a violation so legible that no
+   sandbox was needed to catch it. Do not build the sandbox.
+3. **Only mechanize decidable predicates.** Rule 5 (file scope) is a path predicate; Rule 7 (retry budget) is a
+   counter; the independence defaults (impl-reviewer ≠ implementer; task-end ≠ impl-reviewer) are a registry
+   lookup — **all decidable, and the registry already holds both bindings.** But Rule 2 ("any non-trivial behaviour
+   change is a show-stopper") is **not decidable**, and the tempting proxy — *"no existing test file may change"* —
+   is a trap: it blocks legitimate work and will be routed around. A fence that *pretends* to carry a judgement
+   call converts it into a checkbox. Where the predicate is objective, fence it; everywhere else the culture carries it.
+
+**Finding 3 — bootstrap hazard, to be designed for before M18 goes deep.** If AgentTalk enforces the workflow that
+would catch AgentTalk's bugs, a defect in the enforcer corrupts the machinery that would surface it. LB-66 is the
+preview: a handshake check rejected precisely the agents that would have exercised it, and it took an out-of-band,
+PO-authorized live run to notice. **Standing invariant to preserve: the PO's channel must never be mediated by
+AgentTalk.** The manual terminal baton looks like an interim workaround; it is in fact the **reference clock**, and
+self-hosting must not consume it.
+
+**Finding 4 — the moat is governance, not consensus, and consensus is the less defensible half.** LB-67 Finding 5
+claimed Traycer "has no consensus"; that claim is **narrowed here**: their *open contract* has none, but their host
+is a closed binary and their README advertises agents that "debate architecture or peer-review code." *We cannot
+know.* What we **can** verify is that their open contract carries `agentId` · `harnessId` · `epicId` and **no role,
+no gate, no authority**. Role-typed authority with an audited refusal is the thing we have and they demonstrably do
+not expose. Note also (LB-66 Finding 2) that our consensus has been demonstrated on **SDK/in-process substrates,
+never on real attached CLI sessions** — so the more-defensible half is also the *less-proven* half. Both facts point
+the same way: **self-hosting is the experiment that would settle it.**
+
+Related: LB-67 (prior art), LB-66 (contract-hash; PO out-of-band run), M03 failure propagation, M17 workflow
+authority, `AGENT.md` ⛔ Implementer Rules of Engagement (Rules 2/5/7), `design/collaboration-workflow.md` §1
+independence defaults. Analysis only — **no code, no behaviour change, no backlog items created.**
+
+### LB-69 · 2026-07-10 — [process] **Nobody owns role→capability enforcement: BL-015 defers it to M17, M17 doesn't do it. Plus: the case law's dominant failure is false claims, not trespass.**
+
+Same out-of-band architect session as LB-67/68. **Correction first, because it is the point:** the "deterministic
+role fence" discussed in this session is **not a new idea** — it is **BL-015**, `design/scope-fences-design-note.md`
+(🟡 DRAFT, dated 2026-07-08, Owner: Architect, Origin: PO idea). That note already contains the L0/L1/L2 ladder, the
+machine-readable `@scope` manifest (`allowed:` / `forbidden:` / **`free:`**), "the refusal message IS the
+deviation-report template," "fences are amended only at gates," "freedom inside the box is sacred," and principle 4,
+"**necessary, not sufficient**." The architect (me) reconstructed all of it from scratch without recalling the note,
+and only found it by grepping before asserting novelty. *Lesson recorded in `design/lessons/claude-lessons.md`; the
+mechanism that caught it is the same verify-don't-assert habit that IP-15 is about.* Three things below are
+genuinely additive to that note.
+
+**Finding 1 (load-bearing) — an ownership hole sits exactly between two documents.**
+`scope-fences-design-note.md:72` lists as an explicit **non-goal**: *"No authority/identity enforcement (M17 owns
+that)."* But LB-68 establishes what M17 actually does: it refuses a **falsely-labelled** `workflowEvent` and emits a
+receipt — while `workflowEvent` is **optional** on `send_to_agent` (`mcp-tools.ts:74`, required = `['to','payload']`).
+M17 governs the truthfulness of a *claim*; it never binds a **role** to a **capability**. So BL-015 defers
+role→capability enforcement to M17, and M17 scopes itself to label integrity. **Neither owns it. It is unassigned
+work that both documents believe the other is doing.** This is the finding of the session; everything else is
+colour. *(Disposition is the PO's + a planner's; naming it is the architect's job. No backlog item created here.)*
+
+**Finding 2 (empirical) — quantifying BL-015's own principle 4.** The note concedes fences are "necessary, not
+sufficient." Classifying all 16 `IP-N` cases in `design/implementer-pitfalls.md` against a deterministic file fence:
+- **Prevented outright (3):** IP-5 (out-of-scope engine creep), IP-6 (non-hermetic tests touching real fs/git/network
+  — a sandbox decides this, not a promise), IP-12 (delivered loose in mainline — structurally impossible if the
+  harness *is* a worktree on a task branch; the note already claims this one).
+- **Untouched (≥7):** IP-1 (green by subtraction — *the test you weaken is inside your scope*), IP-2 (false deferral),
+  IP-3 (behaviour-change laundering), IP-4 / IP-8 (in-scope deletions), IP-9 (deviation), IP-13 (mocking around a
+  defect), IP-15 (a proof that passes without the change).
+
+**The pattern in the untouched column is not "did a forbidden thing." It is "said a false thing."** The dominant
+failure class in our own case law is **evidence dishonesty**, and no file fence — L0, L1, or L2 — touches it. BL-015's
+non-goals say so outright: *"no attempt to fence LLM reasoning — only its writes."*
+
+**Finding 3 (new axis) — evidence determinism: never ask an agent for a fact the system can measure.** The
+complement to the capability fence, aimed squarely at the untouched column:
+- the **system** runs the suite and *awards* the green; the implementer never *claims* one (kills IP-1/IP-3);
+- the **system** emits the closure telemetry block — wall-clock, `git diff --stat`, gate results are all measurable
+  (kills IP-10, which is literally "telemetry asserting un-happened facts");
+- **a proof must fail without the change.** Revert the diff, re-run the proof; if it still passes, the proof is
+  **void, mechanically**. That is IP-15 turned from case law into a check.
+
+Capability determinism kills **trespass**; evidence determinism kills **laundering**. "Honesty over Results" —
+the project's core value — is today enforced entirely by exhortation, and it is the *laundering* half that carries it.
+
+**Finding 4 (structural tension, unnamed until now).** BL-015's **L2** assumes "launch machinery provisions the task
+branch + a fenced worktree." But **M05's founding premise is that provider MCPs are *externally launched by the
+operator*, not auto-launched** (`AGENT.md`, Milestone 05). **You cannot deterministically constrain a process you did
+not launch** — fs view, uid, network and worktree are all decided at launch. So L2 requires attach mode to grow a
+*launched* variant, i.e. AgentTalk becomes a supervisor that owns process + filesystem, not merely a wire. Note this
+is precisely the road Traycer took (LB-67: their host "owns workspace, terminal, file, and agent operations") — and
+that host is the closed half of their repo. **The decision is real, it is architectural, and BL-015 does not name it.**
+
+**Finding 5 (defect, not mine to fix) — `implementer-pitfalls.md` has two `IP-9`s**: line 83 *"Process-optimization
+by deviation"* and line 150 *"Artifact-count green."* The file's own discipline is that `IP-N` ids are **stable** so
+ledgers can cite them — and the collision has **already produced ambiguous citations** in at least
+`milestone14-facilitator-extraction-implementation.md:106`, `arbiter-shadow-spike-implementation.md:456`,
+`backlog.md:854`, `scope-fences-design-note.md:5`, `lessons/claude-lessons.md:61`. Renumbering breaks existing
+citations, so this is **not** a zero-risk reviewer fix; it needs a decision (renumber-with-redirect vs. retitle).
+**The case law is reviewer-authored — flagged here, deliberately left untouched by the architect.**
+
+Related: **BL-015** / `design/scope-fences-design-note.md` (the prior art *inside the house*), **BL-014**
+(role-skill injection — the note gates L2 with it at M19), LB-68 (the gate notarizes, it does not govern), LB-67
+(Traycer launches; we attach), M05 attach-mode premise, M17 workflow authority. Analysis only — **no code, no
+behaviour change, no backlog items created, `implementer-pitfalls.md` untouched.**
