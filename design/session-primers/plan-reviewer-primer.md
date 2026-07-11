@@ -1,40 +1,59 @@
 ---
 role: plan-reviewer
-key: none
-written: 2026-07-09 by Claude (session close — M17 closed; next gate-1 work is the M18 plan)
+key: 20260712-0930-06bd03
+written: 2026-07-12 by Claude (session close — M20 closed; program is between epics; no gate pending, PO will direct)
 ---
 
 This is your session primer.
 
-AgentTalk is a multi-agent orchestration/control plane: provider-backed agents attach over MCP/API, the
-runtime routes planning/work messages through a central registry, and consensus/team execution is recorded
-for review. Active program: AgentTalk improves itself (self-hosting, M16→M18).
+**Project (1–2 lines).** AgentTalk orchestrates several *real* heterogeneous LLM CLI agents (Claude Code, Codex CLI,
+Gemini) as one software-development team that plans/builds/reviews/merges code by talking through a deterministic,
+auditable MCP substrate, under a human Product Owner (Fausto) who holds scope + merges. Its aim is **self-hosting**:
+the team improves its own codebase, and success = the PO's manual coordination burden falls, measurably, over time.
 
-**Roles:** bindings live ONLY in `AGENT.md → 📌 DEFAULT ROLE ASSIGNMENTS`. This primer is for the **plan
-reviewer** seat (gate 1; default Claude, who currently also holds task-end reviewer + SM + architect —
-declare every hat, keep each gate's discipline separate; the ⛔ Reviewer Rules bind all seats).
+**Roles.** Human = PO (apex; scope/direction/merges/relay). Agents: planner, three reviewer seats (plan / implementation
+/ task-end — independence: no self-review; task-end ≠ implementation reviewer at close), implementer, architect. Current
+bindings live **only** in `AGENT.md → 📌 DEFAULT ROLE ASSIGNMENTS` (read it — don't infer). **This primer is for the
+plan-reviewer (gate 1); you [Claude] also hold task-end-reviewer, architect, and the delegated SM** — the concentration
+is real and PO-accepted (merges stay PO-gated; declare every hat you wear). **Do the First Entry Point handshake, verify
+this brief against the repo, report, and STOP for the PO's go — do not start work.**
 
-**Workflow / source of truth:** `design/collaboration-workflow.md` + `AGENT.md` ⛔ Reviewer Rules. Ledger of
-record for the last epic: `design/milestone17-gate-over-channel-implementation.md` (frozen). Logbook LB-63.
+**Workflow / source of truth.** `design/collaboration-workflow.md` (the method) + the artifacts: each epic's
+`*-plan.md` (spec+DoD) and `*-implementation.md` (the ledger — the real state), `design/backlog.md`,
+`design/logbook.md` (LB-N facts), `design/lessons/claude-lessons.md` (skim at start). Verify-don't-assert: ground every
+load-bearing claim in git/code before repeating it.
 
-**Where we are (verify — this primer can be stale):** **M17 CLOSED** (2026-07-09; BL-019 done; suite
-291/291; no `doing` item). Next expected gate-1 work: **the M18 plan** (self-hosting milestone — one real
-dev epic runs on the substrate), authored by the planner after PO+Architect inception. Method template: the
-M17 Gate-1 record — verify load-bearing plan claims against the code *before* ruling (the wire-contract
-hash check settled tool-vs-metadata in minutes and kept v7).
+**Where we are (REQUIRED — verify against git).** **M20 just closed (2026-07-12); the program is BETWEEN EPICS — no
+gate is pending.** The M16→M20 arc is done and on `master` (pushed): M16 one baton · M17 gate-over-channel · M18
+self-hosting first turn · M19 real-CLI attach + substrate relay (C3 discharged, *qualified*) · **M20 "the brain routes,
+you approve"** — the approval-gated agent→agent relay mechanism (registry `RelayApprovalMode='off'|'approve_each'`,
+default OFF; pending-relay lifecycle distinct from M17 authority; WS+UI approval panel; proven end-to-end with a real
+Codex CLI). Full state: `design/milestone20-po-approved-relay-implementation.md` + `design/self-hosting-program-draft.md`
+§M20 (CLOSED block) + LB-74/LB-75.
 
-**Standing vigilance from M17:**
-1. **BL-020 is a feasibility landmine for any M18 live proof:** the orchestrator dies on client disconnect
-   mid-turn. An M18 plan that runs a real epic on the substrate hits this immediately — it must be in-fence
-   (or the plan must explain why not). Same class: BL-017 (real CLI sessions can't send envelopes) is
-   probably M18-T1; without it M18's relay≈0 DoD is unreachable.
-2. Both M17 gate-3 refutes were **conceptual-boundary** holes (tag≠act; provider `api` ≠ human channel) —
-   review authority/trust claims from outside the implementation's own vocabulary.
-3. Demand §3c deviation rows and distrust asserted observations — the T3 implementer claimed a UI
-   observation it had only inferred; observations must be made, not derived.
-4. Port hygiene for live proofs: LB-63 (pick a port free on both address families; 9899 is the meter's).
+**The honest boundary (do NOT let it drift).** M20 *built* the mechanism; it has **not run real dev coordination through
+it** → **0 organic substrate coordination**; the M19/M20 ratios (2/~9, 1/3) are *capability demonstrations, NOT
+productivity stats*. The program's actual goal (a *measured* fall in the PO's terminal-relay burden) is now **operational
++ incremental** and PO-driven: flip the mode on, approve real batons during actual dev work, retire cut-and-paste one
+hand-off at a time, relax consent along the dimmer (approve-each → by-exception → autonomous) checking each notch.
+`BL-028` (typed non-reply / wake, LB-67 F1) is the dependency when autonomous delivery is approached.
 
-**Op notes:** freeze bar: full suite + M14 identity harness (leaks one worktree/branch per run — sweep) +
-zero `team-coordinator.ts` diff + grep for `as any` pokes. Budgets pre-registered per check — 1 attempt per
-bar at task-end-style re-verification. Meter: `node scripts/usage.mjs` best-effort (LB-11); when it's down,
-tag telemetry figures as [est] and reconcile later (this session's estimates ran ~10 points low).
+**Likely next work (PO decides — don't assume).** One of: (a) **operational adoption** of M20 (PO turns the mode on
+during real work — mostly PO-driven, agents just participate); (b) **a new epic** — then the flow is inception
+(PO+architect) → backlog gate → planner authors plan → **your gate 1** → implementer; (c) **pre-adoption research** from
+`design/research-agenda.md` (open questions: affordance protocol, structural-fingerprint versioning, mechanized
+verification, etc. — mined from the logbook/backlog). If a plan lands for gate 1, your move is the usual: grep its
+load-bearing code claims + the blast radius of any shared-code change *before* approving (that catch is what shaped M20).
+
+**Op notes / gotchas.**
+- **Meter:** `node scripts/usage.mjs` (best-effort). Claude was ~36% weekly at M20 close (resets ~Jul 15).
+- **Chrome extension** (`mcp__claude-in-chrome__*`) drops on Chrome auto-update (v150 dropped it 2026-07-12; PO
+  reconnects manually). If "not connected," diagnose (Chrome running? extension `fcoeoabgfenejglbffodgkkbkcdhcgfn`
+  enabled?) and ask the PO to reconnect; fall back to code+test verification, don't rabbit-hole.
+- **Do NOT reap** `com.fausto.agenttalk-orchestrator` — it's the PO's `launchd` KeepAlive service (ppid 1, non-default
+  ports), not a leak. Always **identify before you reap** (launchctl / etime / ppid).
+- **`agentalk-mcp-client` has NO git remote** (local-only) — can't push it; its `wire-contract.json` is a *generated*
+  copy of `packages/contracts/wire-contract.json` (v7) — sync, don't hand-edit.
+- Stale branch `task-M18-T3` (both repos) is dead history, left un-pruned. `design/research-agenda.md` is committed.
+- Backlog: 30 items, 0 warnings. BL-018/024/026/027/030 done or dispositioned; BL-022/023/025/028/029 todo;
+  BL-014/015/016 deferred.

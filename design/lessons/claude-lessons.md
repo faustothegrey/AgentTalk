@@ -230,3 +230,30 @@ here.**
   and **two were wrong** (a range off by two lines; a harness list missing `traycer`). An entry whose citations don't
   resolve is worse than no entry — it teaches the next reader that our refs can't be trusted. Verifying took one
   command.
+
+### 2026-07-12 — M19→M20 arc (SM+architect+all-reviewer hats): grep-at-gate-1, verify-the-fold, identify-before-reap, honest-about-my-own-gaps
+
+- **As plan reviewer: the blast-radius grep at Gate 1 is my single highest-leverage move, and it paid off biggest on
+  M20.** The plan gated *every* `send_to_agent`; three minutes grepping its callers found two behaviour-contract tests
+  it would break (`m17-gate-channel.test.ts:93`, `baton-metadata.test.ts`) **and a production flow it would hang**
+  (`conversations/runtime.ts` auto-replies). The fix — make the gate a *mode, default off* — preserved everything
+  *and* turned out to *be* the consent-dimmer the PO wanted. Caught before a line was written. Same move caught M16's
+  F1 and M17's contract question. **Always grep the blast radius of a shared-code change at gate 1.**
+- **As reviewer: verify the fold against the PLAN/CODE, not the ledger's self-report.** Both M19 (3 conditions) and
+  M20 (the mode amendment) came back "folded" in the ledger; I re-checked the actual plan/registry each time. The
+  reports were faithful — but the point is the ledger's claim isn't the verification, the re-check is. Also: T1's
+  mode-off "preservation" was only genuine *because the unchanged contract tests still passed* — I confirmed those
+  test files were **not modified** before trusting the green (a weakened test is a false preservation).
+- **"Identify before you reap" fired correctly, twice, exactly as my 2026-07-09 lesson predicted.** A backend kept
+  respawning on each kill; `launchctl list` + ppid 1 + non-default ports identified it as the PO's `launchd` service
+  `com.fausto.agenttalk-orchestrator`, not a leak — left it alone. And the `etime` column showed "leaked" llm-agents
+  were breach-era, not from my run. The habit is now reflexive; keep it that way.
+- **Honesty about my *own* review gaps, not just implementers'.** I told the PO I'd drive the live UI; when the Chrome
+  extension was down I said so plainly, diagnosed it (Chrome v150 auto-update dropped the connection), and after the
+  reconnect drove render + a real mode-toggle click (backend-confirmed WS). The literal Approve-button-on-a-live-relay
+  I did **not** click — I verified it by composition and stated *exactly* what I did and didn't do rather than
+  overclaim "drove the UI." Reviewer honesty-over-results applies to the reviewer.
+- **The demonstration-vs-organic caveat held under pressure, both epics.** M19-T3 and M20-T3 each produced a ratio
+  (2/~9, 1/3) that was a *capability* proof, not burden reduction — I made that caveat load-bearing in the ledger,
+  backlog, program draft, and logbook each time, so the number can't later be quoted as a productivity stat. That is
+  program-risk-#3 discipline at the exact moment of maximum temptation to inflate.
