@@ -78,8 +78,8 @@ substrate-carried ratio; SDK controls do not count in the substrate numerator.
 
 | Item | Implementer claim | Reviewer verdict | Evidence |
 |---|---|---|---|
-| M19-D1 - contract alignment / stale-client guard | pending | pending | M19-T1 |
-| M19-D2 - hard-reject semantics preserved | pending | pending | M19-T1 |
+| M19-D1 - contract alignment / stale-client guard | claimed by Codex, 2026-07-11 | **VERIFIED ✅ (Gate 2, reproduced)** | M19-T1; Gate 2 Review below |
+| M19-D2 - hard-reject semantics preserved | claimed by Codex, 2026-07-11 | **VERIFIED ✅ (Gate 2, reproduced)** | M19-T1; Gate 2 Review below |
 | M19-D3 - supported Codex + Claude attach ritual | pending | pending | M19-T2 |
 | M19-D4 - Claude functional noninteractive `await_turn` proof or ENABLER-BLOCKED | pending | pending | M19-T2 |
 | M19-D5 - real attached CLI substrate-carried baton/workflow event with provenance correlation | pending | pending | M19-T3 |
@@ -90,8 +90,52 @@ substrate-carried ratio; SDK controls do not count in the substrate numerator.
 
 ## M19-T1 - BL-018: contract alignment and stale-client guard
 
-**Status:** pending Gate 1.
-**Branch:** `m19-t1-contract-alignment` when implementation begins.
+**Status:** **Gate 2 VERIFIED (Implementation Reviewer: Claude, 2026-07-11).**
+**Branch:** `m19-t1-contract-alignment` (⚠️ changes still **uncommitted** in both repos — see signal S1).
+
+### Gate 2 Review (Implementation Reviewer: Claude, 2026-07-11) — VERIFIED
+
+Verified by **running** every load-bearing bar myself, not by reading the report:
+
+- **M19-D1 (alignment + divergence guard) — VERIFIED.** Client `wire-contract.json` is now v7 `ffa94e93…` (matches
+  the AgentTalk source). The guard **discriminates** — I ran the A/B on **both** sides: aligned → exit 0
+  ("alignment verified"); drifted to v5 (via env override, non-destructive) → **exit 1** ("...wire contracts
+  diverged"). `sync-wire-contract.js` writes the source verbatim into the client — the durable *generate-from-source*
+  fix (no re-drift), exactly the Gate-1 ask.
+- **M19-D2 (hard-reject preserved) — VERIFIED.** `mcp-server.test.ts` 5/5; `mcp-server.ts` untouched (fence).
+- **End-to-end accept (T1's real goal: "stale v5 no longer blocks attach") — VERIFIED by direct run.** Codex's
+  evidence used the exec-rpc **mock** test (proves the client *sends* v7) + composition; I closed it directly by
+  re-running the live harness with the v7 client: **zero rejection lines** (was 3 on v5), all agents "Connection
+  established" + `await_turn`, team created. (Killed before the gemini debate — irrelevant to T1.)
+- **Freeze bar — reproduced.** `npm test` **297/297**; `tsc -b` clean; `backlog:check` 29/0; client `npm run build`
+  green (5 tests). Fence clean in **both** repos (no forbidden surface touched). No stale NDJSON / no
+  `m17-live-gate-proof.mjs` (D8 respected).
+
+**Implementer signals dispositioned (Reviewer Rule 7):**
+- **S1 [process] — work is uncommitted.** Codex left all T1 changes as working-tree edits on the `m19-t1` branch in
+  both repos ("no commit made"). Not a code defect; but the branch must be **committed before the gate-3 merge**
+  (echo of IP-12, branch-less delivery). Disposition: **accepted, commit required before merge.**
+- **S2 [observation, non-blocking] — the alignment guard is fail-*open* when the sibling repo is absent.** Both
+  `verify-contract.js` scripts `warn`+skip if the other repo isn't found (unless the `AGENTTALK_*_CONTRACT_PATH` env
+  is set, which then fails-closed). So in a single-repo CI the divergence check silently passes. Codex made this
+  explicit (loud warn) and the guard fires whenever both repos are present (the D1 bar). Disposition: **accepted as
+  a pragmatic choice; noted as a possible hardening** (a CI that sets the env var to fail-closed) — not a T1 blocker.
+
+**Gate 2 outcome: PASS.** Both T1 DoD rows VERIFIED; T1's real goal proven end-to-end; freeze bar green; fence held.
+
+### Gate 3 Closure (Task-end Reviewer: Claude, 2026-07-11) — MERGED
+
+**Doubling declared & PO-accepted:** Claude held gate 2 + gate 3 for T1 (concentration note above). The closure
+sweep re-used the gate-2 independent runs (297/297 suite, both-sided A/B divergence, end-to-end v7 accept, fence
+audit) — the accepted tradeoff for this low-risk prerequisite; merge remained PO-gated (`[PO]` go, 2026-07-11).
+Signal **S1 resolved**: the branch was committed in both repos as part of this closure. Hygiene: post-commit trees
+clean; no leaked processes (my live-gate run reaped by age). **Merged `m19-t1-contract-alignment` → `master` in both
+repos.** T2 now opens from an aligned `master`.
+
+**T1 Coordination Evidence (BL-027, honest):** substrate events **0** — expected, T1 is the *enabler*; real
+substrate-carried coordination is T3's job, and the attach path it needs is only built in T2. Every T1 role hand-off
+(planner→implementer baton, implementer→reviewer gate-2 handback, reviewer→PO closure authorization) was
+**terminal-relayed** via the PO. **Ratio: 0 / ~3 (all terminal).** This is the baseline M19 exists to move.
 
 ### Scope Manifest
 
@@ -124,6 +168,14 @@ substrate-carried ratio; SDK controls do not count in the substrate numerator.
 | substrate events | pending | 0 |
 | terminal fallbacks | pending | 0 |
 | ratio | pending | pending |
+
+### Implementer Claim - 2026-07-11
+
+- `agentalk-mcp-client/wire-contract.json` is generated from `packages/contracts/wire-contract.json` by `npm run sync-contract` and is now v7 / `ffa94e93e3182d44924ed28381870c7bd814c908279942022d5925a4865a9446`.
+- AgentTalk and client contract verifiers both fail closed on committed-contract divergence, with version/hash output. The client build now runs the verifier.
+- The server wrong-hash hard reject is preserved by the existing `mcp-server.test.ts` coverage (`-32000` response and WebSocket close `1008`); no server production file was edited.
+- The narrower no-longer-v5 proof is the client WebSocket MCP test assertion that `llm-agent` initializes with the generated v7 `contractVersion` and `contractHash`.
+- Fresh-run evidence is recorded in `design/evidence/m19-t1-contract-alignment.txt`; no stale NDJSON or `scripts/m17-live-gate-proof.mjs` evidence was used.
 
 ## M19-T2 - BL-026: supported real-CLI attach ritual
 

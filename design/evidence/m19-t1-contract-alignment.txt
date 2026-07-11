@@ -1,0 +1,46 @@
+M19-T1 evidence - contract alignment / stale-client guard
+Date: 2026-07-11
+Branch: m19-t1-contract-alignment
+Implementer: Codex
+
+Scope declaration:
+- AgentTalk touched: packages/contracts/scripts/verify-contract.js, design/milestone19-real-cli-relay-implementation.md, design/evidence/m19-t1-contract-alignment.txt.
+- agentalk-mcp-client touched: wire-contract.json, scripts/verify-contract.js, scripts/sync-wire-contract.js, __tests__/contract-scripts.test.mjs, __tests__/exec-rpc.test.ts, package.json, README.md.
+- Forbidden surfaces not edited: packages/mcp-transport/src/mcp-server.ts, packages/runtime-core/src/registry/team-coordinator.ts, packages/runtime-core/src/registry/mcp-tools.ts, ../agentalk-mcp-client/bridge.mjs.
+
+Generated client contract:
+- Command: npm run sync-contract (in ../agentalk-mcp-client)
+- Result: Synced wire-contract.json from AgentTalk v7 (ffa94e93e3182d44924ed28381870c7bd814c908279942022d5925a4865a9446).
+
+Positive alignment checks:
+- Command: npm run verify-contract (in ../agentalk-mcp-client)
+- Result: Contract hash verified successfully (v7). Contract alignment verified successfully against AgentTalk source.
+- Command: npm run test --workspace @agenttalk/contracts (in AgentTalk)
+- Result: Contract hash verified successfully (v7). Client contract alignment verified successfully.
+
+Negative divergence probes:
+- Command: AGENTTALK_MCP_CLIENT_CONTRACT_PATH=<temp-v5-contract> node packages/contracts/scripts/verify-contract.js
+- Result: status=1; printed AgentTalk v7 ffa94e93e3182d44924ed28381870c7bd814c908279942022d5925a4865a9446 vs Client v5 1236003f9db2a7110879855bbdc66c7aa5b7c19dbab28f2bdcdb463cd1ac9883.
+- Command: AGENTTALK_CLIENT_CONTRACT_PATH=<temp-v5-contract> node scripts/verify-contract.js (in ../agentalk-mcp-client)
+- Result: status=1; printed AgentTalk v7 ffa94e93e3182d44924ed28381870c7bd814c908279942022d5925a4865a9446 vs Client v5 1236003f9db2a7110879855bbdc66c7aa5b7c19dbab28f2bdcdb463cd1ac9883.
+
+No-longer-v5 proof:
+- Command: npm run build (in ../agentalk-mcp-client)
+- Result: lint passed; verify-contract passed; vitest passed (3 test files, 5 tests).
+- Relevant assertion: __tests__/exec-rpc.test.ts records the real llm-agent initialize request and asserts clientInfo.contractVersion/hash equal generated wire-contract.json.
+
+Hard-reject preservation:
+- Command: npx vitest run packages/mcp-transport/src/__tests__/mcp-server.test.ts
+- Result: 1 test file passed, 5 tests passed.
+- Relevant existing assertion: wrong contractHash receives JSON-RPC error code -32000 and WebSocket close code 1008.
+
+Freeze bar:
+- npx tsc -b: passed.
+- npm test: passed; @agenttalk/contracts verifier passed first, then vitest passed (52 test files, 297 tests).
+- npm run backlog:check: passed; backlog structure OK (29 items, 0 warnings).
+- git diff --check in AgentTalk: passed.
+- git diff --check in ../agentalk-mcp-client: passed.
+
+Evidence exclusions:
+- No stale NDJSON evidence used.
+- scripts/m17-live-gate-proof.mjs was not run or used as evidence.
