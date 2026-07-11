@@ -21,6 +21,10 @@ import type {
   TeamRole,
   TeamTask,
   WorkflowRole,
+  RelayApprovalMode,
+  PendingRelay,
+  WorkflowBatonMetadata,
+  WorkflowGateEvent,
 } from '@agenttalk/contracts/types';
 import { ConversationCoordinator } from './conversation-coordinator.js';
 import { TeamCoordinator } from './team-coordinator.js';
@@ -109,6 +113,9 @@ export class Registry extends EventEmitter {
   private readonly config: RegistryConfig;
   private reconnectTimeouts = new Map<string, NodeJS.Timeout>();
   private outboundMessageSeq = 0;
+  private relayApprovalMode: RelayApprovalMode = 'off';
+  private pendingRelays = new Map<string, PendingRelay>();
+  private pendingRelaySeq = 0;
 
   constructor(
     config: Partial<RegistryConfig> = {}
@@ -422,37 +429,31 @@ export class Registry extends EventEmitter {
         const targetAgent = this.getAgent(to);
         const conversation = this.findActiveConversationByAgents(agent.id, to);
 
-        if (targetAgent.status !== 'ready' && targetAgent.status !== 'busy') {
-          throw new Error(`Target agent ${to} is in ${targetAgent.status} state`);
-        }
+        this.assertRelayDeliverable(agent.id, targetAgent, conversation);
 
-        if (conversation) {
-          const currentCount = conversation.replyCounts[agent.id] ?? 0;
-          if (currentCount >= conversation.maxRepliesPerAgent) {
-            this.conversationCoordinator.markConversationCompleted(conversation, `Reply cap reached by ${agent.id}`);
-            throw new Error(`Conversation ${conversation.id} reply cap reached for ${agent.id}`);
-          }
-        }
-
-        // Delivery: write EVT to target process stdin
-        await this.sendProtocol(targetAgent.id, 'EVT', {
-          type: 'message_received',
-          from: agent.id,
-          payload: payload,
-          ...(replyToMessageId ? { replyToMessageId } : {}),
-        });
-
-        if (conversation) {
-          this.conversationCoordinator.recordConversationMessage(conversation, {
-            kind: 'message',
-            from: agent.id,
-            to,
-            payload: String(payload),
-            timestamp: new Date().toISOString(),
-            ...(baton ? { baton } : {}),
-            ...(workflowEvent ? { workflowEvent } : {}),
+        if (this.relayApprovalMode === 'approve_each') {
+          const relay = this.createPendingRelay({
+            fromAgentId: agent.id,
+            toAgentId: to,
+            payload,
+            replyToMessageId,
+            baton,
+            workflowEvent,
           });
+          this.markTerminalActionComplete(agent);
+          return { content: [{ type: 'text', text: `Message pending PO approval (${relay.id})` }] };
         }
+
+        await this.deliverRelayMessage({
+          fromAgentId: agent.id,
+          toAgentId: to,
+          payload,
+          replyToMessageId,
+          baton,
+          workflowEvent,
+          targetAgent,
+          conversation,
+        });
 
         this.markTerminalActionComplete(agent);
         return { content: [{ type: 'text', text: 'Message sent successfully' }] };
@@ -687,6 +688,143 @@ export class Registry extends EventEmitter {
 
   private findActiveConversationByAgents(agentIds: string[] | string, maybeTo?: string): Conversation | undefined {
     return this.conversationCoordinator.findActiveConversationByAgents(agentIds, maybeTo);
+  }
+
+  getRelayApprovalMode(): RelayApprovalMode {
+    return this.relayApprovalMode;
+  }
+
+  setRelayApprovalMode(mode: RelayApprovalMode): void {
+    this.relayApprovalMode = mode;
+    this.emit('relay_approval_mode', { mode });
+  }
+
+  listPendingRelays(): PendingRelay[] {
+    return Array.from(this.pendingRelays.values())
+      .map((relay) => ({ ...relay }))
+      .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+  }
+
+  getPendingRelay(id: string): PendingRelay {
+    const relay = this.pendingRelays.get(id);
+    if (!relay) {
+      throw new Error(`Pending relay ${id} not found`);
+    }
+    return relay;
+  }
+
+  async approvePendingRelay(id: string): Promise<PendingRelay> {
+    const relay = this.getPendingRelay(id);
+    if (relay.status !== 'pending') {
+      throw new Error(`Pending relay ${id} is already ${relay.status}`);
+    }
+
+    const decidedAt = new Date().toISOString();
+    try {
+      const targetAgent = this.getAgent(relay.toAgentId);
+      const conversation = this.findActiveConversationByAgents(relay.fromAgentId, relay.toAgentId);
+      this.assertRelayDeliverable(relay.fromAgentId, targetAgent, conversation);
+      await this.deliverRelayMessage({
+        ...relay,
+        targetAgent,
+        conversation,
+      });
+      relay.status = 'approved_delivered';
+      relay.decidedAt = decidedAt;
+      relay.deliveredAt = new Date().toISOString();
+      delete relay.deliveryError;
+    } catch (err) {
+      relay.status = 'delivery_failed';
+      relay.decidedAt = decidedAt;
+      relay.deliveryError = err instanceof Error ? err.message : String(err);
+    }
+
+    this.emitPendingRelay(relay);
+    return relay;
+  }
+
+  denyPendingRelay(id: string): PendingRelay {
+    const relay = this.getPendingRelay(id);
+    if (relay.status !== 'pending') {
+      throw new Error(`Pending relay ${id} is already ${relay.status}`);
+    }
+
+    relay.status = 'denied';
+    relay.decidedAt = new Date().toISOString();
+    this.emitPendingRelay(relay);
+    return relay;
+  }
+
+  private assertRelayDeliverable(fromAgentId: string, targetAgent: Agent, conversation?: Conversation | undefined): void {
+    if (targetAgent.status !== 'ready' && targetAgent.status !== 'busy') {
+      throw new Error(`Target agent ${targetAgent.id} is in ${targetAgent.status} state`);
+    }
+
+    if (conversation) {
+      const currentCount = conversation.replyCounts[fromAgentId] ?? 0;
+      if (currentCount >= conversation.maxRepliesPerAgent) {
+        this.conversationCoordinator.markConversationCompleted(conversation, `Reply cap reached by ${fromAgentId}`);
+        throw new Error(`Conversation ${conversation.id} reply cap reached for ${fromAgentId}`);
+      }
+    }
+  }
+
+  private createPendingRelay(input: {
+    fromAgentId: string;
+    toAgentId: string;
+    payload: unknown;
+    replyToMessageId?: string;
+    baton?: WorkflowBatonMetadata;
+    workflowEvent?: WorkflowGateEvent;
+  }): PendingRelay {
+    const relay: PendingRelay = {
+      id: `pending-relay-${Date.now()}-${++this.pendingRelaySeq}`,
+      status: 'pending',
+      fromAgentId: input.fromAgentId,
+      toAgentId: input.toAgentId,
+      payload: input.payload,
+      createdAt: new Date().toISOString(),
+      ...(input.replyToMessageId ? { replyToMessageId: input.replyToMessageId } : {}),
+      ...(input.baton ? { baton: input.baton } : {}),
+      ...(input.workflowEvent ? { workflowEvent: input.workflowEvent } : {}),
+    };
+    this.pendingRelays.set(relay.id, relay);
+    this.emitPendingRelay(relay);
+    return relay;
+  }
+
+  private emitPendingRelay(relay: PendingRelay): void {
+    this.emit('pending_relay_updated', { relay: { ...relay } });
+  }
+
+  private async deliverRelayMessage(input: {
+    fromAgentId: string;
+    toAgentId: string;
+    payload: unknown;
+    replyToMessageId?: string;
+    baton?: WorkflowBatonMetadata;
+    workflowEvent?: WorkflowGateEvent;
+    targetAgent: Agent;
+    conversation?: Conversation | undefined;
+  }): Promise<void> {
+    await this.sendProtocol(input.targetAgent.id, 'EVT', {
+      type: 'message_received',
+      from: input.fromAgentId,
+      payload: input.payload,
+      ...(input.replyToMessageId ? { replyToMessageId: input.replyToMessageId } : {}),
+    });
+
+    if (input.conversation) {
+      this.conversationCoordinator.recordConversationMessage(input.conversation, {
+        kind: 'message',
+        from: input.fromAgentId,
+        to: input.toAgentId,
+        payload: String(input.payload),
+        timestamp: new Date().toISOString(),
+        ...(input.baton ? { baton: input.baton } : {}),
+        ...(input.workflowEvent ? { workflowEvent: input.workflowEvent } : {}),
+      });
+    }
   }
 
   private clearReadinessTimeout(id: string): void {
