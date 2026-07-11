@@ -40,6 +40,24 @@ show-done/show-dropped toggles ride this param). The response's `total` field al
 
 ---
 
+### Backlog gate — 2026-07-11 (M20 inception · architect: Claude · PO direction in session)
+
+Per §3b, dispositioned before opening **M20 — The brain routes, you approve** (the self-hosting transition's first
+operational step). **PO direction (in session):** the brain routes agent↔agent messages autonomously but **holds each
+delivery for the PO's one-click yes/no**; mechanism now, per-message consent relaxed later, slowly, checking.
+Architect ratified it as a better first step than shadow-mode (keeps the PO the reference clock, cuts burden
+immediately, defers the wake unknown). Grounded feasibility: interpose at `registry.ts:437-443`. Full inception:
+`self-hosting-program-draft.md` §M20.
+
+| Item | Disposition for this gate |
+|---|---|
+| BL-030 (PO-approved relay) | **NEW → `doing`** — M20's driver. |
+| BL-018 / BL-026 / BL-027 | `done` (M19 closed 2026-07-11). |
+| BL-028 (typed non-reply / wake) | stay `todo` — **adjacent**: becomes the dependency when M20's dimmer relaxes toward autonomous delivery (M20 defers autonomous wake; the PO's *yes* is the delivery trigger for now). |
+| BL-022 / BL-023 / BL-024 / BL-025 | stay `todo` — general substrate constraints; not pulled into M20's smallest bite. |
+| BL-029 (rating signal) | stay `todo`, deferred post-transition. |
+| BL-014 / BL-015 / BL-016 | stay **deferred** — M20 gates manually (PO), so their triggers (system-enforced fences/briefs) are still unmet. |
+
 ### Backlog gate — 2026-07-11 (M19 inception, 2nd pass · architect: Claude · planner POV: Codex · PO ruling in session)
 
 Per §3b, the second-pass M19 gate — the one LB-71 deliberately deferred until **SP2's answer was in hand**. SP2
@@ -713,6 +731,29 @@ tags: [workflow, scrum-master, retrospective, growth]
   only its own lessons file (SM elicits, never writes it for them); yardstick = **IP-class recurrence rate**.
   Third instrument of one theme: fences enforce (BL-015), briefs instruct (BL-014), **debriefs adapt**.
   Trial informally at the next real REFUTE before any doc change.
+
+### Doing
+
+<!-- @item
+id: BL-030
+status: doing
+date: 2026-07-11
+epic: M20
+tags: [self-hosting, relay, human-in-the-loop, program]
+-->
+- [doing · **→ `doing` at the 2026-07-11 M20 inception (PO + architect)**: M20 *is* this item's work] —
+  **PO-approved autonomous relay (the brain routes, you approve)** — begin retiring the PO-as-relay-between-agents:
+  the brain autonomously computes/proposes each **agent→agent** relay (from-role → to-role + baton/gate envelope) and
+  **holds delivery pending the PO's one-click yes/no** in the UI, delivering on *yes*. Mechanism in now; per-message
+  consent stays manual, relaxed later one notch at a time. **Invariant (LB-68 F3):** the **PO channel is the
+  reference clock — never mediated by AgentTalk**; only agent↔agent relays move, PO gates/opinions/merges stay direct;
+  terminal fallback stays live. **Interposition point (grounded):** the single `sendProtocol` EVT delivery at
+  `registry.ts:437-443`, after the M17 authority check (`:379-395`), on the `to !== 'user'` path only. **Behaviour
+  change on shared routing code → full planning + Gate 1.** Smallest first bite: two agents, one hand-off, PO approves
+  each. **Key planner question:** sender `send_to_agent` blocks-until-approved vs. returns-pending-with-async-queue;
+  and how a held message waits for a target not currently on `await_turn`. Full inception: `self-hosting-program-draft.md`
+  §M20. **Adjacent (not pulled in): BL-028** (typed non-reply reason / wake) becomes the dependency when the dimmer is
+  relaxed toward autonomous delivery.
 
 ### Todo (next first)
 

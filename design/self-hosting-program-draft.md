@@ -374,3 +374,53 @@ plan's sense ("record ≥1 real attached-CLI workflow event + report the ratio",
 in the program's ultimate sense (a measured fall in the PO's real relay burden). **That measurement — a real dev epic
 run end-to-end over the channel — is the remaining program work** (the true next milestone; SP2's plain-baton path is
 now proven available for it). Ledger: `design/milestone19-real-cli-relay-implementation.md`.
+
+---
+
+### M20 — The brain routes, you approve *(agent↔agent relay onto the substrate, PO-gated per message; smallest bite first)*
+
+**Goal.** Begin retiring the **PO-as-relay-between-agents**: the brain **autonomously computes and proposes** each
+agent→agent relay (from-role → to-role + the baton/gate envelope it already builds), **holds delivery pending the
+PO's one-click yes/no** in the UI, and delivers on *yes*. The **mechanism** goes in now; the **per-message consent**
+stays manual and is relaxed later, one notch at a time, checking. This directly reduces the PO's burden (a click
+instead of a cut-and-paste) **without** giving up oversight.
+
+**The invariant that shapes everything (LB-68 F3).** The **PO's channel is the reference clock and must never be
+mediated by AgentTalk.** So M20 moves **agent↔agent** relays onto the substrate while the **PO↔system** channel
+(gates, opinions, merges) stays direct and manual — *permanently*. The approval gate *is* the PO staying the clock:
+the brain proposes, the human disposes. The terminal relay stays a working fallback throughout.
+
+**Feasibility (grounded in code at inception).** Delivery today is a single, well-located call —
+`registry.ts:437-443`, `sendProtocol(targetAgent, 'EVT', {type:'message_received', …})` — sitting **right after** the
+M17 authority check (`registry.ts:379-395`) and **only** on the `to !== 'user'` path (`to === 'user'` = the PO
+channel, a different branch at `:397`, untouched). So a **hold-then-deliver approval gate interposes at one bounded
+point, on exactly the agent↔agent messages, and reuses M17's already-recorded `workflow_gate_attempt` envelope.**
+This is a **behaviour change on shared routing code** → full planning + Gate 1, not a casual patch.
+
+**Scope sketch (fence at plan time).** The approval-gated hold on the `send_to_agent` agent→agent delivery path + a
+minimal UI surface (pending relay: from→to, payload, baton/gate → **yes/no**) + deliver-on-yes / drop-or-return-on-no.
+**Smallest first bite: two agents, one hand-off, one direction**, PO approves each, terminal fallback live. **Not**
+in M20: autonomous wake (deferred — the PO's *yes* is the delivery/wake trigger for now); 3+ agents / nested
+delegation (LB-67 F2 — no thread correlation yet); relaxing the per-message consent (that's the later dimmer);
+scope-write enforcement (LB-68 — gates still governed by the PO, not the system).
+
+**DoD claim sketch.** **C1:** the brain holds an agent→agent relay pending PO approval, surfaced in the UI; *yes*
+delivers (receiver, attached + awaiting, receives it), *no* does not. **C2:** the PO channel (`to === 'user'`) and
+merges are unchanged — never gated by the brain. **C3:** one real agent→agent baton crosses the substrate under PO
+approval during actual work, recorded, with the terminal fallback demonstrably still available. **C4:** freeze bar
+green; no change to the PO reference-clock path.
+
+**Key open question for the planner's POV.** Does the sender's `send_to_agent` **block** until the PO approves, or
+**return "pending"** with the message held in an approval queue and delivered async? (Blocking is simpler but ties up
+the sender; async needs a pending-relay queue.) Also: how a held message waits for a target that isn't currently on
+`await_turn` (queue until its next `await_turn`). These are the load-bearing design calls — planner assesses,
+architect+PO weigh.
+
+**INCEPTION (PO + Architect, 2026-07-11) — direction ratified by the PO.** Origin: the PO's proposal
+(*"the brain does routing autonomously; each relay needs my yes/no approval — a button in the UI; relax later,
+slowly, checking"*). Architect assessment: this is a **better first step than shadow-mode** — it builds the real
+mechanism now, keeps the PO as the reference clock, cuts burden immediately, and defers the wake unknown. **Roles /
+concentration:** architect + SM + plan-reviewer are Claude (same tripwire as M19; the PO ratifies). **Next act:**
+planner (Codex) advisory POV on the key open question above → backlog gate opens **BL-030** → planner authors the
+plan → Gate 1 (reviewer ≠ planner → Claude) → implementer baton (seat is a fresh PO call; M19's Codex-implementer
+assignment lapsed at close).
