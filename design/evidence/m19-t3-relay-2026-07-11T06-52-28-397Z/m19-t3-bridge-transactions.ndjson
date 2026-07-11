@@ -1,0 +1,6 @@
+{"at":"2026-07-11T06:52:30.641Z","event":"wrapper_start","bridgePath":"/Users/fausto/Software/agentalk-mcp-client/bridge.mjs","wsUrl":"ws://localhost:53169/mcp?agentId=m19-t3-reviewer&contractHash=ffa94e93e3182d44924ed28381870c7bd814c908279942022d5925a4865a9446"}
+{"at":"2026-07-11T06:52:30.653Z","event":"tx","raw":"{\"method\":\"initialize\",\"params\":{\"protocolVersion\":\"2025-11-25\",\"capabilities\":{\"roots\":{\"listChanged\":true},\"elicitation\":{}},\"clientInfo\":{\"name\":\"claude-code\",\"title\":\"Claude Code\",\"version\":\"2.1.207\",\"description\":\"Anthropic's agentic coding tool\",\"websiteUrl\":\"https://claude.com/claude-code\"}},\"jsonrpc\":\"2.0\",\"id\":0}","method":"initialize","id":0}
+{"at":"2026-07-11T06:52:30.798Z","event":"bridge_stderr","text":"[mcp-bridge] injected contractHash from URL\n"}
+{"at":"2026-07-11T06:52:30.813Z","event":"bridge_stderr","text":"[mcp-bridge] ws open -> ws://localhost:53169/mcp?agentId=m19-t3-reviewer&contractHash=ffa94e93e3182d44924ed28381870c7bd814c908279942022d5925a4865a9446\n"}
+{"at":"2026-07-11T06:52:30.821Z","event":"tx","raw":"{\"method\":\"notifications/initialized\",\"jsonrpc\":\"2.0\"}","method":"notifications/initialized"}
+{"at":"2026-07-11T06:52:30.821Z","event":"tx","raw":"{\"method\":\"tools/list\",\"jsonrpc\":\"2.0\",\"id\":1}","method":"tools/list","id":1}

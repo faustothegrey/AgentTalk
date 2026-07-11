@@ -82,11 +82,11 @@ substrate-carried ratio; SDK controls do not count in the substrate numerator.
 | M19-D2 - hard-reject semantics preserved | claimed by Codex, 2026-07-11 | **VERIFIED ✅ (Gate 2, reproduced)** | M19-T1; Gate 2 Review below |
 | M19-D3 - supported Codex + Claude attach ritual | claimed by Codex, 2026-07-11 | **VERIFIED ✅ (Gate 2)** | M19-T2; T2 Gate 2 Review below |
 | M19-D4 - Claude functional noninteractive `await_turn` proof or ENABLER-BLOCKED | claimed by Codex, 2026-07-11 | **VERIFIED ✅ (Gate 2, reproduced by hand)** | M19-T2; T2 Gate 2 Review below |
-| M19-D5 - real attached CLI substrate-carried baton/workflow event with provenance correlation | pending | pending | M19-T3 |
-| M19-D6 - BL-027 raw count + ratio + fallback rows | pending | pending | M19-T3 / closure |
-| M19-D7 - BL-024 treated as constraint; provider observations recorded | pending | pending | M19-T2 / M19-T3 |
-| M19-D8 - fresh evidence bars; no stale proof | pending | pending | all tasks |
-| M19-D9 - freeze bar green and forbidden surfaces clean | pending | pending | closure |
+| M19-D5 - real attached CLI substrate-carried baton/workflow event with provenance correlation | claimed by Codex, 2026-07-11 | **VERIFIED ✅ (Gate 2)** | M19-T3; T3 Gate 2 Review below |
+| M19-D6 - BL-027 raw count + ratio + fallback rows | claimed by Codex, 2026-07-11 | **VERIFIED ✅ (honest; see caveat)** | M19-T3 / closure; `design/evidence/m19-t3-relay-ratio.txt` |
+| M19-D7 - BL-024 treated as constraint; provider observations recorded | claimed by Codex, 2026-07-11 | **VERIFIED ✅** | M19-T2 / M19-T3; `proof.json` agents remain `provider:"mcp"` |
+| M19-D8 - fresh evidence bars; no stale proof | claimed by Codex, 2026-07-11 | **VERIFIED ✅** | all tasks; T3 evidence under `design/evidence/m19-t3-relay-2026-07-11T06-55-10-653Z/` |
+| M19-D9 - freeze bar green and forbidden surfaces clean | claimed by Codex, 2026-07-11 | **VERIFIED ✅ (299/299 reproduced)** | closure; verification below |
 
 ## M19-T1 - BL-018: contract alignment and stale-client guard
 
@@ -272,8 +272,51 @@ unblocked because attach + `await_turn` work.
 
 ## M19-T3 - BL-027: one real attached role hand-off and ratio
 
-**Status:** pending T2.
-**Branch:** `m19-t3-relay-ratio` when implementation begins.
+**Status:** **Gate 2 VERIFIED (Implementation Reviewer: Claude, 2026-07-11).** The program's deferred **C3 is
+discharged** — real attached CLIs carried substrate coordination the brain accepted and recorded.
+**Branch:** `m19-t3-relay-ratio` (uncommitted — commit before merge, signal S3).
+
+### Gate 2 Review (Implementation Reviewer: Claude, 2026-07-11) — VERIFIED
+
+This is the claim M18-T3 was **refuted** on, so I verified the provenance to the hilt.
+
+- **M19-D5 (real-CLI substrate relay, provenance) — VERIFIED.** The `send_to_agent` carrying the baton +
+  `workflow_gate_event` reached the brain and was **accepted + recorded** (`recordedGate.result:"accepted"`).
+  Provenance is **unfakeable**: the tool call's `toolUseId` **`toolu_01Jirgo5…`** appears in *both* Claude's own
+  debug log (`tool_dispatch_start/end send_to_agent`) *and* the bridge-recorder wire-log
+  (`m19-t3-bridge-transactions.ndjson`) *and* the parsed proof — that id is minted by Claude Code's tool loop, so a
+  script injection cannot produce it. `await_turn` **completed** (turn delivered by the scheduler) *before* the
+  `send_to_agent` — a real round-trip, not just a block. The ratio result requires all three correlates
+  (`bridgeTx && recordedGate && serverAccepted`), so it cannot false-green on one. Both a real **Claude** and a real
+  **Codex** CLI proved it (2 substrate relays).
+- **Method note (honest):** unlike T2 (where I re-ran the live `await_turn`), here I verified by **tracing the
+  unfakeable `toolUseId` chain across four independent artifacts** rather than a fresh live re-run — that chain is
+  *stronger* evidence than another instance would be, and I already reproduced real-Claude tool-calling first-hand in
+  T2. Freeze bar reproduced by me: `npm test` **299/299**, `tsc -b` 0, ratio test 1/1.
+- **M19-D6 (BL-027 ratio) — VERIFIED, with a load-bearing caveat.** T3 = **2/4**, milestone **2/~9**, every row
+  labeled by channel + evidence; T1/T2 correctly shown as **0 (enabler only)**. **⚠️ Caveat (program risk #3):** the
+  2 substrate events are **demonstration relays** produced by the T3 harness (the *narrow-A* the plan/inception
+  explicitly authorized), **not** organic hand-offs from M19's real development — which was ~entirely terminal.
+  So **"2/~9" means "capability proven + first data point," NOT "22% of M19's real coordination was
+  substrate-carried"** (that was ~0). Read/quote it only that way. This is the honest discharge of the plan's C3 bar
+  ("records at least one real attached-CLI workflow event + reports the ratio"), not a burden-reduction claim.
+- **M19-D7 (BL-024 constraint) — VERIFIED.** Both proof agents recorded `provider:"mcp"`; no provider-shaped timing
+  assumption introduced. **M19-D8 (fresh evidence) — VERIFIED** (no stale NDJSON; `m17-live-gate-proof.mjs` unused).
+  **M19-D9 (freeze/fence) — VERIFIED** (299/299 reproduced; fence clean both repos; `~/.claude.json` state churn
+  disclosed, config files untouched, same disposition as T2 S1).
+
+**Gate 2 outcome: PASS.** M19-D5/6/7/8/9 VERIFIED. **The self-hosting program's C3 — 0 substrate events at M18 close
+— now has real, provenance-proven substrate coordination over attached CLIs.** M19 outcome = **C3 discharged** (per
+the plan's Outcome Rule), honestly qualified as above.
+
+### Gate 3 Closure (Task-end Reviewer: Claude, 2026-07-11) — MERGED · **M19 CLOSED**
+
+**Doubling declared & PO-accepted** (gate 2 + gate 3, Claude). Closure sweep re-used the gate-2 verification, whose
+core (the `toolUseId` provenance chain) is *stronger* than a re-run; freeze bar reproduced (299/299). Signal **S3
+resolved**: branch committed. Hygiene: post-commit tree clean, no leaked processes, client repo untouched. **Merged
+`m19-t3-relay-ratio` → `master`** (AgentTalk only). Merge PO-gated (`[PO]` go, 2026-07-11). T3 is the final M19 task,
+so **this merge closes the epic** — milestone telemetry filled, backlog dispositions applied (BL-018/026/027 →
+`done`), program C3 status updated to *discharged (qualified)*.
 
 ### Scope Manifest
 
@@ -297,9 +340,66 @@ unblocked because attach + `await_turn` work.
 
 | Channel event | Artifact | Count |
 |---|---|---:|
-| substrate events | pending | 0 |
-| terminal fallbacks | pending | 0 |
-| ratio | pending | pending |
+| substrate events | `design/evidence/m19-t3-relay-ratio.txt` | 2 |
+| terminal fallbacks | `design/evidence/m19-t3-relay-ratio.txt` | 2 |
+| ratio | `design/evidence/m19-t3-relay-ratio.txt` | 2/4 |
+
+### Implementer Claim - 2026-07-11
+
+- Added `scripts/m19-bridge-recorder.mjs`, a local stdio bridge wrapper that records JSON-RPC transactions before
+  forwarding them to `../agentalk-mcp-client/bridge.mjs`. It lets Gate 2 correlate a real CLI MCP transaction with
+  the orchestrator's recorded workflow event without modifying the client.
+- Added `scripts/m19-relay-ratio.mjs`, a T3 proof helper that starts a fresh temporary orchestrator, creates two
+  MCP-backed agents, attaches a real CLI to the source agent with the v7 contract hash, delivers one instruction turn,
+  and writes `proof.json` only after both sides of the provenance check are present.
+- Added `scripts/__tests__/m19-relay-ratio.test.mjs` to lock the recorder's ability to capture a
+  `tools/call` / `send_to_agent` transaction and its workflow-event/baton arguments.
+- Claude real-CLI attempt did not count toward the numerator because Claude Code hit the session limit before calling
+  `await_turn` (`design/evidence/m19-t3-relay-2026-07-11T06-52-28-397Z/`).
+- Resumed Claude real-CLI attempt produced a second substrate hand-off:
+  `design/evidence/m19-t3-relay-2026-07-11T09-08-45-971Z/proof.json` reports
+  `result:"substrate_relay_proven"`, source `m19-t3-claude-reviewer-2`, target `m19-t3-claude-implementer-2`,
+  event `m19-t3-event-claude-2`, baton `m19-t3-baton-claude-2`, and no global CLI config changes. Claude Code
+  changed `~/.claude.json` state/cache by one byte; the helper recorded it separately from global config mutation.
+- Codex real-CLI attempt produced the substrate hand-off:
+  `design/evidence/m19-t3-relay-2026-07-11T06-55-10-653Z/proof.json` reports
+  `result:"substrate_relay_proven"`, source `m19-t3-codex-reviewer`, target `m19-t3-codex-implementer`, event
+  `m19-t3-event-2`, baton `m19-t3-baton-2`, and no global CLI config/state changes.
+- Provenance correlation holds for both counted substrate rows: each proof's `m19-t3-bridge-transactions.ndjson`
+  records the same source agent connection calling `await_turn` and then `send_to_agent`; each
+  `m19-t3-recording.ndjson` records the accepted `workflow_gate_attempt` for the same source agent and event; each
+  `m19-t3-server.log` records both the MCP `send_to_agent` call and accepted gate.
+- BL-027 raw T3 count: substrate numerator **2**, denominator **4**, ratio **2/4**. Terminal fallback rows are
+  the SM/PO assignment to Codex and this Codex-to-Claude Gate 2 handoff.
+- M19 milestone ratio: T1 **0/~3**, T2 **0/~2**, T3 **2/4**; total substrate numerator **2**, denominator **~9**,
+  ratio **2/~9**.
+- BL-024 remains a constraint: both proof agents report `provider:"mcp"` and `requestedExecutionMode:"auto"`.
+
+### Backlog Disposition Recommendation - 2026-07-11
+
+- **BL-018:** done for M19's stale-client/alignment guard; if full multi-version negotiation is still wanted, open a
+  successor rather than keeping the stale-client finding open.
+- **BL-026:** done; supported attach and real attached CLI relay both proved without global config mutation.
+- **BL-027:** done for M19; the deferred C3 now has a substrate numerator and honest ratio.
+- **BL-024:** keep open as a constraint; provider remains transport-shaped (`mcp`).
+- **BL-025:** keep open; M19 used fresh evidence but did not install a permanent live-proof replay gate.
+- **BL-022:** keep open; cross-repo checks are still manual.
+- **BL-023:** keep open; leaked-process checks are still manual.
+- **BL-028:** keep open; no idle-timeout behavior changed.
+- **BL-014/BL-015/BL-016:** leave deferred unless the PO reprioritizes them.
+
+### T3 Verification / Telemetry - 2026-07-11
+
+```text
+**Telemetry (T3 implementer delivery, pre-Gate 2):**
+- task:        M19-T3
+- wall-clock:  ~08:52 -> 11:12 CEST (includes freeze/resume gap; active proof+verification in two short windows)
+- budget:      codex weekly 0%->14%, 5h/session 1%->90%; claude meter still reported session 100% after successful CLI proof
+- gate:        proof 2/2 substrate after one provider-limit attempt; tsc 0; targeted vitest 1/1; full suite 54/54 files, 299/299 tests; backlog 29/0; diff whitespace clean; client repo clean; process scan clean
+- coordination: terminal relays 2, substrate hand-offs 2, ratio 2/4 (M19 cumulative 2/~9)
+- diff:        1 tracked ledger file modified plus new script/evidence files; commits none
+- outcome:     C3 discharged in implementer evidence; pending Gate 2 / Gate 3
+```
 
 ## Impediments
 
@@ -317,11 +417,14 @@ unblocked because attach + `await_turn` work.
 
 ```text
 **Telemetry (milestone closure):**
-- milestone:   M19
-- wall-clock:  <start> -> <close> (<delta>)
-- budget:      weekly <a%->b%>, session/5h <a%->b%> [or unavailable]
-- gate:        <checks run>
-- coordination: terminal relays <n>, substrate hand-offs <m>, ratio <m>/<n+m>
-- diff:        <N files, +adds/-dels>, commits <hashes>
-- outcome:     <C3 discharged / ENABLER-BLOCKED / REFUTED>
+- milestone:   M19 (T1 contract alignment · T2 attach ritual + await_turn · T3 real-CLI substrate relay + ratio)
+- wall-clock:  opened 2026-07-11 (inception) -> closed 2026-07-11 (same day; C-first, narrow-A fired)
+- budget:      claude weekly ~16% -> ~26% (Δ ~10% over T1+T2+T3 gate-2/gate-3, incl. live re-runs); codex/gemini per their meters
+- gate:        Gate 2 re-verified by hand each task — T1 A/B divergence + live-accept; T2 Claude await_turn reproduced;
+               T3 toolUseId provenance chain traced (4 artifacts); freeze bar 299/299, tsc 0, backlog 29/0, fence clean both repos
+- coordination: terminal relays 2 (real M19 hand-offs), substrate hand-offs 2 (demonstration relays / narrow-A),
+               T3 ratio 2/4, milestone 2/~9 — see D6 caveat: capability proven + first data point, NOT a burden-reduction stat
+- diff:        3 merged tasks; AgentTalk commits — T1 45daaf0, T2 acdb0cd, T3 (closure) below; client T1 847bcc6
+- outcome:     **C3 discharged (qualified)** — real attached CLIs carried provenance-proven substrate coordination;
+               organic burden reduction remains future work (a real dev epic run over the channel)
 ```
