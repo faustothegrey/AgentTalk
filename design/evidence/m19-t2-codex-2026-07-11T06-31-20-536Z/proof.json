@@ -1,0 +1,24 @@
+{
+  "cli": "codex",
+  "agentId": "m19-t2-codex-proof-2",
+  "httpPort": 52288,
+  "mcpPort": 52289,
+  "contractVersion": 7,
+  "contractHash": "ffa94e93e3182d44924ed28381870c7bd814c908279942022d5925a4865a9446",
+  "evidenceDir": "/Users/fausto/Software/AgentTalk/design/evidence/m19-t2-codex-2026-07-11T06-31-20-536Z",
+  "startedAt": "2026-07-11T06:31:20.547Z",
+  "agentAfterStart": {
+    "id": "m19-t2-codex-proof-2",
+    "status": "ready",
+    "provider": "mcp",
+    "requestedExecutionMode": "auto",
+    "sessionStatus": "starting"
+  },
+  "command": "'codex' 'exec' '--skip-git-repo-check' '--color' 'never' '--json' '--dangerously-bypass-approvals-and-sandbox' '-c' 'mcp_servers.agenttalk-bridge.command=\"node\"' '-c' 'mcp_servers.agenttalk-bridge.args=[\"/Users/fausto/Software/agentalk-mcp-client/bridge.mjs\",\"ws://localhost:52289/mcp?agentId=m19-t2-codex-proof-2&contractHash=ffa94e93e3182d44924ed28381870c7bd814c908279942022d5925a4865a9446\"]' '-c' 'mcp_servers.agenttalk-bridge.tool_timeout_sec=600' 'Use the agenttalk-bridge MCP server. Your only first action is to call await_turn from that MCP server. Do not answer in prose before calling the MCP tool. This is the M19-T2 codex attach proof.'",
+  "awaitTurnObserved": true,
+  "blockedOnAwaitTurn": true,
+  "finishedAt": "2026-07-11T06:31:30.214Z",
+  "result": "await_turn_blocked",
+  "globalConfigChanges": [],
+  "noGlobalConfigMutation": true
+}

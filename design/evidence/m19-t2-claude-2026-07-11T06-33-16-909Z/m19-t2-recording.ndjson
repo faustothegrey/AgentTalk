@@ -1,0 +1,9 @@
+{"kind":"meta","version":1,"createdAt":"2026-07-11T06:33:18.317Z","cwd":"/Users/fausto/Software/AgentTalk"}
+{"kind":"event","atMs":38,"channel":"runtime","event":"server_started","payload":{"port":52375}}
+{"kind":"event","atMs":186,"channel":"api","event":"create_agent_request","payload":{"id":"m19-t2-claude-proof-2","provider":"mcp","requestedExecutionMode":"auto"}}
+{"kind":"event","atMs":188,"channel":"runtime","event":"agent_created","payload":{"id":"m19-t2-claude-proof-2","status":"creating","requestedExecutionMode":"auto"}}
+{"kind":"event","atMs":203,"channel":"api","event":"start_agent_request","payload":{"id":"m19-t2-claude-proof-2","provider":"mcp","executionMode":"auto"}}
+{"kind":"event","atMs":204,"channel":"runtime","event":"status","payload":{"id":"m19-t2-claude-proof-2","status":"starting"}}
+{"kind":"event","atMs":204,"channel":"runtime","event":"execution_mode","payload":{"id":"m19-t2-claude-proof-2","requestedExecutionMode":"auto"}}
+{"kind":"event","atMs":205,"channel":"runtime","event":"session_status","payload":{"id":"m19-t2-claude-proof-2","sessionStatus":"starting"}}
+{"kind":"event","atMs":205,"channel":"runtime","event":"provider","payload":{"id":"m19-t2-claude-proof-2","provider":"mcp"}}

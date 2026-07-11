@@ -1,0 +1,42 @@
+AgentTalk Orchestrator V1 started.
+Recording runtime events to /Users/fausto/Software/AgentTalk/design/evidence/m19-t2-failures-2026-07-11T06-29-35-491Z/m19-t2-recording.ndjson
+Google Drive integration configured.
+[Server] Autorun scenario scheduler initialized (repeating every 1800s)
+Ready to manage agents.
+[Server] AgentTalk Web UI Backend listening on http://localhost:52221
+[Server] AgentTalk WebSocket MCP server listening on ws://localhost:52222/
+[Server] AgentTalk MCP server URL set to: ws://localhost:52222/
+[Server] POST /api/agents {
+  id: 'm19-t2-failure-probe-2',
+  provider: 'mcp',
+  requestedExecutionMode: 'auto'
+}
+[Registry] Creating agent m19-t2-failure-probe-2...
+[Server] Agent created: m19-t2-failure-probe-2 (status: creating)
+[Server] Returning 1 agents
+[Server] POST /api/agents {
+  id: 'm19-t2-failure-probe-2-stale-hash',
+  provider: 'mcp',
+  requestedExecutionMode: 'auto'
+}
+[Registry] Creating agent m19-t2-failure-probe-2-stale-hash...
+[Server] Agent created: m19-t2-failure-probe-2-stale-hash (status: creating)
+[Server] POST /api/agents/m19-t2-failure-probe-2-stale-hash/start { provider: 'mcp', model: undefined, executionMode: 'auto' }
+[Server] Activating agent m19-t2-failure-probe-2-stale-hash (current status: creating)...
+[Registry] Activating agent m19-t2-failure-probe-2-stale-hash (waiting for MCP connection)
+[Agent m19-t2-failure-probe-2-stale-hash] creating -> starting
+[Server] Status m19-t2-failure-probe-2-stale-hash: starting → 0 client(s)
+[Server] Execution Mode m19-t2-failure-probe-2-stale-hash: auto -> pending → 0 client(s)
+[Server] Session Status m19-t2-failure-probe-2-stale-hash: starting → 0 client(s)
+[Server] Provider m19-t2-failure-probe-2-stale-hash: mcp → 0 client(s)
+[Registry] Starting InProcessAgentDriver for mcp-backed agent m19-t2-failure-probe-2-stale-hash
+[Agent m19-t2-failure-probe-2-stale-hash] starting -> ready
+[Server] Agent m19-t2-failure-probe-2-stale-hash successfully started
+[McpServer] Connection established for agentId=m19-t2-failure-probe-2-stale-hash
+[McpServer] Rejecting agentId=m19-t2-failure-probe-2-stale-hash: contract hash mismatch. Expected ffa94e93e3182d44924ed28381870c7bd814c908279942022d5925a4865a9446, got stale-hash-for-m19-t2
+[McpServer] Connection closed for agentId=m19-t2-failure-probe-2-stale-hash (code: 1008)
+[Registry] Cleared 1 stale await_turn waiter(s) for agent m19-t2-failure-probe-2-stale-hash
+[Agent m19-t2-failure-probe-2-stale-hash] ready -> reconnecting
+[Server] Status m19-t2-failure-probe-2-stale-hash: reconnecting → 0 client(s)
+[Registry] MCP connection dropped for agent m19-t2-failure-probe-2-stale-hash (code 1008). Allowing 30s reconnect...
+Received SIGTERM. Shutting down...

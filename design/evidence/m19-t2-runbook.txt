@@ -1,0 +1,23 @@
+# M19-T2 real-CLI attach runbook
+Contract: v7 ffa94e93e3182d44924ed28381870c7bd814c908279942022d5925a4865a9446
+Start orchestrator with fresh ports:
+PORT=3310 AGENTTALK_MCP_PORT=3311 npm run start --workspace @agenttalk/orchestrator
+
+Register and start agents:
+curl -s -X POST http://localhost:3310/api/agents -H 'Content-Type: application/json' -d '{"id":"m19-t2-codex","provider":"mcp","requestedExecutionMode":"auto"}'
+curl -s -X POST http://localhost:3310/api/agents/m19-t2-codex/start -H 'Content-Type: application/json' -d '{"provider":"mcp","executionMode":"auto"}'
+curl -s -X POST http://localhost:3310/api/agents -H 'Content-Type: application/json' -d '{"id":"m19-t2-claude","provider":"mcp","requestedExecutionMode":"auto"}'
+curl -s -X POST http://localhost:3310/api/agents/m19-t2-claude/start -H 'Content-Type: application/json' -d '{"provider":"mcp","executionMode":"auto"}'
+
+Per-command CLI config; no global CLI config edits:
+
+# Codex (m19-t2-codex)
+'codex' 'exec' '--skip-git-repo-check' '--color' 'never' '--json' '--dangerously-bypass-approvals-and-sandbox' '-c' 'mcp_servers.agenttalk-bridge.command="node"' '-c' 'mcp_servers.agenttalk-bridge.args=["/Users/fausto/Software/agentalk-mcp-client/bridge.mjs","ws://localhost:3311/mcp?agentId=m19-t2-codex&contractHash=ffa94e93e3182d44924ed28381870c7bd814c908279942022d5925a4865a9446"]' '-c' 'mcp_servers.agenttalk-bridge.tool_timeout_sec=600' 'Use the agenttalk-bridge MCP server. Your only first action is to call await_turn from that MCP server. Do not answer in prose before calling the MCP tool. This is the M19-T2 codex attach proof.'
+
+# Claude Code (m19-t2-claude)
+'claude' '--strict-mcp-config' '--mcp-config' '{"mcpServers":{"agenttalk-bridge":{"command":"node","args":["/Users/fausto/Software/agentalk-mcp-client/bridge.mjs","ws://localhost:3311/mcp?agentId=m19-t2-claude&contractHash=ffa94e93e3182d44924ed28381870c7bd814c908279942022d5925a4865a9446"]}}}' '--allowedTools' 'mcp__agenttalk-bridge__await_turn,mcp__agenttalk-bridge__send_to_agent,mcp__agenttalk-bridge__list_agents,mcp__agenttalk-bridge__consensus_respond,mcp__agenttalk-bridge__submit_work_response,mcp__agenttalk-bridge__submit_work_result,mcp__agenttalk-bridge__submit_usage_stats,mcp__agenttalk-bridge__submit_exec_result,mcp__agenttalk-bridge__healthcheck_ack' '--permission-mode' 'auto' '--debug-file' 'design/evidence/m19-t2-claude-debug.log' '--no-session-persistence' '-p' 'Use the agenttalk-bridge MCP server. Your only first action is to call await_turn from that MCP server. Do not answer in prose before calling the MCP tool. This is the M19-T2 claude attach proof.'
+
+Failure-mode checks:
+- missing start: GET /api/agents must show the agent out of creating/starting after POST /start.
+- stale port: bridge/CLI stderr shows WebSocket connection failure before initialize.
+- stale hash: MCP server rejects initialize with close code 1008.

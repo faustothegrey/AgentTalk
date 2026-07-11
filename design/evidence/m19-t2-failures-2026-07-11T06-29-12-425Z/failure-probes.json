@@ -1,0 +1,21 @@
+{
+  "evidenceDir": "/Users/fausto/Software/AgentTalk/design/evidence/m19-t2-failures-2026-07-11T06-29-12-425Z",
+  "agentId": "m19-t2-failure-probe",
+  "httpPort": 52205,
+  "mcpPort": 52206,
+  "checks": {
+    "missingStart": {
+      "status": "creating",
+      "passed": true,
+      "message": "Agent remains creating until POST /start is called."
+    },
+    "staleHash": {
+      "closeCode": 4003,
+      "passed": false
+    },
+    "stalePort": {
+      "passed": false,
+      "error": ""
+    }
+  }
+}

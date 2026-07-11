@@ -1,0 +1,9 @@
+{"kind":"meta","version":1,"createdAt":"2026-07-11T06:29:43.955Z","cwd":"/Users/fausto/Software/AgentTalk"}
+{"kind":"event","atMs":23,"channel":"runtime","event":"server_started","payload":{"port":52232}}
+{"kind":"event","atMs":117,"channel":"api","event":"create_agent_request","payload":{"id":"m19-t2-codex-proof","provider":"mcp","requestedExecutionMode":"auto"}}
+{"kind":"event","atMs":118,"channel":"runtime","event":"agent_created","payload":{"id":"m19-t2-codex-proof","status":"creating","requestedExecutionMode":"auto"}}
+{"kind":"event","atMs":131,"channel":"api","event":"start_agent_request","payload":{"id":"m19-t2-codex-proof","provider":"mcp","executionMode":"auto"}}
+{"kind":"event","atMs":131,"channel":"runtime","event":"status","payload":{"id":"m19-t2-codex-proof","status":"starting"}}
+{"kind":"event","atMs":131,"channel":"runtime","event":"execution_mode","payload":{"id":"m19-t2-codex-proof","requestedExecutionMode":"auto"}}
+{"kind":"event","atMs":131,"channel":"runtime","event":"session_status","payload":{"id":"m19-t2-codex-proof","sessionStatus":"starting"}}
+{"kind":"event","atMs":131,"channel":"runtime","event":"provider","payload":{"id":"m19-t2-codex-proof","provider":"mcp"}}
