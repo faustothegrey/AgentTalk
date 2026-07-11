@@ -1,0 +1,346 @@
+{
+  "startedAt": "2026-07-11T22:41:23.867Z",
+  "evidenceDir": "/Users/fausto/Software/AgentTalk/design/evidence/m20-t3-approved-relay-2026-07-11T22-41-23-273Z",
+  "httpPort": 54715,
+  "mcpPort": 54716,
+  "contractVersion": 7,
+  "contractHash": "ffa94e93e3182d44924ed28381870c7bd814c908279942022d5925a4865a9446",
+  "cli": "codex",
+  "bridgeToolNames": [
+    "mcp__agenttalk-bridge__list_agents",
+    "mcp__agenttalk-bridge__send_to_agent",
+    "mcp__agenttalk-bridge__consensus_respond",
+    "mcp__agenttalk-bridge__submit_work_response",
+    "mcp__agenttalk-bridge__submit_work_result",
+    "mcp__agenttalk-bridge__submit_usage_stats",
+    "mcp__agenttalk-bridge__await_turn",
+    "mcp__agenttalk-bridge__submit_exec_result",
+    "mcp__agenttalk-bridge__healthcheck_ack"
+  ],
+  "initialRelayApprovalMode": "off",
+  "modeSetViaWs": "approve_each",
+  "approved": {
+    "sourceId": "m20-t3-approved-source-1783809683863",
+    "targetId": "m20-t3-approved-target-1783809683863",
+    "eventId": "m20-t3-approved-event-1",
+    "batonId": "m20-t3-approved-baton-1",
+    "payload": "M20-T3 APPROVED RELAY PAYLOAD: target should receive only after WS approval.",
+    "relayId": "pending-relay-1783809704764-1",
+    "bridgeLogPath": "/Users/fausto/Software/AgentTalk/design/evidence/m20-t3-approved-relay-2026-07-11T22-41-23-273Z/m20-t3-approved-source-bridge.ndjson",
+    "targetBridgeLogPath": "/Users/fausto/Software/AgentTalk/design/evidence/m20-t3-approved-relay-2026-07-11T22-41-23-273Z/m20-t3-approved-target-bridge.ndjson",
+    "sourceStdoutPath": "/Users/fausto/Software/AgentTalk/design/evidence/m20-t3-approved-relay-2026-07-11T22-41-23-273Z/m20-t3-approved-source-stdout.log",
+    "targetStdoutPath": "/Users/fausto/Software/AgentTalk/design/evidence/m20-t3-approved-relay-2026-07-11T22-41-23-273Z/m20-t3-approved-target-stdout.log",
+    "bridgeTx": {
+      "at": "2026-07-11T22:41:44.763Z",
+      "event": "tx",
+      "raw": "{\"jsonrpc\":\"2.0\",\"id\":3,\"method\":\"tools/call\",\"params\":{\"_meta\":{\"progressToken\":2,\"x-codex-turn-metadata\":{\"session_id\":\"019f5357-d470-71c1-bf61-b6c020cb323c\",\"thread_id\":\"019f5357-d470-71c1-bf61-b6c020cb323c\",\"thread_source\":\"user\",\"turn_id\":\"019f5357-d546-76e1-b465-a9f12ff51461\",\"workspaces\":{\"/Users/fausto/Software/AgentTalk\":{\"associated_remote_urls\":{\"origin\":\"git@github.com:faustothegrey/AgentTalk.git\"},\"latest_git_commit_hash\":\"571d95615b9a427572dce9bd6ee337c8f17436d9\",\"has_changes\":true}},\"sandbox\":\"none\",\"turn_started_at_unix_ms\":1783809693022,\"model\":\"gpt-5.5\",\"reasoning_effort\":\"high\"},\"threadId\":\"019f5357-d470-71c1-bf61-b6c020cb323c\"},\"name\":\"send_to_agent\",\"arguments\":{\"to\":\"m20-t3-approved-target-1783809683863\",\"payload\":\"M20-T3 APPROVED RELAY PAYLOAD: target should receive only after WS approval.\",\"baton\":{\"kind\":\"workflow_baton\",\"batonId\":\"m20-t3-approved-baton-1\",\"fromRole\":\"implementation-reviewer\",\"toRole\":\"implementer\",\"originTag\":\"[SM]\"},\"workflowEvent\":{\"kind\":\"workflow_gate_event\",\"gate\":\"gate-2\",\"action\":\"verdict\",\"fromAgentId\":\"m20-t3-approved-source-1783809683863\",\"fromRole\":\"implementation-reviewer\",\"toAgentId\":\"m20-t3-approved-target-1783809683863\",\"toRole\":\"implementer\",\"taskId\":\"M20-T3\",\"eventId\":\"m20-t3-approved-event-1\"}}}}",
+      "method": "tools/call",
+      "id": 3,
+      "toolName": "send_to_agent",
+      "toolArguments": {
+        "to": "m20-t3-approved-target-1783809683863",
+        "payload": "M20-T3 APPROVED RELAY PAYLOAD: target should receive only after WS approval.",
+        "baton": {
+          "kind": "workflow_baton",
+          "batonId": "m20-t3-approved-baton-1",
+          "fromRole": "implementation-reviewer",
+          "toRole": "implementer",
+          "originTag": "[SM]"
+        },
+        "workflowEvent": {
+          "kind": "workflow_gate_event",
+          "gate": "gate-2",
+          "action": "verdict",
+          "fromAgentId": "m20-t3-approved-source-1783809683863",
+          "fromRole": "implementation-reviewer",
+          "toAgentId": "m20-t3-approved-target-1783809683863",
+          "toRole": "implementer",
+          "taskId": "M20-T3",
+          "eventId": "m20-t3-approved-event-1"
+        }
+      }
+    },
+    "recordedGate": {
+      "kind": "event",
+      "atMs": 19617,
+      "channel": "runtime",
+      "event": "workflow_gate_attempt",
+      "payload": {
+        "agentId": "m20-t3-approved-source-1783809683863",
+        "event": {
+          "kind": "workflow_gate_event",
+          "gate": "gate-2",
+          "action": "verdict",
+          "fromAgentId": "m20-t3-approved-source-1783809683863",
+          "fromRole": "implementation-reviewer",
+          "toAgentId": "m20-t3-approved-target-1783809683863",
+          "toRole": "implementer",
+          "taskId": "M20-T3",
+          "eventId": "m20-t3-approved-event-1"
+        },
+        "result": "accepted",
+        "payload": "M20-T3 APPROVED RELAY PAYLOAD: target should receive only after WS approval."
+      }
+    },
+    "pendingRelay": {
+      "kind": "event",
+      "atMs": 19617,
+      "channel": "runtime",
+      "event": "pending_relay_updated",
+      "payload": {
+        "relay": {
+          "id": "pending-relay-1783809704764-1",
+          "status": "pending",
+          "fromAgentId": "m20-t3-approved-source-1783809683863",
+          "toAgentId": "m20-t3-approved-target-1783809683863",
+          "payload": "M20-T3 APPROVED RELAY PAYLOAD: target should receive only after WS approval.",
+          "createdAt": "2026-07-11T22:41:44.764Z",
+          "baton": {
+            "kind": "workflow_baton",
+            "batonId": "m20-t3-approved-baton-1",
+            "fromRole": "implementation-reviewer",
+            "toRole": "implementer",
+            "originTag": "[SM]"
+          },
+          "workflowEvent": {
+            "kind": "workflow_gate_event",
+            "gate": "gate-2",
+            "action": "verdict",
+            "fromAgentId": "m20-t3-approved-source-1783809683863",
+            "fromRole": "implementation-reviewer",
+            "toAgentId": "m20-t3-approved-target-1783809683863",
+            "toRole": "implementer",
+            "taskId": "M20-T3",
+            "eventId": "m20-t3-approved-event-1"
+          }
+        }
+      }
+    },
+    "approvedRelay": {
+      "kind": "event",
+      "atMs": 21195,
+      "channel": "runtime",
+      "event": "pending_relay_updated",
+      "payload": {
+        "relay": {
+          "id": "pending-relay-1783809704764-1",
+          "status": "approved_delivered",
+          "fromAgentId": "m20-t3-approved-source-1783809683863",
+          "toAgentId": "m20-t3-approved-target-1783809683863",
+          "payload": "M20-T3 APPROVED RELAY PAYLOAD: target should receive only after WS approval.",
+          "createdAt": "2026-07-11T22:41:44.764Z",
+          "baton": {
+            "kind": "workflow_baton",
+            "batonId": "m20-t3-approved-baton-1",
+            "fromRole": "implementation-reviewer",
+            "toRole": "implementer",
+            "originTag": "[SM]"
+          },
+          "workflowEvent": {
+            "kind": "workflow_gate_event",
+            "gate": "gate-2",
+            "action": "verdict",
+            "fromAgentId": "m20-t3-approved-source-1783809683863",
+            "fromRole": "implementation-reviewer",
+            "toAgentId": "m20-t3-approved-target-1783809683863",
+            "toRole": "implementer",
+            "taskId": "M20-T3",
+            "eventId": "m20-t3-approved-event-1"
+          },
+          "decidedAt": "2026-07-11T22:41:46.342Z",
+          "deliveredAt": "2026-07-11T22:41:46.342Z"
+        }
+      }
+    },
+    "preApprovalNoDelivery": true,
+    "targetReceivedAfterApproval": true,
+    "sourceCliResultText": "pending_result_observed"
+  },
+  "denied": {
+    "sourceId": "m20-t3-denied-source-1783809683863",
+    "targetId": "m20-t3-denied-target-1783809683863",
+    "eventId": "m20-t3-denied-event-1",
+    "batonId": "m20-t3-denied-baton-1",
+    "payload": "M20-T3 DENIED RELAY PAYLOAD: target must not receive this message.",
+    "relayId": "pending-relay-1783809720513-2",
+    "bridgeLogPath": "/Users/fausto/Software/AgentTalk/design/evidence/m20-t3-approved-relay-2026-07-11T22-41-23-273Z/m20-t3-denied-source-bridge.ndjson",
+    "sourceStdoutPath": "/Users/fausto/Software/AgentTalk/design/evidence/m20-t3-approved-relay-2026-07-11T22-41-23-273Z/m20-t3-denied-source-stdout.log",
+    "bridgeTx": {
+      "at": "2026-07-11T22:42:00.512Z",
+      "event": "tx",
+      "raw": "{\"jsonrpc\":\"2.0\",\"id\":3,\"method\":\"tools/call\",\"params\":{\"_meta\":{\"progressToken\":2,\"x-codex-turn-metadata\":{\"session_id\":\"019f5358-0af1-7682-be3d-8a5af5eae98d\",\"thread_id\":\"019f5358-0af1-7682-be3d-8a5af5eae98d\",\"thread_source\":\"user\",\"turn_id\":\"019f5358-0bcd-7b81-8559-60a3ffb8ada6\",\"workspaces\":{\"/Users/fausto/Software/AgentTalk\":{\"associated_remote_urls\":{\"origin\":\"git@github.com:faustothegrey/AgentTalk.git\"},\"latest_git_commit_hash\":\"571d95615b9a427572dce9bd6ee337c8f17436d9\",\"has_changes\":true}},\"sandbox\":\"none\",\"turn_started_at_unix_ms\":1783809706981,\"model\":\"gpt-5.5\",\"reasoning_effort\":\"high\"},\"threadId\":\"019f5358-0af1-7682-be3d-8a5af5eae98d\"},\"name\":\"send_to_agent\",\"arguments\":{\"to\":\"m20-t3-denied-target-1783809683863\",\"payload\":\"M20-T3 DENIED RELAY PAYLOAD: target must not receive this message.\",\"baton\":{\"kind\":\"workflow_baton\",\"batonId\":\"m20-t3-denied-baton-1\",\"fromRole\":\"implementation-reviewer\",\"toRole\":\"implementer\",\"originTag\":\"[SM]\"},\"workflowEvent\":{\"kind\":\"workflow_gate_event\",\"gate\":\"gate-2\",\"action\":\"verdict\",\"fromAgentId\":\"m20-t3-denied-source-1783809683863\",\"fromRole\":\"implementation-reviewer\",\"toAgentId\":\"m20-t3-denied-target-1783809683863\",\"toRole\":\"implementer\",\"taskId\":\"M20-T3\",\"eventId\":\"m20-t3-denied-event-1\"}}}}",
+      "method": "tools/call",
+      "id": 3,
+      "toolName": "send_to_agent",
+      "toolArguments": {
+        "to": "m20-t3-denied-target-1783809683863",
+        "payload": "M20-T3 DENIED RELAY PAYLOAD: target must not receive this message.",
+        "baton": {
+          "kind": "workflow_baton",
+          "batonId": "m20-t3-denied-baton-1",
+          "fromRole": "implementation-reviewer",
+          "toRole": "implementer",
+          "originTag": "[SM]"
+        },
+        "workflowEvent": {
+          "kind": "workflow_gate_event",
+          "gate": "gate-2",
+          "action": "verdict",
+          "fromAgentId": "m20-t3-denied-source-1783809683863",
+          "fromRole": "implementation-reviewer",
+          "toAgentId": "m20-t3-denied-target-1783809683863",
+          "toRole": "implementer",
+          "taskId": "M20-T3",
+          "eventId": "m20-t3-denied-event-1"
+        }
+      }
+    },
+    "recordedGate": {
+      "kind": "event",
+      "atMs": 35366,
+      "channel": "runtime",
+      "event": "workflow_gate_attempt",
+      "payload": {
+        "agentId": "m20-t3-denied-source-1783809683863",
+        "event": {
+          "kind": "workflow_gate_event",
+          "gate": "gate-2",
+          "action": "verdict",
+          "fromAgentId": "m20-t3-denied-source-1783809683863",
+          "fromRole": "implementation-reviewer",
+          "toAgentId": "m20-t3-denied-target-1783809683863",
+          "toRole": "implementer",
+          "taskId": "M20-T3",
+          "eventId": "m20-t3-denied-event-1"
+        },
+        "result": "accepted",
+        "payload": "M20-T3 DENIED RELAY PAYLOAD: target must not receive this message."
+      }
+    },
+    "pendingRelay": {
+      "kind": "event",
+      "atMs": 35366,
+      "channel": "runtime",
+      "event": "pending_relay_updated",
+      "payload": {
+        "relay": {
+          "id": "pending-relay-1783809720513-2",
+          "status": "pending",
+          "fromAgentId": "m20-t3-denied-source-1783809683863",
+          "toAgentId": "m20-t3-denied-target-1783809683863",
+          "payload": "M20-T3 DENIED RELAY PAYLOAD: target must not receive this message.",
+          "createdAt": "2026-07-11T22:42:00.513Z",
+          "baton": {
+            "kind": "workflow_baton",
+            "batonId": "m20-t3-denied-baton-1",
+            "fromRole": "implementation-reviewer",
+            "toRole": "implementer",
+            "originTag": "[SM]"
+          },
+          "workflowEvent": {
+            "kind": "workflow_gate_event",
+            "gate": "gate-2",
+            "action": "verdict",
+            "fromAgentId": "m20-t3-denied-source-1783809683863",
+            "fromRole": "implementation-reviewer",
+            "toAgentId": "m20-t3-denied-target-1783809683863",
+            "toRole": "implementer",
+            "taskId": "M20-T3",
+            "eventId": "m20-t3-denied-event-1"
+          }
+        }
+      }
+    },
+    "deniedRelay": {
+      "kind": "event",
+      "atMs": 36457,
+      "channel": "runtime",
+      "event": "pending_relay_updated",
+      "payload": {
+        "relay": {
+          "id": "pending-relay-1783809720513-2",
+          "status": "denied",
+          "fromAgentId": "m20-t3-denied-source-1783809683863",
+          "toAgentId": "m20-t3-denied-target-1783809683863",
+          "payload": "M20-T3 DENIED RELAY PAYLOAD: target must not receive this message.",
+          "createdAt": "2026-07-11T22:42:00.513Z",
+          "baton": {
+            "kind": "workflow_baton",
+            "batonId": "m20-t3-denied-baton-1",
+            "fromRole": "implementation-reviewer",
+            "toRole": "implementer",
+            "originTag": "[SM]"
+          },
+          "workflowEvent": {
+            "kind": "workflow_gate_event",
+            "gate": "gate-2",
+            "action": "verdict",
+            "fromAgentId": "m20-t3-denied-source-1783809683863",
+            "fromRole": "implementation-reviewer",
+            "toAgentId": "m20-t3-denied-target-1783809683863",
+            "toRole": "implementer",
+            "taskId": "M20-T3",
+            "eventId": "m20-t3-denied-event-1"
+          },
+          "decidedAt": "2026-07-11T22:42:01.604Z"
+        }
+      }
+    },
+    "noDeliveryBeforeOrAfterDeny": true
+  },
+  "agentsAfterProof": [
+    {
+      "id": "m20-t3-approved-target-1783809683863",
+      "status": "terminated",
+      "provider": "mcp",
+      "requestedExecutionMode": "auto",
+      "sessionStatus": "starting"
+    },
+    {
+      "id": "m20-t3-approved-source-1783809683863",
+      "status": "terminated",
+      "provider": "mcp",
+      "requestedExecutionMode": "auto",
+      "sessionStatus": "starting"
+    },
+    {
+      "id": "m20-t3-denied-target-1783809683863",
+      "status": "ready",
+      "provider": "mcp",
+      "requestedExecutionMode": "auto",
+      "sessionStatus": "starting"
+    },
+    {
+      "id": "m20-t3-denied-source-1783809683863",
+      "status": "busy",
+      "provider": "mcp",
+      "requestedExecutionMode": "auto",
+      "sessionStatus": "starting"
+    }
+  ],
+  "result": "approved_relay_proven",
+  "finishedAt": "2026-07-11T22:42:04.114Z",
+  "globalConfigChanges": [],
+  "globalStateChanges": [],
+  "noGlobalConfigMutation": true,
+  "metric": {
+    "label": "M20 demonstration approved-relay proof; not an organic productivity statistic.",
+    "rawRelayCount": 2,
+    "pendingRelaysObserved": 2,
+    "approvedDelivered": 1,
+    "denied": 1,
+    "deliveryFailed": 0,
+    "terminalFallbackRows": [
+      "PO terminal baton assigned M20-T3 to Codex implementer.",
+      "Codex terminal handoff to Claude Gate 2 reviewer after implementation."
+    ],
+    "substrateRows": [
+      "m20-t3-approved-source-1783809683863 real attached Codex CLI emitted baton-bearing send_to_agent; WS approval delivered relay pending-relay-1783809704764-1 to m20-t3-approved-target-1783809683863.",
+      "m20-t3-denied-source-1783809683863 real attached Codex CLI emitted baton-bearing send_to_agent; WS denial recorded relay pending-relay-1783809720513-2 without delivery."
+    ],
+    "substrateNumerator": 1,
+    "denominator": 3,
+    "ratio": "1/3",
+    "denominatorBasis": "approved delivered substrate relay plus two terminal fallback rows; denied negative is counted in raw relay count, not as delivered substrate."
+  }
+}
