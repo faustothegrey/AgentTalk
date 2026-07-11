@@ -61,6 +61,37 @@ describe('conversation-runtime', () => {
     });
   });
 
+  it('preserves automated conversation send_to_agent routing shape for approval mode off', () => {
+    const runtime = createConversationRuntime();
+    runtime.startConversation(
+      {
+        type: 'conversation_start',
+        peerIds: ['peer-a', 'peer-b'],
+        topic: 'execution plan for refactor',
+        maxReplies: 20,
+        initiator: false,
+      },
+      () => {},
+    );
+
+    const request = runtime.buildProtocolRequest(
+      {
+        type: 'message_received',
+        from: 'peer-a',
+        payload: 'first point',
+        messageId: 'msg-runtime-1',
+      },
+      'automated reply',
+    );
+
+    expect(request.call).toBe('send_to_agent');
+    expect(request.args).toEqual({
+      to: 'peer-a',
+      payload: 'automated reply',
+      replyToMessageId: 'msg-runtime-1',
+    });
+  });
+
   it('shouldAutoPropose returns false before threshold', () => {
     const runtime = createConversationRuntime();
     runtime.startConversation(

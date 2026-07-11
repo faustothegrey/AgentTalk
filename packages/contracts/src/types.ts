@@ -122,3 +122,26 @@ export type WorkflowGateEvent = {
   taskId?: string;
   eventId: string;
 };
+
+export type RelayApprovalMode = 'off' | 'approve_each';
+
+export type PendingRelayStatus =
+  | 'pending'
+  | 'approved_delivered'
+  | 'denied'
+  | 'delivery_failed';
+
+export interface PendingRelay {
+  id: string;
+  status: PendingRelayStatus;
+  fromAgentId: string;
+  toAgentId: string;
+  payload: unknown;
+  replyToMessageId?: string;
+  baton?: WorkflowBatonMetadata;
+  workflowEvent?: WorkflowGateEvent;
+  createdAt: string;
+  decidedAt?: string;
+  deliveredAt?: string;
+  deliveryError?: string;
+}

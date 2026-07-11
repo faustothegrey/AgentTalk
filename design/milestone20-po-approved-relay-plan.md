@@ -1,11 +1,11 @@
 # Milestone 20 - PO-approved relay
 
-**Status:** Gate 1 condition folded, pending Plan Reviewer full approval.
+**Status:** Gate 1 approved; M20-T1 implementation in progress on `m20-t1-pending-relay-core`.
 **Backlog:** BL-030 (`doing`) is the epic driver. BL-028 is adjacent but not M20 work.
 **Program:** `design/self-hosting-program-draft.md` M20.
 **PO:** Fausto. **SM:** Claude. **Architect:** Claude. **Planner:** Codex.
-**Plan Reviewer:** Claude. **Implementer:** PO-assigned after Gate 1. **Implementation Reviewer:** Codex unless
-reassigned by PO. **Task-end Reviewer:** Claude unless reassigned by PO.
+**Plan Reviewer:** Claude. **Implementer:** Codex (PO-assigned, epic-scoped, 2026-07-11). **Implementation
+Reviewer:** Claude for Codex-authored deliveries. **Task-end Reviewer:** Claude unless reassigned by PO.
 
 ## Why
 

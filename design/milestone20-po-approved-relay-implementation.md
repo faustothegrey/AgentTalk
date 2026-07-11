@@ -100,11 +100,11 @@ condition is resolved; the design premises were already verified above. **Gate 1
 
 | Item | Implementer claim | Reviewer verdict | Evidence |
 |---|---|---|---|
-| M20-D1 - mode-on async pending agent-to-agent relay; no pre-approval delivery | pending | pending | M20-T1 / M20-T3 |
-| M20-D2 - M17 authority lifecycle separate from M20 PO approval lifecycle | pending | pending | M20-T1 / M20-T2 / M20-T3 |
-| M20-D3 - approval delivers through existing queue path, including next-`await_turn` delivery | pending | pending | M20-T1 / M20-T3 |
-| M20-D4 - denial and delivery failure do not pretend delivery success | pending | pending | M20-T1 / M20-T2 |
-| M20-D5 - mode-off ordinary send behavior, PO channel, and terminal fallback preserved | pending | pending | all tasks |
+| M20-D1 - mode-on async pending agent-to-agent relay; no pre-approval delivery | **claimed for T1** - registry approval mode defaults `off`; `approve_each` creates a `PendingRelay` and returns pending without calling `sendProtocol` until approval | **VERIFIED ✅ (Gate 2, reproduced)** | `m20-pending-relay.test.ts` "holds mode-on send_to_agent as pending without target delivery before approval" |
+| M20-D2 - M17 authority lifecycle separate from M20 PO approval lifecycle | **claimed for T1** - `workflow_gate_attempt` remains authority-only; M20 emits separate `pending_relay_updated` lifecycle records | **VERIFIED ✅ (distinct event confirmed)** | `m20-pending-relay.test.ts` "keeps workflow_gate_attempt authority separate from pending relay approval" |
+| M20-D3 - approval delivers through existing queue path, including next-`await_turn` delivery | **claimed for T1** - approval calls the existing `sendProtocol` path; tests cover both active waiter and queued-next-turn delivery | **VERIFIED ✅** | `m20-pending-relay.test.ts` pending-then-approve and queued-next-turn cases |
+| M20-D4 - denial and delivery failure do not pretend delivery success | **claimed for T1** - denial records `denied` and delivers nothing; failed approval records `delivery_failed` with `deliveryError` | **VERIFIED ✅** | `m20-pending-relay.test.ts` deny and delivery-failed cases |
+| M20-D5 - mode-off ordinary send behavior, PO channel, and terminal fallback preserved | **claimed for T1 scope** - ordinary agent-to-agent send, baton transcript-on-send, conversation-runtime send shape, and `to === 'user'` path preserved | **VERIFIED ✅ (unchanged tests pass)** | targeted regressions plus full `npm test` |
 | M20-D6 - UI/WS approval surface and approval mode works | pending | pending | M20-T2 / M20-T3 |
 | M20-D7 - fresh real approved relay proof and honest relay metric | pending | pending | M20-T3 / closure |
 | M20-D8 - freeze bar green and forbidden surfaces clean | pending | pending | closure |
@@ -118,9 +118,44 @@ failures, and substrate ratio for its work.
 
 ## M20-T1 - Core pending-relay lifecycle
 
-**Status:** pending Gate 1 / PO implementer assignment.
-**Branch:** `m20-t1-pending-relay-core` when implementation begins.
+**Status:** **Gate 2 VERIFIED (Implementation Reviewer: Claude, 2026-07-11).**
+**Branch:** `m20-t1-pending-relay-core` (uncommitted — commit before merge).
 
+### Gate 2 Review (Implementation Reviewer: Claude, 2026-07-11) — VERIFIED
+
+Verified by running, with focus on the mode-off preservation the amendment hinged on:
+
+- **Preservation genuine (the load-bearing check) — VERIFIED.** The existing contract tests
+  `m17-gate-channel.test.ts` (incl. :93 "preserves ordinary non-workflow behavior"), `baton-metadata.test.ts`
+  (transcript-on-send), and `conversation-runtime.test.ts` are **NOT modified** and **pass (19/19)**. Since the
+  registry mode defaults `off`, those unmodified tests exercise the old path — so preservation is real, **not**
+  achieved by weakening a contract. The mode-off path is a **pure refactor**: `deliverRelayMessage` /
+  `assertRelayDeliverable` reproduce the old `sendProtocol` + `recordConversationMessage` + status/reply-cap checks
+  byte-for-byte. **M20-D5 ✅.**
+- **Mode-on lifecycle — VERIFIED.** `m20-pending-relay.test.ts` 8/8: mode `approve_each` creates a `PendingRelay`
+  and returns "pending" **without** `sendProtocol` (no pre-approval delivery, **D1 ✅**); `approvePendingRelay`
+  re-validates deliverability then delivers via the reused `sendProtocol → queueTurn` path (**D3 ✅**);
+  deny → `denied`/no delivery, approval exception → `delivery_failed`/`deliveryError` (**D4 ✅**).
+- **Separate lifecycle — VERIFIED.** `emitPendingRelay` fires a **distinct** `pending_relay_updated` event;
+  `workflow_gate_attempt` (authority) is untouched and still pre-delivery. The separation test passes (**D2 ✅**).
+- **Fence + freeze — VERIFIED.** Only `registry.ts` + `contracts/src/types.ts` + the new test + a *pure-addition*
+  `conversation-runtime.test.ts` regression; no forbidden surface, client clean. `tsc -b` 0; full `npm test`
+  **308/308** — all reproduced by me.
+
+**Implementer signal:** `send_to_agent` was refactored into `deliverRelayMessage`/`assertRelayDeliverable` (shared
+routing code, in scope). Behaviour-preserving — proven by the unchanged contract tests passing. Accepted.
+
+**Gate 2 outcome: PASS.** M20-D1–D5 VERIFIED; the mode-off amendment holds; the two lifecycles are cleanly separate.
+D6 (UI/WS) is T2, D7 (real approved-relay proof) is T3.
+
+### Gate 3 Closure (Task-end Reviewer: Claude, 2026-07-11) — MERGED
+
+**Doubling declared & PO-accepted** (gate 2 + gate 3, Claude). Closure sweep re-used the gate-2 runs (preservation
+19/19, lifecycle 8/8, `tsc -b` 0, `npm test` 308/308, fence clean). Branch committed; post-commit tree clean; no
+stray processes; client repo untouched. **Merged `m20-t1-pending-relay-core` → `master`** (AgentTalk only). Merge
+PO-gated (`[PO]` go, 2026-07-11). **T1 Coordination Evidence (BL-030):** substrate **0**, terminal fallbacks = the
+T1 role hand-offs (planner→implementer, implementer→reviewer, reviewer→PO) — expected; T1 is the mechanism core, no
+real relay yet (that's T3). Next: T2 (UI/WS approval surface) opens from `master`.
 ### Scope Manifest
 
 ```yaml
@@ -149,9 +184,51 @@ failures, and substrate ratio for its work.
 
 | Channel event | Artifact | Count |
 |---|---|---:|
-| substrate events | pending | 0 |
-| terminal fallbacks | pending | 0 |
-| ratio | pending | pending |
+| substrate events | none for T1 core-only proof | 0 |
+| terminal fallbacks | none for T1 core-only proof | 0 |
+| ratio | not applicable until T3 real-relay proof | n/a |
+
+### Implementer Claim (Codex, 2026-07-11)
+
+Implemented the registry-side pending-relay core:
+
+- added `RelayApprovalMode`, `PendingRelayStatus`, and `PendingRelay` contract source types;
+- added registry approval mode with startup default `off`;
+- preserved mode-off plain `send_to_agent` immediate delivery and transcript recording;
+- added mode-on pending relay creation for the plain agent-to-agent delivery branch after M17 authority validation and before delivery;
+- added distinct pending-relay lifecycle updates (`pending`, `approved_delivered`, `denied`, `delivery_failed`);
+- added approval and denial registry methods; approval reuses the existing `sendProtocol` / `queueTurn` delivery path;
+- kept `to === 'user'`, arbiter/team routing, MCP transport, client contracts, wire contract, UI, and production conversation runtime out of scope.
+
+### Fresh Verification
+
+```text
+npx vitest run packages/runtime-core/src/registry/__tests__/m20-pending-relay.test.ts
+PASS: 1 file, 8 tests
+
+npx vitest run packages/runtime-core/src/registry/__tests__/m17-gate-channel.test.ts packages/runtime-core/src/registry/__tests__/baton-metadata.test.ts apps/orchestrator/src/__tests__/conversation-runtime.test.ts packages/runtime-core/src/registry/__tests__/m20-pending-relay.test.ts
+PASS: 4 files, 27 tests
+
+npx tsc -b
+PASS
+
+npm test
+PASS: contract hash verified successfully (v7); client contract alignment verified successfully; 55 files, 308 tests
+```
+
+### T1 Scope Check
+
+Touched files stay inside the T1 manifest:
+
+- `design/milestone20-po-approved-relay-plan.md`
+- `design/milestone20-po-approved-relay-implementation.md`
+- `packages/contracts/src/types.ts`
+- `packages/runtime-core/src/registry/registry.ts`
+- `packages/runtime-core/src/registry/__tests__/m20-pending-relay.test.ts`
+- `apps/orchestrator/src/__tests__/conversation-runtime.test.ts`
+
+Forbidden surfaces remain untouched: sibling client, `packages/contracts/wire-contract.json`, MCP transport,
+`team-coordinator.ts`, production conversation runtime, orchestrator server, and web UI.
 
 ## M20-T2 - Server and UI approval surface
 
