@@ -79,3 +79,11 @@ here.**
   `scope-check` is not enough when the primary implementation lives next door.
 - In review, keep asking which side of the boundary the evidence observes. Server logs can prove receipt, but bridge
   logs and exact CLI config are what prove the transport fix caused the receipt.
+
+### 2026-07-12 — M20 proof and closeout discipline
+- As planner + implementer, the strongest proof shape was a lifecycle chain with both positive and negative legs:
+  real CLI bridge transaction, authority accepted, pending relay, approval or denial, and target observation.
+- For adoption metrics, keep the label honest even when the mechanism works; M20 proved capability, while organic
+  terminal-burden reduction remains future program evidence.
+- At close, stale role primers are themselves process debt; refreshing them to "no active task, verify from source"
+  is safer than leaving the next session pointed at already-closed work.
