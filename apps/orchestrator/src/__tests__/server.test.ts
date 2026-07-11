@@ -6,12 +6,15 @@ import { WebSocket } from 'ws';
 import { Registry } from '@agenttalk/runtime-core/registry/registry';
 import { startServer } from '../server.js';
 import type { GoogleDriveIntegration, GoogleDriveResource } from '@agenttalk/integration-google-drive/google-drive/types';
+import type { SessionRecorder } from '@agenttalk/observability/recordings/session-recorder';
 
 describe('startServer', () => {
   let registry: Registry;
   let server: Server;
   let baseUrl: string;
   let googleDrive: GoogleDriveIntegration;
+  let recorder: { record: ReturnType<typeof vi.fn> };
+  let sockets: WebSocket[];
   const conversationStorePath = './test-transcripts-server/conversations.json';
   const grantedResource: GoogleDriveResource = {
     id: 'resource-1',
@@ -61,7 +64,9 @@ describe('startServer', () => {
       }),
     };
 
-    server = startServer(registry, 0, { googleDrive });
+    recorder = { record: vi.fn() };
+    sockets = [];
+    server = startServer(registry, 0, { googleDrive, recorder: recorder as unknown as SessionRecorder });
     await new Promise<void>((resolve) => server.once('listening', resolve));
 
     const { port } = server.address() as AddressInfo;
@@ -69,6 +74,11 @@ describe('startServer', () => {
   });
 
   afterEach(async () => {
+    for (const socket of sockets) {
+      if (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING) {
+        socket.close();
+      }
+    }
     await registry.destroy();
     await new Promise<void>((resolve, reject) => {
       server.close((err) => (err ? reject(err) : resolve()));
@@ -79,6 +89,73 @@ describe('startServer', () => {
       rmSync('./test-transcripts-server', { recursive: true, force: true });
     }
   });
+
+  async function openSocket(): Promise<WebSocket> {
+    const socket = new WebSocket(baseUrl.replace('http', 'ws') + '/ws');
+    sockets.push(socket);
+    await new Promise<void>((resolve, reject) => {
+      socket.once('open', resolve);
+      socket.once('error', reject);
+    });
+    return socket;
+  }
+
+  function waitForMessage(socket: WebSocket, predicate: (message: any) => boolean, timeoutMs = 1000): Promise<any> {
+    return new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        socket.off('message', onMessage);
+        reject(new Error('Timed out waiting for WebSocket message'));
+      }, timeoutMs);
+
+      const onMessage = (raw: Buffer) => {
+        const message = JSON.parse(raw.toString());
+        if (!predicate(message)) return;
+        clearTimeout(timeout);
+        socket.off('message', onMessage);
+        resolve(message);
+      };
+
+      socket.on('message', onMessage);
+      socket.once('error', reject);
+    });
+  }
+
+  async function openSocketWithMessage(predicate: (message: any) => boolean): Promise<{ socket: WebSocket; message: any }> {
+    const socket = new WebSocket(baseUrl.replace('http', 'ws') + '/ws');
+    sockets.push(socket);
+    const messagePromise = waitForMessage(socket, predicate);
+    await new Promise<void>((resolve, reject) => {
+      socket.once('open', resolve);
+      socket.once('error', reject);
+    });
+    const message = await messagePromise;
+    return { socket, message };
+  }
+
+  async function createReadyAgent(id: string) {
+    const agent = await registry.createAgent(id, { provider: 'api' });
+    agent.setStatus('starting');
+    agent.setStatus('ready');
+    return agent;
+  }
+
+  async function createPendingRelay(payload: string) {
+    await createReadyAgent('agent-1');
+    await createReadyAgent('agent-2');
+    registry.setRelayApprovalMode('approve_each');
+    await registry.handleMcpToolCall('agent-1', 'send_to_agent', {
+      to: 'agent-2',
+      payload,
+      baton: {
+        kind: 'workflow_baton',
+        originTag: '[PO]',
+        fromRole: 'planner',
+        toRole: 'implementer',
+        batonId: 'baton-server-test',
+      },
+    });
+    return registry.listPendingRelays()[0]!;
+  }
 
 
   it('should return 404 when starting an unknown agent', async () => {
@@ -190,11 +267,7 @@ describe('startServer', () => {
   });
 
   it('should accept websocket connections on /ws and ignore input for unattached clients', async () => {
-    const socket = new WebSocket(baseUrl.replace('http', 'ws') + '/ws');
-    await new Promise<void>((resolve, reject) => {
-      socket.once('open', resolve);
-      socket.once('error', reject);
-    });
+    const socket = await openSocket();
 
     socket.send(JSON.stringify({ type: 'input', text: 'hello' }));
     await new Promise((resolve) => setTimeout(resolve, 25));
@@ -209,11 +282,7 @@ describe('startServer', () => {
 
     registry.emit('user_message', { from: 'agent-1', payload: 'hello\nworld' });
 
-    const socket = new WebSocket(baseUrl.replace('http', 'ws') + '/ws');
-    await new Promise<void>((resolve, reject) => {
-      socket.once('open', resolve);
-      socket.once('error', reject);
-    });
+    const socket = await openSocket();
 
     const historyMessage = new Promise<any>((resolve, reject) => {
       const timeout = setTimeout(() => reject(new Error('Timed out waiting for message_history')), 1000);
@@ -236,6 +305,104 @@ describe('startServer', () => {
         { type: 'agent_message', payload: 'hello\nworld' },
       ],
     });
+
+    socket.close();
+    await new Promise<void>((resolve) => socket.once('close', () => resolve()));
+  });
+
+  it('should send relay approval mode and pending relay snapshot on websocket connect', async () => {
+    const relay = await createPendingRelay('Held before UI connects');
+    const { socket, message } = await openSocketWithMessage((item) => item.type === 'relay_approval_state');
+
+    expect(message).toMatchObject({
+      type: 'relay_approval_state',
+      mode: 'approve_each',
+      pendingRelays: [
+        expect.objectContaining({
+          id: relay.id,
+          status: 'pending',
+          fromAgentId: 'agent-1',
+          toAgentId: 'agent-2',
+          payload: 'Held before UI connects',
+        }),
+      ],
+    });
+
+    socket.close();
+    await new Promise<void>((resolve) => socket.once('close', () => resolve()));
+  });
+
+  it('should update relay approval mode through websocket command and recorder event', async () => {
+    const { socket } = await openSocketWithMessage((message) => message.type === 'relay_approval_state');
+
+    socket.send(JSON.stringify({ type: 'set_relay_approval_mode', mode: 'approve_each' }));
+
+    await expect(waitForMessage(socket, (message) => message.type === 'relay_approval_mode')).resolves.toEqual({
+      type: 'relay_approval_mode',
+      mode: 'approve_each',
+    });
+    expect(registry.getRelayApprovalMode()).toBe('approve_each');
+    expect(recorder.record).toHaveBeenCalledWith('runtime', 'relay_approval_mode', { mode: 'approve_each' });
+
+    socket.close();
+    await new Promise<void>((resolve) => socket.once('close', () => resolve()));
+  });
+
+  it('should approve a pending relay through websocket command and broadcast lifecycle update', async () => {
+    const { socket } = await openSocketWithMessage((message) => message.type === 'relay_approval_state');
+    const pendingUpdate = waitForMessage(socket, (message) => message.type === 'pending_relay_updated' && message.relay.status === 'pending');
+    const relay = await createPendingRelay('Approve from UI');
+
+    await expect(pendingUpdate).resolves.toMatchObject({
+      type: 'pending_relay_updated',
+      relay: {
+        id: relay.id,
+        status: 'pending',
+      },
+    });
+
+    socket.send(JSON.stringify({ type: 'approve_pending_relay', relayId: relay.id }));
+
+    await expect(waitForMessage(socket, (message) => message.type === 'pending_relay_updated' && message.relay.id === relay.id && message.relay.status === 'approved_delivered')).resolves.toMatchObject({
+      type: 'pending_relay_updated',
+      relay: {
+        id: relay.id,
+        status: 'approved_delivered',
+      },
+    });
+    await expect(registry.getAgent('agent-2').awaitTurn()).resolves.toMatchObject({
+      type: 'message_received',
+      from: 'agent-1',
+      payload: 'Approve from UI',
+    });
+    expect(recorder.record).toHaveBeenCalledWith('runtime', 'pending_relay_updated', {
+      relay: expect.objectContaining({ id: relay.id, status: 'approved_delivered' }),
+    });
+
+    socket.close();
+    await new Promise<void>((resolve) => socket.once('close', () => resolve()));
+  });
+
+  it('should deny a pending relay through websocket command without target delivery', async () => {
+    const { socket } = await openSocketWithMessage((message) => message.type === 'relay_approval_state');
+    const pendingUpdate = waitForMessage(socket, (message) => message.type === 'pending_relay_updated' && message.relay.status === 'pending');
+    const relay = await createPendingRelay('Deny from UI');
+    await pendingUpdate;
+
+    socket.send(JSON.stringify({ type: 'deny_pending_relay', relayId: relay.id }));
+
+    await expect(waitForMessage(socket, (message) => message.type === 'pending_relay_updated' && message.relay.id === relay.id && message.relay.status === 'denied')).resolves.toMatchObject({
+      type: 'pending_relay_updated',
+      relay: {
+        id: relay.id,
+        status: 'denied',
+      },
+    });
+    const outcome = await Promise.race([
+      registry.getAgent('agent-2').awaitTurn().then(() => 'delivered'),
+      new Promise((resolve) => setTimeout(() => resolve('not-delivered'), 25)),
+    ]);
+    expect(outcome).toBe('not-delivered');
 
     socket.close();
     await new Promise<void>((resolve) => socket.once('close', () => resolve()));
