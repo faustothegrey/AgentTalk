@@ -1,0 +1,217 @@
+# M19 - Real CLI relay and ratio - Implementation Ledger
+
+**Status:** **Gate 1 APPROVED (Plan Reviewer Claude verified the fold, 2026-07-11)** — implementation opens only
+after PO implementer assignment.
+**Plan:** `design/milestone19-real-cli-relay-plan.md`
+**PO:** Fausto. **SM:** Claude. **Architect:** Claude. **Planner:** Codex.
+**Plan Reviewer:** Claude. **Implementer:** **Codex (PO-assigned, epic-scoped, 2026-07-11 `[PO]`)** — Gemini is the
+default; this is a straight PO reassignment, **not** the LB-38 standing conditional. **Implementation Reviewer (gate
+2):** **Claude** (shuffled from Codex — the implementer cannot review its own work). **Task-end Reviewer (gate 3):**
+Claude *(see concentration note below)*.
+
+> **⚠️ Concentration note (SM/architect flag, 2026-07-11).** With Codex planning+implementing, **Claude now holds
+> gate 1 + gate 2 + gate 3 + architect + SM** for M19. The gates stay independent *of the implementer* (Codex ≠
+> reviewer), so the `AGENT.md` tripwire ("a gate amounts to the SM greenlighting itself") does **not** fire — Claude
+> reviews Codex's work, not its own. **But** gate 2 and gate 3 on the *same* actor loses the fresh-eyes-at-close
+> default (Task-end Reviewer ≠ Implementation Reviewer). SP2 accepted that doubling for a *finding*; **M19 ships real
+> cross-repo production code**, so it matters more here. **Mitigation options for the PO to pick at T1/closure:** (a)
+> accept the doubling (declared, merges human-gated), or (b) route the gate-3 **closure sweep** to a fresh pair of
+> eyes — the PO personally (as at the M19 gate), or Gemini for the mechanical re-run bars. Recommend deciding before
+> closure, not at it.
+
+This ledger records M19 claims, verifier verdicts, coordination evidence, and closure telemetry. Implementation must
+not start until Gate 1 approves the plan.
+
+## Gate 1 Review (Plan Reviewer: Claude, 2026-07-11) — CONDITIONAL APPROVAL
+
+**Verdict: APPROVED, conditional on 3 refinements folded before implementation.** The plan matches the ratified
+inception (C-first, never-B, ENABLER-BLOCKED honest outcome), the fence is sound, and — per plan-reviewer discipline
+— I verified its load-bearing **code** claims against the repo, not just read them:
+
+- **Contract source of truth** = `packages/contracts/wire-contract.json` (v7; the client's v5 is a stale duplicate);
+  `packages/contracts/scripts/verify-contract.js` is the existing hash-integrity guard T1's divergence check can extend. ✓
+- **Server hard-reject** T1 must preserve = `packages/mcp-transport/src/mcp-server.ts:149-154` (`-32000` + `ws.close(1008)`
+  on missing/mismatched `clientInfo.contractHash`) — exactly what SP2 reproduced. ✓ (correctly fenced in T1/T2/T3 manifests)
+- **M17 workflow-event channel** T3's numerator depends on = `contracts/src/types.ts:114` (`kind:'workflow_gate_event'`)
+  + `registry.ts:376-453` (carried on `send_to_agent`'s `workflowEvent`/`baton`, emits `workflow_gate_attempt`). ✓
+- Note: T1 is a one-directional **client catch-up to v7** (server unchanged) → no new cross-repo hash coordination; the
+  durable fix is generate-from-source, not hand-copy (which would just re-seed drift). The plan already names this.
+
+**Conditions (fold before implementation):**
+1. **[clarity — real defect] Resolve the `C3` name collision.** "C3" denotes the *program* metric (Outcome Rule
+   "**C3 discharged**"; closure telemetry `outcome`) **and** DoD claim C3 ("supported attach ritual") — same token,
+   two referents, in both plan and ledger. Rename the DoD claims (e.g. `M19-D1..D9`) or the outcome label so a closure
+   reader can never conflate "did we discharge program-C3?" with DoD-C3. (Zero-risk; I can fold this if you prefer.)
+2. **[anti-false-green] Name T3's provenance-verification *method*.** C5 rightly demands the event be "chosen through
+   the real CLI MCP tool surface, not injected by a proof script" — this is the exact bar that refuted M18-T3 (IP-15).
+   But the plan doesn't say *how* provenance is established. Add one sentence: e.g., correlate the recorded
+   `workflow_gate_attempt` to the **attached agent's own WS connection / bridge-log `tx`** of the tool call, so gate 2
+   has a pre-agreed, unfakeable test rather than improvising it.
+3. **[anti-false-green] C4 must prove `await_turn` *functions*, not merely "not denied."** SP2 showed
+   discovery ≠ permission ≠ function. Tighten C4 so the bar is "Claude Code, non-interactively, calls `await_turn` and
+   **actually blocks on / receives a turn**" — a granted-but-nonfunctional tool must not pass as a green permission proof.
+
+None of these touch the plan's premises (all verified). They are pre-implementation cleanups; the plan is otherwise
+ready. Answers to Codex's own five Gate-1 focus questions: T1 sizing ✓ (right slice, has escalation stop); T2 permission
+bar → tightened by condition 3; T3 anti-theater → strong, hardened by condition 2; BL-024 as constraint ✓; ENABLER-BLOCKED
+outcome ✓ clean.
+
+**Condition fold (Planner: Codex, 2026-07-11):** folded in all three conditions. DoD rows are now `M19-D1..M19-D9`
+to avoid program-C3 ambiguity; T3 requires recorder-to-bridge/WebSocket transaction correlation; T2/M19-D4 requires
+Claude Code to call `await_turn` and actually block on or receive an AgentTalk turn, not merely avoid permission
+denial. Implementation remains closed until the PO assigns the implementer seat.
+
+**Fold verified — Gate 1 FULLY APPROVED (Plan Reviewer: Claude, 2026-07-11).** I checked all three folds against the
+**plan** (not just this ledger): DoD rows are `M19-D1..D9` and "C3" now denotes only the program outcome (plan
+Outcome Rule L42-43 vs DoD L163-171); M19-D5 + T3 required-shape (plan L147-150) + T3 budget (plan L212) require
+recorder↔bridge/WS transaction correlation (same agent id / connection) — the IP-15 provenance defense; M19-D4
+(plan L166) requires `await_turn` to *actually block on/receive a turn*. Premises were already verified above. **Gate
+1 is closed APPROVED.** Next act is the PO's: assign the implementer seat (then T1 opens on branch
+`m19-t1-contract-alignment`; gate 2 → Codex unless the implementer *is* Codex, in which case gate 2 → Claude).
+
+## Coordination Baseline
+
+M18 closed with relays **19**, substrate events **0**, ratio **0/19**. M19 must report both raw relay count and
+substrate-carried ratio; SDK controls do not count in the substrate numerator.
+
+## Claim / Verdict Ledger
+
+| Item | Implementer claim | Reviewer verdict | Evidence |
+|---|---|---|---|
+| M19-D1 - contract alignment / stale-client guard | pending | pending | M19-T1 |
+| M19-D2 - hard-reject semantics preserved | pending | pending | M19-T1 |
+| M19-D3 - supported Codex + Claude attach ritual | pending | pending | M19-T2 |
+| M19-D4 - Claude functional noninteractive `await_turn` proof or ENABLER-BLOCKED | pending | pending | M19-T2 |
+| M19-D5 - real attached CLI substrate-carried baton/workflow event with provenance correlation | pending | pending | M19-T3 |
+| M19-D6 - BL-027 raw count + ratio + fallback rows | pending | pending | M19-T3 / closure |
+| M19-D7 - BL-024 treated as constraint; provider observations recorded | pending | pending | M19-T2 / M19-T3 |
+| M19-D8 - fresh evidence bars; no stale proof | pending | pending | all tasks |
+| M19-D9 - freeze bar green and forbidden surfaces clean | pending | pending | closure |
+
+## M19-T1 - BL-018: contract alignment and stale-client guard
+
+**Status:** pending Gate 1.
+**Branch:** `m19-t1-contract-alignment` when implementation begins.
+
+### Scope Manifest
+
+```yaml
+@scope:
+  allowed:
+    - design/milestone19-real-cli-relay-plan.md
+    - design/milestone19-real-cli-relay-implementation.md
+    - design/evidence/**
+    - packages/contracts/**
+    - packages/runtime-core/src/registry/__tests__/**
+    - packages/mcp-transport/src/__tests__/**
+    - ../agentalk-mcp-client/wire-contract.json
+    - ../agentalk-mcp-client/scripts/**
+    - ../agentalk-mcp-client/__tests__/**
+    - ../agentalk-mcp-client/README.md
+  forbidden:
+    - packages/runtime-core/src/registry/team-coordinator.ts
+    - packages/runtime-core/src/registry/mcp-tools.ts
+    - packages/mcp-transport/src/mcp-server.ts
+    - ../agentalk-mcp-client/bridge.mjs
+  free:
+    - planning_runs/**
+```
+
+### Coordination Evidence
+
+| Channel event | Artifact | Count |
+|---|---|---:|
+| substrate events | pending | 0 |
+| terminal fallbacks | pending | 0 |
+| ratio | pending | pending |
+
+## M19-T2 - BL-026: supported real-CLI attach ritual
+
+**Status:** pending T1 and Gate 1.
+**Branch:** `m19-t2-real-cli-attach` when implementation begins.
+
+### Scope Manifest
+
+```yaml
+@scope:
+  allowed:
+    - design/milestone19-real-cli-relay-plan.md
+    - design/milestone19-real-cli-relay-implementation.md
+    - design/evidence/**
+    - scripts/m19-*
+    - scripts/__tests__/**
+    - apps/orchestrator/src/__tests__/**
+    - ../agentalk-mcp-client/README.md
+    - ../agentalk-mcp-client/__tests__/**
+  forbidden:
+    - packages/runtime-core/src/registry/team-coordinator.ts
+    - packages/runtime-core/src/registry/mcp-tools.ts
+    - packages/contracts/wire-contract.json
+    - ../agentalk-mcp-client/wire-contract.json
+  free:
+    - planning_runs/**
+```
+
+### Coordination Evidence
+
+| Channel event | Artifact | Count |
+|---|---|---:|
+| substrate events | pending | 0 |
+| terminal fallbacks | pending | 0 |
+| ratio | pending | pending |
+
+## M19-T3 - BL-027: one real attached role hand-off and ratio
+
+**Status:** pending T2.
+**Branch:** `m19-t3-relay-ratio` when implementation begins.
+
+### Scope Manifest
+
+```yaml
+@scope:
+  allowed:
+    - design/milestone19-real-cli-relay-implementation.md
+    - design/evidence/**
+    - scripts/m19-*
+    - scripts/__tests__/**
+  forbidden:
+    - packages/runtime-core/src/registry/team-coordinator.ts
+    - packages/runtime-core/src/registry/mcp-tools.ts
+    - packages/contracts/wire-contract.json
+    - ../agentalk-mcp-client/**
+  free:
+    - planning_runs/**
+```
+
+### Coordination Evidence
+
+| Channel event | Artifact | Count |
+|---|---|---:|
+| substrate events | pending | 0 |
+| terminal fallbacks | pending | 0 |
+| ratio | pending | pending |
+
+## Impediments
+
+| ID | What blocked | Blocks | Status | Unblock condition |
+|---|---|---|---|---|
+| none | - | - | - | - |
+
+## Implementer Signals
+
+| ID | Type | Re | What and why | Reviewer disposition |
+|---|---|---|---|---|
+| none | - | - | - | - |
+
+## Closure Telemetry
+
+```text
+**Telemetry (milestone closure):**
+- milestone:   M19
+- wall-clock:  <start> -> <close> (<delta>)
+- budget:      weekly <a%->b%>, session/5h <a%->b%> [or unavailable]
+- gate:        <checks run>
+- coordination: terminal relays <n>, substrate hand-offs <m>, ratio <m>/<n+m>
+- diff:        <N files, +adds/-dels>, commits <hashes>
+- outcome:     <C3 discharged / ENABLER-BLOCKED / REFUTED>
+```
