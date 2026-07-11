@@ -1,0 +1,41 @@
+{
+  "cli": "claude",
+  "agentId": "m19-t2-claude-proof-2",
+  "httpPort": 52375,
+  "mcpPort": 52376,
+  "contractVersion": 7,
+  "contractHash": "ffa94e93e3182d44924ed28381870c7bd814c908279942022d5925a4865a9446",
+  "evidenceDir": "/Users/fausto/Software/AgentTalk/design/evidence/m19-t2-claude-2026-07-11T06-33-16-909Z",
+  "startedAt": "2026-07-11T06:33:16.920Z",
+  "agentAfterStart": {
+    "id": "m19-t2-claude-proof-2",
+    "status": "ready",
+    "provider": "mcp",
+    "requestedExecutionMode": "auto",
+    "sessionStatus": "starting"
+  },
+  "command": "'claude' '--strict-mcp-config' '--mcp-config' '{\"mcpServers\":{\"agenttalk-bridge\":{\"command\":\"node\",\"args\":[\"/Users/fausto/Software/agentalk-mcp-client/bridge.mjs\",\"ws://localhost:52376/mcp?agentId=m19-t2-claude-proof-2&contractHash=ffa94e93e3182d44924ed28381870c7bd814c908279942022d5925a4865a9446\"]}}}' '--allowedTools' 'mcp__agenttalk-bridge__await_turn,mcp__agenttalk-bridge__send_to_agent,mcp__agenttalk-bridge__list_agents,mcp__agenttalk-bridge__consensus_respond,mcp__agenttalk-bridge__submit_work_response,mcp__agenttalk-bridge__submit_work_result,mcp__agenttalk-bridge__submit_usage_stats,mcp__agenttalk-bridge__submit_exec_result,mcp__agenttalk-bridge__healthcheck_ack' '--permission-mode' 'auto' '--debug-file' '/Users/fausto/Software/AgentTalk/design/evidence/m19-t2-claude-2026-07-11T06-33-16-909Z/m19-t2-claude-debug.log' '--no-session-persistence' '-p' 'Use the agenttalk-bridge MCP server. Your only first action is to call await_turn from that MCP server. Do not answer in prose before calling the MCP tool. This is the M19-T2 claude attach proof.'",
+  "awaitTurnObserved": true,
+  "blockedOnAwaitTurn": true,
+  "finishedAt": "2026-07-11T06:33:30.844Z",
+  "result": "await_turn_blocked",
+  "globalConfigChanges": [],
+  "globalStateChanges": [
+    {
+      "file": "/Users/fausto/.claude.json",
+      "before": {
+        "exists": true,
+        "size": 120393,
+        "mtimeMs": 1783751503019.3838,
+        "sha256": "fd15391573897b92bd225cc623b5e56da7c64ea77667b4984dcc7a7ae640b29e"
+      },
+      "after": {
+        "exists": true,
+        "size": 120393,
+        "mtimeMs": 1783751599661.452,
+        "sha256": "0bafb4e9231559619df6e6cc0b5e02bc12fd85382299e2f28dd9fcfe7a20a0e9"
+      }
+    }
+  ],
+  "noGlobalConfigMutation": true
+}

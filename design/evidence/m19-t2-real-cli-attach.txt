@@ -1,0 +1,49 @@
+M19-T2 evidence - supported real-CLI attach ritual
+Date: 2026-07-11
+Branch: m19-t2-real-cli-attach
+Implementer: Codex
+
+Scope declaration:
+- AgentTalk touched: scripts/m19-real-cli-attach.mjs, scripts/__tests__/m19-real-cli-attach.test.mjs, design/milestone19-real-cli-relay-implementation.md, design/evidence/m19-t2-*.
+- agentalk-mcp-client touched: none.
+- Forbidden surfaces not edited: packages/runtime-core/src/registry/team-coordinator.ts, packages/runtime-core/src/registry/mcp-tools.ts, packages/contracts/wire-contract.json, ../agentalk-mcp-client/wire-contract.json, ../agentalk-mcp-client/bridge.mjs.
+
+Runbook / supported ritual:
+- File: design/evidence/m19-t2-runbook.txt
+- Command used to generate: node scripts/m19-real-cli-attach.mjs runbook --http-port 3310 --mcp-port 3311 --agent codex:m19-t2-codex --agent claude:m19-t2-claude
+- Includes: orchestrator PORT/AGENTTALK_MCP_PORT command, create/start curl commands, Codex `mcp_servers.agenttalk-bridge.*` override, Claude `--mcp-config` plus `--allowedTools`, and failure-mode notes.
+- Contract advertised in URLs: v7 ffa94e93e3182d44924ed28381870c7bd814c908279942022d5925a4865a9446.
+
+Codex CLI proof:
+- Attempt 1: design/evidence/m19-t2-codex-2026-07-11T06-29-42-995Z timed out because the helper left stdin open and `codex exec` waited for EOF. This was a helper bug, not an attach result.
+- Attempt 2: design/evidence/m19-t2-codex-2026-07-11T06-31-20-536Z/proof.json
+- Result: awaitTurnObserved=true, blockedOnAwaitTurn=true, noGlobalConfigMutation=true.
+- Server evidence: design/evidence/m19-t2-codex-2026-07-11T06-31-20-536Z/m19-t2-server.log contains `MCP tool call from m19-t2-codex-proof-2: await_turn {}`.
+- Agent after start: status=ready, provider=mcp, requestedExecutionMode=auto.
+
+Claude Code proof:
+- Attempt 1: design/evidence/m19-t2-claude-2026-07-11T06-31-39-212Z proved functional await_turn, but the helper initially treated ~/.claude.json state/cache churn as config mutation. The raw proof is retained.
+- Attempt 2: design/evidence/m19-t2-claude-2026-07-11T06-33-16-909Z/proof.json
+- Result: awaitTurnObserved=true, blockedOnAwaitTurn=true, noGlobalConfigMutation=true.
+- Command shape: `claude --strict-mcp-config --mcp-config <agenttalk-bridge JSON> --allowedTools mcp__agenttalk-bridge__await_turn,mcp__agenttalk-bridge__send_to_agent,... --permission-mode auto --no-session-persistence -p <prompt>`.
+- Debug evidence: design/evidence/m19-t2-claude-2026-07-11T06-33-16-909Z/m19-t2-claude-debug.log shows `ToolSearchTool: selected mcp__agenttalk-bridge__await_turn`, `permissionDecisionMs=1`, and `Calling MCP tool: await_turn`; no `mcp__agenttalk-bridge__await_turn tool permission denied` entry appears in this proof.
+- Server evidence: design/evidence/m19-t2-claude-2026-07-11T06-33-16-909Z/m19-t2-server.log contains `MCP tool call from m19-t2-claude-proof-2: await_turn {}`.
+- Agent after start: status=ready, provider=mcp, requestedExecutionMode=auto.
+- State note: Claude Code updated ~/.claude.json state/cache during both Claude proof runs. The successful proof records this under `globalStateChanges`; actual config-file snapshots reported `globalConfigChanges: []`.
+
+Failure-mode probes:
+- Attempt 1: design/evidence/m19-t2-failures-2026-07-11T06-29-12-425Z used an unstarted stale-hash probe agent, so it exercised unknown/unready-agent rejection instead of hash mismatch. This was a helper bug.
+- Attempt 2: design/evidence/m19-t2-failures-2026-07-11T06-29-35-491Z/failure-probes.json
+- Results: missingStart passed (agent remained creating until /start), staleHash passed (closeCode 1008 and contract mismatch error), stalePort passed (connection error).
+
+Verification commands:
+- npx vitest run scripts/__tests__/m19-real-cli-attach.test.mjs: passed (1 file, 1 test).
+- npx tsc -b: passed before live proof runs.
+
+Process cleanup:
+- Post-proof process scan found no lingering m19-t2 orchestrator, bridge, Codex, or Claude proof process.
+
+Evidence exclusions:
+- No global CLI config files were edited by hand or by the helper.
+- No wire-contract files were edited.
+- No client bridge edit was made.

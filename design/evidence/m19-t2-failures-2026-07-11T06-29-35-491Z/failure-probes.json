@@ -1,0 +1,22 @@
+{
+  "evidenceDir": "/Users/fausto/Software/AgentTalk/design/evidence/m19-t2-failures-2026-07-11T06-29-35-491Z",
+  "agentId": "m19-t2-failure-probe-2",
+  "httpPort": 52221,
+  "mcpPort": 52222,
+  "checks": {
+    "missingStart": {
+      "status": "creating",
+      "passed": true,
+      "message": "Agent remains creating until POST /start is called."
+    },
+    "staleHash": {
+      "closeCode": 1008,
+      "errorMessage": "Contract hash mismatch. Expected ffa94e93e3182d44924ed28381870c7bd814c908279942022d5925a4865a9446, got stale-hash-for-m19-t2",
+      "passed": true
+    },
+    "stalePort": {
+      "passed": true,
+      "error": "AggregateError"
+    }
+  }
+}

@@ -1,0 +1,3 @@
+{"type":"thread.started","thread_id":"019f4fdf-9cb8-7c21-9e32-205268d730dd"}
+{"type":"turn.started"}
+{"type":"item.started","item":{"id":"item_0","type":"mcp_tool_call","server":"agenttalk-bridge","tool":"await_turn","arguments":{},"result":null,"error":null,"status":"in_progress"}}

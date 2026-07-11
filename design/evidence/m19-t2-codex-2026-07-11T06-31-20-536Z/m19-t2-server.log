@@ -1,0 +1,31 @@
+AgentTalk Orchestrator V1 started.
+Recording runtime events to /Users/fausto/Software/AgentTalk/design/evidence/m19-t2-codex-2026-07-11T06-31-20-536Z/m19-t2-recording.ndjson
+Google Drive integration configured.
+[Server] Autorun scenario scheduler initialized (repeating every 1800s)
+Ready to manage agents.
+[Server] AgentTalk Web UI Backend listening on http://localhost:52288
+[Server] AgentTalk WebSocket MCP server listening on ws://localhost:52289/
+[Server] AgentTalk MCP server URL set to: ws://localhost:52289/
+[Server] POST /api/agents {
+  id: 'm19-t2-codex-proof-2',
+  provider: 'mcp',
+  requestedExecutionMode: 'auto'
+}
+[Registry] Creating agent m19-t2-codex-proof-2...
+[Server] Agent created: m19-t2-codex-proof-2 (status: creating)
+[Server] POST /api/agents/m19-t2-codex-proof-2/start { provider: 'mcp', model: undefined, executionMode: 'auto' }
+[Server] Activating agent m19-t2-codex-proof-2 (current status: creating)...
+[Registry] Activating agent m19-t2-codex-proof-2 (waiting for MCP connection)
+[Agent m19-t2-codex-proof-2] creating -> starting
+[Server] Status m19-t2-codex-proof-2: starting → 0 client(s)
+[Server] Execution Mode m19-t2-codex-proof-2: auto -> pending → 0 client(s)
+[Server] Session Status m19-t2-codex-proof-2: starting → 0 client(s)
+[Server] Provider m19-t2-codex-proof-2: mcp → 0 client(s)
+[Registry] Starting InProcessAgentDriver for mcp-backed agent m19-t2-codex-proof-2
+[Agent m19-t2-codex-proof-2] starting -> ready
+[Server] Agent m19-t2-codex-proof-2 successfully started
+[Server] Returning 1 agents
+[McpServer] Connection established for agentId=m19-t2-codex-proof-2
+[Registry] MCP tool call from m19-t2-codex-proof-2: await_turn {}
+Received SIGTERM. Shutting down...
+[McpServer] Connection closed for agentId=m19-t2-codex-proof-2 (code: 1005)

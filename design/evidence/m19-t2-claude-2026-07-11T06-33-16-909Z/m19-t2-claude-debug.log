@@ -1,0 +1,172 @@
+2026-07-11T06:33:18.973Z [DEBUG] MDM settings load completed in 1ms
+2026-07-11T06:33:19.087Z [DEBUG] Broken symlink or missing file encountered for settings.json at path: /Library/Application Support/ClaudeCode/managed-settings.json
+2026-07-11T06:33:19.088Z [DEBUG] CA certs: Config fallback - globalEnv keys: , settingsEnv keys: none
+2026-07-11T06:33:19.092Z [DEBUG] [init] configureGlobalMTLS starting
+2026-07-11T06:33:19.092Z [DEBUG] [init] configureGlobalMTLS complete
+2026-07-11T06:33:19.092Z [DEBUG] [init] configureGlobalAgents starting
+2026-07-11T06:33:19.092Z [DEBUG] CA certs: stores=bundled,system, extraCertsPath=undefined
+2026-07-11T06:33:19.092Z [DEBUG] CA certs: Loaded 120 bundled root certificates
+2026-07-11T06:33:19.110Z [DEBUG] CA certs: Loaded 1 system CA certificates
+2026-07-11T06:33:19.110Z [DEBUG] mTLS: Creating HTTPS agent with custom certificates
+2026-07-11T06:33:19.110Z [DEBUG] [init] configureGlobalAgents complete
+2026-07-11T06:33:19.113Z [DEBUG] Error log sink initialized
+2026-07-11T06:33:19.123Z [DEBUG] Applying permission update: Adding 12 allow rule(s) to destination 'localSettings': ["Bash","Read","Edit","Write","Glob","Grep","WebSearch","WebFetch","Skill(update-config)","Bash(git push:*)","Skill(claude-api)","mcp__claude_ai_Google_Drive__list_recent_files"]
+2026-07-11T06:33:19.123Z [DEBUG] Applying permission update: Adding 28 ask rule(s) to destination 'localSettings': ["Bash(sudo:*)","Bash(rm -rf /)","Bash(rm -rf /*)","Bash(rm -rf ~)","Bash(rm -rf ~/*)","Bash(rm -rf $HOME*)","Bash(rm -rf /Users*)","Bash(rm -rf /bin*)","Bash(rm -rf /sbin*)","Bash(rm -rf /usr*)","Bash(rm -rf /etc*)","Bash(rm -rf /var*)","Bash(rm -rf /opt*)","Bash(rm -rf /boot*)","Bash(rm -rf /dev*)","Bash(rm -rf /Library*)","Bash(rm -rf /System*)","Bash(rm -rf /Applications*)","Bash(rm -rf /private/etc*)","Bash(rm -rf /private/var*)","Bash(rm -rf .git*)","Bash(rm -rf .*)","Bash(mkfs:*)","Bash(dd:*)","Bash(diskutil:*)","Bash(fdisk:*)","Bash(shutdown:*)","Bash(reboot:*)"]
+2026-07-11T06:33:19.124Z [DEBUG] [ToolSearch:optimistic] mode=tst, ENABLE_TOOL_SEARCH=undefined, result=true
+2026-07-11T06:33:19.127Z [DEBUG] installed_plugins.json doesn't exist, returning empty V2 object
+2026-07-11T06:33:19.128Z [DEBUG] Applying permission update: Adding 1 directory with destination 'localSettings': ["/tmp"]
+2026-07-11T06:33:19.128Z [DEBUG] Applying permission update: Adding 1 directory with destination 'localSettings': ["/private/tmp"]
+2026-07-11T06:33:19.128Z [DEBUG] Applying permission update: Adding 1 directory with destination 'localSettings': ["/Users/fausto/Software/agentalk-mcp-client"]
+2026-07-11T06:33:19.128Z [DEBUG] Ignoring dangerous permission Bash(*) from .claude/settings.local.json (bypasses classifier)
+2026-07-11T06:33:19.128Z [DEBUG] Applying permission update: Removing 1 allow rule(s) from source 'localSettings': ["Bash"]
+2026-07-11T06:33:19.129Z [DEBUG] [STARTUP] Loading MCP configs...
+2026-07-11T06:33:19.133Z [DEBUG] Git remote URL: git@github.com:faustothegrey/AgentTalk.git
+2026-07-11T06:33:19.133Z [DEBUG] Parsed repository: github.com/faustothegrey/AgentTalk from URL: git@github.com:faustothegrey/AgentTalk.git
+2026-07-11T06:33:19.134Z [DEBUG] [STARTUP] Running setup()...
+2026-07-11T06:33:19.137Z [DEBUG] Loading skills from: managed=/Library/Application Support/ClaudeCode/.claude/skills, user=/Users/fausto/.claude/skills, project=[]
+2026-07-11T06:33:19.139Z [DEBUG] Broken symlink or missing file encountered for settings.json at path: /Library/Application Support/ClaudeCode/managed-settings.json
+2026-07-11T06:33:19.142Z [DEBUG] Error log sink initialized
+2026-07-11T06:33:19.147Z [DEBUG] Failed to stat directory /Library/Application Support/ClaudeCode/.claude/commands: ENOENT: no such file or directory, stat '/Library/Application Support/ClaudeCode/.claude/commands'
+2026-07-11T06:33:19.151Z [DEBUG] Failed to stat directory /Users/fausto/.claude/agents: ENOENT: no such file or directory, stat '/Users/fausto/.claude/agents'
+2026-07-11T06:33:19.151Z [DEBUG] Failed to stat directory /Library/Application Support/ClaudeCode/.claude/agents: ENOENT: no such file or directory, stat '/Library/Application Support/ClaudeCode/.claude/agents'
+2026-07-11T06:33:19.153Z [DEBUG] Acquired PID lock for 2.1.207 (PID 37989)
+2026-07-11T06:33:19.153Z [DEBUG] Acquired PID lock on running version: /Users/fausto/.local/share/claude/versions/2.1.207
+2026-07-11T06:33:19.159Z [DEBUG] [STARTUP] setup() completed in 25ms
+2026-07-11T06:33:19.159Z [DEBUG] Cleared CA certificates cache
+2026-07-11T06:33:19.160Z [DEBUG] Cleared mTLS configuration cache
+2026-07-11T06:33:19.160Z [DEBUG] Cleared proxy agent cache
+2026-07-11T06:33:19.160Z [DEBUG] CA certs: stores=bundled,system, extraCertsPath=undefined
+2026-07-11T06:33:19.160Z [DEBUG] CA certs: Loaded 120 bundled root certificates
+2026-07-11T06:33:19.160Z [DEBUG] CA certs: Loaded 1 system CA certificates
+2026-07-11T06:33:19.160Z [DEBUG] mTLS: Creating HTTPS agent with custom certificates
+2026-07-11T06:33:19.160Z [DEBUG] [STARTUP] Loading commands and agents...
+2026-07-11T06:33:19.184Z [DEBUG] Loaded 3 unique skills (3 unconditional, 0 conditional, managed: 0, user: 2, project: 0, additional: 0, legacy commands: 1)
+2026-07-11T06:33:19.193Z [DEBUG] Found 0 plugins (0 enabled, 0 disabled)
+2026-07-11T06:33:19.193Z [DEBUG] getPluginSkills: Processing 0 enabled plugins
+2026-07-11T06:33:19.193Z [DEBUG] Registered 0 hooks from 0 plugins
+2026-07-11T06:33:19.193Z [DEBUG] Total plugin commands loaded: 0
+2026-07-11T06:33:19.193Z [DEBUG] Total plugin agents loaded: 0
+2026-07-11T06:33:19.195Z [DEBUG] Total plugin skills loaded: 0 (0 duplicate/user-owned entries skipped)
+2026-07-11T06:33:19.196Z [DEBUG] getSkills returning: 3 skill dir commands, 0 plugin skills, 32 bundled skills, 0 builtin plugin skills
+2026-07-11T06:33:19.200Z [DEBUG] [STARTUP] Commands and agents loaded in 39ms
+2026-07-11T06:33:19.201Z [DEBUG] [LSP MANAGER] initializeLspServerManager() called
+2026-07-11T06:33:19.201Z [DEBUG] [LSP MANAGER] Created manager instance, state=pending
+2026-07-11T06:33:19.201Z [DEBUG] [LSP MANAGER] Starting async initialization (generation 1)
+2026-07-11T06:33:19.201Z [DEBUG] Starting background startup prefetches
+2026-07-11T06:33:19.201Z [DEBUG] [Bootstrap] Fetching
+2026-07-11T06:33:19.214Z [DEBUG] Passes: Using fresh cached eligibility data
+2026-07-11T06:33:19.216Z [DEBUG] [STARTUP] MCP configs resolved in 1ms (awaited at +87ms)
+2026-07-11T06:33:19.216Z [DEBUG] Total LSP servers loaded: 0
+2026-07-11T06:33:19.220Z [DEBUG] Cleared CA certificates cache
+2026-07-11T06:33:19.220Z [DEBUG] Cleared mTLS configuration cache
+2026-07-11T06:33:19.220Z [DEBUG] Cleared proxy agent cache
+2026-07-11T06:33:19.220Z [DEBUG] CA certs: stores=bundled,system, extraCertsPath=undefined
+2026-07-11T06:33:19.220Z [DEBUG] CA certs: Loaded 120 bundled root certificates
+2026-07-11T06:33:19.220Z [DEBUG] CA certs: Loaded 1 system CA certificates
+2026-07-11T06:33:19.220Z [DEBUG] mTLS: Creating HTTPS agent with custom certificates
+2026-07-11T06:33:19.221Z [DEBUG] [LSP SERVER MANAGER] getAllLspServers returned 0 server(s)
+2026-07-11T06:33:19.221Z [DEBUG] LSP manager initialized with 0 servers
+2026-07-11T06:33:19.221Z [DEBUG] Initialized versioned plugins system with 0 plugins
+2026-07-11T06:33:19.225Z [DEBUG] Fast mode unavailable: Fast mode is not available in the Agent SDK
+2026-07-11T06:33:19.225Z [DEBUG] [MCP] --mcp-config servers running fully async (nonblocking)
+2026-07-11T06:33:19.225Z [DEBUG] [MCP] claude.ai connectors running fully async (nonblocking)
+2026-07-11T06:33:19.226Z [DEBUG] LSP server manager initialized successfully
+2026-07-11T06:33:19.226Z [DEBUG] LSP notification handlers registered successfully for all 0 server(s)
+2026-07-11T06:33:19.230Z [DEBUG] MCP server "agenttalk-bridge": Starting connection with timeout of 30000ms
+2026-07-11T06:33:19.232Z [DEBUG] [Perfetto] initializePerfettoTracing called, env value: undefined
+2026-07-11T06:33:19.232Z [DEBUG] [3P telemetry] isTelemetryEnabled=false (CLAUDE_CODE_ENABLE_TELEMETRY=undefined)
+2026-07-11T06:33:19.242Z [WARN] [3P telemetry] Event dropped (no event logger initialized): hook_execution_start
+2026-07-11T06:33:19.263Z [DEBUG] Grove: Using fresh cached config
+2026-07-11T06:33:19.276Z [DEBUG] Failed to stat directory /Library/Application Support/ClaudeCode/.claude/skills: ENOENT: no such file or directory, stat '/Library/Application Support/ClaudeCode/.claude/skills'
+2026-07-11T06:33:19.309Z [DEBUG] Watching for changes in skill/command directories: /Users/fausto/.claude/skills, /Users/fausto/.claude/commands...
+2026-07-11T06:33:19.317Z [DEBUG] Watching for changes in setting files /Users/fausto/.claude/settings.json, /Users/fausto/Software/AgentTalk/.claude/settings.json, /Users/fausto/Software/AgentTalk/.claude/settings.local.json...
+2026-07-11T06:33:19.326Z [DEBUG] Ripgrep first use test: PASSED (mode=embedded, path=/Users/fausto/.local/share/claude/versions/2.1.207)
+2026-07-11T06:33:19.327Z [DEBUG] rg error (signal=undefined, code=2, stderr: rg: /Users/fausto/.claude/plugins/cache: IO error for operation on /Users/fausto/.claude/plugins/cache: No such file or directory (os error 2)
+), 0 results
+2026-07-11T06:33:19.328Z [DEBUG] Hooks: Checking first line for async: {"systemMessage":"TURN-1 GATE armed \u2014 primer handshake required on first response.","hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"TURN-1 GATE: On your FIRST response this session, before anything else, VISIBLY perform the FIRST ENTRY POINT primer handshake from CLAUDE.md and report the result inline to the user \u2014 do NOT treat this as silent background context. Open design/session-primers/claude-primer.md, read its key header, compare it to your private key store (session-primer-key.json beside your memory/ dir), then follow the matching branch: == active -> gather context, verify, report, STOP, and consume the key; in consumed -> proceed normally; no match/none/no store -> warn prominently and STOP; no primer file -> proceed. Do this first and show your work."}}
+2026-07-11T06:33:19.328Z [DEBUG] Hooks: Parsed initial response: {"systemMessage":"TURN-1 GATE armed — primer handshake required on first response.","hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"TURN-1 GATE: On your FIRST response this session, before anything else, VISIBLY perform the FIRST ENTRY POINT primer handshake from CLAUDE.md and report the result inline to the user — do NOT treat this as silent background context. Open design/session-primers/claude-primer.md, read its key header, compare it to your private key store (session-primer-key.json beside your memory/ dir), then follow the matching branch: == active -> gather context, verify, report, STOP, and consume the key; in consumed -> proceed normally; no match/none/no store -> warn prominently and STOP; no primer file -> proceed. Do this first and show your work."}}
+2026-07-11T06:33:19.329Z [DEBUG] Hooks: Initial response is not async, continuing normal processing
+2026-07-11T06:33:19.336Z [DEBUG] Successfully parsed and validated hook JSON output
+2026-07-11T06:33:19.336Z [DEBUG] Hook SessionStart:startup (SessionStart) success:
+{"systemMessage":"TURN-1 GATE armed \u2014 primer handshake required on first response.","hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"TURN-1 GATE: On your FIRST response this session, before anything else, VISIBLY perform the FIRST ENTRY POINT primer handshake from CLAUDE.md and report the result inline to the user \u2014 do NOT treat this as silent background context. Open design/session-primers/claude-primer.md, read its key header, compare it to your private key store (session-primer-key.json beside your memory/ dir), then follow the matching branch: == active -> gather context, verify, report, STOP, and consume the key; in consumed -> proceed normally; no match/none/no store -> warn prominently and STOP; no primer file -> proceed. Do this first and show your work."}}
+2026-07-11T06:33:19.337Z [DEBUG] Hook SessionStart (Loading CLAUDE.md primer-handshake reminder) provided additionalContext (639 chars)
+2026-07-11T06:33:19.408Z [ERROR] MCP server "agenttalk-bridge" Server stderr: [mcp-bridge] injected contractHash from URL
+[mcp-bridge] ws open -> ws://localhost:52376/mcp?agentId=m19-t2-claude-proof-2&contractHash=ffa94e93e3182d44924ed28381870c7bd814c908279942022d5925a4865a9446
+2026-07-11T06:33:19.408Z [DEBUG] MCP server "agenttalk-bridge": Successfully connected (transport: stdio) in 181ms
+2026-07-11T06:33:19.408Z [DEBUG] MCP server "agenttalk-bridge": Connection established with capabilities: {"hasTools":true,"hasPrompts":false,"hasResources":false,"hasResourceSubscribe":false,"serverVersion":{"name":"agenttalk-mcp-server","version":"1.0.0"}}
+2026-07-11T06:33:19.408Z [DEBUG] [MCP] Server "agenttalk-bridge" connected with subscribe=false
+2026-07-11T06:33:19.616Z [DEBUG] Org fast mode: disabled (extra_usage_disabled)
+2026-07-11T06:33:19.650Z [DEBUG] [auto-mode] verifyAutoModeGateAccess: enabledState=enabled disabledBySettings=false model=claude-opus-4-8 modelSupported=true disableFastModeBreakerFires=false carouselAvailable=true canEnterAuto=true
+2026-07-11T06:33:19.660Z [DEBUG] Preserving file permissions: 100600
+2026-07-11T06:33:19.660Z [DEBUG] Writing to temp file: /Users/fausto/.claude.json.tmp.37989.72fb3e10f0b5
+2026-07-11T06:33:19.661Z [DEBUG] Applied original permissions to temp file
+2026-07-11T06:33:19.662Z [DEBUG] Temp file written successfully, size: 120324 bytes
+2026-07-11T06:33:19.662Z [DEBUG] Renaming /Users/fausto/.claude.json.tmp.37989.72fb3e10f0b5 to /Users/fausto/.claude.json
+2026-07-11T06:33:19.664Z [DEBUG] File /Users/fausto/.claude.json written atomically
+2026-07-11T06:33:19.667Z [DEBUG] [Bootstrap] Fetch ok
+2026-07-11T06:33:19.667Z [DEBUG] [Bootstrap] Cache unchanged, skipping write
+2026-07-11T06:33:19.725Z [DEBUG] [ScheduledTasks] scheduler start() — enabled=false, hasTasks=false
+2026-07-11T06:33:19.733Z [DEBUG] [claudeai-mcp] Fetching from https://api.anthropic.com/v1/mcp_servers?limit=1000
+2026-07-11T06:33:19.735Z [DEBUG] Failed to stat directory /Library/Application Support/ClaudeCode/.claude/output-styles: ENOENT: no such file or directory, stat '/Library/Application Support/ClaudeCode/.claude/output-styles'
+2026-07-11T06:33:19.735Z [DEBUG] Failed to stat directory /Users/fausto/.claude/output-styles: ENOENT: no such file or directory, stat '/Users/fausto/.claude/output-styles'
+2026-07-11T06:33:19.735Z [DEBUG] Total plugin output styles loaded: 0
+2026-07-11T06:33:19.736Z [DEBUG] act_dont_rederive_arm_active source=growthbook
+2026-07-11T06:33:19.741Z [DEBUG] LSP Diagnostics: getLSPDiagnosticAttachments called
+2026-07-11T06:33:19.741Z [DEBUG] LSP Diagnostics: Checking registry - 0 pending
+2026-07-11T06:33:19.741Z [DEBUG] Hooks: Found 0 total hooks in registry
+2026-07-11T06:33:19.742Z [DEBUG] Sending 17 skills via attachment (initial)
+2026-07-11T06:33:19.742Z [DEBUG] Hooks: checkForNewResponses returning 0 responses
+2026-07-11T06:33:19.744Z [DEBUG] Fast mode unavailable: Fast mode is not available in the Agent SDK
+2026-07-11T06:33:19.753Z [DEBUG] Dynamic tool loading: 0/28 deferred tools included
+2026-07-11T06:33:19.755Z [DEBUG] attribution header x-anthropic-billing-header: cc_version=2.1.207.9b9; cc_entrypoint=sdk-cli; cch=00000;
+2026-07-11T06:33:19.756Z [DEBUG] Fast mode unavailable: Fast mode is not available in the Agent SDK
+2026-07-11T06:33:19.757Z [DEBUG] Fast mode unavailable: Fast mode is not available in the Agent SDK
+2026-07-11T06:33:19.760Z [DEBUG] Fast mode unavailable: Fast mode is not available in the Agent SDK
+2026-07-11T06:33:19.761Z [DEBUG] [API:timing] dispatching to firstParty model=claude-opus-4-8
+2026-07-11T06:33:19.764Z [DEBUG] [API REQUEST] /v1/messages x-client-request-id=4dc2c22e-670a-4383-984f-9401a2103b6b source=sdk
+2026-07-11T06:33:19.968Z [DEBUG] [claudeai-mcp] Fetched 3 servers
+2026-07-11T06:33:19.970Z [DEBUG] installPluginsForHeadless: starting
+2026-07-11T06:33:19.970Z [DEBUG] installPluginsForHeadless: no marketplaces declared
+2026-07-11T06:33:21.315Z [DEBUG] Stream started - received first chunk
+2026-07-11T06:33:21.315Z [DEBUG] [API:timing] first byte after 1555ms
+2026-07-11T06:33:27.909Z [INFO] [Stall] tool_dispatch_start tool=ToolSearch toolUseId=toolu_01RCBo2hjf4KWQk36ojyqoMy permissionDecisionMs=1
+2026-07-11T06:33:27.910Z [DEBUG] ToolSearchTool: cache invalidated - deferred tools changed
+2026-07-11T06:33:27.911Z [DEBUG] ToolSearchTool: selected mcp__agenttalk-bridge__await_turn
+2026-07-11T06:33:27.911Z [INFO] [Stall] tool_dispatch_end tool=ToolSearch toolUseId=toolu_01RCBo2hjf4KWQk36ojyqoMy outcome=ok durationMs=2
+2026-07-11T06:33:27.952Z [DEBUG] LSP Diagnostics: getLSPDiagnosticAttachments called
+2026-07-11T06:33:27.952Z [DEBUG] LSP Diagnostics: Checking registry - 0 pending
+2026-07-11T06:33:27.952Z [DEBUG] Hooks: Found 0 total hooks in registry
+2026-07-11T06:33:27.952Z [DEBUG] Hooks: checkForNewResponses returning 0 responses
+2026-07-11T06:33:27.954Z [DEBUG] Dynamic tool loading: found 1 discovered tools in message history
+2026-07-11T06:33:27.955Z [DEBUG] Dynamic tool loading: 1/28 deferred tools included
+2026-07-11T06:33:27.955Z [DEBUG] attribution header x-anthropic-billing-header: cc_version=2.1.207.9b9; cc_entrypoint=sdk-cli; cch=00000; cc_prev_req=req_011CcuoYiCs4csYXC4sJWdNi;
+2026-07-11T06:33:27.955Z [DEBUG] Fast mode unavailable: Fast mode is not available in the Agent SDK
+2026-07-11T06:33:27.956Z [DEBUG] Fast mode unavailable: Fast mode is not available in the Agent SDK
+2026-07-11T06:33:27.957Z [DEBUG] Fast mode unavailable: Fast mode is not available in the Agent SDK
+2026-07-11T06:33:27.957Z [DEBUG] [API:timing] dispatching to firstParty model=claude-opus-4-8
+2026-07-11T06:33:27.959Z [DEBUG] [API REQUEST] /v1/messages x-client-request-id=922549c0-2647-478a-8f85-b4ee123cbd87 source=sdk
+2026-07-11T06:33:30.763Z [DEBUG] Stream started - received first chunk
+2026-07-11T06:33:30.763Z [DEBUG] [API:timing] first byte after 2807ms
+2026-07-11T06:33:30.767Z [INFO] [Stall] tool_dispatch_start tool=mcp__agenttalk-bridge__await_turn toolUseId=toolu_016ojCfGcY9ztKTRS8EBMEig permissionDecisionMs=1
+2026-07-11T06:33:30.768Z [DEBUG] MCP server "agenttalk-bridge": Calling MCP tool: await_turn
+2026-07-11T06:33:30.846Z [DEBUG] Released PID lock for 2.1.207
+2026-07-11T06:33:30.850Z [DEBUG] MCP server "agenttalk-bridge": Sending SIGINT to MCP server process
+2026-07-11T06:33:30.851Z [DEBUG] LSP server manager shut down successfully
+2026-07-11T06:33:30.855Z [DEBUG] MCP server "agenttalk-bridge": UNKNOWN connection closed after 11s (cleanly)
+2026-07-11T06:33:30.856Z [DEBUG] MCP server "agenttalk-bridge": Cleared connection cache for reconnection
+2026-07-11T06:33:30.856Z [DEBUG] MCP server "agenttalk-bridge": Tool 'await_turn' failed after 0s: MCP error -32000: Connection closed
+2026-07-11T06:33:30.859Z [WARN] [Stall] tool_dispatch_end tool=mcp__agenttalk-bridge__await_turn toolUseId=toolu_016ojCfGcY9ztKTRS8EBMEig outcome=error durationMs=92
+2026-07-11T06:33:30.860Z [DEBUG] mcp__agenttalk-bridge__await_turn tool error (92ms): MCP error -32000: Connection closed
+2026-07-11T06:33:30.887Z [DEBUG] LSP Diagnostics: getLSPDiagnosticAttachments called
+2026-07-11T06:33:30.887Z [DEBUG] LSP Diagnostics: Checking registry - 0 pending
+2026-07-11T06:33:30.887Z [DEBUG] Hooks: Found 0 total hooks in registry
+2026-07-11T06:33:30.887Z [DEBUG] Hooks: checkForNewResponses returning 0 responses
+2026-07-11T06:33:30.890Z [DEBUG] Dynamic tool loading: found 1 discovered tools in message history
+2026-07-11T06:33:30.891Z [DEBUG] Dynamic tool loading: 1/28 deferred tools included
+2026-07-11T06:33:30.891Z [DEBUG] attribution header x-anthropic-billing-header: cc_version=2.1.207.9b9; cc_entrypoint=sdk-cli; cch=00000; cc_prev_req=req_011CcuoZJZqNG447MDXGjnp2;
+2026-07-11T06:33:30.892Z [DEBUG] Fast mode unavailable: Fast mode is not available in the Agent SDK
+2026-07-11T06:33:30.892Z [DEBUG] Fast mode unavailable: Fast mode is not available in the Agent SDK
+2026-07-11T06:33:30.893Z [DEBUG] Fast mode unavailable: Fast mode is not available in the Agent SDK
+2026-07-11T06:33:30.893Z [DEBUG] [API:timing] dispatching to firstParty model=claude-opus-4-8
+2026-07-11T06:33:30.894Z [DEBUG] [API REQUEST] /v1/messages x-client-request-id=9139ec9a-8d10-4223-96cb-4da265cc1f22 source=sdk
+2026-07-11T06:33:30.901Z [DEBUG] MCP server "agenttalk-bridge": MCP server process exited cleanly

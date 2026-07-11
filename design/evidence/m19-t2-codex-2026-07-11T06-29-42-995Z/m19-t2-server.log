@@ -1,0 +1,27 @@
+AgentTalk Orchestrator V1 started.
+Recording runtime events to /Users/fausto/Software/AgentTalk/design/evidence/m19-t2-codex-2026-07-11T06-29-42-995Z/m19-t2-recording.ndjson
+Google Drive integration configured.
+[Server] Autorun scenario scheduler initialized (repeating every 1800s)
+Ready to manage agents.
+[Server] AgentTalk Web UI Backend listening on http://localhost:52232
+[Server] AgentTalk WebSocket MCP server listening on ws://localhost:52233/
+[Server] AgentTalk MCP server URL set to: ws://localhost:52233/
+[Server] POST /api/agents {
+  id: 'm19-t2-codex-proof',
+  provider: 'mcp',
+  requestedExecutionMode: 'auto'
+}
+[Registry] Creating agent m19-t2-codex-proof...
+[Server] Agent created: m19-t2-codex-proof (status: creating)
+[Server] POST /api/agents/m19-t2-codex-proof/start { provider: 'mcp', model: undefined, executionMode: 'auto' }
+[Server] Activating agent m19-t2-codex-proof (current status: creating)...
+[Registry] Activating agent m19-t2-codex-proof (waiting for MCP connection)
+[Agent m19-t2-codex-proof] creating -> starting
+[Server] Status m19-t2-codex-proof: starting → 0 client(s)
+[Server] Execution Mode m19-t2-codex-proof: auto -> pending → 0 client(s)
+[Server] Session Status m19-t2-codex-proof: starting → 0 client(s)
+[Server] Provider m19-t2-codex-proof: mcp → 0 client(s)
+[Registry] Starting InProcessAgentDriver for mcp-backed agent m19-t2-codex-proof
+[Agent m19-t2-codex-proof] starting -> ready
+[Server] Agent m19-t2-codex-proof successfully started
+[Server] Returning 1 agents

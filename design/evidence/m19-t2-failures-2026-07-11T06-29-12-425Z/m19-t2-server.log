@@ -1,0 +1,28 @@
+AgentTalk Orchestrator V1 started.
+Recording runtime events to /Users/fausto/Software/AgentTalk/design/evidence/m19-t2-failures-2026-07-11T06-29-12-425Z/m19-t2-recording.ndjson
+Google Drive integration configured.
+[Server] Autorun scenario scheduler initialized (repeating every 1800s)
+Ready to manage agents.
+[Server] AgentTalk Web UI Backend listening on http://localhost:52205
+[Server] AgentTalk WebSocket MCP server listening on ws://localhost:52206/
+[Server] AgentTalk MCP server URL set to: ws://localhost:52206/
+[Server] POST /api/agents {
+  id: 'm19-t2-failure-probe',
+  provider: 'mcp',
+  requestedExecutionMode: 'auto'
+}
+[Registry] Creating agent m19-t2-failure-probe...
+[Server] Agent created: m19-t2-failure-probe (status: creating)
+[Server] Returning 1 agents
+[McpServer] Rejecting connection for agentId=m19-t2-failure-probe-stale-hash: Error: Agent m19-t2-failure-probe-stale-hash is not registered
+    at Registry.handleMcpConnect (file:///Users/fausto/Software/AgentTalk/packages/runtime-core/dist/registry/registry.js:735:19)
+    at McpServer.onConnect (file:///Users/fausto/Software/AgentTalk/apps/orchestrator/dist/server.js:775:26)
+    at WebSocketServer.<anonymous> (file:///Users/fausto/Software/AgentTalk/packages/mcp-transport/dist/mcp-server.js:75:30)
+    at WebSocketServer.emit (node:events:508:28)
+    at WebSocketServer.completeUpgrade (/Users/fausto/Software/AgentTalk/node_modules/ws/lib/websocket-server.js:450:5)
+    at WebSocketServer.handleUpgrade (/Users/fausto/Software/AgentTalk/node_modules/ws/lib/websocket-server.js:356:10)
+    at Server.upgrade (/Users/fausto/Software/AgentTalk/node_modules/ws/lib/websocket-server.js:129:16)
+    at Server.emit (node:events:508:28)
+    at onParserExecuteCommon (node:_http_server:984:14)
+    at onParserExecute (node:_http_server:888:3)
+Received SIGTERM. Shutting down...

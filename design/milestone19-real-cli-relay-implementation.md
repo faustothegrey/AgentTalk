@@ -80,8 +80,8 @@ substrate-carried ratio; SDK controls do not count in the substrate numerator.
 |---|---|---|---|
 | M19-D1 - contract alignment / stale-client guard | claimed by Codex, 2026-07-11 | **VERIFIED ✅ (Gate 2, reproduced)** | M19-T1; Gate 2 Review below |
 | M19-D2 - hard-reject semantics preserved | claimed by Codex, 2026-07-11 | **VERIFIED ✅ (Gate 2, reproduced)** | M19-T1; Gate 2 Review below |
-| M19-D3 - supported Codex + Claude attach ritual | pending | pending | M19-T2 |
-| M19-D4 - Claude functional noninteractive `await_turn` proof or ENABLER-BLOCKED | pending | pending | M19-T2 |
+| M19-D3 - supported Codex + Claude attach ritual | claimed by Codex, 2026-07-11 | **VERIFIED ✅ (Gate 2)** | M19-T2; T2 Gate 2 Review below |
+| M19-D4 - Claude functional noninteractive `await_turn` proof or ENABLER-BLOCKED | claimed by Codex, 2026-07-11 | **VERIFIED ✅ (Gate 2, reproduced by hand)** | M19-T2; T2 Gate 2 Review below |
 | M19-D5 - real attached CLI substrate-carried baton/workflow event with provenance correlation | pending | pending | M19-T3 |
 | M19-D6 - BL-027 raw count + ratio + fallback rows | pending | pending | M19-T3 / closure |
 | M19-D7 - BL-024 treated as constraint; provider observations recorded | pending | pending | M19-T2 / M19-T3 |
@@ -179,8 +179,56 @@ substrate-carried coordination is T3's job, and the attach path it needs is only
 
 ## M19-T2 - BL-026: supported real-CLI attach ritual
 
-**Status:** pending T1 and Gate 1.
-**Branch:** `m19-t2-real-cli-attach` when implementation begins.
+**Status:** **Gate 2 VERIFIED (Implementation Reviewer: Claude, 2026-07-11).** The SP2 ATTACH-BLOCKED wall is
+**cleared** — M19 is on track for C3, not ENABLER-BLOCKED.
+**Branch:** `m19-t2-real-cli-attach` (changes uncommitted — commit before merge, signal S3).
+
+### Gate 2 Review (Implementation Reviewer: Claude, 2026-07-11) — VERIFIED
+
+The headline claim (real Claude `await_turn` cleared the SP2 permission wall) I **reproduced by hand**, not read:
+
+- **M19-D4 (Claude functional `await_turn`) — VERIFIED, reproduced.** I re-ran `node scripts/m19-real-cli-attach.mjs
+  prove --cli claude` into a scratch dir: `awaitTurnObserved=true, blockedOnAwaitTurn=true, result=await_turn_blocked`,
+  **zero `permission denied` lines** (permission granted in 1ms via `--allowedTools` + `--permission-mode auto`), the
+  real `claude` debug log shows `Calling MCP tool: await_turn`, and the orchestrator logged `MCP tool call from
+  <agent>: await_turn {}`. In SP2 this was **denied and never reached the server**; now it is permitted, reaches the
+  server, and the CLI blocks on it. `blockedOnAwaitTurn` = the CLI process is still alive (`exitCode===null`) at the
+  instant the server registers the call (`m19-real-cli-attach.mjs:441-446`) — a genuine discriminator, not a
+  self-fulfilling flag. (The trailing `-32000 Connection closed` in the log is the helper's teardown, after the block
+  was measured — D4's "block on" branch, honestly; "receive a turn" is T3's round-trip.)
+- **M19-D3 (supported ritual, Codex + Claude) — VERIFIED.** Runbook + script create/start agents, emit per-command
+  config (Codex `-c mcp_servers…`, Claude inline `--mcp-config`), print the v7 hash. **No global config mutation:**
+  `configAuditPaths` (incl. the two files SP2's breach wrote — `~/.codex/config.toml`, `~/.codex/mcp.json`) all
+  unchanged. Codex side confirmed on record (server logged its `await_turn`). Failure probes pass: `missingStart`
+  (stays `creating`), `staleHash` (close 1008 + mismatch), `stalePort` (conn error).
+- **Freeze bar — reproduced.** `npm test` **298/298**, `tsc -b` clean, m19 script test 1/1, `backlog:check` 29/0.
+  Fence clean both repos (client untouched; no `wire-contract`/`bridge.mjs`/`team-coordinator`/`mcp-tools` edits).
+
+**Implementer signals dispositioned (Reviewer Rule 7):**
+- **S1 [`~/.claude.json` churn] — accepted.** Claude writes its own state blob every run; it changed (disclosed under
+  `globalStateChanges`, sha differs). The *ritual* persists no config (`--no-session-persistence --strict-mcp-config
+  --mcp-config` inline; `configAuditPaths` clean). Precision: `noGlobalConfigMutation:true` is accurate for config
+  *files*; `~/.claude.json` is a config-bearing blob that churns as state — Codex classified/disclosed it honestly.
+- **S2 [attempt-1 helper bugs] — accepted, good transparency.** Codex recorded 3 attempt-1 helper bugs (codex
+  stdin/EOF timeout; claude churn misread as config; failure probe used an unstarted agent) as **helper bugs, not
+  attach results**, and fixed them in attempt 2 — within the 2-attempt budget, honestly labeled.
+- **S3 [uncommitted] — commit required before the gate-3 merge** (same as T1).
+
+**Gate 2 outcome: PASS.** M19-D3 + M19-D4 VERIFIED; the SP2 ATTACH-BLOCKED wall is cleared; freeze bar green; fence
+held. This resolves the SP2 finding: the spike found the wall, T2 climbed it.
+
+### Gate 3 Closure (Task-end Reviewer: Claude, 2026-07-11) — MERGED
+
+**Doubling declared & PO-accepted** (gate 2 + gate 3, Claude). The closure sweep re-used the gate-2 runs, and the
+make-or-break (Claude `await_turn` cleared) was **reproduced first-hand** in gate 2 — the strongest possible closure
+evidence. Signal **S3 resolved**: branch committed. Hygiene: post-commit tree clean; my scratch re-run wrote to
+`/tmp` (no repo pollution); no leaked processes. **Merged `m19-t2-real-cli-attach` → `master`** (AgentTalk only —
+client untouched). Merge PO-gated (`[PO]` go, 2026-07-11).
+
+**T2 Coordination Evidence (BL-027, honest):** substrate events **0** — T2 is still enabler-shaped (it *proves the
+attach path*, it does not yet *carry a role hand-off*). All T2 role hand-offs (implementer→reviewer, reviewer→PO)
+were terminal-relayed. **Ratio: 0 / ~2 (all terminal).** The first non-zero substrate numerator is **T3's** job, now
+unblocked because attach + `await_turn` work.
 
 ### Scope Manifest
 
@@ -211,6 +259,16 @@ substrate-carried coordination is T3's job, and the attach path it needs is only
 | substrate events | pending | 0 |
 | terminal fallbacks | pending | 0 |
 | ratio | pending | pending |
+
+### Implementer Claim - 2026-07-11
+
+- Added `scripts/m19-real-cli-attach.mjs`, a supported non-mutating attach helper with runbook, prepare, real-CLI proof, and failure-probe modes. It creates/starts agents through the HTTP API, prints fresh per-agent MCP URLs with the current v7 hash, and emits Codex/Claude per-command MCP config.
+- Codex proof: `codex exec` with `mcp_servers.agenttalk-bridge.*` override connected to a fresh temporary orchestrator; the server observed `MCP tool call from m19-t2-codex-proof-2: await_turn {}` and the CLI remained blocked on `await_turn` until the helper stopped it.
+- Claude proof: `claude -p --strict-mcp-config --mcp-config ... --allowedTools mcp__agenttalk-bridge__await_turn,... --permission-mode auto` connected to a fresh temporary orchestrator; the debug log selected/called `mcp__agenttalk-bridge__await_turn` with no permission denial, the server observed `await_turn`, and Claude remained blocked until stopped.
+- Failure probes recorded missing-start (`creating` until `/start`), stale-hash (`1008` contract mismatch), and stale-port (connection error) behavior.
+- No global CLI config files changed in the successful proof snapshots (`~/.codex/config.toml`, `~/.codex/mcp.json`, `~/.claude/settings.json`, `~/.config/claude/settings.json`). Claude Code did update `~/.claude.json` state/cache during proof runs; recorded as global state churn, not MCP/global config mutation.
+- Provider observation for BL-024 remains transport-shaped: both real-CLI proof agents reported `provider: "mcp"` after start.
+- Raw evidence and attempt notes are summarized in `design/evidence/m19-t2-real-cli-attach.txt`; no global CLI config was edited by the helper.
 
 ## M19-T3 - BL-027: one real attached role hand-off and ratio
 

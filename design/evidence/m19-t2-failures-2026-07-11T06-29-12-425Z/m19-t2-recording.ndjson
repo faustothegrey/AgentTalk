@@ -1,0 +1,4 @@
+{"kind":"meta","version":1,"createdAt":"2026-07-11T06:29:14.293Z","cwd":"/Users/fausto/Software/AgentTalk"}
+{"kind":"event","atMs":25,"channel":"runtime","event":"server_started","payload":{"port":52205}}
+{"kind":"event","atMs":124,"channel":"api","event":"create_agent_request","payload":{"id":"m19-t2-failure-probe","provider":"mcp","requestedExecutionMode":"auto"}}
+{"kind":"event","atMs":126,"channel":"runtime","event":"agent_created","payload":{"id":"m19-t2-failure-probe","status":"creating","requestedExecutionMode":"auto"}}
