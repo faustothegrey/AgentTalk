@@ -1,0 +1,4 @@
+[llm-agent] Provider: gemini, Model: default, Token Limit: 2097152, Execution Mode: persistent -> persistent
+[McpClient] Connecting to ws://localhost:57955/?agentId=worker-1
+[McpClient] Connected.
+[llm-agent] Waiting for turn...

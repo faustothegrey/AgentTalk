@@ -1,0 +1,53 @@
+Starting live MCP exec-RPC consensus smoke test...
+[Server] MCP server on ws://localhost:65028/
+[Registry] Creating agent planner-a...
+[Registry] Creating agent planner-b...
+[Registry] Creating agent worker-1...
+[Registry] Activating agent planner-a (waiting for MCP connection)
+[Agent planner-a] creating -> starting
+[Registry] Starting InProcessAgentDriver for mcp-backed agent planner-a
+[Agent planner-a] starting -> ready
+[Registry] Activating agent planner-b (waiting for MCP connection)
+[Agent planner-b] creating -> starting
+[Registry] Starting InProcessAgentDriver for mcp-backed agent planner-b
+[Agent planner-b] starting -> ready
+[Registry] Activating agent worker-1 (waiting for MCP connection)
+[Agent worker-1] creating -> starting
+[Registry] Starting InProcessAgentDriver for mcp-backed agent worker-1
+[Agent worker-1] starting -> ready
+[llm-agent-b-err] [llm-agent] Provider: gemini, Model: default, Token Limit: 2097152, Execution Mode: persistent -> persistent
+[llm-agent-w-err] [llm-agent] Provider: gemini, Model: default, Token Limit: 2097152, Execution Mode: persistent -> persistent
+[llm-agent-a-err] [llm-agent] Provider: gemini, Model: default, Token Limit: 2097152, Execution Mode: persistent -> persistent
+[llm-agent-w-err] [McpClient] Connecting to ws://localhost:65028/?agentId=worker-1
+[llm-agent-b-err] [McpClient] Connecting to ws://localhost:65028/?agentId=planner-b
+[llm-agent-a-err] [McpClient] Connecting to ws://localhost:65028/?agentId=planner-a
+[McpServer] Connection established for agentId=worker-1
+[McpServer] Connection established for agentId=planner-a
+[McpServer] Connection established for agentId=planner-b
+[llm-agent-w-err] [McpClient] Connected.
+[McpServer] Rejecting agentId=worker-1: contract hash mismatch. Expected ffa94e93e3182d44924ed28381870c7bd814c908279942022d5925a4865a9446, got 1236003f9db2a7110879855bbdc66c7aa5b7c19dbab28f2bdcdb463cd1ac9883
+[llm-agent-a-err] [McpClient] Connected.
+[McpServer] Rejecting agentId=planner-a: contract hash mismatch. Expected ffa94e93e3182d44924ed28381870c7bd814c908279942022d5925a4865a9446, got 1236003f9db2a7110879855bbdc66c7aa5b7c19dbab28f2bdcdb463cd1ac9883
+[llm-agent-b-err] [McpClient] Connected.
+[McpServer] Rejecting agentId=planner-b: contract hash mismatch. Expected ffa94e93e3182d44924ed28381870c7bd814c908279942022d5925a4865a9446, got 1236003f9db2a7110879855bbdc66c7aa5b7c19dbab28f2bdcdb463cd1ac9883
+[llm-agent-a-err] [llm-agent] Fatal error: Contract hash mismatch. Expected ffa94e93e3182d44924ed28381870c7bd814c908279942022d5925a4865a9446, got 1236003f9db2a7110879855bbdc66c7aa5b7c19dbab28f2bdcdb463cd1ac9883
+[llm-agent-w-err] [llm-agent] Fatal error: Contract hash mismatch. Expected ffa94e93e3182d44924ed28381870c7bd814c908279942022d5925a4865a9446, got 1236003f9db2a7110879855bbdc66c7aa5b7c19dbab28f2bdcdb463cd1ac9883
+[llm-agent-b-err] [llm-agent] Fatal error: Contract hash mismatch. Expected ffa94e93e3182d44924ed28381870c7bd814c908279942022d5925a4865a9446, got 1236003f9db2a7110879855bbdc66c7aa5b7c19dbab28f2bdcdb463cd1ac9883
+[McpServer] Connection closed for agentId=planner-a (code: 1006)
+[Registry] Cleared 1 stale await_turn waiter(s) for agent planner-a
+[Registry] MCP connection dropped for agent planner-a (code undefined). Allowing 30s reconnect...
+[Agent planner-a] ready -> reconnecting
+[McpServer] Connection closed for agentId=worker-1 (code: 1008)
+[Registry] Cleared 1 stale await_turn waiter(s) for agent worker-1
+[Registry] MCP connection dropped for agent worker-1 (code undefined). Allowing 30s reconnect...
+[Agent worker-1] ready -> reconnecting
+[McpServer] Connection closed for agentId=planner-b (code: 1008)
+[Registry] Cleared 1 stale await_turn waiter(s) for agent planner-b
+[Registry] MCP connection dropped for agent planner-b (code undefined). Allowing 30s reconnect...
+[Agent planner-b] ready -> reconnecting
+[Test] Creating team...
+TEST ERROR Error: Agent planner-a must be ready before joining a team
+    at TeamCoordinator.validateMembers (file:///Users/fausto/Software/AgentTalk/packages/runtime-core/dist/registry/team-coordinator.js:133:23)
+    at TeamCoordinator.createTeam (file:///Users/fausto/Software/AgentTalk/packages/runtime-core/dist/registry/team-coordinator.js:77:14)
+    at Registry.createTeam (file:///Users/fausto/Software/AgentTalk/packages/runtime-core/dist/registry/registry.js:607:43)
+    at run (file:///Users/fausto/Software/AgentTalk/scripts/test-live-gate.mjs:56:31)

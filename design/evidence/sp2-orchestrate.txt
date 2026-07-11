@@ -1,0 +1,11 @@
+Creating team...
+Error: Failed to create team: {"error":"Agent planner-a is already assigned to a team"}
+    at createTeam (fil[TypeError: fetch failed] {
+  [cause]: Error: read ECONNRESET
+      at TCP.onStreamRead (node:internal/stream_base_commons:216:20) {
+    errno: -54,
+    code: 'ECONNRESET',
+    syscall: 'read'
+  }
+}
+sto/Software/AgentTalk/scripts/sp2-real-cli-orchestrate.mjs:28:16)

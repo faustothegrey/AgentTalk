@@ -1,0 +1,178 @@
+
+ RUN  v2.1.8 /Users/fausto/Software/AgentTalk
+
+stdout | packages/runtime-core/src/registry/__tests__/team-mcp-consensus.test.ts > Team MCP-exec Consensus (mocked) > runs a full planner-planner-worker flow to completion via mocked mcp harness
+[Registry] Creating agent planner-a...
+[Registry] Creating agent planner-b...
+[Registry] Creating agent worker-1...
+[Registry] Activating agent planner-a (waiting for MCP connection)
+[Agent planner-a] creating -> starting
+[Registry] Starting InProcessAgentDriver for mcp-backed agent planner-a
+[Agent planner-a] starting -> ready
+[Registry] Activating agent planner-b (waiting for MCP connection)
+[Agent planner-b] creating -> starting
+[Registry] Starting InProcessAgentDriver for mcp-backed agent planner-b
+[Agent planner-b] starting -> ready
+[Registry] Activating agent worker-1 (waiting for MCP connection)
+[Agent worker-1] creating -> starting
+[Registry] Starting InProcessAgentDriver for mcp-backed agent worker-1
+[Agent worker-1] starting -> ready
+[Registry] MCP tool call from planner-a: await_turn {}
+[Registry] MCP tool call from planner-b: await_turn {}
+[Registry] MCP tool call from worker-1: await_turn {}
+[TeamCoordinator] Starting task on team team-1783746046005 (Provider: unknown)
+[Registry] Sending EVT to agent planner-a: {"type":"custom_event_request","event":"ack_planning_protocol","args":{"taskId":"task-1783746046006"},"prompt":"Planning protocol for this task:\n\n1) Acknowledge this protocol now via ack_planning_protocol.\n2) After all planners acknowledge, the orchestrator will send a fact_collection_begin event.\n3) During fact collection, investigate the codebase to gather relevant context for the task. When done, respond with message_type \"fact_collection_end\" and a summary of your findings.\n4) After all planners complete fact collection, the discussion phase opens.\n\n## Agreement Protocol\n\nYour goal is reaching a formal agreement with your peer planner using the structured protocol described below.\nShared opinions or informal consensus are NOT sufficient — the agreement MUST be reached by observing the protocol steps exactly.\nMost importantly, the message_type in your JSON response is what the orchestrator enforces. The orchestrator does NOT read your message text to determine protocol state.\nIf your message_type does not match the required protocol step, your activity is discarded regardless of what your message payload says.\n\nThe protocol progresses through these phases in strict forward order:\n\nPhase 0 — fact_collection: After acknowledging the protocol, you receive fact_collection_begin. Investigate the codebase, then send message_type \"fact_collection_end\" with a summary of your findings.\nPhase 1 — discussion: Exchange ideas and opinions using message_type \"opinion\".\nAgreement proposals should only be emitted once you have concrete hints that your peer is aligned on a specific action for the worker to implement; the discussion phase exists to surface and confirm those hints before moving to the proposal phase.\nPhase 2 — proposal: When you believe both planners are aligned, one planner sends message_type \"agreement_proposal\" to formally propose that the discussion has converged.\nPhase 3 — endorsement: The OTHER planner (not the proposer) must confirm by sending message_type \"agreement_acceptance\". If you disagree, send \"opinion\" instead to continue the debate.\nProposal Priority: If the orchestrator formally requests your endorsement for a specific proposal (Phase 3), you must respond specifically to that proposal. Accept it or reject it (via opinion) and discard your own alternative proposals for that turn.\nPhase 4 — submittal: After endorsement, the planner who did NOT send agreement_acceptance must submit the final plan using message_type \"submit_plan\".\n\nCritical enforcement rules:\n- The orchestrator tracks which protocol step the task is at based solely on message_type values.\n- Sending a message_type that regresses (e.g. \"opinion\" after \"agreement_acceptance\") will trigger a regression warning. If confirmed, planning is terminated.\n- Sending a message_type that is not in the expected set for the current step will immediately interrupt planning.\n- The content of message_payload never overrides the protocol step indicated by message_type.\n- At every planning reply, explicitly motivate why your selected message_type matches the current protocol step. Be very coherent: do not decide on one message_type and then send another.\n- Shared Fate: If any agent in this team enters an ERROR state (including idle timeout), the entire task is immediately terminated. Stay active.\n\nPlanner role restriction: DO NOT modify code for any reason. Do not edit files and do not create commits. You MUST examine the codebase using your search and read tools to identify specific files, functions, and line numbers for your plan. Only discuss options and submit the final plan via submit_plan."}
+[Agent planner-a] ready -> busy
+[Registry] Sending EVT to agent planner-b: {"type":"custom_event_request","event":"ack_planning_protocol","args":{"taskId":"task-1783746046006"},"prompt":"Planning protocol for this task:\n\n1) Acknowledge this protocol now via ack_planning_protocol.\n2) After all planners acknowledge, the orchestrator will send a fact_collection_begin event.\n3) During fact collection, investigate the codebase to gather relevant context for the task. When done, respond with message_type \"fact_collection_end\" and a summary of your findings.\n4) After all planners complete fact collection, the discussion phase opens.\n\n## Agreement Protocol\n\nYour goal is reaching a formal agreement with your peer planner using the structured protocol described below.\nShared opinions or informal consensus are NOT sufficient — the agreement MUST be reached by observing the protocol steps exactly.\nMost importantly, the message_type in your JSON response is what the orchestrator enforces. The orchestrator does NOT read your message text to determine protocol state.\nIf your message_type does not match the required protocol step, your activity is discarded regardless of what your message payload says.\n\nThe protocol progresses through these phases in strict forward order:\n\nPhase 0 — fact_collection: After acknowledging the protocol, you receive fact_collection_begin. Investigate the codebase, then send message_type \"fact_collection_end\" with a summary of your findings.\nPhase 1 — discussion: Exchange ideas and opinions using message_type \"opinion\".\nAgreement proposals should only be emitted once you have concrete hints that your peer is aligned on a specific action for the worker to implement; the discussion phase exists to surface and confirm those hints before moving to the proposal phase.\nPhase 2 — proposal: When you believe both planners are aligned, one planner sends message_type \"agreement_proposal\" to formally propose that the discussion has converged.\nPhase 3 — endorsement: The OTHER planner (not the proposer) must confirm by sending message_type \"agreement_acceptance\". If you disagree, send \"opinion\" instead to continue the debate.\nProposal Priority: If the orchestrator formally requests your endorsement for a specific proposal (Phase 3), you must respond specifically to that proposal. Accept it or reject it (via opinion) and discard your own alternative proposals for that turn.\nPhase 4 — submittal: After endorsement, the planner who did NOT send agreement_acceptance must submit the final plan using message_type \"submit_plan\".\n\nCritical enforcement rules:\n- The orchestrator tracks which protocol step the task is at based solely on message_type values.\n- Sending a message_type that regresses (e.g. \"opinion\" after \"agreement_acceptance\") will trigger a regression warning. If confirmed, planning is terminated.\n- Sending a message_type that is not in the expected set for the current step will immediately interrupt planning.\n- The content of message_payload never overrides the protocol step indicated by message_type.\n- At every planning reply, explicitly motivate why your selected message_type matches the current protocol step. Be very coherent: do not decide on one message_type and then send another.\n- Shared Fate: If any agent in this team enters an ERROR state (including idle timeout), the entire task is immediately terminated. Stay active.\n\nPlanner role restriction: DO NOT modify code for any reason. Do not edit files and do not create commits. You MUST examine the codebase using your search and read tools to identify specific files, functions, and line numbers for your plan. Only discuss options and submit the final plan via submit_plan."}
+[Agent planner-b] ready -> busy
+[Registry] MCP tool call from planner-a: submit_exec_result {
+  text: '{"message_type":"ack_planning_protocol","message_payload":{}}',
+  usage: { prompt_tokens: 0, completion_tokens: 0 }
+}
+[Registry] MCP tool call from planner-a: await_turn {}
+[Registry] MCP tool call from planner-b: submit_exec_result {
+  text: '{"message_type":"ack_planning_protocol","message_payload":{}}',
+  usage: { prompt_tokens: 0, completion_tokens: 0 }
+}
+[Registry] MCP tool call from planner-b: await_turn {}
+[Registry] MCP tool call from planner-a: consensus_respond { action: 'ack_planning_protocol', payload: {} }
+[Registry] MCP tool call from planner-b: consensus_respond { action: 'ack_planning_protocol', payload: {} }
+[Registry] Sending EVT to agent planner-a: {"type":"fact_collection_begin","taskId":"task-1783746046006","description":"Make a plan","peerIds":["planner-b"]}
+[Registry] Sending EVT to agent planner-b: {"type":"fact_collection_begin","taskId":"task-1783746046006","description":"Make a plan","peerIds":["planner-a"]}
+[Agent planner-a] busy -> ready
+[Agent planner-a] ready -> busy
+[Registry] MCP tool call from planner-a: submit_exec_result {
+  text: '{"message_type":"fact_collection_end","message_payload":{"summary":"facts"}}',
+  usage: { prompt_tokens: 0, completion_tokens: 0 }
+}
+[Agent planner-b] busy -> ready
+[Registry] MCP tool call from planner-a: await_turn {}
+[Agent planner-b] ready -> busy
+[Registry] MCP tool call from planner-b: submit_exec_result {
+  text: '{"message_type":"fact_collection_end","message_payload":{"summary":"facts"}}',
+  usage: { prompt_tokens: 0, completion_tokens: 0 }
+}
+[Registry] MCP tool call from planner-a: consensus_respond { action: 'fact_collection_end', payload: { summary: 'facts' } }
+[Registry] MCP tool call from planner-b: await_turn {}
+[Registry] MCP tool call from planner-b: consensus_respond { action: 'fact_collection_end', payload: { summary: 'facts' } }
+[Registry] Sending EVT to agent planner-a: {"type":"conversation_start","conversationId":"task-1783746046006","mode":"planning","topic":"Your goal is reaching a formal agreement for: Make a plan. Shared opinions are NOT enough — you must advance through the protocol phases: discussion → proposal → endorsement → submittal. The orchestrator enforces protocol compliance based on your message_type, not your message text. If your message_type does not match the expected protocol step, your message is discarded regardless of its content. Proposal Priority: If the orchestrator formally requests your endorsement for a specific proposal (Phase 3), you must respond specifically to that proposal. Accept it or reject it (via opinion) and discard your own alternative proposals for that turn. Regression & Fallback: If a proposal is rejected, the protocol returns to Discussion. You may then revive previous proposals or explore new ones. Shared Fate: If any agent in this team enters an ERROR state (including idle timeout), the entire task is immediately terminated. Stay active. At every planning reply, explicitly motivate why your selected message_type matches the current protocol step. Be very coherent: do not decide on one message_type and then send another. Planner role restriction: DO NOT modify code for any reason. Do not edit files and do not create commits. You MUST examine the codebase using your search and read tools to identify specific files, functions, and line numbers for your plan. Only discuss options and submit the final plan via submit_plan. Initiator: You MUST open the discussion now with an opinion.","peerIds":["planner-b"],"peerId":"planner-b","maxReplies":10,"initiator":true}
+[Agent planner-a] busy -> ready
+[Registry] Sending EVT to agent planner-b: {"type":"conversation_start","conversationId":"task-1783746046006","mode":"planning","topic":"Your goal is reaching a formal agreement for: Make a plan. Shared opinions are NOT enough — you must advance through the protocol phases: discussion → proposal → endorsement → submittal. The orchestrator enforces protocol compliance based on your message_type, not your message text. If your message_type does not match the expected protocol step, your message is discarded regardless of its content. Proposal Priority: If the orchestrator formally requests your endorsement for a specific proposal (Phase 3), you must respond specifically to that proposal. Accept it or reject it (via opinion) and discard your own alternative proposals for that turn. Regression & Fallback: If a proposal is rejected, the protocol returns to Discussion. You may then revive previous proposals or explore new ones. Shared Fate: If any agent in this team enters an ERROR state (including idle timeout), the entire task is immediately terminated. Stay active. At every planning reply, explicitly motivate why your selected message_type matches the current protocol step. Be very coherent: do not decide on one message_type and then send another. Planner role restriction: DO NOT modify code for any reason. Do not edit files and do not create commits. You MUST examine the codebase using your search and read tools to identify specific files, functions, and line numbers for your plan. Only discuss options and submit the final plan via submit_plan. Peer: Wait for the initiator, then respond with an opinion.","peerIds":["planner-a"],"peerId":"planner-a","maxReplies":10,"initiator":false}
+[Agent planner-a] ready -> busy
+[Agent planner-a] busy -> ready
+[Agent planner-a] ready -> busy
+[Registry] MCP tool call from planner-a: submit_exec_result {
+  text: '{"message_type":"agreement_proposal","message_payload":{"proposal":"prop","text":"I propose this","expected_response_types":["agreement_acceptance", "opinion"]}}',
+  usage: { prompt_tokens: 0, completion_tokens: 0 }
+}
+[Agent planner-b] busy -> ready
+[Registry] MCP tool call from planner-a: await_turn {}
+[Agent planner-b] ready -> busy
+[Agent planner-b] busy -> ready
+[Registry] MCP tool call from planner-a: consensus_respond {
+  action: 'agreement_proposal',
+  payload: {
+    proposal: 'prop',
+    text: 'I propose this',
+    expected_response_types: [ 'agreement_acceptance', 'opinion' ]
+  }
+}
+[Registry] Sending EVT to agent planner-b: {"type":"custom_event_request","event":"agreement_acceptance","prompt":"Your peer has proposed agreement. Please call agreement_acceptance to confirm, or continue discussing if you disagree. At every planning reply, explicitly motivate why your selected message_type matches the current protocol step. Be very coherent: do not decide on one message_type and then send another."}
+[Agent planner-b] ready -> busy
+[Registry] MCP tool call from planner-b: submit_exec_result {
+  text: '{"message_type":"agreement_acceptance","message_payload":{"proposal":"prop","text":"I accept","expected_response_types":["submit_plan"]}}',
+  usage: { prompt_tokens: 0, completion_tokens: 0 }
+}
+[Registry] MCP tool call from planner-b: await_turn {}
+[Agent planner-a] busy -> ready
+[Registry] MCP tool call from planner-b: consensus_respond {
+  action: 'agreement_acceptance',
+  payload: {
+    proposal: 'prop',
+    text: 'I accept',
+    expected_response_types: [ 'submit_plan' ]
+  }
+}
+[Registry] Sending EVT to agent planner-a: {"type":"message_received","from":"system","payload":"Reply limit reached. One planner must call submit_plan within 120s. Planning is interrupted after 2 ignored urgency checks. At every planning reply, explicitly motivate why your selected message_type matches the current protocol step. Be very coherent: do not decide on one message_type and then send another.","messageId":"msg-1783746046015-1"}
+[Agent planner-a] ready -> busy
+[Registry] Sending EVT to agent planner-b: {"type":"message_received","from":"system","payload":"Reply limit reached. One planner must call submit_plan within 120s. Planning is interrupted after 2 ignored urgency checks. At every planning reply, explicitly motivate why your selected message_type matches the current protocol step. Be very coherent: do not decide on one message_type and then send another.","messageId":"msg-1783746046015-2"}
+[Registry] MCP tool call from planner-a: submit_exec_result {
+  text: '{"message_type":"submit_plan","message_payload":{"plan":"I will implement a change in src/app.ts","proposal":"prop","text":"done"}}',
+  usage: { prompt_tokens: 0, completion_tokens: 0 }
+}
+[Registry] MCP tool call from planner-a: await_turn {}
+[Agent planner-b] busy -> ready
+[Agent planner-b] ready -> busy
+[Registry] MCP tool call from planner-a: consensus_respond {
+  action: 'submit_plan',
+  payload: {
+    plan: 'I will implement a change in src/app.ts',
+    proposal: 'prop',
+    text: 'done'
+  }
+}
+[TeamCoordinator] Planning run persisted to planning_runs/task-1783746046006.json
+[Registry] Sending EVT to agent planner-a: {"type":"conversation_end","conversationId":"task-1783746046006","reason":"Plan submitted — planning complete."}
+[Registry] Sending EVT to agent planner-b: {"type":"conversation_end","conversationId":"task-1783746046006","reason":"Plan submitted — planning complete."}
+[Registry] MCP tool call from planner-b: submit_exec_result {
+  text: '{"message_type":"opinion","message_payload":{"text":"Waiting for planner-a to submit","proposal":null,"expected_response_types":[]}}',
+  usage: { prompt_tokens: 0, completion_tokens: 0 }
+}
+[Agent planner-a] busy -> ready
+[Registry] MCP tool call from planner-b: await_turn {}
+[Agent planner-a] ready -> busy
+[Registry] MCP tool call from planner-b: consensus_respond {
+  action: 'opinion',
+  payload: {
+    text: 'Waiting for planner-a to submit',
+    proposal: null,
+    expected_response_types: []
+  }
+}
+[Agent planner-b] busy -> ready
+[Agent planner-b] ready -> busy
+
+stdout | packages/runtime-core/src/registry/__tests__/team-mcp-consensus.test.ts > Team MCP-exec Consensus (mocked) > runs a full planner-planner-worker flow to completion via mocked mcp harness
+[Registry] Sending EVT to agent worker-1: {"type":"team_work_assign","teamId":"team-1783746046005","taskId":"task-1783746046006","role":"worker","plan":"I will implement a change in src/app.ts\n\nExecution requirement: use strictly `git worktree` for this task. If you cannot or will not use a git worktree, refuse the assignment and abort the task.","description":"Make a plan"}
+[Agent worker-1] ready -> busy
+[Registry] MCP tool call from worker-1: submit_exec_result {
+  text: '{"message_type":"work_accept","message_payload":{"text":"work completed"}}',
+  usage: { prompt_tokens: 0, completion_tokens: 0 }
+}
+[Registry] MCP tool call from worker-1: await_turn {}
+[Registry] MCP tool call from worker-1: submit_work_response { accepted: true }
+[Registry] MCP tool call from worker-1: submit_work_result { result: 'work completed' }
+[Agent worker-1] busy -> ready
+
+stdout | packages/runtime-core/src/registry/__tests__/team-mcp-consensus.test.ts > Team MCP-exec Consensus (mocked) > routes await_turn and consensus_respond uniformly regardless of providerName mix
+[Registry] Creating agent codex-agent...
+[Registry] Creating agent gemini-agent...
+[Registry] Creating agent claude-agent...
+[Registry] Activating agent codex-agent (waiting for MCP connection)
+[Agent codex-agent] creating -> starting
+[Registry] Starting InProcessAgentDriver for mcp-backed agent codex-agent
+[Agent codex-agent] starting -> ready
+[Registry] Activating agent gemini-agent (waiting for MCP connection)
+[Agent gemini-agent] creating -> starting
+[Registry] Starting InProcessAgentDriver for mcp-backed agent gemini-agent
+[Agent gemini-agent] starting -> ready
+[Registry] Activating agent claude-agent (waiting for MCP connection)
+[Agent claude-agent] creating -> starting
+[Registry] Starting InProcessAgentDriver for mcp-backed agent claude-agent
+[Agent claude-agent] starting -> ready
+[Registry] MCP tool call from codex-agent: await_turn {}
+[Agent claude-agent] ready -> busy
+[Agent claude-agent] busy -> ready
+[Registry] MCP tool call from gemini-agent: await_turn {}
+[Registry] MCP tool call from claude-agent: await_turn {}
+[Registry] MCP tool call from codex-agent: consensus_respond { action: 'opinion', payload: { text: 'my opinion' } }
+[Registry] MCP tool call from gemini-agent: consensus_respond { action: 'agreement_proposal', payload: { proposal: 'my proposal' } }
+[Registry] MCP tool call from claude-agent: consensus_respond { action: 'opinion', payload: { text: 'another opinion' } }
+
+ ✓ packages/runtime-core/src/registry/__tests__/team-mcp-consensus.test.ts (2 tests) 223ms
+
+ Test Files  1 passed (1)
+      Tests  2 passed (2)
+   Start at  07:00:44
+   Duration  1.47s (transform 290ms, setup 0ms, collect 344ms, tests 223ms, environment 0ms, prepare 151ms)
+

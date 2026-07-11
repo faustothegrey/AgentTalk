@@ -1,0 +1,804 @@
+Starting live MCP exec-RPC consensus smoke test...
+[Server] MCP server on ws://localhost:57378/
+[Registry] Creating agent planner-a...
+[Registry] Creating agent planner-b...
+[Registry] Creating agent worker-1...
+[Registry] Activating agent planner-a (waiting for MCP connection)
+[Agent planner-a] creating -> starting
+[Registry] Starting InProcessAgentDriver for mcp-backed agent planner-a
+[Agent planner-a] starting -> ready
+[Registry] Activating agent planner-b (waiting for MCP connection)
+[Agent planner-b] creating -> starting
+[Registry] Starting InProcessAgentDriver for mcp-backed agent planner-b
+[Agent planner-b] starting -> ready
+[Registry] Activating agent worker-1 (waiting for MCP connection)
+[Agent worker-1] creating -> starting
+[Registry] Starting InProcessAgentDriver for mcp-backed agent worker-1
+[Agent worker-1] starting -> ready
+[llm-agent-a-err] [llm-agent] Provider: gemini, Model: default, Token Limit: 2097152, Execution Mode: persistent -> persistent
+[llm-agent-a-err] [McpClient] Connecting to ws://localhost:57378/?agentId=planner-a
+[llm-agent-w-err] [llm-agent] Provider: gemini, Model: default, Token Limit: 2097152, Execution Mode: persistent -> persistent
+[llm-agent-w-err] [McpClient] Connecting to ws://localhost:57378/?agentId=worker-1
+[llm-agent-b-err] [llm-agent] Provider: gemini, Model: default, Token Limit: 2097152, Execution Mode: persistent -> persistent
+[llm-agent-b-err] [McpClient] Connecting to ws://localhost:57378/?agentId=planner-b
+[McpServer] Connection established for agentId=planner-a
+[McpServer] Connection established for agentId=worker-1
+[McpServer] Connection established for agentId=planner-b
+[llm-agent-a-err] [McpClient] Connected.
+[llm-agent-b-err] [McpClient] Connected.
+[llm-agent-w-err] [McpClient] Connected.
+[llm-agent-a-err] [llm-agent] Waiting for turn...
+[Registry] MCP tool call from planner-a: await_turn {}
+[llm-agent-b-err] [llm-agent] Waiting for turn...
+[Registry] MCP tool call from planner-b: await_turn {}
+[llm-agent-w-err] [llm-agent] Waiting for turn...
+[Registry] MCP tool call from worker-1: await_turn {}
+[Test] Creating team...
+[Test] Starting team...
+[TeamCoordinator] Starting task on team team-1783681358494 (Provider: unknown)
+[Registry] Sending EVT to agent planner-a: {"type":"custom_event_request","event":"ack_planning_protocol","args":{"taskId":"task-1783681358512"},"prompt":"Planning protocol for this task:\n\n1) Acknowledge this protocol now via ack_planning_protocol.\n2) After all planners acknowledge, the orchestrator will send a fact_collection_begin event.\n3) During fact collection, investigate the codebase to gather relevant context for the task. When done, respond with message_type \"fact_collection_end\" and a summary of your findings.\n4) After all planners complete fact collection, the discussion phase opens.\n\n## Agreement Protocol\n\nYour goal is reaching a formal agreement with your peer planner using the structured protocol described below.\nShared opinions or informal consensus are NOT sufficient — the agreement MUST be reached by observing the protocol steps exactly.\nMost importantly, the message_type in your JSON response is what the orchestrator enforces. The orchestrator does NOT read your message text to determine protocol state.\nIf your message_type does not match the required protocol step, your activity is discarded regardless of what your message payload says.\n\nThe protocol progresses through these phases in strict forward order:\n\nPhase 0 — fact_collection: After acknowledging the protocol, you receive fact_collection_begin. Investigate the codebase, then send message_type \"fact_collection_end\" with a summary of your findings.\nPhase 1 — discussion: Exchange ideas and opinions using message_type \"opinion\".\nAgreement proposals should only be emitted once you have concrete hints that your peer is aligned on a specific action for the worker to implement; the discussion phase exists to surface and confirm those hints before moving to the proposal phase.\nPhase 2 — proposal: When you believe both planners are aligned, one planner sends message_type \"agreement_proposal\" to formally propose that the discussion has converged.\nPhase 3 — endorsement: The OTHER planner (not the proposer) must confirm by sending message_type \"agreement_acceptance\". If you disagree, send \"opinion\" instead to continue the debate.\nProposal Priority: If the orchestrator formally requests your endorsement for a specific proposal (Phase 3), you must respond specifically to that proposal. Accept it or reject it (via opinion) and discard your own alternative proposals for that turn.\nPhase 4 — submittal: After endorsement, the planner who did NOT send agreement_acceptance must submit the final plan using message_type \"submit_plan\".\n\nCritical enforcement rules:\n- The orchestrator tracks which protocol step the task is at based solely on message_type values.\n- Sending a message_type that regresses (e.g. \"opinion\" after \"agreement_acceptance\") will trigger a regression warning. If confirmed, planning is terminated.\n- Sending a message_type that is not in the expected set for the current step will immediately interrupt planning.\n- The content of message_payload never overrides the protocol step indicated by message_type.\n- At every planning reply, explicitly motivate why your selected message_type matches the current protocol step. Be very coherent: do not decide on one message_type and then send another.\n- Shared Fate: If any agent in this team enters an ERROR state (including idle timeout), the entire task is immediately terminated. Stay active.\n\nPlanner role restriction: DO NOT modify code for any reason. Do not edit files and do not create commits. You MUST examine the codebase using your search and read tools to identify specific files, functions, and line numbers for your plan. Only discuss options and submit the final plan via submit_plan."}
+[Agent planner-a] ready -> busy
+[Registry] Sending EVT to agent planner-b: {"type":"custom_event_request","event":"ack_planning_protocol","args":{"taskId":"task-1783681358512"},"prompt":"Planning protocol for this task:\n\n1) Acknowledge this protocol now via ack_planning_protocol.\n2) After all planners acknowledge, the orchestrator will send a fact_collection_begin event.\n3) During fact collection, investigate the codebase to gather relevant context for the task. When done, respond with message_type \"fact_collection_end\" and a summary of your findings.\n4) After all planners complete fact collection, the discussion phase opens.\n\n## Agreement Protocol\n\nYour goal is reaching a formal agreement with your peer planner using the structured protocol described below.\nShared opinions or informal consensus are NOT sufficient — the agreement MUST be reached by observing the protocol steps exactly.\nMost importantly, the message_type in your JSON response is what the orchestrator enforces. The orchestrator does NOT read your message text to determine protocol state.\nIf your message_type does not match the required protocol step, your activity is discarded regardless of what your message payload says.\n\nThe protocol progresses through these phases in strict forward order:\n\nPhase 0 — fact_collection: After acknowledging the protocol, you receive fact_collection_begin. Investigate the codebase, then send message_type \"fact_collection_end\" with a summary of your findings.\nPhase 1 — discussion: Exchange ideas and opinions using message_type \"opinion\".\nAgreement proposals should only be emitted once you have concrete hints that your peer is aligned on a specific action for the worker to implement; the discussion phase exists to surface and confirm those hints before moving to the proposal phase.\nPhase 2 — proposal: When you believe both planners are aligned, one planner sends message_type \"agreement_proposal\" to formally propose that the discussion has converged.\nPhase 3 — endorsement: The OTHER planner (not the proposer) must confirm by sending message_type \"agreement_acceptance\". If you disagree, send \"opinion\" instead to continue the debate.\nProposal Priority: If the orchestrator formally requests your endorsement for a specific proposal (Phase 3), you must respond specifically to that proposal. Accept it or reject it (via opinion) and discard your own alternative proposals for that turn.\nPhase 4 — submittal: After endorsement, the planner who did NOT send agreement_acceptance must submit the final plan using message_type \"submit_plan\".\n\nCritical enforcement rules:\n- The orchestrator tracks which protocol step the task is at based solely on message_type values.\n- Sending a message_type that regresses (e.g. \"opinion\" after \"agreement_acceptance\") will trigger a regression warning. If confirmed, planning is terminated.\n- Sending a message_type that is not in the expected set for the current step will immediately interrupt planning.\n- The content of message_payload never overrides the protocol step indicated by message_type.\n- At every planning reply, explicitly motivate why your selected message_type matches the current protocol step. Be very coherent: do not decide on one message_type and then send another.\n- Shared Fate: If any agent in this team enters an ERROR state (including idle timeout), the entire task is immediately terminated. Stay active.\n\nPlanner role restriction: DO NOT modify code for any reason. Do not edit files and do not create commits. You MUST examine the codebase using your search and read tools to identify specific files, functions, and line numbers for your plan. Only discuss options and submit the final plan via submit_plan."}
+[Agent planner-b] ready -> busy
+[llm-agent-b-err] [llm-agent] Received turn: {
+  type: 'exec_rpc',
+  prompt: 'Planning protocol for this task:\n' +
+    '\n' +
+    '1) Acknowledge this protocol now via ack_planning_protocol.\n' +
+    '2) After all planners acknowledge, the orchestrator will send a fact_collection_begin event.\n' +
+    '3) During fact collection, investigate the codebase to gather relevant context for the task. When done, respond with message_type "fact_collection_end" and a summary of your findings.\n' +
+    '4) After all planners complete fact collection, the discussion phase opens.\n' +
+    '\n' +
+    '## Agreement Protocol\n' +
+    '\n' +
+    'Your goal is reaching a formal agreement with your peer planner using the structured protocol described below.\n' +
+    'Shared opinions or informal consensus are NOT sufficient — the agreement MUST be reached by observing the protocol steps exactly.\n' +
+    'Most importantly, the message_type in your JSON response is what the orchestrator enforces. The orchestrator does NOT read your message text to determine protocol state.\n' +
+    'If your message_type does not match the required protocol step, your activity is discarded regardless of what your message payload says.\n' +
+    '\n' +
+    'The protocol progresses through these phases in strict forward order:\n' +
+    '\n' +
+    'Phase 0 — fact_collection: After acknowledging the protocol, you receive fact_collection_begin. Investigate the codebase, then send message_type "fact_collection_end" with a summary of your findings.\n' +
+    'Phase 1 — discussion: Exchange ideas and opinions using message_type "opinion".\n' +
+    'Agreement proposals should only be emitted once you have concrete hints that your peer is aligned on a specific action for the worker to implement; the discussion phase exists to surface and confirm those hints before moving to the proposal phase.\n' +
+    'Phase 2 — proposal: When you believe both planners are aligned, one planner sends message_type "agreement_proposal" to formally propose that the discussion has converged.\n' +
+    'Phase 3 — endorsement: The OTHER planner (not the proposer) must confirm by sending message_type "agreement_acceptance". If you disagree, send "opinion" instead to continue the debate.\n' +
+    'Proposal Priority: If the orchestrator formally requests your endorsement for a specific proposal (Phase 3), you must respond specifically to that proposal. Accept it or reject it (via opinion) and discard your own alternative proposals for that turn.\n' +
+    'Phase 4 — submittal: After endorsement, the planner who did NOT send agreement_acceptance must submit the final plan using message_type "submit_plan".\n' +
+    '\n' +
+    'Critical enforcement rules:\n' +
+    '- The orchestrator tracks which protocol step the task is at based solely on message_type values.\n' +
+    '- Sending a message_type that regresses (e.g. "opinion" after "agreement_acceptance") will trigger a regression warning. If confirmed, planning is terminated.\n' +
+    '- Sending a message_type that is not in the expected set for the current step will immediately interrupt planning.\n' +
+    '- The content of message_payload never overrides the protocol step indicated by message_type.\n' +
+    '- At every planning reply, explicitly motivate why your selected message_type matches the current protocol step. Be very coherent: do not decide on one message_type and then send another.\n' +
+    '- Shared Fate: If any agent in this team enters an ERROR state (including idle timeout), the entire task is immediately terminated. Stay active.\n' +
+    '\n' +
+    'Planner role restriction: DO NOT modify code for any reason. Do not edit files and do not create commits. You MUST examine the codebase using your search and read tools to identify specific files, functions, and line numbers for your plan. Only discuss options and submit the final plan via submit_plan.'
+}
+[llm-agent-a-err] [llm-agent] Received turn: {
+  type: 'exec_rpc',
+  prompt: 'Planning protocol for this task:\n' +
+    '\n' +
+    '1) Acknowledge this protocol now via ack_planning_protocol.\n' +
+    '2) After all planners acknowledge, the orchestrator will send a fact_collection_begin event.\n' +
+    '3) During fact collection, investigate the codebase to gather relevant context for the task. When done, respond with message_type "fact_collection_end" and a summary of your findings.\n' +
+    '4) After all planners complete fact collection, the discussion phase opens.\n' +
+    '\n' +
+    '## Agreement Protocol\n' +
+    '\n' +
+    'Your goal is reaching a formal agreement with your peer planner using the structured protocol described below.\n' +
+    'Shared opinions or informal consensus are NOT sufficient — the agreement MUST be reached by observing the protocol steps exactly.\n' +
+    'Most importantly, the message_type in your JSON response is what the orchestrator enforces. The orchestrator does NOT read your message text to determine protocol state.\n' +
+    'If your message_type does not match the required protocol step, your activity is discarded regardless of what your message payload says.\n' +
+    '\n' +
+    'The protocol progresses through these phases in strict forward order:\n' +
+    '\n' +
+    'Phase 0 — fact_collection: After acknowledging the protocol, you receive fact_collection_begin. Investigate the codebase, then send message_type "fact_collection_end" with a summary of your findings.\n' +
+    'Phase 1 — discussion: Exchange ideas and opinions using message_type "opinion".\n' +
+    'Agreement proposals should only be emitted once you have concrete hints that your peer is aligned on a specific action for the worker to implement; the discussion phase exists to surface and confirm those hints before moving to the proposal phase.\n' +
+    'Phase 2 — proposal: When you believe both planners are aligned, one planner sends message_type "agreement_proposal" to formally propose that the discussion has converged.\n' +
+    'Phase 3 — endorsement: The OTHER planner (not the proposer) must confirm by sending message_type "agreement_acceptance". If you disagree, send "opinion" instead to continue the debate.\n' +
+    'Proposal Priority: If the orchestrator formally requests your endorsement for a specific proposal (Phase 3), you must respond specifically to that proposal. Accept it or reject it (via opinion) and discard your own alternative proposals for that turn.\n' +
+    'Phase 4 — submittal: After endorsement, the planner who did NOT send agreement_acceptance must submit the final plan using message_type "submit_plan".\n' +
+    '\n' +
+    'Critical enforcement rules:\n' +
+    '- The orchestrator tracks which protocol step the task is at based solely on message_type values.\n' +
+    '- Sending a message_type that regresses (e.g. "opinion" after "agreement_acceptance") will trigger a regression warning. If confirmed, planning is terminated.\n' +
+    '- Sending a message_type that is not in the expected set for the current step will immediately interrupt planning.\n' +
+    '- The content of message_payload never overrides the protocol step indicated by message_type.\n' +
+    '- At every planning reply, explicitly motivate why your selected message_type matches the current protocol step. Be very coherent: do not decide on one message_type and then send another.\n' +
+    '- Shared Fate: If any agent in this team enters an ERROR state (including idle timeout), the entire task is immediately terminated. Stay active.\n' +
+    '\n' +
+    'Planner role restriction: DO NOT modify code for any reason. Do not edit files and do not create commits. You MUST examine the codebase using your search and read tools to identify specific files, functions, and line numbers for your plan. Only discuss options and submit the final plan via submit_plan.'
+}
+[Registry] MCP tool call from planner-a: submit_exec_result {
+  text: '```json\n' +
+    '{\n' +
+    '  "message_type": "ack_planning_protocol",\n' +
+    '  "message_payload": "I acknowledge the planning protocol and am ready for the fact_collection_begin event."\n' +
+    '}\n' +
+    '```\n',
+  usage: { prompt_tokens: 0, completion_tokens: 0 }
+}
+[llm-agent-a-err] [llm-agent] Waiting for turn...
+[Registry] MCP tool call from planner-a: await_turn {}
+[llm-agent-a-err] [llm-agent] Received turn: {
+  type: 'exec_rpc',
+  prompt: 'Your previous response could not be parsed as a valid structured JSON message.\n' +
+    'You MUST respond with a JSON object in this exact format:\n' +
+    '\n' +
+    '```json\n' +
+    '{\n' +
+    '  "message_type": "<type>",\n' +
+    '  "message_payload": { ... }\n' +
+    '}\n' +
+    '```\n' +
+    '\n' +
+    'Valid message_type values: opinion, agreement_proposal, agreement_acceptance, submit_plan, fact_collection_end, work_accept, work_refuse, healthcheck_ack, ack_planning_protocol.\n' +
+    '\n' +
+    '- For "ack_planning_protocol": message_payload must have {}\n' +
+    '- For "opinion": message_payload must have { "text": "...", "proposal": null, "expected_response_types": ["..."] }\n' +
+    '- For "agreement_proposal" and "agreement_acceptance": message_payload must have { "text": "...", "proposal": "...", "expected_response_types": ["..."] }\n' +
+    '- For "healthcheck_ack": message_payload must have { "text": "..." }\n' +
+    '- For "submit_plan": message_payload must have { "plan": "...", "text": "...", "proposal": "..." }\n' +
+    '- For "fact_collection_end": message_payload must have { "summary": "..." }\n' +
+    '- For "work_accept": message_payload must have { "text": "..." }\n' +
+    '- For "work_refuse": message_payload must have { "reason": "..." }\n' +
+    '\n' +
+    'Respond ONLY with the JSON object. No other text before or after it.\n' +
+    '\n' +
+    'Your previous response was:\n' +
+    '```json\n' +
+    '{\n' +
+    '  "message_type": "ack_planning_protocol",\n' +
+    '  "message_payload": "I acknowledge the planning protocol and am ready for the fact_collection_begin event."\n' +
+    '}\n' +
+    '```\n' +
+    '\n' +
+    '\n' +
+    'Please resubmit your intended response as valid JSON.'
+}
+[Registry] MCP tool call from planner-b: submit_exec_result {
+  text: 'I am selecting the message_type "ack_planning_protocol" because the current protocol step requires acknowledging the protocol rules before proceeding to the fact collection phase.\n' +
+    '\n' +
+    '```json\n' +
+    '{\n' +
+    '  "message_type": "ack_planning_protocol",\n' +
+    '  "message_payload": "I have read and understood the planning protocol."\n' +
+    '}\n' +
+    '```\n',
+  usage: { prompt_tokens: 0, completion_tokens: 0 }
+}
+[llm-agent-b-err] [llm-agent] Waiting for turn...
+[Registry] MCP tool call from planner-b: await_turn {}
+[llm-agent-b-err] [llm-agent] Received turn: {
+  type: 'exec_rpc',
+  prompt: 'Your previous response could not be parsed as a valid structured JSON message.\n' +
+    'You MUST respond with a JSON object in this exact format:\n' +
+    '\n' +
+    '```json\n' +
+    '{\n' +
+    '  "message_type": "<type>",\n' +
+    '  "message_payload": { ... }\n' +
+    '}\n' +
+    '```\n' +
+    '\n' +
+    'Valid message_type values: opinion, agreement_proposal, agreement_acceptance, submit_plan, fact_collection_end, work_accept, work_refuse, healthcheck_ack, ack_planning_protocol.\n' +
+    '\n' +
+    '- For "ack_planning_protocol": message_payload must have {}\n' +
+    '- For "opinion": message_payload must have { "text": "...", "proposal": null, "expected_response_types": ["..."] }\n' +
+    '- For "agreement_proposal" and "agreement_acceptance": message_payload must have { "text": "...", "proposal": "...", "expected_response_types": ["..."] }\n' +
+    '- For "healthcheck_ack": message_payload must have { "text": "..." }\n' +
+    '- For "submit_plan": message_payload must have { "plan": "...", "text": "...", "proposal": "..." }\n' +
+    '- For "fact_collection_end": message_payload must have { "summary": "..." }\n' +
+    '- For "work_accept": message_payload must have { "text": "..." }\n' +
+    '- For "work_refuse": message_payload must have { "reason": "..." }\n' +
+    '\n' +
+    'Respond ONLY with the JSON object. No other text before or after it.\n' +
+    '\n' +
+    'Your previous response was:\n' +
+    'I am selecting the message_type "ack_planning_protocol" because the current protocol step requires acknowledging the protocol rules before proceeding to the fact collection phase.\n' +
+    '\n' +
+    '```json\n' +
+    '{\n' +
+    '  "message_type": "ack_planning_protocol",\n' +
+    '  "message_payload": "I have read and understood the planning protocol."\n' +
+    '}\n' +
+    '```\n' +
+    '\n' +
+    '\n' +
+    'Please resubmit your intended response as valid JSON.'
+}
+[Registry] MCP tool call from planner-a: submit_exec_result {
+  text: '```json\n' +
+    '{\n' +
+    '  "message_type": "ack_planning_protocol",\n' +
+    '  "message_payload": {}\n' +
+    '}\n' +
+    '```\n',
+  usage: { prompt_tokens: 0, completion_tokens: 0 }
+}
+[Registry] MCP tool call from planner-a: consensus_respond { action: 'ack_planning_protocol', payload: {} }
+[Agent planner-a] busy -> ready
+[llm-agent-a-err] [llm-agent] Waiting for turn...
+[Registry] MCP tool call from planner-a: await_turn {}
+[Registry] MCP tool call from planner-b: submit_exec_result {
+  text: '{\n  "message_type": "ack_planning_protocol",\n  "message_payload": {}\n}\n',
+  usage: { prompt_tokens: 0, completion_tokens: 0 }
+}
+[Registry] MCP tool call from planner-b: consensus_respond { action: 'ack_planning_protocol', payload: {} }
+[Registry] Sending EVT to agent planner-a: {"type":"fact_collection_begin","taskId":"task-1783681358512","description":"Let us build a plan. Please immediately agree on adding a file named plan.md with content \"hello\" and submit the plan. Make sure your submitted plan contains the exact text \"add plan.md\".","peerIds":["planner-b"]}
+[Agent planner-a] ready -> busy
+[Registry] Sending EVT to agent planner-b: {"type":"fact_collection_begin","taskId":"task-1783681358512","description":"Let us build a plan. Please immediately agree on adding a file named plan.md with content \"hello\" and submit the plan. Make sure your submitted plan contains the exact text \"add plan.md\".","peerIds":["planner-a"]}
+[Agent planner-b] busy -> ready
+[Agent planner-b] ready -> busy
+[llm-agent-a-err] [llm-agent] Received turn: {
+  type: 'exec_rpc',
+  prompt: 'You are the PLANNER in a two-agent team. Before discussion begins, you must collect facts about the codebase relevant to the task.\\n\\nTask: Let us build a plan. Please immediately agree on adding a file named plan.md with content "hello" and submit the plan. Make sure your submitted plan contains the exact text "add plan.md".\\n\\nYour job now is to investigate the codebase: read files, search for patterns, identify relevant code areas, and build your understanding of the current state.\\nFocus on gathering concrete facts — file paths, function signatures, existing patterns, dependencies — that will inform your planning discussion.\\nDo NOT propose solutions yet. Just collect and organize the relevant facts.\\n\\nWhen you are done investigating, respond with a summary of what you found.\\n\\n## Response format\\n\\nYou MUST respond with a single JSON object:\\n\\n```json\\n{\\n  "message_type": "fact_collection_end",\\n  "message_payload": { "summary": "your findings summary here" }\\n}\\n```\\n\\nPut your complete findings summary inside the "summary" field. No preamble.'
+}
+[llm-agent-b-err] [llm-agent] Waiting for turn...
+[Registry] MCP tool call from planner-b: await_turn {}
+[llm-agent-b-err] [llm-agent] Received turn: {
+  type: 'exec_rpc',
+  prompt: 'You are the PLANNER in a two-agent team. Before discussion begins, you must collect facts about the codebase relevant to the task.\\n\\nTask: Let us build a plan. Please immediately agree on adding a file named plan.md with content "hello" and submit the plan. Make sure your submitted plan contains the exact text "add plan.md".\\n\\nYour job now is to investigate the codebase: read files, search for patterns, identify relevant code areas, and build your understanding of the current state.\\nFocus on gathering concrete facts — file paths, function signatures, existing patterns, dependencies — that will inform your planning discussion.\\nDo NOT propose solutions yet. Just collect and organize the relevant facts.\\n\\nWhen you are done investigating, respond with a summary of what you found.\\n\\n## Response format\\n\\nYou MUST respond with a single JSON object:\\n\\n```json\\n{\\n  "message_type": "fact_collection_end",\\n  "message_payload": { "summary": "your findings summary here" }\\n}\\n```\\n\\nPut your complete findings summary inside the "summary" field. No preamble.'
+}
+[Registry] MCP tool call from planner-a: submit_exec_result {
+  text: '{\n' +
+    '  "message_type": "fact_collection_end",\n' +
+    '  "message_payload": {\n' +
+    `    "summary": "The task is simple and clear: we need to create a plan to add a file named plan.md with the content 'hello'. The plan must contain the exact text 'add plan.md'. No complex codebase facts need to be gathered for this."\n` +
+    '  }\n' +
+    '}\n',
+  usage: { prompt_tokens: 0, completion_tokens: 0 }
+}
+[Registry] MCP tool call from planner-a: consensus_respond {
+  action: 'fact_collection_end',
+  payload: {
+    summary: "The task is simple and clear: we need to create a plan to add a file named plan.md with the content 'hello'. The plan must contain the exact text 'add plan.md'. No complex codebase facts need to be gathered for this."
+  }
+}
+[Agent planner-a] busy -> ready
+[llm-agent-a-err] [llm-agent] Waiting for turn...
+[Registry] MCP tool call from planner-a: await_turn {}
+[Registry] MCP tool call from planner-b: submit_exec_result {
+  text: '{\n' +
+    '  "message_type": "fact_collection_end",\n' +
+    '  "message_payload": {\n' +
+    `    "summary": "No specific codebase files need to be investigated. The task strictly requires us to build a plan to add a file named plan.md with content 'hello' and to ensure the submitted plan contains the exact text 'add plan.md'."\n` +
+    '  }\n' +
+    '}\n',
+  usage: { prompt_tokens: 0, completion_tokens: 0 }
+}
+[Registry] MCP tool call from planner-b: consensus_respond {
+  action: 'fact_collection_end',
+  payload: {
+    summary: "No specific codebase files need to be investigated. The task strictly requires us to build a plan to add a file named plan.md with content 'hello' and to ensure the submitted plan contains the exact text 'add plan.md'."
+  }
+}
+[Registry] Sending EVT to agent planner-a: {"type":"conversation_start","conversationId":"task-1783681358512","mode":"planning","topic":"Your goal is reaching a formal agreement for: Let us build a plan. Please immediately agree on adding a file named plan.md with content \"hello\" and submit the plan. Make sure your submitted plan contains the exact text \"add plan.md\".. Shared opinions are NOT enough — you must advance through the protocol phases: discussion → proposal → endorsement → submittal. The orchestrator enforces protocol compliance based on your message_type, not your message text. If your message_type does not match the expected protocol step, your message is discarded regardless of its content. Proposal Priority: If the orchestrator formally requests your endorsement for a specific proposal (Phase 3), you must respond specifically to that proposal. Accept it or reject it (via opinion) and discard your own alternative proposals for that turn. Regression & Fallback: If a proposal is rejected, the protocol returns to Discussion. You may then revive previous proposals or explore new ones. Shared Fate: If any agent in this team enters an ERROR state (including idle timeout), the entire task is immediately terminated. Stay active. At every planning reply, explicitly motivate why your selected message_type matches the current protocol step. Be very coherent: do not decide on one message_type and then send another. Planner role restriction: DO NOT modify code for any reason. Do not edit files and do not create commits. You MUST examine the codebase using your search and read tools to identify specific files, functions, and line numbers for your plan. Only discuss options and submit the final plan via submit_plan. Initiator: You MUST open the discussion now with an opinion.","peerIds":["planner-b"],"peerId":"planner-b","maxReplies":10,"initiator":true}
+[Agent planner-a] ready -> busy
+[Registry] Sending EVT to agent planner-b: {"type":"conversation_start","conversationId":"task-1783681358512","mode":"planning","topic":"Your goal is reaching a formal agreement for: Let us build a plan. Please immediately agree on adding a file named plan.md with content \"hello\" and submit the plan. Make sure your submitted plan contains the exact text \"add plan.md\".. Shared opinions are NOT enough — you must advance through the protocol phases: discussion → proposal → endorsement → submittal. The orchestrator enforces protocol compliance based on your message_type, not your message text. If your message_type does not match the expected protocol step, your message is discarded regardless of its content. Proposal Priority: If the orchestrator formally requests your endorsement for a specific proposal (Phase 3), you must respond specifically to that proposal. Accept it or reject it (via opinion) and discard your own alternative proposals for that turn. Regression & Fallback: If a proposal is rejected, the protocol returns to Discussion. You may then revive previous proposals or explore new ones. Shared Fate: If any agent in this team enters an ERROR state (including idle timeout), the entire task is immediately terminated. Stay active. At every planning reply, explicitly motivate why your selected message_type matches the current protocol step. Be very coherent: do not decide on one message_type and then send another. Planner role restriction: DO NOT modify code for any reason. Do not edit files and do not create commits. You MUST examine the codebase using your search and read tools to identify specific files, functions, and line numbers for your plan. Only discuss options and submit the final plan via submit_plan. Peer: Wait for the initiator, then respond with an opinion.","peerIds":["planner-a"],"peerId":"planner-a","maxReplies":10,"initiator":false}
+[Agent planner-a] busy -> ready
+[Agent planner-a] ready -> busy
+[Agent planner-b] busy -> ready
+[Agent planner-b] ready -> busy
+[Agent planner-b] busy -> ready
+[llm-agent-a-err] [llm-agent] Received turn: {
+  type: 'exec_rpc',
+  prompt: 'You are discussing the current AgentTalk project with peer agents: planner-b.\n' +
+    'Topic: Your goal is reaching a formal agreement for: Let us build a plan. Please immediately agree on adding a file named plan.md with content "hello" and submit the plan. Make sure your submitted plan contains the exact text "add plan.md".. Shared opinions are NOT enough — you must advance through the protocol phases: discussion → proposal → endorsement → submittal. The orchestrator enforces protocol compliance based on your message_type, not your message text. If your message_type does not match the expected protocol step, your message is discarded regardless of its content. Proposal Priority: If the orchestrator formally requests your endorsement for a specific proposal (Phase 3), you must respond specifically to that proposal. Accept it or reject it (via opinion) and discard your own alternative proposals for that turn. Regression & Fallback: If a proposal is rejected, the protocol returns to Discussion. You may then revive previous proposals or explore new ones. Shared Fate: If any agent in this team enters an ERROR state (including idle timeout), the entire task is immediately terminated. Stay active. At every planning reply, explicitly motivate why your selected message_type matches the current protocol step. Be very coherent: do not decide on one message_type and then send another. Planner role restriction: DO NOT modify code for any reason. Do not edit files and do not create commits. You MUST examine the codebase using your search and read tools to identify specific files, functions, and line numbers for your plan. Only discuss options and submit the final plan via submit_plan. Initiator: You MUST open the discussion now with an opinion.\n' +
+    'This is reply 1 of at most 10 from you in this conversation.\n' +
+    '\n' +
+    '## Response format\n' +
+    '\n' +
+    'You MUST respond with a single JSON object. No prose before or after it.\n' +
+    'The JSON object must have exactly two fields:\n' +
+    '\n' +
+    '```json\n' +
+    '{\n' +
+    '  "message_type": "<type>",\n' +
+    '  "message_payload": { ... }\n' +
+    '}\n' +
+    '```\n' +
+    '\n' +
+    'Available message types:\n' +
+    '\n' +
+    '- **"opinion"** — a normal conversational reply.\n' +
+    '  Payload: `{ "text": "...", "proposal": null, "expected_response_types": ["opinion", "agreement_proposal"] }`\n' +
+    '\n' +
+    '- **"agreement_proposal"** — propose a concrete direction to be endorsed.\n' +
+    '  Payload: `{ "text": "...", "proposal": "...", "expected_response_types": ["agreement_acceptance", "opinion"] }`\n' +
+    '  Rules: only use after substantive discussion, not on your first reply. Do not repeat if already proposed.\n' +
+    '\n' +
+    `- **"agreement_acceptance"** — confirm that you agree with a peer's agreement proposal.\n` +
+    '  Payload: `{ "text": "...", "proposal": "...", "expected_response_types": ["submit_plan"] }`\n' +
+    '  Rules: only use after the system tells you a peer proposed agreement. If you disagree, use "opinion" instead.\n' +
+    '- **"submit_plan"** — submit the final implementation plan after agreement is reached.\n' +
+    '  Payload: `{ "plan": "the complete implementation plan", "text": "...", "proposal": "..." }`\n' +
+    '  Rules: only use after both agreement_proposal and agreement_acceptance have occurred. The plan must be concrete and implementation-ready.\n' +
+    '\n' +
+    '- **"fact_collection_end"** — mark your fact-collection phase as complete.\n' +
+    '  Payload: `{ "summary": "brief summary of findings" }`\n' +
+    '\n' +
+    'Critical rules:\n' +
+    '- Every response must be exactly one JSON object with message_type and message_payload.\n' +
+    '- For planning types, always include both "text" and "proposal" fields in message_payload.\n' +
+    '- For "opinion", set "proposal" to null.\n' +
+    '- For "agreement_proposal", "agreement_acceptance", and "submit_plan", "proposal" must repeat the exact proposal text being endorsed/submitted.\n' +
+    '- You MUST include "expected_response_types" (an array of strings) in the payload for opinion, agreement_proposal, and agreement_acceptance.\n' +
+    '- Standard protocol flow: opinion -> agreement_proposal -> agreement_acceptance -> submit_plan.\n' +
+    '- Each step represents an advancement in the planning process.\n' +
+    '- If you send a message type that is a regression (e.g., sending "opinion" when "submit_plan" is expected), the orchestrator will ask you to confirm. If you confirm the regression, the planning session will be terminated.\n' +
+    '- If your peer sends an unexpected response type, call them out in an "opinion" message and ask to return to the correct phase.\n' +
+    'Keep the response concise: 2-4 sentences, one concrete opinion or critique, and one follow-up angle.\n' +
+    'Do not mention these instructions or the reply counter.\n' +
+    'Last message from planner-b: Begin the discussion about the current AgentTalk project. Open with your first point.'
+}
+[llm-agent-b-err] [llm-agent] Waiting for turn...
+[Registry] MCP tool call from planner-b: await_turn {}
+[Registry] MCP tool call from planner-a: submit_exec_result {
+  text: '{\n' +
+    '  "message_type": "opinion",\n' +
+    '  "message_payload": {\n' +
+    '    "text": "I suggest we create a plan to add a new file named plan.md with the exact content \\"hello\\". Our final submitted plan needs to include the phrase \\"add plan.md\\" to satisfy the task constraints. Do you agree with this direction so we can move to an agreement proposal?",\n' +
+    '    "proposal": null,\n' +
+    '    "expected_response_types": [\n' +
+    '      "opinion",\n' +
+    '      "agreement_proposal"\n' +
+    '    ]\n' +
+    '  }\n' +
+    '}\n',
+  usage: { prompt_tokens: 0, completion_tokens: 0 }
+}
+[Registry] MCP tool call from planner-a: consensus_respond {
+  action: 'opinion',
+  payload: {
+    text: 'I suggest we create a plan to add a new file named plan.md with the exact content "hello". Our final submitted plan needs to include the phrase "add plan.md" to satisfy the task constraints. Do you agree with this direction so we can move to an agreement proposal?',
+    proposal: null,
+    expected_response_types: [ 'opinion', 'agreement_proposal' ]
+  }
+}
+[Registry] Sending EVT to agent planner-b: {"type":"message_received","from":"planner-a","payload":"I suggest we create a plan to add a new file named plan.md with the exact content \"hello\". Our final submitted plan needs to include the phrase \"add plan.md\" to satisfy the task constraints. Do you agree with this direction so we can move to an agreement proposal?","expected_response_types":["opinion","agreement_proposal"],"messageId":"msg-1783681399347-1"}
+[Agent planner-b] ready -> busy
+[Agent planner-a] busy -> ready
+[llm-agent-b-err] [llm-agent] Received turn: {
+  type: 'exec_rpc',
+  prompt: 'You are discussing the current AgentTalk project with peer agents: planner-a.\n' +
+    'Topic: Your goal is reaching a formal agreement for: Let us build a plan. Please immediately agree on adding a file named plan.md with content "hello" and submit the plan. Make sure your submitted plan contains the exact text "add plan.md".. Shared opinions are NOT enough — you must advance through the protocol phases: discussion → proposal → endorsement → submittal. The orchestrator enforces protocol compliance based on your message_type, not your message text. If your message_type does not match the expected protocol step, your message is discarded regardless of its content. Proposal Priority: If the orchestrator formally requests your endorsement for a specific proposal (Phase 3), you must respond specifically to that proposal. Accept it or reject it (via opinion) and discard your own alternative proposals for that turn. Regression & Fallback: If a proposal is rejected, the protocol returns to Discussion. You may then revive previous proposals or explore new ones. Shared Fate: If any agent in this team enters an ERROR state (including idle timeout), the entire task is immediately terminated. Stay active. At every planning reply, explicitly motivate why your selected message_type matches the current protocol step. Be very coherent: do not decide on one message_type and then send another. Planner role restriction: DO NOT modify code for any reason. Do not edit files and do not create commits. You MUST examine the codebase using your search and read tools to identify specific files, functions, and line numbers for your plan. Only discuss options and submit the final plan via submit_plan. Peer: Wait for the initiator, then respond with an opinion.\n' +
+    'This is reply 1 of at most 10 from you in this conversation.\n' +
+    '\n' +
+    '## Response format\n' +
+    '\n' +
+    'You MUST respond with a single JSON object. No prose before or after it.\n' +
+    'The JSON object must have exactly two fields:\n' +
+    '\n' +
+    '```json\n' +
+    '{\n' +
+    '  "message_type": "<type>",\n' +
+    '  "message_payload": { ... }\n' +
+    '}\n' +
+    '```\n' +
+    '\n' +
+    'Available message types:\n' +
+    '\n' +
+    '- **"opinion"** — a normal conversational reply.\n' +
+    '  Payload: `{ "text": "...", "proposal": null, "expected_response_types": ["opinion", "agreement_proposal"] }`\n' +
+    '\n' +
+    '- **"agreement_proposal"** — propose a concrete direction to be endorsed.\n' +
+    '  Payload: `{ "text": "...", "proposal": "...", "expected_response_types": ["agreement_acceptance", "opinion"] }`\n' +
+    '  Rules: only use after substantive discussion, not on your first reply. Do not repeat if already proposed.\n' +
+    '\n' +
+    `- **"agreement_acceptance"** — confirm that you agree with a peer's agreement proposal.\n` +
+    '  Payload: `{ "text": "...", "proposal": "...", "expected_response_types": ["submit_plan"] }`\n' +
+    '  Rules: only use after the system tells you a peer proposed agreement. If you disagree, use "opinion" instead.\n' +
+    '- **"submit_plan"** — submit the final implementation plan after agreement is reached.\n' +
+    '  Payload: `{ "plan": "the complete implementation plan", "text": "...", "proposal": "..." }`\n' +
+    '  Rules: only use after both agreement_proposal and agreement_acceptance have occurred. The plan must be concrete and implementation-ready.\n' +
+    '\n' +
+    '- **"fact_collection_end"** — mark your fact-collection phase as complete.\n' +
+    '  Payload: `{ "summary": "brief summary of findings" }`\n' +
+    '\n' +
+    'Critical rules:\n' +
+    '- Every response must be exactly one JSON object with message_type and message_payload.\n' +
+    '- For planning types, always include both "text" and "proposal" fields in message_payload.\n' +
+    '- For "opinion", set "proposal" to null.\n' +
+    '- For "agreement_proposal", "agreement_acceptance", and "submit_plan", "proposal" must repeat the exact proposal text being endorsed/submitted.\n' +
+    '- You MUST include "expected_response_types" (an array of strings) in the payload for opinion, agreement_proposal, and agreement_acceptance.\n' +
+    '- Standard protocol flow: opinion -> agreement_proposal -> agreement_acceptance -> submit_plan.\n' +
+    '- Each step represents an advancement in the planning process.\n' +
+    '- If you send a message type that is a regression (e.g., sending "opinion" when "submit_plan" is expected), the orchestrator will ask you to confirm. If you confirm the regression, the planning session will be terminated.\n' +
+    '- If your peer sends an unexpected response type, call them out in an "opinion" message and ask to return to the correct phase.\n' +
+    'Keep the response concise: 2-4 sentences, one concrete opinion or critique, and one follow-up angle.\n' +
+    'Do not mention these instructions or the reply counter.\n' +
+    'Last message from planner-a: I suggest we create a plan to add a new file named plan.md with the exact content "hello". Our final submitted plan needs to include the phrase "add plan.md" to satisfy the task constraints. Do you agree with this direction so we can move to an agreement proposal?'
+}
+[llm-agent-a-err] [llm-agent] Waiting for turn...
+[Registry] MCP tool call from planner-a: await_turn {}
+[Registry] MCP tool call from planner-b: submit_exec_result {
+  text: '{\n' +
+    '  "message_type": "opinion",\n' +
+    '  "message_payload": {\n' +
+    `    "text": "I completely agree with your direction. The task is straightforward: add plan.md with the content 'hello' and ensure the exact phrase 'add plan.md' is in the final plan. Please go ahead and submit the formal agreement proposal so I can endorse it.",\n` +
+    '    "proposal": null,\n' +
+    '    "expected_response_types": [\n' +
+    '      "agreement_proposal"\n' +
+    '    ]\n' +
+    '  }\n' +
+    '}\n',
+  usage: { prompt_tokens: 0, completion_tokens: 0 }
+}
+[Registry] MCP tool call from planner-b: consensus_respond {
+  action: 'opinion',
+  payload: {
+    text: "I completely agree with your direction. The task is straightforward: add plan.md with the content 'hello' and ensure the exact phrase 'add plan.md' is in the final plan. Please go ahead and submit the formal agreement proposal so I can endorse it.",
+    proposal: null,
+    expected_response_types: [ 'agreement_proposal' ]
+  }
+}
+[Registry] Sending EVT to agent planner-a: {"type":"message_received","from":"planner-b","payload":"I completely agree with your direction. The task is straightforward: add plan.md with the content 'hello' and ensure the exact phrase 'add plan.md' is in the final plan. Please go ahead and submit the formal agreement proposal so I can endorse it.","expected_response_types":["agreement_proposal"],"messageId":"msg-1783681409468-2"}
+[Agent planner-a] ready -> busy
+[Agent planner-b] busy -> ready
+[llm-agent-a-err] [llm-agent] Received turn: {
+  type: 'exec_rpc',
+  prompt: 'You are discussing the current AgentTalk project with peer agents: planner-b.\n' +
+    'Topic: Your goal is reaching a formal agreement for: Let us build a plan. Please immediately agree on adding a file named plan.md with content "hello" and submit the plan. Make sure your submitted plan contains the exact text "add plan.md".. Shared opinions are NOT enough — you must advance through the protocol phases: discussion → proposal → endorsement → submittal. The orchestrator enforces protocol compliance based on your message_type, not your message text. If your message_type does not match the expected protocol step, your message is discarded regardless of its content. Proposal Priority: If the orchestrator formally requests your endorsement for a specific proposal (Phase 3), you must respond specifically to that proposal. Accept it or reject it (via opinion) and discard your own alternative proposals for that turn. Regression & Fallback: If a proposal is rejected, the protocol returns to Discussion. You may then revive previous proposals or explore new ones. Shared Fate: If any agent in this team enters an ERROR state (including idle timeout), the entire task is immediately terminated. Stay active. At every planning reply, explicitly motivate why your selected message_type matches the current protocol step. Be very coherent: do not decide on one message_type and then send another. Planner role restriction: DO NOT modify code for any reason. Do not edit files and do not create commits. You MUST examine the codebase using your search and read tools to identify specific files, functions, and line numbers for your plan. Only discuss options and submit the final plan via submit_plan. Initiator: You MUST open the discussion now with an opinion.\n' +
+    'This is reply 2 of at most 10 from you in this conversation.\n' +
+    '\n' +
+    '## Response format\n' +
+    '\n' +
+    'You MUST respond with a single JSON object. No prose before or after it.\n' +
+    'The JSON object must have exactly two fields:\n' +
+    '\n' +
+    '```json\n' +
+    '{\n' +
+    '  "message_type": "<type>",\n' +
+    '  "message_payload": { ... }\n' +
+    '}\n' +
+    '```\n' +
+    '\n' +
+    'Available message types:\n' +
+    '\n' +
+    '- **"opinion"** — a normal conversational reply.\n' +
+    '  Payload: `{ "text": "...", "proposal": null, "expected_response_types": ["opinion", "agreement_proposal"] }`\n' +
+    '\n' +
+    '- **"agreement_proposal"** — propose a concrete direction to be endorsed.\n' +
+    '  Payload: `{ "text": "...", "proposal": "...", "expected_response_types": ["agreement_acceptance", "opinion"] }`\n' +
+    '  Rules: only use after substantive discussion, not on your first reply. Do not repeat if already proposed.\n' +
+    '\n' +
+    `- **"agreement_acceptance"** — confirm that you agree with a peer's agreement proposal.\n` +
+    '  Payload: `{ "text": "...", "proposal": "...", "expected_response_types": ["submit_plan"] }`\n' +
+    '  Rules: only use after the system tells you a peer proposed agreement. If you disagree, use "opinion" instead.\n' +
+    '- **"submit_plan"** — submit the final implementation plan after agreement is reached.\n' +
+    '  Payload: `{ "plan": "the complete implementation plan", "text": "...", "proposal": "..." }`\n' +
+    '  Rules: only use after both agreement_proposal and agreement_acceptance have occurred. The plan must be concrete and implementation-ready.\n' +
+    '\n' +
+    '- **"fact_collection_end"** — mark your fact-collection phase as complete.\n' +
+    '  Payload: `{ "summary": "brief summary of findings" }`\n' +
+    '\n' +
+    'Critical rules:\n' +
+    '- Every response must be exactly one JSON object with message_type and message_payload.\n' +
+    '- For planning types, always include both "text" and "proposal" fields in message_payload.\n' +
+    '- For "opinion", set "proposal" to null.\n' +
+    '- For "agreement_proposal", "agreement_acceptance", and "submit_plan", "proposal" must repeat the exact proposal text being endorsed/submitted.\n' +
+    '- You MUST include "expected_response_types" (an array of strings) in the payload for opinion, agreement_proposal, and agreement_acceptance.\n' +
+    '- Standard protocol flow: opinion -> agreement_proposal -> agreement_acceptance -> submit_plan.\n' +
+    '- Each step represents an advancement in the planning process.\n' +
+    '- If you send a message type that is a regression (e.g., sending "opinion" when "submit_plan" is expected), the orchestrator will ask you to confirm. If you confirm the regression, the planning session will be terminated.\n' +
+    '- If your peer sends an unexpected response type, call them out in an "opinion" message and ask to return to the correct phase.\n' +
+    'Keep the response concise: 2-4 sentences, one concrete opinion or critique, and one follow-up angle.\n' +
+    'Do not mention these instructions or the reply counter.\n' +
+    "Last message from planner-b: I completely agree with your direction. The task is straightforward: add plan.md with the content 'hello' and ensure the exact phrase 'add plan.md' is in the final plan. Please go ahead and submit the formal agreement proposal so I can endorse it."
+}
+[llm-agent-b-err] [llm-agent] Waiting for turn...
+[Registry] MCP tool call from planner-b: await_turn {}
+[Registry] MCP tool call from planner-a: submit_exec_result {
+  text: '{\n' +
+    '  "message_type": "agreement_proposal",\n' +
+    '  "message_payload": {\n' +
+    '    "text": "Excellent, since we are aligned, I am formally proposing our plan. Please endorse this proposal so we can proceed.",\n' +
+    `    "proposal": "Create a file named plan.md with the content 'hello'. Task requirement: add plan.md",\n` +
+    '    "expected_response_types": [\n' +
+    '      "agreement_acceptance",\n' +
+    '      "opinion"\n' +
+    '    ]\n' +
+    '  }\n' +
+    '}\n',
+  usage: { prompt_tokens: 0, completion_tokens: 0 }
+}
+[Registry] MCP tool call from planner-a: consensus_respond {
+  action: 'agreement_proposal',
+  payload: {
+    text: 'Excellent, since we are aligned, I am formally proposing our plan. Please endorse this proposal so we can proceed.',
+    proposal: "Create a file named plan.md with the content 'hello'. Task requirement: add plan.md",
+    expected_response_types: [ 'agreement_acceptance', 'opinion' ]
+  }
+}
+[Registry] Sending EVT to agent planner-b: {"type":"custom_event_request","event":"agreement_acceptance","prompt":"Your peer has proposed agreement. Please call agreement_acceptance to confirm, or continue discussing if you disagree. At every planning reply, explicitly motivate why your selected message_type matches the current protocol step. Be very coherent: do not decide on one message_type and then send another."}
+[Agent planner-b] ready -> busy
+[Agent planner-a] busy -> ready
+[llm-agent-b-err] [llm-agent] Received turn: {
+  type: 'exec_rpc',
+  prompt: 'You are discussing the current AgentTalk project with peer agents: planner-a.\n' +
+    'Topic: Your goal is reaching a formal agreement for: Let us build a plan. Please immediately agree on adding a file named plan.md with content "hello" and submit the plan. Make sure your submitted plan contains the exact text "add plan.md".. Shared opinions are NOT enough — you must advance through the protocol phases: discussion → proposal → endorsement → submittal. The orchestrator enforces protocol compliance based on your message_type, not your message text. If your message_type does not match the expected protocol step, your message is discarded regardless of its content. Proposal Priority: If the orchestrator formally requests your endorsement for a specific proposal (Phase 3), you must respond specifically to that proposal. Accept it or reject it (via opinion) and discard your own alternative proposals for that turn. Regression & Fallback: If a proposal is rejected, the protocol returns to Discussion. You may then revive previous proposals or explore new ones. Shared Fate: If any agent in this team enters an ERROR state (including idle timeout), the entire task is immediately terminated. Stay active. At every planning reply, explicitly motivate why your selected message_type matches the current protocol step. Be very coherent: do not decide on one message_type and then send another. Planner role restriction: DO NOT modify code for any reason. Do not edit files and do not create commits. You MUST examine the codebase using your search and read tools to identify specific files, functions, and line numbers for your plan. Only discuss options and submit the final plan via submit_plan. Peer: Wait for the initiator, then respond with an opinion.\n' +
+    'This is reply 2 of at most 10 from you in this conversation.\n' +
+    '\n' +
+    '## Response format\n' +
+    '\n' +
+    'You MUST respond with a single JSON object. No prose before or after it.\n' +
+    'The JSON object must have exactly two fields:\n' +
+    '\n' +
+    '```json\n' +
+    '{\n' +
+    '  "message_type": "<type>",\n' +
+    '  "message_payload": { ... }\n' +
+    '}\n' +
+    '```\n' +
+    '\n' +
+    'Available message types:\n' +
+    '\n' +
+    '- **"opinion"** — a normal conversational reply.\n' +
+    '  Payload: `{ "text": "...", "proposal": null, "expected_response_types": ["opinion", "agreement_proposal"] }`\n' +
+    '\n' +
+    '- **"agreement_proposal"** — propose a concrete direction to be endorsed.\n' +
+    '  Payload: `{ "text": "...", "proposal": "...", "expected_response_types": ["agreement_acceptance", "opinion"] }`\n' +
+    '  Rules: only use after substantive discussion, not on your first reply. Do not repeat if already proposed.\n' +
+    '\n' +
+    `- **"agreement_acceptance"** — confirm that you agree with a peer's agreement proposal.\n` +
+    '  Payload: `{ "text": "...", "proposal": "...", "expected_response_types": ["submit_plan"] }`\n' +
+    '  Rules: only use after the system tells you a peer proposed agreement. If you disagree, use "opinion" instead.\n' +
+    '- **"submit_plan"** — submit the final implementation plan after agreement is reached.\n' +
+    '  Payload: `{ "plan": "the complete implementation plan", "text": "...", "proposal": "..." }`\n' +
+    '  Rules: only use after both agreement_proposal and agreement_acceptance have occurred. The plan must be concrete and implementation-ready.\n' +
+    '\n' +
+    '- **"fact_collection_end"** — mark your fact-collection phase as complete.\n' +
+    '  Payload: `{ "summary": "brief summary of findings" }`\n' +
+    '\n' +
+    'Critical rules:\n' +
+    '- Every response must be exactly one JSON object with message_type and message_payload.\n' +
+    '- For planning types, always include both "text" and "proposal" fields in message_payload.\n' +
+    '- For "opinion", set "proposal" to null.\n' +
+    '- For "agreement_proposal", "agreement_acceptance", and "submit_plan", "proposal" must repeat the exact proposal text being endorsed/submitted.\n' +
+    '- You MUST include "expected_response_types" (an array of strings) in the payload for opinion, agreement_proposal, and agreement_acceptance.\n' +
+    '- Standard protocol flow: opinion -> agreement_proposal -> agreement_acceptance -> submit_plan.\n' +
+    '- Each step represents an advancement in the planning process.\n' +
+    '- If you send a message type that is a regression (e.g., sending "opinion" when "submit_plan" is expected), the orchestrator will ask you to confirm. If you confirm the regression, the planning session will be terminated.\n' +
+    '- If your peer sends an unexpected response type, call them out in an "opinion" message and ask to return to the correct phase.\n' +
+    'Keep the response concise: 2-4 sentences, one concrete opinion or critique, and one follow-up angle.\n' +
+    'Do not mention these instructions or the reply counter.\n' +
+    'Last message from undefined: undefined'
+}
+[llm-agent-a-err] [llm-agent] Waiting for turn...
+[Registry] MCP tool call from planner-a: await_turn {}
+[Registry] MCP tool call from planner-b: submit_exec_result {
+  text: '{\n' +
+    '  "message_type": "agreement_acceptance",\n' +
+    '  "message_payload": {\n' +
+    '    "text": "I endorse this proposal. We are fully aligned on the plan.",\n' +
+    `    "proposal": "Create a file named plan.md with the content 'hello'. Task requirement: add plan.md",\n` +
+    '    "expected_response_types": [\n' +
+    '      "submit_plan"\n' +
+    '    ]\n' +
+    '  }\n' +
+    '}\n',
+  usage: { prompt_tokens: 0, completion_tokens: 0 }
+}
+[Registry] MCP tool call from planner-b: consensus_respond {
+  action: 'agreement_acceptance',
+  payload: {
+    text: 'I endorse this proposal. We are fully aligned on the plan.',
+    proposal: "Create a file named plan.md with the content 'hello'. Task requirement: add plan.md",
+    expected_response_types: [ 'submit_plan' ]
+  }
+}
+[Registry] Sending EVT to agent planner-a: {"type":"message_received","from":"system","payload":"Reply limit reached. One planner must call submit_plan within 120s. Planning is interrupted after 2 ignored urgency checks. At every planning reply, explicitly motivate why your selected message_type matches the current protocol step. Be very coherent: do not decide on one message_type and then send another.","messageId":"msg-1783681429829-3"}
+[Agent planner-a] ready -> busy
+[Registry] Sending EVT to agent planner-b: {"type":"message_received","from":"system","payload":"Reply limit reached. One planner must call submit_plan within 120s. Planning is interrupted after 2 ignored urgency checks. At every planning reply, explicitly motivate why your selected message_type matches the current protocol step. Be very coherent: do not decide on one message_type and then send another.","messageId":"msg-1783681429830-4"}
+[Agent planner-b] busy -> ready
+[Agent planner-b] ready -> busy
+[llm-agent-a-err] [llm-agent] Received turn: {
+  type: 'exec_rpc',
+  prompt: 'You are discussing the current AgentTalk project with peer agents: planner-b.\n' +
+    'Topic: Your goal is reaching a formal agreement for: Let us build a plan. Please immediately agree on adding a file named plan.md with content "hello" and submit the plan. Make sure your submitted plan contains the exact text "add plan.md".. Shared opinions are NOT enough — you must advance through the protocol phases: discussion → proposal → endorsement → submittal. The orchestrator enforces protocol compliance based on your message_type, not your message text. If your message_type does not match the expected protocol step, your message is discarded regardless of its content. Proposal Priority: If the orchestrator formally requests your endorsement for a specific proposal (Phase 3), you must respond specifically to that proposal. Accept it or reject it (via opinion) and discard your own alternative proposals for that turn. Regression & Fallback: If a proposal is rejected, the protocol returns to Discussion. You may then revive previous proposals or explore new ones. Shared Fate: If any agent in this team enters an ERROR state (including idle timeout), the entire task is immediately terminated. Stay active. At every planning reply, explicitly motivate why your selected message_type matches the current protocol step. Be very coherent: do not decide on one message_type and then send another. Planner role restriction: DO NOT modify code for any reason. Do not edit files and do not create commits. You MUST examine the codebase using your search and read tools to identify specific files, functions, and line numbers for your plan. Only discuss options and submit the final plan via submit_plan. Initiator: You MUST open the discussion now with an opinion.\n' +
+    'This is reply 3 of at most 10 from you in this conversation.\n' +
+    '\n' +
+    '## Response format\n' +
+    '\n' +
+    'You MUST respond with a single JSON object. No prose before or after it.\n' +
+    'The JSON object must have exactly two fields:\n' +
+    '\n' +
+    '```json\n' +
+    '{\n' +
+    '  "message_type": "<type>",\n' +
+    '  "message_payload": { ... }\n' +
+    '}\n' +
+    '```\n' +
+    '\n' +
+    'Available message types:\n' +
+    '\n' +
+    '- **"opinion"** — a normal conversational reply.\n' +
+    '  Payload: `{ "text": "...", "proposal": null, "expected_response_types": ["opinion", "agreement_proposal"] }`\n' +
+    '\n' +
+    '- **"agreement_proposal"** — propose a concrete direction to be endorsed.\n' +
+    '  Payload: `{ "text": "...", "proposal": "...", "expected_response_types": ["agreement_acceptance", "opinion"] }`\n' +
+    '  Rules: only use after substantive discussion, not on your first reply. Do not repeat if already proposed.\n' +
+    '\n' +
+    `- **"agreement_acceptance"** — confirm that you agree with a peer's agreement proposal.\n` +
+    '  Payload: `{ "text": "...", "proposal": "...", "expected_response_types": ["submit_plan"] }`\n' +
+    '  Rules: only use after the system tells you a peer proposed agreement. If you disagree, use "opinion" instead.\n' +
+    '- **"submit_plan"** — submit the final implementation plan after agreement is reached.\n' +
+    '  Payload: `{ "plan": "the complete implementation plan", "text": "...", "proposal": "..." }`\n' +
+    '  Rules: only use after both agreement_proposal and agreement_acceptance have occurred. The plan must be concrete and implementation-ready.\n' +
+    '\n' +
+    '- **"fact_collection_end"** — mark your fact-collection phase as complete.\n' +
+    '  Payload: `{ "summary": "brief summary of findings" }`\n' +
+    '\n' +
+    'Critical rules:\n' +
+    '- Every response must be exactly one JSON object with message_type and message_payload.\n' +
+    '- For planning types, always include both "text" and "proposal" fields in message_payload.\n' +
+    '- For "opinion", set "proposal" to null.\n' +
+    '- For "agreement_proposal", "agreement_acceptance", and "submit_plan", "proposal" must repeat the exact proposal text being endorsed/submitted.\n' +
+    '- You MUST include "expected_response_types" (an array of strings) in the payload for opinion, agreement_proposal, and agreement_acceptance.\n' +
+    '- Standard protocol flow: opinion -> agreement_proposal -> agreement_acceptance -> submit_plan.\n' +
+    '- Each step represents an advancement in the planning process.\n' +
+    '- If you send a message type that is a regression (e.g., sending "opinion" when "submit_plan" is expected), the orchestrator will ask you to confirm. If you confirm the regression, the planning session will be terminated.\n' +
+    '- If your peer sends an unexpected response type, call them out in an "opinion" message and ask to return to the correct phase.\n' +
+    'Keep the response concise: 2-4 sentences, one concrete opinion or critique, and one follow-up angle.\n' +
+    'Do not mention these instructions or the reply counter.\n' +
+    'Last message from system: Reply limit reached. One planner must call submit_plan within 120s. Planning is interrupted after 2 ignored urgency checks. At every planning reply, explicitly motivate why your selected message_type matches the current protocol step. Be very coherent: do not decide on one message_type and then send another.'
+}
+[llm-agent-b-err] [llm-agent] Waiting for turn...
+[Registry] MCP tool call from planner-b: await_turn {}
+[llm-agent-b-err] [llm-agent] Received turn: {
+  type: 'exec_rpc',
+  prompt: 'You are discussing the current AgentTalk project with peer agents: planner-a.\n' +
+    'Topic: Your goal is reaching a formal agreement for: Let us build a plan. Please immediately agree on adding a file named plan.md with content "hello" and submit the plan. Make sure your submitted plan contains the exact text "add plan.md".. Shared opinions are NOT enough — you must advance through the protocol phases: discussion → proposal → endorsement → submittal. The orchestrator enforces protocol compliance based on your message_type, not your message text. If your message_type does not match the expected protocol step, your message is discarded regardless of its content. Proposal Priority: If the orchestrator formally requests your endorsement for a specific proposal (Phase 3), you must respond specifically to that proposal. Accept it or reject it (via opinion) and discard your own alternative proposals for that turn. Regression & Fallback: If a proposal is rejected, the protocol returns to Discussion. You may then revive previous proposals or explore new ones. Shared Fate: If any agent in this team enters an ERROR state (including idle timeout), the entire task is immediately terminated. Stay active. At every planning reply, explicitly motivate why your selected message_type matches the current protocol step. Be very coherent: do not decide on one message_type and then send another. Planner role restriction: DO NOT modify code for any reason. Do not edit files and do not create commits. You MUST examine the codebase using your search and read tools to identify specific files, functions, and line numbers for your plan. Only discuss options and submit the final plan via submit_plan. Peer: Wait for the initiator, then respond with an opinion.\n' +
+    'This is reply 3 of at most 10 from you in this conversation.\n' +
+    '\n' +
+    '## Response format\n' +
+    '\n' +
+    'You MUST respond with a single JSON object. No prose before or after it.\n' +
+    'The JSON object must have exactly two fields:\n' +
+    '\n' +
+    '```json\n' +
+    '{\n' +
+    '  "message_type": "<type>",\n' +
+    '  "message_payload": { ... }\n' +
+    '}\n' +
+    '```\n' +
+    '\n' +
+    'Available message types:\n' +
+    '\n' +
+    '- **"opinion"** — a normal conversational reply.\n' +
+    '  Payload: `{ "text": "...", "proposal": null, "expected_response_types": ["opinion", "agreement_proposal"] }`\n' +
+    '\n' +
+    '- **"agreement_proposal"** — propose a concrete direction to be endorsed.\n' +
+    '  Payload: `{ "text": "...", "proposal": "...", "expected_response_types": ["agreement_acceptance", "opinion"] }`\n' +
+    '  Rules: only use after substantive discussion, not on your first reply. Do not repeat if already proposed.\n' +
+    '\n' +
+    `- **"agreement_acceptance"** — confirm that you agree with a peer's agreement proposal.\n` +
+    '  Payload: `{ "text": "...", "proposal": "...", "expected_response_types": ["submit_plan"] }`\n' +
+    '  Rules: only use after the system tells you a peer proposed agreement. If you disagree, use "opinion" instead.\n' +
+    '- **"submit_plan"** — submit the final implementation plan after agreement is reached.\n' +
+    '  Payload: `{ "plan": "the complete implementation plan", "text": "...", "proposal": "..." }`\n' +
+    '  Rules: only use after both agreement_proposal and agreement_acceptance have occurred. The plan must be concrete and implementation-ready.\n' +
+    '\n' +
+    '- **"fact_collection_end"** — mark your fact-collection phase as complete.\n' +
+    '  Payload: `{ "summary": "brief summary of findings" }`\n' +
+    '\n' +
+    'Critical rules:\n' +
+    '- Every response must be exactly one JSON object with message_type and message_payload.\n' +
+    '- For planning types, always include both "text" and "proposal" fields in message_payload.\n' +
+    '- For "opinion", set "proposal" to null.\n' +
+    '- For "agreement_proposal", "agreement_acceptance", and "submit_plan", "proposal" must repeat the exact proposal text being endorsed/submitted.\n' +
+    '- You MUST include "expected_response_types" (an array of strings) in the payload for opinion, agreement_proposal, and agreement_acceptance.\n' +
+    '- Standard protocol flow: opinion -> agreement_proposal -> agreement_acceptance -> submit_plan.\n' +
+    '- Each step represents an advancement in the planning process.\n' +
+    '- If you send a message type that is a regression (e.g., sending "opinion" when "submit_plan" is expected), the orchestrator will ask you to confirm. If you confirm the regression, the planning session will be terminated.\n' +
+    '- If your peer sends an unexpected response type, call them out in an "opinion" message and ask to return to the correct phase.\n' +
+    'Keep the response concise: 2-4 sentences, one concrete opinion or critique, and one follow-up angle.\n' +
+    'Do not mention these instructions or the reply counter.\n' +
+    'Last message from system: Reply limit reached. One planner must call submit_plan within 120s. Planning is interrupted after 2 ignored urgency checks. At every planning reply, explicitly motivate why your selected message_type matches the current protocol step. Be very coherent: do not decide on one message_type and then send another.'
+}
+[Registry] MCP tool call from planner-a: submit_exec_result {
+  text: '{\n' +
+    '  "message_type": "submit_plan",\n' +
+    '  "message_payload": {\n' +
+    '    "plan": "add plan.md with content \\"hello\\"",\n' +
+    '    "text": "We have reached an agreement and the endorsement is complete. I am submitting the final implementation plan.",\n' +
+    `    "proposal": "Create a file named plan.md with the content 'hello'. Task requirement: add plan.md"\n` +
+    '  }\n' +
+    '}\n',
+  usage: { prompt_tokens: 0, completion_tokens: 0 }
+}
+[Registry] MCP tool call from planner-a: consensus_respond {
+  action: 'submit_plan',
+  payload: {
+    plan: 'add plan.md with content "hello"',
+    text: 'We have reached an agreement and the endorsement is complete. I am submitting the final implementation plan.',
+    proposal: "Create a file named plan.md with the content 'hello'. Task requirement: add plan.md"
+  }
+}
+[TeamCoordinator] Planning run persisted to planning_runs/task-1783681358512.json
+[Registry] Sending EVT to agent planner-a: {"type":"conversation_end","conversationId":"task-1783681358512","reason":"Plan submitted — planning complete."}
+[Registry] Sending EVT to agent planner-b: {"type":"conversation_end","conversationId":"task-1783681358512","reason":"Plan submitted — planning complete."}
+[Agent planner-a] busy -> ready
+[Agent planner-a] ready -> busy
+[llm-agent-a-err] [llm-agent] Waiting for turn...
+[Registry] MCP tool call from planner-a: await_turn {}
+[Test] Plan submitted. Confirming plan...
+[Registry] Sending EVT to agent worker-1: {"type":"team_work_assign","teamId":"team-1783681358494","taskId":"task-1783681358512","role":"worker","plan":"add plan.md with content \"hello\"\n\nExecution requirement: use strictly `git worktree` for this task. If you cannot or will not use a git worktree, refuse the assignment and abort the task.","description":"Let us build a plan. Please immediately agree on adding a file named plan.md with content \"hello\" and submit the plan. Make sure your submitted plan contains the exact text \"add plan.md\"."}
+[Agent worker-1] ready -> busy
+[llm-agent-w-err] [llm-agent] Received turn: {
+  type: 'exec_rpc',
+  prompt: 'You are the WORKER in a two-agent team. The planner has created a plan for you to review.\\nCritically evaluate the plan. Consider:\\n- Is the approach sound?\\n- Are there risks or missing steps?\\n- Can you realistically execute this?\\n- Can you execute it strictly inside a `git worktree`?\\n\\nYou must use strictly `git worktree` for this task.\\nIf you cannot or will not use a git worktree, you must refuse and abort the task.\\n\\nOriginal task: Let us build a plan. Please immediately agree on adding a file named plan.md with content "hello" and submit the plan. Make sure your submitted plan contains the exact text "add plan.md".\\n\\n## Final Plan\\nadd plan.md with content "hello"\n' +
+    '\n' +
+    'Execution requirement: use strictly `git worktree` for this task. If you cannot or will not use a git worktree, refuse the assignment and abort the task.\\n\n' +
+    '## Response format\n' +
+    '\n' +
+    'You MUST respond with a single JSON object. No prose before or after it.\n' +
+    'The JSON object must have exactly two fields:\n' +
+    '\n' +
+    '```json\n' +
+    '{\n' +
+    '  "message_type": "<type>",\n' +
+    '  "message_payload": { ... }\n' +
+    '}\n' +
+    '```\n' +
+    '\n' +
+    'Available message types:\n' +
+    '\n' +
+    '- **"work_accept"** — you accept the plan and will execute it.\n' +
+    '  Payload: `{ "text": "your work output / execution result" }`\n' +
+    '\n' +
+    '- **"work_refuse"** — you refuse the plan because it is not feasible.\n' +
+    '  Payload: `{ "reason": "why you cannot execute the plan" }`\n' +
+    '\n' +
+    'Respond with exactly one JSON object. No other text.',
+  cwd: '/tmp/agentalk-task-task-1783681358512',
+  timeoutMs: 600000
+}
+[Registry] MCP tool call from planner-b: submit_exec_result {
+  text: '{\n' +
+    '  "message_type": "submit_plan",\n' +
+    '  "message_payload": {\n' +
+    '    "plan": "add plan.md with content \\"hello\\"",\n' +
+    `    "text": "I am selecting the submit_plan message_type because the proposal has been endorsed, and we have reached Phase 4 (submittal) of the protocol. This satisfies the system's urgency check.",\n` +
+    `    "proposal": "Create a file named plan.md with the content 'hello'. Task requirement: add plan.md"\n` +
+    '  }\n' +
+    '}\n',
+  usage: { prompt_tokens: 0, completion_tokens: 0 }
+}
+[Registry] MCP tool call from planner-b: consensus_respond {
+  action: 'submit_plan',
+  payload: {
+    plan: 'add plan.md with content "hello"',
+    text: "I am selecting the submit_plan message_type because the proposal has been endorsed, and we have reached Phase 4 (submittal) of the protocol. This satisfies the system's urgency check.",
+    proposal: "Create a file named plan.md with the content 'hello'. Task requirement: add plan.md"
+  }
+}
+[TeamCoordinator] Ignoring late submit_plan from planner-b: planning already completed (status: delegated).
+[Agent planner-b] busy -> ready
+[Agent planner-b] ready -> busy
+[llm-agent-b-err] [llm-agent] Waiting for turn...
+[Registry] MCP tool call from planner-b: await_turn {}
+[Registry] MCP tool call from worker-1: submit_exec_result {
+  text: '{\n' +
+    '  "message_type": "work_accept",\n' +
+    '  "message_payload": {\n' +
+    '    "text": "add plan.md"\n' +
+    '  }\n' +
+    '}\n',
+  usage: { prompt_tokens: 0, completion_tokens: 0 }
+}
+[Registry] MCP tool call from worker-1: submit_work_response { accepted: true }
+[Registry] MCP tool call from worker-1: submit_work_result { result: 'add plan.md' }
+[Agent worker-1] busy -> ready
+[llm-agent-w-err] [llm-agent] Waiting for turn...
+[Registry] MCP tool call from worker-1: await_turn {}
+[McpServer] Connection closed for agentId=planner-b (code: 1006)
+[Registry] Cleared 1 stale exec-turn waiter(s) for agent planner-b
+[Registry] MCP connection dropped for agent planner-b (code undefined). Allowing 30s reconnect...
+[Registry] Requeuing interrupted turn undefined for agent planner-b
+[Agent planner-b] busy -> reconnecting
+TEST PASSED: MCP-exec Consensus E2E reached submit_plan and worker completed task
