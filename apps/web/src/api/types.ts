@@ -1,6 +1,8 @@
 import type {
   AgentExecutionMode,
   Conversation,
+  PendingRelay,
+  RelayApprovalMode,
   Team,
   TeamComposition,
   TeamMember,
@@ -8,7 +10,7 @@ import type {
   TranscriptEntry,
 } from '@agenttalk/contracts/types';
 
-export type { Conversation, Team, TeamComposition, TeamMember, TeamTask, TranscriptEntry };
+export type { Conversation, PendingRelay, RelayApprovalMode, Team, TeamComposition, TeamMember, TeamTask, TranscriptEntry };
 
 export const theme = {
   bg:          '#1e1e1e',

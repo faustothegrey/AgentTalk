@@ -8,8 +8,9 @@ import { AgentsView } from './AgentsView';
 import { UsageView } from './UsageView';
 import { GoogleDriveView } from './GoogleDriveView';
 import { SchedulerView } from './SchedulerView';
+import { RelayApprovalPanel } from './RelayApprovalPanel';
 
-import { theme, TopLevelTab, Conversation, SidebarEventEntry, Team, TeamTask, Provider, ExecutionMode, TeamMember, TeamComposition, Agent } from './api/types';
+import { theme, TopLevelTab, Conversation, SidebarEventEntry, Team, TeamTask, Provider, ExecutionMode, TeamMember, TeamComposition, Agent, PendingRelay, RelayApprovalMode } from './api/types';
 import { api } from './api/client';
 import { useWebSocket } from './hooks/useWebSocket';
 import { useAgents } from './hooks/useAgents';
@@ -81,6 +82,8 @@ function App() {
   const [globalSchedulerEnabled, setGlobalSchedulerEnabled] = useState(true);
   const [loading, setLoading] = useState(false);
   const [geminiModelForTeam, setGeminiModelForTeam] = useState('gemini-3.1-pro');
+  const [relayApprovalMode, setRelayApprovalMode] = useState<RelayApprovalMode>('off');
+  const [pendingRelays, setPendingRelays] = useState<PendingRelay[]>([]);
 
   const messageInputRef = useRef<HTMLInputElement>(null);
   const selectedAgentColor = selectedAgentId ? getAgentColor(selectedAgentId) : null;
@@ -118,6 +121,24 @@ function App() {
         pushSidebarEvent('in', `Gate:${gate}`, `[${displayResult}] ${agentId} (${role}) action: ${action}`);
         break;
       }
+      case 'relay_approval_state':
+        setRelayApprovalMode(message.mode || 'off');
+        setPendingRelays(Array.isArray(message.pendingRelays) ? message.pendingRelays : []);
+        break;
+      case 'relay_approval_mode':
+        setRelayApprovalMode(message.mode || 'off');
+        break;
+      case 'pending_relay_updated':
+        if (message.relay) {
+          setPendingRelays(prev => {
+            const next = prev.filter(relay => relay.id !== message.relay.id);
+            return [message.relay, ...next].slice(0, 30);
+          });
+        }
+        break;
+      case 'relay_approval_error':
+        setGlobalError(message.error || 'Relay approval command failed');
+        break;
     }
   }, [updateAgentStatus, updateAgentUsage, pushSidebarEvent]);
 
@@ -249,6 +270,24 @@ function App() {
     }
   };
 
+  const handleRelayModeChange = (mode: RelayApprovalMode) => {
+    if (!sendWsMessage({ type: 'set_relay_approval_mode', mode })) {
+      setGlobalError('Relay approval mode update failed: websocket is not connected');
+    }
+  };
+
+  const handleApproveRelay = (relayId: string) => {
+    if (!sendWsMessage({ type: 'approve_pending_relay', relayId })) {
+      setGlobalError('Relay approval failed: websocket is not connected');
+    }
+  };
+
+  const handleDenyRelay = (relayId: string) => {
+    if (!sendWsMessage({ type: 'deny_pending_relay', relayId })) {
+      setGlobalError('Relay denial failed: websocket is not connected');
+    }
+  };
+
   const captureUsage = async () => {
     setUsageLoading(true);
     try {
@@ -308,6 +347,15 @@ function App() {
               </div>
             </div>
           )}
+          <RelayApprovalPanel
+            mode={relayApprovalMode}
+            pendingRelays={pendingRelays}
+            connected={isConnected}
+            theme={theme}
+            onModeChange={handleRelayModeChange}
+            onApprove={handleApproveRelay}
+            onDeny={handleDenyRelay}
+          />
           <SidebarEvents sidebarEvents={sidebarEvents} sidebarEventsCollapsed={sidebarEventsCollapsed} setSidebarEventsCollapsed={setSidebarEventsCollapsed} setSidebarEvents={setSidebarEvents} theme={theme} />
         </div>
 

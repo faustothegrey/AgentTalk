@@ -12,7 +12,7 @@ import { Registry } from '@agenttalk/runtime-core/registry/registry';
 import { McpServer } from '@agenttalk/mcp-transport';
 import { activeBacklogItems, readBacklog } from './backlog.js';
 import { AGENTTALK_MCP_TOOLS } from '@agenttalk/runtime-core/registry/mcp-tools';
-import type { AgentProvider } from '@agenttalk/contracts/types';
+import type { AgentProvider, RelayApprovalMode } from '@agenttalk/contracts/types';
 import type { ScenarioDefinition } from '@agenttalk/runtime-scenarios/scenarios/types';
 import type { GoogleDriveIntegration } from '@agenttalk/integration-google-drive/google-drive/types';
 import type { SessionRecorder } from '@agenttalk/observability/recordings/session-recorder';
@@ -878,8 +878,21 @@ export function startServer(
     messageHistory.set(agentId, history);
   }
 
+  function isRelayApprovalMode(value: unknown): value is RelayApprovalMode {
+    return value === 'off' || value === 'approve_each';
+  }
+
+  function getPendingRelaySnapshot() {
+    return registry.listPendingRelays().filter((relay) => relay.status === 'pending');
+  }
+
   wss.on('connection', (ws) => {
     console.log('[Server] New WebSocket connection');
+    ws.send(JSON.stringify({
+      type: 'relay_approval_state',
+      mode: registry.getRelayApprovalMode(),
+      pendingRelays: getPendingRelaySnapshot(),
+    }));
 
     ws.on('message', async (data) => {
       try {
@@ -951,6 +964,60 @@ export function startServer(
               console.error('[Server] Failed to start conversation:', err);
               ws.send(JSON.stringify({
                 type: 'conversation_error',
+                error,
+              }));
+            }
+            break;
+          }
+
+          case 'set_relay_approval_mode': {
+            if (!isRelayApprovalMode(message.mode)) {
+              ws.send(JSON.stringify({
+                type: 'relay_approval_error',
+                error: 'Invalid relay approval mode',
+              }));
+              break;
+            }
+            registry.setRelayApprovalMode(message.mode);
+            break;
+          }
+
+          case 'approve_pending_relay': {
+            if (typeof message.relayId !== 'string') {
+              ws.send(JSON.stringify({
+                type: 'relay_approval_error',
+                error: 'Missing relayId',
+              }));
+              break;
+            }
+            try {
+              await registry.approvePendingRelay(message.relayId);
+            } catch (err) {
+              const error = err instanceof Error ? err.message : String(err);
+              ws.send(JSON.stringify({
+                type: 'relay_approval_error',
+                relayId: message.relayId,
+                error,
+              }));
+            }
+            break;
+          }
+
+          case 'deny_pending_relay': {
+            if (typeof message.relayId !== 'string') {
+              ws.send(JSON.stringify({
+                type: 'relay_approval_error',
+                error: 'Missing relayId',
+              }));
+              break;
+            }
+            try {
+              registry.denyPendingRelay(message.relayId);
+            } catch (err) {
+              const error = err instanceof Error ? err.message : String(err);
+              ws.send(JSON.stringify({
+                type: 'relay_approval_error',
+                relayId: message.relayId,
                 error,
               }));
             }
@@ -1085,6 +1152,18 @@ export function startServer(
     recorder?.record('runtime', 'workflow_gate_attempt', eventData);
     const sent = broadcast({ type: 'workflow_gate_attempt', ...eventData });
     console.log(`[Server] Workflow gate attempt by ${eventData.agentId} (${eventData.result}) → ${sent} client(s)`);
+  });
+
+  registry.on('relay_approval_mode', ({ mode }) => {
+    recorder?.record('runtime', 'relay_approval_mode', { mode });
+    const sent = broadcast({ type: 'relay_approval_mode', mode });
+    console.log(`[Server] Relay approval mode ${mode} → ${sent} client(s)`);
+  });
+
+  registry.on('pending_relay_updated', ({ relay }) => {
+    recorder?.record('runtime', 'pending_relay_updated', { relay });
+    const sent = broadcast({ type: 'pending_relay_updated', relay });
+    console.log(`[Server] Pending relay ${relay.id}: ${relay.status} → ${sent} client(s)`);
   });
 
   server.listen(port, () => {

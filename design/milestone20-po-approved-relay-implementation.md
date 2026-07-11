@@ -105,7 +105,7 @@ condition is resolved; the design premises were already verified above. **Gate 1
 | M20-D3 - approval delivers through existing queue path, including next-`await_turn` delivery | **claimed for T1** - approval calls the existing `sendProtocol` path; tests cover both active waiter and queued-next-turn delivery | **VERIFIED ✅** | `m20-pending-relay.test.ts` pending-then-approve and queued-next-turn cases |
 | M20-D4 - denial and delivery failure do not pretend delivery success | **claimed for T1** - denial records `denied` and delivers nothing; failed approval records `delivery_failed` with `deliveryError` | **VERIFIED ✅** | `m20-pending-relay.test.ts` deny and delivery-failed cases |
 | M20-D5 - mode-off ordinary send behavior, PO channel, and terminal fallback preserved | **claimed for T1 scope** - ordinary agent-to-agent send, baton transcript-on-send, conversation-runtime send shape, and `to === 'user'` path preserved | **VERIFIED ✅ (unchanged tests pass)** | targeted regressions plus full `npm test` |
-| M20-D6 - UI/WS approval surface and approval mode works | pending | pending | M20-T2 / M20-T3 |
+| M20-D6 - UI/WS approval surface and approval mode works | **claimed for T2** - server sends approval-mode + pending-relay snapshot, broadcasts lifecycle/mode updates, accepts approve/deny/mode WS commands, records distinct runtime events, and UI exposes a small agent-relay approval panel | **VERIFIED ✅ (server/WS integration-tested + live browser drive: panel renders, mode toggle round-trips to server; approve/deny-of-a-real-relay in T3)** | `server.test.ts` (real WS client, full round-trip); live browser drive (screenshot + backend log `set_relay_approval_mode → approve_each`); `npm run build`; `npm test` |
 | M20-D7 - fresh real approved relay proof and honest relay metric | pending | pending | M20-T3 / closure |
 | M20-D8 - freeze bar green and forbidden surfaces clean | pending | pending | closure |
 
@@ -232,9 +232,48 @@ Forbidden surfaces remain untouched: sibling client, `packages/contracts/wire-co
 
 ## M20-T2 - Server and UI approval surface
 
-**Status:** pending M20-T1.
-**Branch:** `m20-t2-relay-approval-ui` when implementation begins.
+**Status:** **Gate 2 VERIFIED (Implementation Reviewer: Claude, 2026-07-12).**
+**Branch:** `m20-t2-relay-approval-ui` (uncommitted — commit before merge).
 
+### Gate 2 Review (Implementation Reviewer: Claude, 2026-07-12) — VERIFIED
+
+- **Fence ✅** — only `server.ts` + `apps/web/**` + `api/types.ts` + tests; **`registry.ts` untouched** (T1 frozen),
+  no MCP/client/coordinator/wire-contract. Server WS changes are additive (3 new switch cases calling T1's registry
+  API + broadcasts + recorder; only removal = an unused import).
+- **Server/WS surface — VERIFIED by real integration test.** `server.test.ts` (17 tests) starts the actual server,
+  opens a **real WS client**, and asserts the full round-trip: connect-`relay_approval_state` snapshot →
+  `set_relay_approval_mode` → create pending → `approve_pending_relay` → `pending_relay_updated:approved_delivered`
+  (with delivery) → `deny` → distinct recorder events. This is the live server behaviour, not a mock.
+- **UI wiring — VERIFIED by code + build.** `RelayApprovalPanel.tsx` renders pending relays (from→to, payload, baton
+  id/roles), approve/deny buttons, and the mode toggle; `App.tsx` subscribes to all three lifecycle events and sends
+  all three commands. `tsc -b` 0; `npm run build --workspace @agenttalk/web` clean; full `npm test` **312/312**.
+- **Lifecycle separation preserved (D2)** — the panel/events use `pending_relay_updated`, distinct from M17's
+  authority `workflow_gate_attempt`. `to === 'user'` / PO channel untouched (D5).
+
+**Live browser drive (done, after the PO reconnected the Chrome extension — 2026-07-12).** Initially the Chrome
+extension was **not connected** (Chrome auto-updated to v150 the day before, dropping the connection); the PO
+reconnected it. I then drove the running UI (my T2 backend/frontend, this branch): the **Relay-approvals panel
+renders** (mode toggle "Off" by default — preservation intact; "No pending agent relays"), and **clicking the toggle
+round-trips end-to-end** — the panel flipped to "Approve each" (blue check) *and* the backend logged
+`WS message received: set_relay_approval_mode {"mode":"approve_each"}` → `Relay approval mode approve_each → 1
+client(s)`. So the UI→WS→registry→broadcast→UI path is live-verified, not just code-verified. **The one piece still
+owed — clicking approve/deny on a *real* pending relay in the browser — is M20-T3's job** (its D7 proof attaches
+agents and produces a real relay to approve); I'll drive that click there. (Process note: the "respawning
+orchestrator" was identified as the PO's `launchd` KeepAlive service `com.fausto.agenttalk-orchestrator`, not a leak —
+avoided a mis-reap; my own servers were cleanly stopped.)
+
+**Gate 2 outcome: PASS** (D6 verified for server/WS + UI wiring + live browser drive of render/mode-toggle;
+approve/deny-of-a-real-relay in T3).
+
+### Gate 3 Closure (Task-end Reviewer: Claude, 2026-07-12) — MERGED
+
+**Doubling declared & PO-accepted** (gate 2 + gate 3, Claude). Closure sweep re-used the gate-2 runs (WS integration
+17/17, `npm test` 312/312, `tsc -b` 0, web build clean) plus the live browser drive. Branch committed; post-commit
+tree clean; my servers stopped, ports free; the PO's `launchd` service left running. **Merged
+`m20-t2-relay-approval-ui` → `master`** (AgentTalk only). Merge PO-gated (`[PO]` go, 2026-07-12). **T2 Coordination
+Evidence (BL-030):** substrate **0**, terminal fallbacks = the T2 role hand-offs — expected; T2 is the approval
+surface, no real relay yet (that's T3). Next: T3 (the real approved-relay proof + the live approve-click) opens from
+`master`.
 ### Scope Manifest
 
 ```yaml
@@ -260,9 +299,57 @@ Forbidden surfaces remain untouched: sibling client, `packages/contracts/wire-co
 
 | Channel event | Artifact | Count |
 |---|---|---:|
-| substrate events | pending | 0 |
-| terminal fallbacks | pending | 0 |
-| ratio | pending | pending |
+| substrate events | none for T2 UI/server proof | 0 |
+| terminal fallbacks | none for T2 UI/server proof | 0 |
+| ratio | not applicable until T3 real-relay proof | n/a |
+
+### Implementer Claim (Codex, 2026-07-11)
+
+Implemented the approval surface on top of the T1 registry API without changing registry routing:
+
+- server sends a connect-time `relay_approval_state` snapshot with current approval mode and non-terminal pending relays;
+- server accepts `set_relay_approval_mode`, `approve_pending_relay`, and `deny_pending_relay` WebSocket commands;
+- server broadcasts `relay_approval_mode` and `pending_relay_updated` separately from `workflow_gate_attempt`;
+- server records `relay_approval_mode` and `pending_relay_updated` runtime recorder events;
+- web UI adds a compact relay approval panel with mode toggle, pending relay list, baton/authority metadata, and approve/deny buttons;
+- UI retains workflow gate events as authority-only in the event stream with "accepted (pre-delivery)" language;
+- kept registry routing, MCP transport, sibling client, wire contract, team/coordinator code, and PO-channel behavior out of scope.
+
+### Fresh Verification
+
+```text
+npx vitest run apps/orchestrator/src/__tests__/server.test.ts
+PASS: 1 file, 17 tests
+
+npx tsc -b
+PASS
+
+npm run build --workspace @agenttalk/web
+PASS
+
+npm run build
+PASS
+
+npm test
+PASS: contract hash verified successfully (v7); client contract alignment verified successfully; 55 files, 312 tests
+
+git diff --check
+PASS
+```
+
+### T2 Scope Check
+
+Touched files stay inside the T2 manifest:
+
+- `design/milestone20-po-approved-relay-implementation.md`
+- `apps/orchestrator/src/server.ts`
+- `apps/orchestrator/src/__tests__/server.test.ts`
+- `apps/web/src/App.tsx`
+- `apps/web/src/RelayApprovalPanel.tsx`
+- `apps/web/src/api/types.ts`
+
+Forbidden surfaces remain untouched: sibling client, `packages/contracts/wire-contract.json`, MCP transport,
+registry routing, `team-coordinator.ts`, and `mcp-tools.ts`.
 
 ## M20-T3 - Fresh proof and closure metric
 
