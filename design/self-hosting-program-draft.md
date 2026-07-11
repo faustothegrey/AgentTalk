@@ -361,3 +361,16 @@ answer was in hand.**
 
 **Honest cost of C-first, stated up front:** the flywheel's measurable payoff (a real relay-burden fall) moves one
 epic out unless the narrow-A conversion fires. That is the deliberate "small bites" trade; the A-option is the hedge.
+
+**CLOSED 2026-07-11 (same day) — C3 discharged (qualified). The narrow-A hedge fired.** T1 (contract alignment,
+`45daaf0`) → T2 (attach ritual + Claude `await_turn` cleared, `acdb0cd`) → T3 (real-CLI substrate relay + ratio,
+`f5f975a`), each Gate-2+Gate-3 VERIFIED. **The program's C3 — 0 substrate events at M18 close — now has real,
+provenance-proven substrate coordination:** two real attached CLIs (Claude + Codex) each carried a baton-bearing
+`send_to_agent`/`workflow_gate_event` the brain accepted and recorded, provenance nailed by the Claude-minted
+`toolUseId` appearing in the CLI debug log *and* the bridge wire-log *and* the recording (unforgeable by a script).
+**Qualified, honestly:** the 2 substrate events are **demonstration relays** (the narrow-A), **not** organic
+coordination from a real dev epic — M19's own development was ~entirely terminal-relayed. So C3 is discharged in the
+plan's sense ("record ≥1 real attached-CLI workflow event + report the ratio", ratio T3 2/4 · milestone 2/~9), **not**
+in the program's ultimate sense (a measured fall in the PO's real relay burden). **That measurement — a real dev epic
+run end-to-end over the channel — is the remaining program work** (the true next milestone; SP2's plain-baton path is
+now proven available for it). Ledger: `design/milestone19-real-cli-relay-implementation.md`.

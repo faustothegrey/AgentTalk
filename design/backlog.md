@@ -674,12 +674,12 @@ tags: [recovery, awaiting-operator]
 
 <!-- @item
 id: BL-018
-status: todo
+status: done
 date: 2026-07-09
 epic: M19
 tags: [self-hosting, wire-contract, cross-repo, governance]
 -->
-- [todo · **→ M19-T1 at the 2026-07-11 M19 gate; reopen condition MET** — SP2 reproduced the recurrence live
+- [done · **M19-T1 DELIVERED & MERGED 2026-07-11 (AgentTalk `45daaf0`, client `847bcc6`), Gate 2+3 VERIFIED** — contract aligned to v7 + fail-closed divergence guard (generate-from-source); stale-client no longer blocks attach (live-proven). Full multi-version negotiation NOT built (a successor item if ever wanted). · was: todo · reopen condition MET** — SP2 reproduced the recurrence live
   (client v5 `1236003f…` vs server v7 `ffa94e93…` rejected). **M19 scope = contract *alignment / fail-fast*, NOT
   full negotiation** (planner refinement, architect-adopted): one source of truth or a generated/synced client
   contract + fail-fast diagnostics + no stale committed client path. Full versioned negotiation stays a *later*
@@ -813,13 +813,12 @@ tags: [live-proof, evidence, gates, friction-m18]
 
 <!-- @item
 id: BL-026
-status: todo
+status: done
 date: 2026-07-09
 epic: M19
 tags: [attach-mode, ergonomics, real-cli, friction-m18]
 -->
-- [todo · **M18 C7 friction item** — the rider T3a explicitly dropped, now re-filed *from evidence* exactly as
-  its Gate-1 record instructed] — **Attaching a real CLI session is a hand-assembled ritual** — every real-CLI
+- [done · **M19-T2 DELIVERED & MERGED 2026-07-11 (`acdb0cd`), Gate 2+3 VERIFIED** — supported attach ritual (`scripts/m19-real-cli-attach.mjs`) for Codex CLI + Claude Code; Claude `await_turn` permission wall (SP2) CLEARED via `--allowedTools`; no global config mutation. · was: todo · M18 C7 friction item, re-filed from evidence] — **Attaching a real CLI session is a hand-assembled ritual** — every real-CLI
   attach in M18 required hand-writing an `mcpServers` JSON with an absolute `bridge.mjs` path, a WS URL, an
   `agentId`, and the contract hash — done ad hoc four times today (twice by the implementer, twice by the
   task-end reviewer) with a `creating`-state trap waiting for anyone who forgets `POST /api/agents/:id/start`.
@@ -840,12 +839,12 @@ tags: [attach-mode, ergonomics, real-cli, friction-m18]
 
 <!-- @item
 id: BL-027
-status: doing
+status: done
 date: 2026-07-09
 epic: M19
 tags: [metric, program, self-hosting, friction-m18]
 -->
-- [doing · **→ `doing` at the 2026-07-10 backlog gate (PO + architect)**: M19 *is* this item's work. C3's
+- [done · **M19-T3 DELIVERED & MERGED 2026-07-11 (`f5f975a`), Gate 2+3 VERIFIED** — 2 real attached CLIs (Claude + Codex) carried provenance-proven substrate relays the brain accepted; BL-027 ratio reported T3 2/4, milestone 2/~9. **CAVEAT: those are demonstration relays (narrow-A), NOT organic burden reduction — 2/~9 is 'capability proven + first data point', not a productivity stat.** Program C3 discharged (qualified); organic burden-reduction measurement is future work. · was: doing · M19 *is* this item's work. C3's
   reopen condition requires reporting the ratio beside the raw count, so the epic cannot close without it
   (workflow:362 — when an item's work opens as an epic, the item goes `doing`). · was: todo ·
   **M18 C7 friction item** — the program's headline metric can move for reasons that have nothing to do

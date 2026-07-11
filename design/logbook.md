@@ -2103,3 +2103,35 @@ architect's mind, not when it ratifies it.
 
 Related: LB-71 (M19 first gate — SP2 precedes M19), SP2 ledger (ATTACH-BLOCKED close), BL-018/BL-024/BL-026/BL-027,
 program risk #3 (`self-hosting-program-draft.md`). Process/inception only — no code, no behaviour change.
+
+### LB-74 · 2026-07-11 — [product] **M19 CLOSED — the program's C3 discharged (qualified): real attached CLIs carried provenance-proven substrate coordination. And the technique that proved it.**
+
+**The milestone.** M18 closed with **0 substrate events** (C3 DEFERRED). M19 (C-first enabler epic, same-day open→close)
+discharged it: T1 aligned the stale cross-repo contract (`45daaf0`), T2 cleared SP2's Claude-`await_turn` permission
+wall via `--allowedTools`/`--permission-mode auto` (`acdb0cd`), T3 produced **two real-CLI substrate relays** — a real
+`claude` and a real `codex` session each emitted a baton-bearing `send_to_agent` + `workflow_gate_event` the brain
+**accepted and recorded** (`f5f975a`). SP2 found the wall (ATTACH-BLOCKED); M19 climbed it.
+
+**The provenance technique (worth reusing — this is how you defeat the M18-T3 / IP-15 trap for a real-CLI proof).**
+A proof that "a real CLI did X" is only as good as its ability to exclude "a script did X." The mechanism that made it
+unforgeable: a **bridge recorder** (`scripts/m19-bridge-recorder.mjs`) wraps the real `bridge.mjs` and logs every
+JSON-RPC transaction; the real CLI's `send_to_agent` carries `_meta.claudecode/toolUseId` — an id **minted by Claude
+Code's own tool loop**. That same id appears in *three* independent places: the CLI's `--debug-file` log
+(`tool_dispatch_start send_to_agent`), the bridge wire-log, and (by correlation) the orchestrator's recording of the
+accepted `workflow_gate_attempt`. **A script injecting the event directly has no `claudecode/toolUseId` and no CLI
+debug log** — so the chain discriminates real-from-fake structurally, without needing a live re-run. Reviewer note:
+this is why I verified T3 by *tracing the id across four artifacts* rather than re-running (stronger than another
+instance). Reuse this for any future "a real CLI did X over the substrate" claim.
+
+**The honest caveat (do NOT let this number drift into a productivity stat).** The 2 substrate events are
+**demonstration relays** (the narrow-A the plan authorized), **not** organic hand-offs from real development — M19's
+*own* development coordination was ~entirely terminal. So the reported ratio (T3 **2/4**, milestone **2/~9**) means
+**"capability proven + first data point," NOT "22% of M19's coordination was substrate-carried"** (that was ~0). C3 is
+discharged in the **plan's** sense (record ≥1 real event + report the ratio), **not** in the **program's** ultimate
+sense (a *measured fall in the PO's real relay burden*). **That measurement — a real dev epic run end-to-end over the
+channel — is the true remaining program work**, now unblocked because real-CLI attach + `await_turn` + baton relay all
+work. This is the program's risk #3 held in check at the moment of maximum temptation to overclaim.
+
+Related: LB-73 (M19 inception), LB-66 (SP2/attach wall — now climbed), LB-68 F3 (bootstrap hazard), SP2 ledger,
+`design/milestone19-real-cli-relay-implementation.md` (T3 Gate-2 review), BL-018/026/027 (now `done`), program risk #3.
+Product finding — the code changes are on `master` (merges above); this entry is the durable cross-cutting record.
