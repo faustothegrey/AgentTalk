@@ -1,0 +1,126 @@
+# M19-T3 Relay Ratio Evidence
+
+Date: 2026-07-11
+Branch: `m19-t3-relay-ratio`
+Implementer: Codex
+
+## Scope
+
+Touched surfaces:
+- `scripts/m19-bridge-recorder.mjs`
+- `scripts/m19-relay-ratio.mjs`
+- `scripts/__tests__/m19-relay-ratio.test.mjs`
+- `design/evidence/**`
+- `design/milestone19-real-cli-relay-implementation.md`
+
+Forbidden surfaces stayed out of scope:
+- `packages/runtime-core/src/registry/team-coordinator.ts`
+- `packages/runtime-core/src/registry/mcp-tools.ts`
+- `packages/contracts/wire-contract.json`
+- `../agentalk-mcp-client/**`
+
+## Attempts
+
+### Initial Claude real CLI attempt
+
+Artifact directory: `design/evidence/m19-t3-relay-2026-07-11T06-52-28-397Z/`
+
+Outcome: no substrate numerator. Claude Code reached the MCP setup path but stopped on the provider session limit before
+calling `await_turn`:
+
+- `m19-t3-claude-stdout.log`: `You've hit your session limit - resets 11am (Europe/Rome)`
+- `m19-t3-claude-debug.log`: selected `mcp__agenttalk-bridge__await_turn`
+- `m19-t3-server.log`: no accepted workflow gate event
+
+### Resumed Claude real CLI attempt
+
+Artifact directory: `design/evidence/m19-t3-relay-2026-07-11T09-08-45-971Z/`
+
+Outcome: substrate relay proven.
+
+Proof summary:
+- `proof.json`: `result: "substrate_relay_proven"`
+- Source agent: `m19-t3-claude-reviewer-2`
+- Target agent: `m19-t3-claude-implementer-2`
+- Event: `m19-t3-event-claude-2`
+- Baton: `m19-t3-baton-claude-2`
+- Contract: v7 `ffa94e93e3182d44924ed28381870c7bd814c908279942022d5925a4865a9446`
+- Global CLI config changes: none
+- Global CLI state changes: `~/.claude.json` changed by 1 byte and hash, recorded as state/cache churn.
+
+Provenance correlation:
+- `m19-t3-bridge-transactions.ndjson` starts the bridge wrapper with
+  `agentId=m19-t3-claude-reviewer-2` on the WebSocket URL.
+- The same bridge transaction log records `tools/call` -> `await_turn` for that connection.
+- The same bridge transaction log then records `tools/call` -> `send_to_agent` with target
+  `m19-t3-claude-implementer-2`, event `m19-t3-event-claude-2`, and baton `m19-t3-baton-claude-2`.
+- `m19-t3-recording.ndjson` records `workflow_gate_attempt` with
+  `payload.agentId=m19-t3-claude-reviewer-2`, event `m19-t3-event-claude-2`, and `result: "accepted"`.
+- `m19-t3-server.log` records `MCP tool call from m19-t3-claude-reviewer-2: send_to_agent` and
+  `Workflow gate attempt by m19-t3-claude-reviewer-2 (accepted)`.
+
+### Codex real CLI attempt
+
+Artifact directory: `design/evidence/m19-t3-relay-2026-07-11T06-55-10-653Z/`
+
+Outcome: substrate relay proven.
+
+Proof summary:
+- `proof.json`: `result: "substrate_relay_proven"`
+- Source agent: `m19-t3-codex-reviewer`
+- Target agent: `m19-t3-codex-implementer`
+- Event: `m19-t3-event-2`
+- Baton: `m19-t3-baton-2`
+- Contract: v7 `ffa94e93e3182d44924ed28381870c7bd814c908279942022d5925a4865a9446`
+- Global CLI config changes: none
+- Global CLI state changes: none
+
+Provenance correlation:
+- `m19-t3-bridge-transactions.ndjson` starts the bridge wrapper with
+  `agentId=m19-t3-codex-reviewer` on the WebSocket URL.
+- The same bridge transaction log records `tools/call` -> `await_turn` for that connection.
+- The same bridge transaction log then records `tools/call` -> `send_to_agent` with target
+  `m19-t3-codex-implementer`, event `m19-t3-event-2`, and baton `m19-t3-baton-2`.
+- `m19-t3-recording.ndjson` records `workflow_gate_attempt` with
+  `payload.agentId=m19-t3-codex-reviewer`, event `m19-t3-event-2`, and `result: "accepted"`.
+- `m19-t3-server.log` records `MCP tool call from m19-t3-codex-reviewer: send_to_agent` and
+  `Workflow gate attempt by m19-t3-codex-reviewer (accepted)`.
+
+Provider observation:
+- Both proof agents were recorded as `provider: "mcp"` with `requestedExecutionMode: "auto"`.
+- This remains a BL-024 constraint; the provider value is transport-shaped and is not a planner identity.
+
+## BL-027 Ratio
+
+M18 baseline: 0 substrate events / 19 relays.
+
+M19-T3 raw rows:
+
+| Row | Channel | Count | Evidence |
+|---|---|---:|---|
+| SM/PO assigned M19-T3 to Codex implementer | terminal | 1 | terminal baton |
+| Codex real attached CLI sent baton-bearing `send_to_agent` accepted by brain | substrate | 1 | `design/evidence/m19-t3-relay-2026-07-11T06-55-10-653Z/proof.json` |
+| Claude real attached CLI sent baton-bearing `send_to_agent` accepted by brain | substrate | 1 | `design/evidence/m19-t3-relay-2026-07-11T09-08-45-971Z/proof.json` |
+| Codex hands T3 to Claude Gate 2 reviewer | terminal | 1 | this implementer delivery |
+
+M19-T3 ratio: substrate numerator **2**, denominator **4**, ratio **2/4**.
+
+M19 milestone ratio:
+- T1: 0 / ~3, enabler only
+- T2: 0 / ~2, enabler only
+- T3: 2 / 4
+
+Milestone ratio: substrate numerator **2**, denominator **~9**, ratio **2/~9**.
+
+## Backlog Disposition Recommendation
+
+- BL-018: done for M19's stale-client/alignment guard. If full multi-version negotiation is still desired, track it
+  as a successor item instead of keeping the stale-client finding open.
+- BL-026: done. Supported attach and real attached CLI relay both proved without global config mutation.
+- BL-027: done for M19. The deferred C3 now has a substrate numerator and an honest ratio.
+- BL-024: keep open as a constraint; proof agents still report `provider: "mcp"`.
+- BL-025: keep open; M19 used fresh evidence but did not create a permanent live-proof replay gate.
+- BL-022: keep open; manual cross-repo status/diff checks were still required.
+- BL-023: keep open; leaked-process checks remain manual.
+- BL-028: keep open; no idle-timeout behavior was changed.
+- BL-014/BL-015/BL-016: leave deferred unless the PO reprioritizes them.
