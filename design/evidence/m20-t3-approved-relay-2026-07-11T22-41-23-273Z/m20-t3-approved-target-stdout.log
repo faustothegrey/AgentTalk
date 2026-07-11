@@ -1,0 +1,4 @@
+{"type":"thread.started","thread_id":"019f5357-ba2b-7123-853c-fc5d7b4c3e6a"}
+{"type":"turn.started"}
+{"type":"item.started","item":{"id":"item_0","type":"mcp_tool_call","server":"agenttalk-bridge","tool":"await_turn","arguments":{},"result":null,"error":null,"status":"in_progress"}}
+{"type":"item.completed","item":{"id":"item_0","type":"mcp_tool_call","server":"agenttalk-bridge","tool":"await_turn","arguments":{},"result":{"content":[{"type":"text","text":"{\"type\":\"exec_rpc\",\"prompt\":\"M20-T3 APPROVED RELAY PAYLOAD: target should receive only after WS approval.\"}"}],"structured_content":null},"error":null,"status":"completed"}}

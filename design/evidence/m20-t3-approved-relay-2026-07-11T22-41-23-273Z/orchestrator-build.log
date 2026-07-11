@@ -1,0 +1,4 @@
+
+> @agenttalk/orchestrator@1.0.0 build
+> tsc -b
+

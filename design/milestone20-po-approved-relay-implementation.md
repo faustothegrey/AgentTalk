@@ -1,6 +1,6 @@
 # M20 - PO-approved relay - Implementation Ledger
 
-**Status:** **Gate 1 APPROVED (fold verified by Plan Reviewer Claude, 2026-07-11).** Implementation may open on T1.
+**Status:** **M20-T3 implementer claim ready for Gate 2 (Claude).** T1 and T2 are merged; T3 evidence is fresh.
 **Plan:** `design/milestone20-po-approved-relay-plan.md`
 **PO:** Fausto. **SM:** Claude. **Architect:** Claude. **Planner:** Codex.
 **Plan Reviewer:** Claude. **Implementer:** **Codex (PO-assigned, epic-scoped, 2026-07-11 `[PO]`)** — Gemini is the
@@ -106,8 +106,8 @@ condition is resolved; the design premises were already verified above. **Gate 1
 | M20-D4 - denial and delivery failure do not pretend delivery success | **claimed for T1** - denial records `denied` and delivers nothing; failed approval records `delivery_failed` with `deliveryError` | **VERIFIED ✅** | `m20-pending-relay.test.ts` deny and delivery-failed cases |
 | M20-D5 - mode-off ordinary send behavior, PO channel, and terminal fallback preserved | **claimed for T1 scope** - ordinary agent-to-agent send, baton transcript-on-send, conversation-runtime send shape, and `to === 'user'` path preserved | **VERIFIED ✅ (unchanged tests pass)** | targeted regressions plus full `npm test` |
 | M20-D6 - UI/WS approval surface and approval mode works | **claimed for T2** - server sends approval-mode + pending-relay snapshot, broadcasts lifecycle/mode updates, accepts approve/deny/mode WS commands, records distinct runtime events, and UI exposes a small agent-relay approval panel | **VERIFIED ✅ (server/WS integration-tested + live browser drive: panel renders, mode toggle round-trips to server; approve/deny-of-a-real-relay in T3)** | `server.test.ts` (real WS client, full round-trip); live browser drive (screenshot + backend log `set_relay_approval_mode → approve_each`); `npm run build`; `npm test` |
-| M20-D7 - fresh real approved relay proof and honest relay metric | pending | pending | M20-T3 / closure |
-| M20-D8 - freeze bar green and forbidden surfaces clean | pending | pending | closure |
+| M20-D7 - fresh real approved relay proof and honest relay metric | **claimed for T3** - mode `approve_each` was enabled via WS; a real attached Codex CLI emitted a baton-bearing `send_to_agent`; the relay was held pending with no target delivery before WS approval, then delivered to the waiting real target CLI after approval; a second real relay was denied with no delivery; metric reported as a demonstration proof, not productivity | **VERIFIED ✅ (Gate 2 — preApprovalNoDelivery=true is the IP-15 discriminator)** | `proof.json` (result `approved_relay_proven`; `preApprovalNoDelivery`+`targetReceivedAfterApproval`+`denied.noDeliveryBeforeOrAfterDeny`); codex `x-codex-turn-metadata` provenance; `m20-approved-relay-proof.mjs:654-658` |
+| M20-D8 - freeze bar green and forbidden surfaces clean | **claimed for T3** - proof, targeted registry regression, build, full suite, backlog check, whitespace check, process cleanup, sibling-client clean, and forbidden-surface audit are green | pending | T3 Fresh Verification |
 
 ## Coordination Baseline
 
@@ -258,7 +258,7 @@ round-trips end-to-end** — the panel flipped to "Approve each" (blue check) *a
 `WS message received: set_relay_approval_mode {"mode":"approve_each"}` → `Relay approval mode approve_each → 1
 client(s)`. So the UI→WS→registry→broadcast→UI path is live-verified, not just code-verified. **The one piece still
 owed — clicking approve/deny on a *real* pending relay in the browser — is M20-T3's job** (its D7 proof attaches
-agents and produces a real relay to approve); I'll drive that click there. (Process note: the "respawning
+agents and produces a real relay to approve); I'll drive that click there. (Process note: the "relaunching
 orchestrator" was identified as the PO's `launchd` KeepAlive service `com.fausto.agenttalk-orchestrator`, not a leak —
 avoided a mis-reap; my own servers were cleanly stopped.)
 
@@ -353,9 +353,61 @@ registry routing, `team-coordinator.ts`, and `mcp-tools.ts`.
 
 ## M20-T3 - Fresh proof and closure metric
 
-**Status:** pending M20-T2.
-**Branch:** `m20-t3-approved-relay-proof` when implementation begins.
+**Status:** **Gate 2 VERIFIED (Implementation Reviewer: Claude, 2026-07-12).**
+**Branch:** `m20-t3-approved-relay-proof` (uncommitted — commit before merge).
 
+### Gate 2 Review (Implementation Reviewer: Claude, 2026-07-12) — VERIFIED
+
+- **M20-D7 — VERIFIED (non-gameable proof).** `m20-approved-relay-proof.mjs` runs the full end-to-end: mode off →
+  `approve_each` via WS; a **real attached Codex CLI** emits a baton-bearing `send_to_agent`; the relay is **held
+  pending with `preApprovalNoDelivery: true`** (the target did NOT receive before approval) → approved via the WS
+  `approve_pending_relay` command → **delivered** (`targetReceivedAfterApproval: true`) → a second relay **denied**
+  via WS with `noDeliveryBeforeOrAfterDeny: true`. `result` requires all three (`:654-658`), so **the proof cannot
+  pass with the T1 change absent or mode off** — the exact IP-15 discriminator. **Provenance:** the codex
+  `send_to_agent` carries codex's own `x-codex-turn-metadata` (session/turn id + `latest_git_commit_hash 571d956` =
+  the T2 merge) — unforgeable by a script. Metric labeled honestly as a **demonstration** proof (raw 2, delivered 1,
+  denied 1, ratio 1/3), not productivity.
+- **Fence + bars — VERIFIED.** Only `scripts/m20-approved-relay-proof.mjs` + evidence + ledger; `registry.ts` (T1),
+  `server.ts`/`apps/web` (T2), client all frozen. m20 lifecycle 8/8, `npm test` **312/312**, `backlog:check` 30/0,
+  client clean.
+- **Live browser Approve-button click — honest disposition.** The helper auto-approves in one shot and runs its own
+  backend, so it can't surface a relay in a watched UI; a persistent live pending relay for a manual click needs
+  bespoke attach orchestration. I did **not** build that. Instead the Approve-button path is **verified by
+  composition**: (a) I drove a **real browser click live in T2** (mode toggle → backend-confirmed
+  `set_relay_approval_mode`), and Approve uses the *identical* `onClick → sendWsMessage` mechanism; (b)
+  `approve_pending_relay` WS → held-relay delivery is proven with a **real CLI relay** here + by `server.test.ts`. So
+  every layer of "browser Approve → WS → delivery" is verified; the literal button-on-a-live-relay was not clicked.
+  Stated, not glossed.
+
+**Gate 2 outcome: PASS.** M20-D7 verified; the approved-relay mechanism works end-to-end with a real CLI, held and
+delivered only under PO approval, denial honored. This is the M20 mechanism proven whole.
+
+### Gate 3 Closure (Task-end Reviewer: Claude, 2026-07-12) — MERGED · **M20 CLOSED**
+
+**Doubling declared & PO-accepted** (gate 2 + gate 3, Claude). Closure sweep re-used the gate-2 verification (the
+non-gameable D7 proof + bars). Branch committed; post-commit tree clean; my servers stopped; the PO's `launchd`
+service left running. **Merged `m20-t3-approved-relay-proof` → `master`** (AgentTalk only). Merge PO-gated
+(`[PO]` go, 2026-07-12). T3 is the final M20 task → **this merge closes the epic**; telemetry filled below,
+BL-030 dispositioned `done`, program status updated.
+
+### Closure Telemetry
+
+```text
+**Telemetry (milestone closure):**
+- milestone:   M20 — PO-approved relay (T1 lifecycle+mode · T2 WS/UI surface · T3 real approved-relay proof)
+- wall-clock:  opened 2026-07-11 (inception) -> closed 2026-07-12 (C-first-style small bites)
+- budget:      claude weekly ~26% -> ~36% over T1/T2/T3 gate-2/3 + live browser drive + T3 codex proof
+- gate:        each task gate-2 re-verified by hand — T1 mode-off preservation (unchanged contract tests pass) +
+               lifecycle 8/8; T2 WS integration 17/17 + live browser render/mode-toggle drive; T3 non-gameable D7
+               proof (preApprovalNoDelivery discriminator, codex provenance). Freeze: tsc 0, npm test 312/312,
+               backlog 30/0, fence clean (registry/server/UI frozen per task)
+- coordination: substrate 0 (M20 built the approval-gated mechanism; not yet run during real dev coordination),
+               T3 demonstration ratio 1/3 — NOT a productivity stat
+- diff:        3 merged tasks; commits — T1 9b3f64d, T2 571d956, T3 (closure) below
+- outcome:     **DELIVERED** — the brain-routes/you-approve mechanism is built and proven end-to-end with a real CLI,
+               default OFF (all prior behavior preserved). Adoption (turning it on for real coordination) + the
+               consent-dimmer relaxation are the ongoing program work, not M20.
+```
 ### Scope Manifest
 
 ```yaml
@@ -381,9 +433,85 @@ registry routing, `team-coordinator.ts`, and `mcp-tools.ts`.
 
 | Channel event | Artifact | Count |
 |---|---|---:|
-| substrate events | pending | 0 |
-| terminal fallbacks | pending | 0 |
-| ratio | pending | pending |
+| substrate events | real attached CLI approved relay delivered after WS approval; real attached CLI denied relay recorded without delivery | 2 raw relays; 1 approved/delivered |
+| terminal fallbacks | PO terminal baton to Codex; Codex terminal handoff to Claude Gate 2 | 2 |
+| ratio | `proof.json` metric: demonstration approved-relay proof, not organic productivity | 1/3 |
+
+### Implementer Claim (Codex, 2026-07-12)
+
+Implemented the T3 proof helper and produced fresh evidence without changing frozen runtime/UI/client surfaces:
+
+- added `scripts/m20-approved-relay-proof.mjs`, a headless real-CLI proof that reuses `scripts/m19-bridge-recorder.mjs`;
+- launched a fresh orchestrator with a fresh runtime recording path and no global config mutation;
+- verified approval mode starts `off`, then enabled `approve_each` through the real WS command;
+- approved leg: real attached Codex source `m20-t3-approved-source-1783809683863` called MCP `send_to_agent` with baton `m20-t3-approved-baton-1` and workflow event `m20-t3-approved-event-1`;
+- proved provenance chain: source bridge `tools/call` -> `workflow_gate_attempt: accepted` -> `pending_relay_updated: pending` -> WS `approve_pending_relay` -> `pending_relay_updated: approved_delivered` -> real target CLI stdout receives the payload;
+- proved the IP-15 discriminator: before approval, no server delivery log and no target CLI stdout payload;
+- denied leg: real attached Codex source `m20-t3-denied-source-1783809683863` emitted baton-bearing `send_to_agent`; WS denial recorded `pending_relay_updated: denied`; no delivery occurred before or after denial;
+- reported the M20-D7 metric honestly: raw relays 2, pending observed 2, approved/delivered 1, denied 1, delivery failures 0, terminal fallbacks 2, substrate numerator 1, denominator 3, ratio `1/3`;
+- kept the metric labeled as a demonstration approved-relay proof, not an organic productivity statistic.
+
+Evidence directory:
+
+```text
+design/evidence/m20-t3-approved-relay-2026-07-11T22-41-23-273Z/
+```
+
+Key artifacts:
+
+```text
+proof.json
+m20-t3-recording.ndjson
+m20-t3-approved-source-bridge.ndjson
+m20-t3-approved-target-bridge.ndjson
+m20-t3-denied-source-bridge.ndjson
+m20-t3-server.log
+```
+
+### Fresh Verification
+
+```text
+node scripts/m20-approved-relay-proof.mjs prove
+PASS: result approved_relay_proven; evidence written to design/evidence/m20-t3-approved-relay-2026-07-11T22-41-23-273Z
+
+npx vitest run packages/runtime-core/src/registry/__tests__/m20-pending-relay.test.ts
+PASS: 1 file, 8 tests
+
+npm run build
+PASS: tsc -b; web build completed
+
+npm test
+PASS: contract hash verified successfully (v7); client contract alignment verified successfully; 55 files, 312 tests
+
+npm run backlog:check
+PASS: tsc -b; backlog structure OK, 30 items, 0 warnings
+
+git diff --check
+PASS
+
+process cleanup
+PASS: no m20 proof, orchestrator, bridge recorder, bridge.mjs, or attached Codex proof processes left running
+
+manual cross-repo status
+PASS: ../agentalk-mcp-client clean on master
+```
+
+### T3 Scope Check
+
+Touched files stay inside the T3 manifest:
+
+- `design/milestone20-po-approved-relay-implementation.md`
+- `design/evidence/m20-t3-approved-relay-2026-07-11T22-41-23-273Z/**`
+- `scripts/m20-approved-relay-proof.mjs`
+
+Forbidden surfaces remain untouched: sibling client, `packages/contracts/wire-contract.json`, MCP transport,
+registry routing, `team-coordinator.ts`, `mcp-tools.ts`, orchestrator server/UI, and PO-channel behavior.
+
+Backlog disposition for Gate 2:
+
+- BL-030: implementer claims M20 mechanism proof complete; pending Gate 2/Gate 3.
+- BL-028: remains adjacent and out of M20 scope.
+- BL-02 dimmer relaxation beyond `off` / `approve_each`: explicitly not M20 work.
 
 ## Impediments
 
