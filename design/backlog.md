@@ -736,12 +736,12 @@ tags: [workflow, scrum-master, retrospective, growth]
 
 <!-- @item
 id: BL-030
-status: doing
+status: done
 date: 2026-07-11
 epic: M20
 tags: [self-hosting, relay, human-in-the-loop, program]
 -->
-- [doing · **→ `doing` at the 2026-07-11 M20 inception (PO + architect)**: M20 *is* this item's work] —
+- [done · **M20 DELIVERED & CLOSED 2026-07-12 (T1 `9b3f64d` · T2 `571d956` · T3 `0f82006`), all Gate 2+3 VERIFIED** — the brain-routes/you-approve mechanism is built and proven end-to-end with a real CLI: agent→agent relays are HELD pending and delivered only under PO approval (via UI/WS), denial honored, **default OFF** (all prior behavior preserved). **Adoption** (turning it on for real coordination) + the **consent-dimmer relaxation** (approve-each → by-exception → autonomous) are the ongoing program work, not this item. · was: doing · M20 *is* this item's work] —
   **PO-approved autonomous relay (the brain routes, you approve)** — begin retiring the PO-as-relay-between-agents:
   the brain autonomously computes/proposes each **agent→agent** relay (from-role → to-role + baton/gate envelope) and
   **holds delivery pending the PO's one-click yes/no** in the UI, delivering on *yes*. Mechanism in now; per-message

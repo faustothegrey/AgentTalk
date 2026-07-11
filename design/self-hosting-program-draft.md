@@ -439,3 +439,17 @@ assignment lapsed at close).
 4. **Fence (ratified):** *include* the web UI (approval panel) + server WS/API surfaces + registry tests; *exclude*
    PO-channel mediation (`to === 'user'` byte-for-byte unchanged), autonomous wake, multi-agent/nested routing,
    consent relaxation (the later dimmer), and scope-write enforcement.
+
+**CLOSED 2026-07-12 — DELIVERED. The mechanism to retire PO-as-relay is built and proven.** T1 (mode + pending-relay
+lifecycle, `9b3f64d`) → T2 (WS + UI approval surface, `571d956`) → T3 (real approved-relay proof, `0f82006`), each
+Gate-2+Gate-3 VERIFIED. A real attached Codex CLI's baton-bearing `send_to_agent` was **held pending and delivered
+only under PO approval** (through the actual UI/WS surface), with denial honored — proven non-gameably
+(`preApprovalNoDelivery` is the IP-15 discriminator; the proof cannot pass with the change absent or mode off).
+**Default OFF, so all prior behavior is preserved** (the reference-clock invariant intact: the PO channel is never
+mediated). **What M20 did NOT do** (honestly): it built the mechanism; it has not yet *run* real development
+coordination through it, so there is **0 organic substrate coordination** and no measured burden reduction — the
+demonstration ratio (T3 1/3) is capability, not productivity. **The remaining program work is now purely
+operational + incremental:** the PO flips the mode on and starts approving real agent→agent batons during actual
+dev work (retiring the cut-and-paste one hand-off at a time), then relaxes consent along the dimmer
+(approve-each → by-exception → autonomous), checking at each notch — with **BL-028** (typed non-reply / wake) as the
+dependency when autonomous delivery is approached. Ledger: `design/milestone20-po-approved-relay-implementation.md`.

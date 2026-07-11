@@ -2135,3 +2135,33 @@ work. This is the program's risk #3 held in check at the moment of maximum tempt
 Related: LB-73 (M19 inception), LB-66 (SP2/attach wall — now climbed), LB-68 F3 (bootstrap hazard), SP2 ledger,
 `design/milestone19-real-cli-relay-implementation.md` (T3 Gate-2 review), BL-018/026/027 (now `done`), program risk #3.
 Product finding — the code changes are on `master` (merges above); this entry is the durable cross-cutting record.
+
+### LB-75 · 2026-07-12 — [product] **M20 CLOSED — "the brain routes, you approve": the mechanism to retire PO-as-relay is built and proven, default OFF. The transition can now begin, incrementally.**
+
+**The step.** M19 proved real CLIs *can* carry substrate coordination; M20 makes it **operationally usable without
+surrendering PO oversight.** The registry gained an explicit **approval mode** (`off | approve_each`, default off) and
+a **pending-relay lifecycle** (`pending / approved_delivered / denied / delivery_failed`) **distinct from M17's
+authority `workflow_gate_attempt`** (the audit-semantics separation was the load-bearing risk, not transport). With
+the mode on, an agent→agent `send_to_agent` is **held** and delivered only after the PO clicks approve in the UI (WS
+`approve_pending_relay` → the existing `queueTurn` delivery). T1 lifecycle · T2 WS+UI surface · T3 real-CLI proof, all
+Gate-2+3 VERIFIED (`9b3f64d` / `571d956` / `0f82006`).
+
+**Two things worth keeping.** (1) **The Gate-1 catch that shaped it:** the plan first gated *every* `send_to_agent`,
+which would have broken existing contracts (`m17-gate-channel.test.ts:93`, `baton-metadata.test.ts`) and **hung the
+automated `conversations/runtime.ts` flow**. Making the gate a **mode, default off** preserved all of it *and* turned
+out to *be* the consent-dimmer — grep-at-Gate-1 caught it before a line was written. (2) **The proof is
+non-gameable:** `preApprovalNoDelivery: true` (target does not receive before approval) is required for
+`approved_relay_proven`, so it **cannot pass with the change absent or mode off** — IP-15 turned into a structural
+check, with codex `x-codex-turn-metadata` provenance.
+
+**The honest boundary (the same discipline as M19-T3).** M20 **built** the mechanism; it has **not run real dev
+coordination through it** — **0 organic substrate coordination**, the T3 ratio (1/3) is a *demonstration*, not a
+productivity number. The program's actual goal — a measured fall in the PO's terminal-relay burden — is now a purely
+**operational, incremental** act: turn the mode on, approve real batons during actual work (retiring cut-and-paste one
+hand-off at a time), relax consent along the dimmer (approve-each → by-exception → autonomous) checking at each notch.
+**BL-028** (typed non-reply / wake, LB-67 F1) becomes the dependency as autonomous delivery is approached. The
+reference-clock invariant (LB-68 F3) is intact throughout: the PO channel is never mediated by AgentTalk.
+
+Related: LB-74 (M19 C3 discharged), LB-73 (M20's parent inception line), LB-68 F3 (reference clock), LB-67 F1 (BL-028),
+`design/milestone20-po-approved-relay-implementation.md`, BL-030 (now `done`), BL-028 (adjacent). Product finding —
+code on `master` (merges above); durable cross-cutting record.
