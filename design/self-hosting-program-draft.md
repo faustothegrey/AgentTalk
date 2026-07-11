@@ -312,3 +312,52 @@ raw relay count moves with review rounds (T1: 9 over 3 rounds; T2: 2 over 1; T3a
 **ratio** of substrate-carried hand-offs measures what this program changes. **M19's first duty is C3's reopen
 condition**, and BL-026 (attaching a real session is still a hand-assembled ritual) is the friction standing
 directly in its way.
+
+---
+
+### M19 — The supported attach *(the flywheel's enabler; C-first)*
+
+**Goal.** Make real-CLI attach a **supported, repeatable ritual** so real agent sessions can actually join the
+substrate — the prerequisite **SP2 proved is missing** (two real CLIs cannot yet coordinate: Codex reaches
+`await_turn`, Claude's tool-permission gate denies it, the client wire-contract is stale). M19 is the **enabler**;
+the real relay-fall proof (C3) discharges *here* only via the **narrow-A conversion** (if T1 proves cheap), else it
+defers to M20.
+
+**Scope sketch (fence at plan time).**
+- **T1 — BL-018-lite: contract alignment / fail-fast** (hard prerequisite). One source of truth or a
+  generated/synced client contract; fail-fast diagnostics on mismatch; **no stale committed client path**. **Not**
+  full versioned negotiation (deferred unless the PO widens it).
+- **T2 — BL-026: supported attach ritual** (after T1). Committed `.mcp.json` template + an `attach-real-session`
+  runbook/script that registers, starts, assigns the role, and prints the config; **plus prove the Claude
+  `--allowedTools`/`--permission-mode` pre-approval** for `await_turn`/`consensus_respond`/`send_to_agent`/
+  `submit_plan` (SP2's debug log named the exact allow-rule).
+- **Narrow-A (conditional, PO pre-authorized):** iff T1 proves cheap, run **one minimal real role→role relay** to
+  produce a first honest **BL-027 ratio**.
+- **Constraints, not tasks:** BL-024 (record `provider:mcp`, don't fix), BL-025 (A/B baseline + fresh-recorder
+  proofs), BL-022 (cross-repo scope-check), BL-023 (leaked-process vs. service). **Never B** — SDK clients may only
+  *rehearse* the substrate, labeled and counted separately; they do **not** discharge C3. Freeze bar stays green.
+
+**DoD claim sketch.** **C1:** a real CLI session (Codex CLI *and* Claude Code) attaches via the **supported ritual**
+— one runbook/command, not hand-assembled — with the permission grant proven. **C2:** the client/server contract
+**cannot silently go stale** (fail-fast on mismatch; single source of truth). **C3 (conditional/narrow-A):** at
+least one real substrate-carried role→role relay recorded + the BL-027 ratio reported — **or** C3 explicitly
+deferred to M20 with its reopen condition restated. **C4:** freeze bar green; fence held in *both* repos.
+
+**INCEPTION (PO + Architect, 2026-07-11; planner advisory POV: Codex) — the 2nd-pass gate LB-71 deferred until SP2's
+answer was in hand.**
+1. **Fork ruled C-first, never B** (PO `[PO]`, 2026-07-11), **with narrow-A conversion pre-authorized iff T1 proves
+   cheap.** Architect and planner **converged** independently on C-first/never-B; the planner's fork was "C-first
+   with an explicit PO option to convert to a narrow A if T1 is cheap" — which the PO adopted verbatim.
+2. **Two planner refinements the architect adopted** (the planner improving the framing is the POV working as
+   designed): **BL-018 scoped to alignment/fail-fast, not full negotiation** (recurrence makes label-only
+   insufficient, but full negotiation is a larger epic); **BL-024 stays a recorded constraint, not folded** (full
+   provider transport×vendor split is out of M19 scope — unchanged from the 2026-07-10 gate).
+3. **Sequencing is load-bearing:** BL-018-lite (T1) is a **hard prerequisite** for a *supported* BL-026 ritual (T2) —
+   you must not certify an attach runbook while the sibling client can fail by design on a stale contract.
+4. **Roles / concentration.** Architect + SM + plan-reviewer are all Claude; **the PO ruled the fork personally**
+   (the concentration tripwire, as at the M19 first gate — LB-71). **Next act:** the **planner (Codex)** authors the
+   M19 plan → **Gate 1 (plan reviewer ≠ planner → Claude)**. Implementer TBD by the PO (Codex is the standing
+   candidate given SP2; gate 2 → Claude on the usual shuffle).
+
+**Honest cost of C-first, stated up front:** the flywheel's measurable payoff (a real relay-burden fall) moves one
+epic out unless the narrow-A conversion fires. That is the deliberate "small bites" trade; the A-option is the hedge.

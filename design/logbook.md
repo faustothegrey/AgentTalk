@@ -2078,3 +2078,28 @@ standing bias to **give control away when the context lives elsewhere.**
 Related: LB-34 (SM owns reassignment), LB-71 (the incumbent is the worst-placed actor to check its own shape),
 BL-029 + `design/agent-rating-signal-note.md` (a track-record *signal* is the durable basis for exactly this kind of
 routing call), `AGENT.md` → ⛔ REVIEWER RULES (verify-don't-assert). Process only — no code, no behaviour change.
+
+### LB-73 · 2026-07-11 — [process] **M19 inception ruled: C-first (attach enabler), never B, narrow-A if T1 is cheap. A spike's answer reshaped the epic before a line was planned.**
+
+**The point.** SP2 was run *precisely* to inform M19's shape (LB-71 deferred M19's real inception until its answer
+was in hand), and it earned its keep: **ATTACH-BLOCKED** turned M19 from a vague "real CLIs coordinate" epic into a
+concrete **enabler** — fix the attach that SP2 proved is broken, *then* (maybe) measure. The gate ran the full
+inception loop as designed: **architect framed the feasibility fork → planner (Codex) gave an independent advisory
+POV → PO ruled.**
+
+**What was decided (PO `[PO]`, 2026-07-11).** **Fork C-first, never B, narrow-A conversion pre-authorized iff T1
+proves cheap.** M19 = **T1 BL-018-lite** (contract alignment/fail-fast — *not* full negotiation) → **T2 BL-026**
+(supported attach ritual + Claude `--allowedTools` permission proof). C3 (a real relay-fall + BL-027 ratio)
+discharges here only via narrow-A, else defers to M20. Full record: `design/self-hosting-program-draft.md` §M19;
+`backlog.md` gate 2026-07-11.
+
+**Two things worth remembering.** (1) **"Never B" is a metric-honesty rule, not a tech preference:** SDK clients can
+*rehearse* the substrate but don't reduce the PO's real terminal-relay burden, so counting them toward BL-027 would
+be program risk #3 (green suite, relay count flat) — they're allowed only labeled as rehearsal, counted separately.
+(2) **The planner improved the architect's framing, and the architect adopted it openly** — BL-018 scoped down from
+"negotiation" to "alignment/fail-fast," and BL-024 kept as a constraint rather than folded in (my over-scope, caught
+by *both* Codex and the standing 2026-07-10 ruling). The advisory POV is worth its cost exactly when it changes the
+architect's mind, not when it ratifies it.
+
+Related: LB-71 (M19 first gate — SP2 precedes M19), SP2 ledger (ATTACH-BLOCKED close), BL-018/BL-024/BL-026/BL-027,
+program risk #3 (`self-hosting-program-draft.md`). Process/inception only — no code, no behaviour change.

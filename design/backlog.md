@@ -40,6 +40,37 @@ show-done/show-dropped toggles ride this param). The response's `total` field al
 
 ---
 
+### Backlog gate — 2026-07-11 (M19 inception, 2nd pass · architect: Claude · planner POV: Codex · PO ruling in session)
+
+Per §3b, the second-pass M19 gate — the one LB-71 deliberately deferred until **SP2's answer was in hand**. SP2
+closed **ATTACH-BLOCKED → BL-026** (`design/spike2-consensus-real-cli-implementation.md`): two real CLIs cannot yet
+coordinate — Codex reaches `await_turn`; Claude's non-interactive tool-permission gate denies it; the client
+wire-contract is stale (v5 vs server v7); attached CLIs register `provider:mcp`.
+
+**Inception (PO + Architect, planner advisory POV from Codex).** M19's first duty is M18's deferred **C3** (a real
+substrate-carried relay fall + the BL-027 ratio). SP2 forced a feasibility fork; architect and planner **converged
+on C-first, never B** (SDK clients may only *rehearse* the substrate, labeled and counted separately — they do
+**not** discharge C3). **PO ruling (`[PO]`, 2026-07-11): Fork C-first, with narrow-A conversion pre-authorized iff
+T1 proves cheap** — i.e. M19 is the attach *enabler*; if T1 (contract-align + Claude-permission) proves affordable,
+M19 also runs a minimal real relay for a first honest ratio, else C3 defers to M20. Two planner refinements the
+architect adopted: **BL-018 scoped to contract *alignment / fail-fast*, not full negotiation**; **BL-024 stays a
+recorded constraint, not folded** (full provider split remains out of M19 scope — unchanged from the 2026-07-10 gate).
+
+**M19 shape:** **T1 = BL-018-lite** (contract alignment / fail-fast; hard prerequisite) → **T2 = BL-026** (supported
+attach ritual + prove Claude `--allowedTools`/`--permission-mode` pre-approval early). Ladder entry + full inception
+block: `design/self-hosting-program-draft.md` §M19. Next act: the planner authors the M19 plan → Gate 1 (reviewer ≠
+planner). Concentration noted (architect+SM+plan-reviewer = Claude); the PO ruled the fork personally.
+
+| Item | Disposition for this gate |
+|---|---|
+| BL-027 (relay ratio) | `doing` — **is** M19's metric; C3 remains its reopen condition. Unchanged. |
+| BL-018 (contract) | **deferred → todo**, `epic: M19` — **M19-T1**, scoped to alignment/fail-fast. Reopen condition MET (SP2 = the recurrence that bit again). |
+| BL-026 (attach ritual) | `todo`, `epic: M19` — **M19-T2** (after T1). SP2 wrote the runbook half; production template/script + permission proof remain. |
+| BL-024 (provider conflation) | **unchanged — out of M19 scope** (2026-07-10 ruling holds); SP2 **confirmed** `provider:mcp`; stays a recorded constraint. |
+| BL-025 / BL-022 / BL-023 / BL-028 | stay `todo` — **binding constraints / relevant** to M19 (proof A-B + fresh recorder; cross-repo scope-check; leaked-process detection; the `awaiting-input` vs dead distinction if real CLIs wait). |
+| BL-029 (rating signal) | stay `todo`, deferred post-M19 (needs the data M19 produces). |
+| BL-014 / BL-015 / BL-016 | stay **deferred** — reopen conditions unmet (BL-014 needs real substrate coordination *first*; still 0 real hand-offs). |
+
 ### Backlog gate — 2026-07-09 (opening M18 · SM: Claude, PO go `[PO]` in session)
 
 Per §3b, dispositioned before opening **M18 — Self-hosting milestone** (the program's flywheel-first-turn
@@ -643,14 +674,18 @@ tags: [recovery, awaiting-operator]
 
 <!-- @item
 id: BL-018
-status: deferred
+status: todo
 date: 2026-07-09
-epic: null
+epic: M19
 tags: [self-hosting, wire-contract, cross-repo, governance]
 -->
-- [deferred · M17 inception disposition (PO+Architect, 2026-07-09) — contract evolution stays a manual,
-  PO-gated act; reopen condition: a wire-contract bump recurs and bites again (another manual cross-repo
-  sync grant needed), OR the PO calls it] — **Versioned wire-contract negotiation** — replace the
+- [todo · **→ M19-T1 at the 2026-07-11 M19 gate; reopen condition MET** — SP2 reproduced the recurrence live
+  (client v5 `1236003f…` vs server v7 `ffa94e93…` rejected). **M19 scope = contract *alignment / fail-fast*, NOT
+  full negotiation** (planner refinement, architect-adopted): one source of truth or a generated/synced client
+  contract + fail-fast diagnostics + no stale committed client path. Full versioned negotiation stays a *later*
+  epic unless the PO widens it. · was: deferred · M17 inception disposition (PO+Architect, 2026-07-09) — contract
+  evolution stays a manual, PO-gated act; reopen: a bump recurs and bites again, OR the PO calls it — **the PO
+  called it 2026-07-11**] — **Versioned wire-contract negotiation** — replace the
   orchestrator's hard-reject on client contract-hash mismatch with versioned negotiation between
   AgentTalk and `agentalk-mcp-client`, so cross-repo contract evolution no longer requires a synchronized
   human act. Evidence so far: exactly one occurrence (M16-T2a's v7 bump, resolved via a Gate-1 cross-repo
@@ -750,6 +785,9 @@ tags: [architecture, brain, types, friction-m18]
   already caused the M17 G3-2 refute. **SP2 must RECORD each attached agent's `provider` value as a first-class
   observation** — the spike cannot interpret its own result without it. Recording is a spike act (read-only);
   **fixing this is not, and is out of scope for SP2 and M19.**
+  **2026-07-11 M19 gate — SP2 CONFIRMED it: both real CLI candidates registered `provider:mcp`** (14 recorder events,
+  0 vendor-shaped). Disposition **unchanged — stays a recorded constraint, NOT folded into M19** (planner pushback,
+  architect-adopted; consistent with the 2026-07-10 out-of-scope ruling). M19 records `provider:mcp` and works within it.
 
 <!-- @item
 id: BL-025
@@ -777,7 +815,7 @@ tags: [live-proof, evidence, gates, friction-m18]
 id: BL-026
 status: todo
 date: 2026-07-09
-epic: null
+epic: M19
 tags: [attach-mode, ergonomics, real-cli, friction-m18]
 -->
 - [todo · **M18 C7 friction item** — the rider T3a explicitly dropped, now re-filed *from evidence* exactly as
@@ -794,6 +832,11 @@ tags: [attach-mode, ergonomics, real-cli, friction-m18]
   read-only/probe/**docs** by definition (workflow:289), so SP2 must perform the ritual anyway and can **emit the
   runbook as a spike deliverable at zero production code** — written from evidence rather than guessed. The
   `.mcp.json` template + script (production tooling) stay for M19-T1.
+  **2026-07-11 M19 gate — re-sequenced to M19-T2 (after BL-018-lite T1).** SP2's finding is that the *stale client
+  contract* must be fixed before a supported attach ritual can be blessed (you must not certify a runbook while the
+  sibling client can fail by design). SP2 discharged the docs half (runbook: `design/evidence/sp2-attach-runbook.md`);
+  the production `.mcp.json` template/script + the **Claude `--allowedTools`/`--permission-mode` pre-approval proof**
+  (`await_turn`/`consensus_respond`/`send_to_agent`/`submit_plan`) remain for T2.
 
 <!-- @item
 id: BL-027
