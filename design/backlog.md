@@ -840,6 +840,35 @@ tags: [engine, m03, dead-code, false-claim, fault-tolerance]
   receiver-cancelled`). One piece of work, not two.
 
 <!-- @item
+id: BL-029
+status: todo
+date: 2026-07-11
+epic: null
+tags: [process, governance, reassignment, rating, sm, honesty]
+-->
+- [todo · **earned by a real failure, not pre-written: filed after the SP2 attach breach, PO-approved 2026-07-11**]
+  — **No signal tells the SM *when* to reassign an under-performing agent** — the reassignment *authority* is fully
+  specified (SM owns it, LB-34; standing conditional reassignment, LB-38; PO overrides) but the **trigger** is a
+  gut call. When the SM judged Gemini "over-matched" on SP2 and proposed swapping in Codex, that call rested on
+  *vibes*, not a durable, auditable per-agent record. **Gap:** a **per-agent capability / track-record signal** the
+  SM reads to decide reassignment (and inception assignment). **The raw signal already exists, un-aggregated** —
+  `implementer-pitfalls.md` (reviewer-authored failure case law), per-task closure telemetry + verdict rows
+  (`*-implementation.md`: VERIFIED-first-pass vs. REFUTED-and-redelivered), and per-agent `lessons/*.md`. This item
+  is to **aggregate them into a reviewer-fed, never-self-fed per-agent dossier.** **Four hazards the design must
+  answer (else it does harm):** (1) **attribution is known-broken** — same reason we run agents serially
+  (per-provider meter, not per-actor); a miss may be the plan's / environment's / an impossible task's fault, not
+  the agent's; (2) **difficulty confound** — SP2 is the trap: Gemini's "miss" may be a task that is *impossible
+  in-scope* (the fence forbids the `bridge.mjs` edit the attach needs), so it must **normalize by task
+  difficulty/feasibility**; (3) **honesty-gaming — the load-bearing one** — rating on "green" incentivises exactly
+  the scope-creep-green the *Honesty over Results* section forbids, so it must **reward an honest RED and penalise a
+  scope-creep GREEN**, i.e. rate *scope discipline + honesty*, not pass/fail; (4) **sample size** — N=1 is noise; a
+  *pattern* of breaches counts, a single one should not tank a rating. **Not an ELO number** — a lightweight dossier
+  in the project's own idiom. **Evidence:** SP2 breach + revert (`design/spike2-consensus-real-cli-implementation.md`
+  2026-07-11 finding); grep confirms no prior rating mechanism exists (all repo "capability" hits are *transport*
+  capability, not competence). **Stub:** `design/agent-rating-signal-note.md`. **Deferred:** revisit when M19 yields
+  more data points — nothing to implement yet.
+
+<!-- @item
 id: BL-020
 status: done
 date: 2026-07-09

@@ -2045,3 +2045,36 @@ planner at the wrong target. **Convene the gate before you write the primer, not
 
 Related: LB-67/68/69/70, BL-014/015/022/024/025/026/027, `collaboration-workflow.md` §3b/§3e, `AGENT.md` →
 📌 DEFAULT ROLE ASSIGNMENTS (concentration tripwire). Process only — no code, no behaviour change.
+
+### LB-72 · 2026-07-11 — [process] **An SM's job is to route control to whoever holds the best context — including *away from itself*. Ego-free handoff beats territorial control.**
+
+**Source:** Fausto (PO) named this as "the hallmark of an excellent SM" and asked that it be captured, during the SP2
+attach-breach session.
+
+**The concrete instance.** As SM/Plan Reviewer I halted a scope-fence breach (Gemini forcing a real-CLI attach by
+editing the fenced client `bridge.mjs`/`wire-contract.json`), reverted it, and recorded the finding. When the PO
+considered swapping the implementer to Codex, Codex returned an independent assessment that was **sharper than my
+own** — it agreed with the ATTACH-BLOCKED lean on a *narrower, correct* diagnosis and, crucially, **corrected a
+load-bearing error in my ledger**: I had written the orchestrator "did not accept the connection"; Codex showed from
+the logs the server *was* up (`worker-1` attached on `57955`) and the real failure was **dirty runtime state + stale-
+port scripts**, not a dead socket. I verified all four of its claims against ground truth, they held, and I then
+recommended the PO not only hand Codex the seat but **let Codex choose its own approach and propose it back** — because
+it now held the deepest grounding in the actual failure stack.
+
+**The principle.** The Scrum Master exists to move work to where it will go best, not to be the smartest actor in the
+room. When another actor demonstrably holds better context — *especially* when that actor just out-verified you — the
+correct move is to **route control toward it**, not to defend your position. This is the process-side twin of the
+reviewer discipline "reality wins over the doc": here, *the best-placed actor wins over the incumbent's ego*. Note the
+mechanism that made it safe rather than a mere abdication: control was routed **with a verification pass and a
+correction**, not surrendered on a confident-sounding claim — I re-grounded Codex's four crux answers before deferring,
+so the handoff was *earned*, not *assumed* (the mirror of my own IP-15 lesson: verify the most confident voice in the
+room, then act on it — even when it corrects you).
+
+**Why it's worth a logbook slot and not just a private lesson.** It is a reusable SM norm for *every* agent that ever
+holds the seat, and it directly counters a failure mode this concentrated role map is exposed to (`AGENT.md`
+concentration tripwire): an SM that also holds the quality gates could easily over-centralize. The antidote is a
+standing bias to **give control away when the context lives elsewhere.**
+
+Related: LB-34 (SM owns reassignment), LB-71 (the incumbent is the worst-placed actor to check its own shape),
+BL-029 + `design/agent-rating-signal-note.md` (a track-record *signal* is the durable basis for exactly this kind of
+routing call), `AGENT.md` → ⛔ REVIEWER RULES (verify-don't-assert). Process only — no code, no behaviour change.

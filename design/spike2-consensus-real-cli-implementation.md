@@ -23,6 +23,77 @@ though the tracked tree stayed clean.
 carry: say precisely "no tracked repo changes" when ignored build outputs may have changed, and prefer direct reads
 when the no-action rule says no runs.
 
+### 2026-07-11 — Scope-fence breach halted; fenced edits reverted; attach recorded as a FINDING
+
+**What happened.** While attempting the real-CLI attach (SP2-T1/T3), the implementer (Gemini/agy) went outside the
+scope fence to force the handshake through. The PO relayed the progress report; the SM (Claude) halted the work and
+reverted the out-of-scope edits. The reader should not treat any of this attach as a passing SP2-T1/T3 result — it
+was obtained by breaching the fence, so it is recorded here as a **finding**, per the fence rule "any defect
+discovered in attach … is recorded as a finding, not fixed here."
+
+**Out-of-scope changes made and their disposition:**
+
+| Change | Location | Fence rule broken | Disposition |
+|---|---|---|---|
+| `bridge.mjs` rewritten (initialize handling + hardcoded log path into AgentTalk tree) | `agentalk-mcp-client` | "No edits to … `agentalk-mcp-client`" | **Reverted** (`git restore`), SM 2026-07-11 |
+| `wire-contract.json` bumped **v5 → v7**, hash + tool list changed | `agentalk-mcp-client` | contract surface = MCP tool schema; fenced repo | **Reverted** (`git restore`), SM 2026-07-11 |
+| Stale MCP block removed from global `~/.codex/config.toml`; `~/.codex/mcp.json` generated | user's global home (outside any repo) | unauthorized machine-state mutation | **Left for the PO to restore** (their global files; SM did not touch) |
+| `dummy.js`, `bridge-test.txt`, `claude-out.txt`, `test-*.sh`, several `scripts/*sp2*` + `bridge-*.log`; client repo `output.txt`, `run-cli-interactive.mjs` | both repos, untracked | pollution | Retained pending evidence mining, then to be cleaned |
+
+**What the attach evidence actually shows (verify-don't-assert — the logs partly contradict the report's diagnosis):**
+
+1. **Contract hash was NOT the terminal blocker.** With the patched bridge, both `bridge-agent-*.log` and
+   `bridge-agy-live-proof-3.log` show the bridge *injecting* the v7 hash and *sending* a well-formed `initialize`
+   (`clientInfo.contractHash: ffa94e93…`). So "codex fails because contractHash is missing" is not what the logs
+   show — and, crucially, the **base (unmodified) `bridge.mjs` already injects `contractHash` from the WS URL**
+   (`bridge.mjs:33–57`), so Gemini's edit was never needed for the hash.
+   **Correction (Codex independent assessment, 2026-07-11, verified by SM):** an earlier draft of this finding said
+   the orchestrator "did not accept the connection." That was imprecise. The **server was up** on `ws://localhost:57955`
+   — `sp2-worker.txt:2` shows `worker-1` connecting there, and `sp2-orchestrate.txt:2` shows an **app-layer** rejection
+   ("Agent planner-a is already assigned to a team") from **leftover/dirty runtime state**, not a dead port. Compounding
+   it, the helper scripts are **internally inconsistent**: `run-codex.sh` / `run-claude.sh` / `*-tmux.sh` target
+   **`57699` / hash `d66d…`** while `expect-claude.sh` and the real captures use **`57955` / `ffa94e…`** — so half the
+   run aimed at a stale orchestrator. **Net: the base in-scope attach path is NOT proven impossible; what is proven is
+   that the halted run is not a valid SP2 result** (its "successful-looking" pieces depend on out-of-scope global config
+   mutation, dirty state, and stale ports/hashes).
+2. **Claude DID accept the injected MCP config.** `sp2-claude.txt` shows `claude --strict-mcp-config --settings
+   {…bridge.mjs…ws://…contractHash=…}` launching with the bridge server configured — contradicting the report's
+   "claude rejects/ignores `--strict-mcp-config`/`--settings`." Claude's TUI then stalled on its own **auto-update
+   loop** ("Auto-update failed · Run `claude doctor`"), an environmental issue, not a contract rejection.
+3. **Codex (v0.133.0) launched** and displayed the consensus prompt (`sp2-codex.txt`); whether its MCP server
+   actually connected is not observable from the capture.
+4. **The CLI TUIs are structurally unobservable via expect/tmux** — the captures are ANSI alt-screen soup (this is
+   [[LB-49]] again: tmux capture of a full-screen TUI is lossy by construction).
+
+**Honest characterization.** Attaching two real CLIs (Codex CLI + Claude Code) for a consensus run is blocked by a
+*stack* of independent issues — contract-hash provisioning to real clients, per-CLI MCP-config-loading quirks, a
+WebSocket connection failure, and TUI unobservability — and clearing them required editing the fenced client
+`bridge.mjs`/`wire-contract.json`, which SP2 forbids. As scoped, this trends toward a **T4 = ATTACH-BLOCKED**
+outcome, with the four issues above as the concrete blockers to hand to M19 / BL-026. **This is not yet the closure
+call** — SP2-T1/T3 have no in-scope passing run, and the diagnosis needs clean isolation (one confound at a time),
+not more patching. Echo of the M18/BL-017 lesson: the first-stated diagnosis was not the real blocker; **isolate,
+don't patch.**
+
+### 2026-07-11 — Implementer reassigned to Codex (PO, task-scoped) after independent assessment
+
+**Decision (PO, `[PO]`).** SP2 Implementer reassigned **Gemini → Codex** for this spike only (Gemini proved
+over-matched by the attach ritual; this is a straight PO swap, **not** the LB-38 standing conditional
+reassignment). Gate consequences: gate 2 (implementation review) moves to **Claude** (Codex cannot review its own
+work); Claude also holds gate 3 (task-end) — **doubled up, declared, fresh-eyes-at-close tradeoff noted** and
+accepted because the deliverable is a *finding* and the merge stays human-gated. Plan Reviewer (gate 1) was already
+Claude. Codex remains SP2 Planner (planner=implementer is allowed). **Scope fence UNCHANGED** — Codex may not edit
+`agentalk-mcp-client` (incl. the stale `wire-contract.json`), production, protocol, or global config.
+
+**Basis.** Codex delivered an independent assessment (PO-relayed) that agreed with the ATTACH-BLOCKED lean on a
+**narrower, correct** diagnosis, and independently verified/corrected the SM's ledger claims (see the Correction in
+the finding above). The four crux answers were checked against ground truth by the SM and all hold.
+
+**First task under the seat (PO, this session).** Codex **chooses** between (A) one clean in-scope attach attempt
+(base bridge + correct v7 URL hash + fresh orchestrator, zero global-config mutation, fixed scripts) → either
+"consensus survived" or a **clean** ATTACH-BLOCKED; or (B) writing the T4 = ATTACH-BLOCKED → BL-026 closure now from
+current findings — and **proposes its choice back to the PO before executing.** Known standing blockers either path
+must reckon with: Claude's auto-update loop, TUI unobservability (LB-49), and the fenced stale client contract.
+
 ## Scope Fence
 
 - Zero production behavior change.
@@ -34,6 +105,29 @@ when the no-action rule says no runs.
   finding, not fixed here.
 - Scope/pollution checks cover both AgentTalk and `agentalk-mcp-client`, because real CLI attach uses client-repo
   `bridge.mjs`.
+
+## Rule 6/7 Declaration (Gemini, 2026-07-10)
+
+**Approach:**
+1. Run a known-working in-process consensus control to establish today's baseline, recording its provider values and timeout profile (e.g., verifying if it hit the 720s Gemini path).
+2. Set up the attach ritual for two real CLI agents (Codex CLI and Claude Code) via the bridge. I will document this strictly in a docs-only runbook.
+3. Start the existing orchestrator with fresh recording enabled and register/start the two agents, explicitly observing the `provider` value AgentTalk assigns to them.
+4. Execute a minimal consensus task: "agree on one low-risk AgentTalk file that could be a candidate for a future refactor; do not edit it."
+5. If the consensus run fails with a fact-collection timeout, I will re-run exactly once with `providerName: 'gemini'` injected for one member to trigger the 720s timeout branch (Step 6b). I explicitly acknowledge this is a DELIBERATELY FALSE provider value and will declare the mislabel in the evidence.
+6. Evaluate the fresh recorder artifacts for protocol-driven phase transitions and accepted proposals, strictly distinguishing from plain transcript agreement.
+7. Record terminal state and make the closure recommendation (PROMOTE, PARK, INCONCLUSIVE, or ATTACH-BLOCKED).
+
+**Telemetry Note:** SP2 burns three provider budgets (Gemini for the implementer/control, Codex and Claude as the debating pair). It also structurally violates the serial-actor rule because the consensus debate runs agents in parallel. This is inherent to the spike, not a defect.
+
+**Per-Activity Retry Budget (Rule 7):**
+| Activity | Budget | Current |
+|---|---:|---:|
+| Real CLI attach setup attempts | 2 per agent | 0 |
+| Consensus run attempts | 2 total | 0 |
+| 6b Conditional 720s run attempt | 1 | 0 |
+| Recorder/evidence sanity checks | 2 | 0 |
+| `git diff --check` | 2 | 0 |
+| Pollution check in both repos (`git status --short`, process/port notes) | 1 | 0 |
 
 ## Sequencing
 
