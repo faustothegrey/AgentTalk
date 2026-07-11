@@ -424,3 +424,18 @@ concentration:** architect + SM + plan-reviewer are Claude (same tripwire as M19
 planner (Codex) advisory POV on the key open question above → backlog gate opens **BL-030** → planner authors the
 plan → Gate 1 (reviewer ≠ planner → Claude) → implementer baton (seat is a fresh PO call; M19's Codex-implementer
 assignment lapsed at close).
+
+**RATIFIED (PO, 2026-07-11, after Codex's planner advisory POV — architect + planner converged, verified in code):**
+1. **Async pending-relay, NOT blocking.** `send_to_agent` returns a "pending PO approval" result and holds the relay;
+   never block the sender's tool call on human latency (tool timeouts vary by CLI — `await_turn` is *designed* to
+   block, a human-wait `send_to_agent` is not).
+2. **Reuse the existing delivery queue — NO autonomous wake in M20.** On PO *yes*, call the existing delivery path:
+   `sendProtocol` → `agent.queueTurn` (`registry.ts:580`, `agent.ts:81-90`) resolves a waiting `await_turn` or stores
+   in `pendingTurns` for the next. **Verified in code at inception** — the target-not-polling problem is already solved.
+3. **Separate pending-relay lifecycle — do NOT overload M17.** `workflow_gate_attempt: accepted` = *authority*
+   accepted, **not** *PO-approved/delivered*. Use a distinct pending-relay record/event: `pending / approved_delivered
+   / denied / delivery_failed`. **The main risk is audit semantics, not transport** — keep the two gates cleanly
+   distinct. Pending-relay state lives in the **registry/orchestrator** layer (not the client, not global config).
+4. **Fence (ratified):** *include* the web UI (approval panel) + server WS/API surfaces + registry tests; *exclude*
+   PO-channel mediation (`to === 'user'` byte-for-byte unchanged), autonomous wake, multi-agent/nested routing,
+   consent relaxation (the later dimmer), and scope-write enforcement.
