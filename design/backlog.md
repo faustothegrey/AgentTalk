@@ -1154,4 +1154,26 @@ tags: [ui, relay-approval, ux, validation-failed]
   turn. Residual lifecycle cleanup issue split to BL-033. Source: LB-77 + PO design note + LB-79 + LB-80 + LB-81 +
   LB-82 + LB-83 + LB-84 + LB-85 + LB-86.
 
+<!-- @item
+id: BL-034
+status: todo
+date: 2026-07-13
+epic: null
+tags: [observability, ui, attach-mode, client-repo]
+-->
+- [todo · surfaced 2026-07-13 (PO + Claude design chat)] — **PTY-tee observability panel — surface each attached
+  agent's real interactive TUI beside the AgentTalk UI** — the attach client (`agentalk-mcp-client`) already runs each
+  provider as its **real interactive TUI inside a PTY** (`claude-pty.mjs` / `codex-pty.mjs` / `gemini-pty.mjs`,
+  node-pty): it types the prompt in as keystrokes and reads the screen back. That TUI stream already exists but is
+  **consumed silently** by the executor to parse the answer (`llm-agent.mjs` forwards only `stderr`, not the PTY
+  `stdout`). **Proposal:** add a **flow-neutral observer tee** of `pty.onData` to a per-agent sink (log file or a
+  second read-only PTY), then view it live via a web terminal (**wetty**/**ttyd**, or an embedded xterm.js panel) next
+  to the conversation panel — giving the PO real-time visibility into what each agent is *actually doing* (thinking,
+  tool calls, errors), not just the orchestrator's final messages. **Scope/notes:** the tee lives in the *ancillary*
+  `agentalk-mcp-client` repo (pure-relay today — small observability addition, no orchestration-path change); it is
+  **read-only** (typing into the mirrored TUI would fight the client's keystroke puppeteering — a true take-the-wheel
+  hand-off is separate, larger work); and it exposes a shell/CLI stream, so any non-`localhost` surface needs
+  auth/TLS. Related: the TUI-scraping model is also why provider "thinking" preamble sometimes leaks into replies.
+  Source: 2026-07-13 design discussion following the wetty question.
+
 *(add new items above this line)*
