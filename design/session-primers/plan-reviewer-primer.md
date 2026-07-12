@@ -1,7 +1,7 @@
 ---
 role: plan-reviewer
-key: 20260712-1815-e4b1a7
-written: 2026-07-12 by Claude (session close — Tester seat created; BL-031 delivered on a branch, pending validation; no plan-review gate pending)
+key: 20260713-0020-b7d4e9
+written: 2026-07-13 by Claude (session close — BL-032 closed via full 3-gate; BL-031 unblocked, pending validation)
 ---
 
 This is your session primer.
@@ -13,50 +13,56 @@ team improves its own codebase; success = the PO's manual coordination burden fa
 
 **Roles.** Human = PO (apex; scope/direction/merges/relay). Agents: planner, three reviewer seats (plan /
 implementation / task-end — independence: no self-review; task-end ≠ implementation reviewer at close), implementer,
-architect, **and now Tester (NEW 2026-07-12)**. Current bindings live **only** in `AGENT.md → 📌 DEFAULT ROLE
-ASSIGNMENTS` (read it — don't infer). **This primer is for the plan-reviewer (gate 1); you [Claude] also hold
-task-end-reviewer, architect, and the delegated SM.** Do the First Entry Point handshake, verify this brief against
-the repo, report, and **STOP** for the PO's go — do not start work.
+architect, **Tester** (agent helper to a human test driver; default Codex; created 2026-07-12). Bindings live **only**
+in `AGENT.md → 📌 DEFAULT ROLE ASSIGNMENTS`. **This primer is for the plan-reviewer (gate 1); you [Claude] also hold
+task-end-reviewer, architect, delegated SM, and served as temp Implementation Reviewer on BL-032.** Do the First Entry
+Point handshake, verify this brief against the repo, report, and **STOP** for the PO's go — do not start work.
 
-**The Tester seat (created this session — know it exists).** Agent **helper** to a **human test driver**: the human
-drives the running product hands-on (clicks, UX judgment); the agent instruments/guides (logs, backend status,
-step-by-step, verify-don't-assert) — it does **not** operate the UI. **Default holder = Codex.** Does *validation*
-(does it work in real use?), distinct from the reviewer seats' *verification* (built to DoD?). **Scope fence: it
-produces findings, not merge verdicts** — never a gate. Owns the organic-coordination adoption metric. Charter:
-`design/collaboration-workflow.md §1` + `design/tester-seat-proposal.md`; primer `tester-primer.md` (`key: none`).
-
-**Workflow / source of truth.** `design/collaboration-workflow.md` (method) + artifacts: each epic's `*-plan.md`
+**Workflow / source of truth.** `design/collaboration-workflow.md` (method) + artifacts: each epic/task's `*-plan.md`
 (spec+DoD) and `*-implementation.md` (ledger — real state), `design/backlog.md`, `design/logbook.md` (LB-N),
-`design/lessons/claude-lessons.md` (skim at start). Verify-don't-assert: ground every load-bearing claim in git/code.
+`design/lessons/claude-lessons.md` (skim at start — read the 2026-07-13 BL-032 entry). Verify-don't-assert: ground
+every load-bearing claim in git/code before repeating it.
 
-**Where we are (REQUIRED — verify against git).** **Program is BETWEEN EPICS; M20 closed 2026-07-12 — no plan-review
-gate pending.** This session did the *first un-scripted, UI-driven, PO-approved agent↔agent relay run* (real
-codex↔gemini, 5/5 batons; **LB-77**) — the M20 operational path works from the browser. **Honest boundary intact:**
-that's an operational-path proof, **NOT** real dev coordination → **organic dev coordination is still 0** (topic was
-a word-agreement). Two work items came out of it, both on `master` (pushed): **LB-76** (the two coordination flows
-diagram), **LB-77** (the run), **BL-031** (inline-relay-approval UI redesign), and the **Tester seat**.
+**Where we are (REQUIRED — verify against git; state moved under me — see the caution).** Program is BETWEEN EPICS.
+**master HEAD = `71f3242`, ahead of `origin` by 2 (UNPUSHED).** ⚠️ **Caution: a parallel Codex BL-031 validation
+session advanced master + several primers/backlog/logbook *after* my BL-032 close** — verify HEAD and the ledgers
+before trusting any commit hash below. Recent arc on `master`:
+- **Tester seat created + proved out.** Codex-as-Tester (PO driving) caught **BL-032** on its first BL-031 validation
+  run (LB-77 first UI relay; LB-78 the blocked validation), then a second validation run confirmed BL-031 works with
+  real providers (**LB-86**) and found **BL-033**. The seat is paying off.
+- **BL-032 DONE** (`7dc3f19`, was merged `8f03bad`; master has since advanced) — attach-mode pair-chat startup fix.
+  Full 3-gate: Gate 1 (you, conditional-approve + 4 amendments) → impl (Codex, temp) → Gate 2 (you, PASS, 8/8 DoD
+  VERIFIED, IP-15 discriminate check) → Gate 3 (PO). Root cause was **not** a queue mismatch: a provider-attached
+  target that missed its healthcheck exec stayed wedged past the healthcheck deadline; fix aligns the healthcheck exec
+  deadline (grace 0) to the contract. Healthcheck strictness + M20 relay unchanged. Ledger:
+  `design/bl-032-attach-pair-chat-healthcheck-implementation.md`.
 
-**⚠️ Open work in flight (don't lose these):**
-- **`fix/BL-031-inline-relay-approval` (branch, UNMERGED, `099772c`)** — inline relay approval in the conversation
-  window (pending relays render in the main thread, highlighted, Approve/Deny below; handles N pending). Only
-  `apps/web/src/App.tsx` touched; `tsc`+vite clean. **Runtime/UX NOT validated.** Next step = the **Tester seat's
-  first assignment**: Codex instruments a **human-driven** validation run, then merge. **Independence trap:** Claude
-  implemented BL-031, so a Claude task-end-reviewer must **not** be the one to close/merge it — route validation to
-  Codex(Tester)+PO and let a non-Claude (or the PO) merge. Merge is PO-gated regardless.
-- **Deferred (PO):** "how to handle UI fixes *systemically* in the workflow" — parked for later; decide the
-  Tester-validates-pre-merge-vs-post-merge question when it's picked up (the charter currently says post-merge).
+**⚠️ Open work in flight (don't lose):**
+- **BL-031 inline relay approval — VALIDATED, still UNMERGED.** Branch `fix/BL-031-inline-relay-approval` @ `da07821`
+  (worktree `AgentTalk-BL-031-validation`): my inline-approval `App.tsx` **+ Codex's added "supervised conversation
+  control"**. Real-provider validation passed (**LB-86**): Continue path (pending relays delivered only on the PO's
+  Continue) and Stop path (denied relay, conversation stopped) both work with real Gemini/Antigravity. Status `todo`;
+  **needs a merge decision.** **Independence knot for the PO:** I implemented the original inline UI; Codex implemented
+  the supervised-control additions AND was the tester — so BL-031's task-end merge needs a party clear of both
+  (likely the PO). Codex primed the impl-reviewer + planner primers itself; do **not** overwrite them.
+- **BL-033 (todo, new)** — MCP pair-chat agents remain `busy` after `conversation_end` while their `llm-agent`
+  clients keep waiting for turns (post-end lifecycle bug, found during the BL-031 validation; LB-86).
+- **Deferred (PO):** "how to handle UI fixes *systemically* in the workflow" (Tester pre- vs post-merge validation).
 
-**Likely next work (PO decides — don't assume).** (a) the **BL-031 validation run** (Codex+human) then merge; (b)
-**operational adoption** of M20 (real batons, move the metric off 0); (c) a **new epic** (inception → backlog gate →
-planner → your gate 1 → implementer); (d) research from `design/research-agenda.md`. If a plan lands for gate 1, your
-move is the usual: grep its load-bearing code claims + the blast radius of any shared-code change *before* approving.
+**Likely next work (PO decides — don't assume).** (a) resume **BL-031 Tester validation** → merge; (b) M20 adoption
+(move the organic-coordination metric off 0); (c) a new epic (inception → backlog gate → planner → **your gate 1** →
+implementer); (d) research from `design/research-agenda.md`.
+
+**Gate-1 discipline that keeps paying off (do this).** Grep the **blast radius** of any shared-code change *before*
+approving — it caught the breakers in M16/M17/M20 and on BL-032 it **partly refuted the plan's own root-cause lead**
+(the relay path shares `sendProtocol→queueTurn` yet worked), reshaping T0. The grep is a hypothesis-tester, not just a
+breaker-finder. Also verify the plan's cited evidence (LB/BL ids) actually exists.
 
 **Op notes / gotchas.**
-- **Meter:** `node scripts/usage.mjs`. Claude ~41% weekly at this close (resets Jul 15 ~9am Rome).
-- **Attach runbook** for the UI relay flow: `design/attach-chat-runbook.md`. MCP port is random per backend restart
-  (grab it from the log). Wire-contract hashes must match between repos (currently `ffa94e93…`, both fine).
-- **Chrome extension** drops on Chrome auto-update; fall back to code+test verification, don't rabbit-hole.
-- **Do NOT reap** `com.fausto.agenttalk-orchestrator` — it's the PO's `launchd` service (ppid 1, non-default ports),
-  not a leak. Identify before you reap (launchctl / etime / ppid).
-- Stale branches `task-M18-T3` and (now) `fix/BL-031-inline-relay-approval` (the latter is *live* WIP, not stale).
-  Backlog: 31 items, 0 warnings; BL-031 is `todo`.
+- **Meter:** `node scripts/usage.mjs`. Claude ~41% weekly at close (resets Jul 15 ~9am Rome).
+- **Attach runbook:** `design/attach-chat-runbook.md`. MCP port is random per backend restart. Wire-contract hashes
+  must match between repos (`ffa94e93…`).
+- **Chrome extension** drops on Chrome auto-update; fall back to code+test verification.
+- **Do NOT reap** `com.fausto.agenttalk-orchestrator` (PO's `launchd` service, non-default ports). Identify before reap.
+- Backlog: 33 items, 0 warnings. BL-032 `done`; BL-031 `todo` (validated, unmerged); BL-033 `todo` (new); stale
+  branch `task-M18-T3`.

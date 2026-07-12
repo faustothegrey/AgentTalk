@@ -282,3 +282,28 @@ here.**
   feels misplaced" — a judgment no DoD row encodes. That single catch is the entire empirical case for the Tester
   seat existing: verification checks the spec, validation checks reality, and reality had a finding. Keep steering
   UX-shaped work toward a human driver early.
+
+### 2026-07-13 — BL-032 gate-1 + gate-2 (Plan Reviewer + Impl Reviewer): the grep refutes the *lead*; IP-15 is the spine; the diff outranks the ledger
+
+- **As Plan Reviewer: the blast-radius grep is not just a breaker-finder — it can *refute the plan's own root-cause
+  hypothesis* before a line is written.** BL-032's "strongest lead" was a queueTurn-vs-awaitExecTurn mismatch. Three
+  greps found that `deliverRelayMessage` (M20 relay) shares the *identical* `sendProtocol→queueTurn` line (`:810→581`)
+  yet reached the same provider agents last session — so the lead couldn't be the whole story. That reframed T0 from
+  "investigate the queues" to "explain why the same path works for relays but not healthchecks" — which is exactly
+  where the real cause (deadline/backstop, not queue) turned out to live. The plan's own "a lead, not a conclusion"
+  humility was vindicated; good planning pre-commits to being wrong, and my job at gate 1 is to *aim* its doubt.
+- **As Impl Reviewer: the IP-15 stash-and-rerun IS the gate-2 spine, cheapest high-value move I have.** Codex reported
+  "2/2 passed." I `git stash`ed only the runtime fix and reran → test 1 FAILED on `toMatchObject({ timeoutMs: 25 })`.
+  That one command converted "the test passes" into "the test passes *because of* the fix" — the whole difference
+  between a regression test and a coincidental green. Equally informative: test 2 (M20 relay) passed *with and
+  without* the fix — that's the preservation proof, for free. Never sign a gate-2 verdict on a green I didn't try to
+  break.
+- **As Impl Reviewer: the diff is ground truth; the ledger's "Files Changed" is a *claim*.** Codex's ledger listed
+  only the authorized files, but `git status` on the whole tree showed 2 undeclared out-of-scope primer edits riding
+  along. Always `git status`/`git diff --stat` the *entire* tree, not just the files the report names — the omission
+  is where scope creep hides. (Here the extras were PO-sanctioned, so the disposition was "separate commit," not
+  "revert" — read *why* a stray file is there before reflexively reverting.)
+- **Executing a merge as the PO's scribe: keep history honest by concern.** Closed BL-032 as three commits — the fix,
+  the split-out PO-sanctioned primer housekeeping, the backlog closure — so each is independently revertable and the
+  BL-032 commit contains *exactly* its scope. Bundling would have laundered out-of-scope edits onto the mainline
+  under a fix label; dropping would have destroyed sanctioned work. Split, don't bundle or drop.
