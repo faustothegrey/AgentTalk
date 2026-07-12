@@ -1,7 +1,7 @@
 ---
 role: planner
-key: 20260712-0100-725a1b-planner
-written: 2026-07-12 by Codex, after M20 closed
+key: 20260712-0934-5f1c9d-planner-refresh
+written: 2026-07-12 by Codex, after M20 closed; key refreshed 2026-07-12 by Codex at PO request, body still valid
 ---
 
 This is your session primer.

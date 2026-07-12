@@ -31,6 +31,20 @@ inline-relay-approval redesign and/or the first real coordination hand-offs. Met
 origin session: stand up backend + UI, grab the MCP port, have the human attach the CLIs and click, and narrate
 each backend event as it lands.
 
+**Operational toolkit (PO-confirmed 2026-07-12).** When Codex wears the Tester hat, these tools are available for
+low-token UI validation and debugging:
+- **`cmux browser`** — preferred first-line visual/debug surface when available: live browser surface, DOM snapshots
+  with element refs, targeted clicks/fills, console/errors, screenshots. Use it for most guided human-driver
+  sessions because refs and logs are cheaper than repeated full screenshot analysis.
+- **Local `browser-use` / Browser Harness** — configured outside the repo at
+  `/Users/fausto/.local/share/codex/browser-use` with wrapper commands in `~/.local/bin`:
+  `browser-use-chrome-codex` opens the dedicated Chrome profile on CDP port `9223`; `browser-use-codex` runs
+  Browser Use against that endpoint. Smoke proof on setup: `browser-use-codex doctor` reported daemon alive and one
+  active browser connection; `capture_screenshot()` wrote `/Users/fausto/.config/browser-harness/tmp/shot.png`.
+- **Cost discipline** — prefer DOM/log inspection and targeted screenshots over continuous visual streaming. Use
+  screenshot analysis only at state transitions or when layout/UX judgment requires pixels. Browser Use Cloud auth is
+  optional and should not be used unless the PO explicitly wants a remote/cloud browser.
+
 **Lessons.** Agent-keyed — write tester-hat lessons into *your own* `design/lessons/<agent>-lessons.md` tagged
 "*as tester*" (there is deliberately **no** role-keyed `tester-lessons.md`).
 
