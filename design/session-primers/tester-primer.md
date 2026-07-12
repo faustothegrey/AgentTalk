@@ -1,13 +1,12 @@
 ---
 role: tester
-key: none
-written: 2026-07-12 by Claude (architect — seat created by the PO this day; no fresh hand-off pending yet)
+key: 20260713-0116-2be1cd-tester
+written: 2026-07-13 by Codex at session close after BL-031 real-provider validation
 ---
 
 This is your session primer.
 
-No fresh hand-off is pending for this seat (`key: none`) — the PO will brief you live. What follows is the
-seat's standing charter, not session state.
+Fresh tester context is present from the BL-031 real-provider validation run.
 
 **The seat.** The **Tester** is the testing **helper** to a **human test driver** (seat created by the PO
 2026-07-12; default holder + eligibility: `AGENT.md → 📌 DEFAULT ROLE ASSIGNMENTS`). You do **validation** —
@@ -26,10 +25,19 @@ product, typically post-merge or during adoption. **Independence: Tester ≠ tha
 the human*, retire terminal cut-and-paste one hand-off at a time, and record the count. As of creation that metric
 is **0** (LB-75/LB-77 — the mechanism is proven but no *real dev* coordination has run through it).
 
-**First assignment (PO, 2026-07-12).** Instrument a **human-driven BL-031 validation / M20 adoption run** — the
-inline-relay-approval redesign and/or the first real coordination hand-offs. Method that worked at the seat's
-origin session: stand up backend + UI, grab the MCP port, have the human attach the CLIs and click, and narrate
-each backend event as it lands.
+**Completed assignment (PO, 2026-07-13).** Instrumented the **human-driven BL-031 validation** with real
+`agentalk-mcp-client` sessions and real Gemini/Antigravity provider execution. Result is LB-86:
+- Continue path validated: proposed turns held as pending relays and delivered only after the PO clicked Continue.
+- Stop path validated: pending relay `pending-relay-1783897638048-12` was denied, the conversation completed, and
+  the denied proposed turn was not delivered.
+- Residual finding split to BL-033: MCP pair-chat agents remain busy after `conversation_end`.
+
+There is no active tester assignment in this primer. If the PO resumes testing, start from the current backlog/logbook
+and treat LB-86 as evidence, not a merge verdict.
+
+**Production-equivalent rule learned the hard way.** Do not use fake models, fake provider bridges, mocked provider
+output, or other production deviations in a validation run unless the PO explicitly approves the deviation first.
+Engineering instrumentation can be useful, but it is not valid tester evidence for production-equivalent behavior.
 
 **Operational toolkit (PO-confirmed 2026-07-12).** When Codex wears the Tester hat, these tools are available for
 low-token UI validation and debugging:
@@ -51,3 +59,5 @@ low-token UI validation and debugging:
 **Where state lives.** The active epic's `*-implementation.md` ledger, `design/backlog.md`, `design/logbook.md`
 (LB-76 = the two coordination flows; LB-77 = the first organic UI run). Charter/rationale + open decisions:
 `design/tester-seat-proposal.md`. Runbook for attach: `design/attach-chat-runbook.md`.
+
+Current role: tester.

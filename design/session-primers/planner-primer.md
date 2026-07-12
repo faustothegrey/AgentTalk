@@ -1,7 +1,7 @@
 ---
 role: planner
-key: 20260712-0934-5f1c9d-planner-refresh
-written: 2026-07-12 by Codex, after M20 closed; key refreshed 2026-07-12 by Codex at PO request, body still valid
+key: 20260713-0116-2be1cd-planner
+written: 2026-07-13 by Codex at session close after BL-031 real-provider validation
 ---
 
 This is your session primer.
@@ -37,33 +37,36 @@ State lives in durable artifacts, not chat:
 Skim `design/lessons/codex-lessons.md` if you are Codex, and poll `node scripts/usage.mjs`. Both are best-effort;
 neither blocks real work.
 
-## 4. Current state
+## 4. Current State
 
-M20 is closed on `master`.
+M20 and BL-032 are closed on `master`.
 
-Recent mainline:
+Recent mainline at primer write:
 
-- `0f82006` - merge(M20-T3): real approved-relay proof (BL-030) - M20 CLOSED
-- `2ad1bd5` - docs(M20): epic closure - BL-030 done; mechanism built, adoption is program work
-- `0fe6657` - docs(M20): mark D8 (freeze/fence) VERIFIED - all 8 DoD rows green
+- `e705bc3` - docs(BL-031): record real-provider validation wrap-up
+- `8f03bad` - docs(BL-032): mark done + unblock BL-031
+- `7dc3f19` - fix(BL-032): align attach-mode healthcheck exec deadline to the healthcheck contract
 
-The M20 mechanism now exists: approval mode defaults `off`; when switched to `approve_each`, agent-to-agent relays
-can be held as pending relays, approved or denied through WS/UI, and delivered through the existing queue path. M20
-proved one demonstration approved relay and one denied negative using real attached Codex CLIs. The reported ratio
-was deliberately labeled as a demonstration metric, not an organic productivity statistic.
+BL-031 has a validation branch: `/Users/fausto/Software/AgentTalk-BL-031-validation`,
+`fix/BL-031-inline-relay-approval`, commit `da07821` (`fix(BL-031): validate supervised conversation control`).
+Codex acted as temporary implementer and tester. The real-provider, PO-driven tester run validated the human-facing
+Continue/Stop conversation-control behavior (LB-86), but Codex must not self-review the implementation.
 
-There is no active M21/M-next task in this primer. Wait for the PO/SM to open the next inception or task. If asked
-for planning, verify the current backlog and program draft first, then produce only the artifact requested by the
-baton.
+New backlog item: **BL-033** — MCP pair-chat agents remain busy after `conversation_end`. This was split out from
+BL-031 because Continue/Stop gating works, but completion cleanup leaves attached agents/clients in stale busy/waiting
+state.
+
+There is no active planner task in this primer. Wait for the PO/SM to open the next inception or task. If asked for
+planning, verify the current backlog and program draft first, then produce only the artifact requested by the baton.
 
 ## 5. Op notes
 
 - Do not infer the current milestone from this primer; verify the latest ledger and backlog.
 - The PO reference clock remains invariant: PO gates, opinions, merge decisions, and direct PO messages are not
   mediated by AgentTalk.
-- BL-030 is done as mechanism work; adoption and real burden reduction remain program work.
-- BL-028 remains adjacent and was not part of M20.
-- The sibling client repo should be checked manually whenever a task has cross-repo risk; local status at close was
-  clean on `master`.
+- BL-031 is not an independent-review closure: Codex authored the latest implementation and tester evidence.
+- BL-033 is the most obvious follow-up if the PO wants to clean lifecycle behavior before merge/closure.
+- The production-equivalent testing rule is now explicit in Codex lessons: no fake provider/model deviation in a
+  validation run without explicit PO consent.
 
 Current role: planner.
