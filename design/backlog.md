@@ -1071,12 +1071,12 @@ tags: [self-hosting, role-skill, governance]
 
 <!-- @item
 id: BL-032
-status: doing
+status: done
 date: 2026-07-12
 epic: null
 tags: [attach-mode, conversation, healthcheck, validation-blocker, tester-finding]
 -->
-- [doing · **Tester finding 2026-07-12 during BL-031 validation run (LB-78)** — blocks real UI validation of
+- [done · **merged to master 2026-07-12 (PO-resolved; Gate 2 PASS, Claude; commit 7dc3f19)** · Tester finding 2026-07-12 during BL-031 validation run (LB-78) — blocked real UI validation of
   BL-031 until fixed or bypassed by an explicitly approved test harness] — **Attach-mode pair chat can fail before
   conversation creation because one attached client never receives/processes the startup healthcheck** — in the
   human-driven BL-031 validation attempt, the UI sent `start_pair_chat` for `bl031-source` + `bl031-target`; the
@@ -1095,9 +1095,9 @@ id: BL-031
 status: todo
 date: 2026-07-12
 epic: null
-tags: [ui, relay-approval, ux, blocked, blocked-by-BL-032]
+tags: [ui, relay-approval, ux]
 -->
-- [todo · **BLOCKED by BL-032 as of 2026-07-12 validation (LB-78)**; surfaced 2026-07-12 by the PO during the first un-scripted UI-driven relay run (LB-77); reframed same
+- [todo · **UNBLOCKED 2026-07-12 — BL-032 merged (commit 7dc3f19); ready to resume the human-driven Tester validation**; surfaced 2026-07-12 by the PO during the first un-scripted UI-driven relay run (LB-77); reframed same
   day from a sidebar-card patch into the redesign below — the patch is **superseded**, do not do both] —
   **Inline relay approval in the conversation window** — move agent→agent relay approval *out* of the cramped
   sidebar card and *into* the main conversation thread. **Root cause of the observed confusion:** today the main
