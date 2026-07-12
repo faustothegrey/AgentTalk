@@ -2240,3 +2240,57 @@ purely visual. Exactly the class of finding this first-run exercise existed to s
 **Source.** PO-driven run 2026-07-12 (~06:49–06:53), backend log (scratchpad), screenshot. Related: LB-76 (the two
 flows), LB-75 (M20 closed, the boundary), BL-031 (the UX nit), `design/attach-chat-runbook.md`. Product finding — no
 code change; durable cross-cutting record.
+
+### LB-78 · 2026-07-12 — [tester] BL-031 human-driven validation run BLOCKED before UI exercise: pair-chat startup healthcheck never reaches one attached client
+
+**Run shape.** Codex wore the **Tester** hat with the PO as human test driver, validating branch
+`fix/BL-031-inline-relay-approval` (`099772c`) in a separate worktree
+`/Users/fausto/Software/AgentTalk-BL-031-validation`. Build bar passed: `npm run build` completed cleanly
+(`tsc -b` + web `tsc && vite build`, 1531 modules transformed). Runtime setup used the canonical companion repo
+`/Users/fausto/Software/agentalk-mcp-client`; contract hashes matched
+`ffa94e93e3182d44924ed28381870c7bd814c908279942022d5925a4865a9446`; backend exposed MCP attach at
+`ws://localhost:52260/`; UI ran at `http://localhost:5173`.
+
+**Observed blocker.** The PO clicked **Start Chat** repeatedly for `bl031-source` + `bl031-target` with relay
+approval mode `approve_each`. Each click reached the backend (`WS message received: start_pair_chat`). The backend
+sent a startup healthcheck to both agents. `bl031-source` answered every time via `agentalk-mcp-client`
+(`healthcheck_ack`, e.g. "Hello, I'm responsive."). `bl031-target` stayed connected/`ready` at the MCP socket level
+but never logged `Received turn` and never acknowledged; after 30s the backend failed conversation creation with
+`Agent bl031-target did not respond to healthcheck within 30000ms`. Because no conversation was created, the BL-031
+inline pending-relay surface had no active conversation window and could not be validated.
+
+**Disposition.** BL-031 is **not validated** by this run; no merge verdict follows from it. The new blocker is filed
+as **BL-032**. Suspected lead, not a conclusion: attached provider-labelled agents consume exec turns
+(`awaitExecTurn()`), while conversation startup sends semantic EVT turns through `sendProtocol(... EVT ...)` /
+`queueTurn()`. Any fix needs its own plan/gate because this is shared attach/conversation routing, not a BL-031 UI
+patch. Runtime processes for the validation run were stopped after the block was identified.
+
+### LB-86 · 2026-07-13 — [tester] BL-031 real-provider validation: Continue/Stop conversation control works; post-end agent lifecycle bug found
+
+**Run shape.** PO drove the browser UI; Codex acted as Tester instrumentation. Runtime was
+`/Users/fausto/Software/AgentTalk-BL-031-validation` on `fix/BL-031-inline-relay-approval`, with real
+`agentalk-mcp-client` sessions and real Gemini/Antigravity provider execution. No fake provider bridge, mocked model,
+or headless browser automation was used. Backend was `http://localhost:3000`, frontend `http://localhost:5173`, MCP
+`ws://localhost:65050/`.
+
+**Continue-path evidence.** Conversation `conversation-1783897224281` ran with `bl031-source` and `bl031-target` to the
+reply limit. After `approve_each` was enabled, each proposed turn was held as a pending relay and delivered only after
+the PO clicked **Continue** (`approve_pending_relay`). The transcript ended completed with 10 real provider messages
+and the final system row `All agents reached reply limit`. Note: the very first source turn in this run delivered
+immediately because approval mode was enabled after Start Chat, not before; subsequent turns exercised the gated path.
+
+**Stop-path evidence.** A second real-provider run used `bl031-stop-source` and `bl031-stop-target`. The PO clicked
+**Stop** on pending relay `pending-relay-1783897638048-12`. Backend state changed the relay to `denied`, marked
+`conversation-1783897607389` completed, and appended the system row
+`Conversation stopped by operator before delivering bl031-stop-source's proposed turn to bl031-stop-target.` The denied
+proposed turn was not appended as a delivered transcript message.
+
+**Finding outside BL-031's UI target.** After both the reply-limit completion and the operator-stop completion, the
+MCP agents remained in `busy` status while the real `llm-agent` client processes continued waiting for turns. This is
+tracked separately as **BL-033** because it is a conversation/attach lifecycle cleanup issue, not a failure of the
+BL-031 Continue/Stop control behavior.
+
+**Disposition.** BL-031's human-facing conversation-control behavior is validated by a real-provider, human-driven run:
+actual proposed turns are visible and actionable, Continue gates delivery, Stop denies the pending turn and closes the
+conversation. This is tester evidence, not an independent merge verdict, because Codex also authored the latest
+implementation rework.

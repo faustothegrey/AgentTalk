@@ -123,6 +123,7 @@ export interface HealthcheckEventPayload {
   type: 'healthcheck';
   token: string;
   prompt: string;
+  timeoutMs?: number;
 }
 
 export interface ConversationStartEventPayload {
@@ -425,9 +426,15 @@ export function parseEventPayload(value: unknown): EventPayload | null {
       }
 
     case 'healthcheck':
-      return typeof value.token === 'string' && typeof value.prompt === 'string'
-        ? { type: 'healthcheck', token: value.token, prompt: value.prompt }
-        : null;
+      if (typeof value.token !== 'string' || typeof value.prompt !== 'string') {
+        return null;
+      }
+      return {
+        type: 'healthcheck',
+        token: value.token,
+        prompt: value.prompt,
+        ...(typeof value.timeoutMs === 'number' ? { timeoutMs: value.timeoutMs } : {}),
+      };
 
     case 'conversation_start':
       return typeof value.conversationId === 'string' &&

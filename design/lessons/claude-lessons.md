@@ -257,3 +257,28 @@ here.**
   (2/~9, 1/3) that was a *capability* proof, not burden reduction — I made that caveat load-bearing in the ledger,
   backlog, program draft, and logbook each time, so the number can't later be quoted as a productivity stat. That is
   program-risk-#3 discipline at the exact moment of maximum temptation to inflate.
+
+### 2026-07-12 (second session) — Tester seat born from a live run; charter-from-reality; reassignment discipline
+
+- **As architect: describe the role from what ACTUALLY happened, not the idealized version.** I first drafted the
+  Tester as an agent that *drives the UI itself* (via Chrome MCP). The PO corrected it: the *human* drives, the
+  *agent instruments* (logs, backend status, step-by-step, verify-don't-assert) — which is *literally what we'd just
+  done this session* (I instrumented, he clicked). I'd written an aspirational charter over a lived one. Lesson: when
+  minting a role out of a real session, transcribe the observed division of labour first, then generalize — don't
+  let the tidy abstraction overwrite the evidence sitting in the transcript.
+- **Proportionality, applied correctly for once (my standing blind spot).** I flagged "is this earned process?"
+  *and* concluded it WAS earned — but for the right reason: the seat has a **standing mandate** (own the adoption
+  metric / carry M20 forward), not just one session's novelty. The signal that flipped it from "premature" to
+  "earned" was that real work was *waiting* for the seat, and its first lessons already existed (LB-77/BL-031). Past
+  me would have either reflexively resisted (proportionality reflex) or reflexively built (enthusiasm). Naming the
+  distinction — validation ≠ verification — is what made it a program piece, not a gadget.
+- **As temporary implementer (PO-assigned, Gemini available): declare the hat loudly, hold every fence.** The PO
+  reassigned me to implement BL-031 while I held four other seats. I declared "temp implementer" explicitly, kept
+  scope to one file (`App.tsx`), preserved behaviour (left the sidebar panel intact rather than remove it), and —
+  the load-bearing bit — **did NOT self-validate**: routed the runtime/UX check to Codex(Tester)+human because
+  independence says I can't bless my own code. A green tsc is not a validated feature; I said exactly that in the
+  delivery instead of overclaiming "done".
+- **Live operation surfaces what gate-review structurally can't.** BL-031 came from the PO's *human* "this button
+  feels misplaced" — a judgment no DoD row encodes. That single catch is the entire empirical case for the Tester
+  seat existing: verification checks the spec, validation checks reality, and reality had a finding. Keep steering
+  UX-shaped work toward a human driver early.

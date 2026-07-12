@@ -1070,13 +1070,51 @@ tags: [self-hosting, role-skill, governance]
   `design/self-hosting-program-draft.md` §Candidate.
 
 <!-- @item
+id: BL-032
+status: done
+date: 2026-07-12
+epic: null
+tags: [attach-mode, conversation, healthcheck, validation-blocker, tester-finding]
+-->
+- [done · **merged to master 2026-07-12 (PO-resolved; Gate 2 PASS, Claude; commit 7dc3f19)** · Tester finding 2026-07-12 during BL-031 validation run (LB-78) — blocked real UI validation of
+  BL-031 until fixed or bypassed by an explicitly approved test harness] — **Attach-mode pair chat can fail before
+  conversation creation because one attached client never receives/processes the startup healthcheck** — in the
+  human-driven BL-031 validation attempt, the UI sent `start_pair_chat` for `bl031-source` + `bl031-target`; the
+  backend sent healthchecks to both; `bl031-source` acknowledged every attempt; `bl031-target` stayed connected and
+  `ready` but never logged/processed the healthcheck turn, so `ConversationCoordinator.startConversation()` timed out
+  after 30s and no conversation was created. That means the inline pending-relay UI could not be exercised at all.
+  Evidence: LB-78; backend log lines `Sending EVT ... healthcheck` for both agents followed by
+  `Agent bl031-target did not respond to healthcheck within 30000ms`; source `agentalk-mcp-client` logged
+  `Received turn`; target companion did not. Suspected shape: attached provider-labelled agents consume
+  `awaitExecTurn()` while conversation startup uses `sendProtocol(... EVT ...)` / `queueTurn()`, but this is a
+  lead, not a verdict. Fix should preserve existing M20 relay behavior and must not silently weaken healthchecks.
+  Plan: `design/bl-032-attach-pair-chat-healthcheck-plan.md` (Gate 1 passed after conditional fold).
+
+<!-- @item
+id: BL-033
+status: todo
+date: 2026-07-13
+epic: null
+tags: [attach-mode, conversation-lifecycle, mcp]
+-->
+- [todo · surfaced during the BL-031 real-provider validation run (LB-86)] — **MCP pair-chat agents remain busy after
+  conversation_end**. After both a natural reply-limit completion and an operator Stop completion, the conversations
+  were correctly marked `completed`, but the involved MCP agents stayed in `busy` status and the real
+  `agentalk-mcp-client` processes continued waiting for turns. Suspected implementation shape: `conversation_end` is
+  sent through the semantic `queueTurn` path for the in-process conversation driver, while the external MCP client is
+  blocked on the exec-turn path; additionally, the in-process driver stop path does not restore the agent from `busy`
+  to a terminal/ready state after handling the end event. Scope this separately from BL-031: preserve the verified
+  Continue/Stop relay gating behavior, and make pair-chat completion cleanly settle attached agents/clients without
+  leaving stale busy state.
+
+<!-- @item
 id: BL-031
 status: todo
 date: 2026-07-12
 epic: null
-tags: [ui, relay-approval, ux]
+tags: [ui, relay-approval, ux, validation-evidence]
 -->
-- [todo · surfaced 2026-07-12 by the PO during the first un-scripted UI-driven relay run (LB-77); reframed same
+- [todo · **REAL-PROVIDER TESTER EVIDENCE 2026-07-13 (LB-86): Continue/Stop behavior works; residual lifecycle cleanup split to BL-033**; surfaced 2026-07-12 by the PO during the first un-scripted UI-driven relay run (LB-77); reframed same
   day from a sidebar-card patch into the redesign below — the patch is **superseded**, do not do both] —
   **Inline relay approval in the conversation window** — move agent→agent relay approval *out* of the cramped
   sidebar card and *into* the main conversation thread. **Root cause of the observed confusion:** today the main
@@ -1090,6 +1128,9 @@ tags: [ui, relay-approval, ux]
   one), and decide whether the sidebar `RelayApprovalPanel` is retired or kept as a global/fallback view (primary
   surface becomes the conversation window). Data is all present (main view has the conversation; `pendingRelays`
   carries from/to/payload) — a moderate frontend change, **no backend change**. Supersedes the earlier
-  "make the sidebar cards visually distinct" patch. Source: LB-77 + PO design note.
+  "make the sidebar cards visually distinct" patch. **Validation evidence (LB-86):** with real
+  `agentalk-mcp-client` + Gemini/Antigravity execution and PO-driven browser actions, Continue held and delivered
+  proposed turns correctly, and Stop denied a pending turn and completed the conversation without delivering that
+  turn. Source: LB-77 + PO design note + LB-86.
 
 *(add new items above this line)*

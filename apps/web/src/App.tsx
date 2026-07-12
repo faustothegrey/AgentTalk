@@ -10,7 +10,7 @@ import { GoogleDriveView } from './GoogleDriveView';
 import { SchedulerView } from './SchedulerView';
 import { RelayApprovalPanel } from './RelayApprovalPanel';
 
-import { theme, TopLevelTab, Conversation, SidebarEventEntry, Team, TeamTask, Provider, ExecutionMode, TeamMember, TeamComposition, Agent, PendingRelay, RelayApprovalMode } from './api/types';
+import { theme, TopLevelTab, Conversation, SidebarEventEntry, Team, TeamTask, Provider, ExecutionMode, TeamMember, TeamComposition, Agent, PendingRelay, RelayApprovalMode, TranscriptEntry } from './api/types';
 import { api } from './api/client';
 import { useWebSocket } from './hooks/useWebSocket';
 import { useAgents } from './hooks/useAgents';
@@ -21,7 +21,7 @@ import { AgentCreation } from './components/agents/AgentCreation';
 import { ChatSidebar } from './components/chat/ChatSidebar';
 import { TeamSidebar } from './components/team/TeamSidebar';
 
-import { Send, Terminal as TerminalIcon, Check, X } from 'lucide-react';
+import { Send, Terminal as TerminalIcon, Check, X, Clock3 } from 'lucide-react';
 import { getAgentColor } from './agentColors';
 
 function relayPayloadText(payload: unknown): string {
@@ -33,78 +33,125 @@ function relayPayloadText(payload: unknown): string {
   }
 }
 
-function ConversationTranscript({ conversation, pendingRelays, onApprove, onDeny, connected }: {
+function relayBelongsToConversation(relay: PendingRelay, conversation: Conversation): boolean {
+  return conversation.agentIds.includes(relay.fromAgentId) && conversation.agentIds.includes(relay.toAgentId);
+}
+
+function pendingRelaysForConversation(conversation: Conversation, pendingRelays: PendingRelay[]): PendingRelay[] {
+  return pendingRelays.filter((relay) => relay.status === 'pending' && relayBelongsToConversation(relay, conversation));
+}
+
+function conversationOutcome(conversation: Conversation, currentPendingCount: number): string {
+  if (currentPendingCount > 0) {
+    return 'Waiting for your decision';
+  }
+  if (conversation.status === 'active') {
+    return 'In progress';
+  }
+
+  const lastSystem = [...conversation.transcript].reverse().find((entry) => entry.kind === 'system');
+  const reason = lastSystem?.payload || 'Conversation completed';
+  if (reason.includes('reply limit')) {
+    return 'Ended: reply limit reached, agreement not recorded';
+  }
+  if (reason.includes('stopped by operator')) {
+    return 'Stopped by operator';
+  }
+  return `Ended: ${reason}`;
+}
+
+type ConversationTimelineItem =
+  | { kind: 'transcript'; id: string; timestamp: string; entry: TranscriptEntry }
+  | { kind: 'pendingRelay'; id: string; timestamp: string; relay: PendingRelay };
+
+function buildConversationTimeline(conversation: Conversation, pendingRelays: PendingRelay[]): ConversationTimelineItem[] {
+  const transcriptItems = conversation.transcript.map((entry, index) => ({
+    kind: 'transcript' as const,
+    id: `transcript-${index}-${entry.timestamp}`,
+    timestamp: entry.timestamp,
+    entry,
+  }));
+
+  const relayItems = pendingRelays
+    .filter((relay) => relay.status === 'pending' && relayBelongsToConversation(relay, conversation))
+    .map((relay) => ({
+      kind: 'pendingRelay' as const,
+      id: relay.id,
+      timestamp: relay.createdAt,
+      relay,
+    }));
+
+  return [...transcriptItems, ...relayItems].sort((a, b) => a.timestamp.localeCompare(b.timestamp));
+}
+
+function ConversationTranscript({ conversation, pendingRelays, onContinue, onStop, connected }: {
   conversation: Conversation;
   pendingRelays: PendingRelay[];
-  onApprove: (relayId: string) => void;
-  onDeny: (relayId: string) => void;
+  onContinue: (relayId: string) => void;
+  onStop: (relayId: string) => void;
   connected: boolean;
 }) {
   const bottomRef = useRef<HTMLDivElement>(null);
-  const messages = conversation.transcript.filter((entry) => entry.kind === 'message');
-  // A relay belongs to this conversation when both endpoints are its participants.
-  const conversationPending = pendingRelays.filter(
-    (relay) => relay.status === 'pending'
-      && conversation.agentIds.includes(relay.fromAgentId)
-      && conversation.agentIds.includes(relay.toAgentId),
-  );
+  const timeline = buildConversationTimeline(conversation, pendingRelays);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages.length, conversationPending.length]);
+  }, [timeline.length]);
 
   return (
     <div style={{ flex: 1, overflowY: 'auto', padding: '20px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
-      {messages.length === 0 && conversationPending.length === 0 ? (
-        <div style={{ margin: 'auto', color: theme.textDim, textAlign: 'center', fontSize: '14px' }}>Waiting for agent replies...</div>
+      {timeline.length === 0 ? (
+        <div style={{ margin: 'auto', color: theme.textDim, textAlign: 'center', fontSize: '14px' }}>Waiting for conversation events...</div>
       ) : (
-        messages.map((entry, index) => {
-          const color = getAgentColor(entry.from);
+        timeline.map((item) => {
+          if (item.kind === 'pendingRelay') {
+            const relay = item.relay;
+            const color = getAgentColor(relay.fromAgentId);
+            return (
+              <div key={item.id} style={{ alignSelf: 'stretch', backgroundColor: color.tint, borderLeft: `3px solid ${color.accent}`, borderTop: `1px solid ${color.glow}`, borderRight: `1px solid ${color.glow}`, borderBottom: `1px solid ${color.glow}`, borderRadius: '8px', padding: '12px 14px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', fontSize: '11px', textTransform: 'uppercase' }}>
+                  <span style={{ color: color.accent, fontWeight: 'bold' }}>Proposed turn · {relay.fromAgentId} {'→'} {relay.toAgentId}</span>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', color: '#e5c07b', fontWeight: 'bold' }}><Clock3 size={13} /> Waiting</span>
+                </div>
+                <div style={{ color: color.text, fontSize: '14px', lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>{relayPayloadText(relay.payload)}</div>
+                <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
+                  <button
+                    type="button"
+                    title="Continue conversation"
+                    disabled={!connected}
+                    onClick={() => onContinue(relay.id)}
+                    style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', backgroundColor: theme.bg, color: theme.success, border: `1px solid ${theme.borderInput}`, borderRadius: '6px', padding: '8px', cursor: connected ? 'pointer' : 'not-allowed', fontSize: '13px', fontWeight: 700 }}
+                  >
+                    <Check size={15} /> Continue
+                  </button>
+                  <button
+                    type="button"
+                    title="Stop conversation"
+                    disabled={!connected}
+                    onClick={() => onStop(relay.id)}
+                    style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', backgroundColor: theme.bg, color: theme.error, border: `1px solid ${theme.borderInput}`, borderRadius: '6px', padding: '8px', cursor: connected ? 'pointer' : 'not-allowed', fontSize: '13px', fontWeight: 700 }}
+                  >
+                    <X size={15} /> Stop
+                  </button>
+                </div>
+              </div>
+            );
+          }
+
+          const entry = item.entry;
+          const isSystem = entry.kind === 'system';
+          const color = isSystem ? null : getAgentColor(entry.from);
           return (
-            <div key={index} style={{ alignSelf: 'stretch', backgroundColor: color.tint, borderLeft: `3px solid ${color.accent}`, border: `1px solid ${color.glow}`, borderRadius: '8px', padding: '12px 14px' }}>
+            <div key={item.id} style={{ alignSelf: 'stretch', backgroundColor: isSystem ? theme.bgSurface : color!.tint, borderLeft: `3px solid ${isSystem ? theme.textMuted : color!.accent}`, border: `1px solid ${isSystem ? theme.borderLight : color!.glow}`, borderRadius: '8px', padding: isSystem ? '8px 12px' : '12px 14px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', fontSize: '11px', textTransform: 'uppercase' }}>
-                <span style={{ color: color.accent, fontWeight: 'bold' }}>{entry.from}</span>
+                <span style={{ color: isSystem ? theme.textSubtle : color!.accent, fontWeight: 'bold' }}>{isSystem ? entry.from : 'Delivered turn'} {'→'} {entry.to}</span>
                 <span style={{ color: theme.textMuted }}>{new Date(entry.timestamp).toLocaleTimeString()}</span>
               </div>
-              <div style={{ color: color.text, fontSize: '14px', lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>{entry.payload}</div>
+              <div style={{ color: isSystem ? theme.textMuted : color!.text, fontSize: isSystem ? '12px' : '14px', lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>{entry.payload}</div>
             </div>
           );
         })
       )}
-
-      {/* Pending relays: the held next message(s), inline in the thread, highlighted, with the decision below. */}
-      {conversationPending.map((relay) => {
-        const color = getAgentColor(relay.fromAgentId);
-        return (
-          <div key={relay.id} style={{ alignSelf: 'stretch', backgroundColor: color.tint, borderLeft: `3px solid ${color.accent}`, border: `2px solid ${color.accent}`, borderRadius: '8px', padding: '12px 14px', boxShadow: `0 0 0 3px ${color.glow}` }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', fontSize: '11px', textTransform: 'uppercase' }}>
-              <span style={{ color: color.accent, fontWeight: 'bold' }}>{relay.fromAgentId} {'→'} {relay.toAgentId}</span>
-              <span style={{ color: '#e5c07b', fontWeight: 'bold' }}>⏳ pending your approval</span>
-            </div>
-            <div style={{ color: color.text, fontSize: '14px', lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>{relayPayloadText(relay.payload)}</div>
-            <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
-              <button
-                type="button"
-                title="Approve relay"
-                disabled={!connected}
-                onClick={() => onApprove(relay.id)}
-                style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', backgroundColor: theme.bg, color: theme.success, border: `1px solid ${theme.borderInput}`, borderRadius: '6px', padding: '8px', cursor: connected ? 'pointer' : 'not-allowed', fontSize: '13px', fontWeight: 700 }}
-              >
-                <Check size={15} /> Approve
-              </button>
-              <button
-                type="button"
-                title="Deny relay"
-                disabled={!connected}
-                onClick={() => onDeny(relay.id)}
-                style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', backgroundColor: theme.bg, color: theme.error, border: `1px solid ${theme.borderInput}`, borderRadius: '6px', padding: '8px', cursor: connected ? 'pointer' : 'not-allowed', fontSize: '13px', fontWeight: 700 }}
-              >
-                <X size={15} /> Deny
-              </button>
-            </div>
-          </div>
-        );
-      })}
       <div ref={bottomRef} />
     </div>
   );
@@ -155,10 +202,12 @@ function App() {
       case 'conversation_started':
       case 'conversation':
         if (message.conversation) {
+          setConversationHistory(prev => [message.conversation, ...prev.filter(conversation => conversation.id !== message.conversation.id)]);
           setActiveConversation(message.conversation);
           if (message.type === 'conversation_started') {
             setActiveConversationId(message.conversation.id);
             setSelectedAgentId(null);
+            setActiveTopTab('chat');
           }
         }
         break;
@@ -228,6 +277,34 @@ function App() {
   }, [fetchAgents, fetchConversationHistory]);
 
   useEffect(() => {
+    if (conversationHistory.length === 0) return;
+
+    if (activeConversationId) {
+      const selected = conversationHistory.find(conversation => conversation.id === activeConversationId);
+      if (selected && (
+        activeConversation?.id !== selected.id ||
+        activeConversation.updatedAt !== selected.updatedAt ||
+        activeConversation.transcript.length !== selected.transcript.length
+      )) {
+        setActiveConversation(selected);
+      }
+      return;
+    }
+
+    const conversationWithPendingRelay = conversationHistory.find(conversation =>
+      conversation.status === 'active' &&
+      pendingRelays.some(relay => relay.status === 'pending' && relayBelongsToConversation(relay, conversation))
+    );
+
+    if (conversationWithPendingRelay) {
+      setActiveConversationId(conversationWithPendingRelay.id);
+      setActiveConversation(conversationWithPendingRelay);
+      setSelectedAgentId(null);
+      setActiveTopTab('chat');
+    }
+  }, [activeConversation, activeConversationId, conversationHistory, pendingRelays]);
+
+  useEffect(() => {
     if (activeTopTab === 'drive') fetchDriveData();
     if (activeTopTab === 'scheduler') fetchSchedulerData();
   }, [activeTopTab, fetchDriveData, fetchSchedulerData]);
@@ -264,6 +341,14 @@ function App() {
   const handleStartConversation = (agentIds: string[], topic: string, maxReplies: number) => {
     sendWsMessage({ type: 'start_pair_chat', agentIds, topic, maxReplies });
   };
+
+  const handleSelectConversation = useCallback((id: string) => {
+    const conversation = conversationHistory.find((item) => item.id === id) || null;
+    setActiveConversationId(id);
+    setActiveConversation(conversation);
+    setSelectedAgentId(null);
+    setActiveTopTab('chat');
+  }, [conversationHistory]);
 
   const handleAutostartChat = async () => {
     setLoading(true);
@@ -367,6 +452,17 @@ function App() {
     return () => { document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp); };
   }, [isResizing]);
 
+  const activeConversationAgentIds = activeConversation ? new Set(activeConversation.agentIds) : null;
+  const currentConversationPendingRelays = activeConversation ? pendingRelaysForConversation(activeConversation, pendingRelays) : [];
+  const currentConversationOutcome = activeConversation ? conversationOutcome(activeConversation, currentConversationPendingRelays.length) : null;
+  const sidebarRelays = activeConversationAgentIds
+    ? pendingRelays.filter((relay) => !(
+      activeConversationAgentIds.has(relay.fromAgentId)
+      && activeConversationAgentIds.has(relay.toAgentId)
+    ))
+    : pendingRelays;
+  const inlineRelayCount = pendingRelays.length - sidebarRelays.length;
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', width: '100vw', height: '100vh', position: 'relative' }}>
       <GlobalNotifications globalError={globalError} globalNotice={globalNotice} onClearError={() => setGlobalError(null)} theme={theme} />
@@ -376,7 +472,7 @@ function App() {
 
         <div style={{ width: `${sidebarWidth}px`, display: 'flex', flexDirection: 'column', backgroundColor: theme.bgRaised, borderRight: `1px solid ${theme.border}` }}>
           {activeTopTab === 'chat' && (
-            <ChatSidebar agents={agents} conversationHistory={conversationHistory} activeConversationId={activeConversationId} onStartConversation={handleStartConversation} onAutostart={handleAutostartChat} onSelectConversation={(id) => { setActiveConversationId(id); setSelectedAgentId(null); }} wsConnected={isConnected}>
+            <ChatSidebar agents={agents} conversationHistory={conversationHistory} activeConversationId={activeConversationId} onStartConversation={handleStartConversation} onAutostart={handleAutostartChat} onSelectConversation={handleSelectConversation} wsConnected={isConnected}>
               <AgentList agents={agents} selectedAgentId={selectedAgentId} onSelect={(id) => { setSelectedAgentId(id); setActiveConversationId(null); }} onRemove={removeAgent} />
               <AgentCreation loading={loading} onCreate={handleCreateAgent} />
             </ChatSidebar>
@@ -404,7 +500,8 @@ function App() {
           )}
           <RelayApprovalPanel
             mode={relayApprovalMode}
-            pendingRelays={pendingRelays}
+            pendingRelays={sidebarRelays}
+            inlineRelayCount={inlineRelayCount}
             connected={isConnected}
             theme={theme}
             onModeChange={handleRelayModeChange}
@@ -428,11 +525,21 @@ function App() {
             />
           ) : activeConversationId ? (
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-              <div style={{ padding: '8px 16px', backgroundColor: theme.bgSurface, fontSize: '12px', color: theme.textSecondary, borderBottom: `1px solid ${theme.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div>Conversation: <strong>{activeConversationId}</strong></div>
+              <div style={{ padding: '12px 16px', backgroundColor: theme.bgSurface, borderBottom: `1px solid ${theme.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '16px' }}>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ color: theme.textBright, fontSize: '15px', fontWeight: 700, lineHeight: 1.35, overflowWrap: 'anywhere' }}>{activeConversation?.topic || 'Conversation'}</div>
+                  <div style={{ color: theme.textMuted, fontSize: '11px', marginTop: '4px', overflowWrap: 'anywhere' }}>
+                    {(activeConversation?.agentIds || []).join(' ↔ ') || activeConversationId} · {activeConversationId}
+                  </div>
+                  {currentConversationOutcome && (
+                    <div style={{ color: currentConversationPendingRelays.length > 0 ? '#e5c07b' : theme.textSubtle, fontSize: '12px', marginTop: '6px', fontWeight: 700 }}>
+                      {currentConversationOutcome}
+                    </div>
+                  )}
+                </div>
                 <button onClick={() => { setActiveConversationId(null); setActiveConversation(null); }} style={{ background: 'none', border: 'none', color: theme.textMuted, cursor: 'pointer', fontSize: '11px' }}>Close View</button>
               </div>
-              {activeConversation && <ConversationTranscript conversation={activeConversation} pendingRelays={pendingRelays} onApprove={handleApproveRelay} onDeny={handleDenyRelay} connected={isConnected} />}
+              {activeConversation && <ConversationTranscript conversation={activeConversation} pendingRelays={pendingRelays} onContinue={handleApproveRelay} onStop={handleDenyRelay} connected={isConnected} />}
             </div>
           ) : selectedAgentId ? (
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>

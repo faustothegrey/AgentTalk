@@ -130,21 +130,25 @@ export class InProcessAgentDriver {
 
     if (!prompt) return;
 
-    const executePrompt = async (p: string) => {
-      const text = await this.executeApiPrompt(p, expectsStructured);
+    const healthcheckExecOpts = evt.type === 'healthcheck' && Number.isFinite(evt.timeoutMs)
+      ? { timeoutMs: Number(evt.timeoutMs), timeoutBackstopGraceMs: 0 }
+      : undefined;
+
+    const executePrompt = async (p: string, opts?: { cwd?: string; timeoutMs?: number; timeoutBackstopGraceMs?: number; throwOnExecError?: boolean }) => {
+      const text = await this.executeApiPrompt(p, expectsStructured, opts);
       if (text) {
         this.runtime.recordAssistantReply(text);
       }
       return text;
     };
 
-    const text = await executePrompt(prompt);
+    const text = await executePrompt(prompt, healthcheckExecOpts);
     if (!text) return;
 
     let request;
 
     if (expectsStructured) {
-      const { structured, error } = await parseWithRetry(text, executePrompt);
+      const { structured, error } = await parseWithRetry(text, (p) => executePrompt(p, healthcheckExecOpts));
       if (error) {
         this.agent.queueTurn({
           type: 'message_received',
@@ -180,10 +184,11 @@ export class InProcessAgentDriver {
     }
   }
 
-  private async executeApiPrompt(prompt: string, expectsStructured: boolean, opts?: { cwd?: string; timeoutMs?: number; throwOnExecError?: boolean }): Promise<string | null> {
+  private async executeApiPrompt(prompt: string, expectsStructured: boolean, opts?: { cwd?: string; timeoutMs?: number; timeoutBackstopGraceMs?: number; throwOnExecError?: boolean }): Promise<string | null> {
     const completerOpts: any = { expectsStructured };
     if (opts?.cwd !== undefined) completerOpts.cwd = opts.cwd;
     if (opts?.timeoutMs !== undefined) completerOpts.timeoutMs = opts.timeoutMs;
+    if (opts?.timeoutBackstopGraceMs !== undefined) completerOpts.timeoutBackstopGraceMs = opts.timeoutBackstopGraceMs;
     try {
       const res = await this.completer.complete(prompt, completerOpts);
       return res.text;

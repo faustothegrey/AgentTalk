@@ -637,6 +637,7 @@ export class Registry extends EventEmitter {
       type: 'healthcheck',
       token,
       prompt: 'Reply with a short greeting confirming you are responsive.',
+      timeoutMs: this.config.healthcheckTimeoutMs,
     });
 
     const ack = await result;
@@ -751,6 +752,15 @@ export class Registry extends EventEmitter {
 
     relay.status = 'denied';
     relay.decidedAt = new Date().toISOString();
+
+    const conversation = this.findActiveConversationByAgents(relay.fromAgentId, relay.toAgentId);
+    if (conversation) {
+      this.conversationCoordinator.markConversationCompleted(
+        conversation,
+        `Conversation stopped by operator before delivering ${relay.fromAgentId}'s proposed turn to ${relay.toAgentId}.`,
+      );
+    }
+
     this.emitPendingRelay(relay);
     return relay;
   }

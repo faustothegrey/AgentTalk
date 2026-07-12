@@ -68,28 +68,55 @@ export class ConversationCoordinator {
         {
           kind: 'system',
           timestamp: now,
-          from: 'system',
+          from: 'coordinator',
           to: agentIds.join(','),
-          payload: `Conversation created with ${agentIds.length} agents: ${topic}`,
+          payload: `Conversation topic: ${topic}`,
+          messageType: 'conversation_created',
         },
       ],
     };
 
+    const conversationStarts = agentIds.map((id, i) => {
+      const peerIds = agentIds.filter((peerId) => peerId !== id);
+      const peerId = peerIds[0] || 'user'; // Fallback to 'user' if no peers
+      const instruction = i === 0
+        ? 'Open the discussion with your first point.'
+        : 'Wait for the initiator, then respond to their point.';
+
+      conversation.transcript.push({
+        kind: 'system',
+        timestamp: now,
+        from: 'coordinator',
+        to: id,
+        payload: [
+          `Conversation start for ${id}.`,
+          `Topic: ${topic}`,
+          `Peer${peerIds.length === 1 ? '' : 's'}: ${peerIds.join(', ') || 'user'}.`,
+          instruction,
+        ].join('\n'),
+        messageType: 'conversation_start',
+      });
+
+      return {
+        id,
+        peerIds,
+        peerId,
+        initiator: i === 0,
+      };
+    });
+
     this.deps.conversations.add(conversation);
     this.deps.emitConversation(conversation);
 
-    for (const [i, id] of agentIds.entries()) {
-      const peerIds = agentIds.filter((peerId) => peerId !== id);
-      const peerId = peerIds[0] || 'user'; // Fallback to 'user' if no peers
-
-      await this.deps.sendProtocol(id, 'EVT', {
+    for (const start of conversationStarts) {
+      await this.deps.sendProtocol(start.id, 'EVT', {
         type: 'conversation_start',
         conversationId: conversation.id,
-        peerIds,
-        peerId,
+        peerIds: start.peerIds,
+        peerId: start.peerId,
         topic,
         maxReplies: maxRepliesPerAgent,
-        initiator: i === 0,
+        initiator: start.initiator,
       });
     }
 
