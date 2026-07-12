@@ -2165,3 +2165,78 @@ reference-clock invariant (LB-68 F3) is intact throughout: the PO channel is nev
 Related: LB-74 (M19 C3 discharged), LB-73 (M20's parent inception line), LB-68 F3 (reference clock), LB-67 F1 (BL-028),
 `design/milestone20-po-approved-relay-implementation.md`, BL-030 (now `done`), BL-028 (adjacent). Product finding —
 code on `master` (merges above); durable cross-cutting record.
+
+### LB-76 · 2026-07-12 — [reference] The two coordination flows, side by side: terminal-baton (today) vs UI-coordination (M20 target)
+
+**Finding.** A single picture that fixes what "adopting M20" actually changes. In the **terminal-baton** flow the PO
+*is* the transport — every planner→reviewer→implementer hand-off passes through the human's clipboard and judgement.
+In the **UI-coordination** flow the orchestrator is the transport: the real provider CLIs *attach* over WebSocket, the
+PO sees every conversation live and types into any agent from the browser, and each agent→agent relay is gated by the
+M20 `RelayApprovalPanel` (Approve/Deny, mode `off | approve_each`). The terminal does **not** vanish — it shrinks to a
+one-time **launcher** per agent (`node llm-agent.mjs --provider X --agentId Y`); after attach, all *coordination* lives
+in the UI.
+
+```
+TODAY — terminal baton (you are the transport)
+┌─ claude CLI ─┐   copy    ┌─ codex CLI ─┐   copy    ┌─ agy CLI ─┐
+│  planner     │──paste──▶ │  reviewer   │──paste──▶ │ implementer│
+└──────────────┘   (YOU)   └─────────────┘   (YOU)   └───────────┘
+        every hand-off passes through your clipboard + judgement
+
+TARGET — UI coordination (orchestrator is the transport)
+                   ┌──────────────── AgentTalk UI (:5173) ────────────────┐
+                   │  • see every conversation live                        │
+                   │  • type into any agent  (human → agent baton)         │
+                   │  • RelayApprovalPanel: Approve/Deny each agent→agent  │
+                   └───────────────────────┬───────────────────────────────┘
+                                            │ WebSocket
+                          ┌─────────────────┴─────────────────┐
+                          │      orchestrator (:3000 + MCP)    │  ◀ routes turns,
+                          └──┬───────────────┬───────────────┬─┘    gates relays
+                     attach  │        attach │        attach │
+                    ┌────────┴──┐    ┌────────┴──┐   ┌────────┴──┐
+                    │ claude CLI│    │ codex CLI │   │  agy CLI  │   ◀ still real CLIs,
+                    │(llm-agent)│    │(llm-agent)│   │(llm-agent)│      launched once each
+                    └───────────┘    └───────────┘   └───────────┘
+```
+
+**Implication.** "Work in the UI instead of the terminal" = (a) launch each agent's `agentalk-mcp-client` once, then
+(b) do all human→agent and agent→agent coordination in the browser. It trades *N terminals you baton between all day*
+for *N one-time launch commands*. The human→agent 1:1 leg is proven (LB-28); the agent→agent leg is M20 (proven with a
+real Codex CLI) but has **0 organic dev coordination** yet (LB-75) — this diagram is the target, adoption is the work.
+
+**Source.** Authored 2026-07-12 (architect) answering the PO's "how do I stop using the terminal and work in the UI"
+question; grounded in `apps/web/src/App.tsx` (WS `message` / `approve_pending_relay` / `set_relay_approval_mode`),
+`apps/web/src/RelayApprovalPanel.tsx`, and `design/attach-chat-runbook.md`. Related: LB-75 (M20 closed), LB-28 (1:1
+attach chat verified), `design/attach-chat-runbook.md` (the operational steps).
+
+### LB-77 · 2026-07-12 — [product] First **un-scripted, UI-driven** approval-gated relay run (real codex ↔ real gemini) — the M20 operational path works end-to-end from the browser
+
+**Finding.** The PO drove the M20 approval-gated relay **live from the web UI** for the first time (not a scripted
+proof): two real attached CLIs — `agent-codex-1783831038541` (codex) and `agent-gemini-1783831053618` (gemini),
+attached via `agentalk-mcp-client` to `ws://localhost:52001/` — held a `start_pair_chat` conversation with
+`approve_each` **on**. **All five `send_to_agent` batons were held as pending relays and delivered only on the PO's
+click** (`pending → approved_delivered`, relays `…-1` … `…-5`, backend log); the agents reached genuine consensus
+("**alignment**" as the word for good teamwork, gemini adding a live-feedback caveat). Zero terminal copy-paste — the
+LB-76 "target" flow, exercised organically by a human clicking Approve.
+
+**The honest boundary (do NOT let this drift — same discipline as LB-75/M18-C3).** This is the first **operational-path**
+proof (un-scripted, UI-driven, PO-in-the-loop), **NOT** the program's "organic dev coordination" metric. The topic was
+a trivial word-agreement, not real code work — **no plan, no implementation, no review, no `workflow_gate_event`**. So
+**organic *dev* coordination remains at 0**; what moved off zero is "has the M20 UI path ever carried a real,
+un-scripted agent↔agent baton with live human consent" — yes, now. (An in-the-moment "0 became 1" said during the run
+referred to *this* operational sense; the burden-reduction number the program actually chases is still 0.) The reopen
+condition for the *program* metric is unchanged: ≥1 recorded `workflow_gate_event` from a real attached CLI doing real
+work (BL-014 reopen / M18-C3).
+
+**Two incidental data points worth keeping.** (1) **Cost shape:** each attached-CLI turn re-sent the full context —
+~20.9k prompt tokens per exec for a one-sentence reply — so pair-chat token cost is dominated by context resend, not
+output; budget accordingly when scaling rounds. (2) **First real UX finding from real use → BL-031:** in the
+`RelayApprovalPanel`, a `pending` card's Approve/Deny buttons visually blur into the adjacent `approved_delivered`
+card (faint `borderLight` + newest-on-top order), so the PO briefly misread *which* message the buttons act on. The
+mechanism was correct (buttons render only inside a `pending` card, `RelayApprovalPanel.tsx:89`); the ambiguity is
+purely visual. Exactly the class of finding this first-run exercise existed to surface.
+
+**Source.** PO-driven run 2026-07-12 (~06:49–06:53), backend log (scratchpad), screenshot. Related: LB-76 (the two
+flows), LB-75 (M20 closed, the boundary), BL-031 (the UX nit), `design/attach-chat-runbook.md`. Product finding — no
+code change; durable cross-cutting record.

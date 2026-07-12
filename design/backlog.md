@@ -1069,4 +1069,27 @@ tags: [self-hosting, role-skill, governance]
   the channel instead of per-CLI context files. Source: PO idea 2026-07-02 + architect read,
   `design/self-hosting-program-draft.md` §Candidate.
 
+<!-- @item
+id: BL-031
+status: todo
+date: 2026-07-12
+epic: null
+tags: [ui, relay-approval, ux]
+-->
+- [todo · surfaced 2026-07-12 by the PO during the first un-scripted UI-driven relay run (LB-77); reframed same
+  day from a sidebar-card patch into the redesign below — the patch is **superseded**, do not do both] —
+  **Inline relay approval in the conversation window** — move agent→agent relay approval *out* of the cramped
+  sidebar card and *into* the main conversation thread. **Root cause of the observed confusion:** today the main
+  window (`ConversationTranscript`) shows only *delivered* messages, while the pending message + Approve/Deny live
+  in a separate sidebar card (`apps/web/src/RelayApprovalPanel.tsx`, payload truncated ~54px) — so the operator
+  reads the decision in one place and its context in another, and the held message isn't in the conversation flow
+  at all until after approval. **Redesign (PO spec, 2026-07-12):** (1) render each agent message in the **main
+  conversation window**, not the sidebar; (2) put **Approve / Deny directly below** the message awaiting a
+  decision; (3) **lightly highlight** the message that is still pending. **Refinements:** design for **N pending
+  relays at once** (a 3+ agent setting can hold several — each gets its own inline buttons; don't assume exactly
+  one), and decide whether the sidebar `RelayApprovalPanel` is retired or kept as a global/fallback view (primary
+  surface becomes the conversation window). Data is all present (main view has the conversation; `pendingRelays`
+  carries from/to/payload) — a moderate frontend change, **no backend change**. Supersedes the earlier
+  "make the sidebar cards visually distinct" patch. Source: LB-77 + PO design note.
+
 *(add new items above this line)*
