@@ -2264,3 +2264,221 @@ as **BL-032**. Suspected lead, not a conclusion: attached provider-labelled agen
 (`awaitExecTurn()`), while conversation startup sends semantic EVT turns through `sendProtocol(... EVT ...)` /
 `queueTurn()`. Any fix needs its own plan/gate because this is shared attach/conversation routing, not a BL-031 UI
 patch. Runtime processes for the validation run were stopped after the block was identified.
+
+### LB-79 · 2026-07-13 — [tester] BL-031 validation resumed after BL-032: backend path works, UI redesign fails the human-driver bar
+
+**Run shape.** Codex wore the **Tester** hat with the PO as human test driver, resuming BL-031 after BL-032 merged
+to `master`. Validation ran from `/Users/fausto/Software/AgentTalk-BL-031-validation` on
+`fix/BL-031-inline-relay-approval` (`099772c`) with `master` merged into the worktree for validation only
+(`--no-commit`) so the run included BL-032. Build passed (`npm run build`). Runtime used two real
+`agentalk-mcp-client` sessions (`bl031-source`, `bl031-target`) attached to MCP `ws://localhost:62422/`, with a local
+fake persistent executor to avoid provider-token spend. Relay approval mode was `approve_each`; frontend was served
+at `http://127.0.0.1:5173/`.
+
+**Backend/attach result.** The BL-032 blocker is gone in this run. Both agents received healthcheck `exec_rpc` turns
+with `timeoutMs:30000`; both returned `healthcheck_ack`; AgentTalk created active conversation
+`conversation-1783893600116`; `conversation_start` was sent to both agents. The first relay
+`bl031-source -> bl031-target` was held as `pending`, approved by the PO, delivered, and recorded as
+`approved_delivered`. The second relay `bl031-target -> bl031-source` was then held as `pending`.
+
+**UI finding.** BL-031 is **not acceptable yet** despite the core mechanics working. The PO's screenshot shows the
+new inline pending relay, but the overall approval experience still has multiple problems:
+
+1. **Duplicate approval surfaces remain.** The same pending relay is actionable inline in the conversation and in the
+   sidebar `Relay approvals` card at the same time. That contradicts BL-031's purpose: move the decision into the
+   conversation flow so the operator is not choosing between context and action surfaces.
+2. **The sidebar still acts like a primary control, not a fallback/global summary.** It still contains Approve/Deny
+   buttons for the same pending item and competes visually with the inline decision surface.
+3. **The pending highlight is too heavy.** The inline pending message is a large green framed block with strong glow,
+   not the requested "lightly highlight" treatment. It draws attention, but in a way that reads as a separate panel
+   rather than a message in the conversation.
+4. **The main-thread affordance works mechanically but not cleanly.** Approve/Deny are under the pending message, so
+   the implementation hit the basic mechanism. However, because the old sidebar controls remain and the styling is
+   heavy, the operator still has to resolve UI ambiguity manually.
+
+**Disposition.** BL-031 validation **FAILED**. Do not merge `fix/BL-031-inline-relay-approval` as-is. The task should
+return for frontend rework inside BL-031: make the conversation thread the primary approval surface, demote/remove
+sidebar actions for items rendered inline, and tune the inline pending state to a lighter message-level highlight.
+This is a UI finding, not a backend/attach blocker; BL-032 remains resolved.
+
+### LB-80 · 2026-07-13 — [implementer] BL-031 UI rework after failed validation
+
+**Scope.** Codex was temporarily assigned the **Implementer** role by the PO for BL-031 frontend rework. The change was
+kept to the web UI: `apps/web/src/App.tsx` and `apps/web/src/RelayApprovalPanel.tsx` in
+`/Users/fausto/Software/AgentTalk-BL-031-validation` on `fix/BL-031-inline-relay-approval`.
+
+**Change.** Active-conversation relays are now treated as conversation-thread decisions: the sidebar receives a
+filtered relay list that excludes relays whose source and target are both participants in the active conversation.
+When the sidebar has no remaining fallback/global relay items, it shows that current conversation relays are in the
+thread instead of duplicating Approve/Deny controls. The inline pending relay styling was toned down from a heavy
+green framed/glowing block to the same message-row structure with a left accent and light border, plus a compact
+pending status.
+
+**Verification.** `npm run build --workspace @agenttalk/web` passed, then full `npm run build` passed. A live harness
+with two real `agentalk-mcp-client` sessions and fake provider executor confirmed backend healthchecks still complete,
+but did not reach the pending relay in that manual check before timeout, so this entry is **not** a final validation
+claim. BL-031 still needs a fresh human/tester UI validation pass by someone other than the implementer.
+
+### LB-81 · 2026-07-13 — [tester] BL-031 retest: refresh loses active conversation, pending relay falls back to sidebar
+
+**Run shape.** PO drove the browser UI; Codex acted as Tester instrumentation. Runtime was the BL-031 validation
+worktree with the LB-80 frontend rework plus BL-032 merged for validation. Backend `http://localhost:3000`, frontend
+`http://127.0.0.1:5173/`, MCP `ws://localhost:63445/`; agents `bl031-source` and `bl031-target` were attached via
+real `agentalk-mcp-client` sessions with fake persistent executor.
+
+**Setup correction.** The first retest attempt appeared inert because a stale active conversation from the earlier
+run (`conversation-1783893600116`, created 2026-07-12T22:00:00.116Z) already existed for the same agent pair.
+AgentTalk correctly returned that existing active conversation after healthchecks, which meant no fresh
+`conversation_start` was sent. Deleting that stale conversation via the existing conversation API restored a clean
+test state.
+
+**Evidence after clean start.** A controlled `start_pair_chat` produced `conversation_started` for
+`conversation-1783894786838` and pending relay `pending-relay-1783894786889-1` from `bl031-source` to
+`bl031-target`. Server logs show both healthchecks ACKed, both `conversation_start` events sent, and the pending relay
+broadcast to connected web clients.
+
+**UI finding.** After the PO refreshed the browser, the pending relay appeared in the sidebar instead of the main
+conversation panel. Code inspection matches the symptom: on refresh, `fetchConversationHistory()` loads the
+conversation list, but the app does not restore `activeConversationId` / `activeConversation` for the active
+conversation. `RelayApprovalPanel` only suppresses active-conversation relays when `activeConversation` is set, so
+after refresh the pending relay is treated as a global/fallback relay and the sidebar becomes the approval surface
+again.
+
+**Disposition.** BL-031 retest **FAILED**. The LB-80 duplicate-control fix works only while the active conversation
+context is already live in React state. BL-031 still needs a frontend state-restoration fix: on refresh or history
+selection, restore the active conversation object before rendering pending relays, or otherwise associate pending
+relays with the loaded conversation history so current-conversation approvals remain inline.
+
+### LB-82 · 2026-07-13 — [tester] BL-031 retest: conversation panel is not an intelligible audit surface
+
+**Finding.** The PO reported that the conversation panel "doesn't make any sense" for an app user: the expectation is
+to see the conversation topic clearly at the top and then the actual message flow between the agents and the
+coordinator, with the content of each message visible. A generic indication that something is a relay is not enough
+to understand what is happening or why an approval is being requested.
+
+**Observed code/data shape.** The active conversation header currently emphasizes only
+`Conversation: <conversation-id>` in the main panel, while the topic is not presented as the primary context. In
+`ConversationTranscript`, `conversation.transcript` is filtered down to `entry.kind === 'message'`, so the system
+entry that contains "Conversation created with 2 agents: <topic>" is intentionally hidden. Coordinator-level events
+that matter to operator understanding (`healthcheck`, `conversation_start`, `message_received`, pending relay state)
+are not presented as a coherent timeline. The current transcript API for the run contains only the hidden system row
+until a relay is delivered; the pending relay is carried separately in `pendingRelays`, not as a durable transcript row.
+
+**Why this fails BL-031.** BL-031 is not just "put Approve/Deny buttons somewhere bigger"; the purpose is to make relay
+approval understandable in the main conversation context. A useful approval surface must let the operator inspect the
+actual content and sequence: topic, coordinator prompts/events, agent replies, held relay payload, decision state, and
+delivery/denial result. Without that, the app user is asked to approve traffic without enough context.
+
+**Disposition.** BL-031 remains **FAILED**. The next frontend rework should treat the main conversation panel as an
+operator-facing audit timeline, not only a list of delivered agent messages plus an inline approval card.
+
+### LB-83 · 2026-07-13 — [implementer] BL-031 rework for refresh restoration and conversation audit timeline
+
+**Scope.** Codex was temporarily assigned the **Implementer** role by the PO for the LB-81/LB-82 BL-031 failures.
+Changes were made in `/Users/fausto/Software/AgentTalk-BL-031-validation` on
+`fix/BL-031-inline-relay-approval`, limited to the web UI plus the conversation transcript emitted at pair-chat
+start.
+
+**Change.**
+- `apps/web/src/App.tsx`: the conversation panel now builds a single timeline from transcript entries plus pending
+  relays that belong to the active conversation. It no longer filters out `system` rows. Pending relays remain inline
+  with their actual payload and Approve/Deny controls.
+- `apps/web/src/App.tsx`: refresh/history restoration now maps loaded conversations back into
+  `activeConversation`/`activeConversationId`; if a pending relay exists for an active conversation, that conversation
+  is restored as the main panel context so the sidebar does not become the primary approval surface after refresh.
+- `apps/web/src/App.tsx`: the panel header now foregrounds the conversation topic and participants, with the
+  conversation id demoted to secondary metadata.
+- `packages/runtime-core/src/registry/conversation-coordinator.ts`: new conversations now include coordinator-authored
+  transcript rows for the topic and each `conversation_start` instruction before turns are sent to agents, so the UI
+  has concrete coordinator→agent content to display.
+- `apps/web/src/RelayApprovalPanel.tsx`: retains the LB-80 fallback summary behavior when current-conversation relays
+  are rendered in the thread.
+
+**Verification.** Per PO instruction, no headless/browser automation was run. Non-visual verification only:
+`npm run build` passed in the BL-031 validation worktree. A joint browser retest with the PO remains required.
+
+### LB-84 · 2026-07-13 — [tester] BL-031 retest: the panel must be a turn-by-turn conversation control, not a relay log
+
+**Finding.** The PO clarified the intended product model: the main conversation panel is where the operator watches
+the agent conversation unfold one turn at a time. The expected loop is:
+
+1. Show one agent's proposed message, with its actual content.
+2. Offer an action on that proposed turn, phrased for the operator as **Continue / Stop** rather than low-level
+   Approve/Deny relay language.
+3. On Continue, deliver that message to the other agent and show it as delivered.
+4. Then show the second agent's reply proposal with Continue / Stop.
+5. Repeat until the conversation ends, explicitly showing whether the agents reached agreement or did not.
+
+**Observed run.** In the 2026-07-13 retest, the backend did gate each agent-to-agent relay: server logs show a
+sequence of `pending-relay-*` rows and matching `approve_pending_relay` WebSocket actions before each delivery.
+However, the UI still presents the mechanism as a relay approval/log surface. The visible panel shows a scroll of
+delivered relay messages and low-level coordinator/message rows, not a clear turn-stepper where the current proposed
+agent message is the primary object and the operator chooses Continue or Stop. The conversation also ends by reply
+limit ("All agents reached reply limit"), not by a user-facing agreement/non-agreement outcome.
+
+**Why this fails BL-031.** The current implementation is technically closer to inline relay approval, but still misses
+the user goal. The product requirement is not "show relay cards in the main pane"; it is "make the agent conversation
+supervisable." The operator should not need to understand relay internals to know what is happening or what action to
+take next.
+
+**Disposition.** BL-031 remains **FAILED**. The next implementation pass should reframe the UI around a single current
+turn proposal and conversation outcome semantics: Continue delivers the pending turn; Stop halts/denies the pending
+turn and ends or pauses the conversation; delivered turns remain in the timeline as history.
+
+### LB-85 · 2026-07-13 — [implementer] BL-031 turn-by-turn conversation controller rework
+
+**Scope.** Codex was temporarily assigned the **Implementer** role by the PO after LB-84. Work stayed in the BL-031
+validation worktree. No headless/browser automation was run.
+
+**Change.**
+- `apps/web/src/App.tsx`: pending conversation relays now render as the current **Proposed turn** in the main
+  conversation timeline, with operator-facing **Continue** and **Stop** actions instead of low-level Approve/Deny
+  relay language.
+- `apps/web/src/App.tsx`: delivered agent messages remain as history rows labelled as delivered turns, while compact
+  coordinator/system rows provide setup and ending context without becoming the primary interaction object.
+- `apps/web/src/App.tsx`: the conversation header now shows a readable state: waiting for decision, in progress,
+  stopped by operator, or ended by reply limit with agreement not recorded.
+- `apps/web/src/RelayApprovalPanel.tsx`: sidebar copy now uses conversation/turn language for the fallback surface.
+- `packages/runtime-core/src/registry/registry.ts`: denying a pending relay that belongs to an active conversation now
+  marks that conversation completed with a clear "stopped by operator" system row and sends `conversation_end` to both
+  agents.
+- `packages/runtime-core/src/registry/__tests__/m20-pending-relay.test.ts`: added regression coverage for Stop closing
+  the active conversation without delivering the denied turn.
+
+**Verification.** Non-visual verification only:
+- `npm run build` passed.
+- `npx vitest run packages/runtime-core/src/registry/__tests__/m20-pending-relay.test.ts` passed: 9 tests.
+- `npm test` passed: contract hash v7 verified, client contract alignment verified, 56 files / 315 tests.
+
+**Disposition.** Ready for the next joint browser retest. This is not a final validation claim because Codex authored
+the implementation and the PO explicitly deferred browser testing to the next step.
+
+### LB-86 · 2026-07-13 — [tester] BL-031 real-provider validation: Continue/Stop conversation control works; post-end agent lifecycle bug found
+
+**Run shape.** PO drove the browser UI; Codex acted as Tester instrumentation. Runtime was
+`/Users/fausto/Software/AgentTalk-BL-031-validation` on `fix/BL-031-inline-relay-approval`, with real
+`agentalk-mcp-client` sessions and real Gemini/Antigravity provider execution. No fake provider bridge, mocked model,
+or headless browser automation was used. Backend was `http://localhost:3000`, frontend `http://localhost:5173`, MCP
+`ws://localhost:65050/`.
+
+**Continue-path evidence.** Conversation `conversation-1783897224281` ran with `bl031-source` and `bl031-target` to the
+reply limit. After `approve_each` was enabled, each proposed turn was held as a pending relay and delivered only after
+the PO clicked **Continue** (`approve_pending_relay`). The transcript ended completed with 10 real provider messages
+and the final system row `All agents reached reply limit`. Note: the very first source turn in this run delivered
+immediately because approval mode was enabled after Start Chat, not before; subsequent turns exercised the gated path.
+
+**Stop-path evidence.** A second real-provider run used `bl031-stop-source` and `bl031-stop-target`. The PO clicked
+**Stop** on pending relay `pending-relay-1783897638048-12`. Backend state changed the relay to `denied`, marked
+`conversation-1783897607389` completed, and appended the system row
+`Conversation stopped by operator before delivering bl031-stop-source's proposed turn to bl031-stop-target.` The denied
+proposed turn was not appended as a delivered transcript message.
+
+**Finding outside BL-031's UI target.** After both the reply-limit completion and the operator-stop completion, the
+MCP agents remained in `busy` status while the real `llm-agent` client processes continued waiting for turns. This is
+tracked separately as **BL-033** because it is a conversation/attach lifecycle cleanup issue, not a failure of the
+BL-031 Continue/Stop control behavior.
+
+**Disposition.** BL-031's human-facing conversation-control behavior is validated by a real-provider, human-driven run:
+actual proposed turns are visible and actionable, Continue gates delivery, Stop denies the pending turn and closes the
+conversation. This is tester evidence, not an independent merge verdict, because Codex also authored the latest
+implementation rework.

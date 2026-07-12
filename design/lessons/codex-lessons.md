@@ -87,3 +87,11 @@ here.**
   terminal-burden reduction remains future program evidence.
 - At close, stale role primers are themselves process debt; refreshing them to "no active task, verify from source"
   is safer than leaving the next session pointed at already-closed work.
+
+### 2026-07-13 — BL-031 tester + temporary implementer discipline
+- Temporary implementer: implement the user's product model, not the backend mechanism. BL-031 only became coherent
+  when the UI was framed as supervised conversation turns with Continue/Stop, not as inline relay plumbing.
+- Tester: never reduce production fidelity without explicit PO consent. A fake provider bridge is useful engineering
+  instrumentation, but it is invalid for a production-equivalent validation run unless the PO approves that deviation.
+- Tester: cover both operator decisions before calling a supervised flow validated. Continue and Stop needed separate
+  real-provider evidence, while the post-end busy-agent lifecycle bug belonged in a follow-up backlog item.

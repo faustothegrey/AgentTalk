@@ -1091,13 +1091,30 @@ tags: [attach-mode, conversation, healthcheck, validation-blocker, tester-findin
   Plan: `design/bl-032-attach-pair-chat-healthcheck-plan.md` (Gate 1 passed after conditional fold).
 
 <!-- @item
+id: BL-033
+status: todo
+date: 2026-07-13
+epic: null
+tags: [attach-mode, conversation-lifecycle, mcp]
+-->
+- [todo · surfaced during the BL-031 real-provider validation run (LB-86)] — **MCP pair-chat agents remain busy after
+  conversation_end**. After both a natural reply-limit completion and an operator Stop completion, the conversations
+  were correctly marked `completed`, but the involved MCP agents stayed in `busy` status and the real
+  `agentalk-mcp-client` processes continued waiting for turns. Suspected implementation shape: `conversation_end` is
+  sent through the semantic `queueTurn` path for the in-process conversation driver, while the external MCP client is
+  blocked on the exec-turn path; additionally, the in-process driver stop path does not restore the agent from `busy`
+  to a terminal/ready state after handling the end event. Scope this separately from BL-031: preserve the verified
+  Continue/Stop relay gating behavior, and make pair-chat completion cleanly settle attached agents/clients without
+  leaving stale busy state.
+
+<!-- @item
 id: BL-031
 status: todo
 date: 2026-07-12
 epic: null
-tags: [ui, relay-approval, ux]
+tags: [ui, relay-approval, ux, validation-failed]
 -->
-- [todo · **UNBLOCKED 2026-07-12 — BL-032 merged (commit 7dc3f19); ready to resume the human-driven Tester validation**; surfaced 2026-07-12 by the PO during the first un-scripted UI-driven relay run (LB-77); reframed same
+- [todo · **VALIDATION FAILED 2026-07-13 (LB-79)** after BL-032 unblocked pair-chat startup; surfaced 2026-07-12 by the PO during the first un-scripted UI-driven relay run (LB-77); reframed same
   day from a sidebar-card patch into the redesign below — the patch is **superseded**, do not do both] —
   **Inline relay approval in the conversation window** — move agent→agent relay approval *out* of the cramped
   sidebar card and *into* the main conversation thread. **Root cause of the observed confusion:** today the main
@@ -1111,6 +1128,30 @@ tags: [ui, relay-approval, ux]
   one), and decide whether the sidebar `RelayApprovalPanel` is retired or kept as a global/fallback view (primary
   surface becomes the conversation window). Data is all present (main view has the conversation; `pendingRelays`
   carries from/to/payload) — a moderate frontend change, **no backend change**. Supersedes the earlier
-  "make the sidebar cards visually distinct" patch. Source: LB-77 + PO design note.
+  "make the sidebar cards visually distinct" patch. **Tester validation result:** the core backend path works after
+  BL-032, but the branch's UI is not acceptable yet: the sidebar approval panel remains as a duplicate primary
+  approval surface, the inline pending card is visually heavy rather than lightly highlighted, and the layout still
+  leaves the operator deciding between two approval surfaces. **Implementer rework 2026-07-13 (LB-80):** active
+  conversation relays are no longer duplicated in the sidebar approval controls, and the inline pending card was
+  toned down to a message-level highlight. **Retest failure 2026-07-13 (LB-81):** after browser refresh, the web UI
+  receives the pending relay but does not restore the active conversation context, so the same approval falls back
+  into the sidebar instead of rendering in the main conversation panel. **Additional retest finding 2026-07-13
+  (LB-82):** even when the panel is visible, it is not an intelligible conversation audit surface: the topic is not
+  prominent, coordinator↔agent events are hidden or collapsed away, and the operator cannot inspect the actual
+  message content/flow needed to understand why a relay is awaiting approval. **Implementer rework 2026-07-13
+  (LB-83):** the active conversation is restored from history/pending-relay state after refresh, the main header
+  now foregrounds the topic/participants, the transcript timeline includes coordinator system rows, and pending
+  relays render inline as timeline items. Awaiting joint visual retest; no headless test was run per PO instruction.
+  **Retest failure 2026-07-13 (LB-84):** the panel still exposes relay mechanics rather than the intended
+  conversation-control model. The operator expects a turn-by-turn agent conversation: show one proposed agent message,
+  offer **Continue / Stop** on that message, deliver it only on Continue, then show the next agent's reply proposal,
+  repeating until the conversation ends with agreement or non-agreement. **Implementer rework 2026-07-13 (LB-85):**
+  pending conversation relays now render as the current proposed turn with **Continue / Stop** actions, Stop denies the
+  pending turn and closes the active conversation, delivered turns remain as history, and the header shows waiting /
+  in-progress / stopped / ended state. **Real-provider validation 2026-07-13 (LB-86):** with real
+  `agentalk-mcp-client` + Gemini/Antigravity execution and PO-driven browser actions, Continue held and delivered
+  proposed turns correctly, and Stop denied a pending turn and completed the conversation without delivering that
+  turn. Residual lifecycle cleanup issue split to BL-033. Source: LB-77 + PO design note + LB-79 + LB-80 + LB-81 +
+  LB-82 + LB-83 + LB-84 + LB-85 + LB-86.
 
 *(add new items above this line)*
