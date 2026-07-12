@@ -134,6 +134,18 @@ orchestration migration, so it can be reviewed, refined, and reused deliberately
     independent pass after a self-reviewed closure found a real pre-merge regression).
 - **Implementer agent** — builds the spec'd change on a task branch (the ⛔ Implementer Rules of Engagement); records
   *claims*, never self-closes.
+- **Tester agent** — **the testing *helper* to a *human test driver*** (seat created by the PO, 2026-07-12; default
+  holder + eligibility: `AGENT.md → 📌 DEFAULT ROLE ASSIGNMENTS`). Does **validation** (does the running product
+  actually work, and is it good, in real use?) — distinct from the reviewer seats' **verification** (was it built to
+  its DoD?). The **human drives** the product hands-on (clicks, experiences it, brings the "this feels off" UX
+  judgment); the **agent Tester instruments and guides** — reads the logs, checks backend/process status, dictates
+  the step-by-step, and **confirms each step's actual outcome against ground truth** (verify-don't-assert). It does
+  **not** operate the UI itself. **Scope fence (critical):** it produces **findings, not merge verdicts** — it never
+  blocks or authorises a merge (that stays gate 3 + PO); its outputs are backlog items, logbook entries, and
+  reproduction notes. It **owns the organic-coordination adoption metric** (drives real batons through the UI *with
+  the human*, records the count). It is **orthogonal to the 3-gate build sequence** — it operates on the merged /
+  running product, typically post-merge or during adoption. Independence: **Tester ≠ that task's Implementer**.
+  Lessons are agent-keyed, tagged `as tester` (no role-keyed lessons file). Charter: `design/tester-seat-proposal.md`.
 
 **Planner and Reviewer are SEPARATE roles (split adopted 2026-06-29); the Reviewer itself split into three seats
 (PO decision, 2026-07-08).** The old fused `planner-reviewer` is retired, and so is the single all-gates Reviewer.

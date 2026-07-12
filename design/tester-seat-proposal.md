@@ -1,9 +1,12 @@
 # Proposal — a **Tester** seat (validation of the running product)
 
-> **Status: DRAFT — awaiting PO ratification.** This is a *proposal*, not a binding role definition. Role
-> creation/assignment is a PO act; nothing here is live until the PO folds it into the canonical places
-> (`design/collaboration-workflow.md §1` + `AGENT.md → 📌 DEFAULT ROLE ASSIGNMENTS`). Authored 2026-07-12 by
-> Claude (architect hat), at the PO's request, out of the 2026-07-12 first-organic-UI-relay session (LB-77 / BL-031).
+> **Status: LIVE — PO-ratified and promoted to canonical files 2026-07-12.** All four design questions (§8) decided
+> by the PO; default holder **Codex**; charter folded into `design/collaboration-workflow.md §1`, the seat row added
+> to `AGENT.md → 📌 DEFAULT ROLE ASSIGNMENTS` (+ history line), `tester-primer.md` created and added to the FIRST
+> ENTRY POINT role→primer map. **First assignment (PO):** Codex instruments a human-driven BL-031 validation / M20
+> adoption run. This doc is now the seat's **charter/rationale of record**; the binding definition lives in the
+> canonical files. Authored 2026-07-12 by Claude (architect hat), out of the first-organic-UI-relay session (LB-77 /
+> BL-031).
 
 ## 1. Why — validation, not verification (the gap the gates can't see)
 
@@ -21,13 +24,18 @@ home, and its first outputs already exist (LB-77, BL-031 came from exactly this 
 
 ## 2. The seat — charter
 
-**The Tester** exercises the running product end-to-end as an operator would, explores beyond the spec, and files what
-it finds. Concretely it:
-- stands up / attaches / drives the real system (UI + real CLIs), including **driving the web UI directly** (via the
-  Chrome extension) when an agent holds the seat;
-- runs the M20 adoption path — real batons through the UI — and **generates the organic-coordination measurements**
-  the program is waiting on;
+**The Tester** is an **agent** that acts as the **testing helper / instrumentation** for a human **test driver**. It
+does **not** operate the UI itself — the human clicks and experiences the product; the Tester instruments,
+choreographs, and verifies. Concretely it (exactly the 2026-07-12 session's division of labour):
+- **reads the logs, checks backend / process status, and dictates step-by-step instructions** to the human driver;
+- **confirms each step's actual outcome against ground truth** (logs, process state) — verify-don't-assert, not "it
+  should have worked";
+- runs the M20 adoption path *with the human driving* — and **owns the organic-coordination measurement** the program
+  is waiting on;
 - produces **findings**: backlog items (UX/behaviour), logbook entries (cross-cutting facts), reproduction notes.
+
+The **human is the test driver** — hands on the product, observing as a user, bringing the UX "this feels off"
+judgment the BL-031 catch came from. The Tester never substitutes for that human judgment; it **amplifies** it.
 
 **What it is NOT (scope fence — the critical one):** the Tester is **not a fourth merge gate.** It produces
 **findings, not verdicts**; it never blocks or authorises a merge (that stays with the Task-end Reviewer + PO). It
@@ -56,10 +64,10 @@ standing validation function, not a step in the build pipeline.
 
 ## 5. Who holds it
 
-Either the **human** (the PO drove the UI and spotted BL-031 this session) or an **agent**. If an **agent** holds it,
-the agent drives the UI itself via the Chrome extension (as Claude can) and attaches/observes the CLIs — most of the
-2026-07-12 mechanics were already agent-run. Default holder + eligibility are a **PO assignment** (to be recorded in
-the 📌 DEFAULT ROLE ASSIGNMENTS table if ratified).
+**Agent-held** — default **Codex** (PO-assigned 2026-07-12, chosen to avoid overloading Claude, which already holds
+plan-reviewer + task-end + architect + SM). Eligible: any agent. The **human is the test driver**, *not* the
+seat-holder — the human operates the product hands-on; the agent Tester instruments and guides. Independence:
+**Tester ≠ that task's Implementer.**
 
 ## 6. Artifacts — "its own context and lessons" (with one convention note)
 
@@ -83,11 +91,14 @@ Left for the PO to make/authorise, so this proposal changes nothing binding:
 3. `AGENT.md` FIRST ENTRY POINT role→primer map — add `tester-primer.md` to the list of role-primers.
 4. Create `design/session-primers/tester-primer.md` (`role: tester`, `key: none` until a real hand-off is due).
 
-## 8. Open questions for the PO
+## 8. Decisions (PO-ratified 2026-07-12)
 
-- **Agent, human, or either** as default holder?
-- **Lessons:** agent-keyed with the `as tester` hat (recommended, matches convention) — or a role-keyed test log?
-- **Naming:** "Tester" vs "Validator" vs "QA" — "Tester" reads plainest; "Validator" is the most technically accurate
-  (validation ≠ verification). PO's call.
-- Does the seat also **own the adoption metric** explicitly (drive real batons + record the organic-coordination
-  count), or is that a separate program duty it merely supports?
+| # | Question | **Decision** |
+|---|----------|--------------|
+| 1 | Holder & model | **Agent-held helper; the human is the test driver** (clarified by PO 2026-07-12). The *role* is an agent seat that instruments/guides (logs, backend status, step-by-step, verification) — it does **not** operate the UI. The human clicks and brings UX judgment. **Default holder = Codex** (anti-concentration; Claude already holds four seats). Eligible: any agent. |
+| 2 | Lessons keying | **Agent-keyed, tagged `as tester`** — follows the existing convention (one lessons file per agent, tag the hat). No role-keyed `tester-lessons.md`. Product findings still go to logbook/backlog. |
+| 3 | Name | **Tester** — plainest; the validation-vs-verification distinction lives in the charter, not the name. |
+| 4 | Adoption metric | **Owns it explicitly** — the seat that drives real batons through the UI owns the organic-coordination count; gives the program's central metric a clear home. |
+
+**Default holder set:** **Codex** (PO, 2026-07-12). **Remaining (optional):** a **first assignment** (e.g. Codex
+instruments a human-driven BL-031 validation / M20 adoption run) — can be given at promotion time or later.

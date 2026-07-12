@@ -23,7 +23,8 @@ At the very start of **every** session, before reading anything else or acting, 
    names roles only. The **architect has *no* cold-start primer** (it's a PO-assigned, epic-inception seat, not a
    primer-keyed handshake role), so it is absent from the role→primer map. The role→primer map is
    `design/session-primers/<role>-primer.md` — `planner-primer.md` · `plan-reviewer-primer.md` ·
-   `implementation-reviewer-primer.md` · `task-end-reviewer-primer.md` · `implementer-primer.md` (the old
+   `implementation-reviewer-primer.md` · `task-end-reviewer-primer.md` · `implementer-primer.md` ·
+   `tester-primer.md` (the old
    `reviewer-primer.md` is retired — a tombstone with `key: none` points here). **The `-primer.md` suffix is
    mandatory** — on a case-insensitive filesystem `claude.md`
    *is* `CLAUDE.md` and would be auto-slurped as instructions, bypassing this gate.
@@ -105,6 +106,7 @@ and discipline still hold separately**.
 | Task-end Reviewer | Claude (PO-assigned 2026-07-08) | Claude · Codex | ≠ Implementer · ≠ that task's Implementation Reviewer |
 | Implementer | Gemini (agy) | Gemini | see the Standing Conditional Reassignment under Workflow Rules |
 | Architect | Claude | any agent | PO-assigned per epic; ≠ that epic's Planner |
+| Tester | Codex (PO-assigned 2026-07-12) | any agent | agent-held **helper** to a **human test driver** (instruments/guides — logs, backend status, step-by-step, verification; does NOT operate the UI); produces **findings, not merge verdicts**; owns the organic-coordination metric; ≠ that task's Implementer |
 
 **Shape of the current map (PO rationale, 2026-07-08):** Codex holds the *content* seats (authors the plan,
 verifies the implementation against it — not self-review: the plan is gate-1-approved by another agent);
@@ -133,6 +135,10 @@ one agent holds SM and both quality gates — accepted because merges stay PO-ga
   switched from agent tags to role tags `[PO]`/`[SM]` (see Origin Tag Protocol). Per-seat defaults assigned by
   the PO: Plan Reviewer → Claude, Implementation Reviewer → Codex, Task-end Reviewer → Claude; **SM reassigned
   Codex → Claude** the same day (so legacy `[Codex]` tags no longer read as `[SM]` from here on).
+- 2026-07-12 — **Tester** seat created (PO), default holder **Codex**. Agent helper to a human test driver; produces
+  findings not verdicts; owns the organic-coordination metric. Charter/rationale: `design/tester-seat-proposal.md`;
+  origin: the first organic UI-relay session (LB-77 / BL-031). First assignment: Codex instruments a human-driven
+  BL-031 validation / M20 adoption run.
 
 ### Vocabulary note — "spawn" is not used in this project
 
