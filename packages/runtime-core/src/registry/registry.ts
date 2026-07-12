@@ -637,6 +637,7 @@ export class Registry extends EventEmitter {
       type: 'healthcheck',
       token,
       prompt: 'Reply with a short greeting confirming you are responsive.',
+      timeoutMs: this.config.healthcheckTimeoutMs,
     });
 
     const ack = await result;

@@ -46,8 +46,11 @@ export class McpCompleter implements Completer {
     // IMP-M08-1: an explicit timeout is forwarded to the harness (the primary deadline), so the
     // completer's own timer backstops it at `timeoutMs + grace` — strictly after, never racing it.
     // The unforwarded default fires at exactly DEFAULT_EXEC_TIMEOUT_MS (no competing timer).
+    const backstopGraceMs = opts?.timeoutMs !== undefined
+      ? ((opts as CompleterOptions & { timeoutBackstopGraceMs?: number }).timeoutBackstopGraceMs ?? EXEC_TIMEOUT_BACKSTOP_GRACE_MS)
+      : 0;
     const guardMs = opts?.timeoutMs !== undefined
-      ? opts.timeoutMs + EXEC_TIMEOUT_BACKSTOP_GRACE_MS
+      ? opts.timeoutMs + backstopGraceMs
       : DEFAULT_EXEC_TIMEOUT_MS;
 
     return new Promise<CompleterResult>((resolve, reject) => {

@@ -1070,13 +1070,34 @@ tags: [self-hosting, role-skill, governance]
   `design/self-hosting-program-draft.md` §Candidate.
 
 <!-- @item
+id: BL-032
+status: doing
+date: 2026-07-12
+epic: null
+tags: [attach-mode, conversation, healthcheck, validation-blocker, tester-finding]
+-->
+- [doing · **Tester finding 2026-07-12 during BL-031 validation run (LB-78)** — blocks real UI validation of
+  BL-031 until fixed or bypassed by an explicitly approved test harness] — **Attach-mode pair chat can fail before
+  conversation creation because one attached client never receives/processes the startup healthcheck** — in the
+  human-driven BL-031 validation attempt, the UI sent `start_pair_chat` for `bl031-source` + `bl031-target`; the
+  backend sent healthchecks to both; `bl031-source` acknowledged every attempt; `bl031-target` stayed connected and
+  `ready` but never logged/processed the healthcheck turn, so `ConversationCoordinator.startConversation()` timed out
+  after 30s and no conversation was created. That means the inline pending-relay UI could not be exercised at all.
+  Evidence: LB-78; backend log lines `Sending EVT ... healthcheck` for both agents followed by
+  `Agent bl031-target did not respond to healthcheck within 30000ms`; source `agentalk-mcp-client` logged
+  `Received turn`; target companion did not. Suspected shape: attached provider-labelled agents consume
+  `awaitExecTurn()` while conversation startup uses `sendProtocol(... EVT ...)` / `queueTurn()`, but this is a
+  lead, not a verdict. Fix should preserve existing M20 relay behavior and must not silently weaken healthchecks.
+  Plan: `design/bl-032-attach-pair-chat-healthcheck-plan.md` (Gate 1 passed after conditional fold).
+
+<!-- @item
 id: BL-031
 status: todo
 date: 2026-07-12
 epic: null
-tags: [ui, relay-approval, ux]
+tags: [ui, relay-approval, ux, blocked, blocked-by-BL-032]
 -->
-- [todo · surfaced 2026-07-12 by the PO during the first un-scripted UI-driven relay run (LB-77); reframed same
+- [todo · **BLOCKED by BL-032 as of 2026-07-12 validation (LB-78)**; surfaced 2026-07-12 by the PO during the first un-scripted UI-driven relay run (LB-77); reframed same
   day from a sidebar-card patch into the redesign below — the patch is **superseded**, do not do both] —
   **Inline relay approval in the conversation window** — move agent→agent relay approval *out* of the cramped
   sidebar card and *into* the main conversation thread. **Root cause of the observed confusion:** today the main

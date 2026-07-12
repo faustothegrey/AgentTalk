@@ -2240,3 +2240,27 @@ purely visual. Exactly the class of finding this first-run exercise existed to s
 **Source.** PO-driven run 2026-07-12 (~06:49–06:53), backend log (scratchpad), screenshot. Related: LB-76 (the two
 flows), LB-75 (M20 closed, the boundary), BL-031 (the UX nit), `design/attach-chat-runbook.md`. Product finding — no
 code change; durable cross-cutting record.
+
+### LB-78 · 2026-07-12 — [tester] BL-031 human-driven validation run BLOCKED before UI exercise: pair-chat startup healthcheck never reaches one attached client
+
+**Run shape.** Codex wore the **Tester** hat with the PO as human test driver, validating branch
+`fix/BL-031-inline-relay-approval` (`099772c`) in a separate worktree
+`/Users/fausto/Software/AgentTalk-BL-031-validation`. Build bar passed: `npm run build` completed cleanly
+(`tsc -b` + web `tsc && vite build`, 1531 modules transformed). Runtime setup used the canonical companion repo
+`/Users/fausto/Software/agentalk-mcp-client`; contract hashes matched
+`ffa94e93e3182d44924ed28381870c7bd814c908279942022d5925a4865a9446`; backend exposed MCP attach at
+`ws://localhost:52260/`; UI ran at `http://localhost:5173`.
+
+**Observed blocker.** The PO clicked **Start Chat** repeatedly for `bl031-source` + `bl031-target` with relay
+approval mode `approve_each`. Each click reached the backend (`WS message received: start_pair_chat`). The backend
+sent a startup healthcheck to both agents. `bl031-source` answered every time via `agentalk-mcp-client`
+(`healthcheck_ack`, e.g. "Hello, I'm responsive."). `bl031-target` stayed connected/`ready` at the MCP socket level
+but never logged `Received turn` and never acknowledged; after 30s the backend failed conversation creation with
+`Agent bl031-target did not respond to healthcheck within 30000ms`. Because no conversation was created, the BL-031
+inline pending-relay surface had no active conversation window and could not be validated.
+
+**Disposition.** BL-031 is **not validated** by this run; no merge verdict follows from it. The new blocker is filed
+as **BL-032**. Suspected lead, not a conclusion: attached provider-labelled agents consume exec turns
+(`awaitExecTurn()`), while conversation startup sends semantic EVT turns through `sendProtocol(... EVT ...)` /
+`queueTurn()`. Any fix needs its own plan/gate because this is shared attach/conversation routing, not a BL-031 UI
+patch. Runtime processes for the validation run were stopped after the block was identified.
