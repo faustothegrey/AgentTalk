@@ -21,20 +21,41 @@ import { AgentCreation } from './components/agents/AgentCreation';
 import { ChatSidebar } from './components/chat/ChatSidebar';
 import { TeamSidebar } from './components/team/TeamSidebar';
 
-import { Send, Terminal as TerminalIcon } from 'lucide-react';
+import { Send, Terminal as TerminalIcon, Check, X } from 'lucide-react';
 import { getAgentColor } from './agentColors';
 
-function ConversationTranscript({ conversation }: { conversation: Conversation }) {
+function relayPayloadText(payload: unknown): string {
+  if (typeof payload === 'string') return payload;
+  try {
+    return JSON.stringify(payload);
+  } catch {
+    return String(payload);
+  }
+}
+
+function ConversationTranscript({ conversation, pendingRelays, onApprove, onDeny, connected }: {
+  conversation: Conversation;
+  pendingRelays: PendingRelay[];
+  onApprove: (relayId: string) => void;
+  onDeny: (relayId: string) => void;
+  connected: boolean;
+}) {
   const bottomRef = useRef<HTMLDivElement>(null);
   const messages = conversation.transcript.filter((entry) => entry.kind === 'message');
+  // A relay belongs to this conversation when both endpoints are its participants.
+  const conversationPending = pendingRelays.filter(
+    (relay) => relay.status === 'pending'
+      && conversation.agentIds.includes(relay.fromAgentId)
+      && conversation.agentIds.includes(relay.toAgentId),
+  );
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages.length]);
+  }, [messages.length, conversationPending.length]);
 
   return (
     <div style={{ flex: 1, overflowY: 'auto', padding: '20px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
-      {messages.length === 0 ? (
+      {messages.length === 0 && conversationPending.length === 0 ? (
         <div style={{ margin: 'auto', color: theme.textDim, textAlign: 'center', fontSize: '14px' }}>Waiting for agent replies...</div>
       ) : (
         messages.map((entry, index) => {
@@ -50,6 +71,40 @@ function ConversationTranscript({ conversation }: { conversation: Conversation }
           );
         })
       )}
+
+      {/* Pending relays: the held next message(s), inline in the thread, highlighted, with the decision below. */}
+      {conversationPending.map((relay) => {
+        const color = getAgentColor(relay.fromAgentId);
+        return (
+          <div key={relay.id} style={{ alignSelf: 'stretch', backgroundColor: color.tint, borderLeft: `3px solid ${color.accent}`, border: `2px solid ${color.accent}`, borderRadius: '8px', padding: '12px 14px', boxShadow: `0 0 0 3px ${color.glow}` }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', fontSize: '11px', textTransform: 'uppercase' }}>
+              <span style={{ color: color.accent, fontWeight: 'bold' }}>{relay.fromAgentId} {'→'} {relay.toAgentId}</span>
+              <span style={{ color: '#e5c07b', fontWeight: 'bold' }}>⏳ pending your approval</span>
+            </div>
+            <div style={{ color: color.text, fontSize: '14px', lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>{relayPayloadText(relay.payload)}</div>
+            <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
+              <button
+                type="button"
+                title="Approve relay"
+                disabled={!connected}
+                onClick={() => onApprove(relay.id)}
+                style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', backgroundColor: theme.bg, color: theme.success, border: `1px solid ${theme.borderInput}`, borderRadius: '6px', padding: '8px', cursor: connected ? 'pointer' : 'not-allowed', fontSize: '13px', fontWeight: 700 }}
+              >
+                <Check size={15} /> Approve
+              </button>
+              <button
+                type="button"
+                title="Deny relay"
+                disabled={!connected}
+                onClick={() => onDeny(relay.id)}
+                style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', backgroundColor: theme.bg, color: theme.error, border: `1px solid ${theme.borderInput}`, borderRadius: '6px', padding: '8px', cursor: connected ? 'pointer' : 'not-allowed', fontSize: '13px', fontWeight: 700 }}
+              >
+                <X size={15} /> Deny
+              </button>
+            </div>
+          </div>
+        );
+      })}
       <div ref={bottomRef} />
     </div>
   );
@@ -377,7 +432,7 @@ function App() {
                 <div>Conversation: <strong>{activeConversationId}</strong></div>
                 <button onClick={() => { setActiveConversationId(null); setActiveConversation(null); }} style={{ background: 'none', border: 'none', color: theme.textMuted, cursor: 'pointer', fontSize: '11px' }}>Close View</button>
               </div>
-              {activeConversation && <ConversationTranscript conversation={activeConversation} />}
+              {activeConversation && <ConversationTranscript conversation={activeConversation} pendingRelays={pendingRelays} onApprove={handleApproveRelay} onDeny={handleDenyRelay} connected={isConnected} />}
             </div>
           ) : selectedAgentId ? (
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
