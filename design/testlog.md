@@ -187,3 +187,52 @@ for project decisions or reviewer ledgers for merge verification.
     `cmux move-surface --surface <ui-surface> --pane <pane> --focus true`, then verify with `cmux tree --all`.
   - After temporary browser instrumentation such as `addinitscript`, replace or reset the browser surface before the
     next validation run.
+
+### TL-004 · 2026-07-13 · Claude autonomous Tester rehearsal (first Claude-in-Chrome run)
+
+- objective: Re-run the existing testlog validations (Continue/reply-limit + Stop, i.e. BL-031 supervised control +
+  BL-033 lifecycle) autonomously as **Claude**, to validate Claude's Tester instrumentation via the Claude-in-Chrome
+  toolkit. Nothing new — BL-031/033 are closed; no new project evidence claimed.
+- role/driver: Claude as Tester, autonomous, explicitly requested by the PO ("testing your capability of testing").
+- worktree/commit: `/Users/fausto/Software/AgentTalk`, `master` at `1fbac5e` (the merged BL-031 supervised-control +
+  BL-033 lifecycle code).
+- strategy: **Claude-in-Chrome** (`mcp__claude-in-chrome__*`) for UI observation, real clicks, and screenshots; two
+  real `agentalk-mcp-client` **codex** clients per run; backend log + `/api/agents` + `/api/conversations` as ground
+  truth. Agents created via API and pair chat started via the browser WS `start_pair_chat` (documented topic-control
+  technique, TL-002 precedent) so the browser-driving focused on the Continue/Stop supervised flow.
+- evidence sources: Claude-in-Chrome screenshots at state transitions; backend log (healthcheck acks, pending-relay
+  `pending`/`approved_delivered`/`denied`, `conversation_end`, `-> terminated`); REST `/api/*` for final state.
+- real/fake path: **Real codex companion clients (×2 per run); no fake provider or mocked model.**
+- environment: frontend `http://localhost:5173`, backend `http://localhost:3000`, MCP `ws://localhost:55434/`,
+  Claude-in-Chrome tab `869995326`.
+- steps:
+  - Verified the Chrome extension was connected (`tabs_context_mcp`); stood up backend + UI; created agents via API.
+  - Toggled **Conversation control → Approve each** with a real click; **verified via backend**
+    (`set_relay_approval_mode approve_each`) — LB-89 real-click-updates-state discipline held.
+  - Continue path (`conversation-1783924052564`, `tl004-a`/`tl004-b`, maxReplies 2): started via WS, then clicked
+    **Continue** on each of the 4 proposed turns in the UI, confirming each `pending -> approved_delivered` in backend.
+  - Stop path (`conversation-1783924396706`, `tl004-stop-a`/`tl004-stop-b`): started via WS, clicked **Stop** on the
+    first proposed turn.
+- artifacts: 3 screenshots saved to disk at transitions (proposed turn, growing timeline, stop-proposed) — default
+  path, not yet per-test (same gap as TL-001); backend log in the session scratchpad.
+- result:
+  - **Continue** `conversation-1783924052564`: completed, replies **2/2**, 4 turns delivered via UI Continue, real
+    codex agents converged on "coverage (= behavior coverage) + one golden end-to-end test"; `conversation_end` sent
+    to both, both agents `terminated` (`/api/agents`), no stale `busy` — **BL-033 lifecycle confirmed**.
+  - **Stop** `conversation-1783924396706`: completed, replies **0/0**; the proposed turn was **denied and NOT
+    delivered** (`approved_delivered` count = 0), `conversation_end` reason *"stopped by operator before delivering …
+    proposed turn"* sent to both, both agents `terminated` — **BL-031 Stop semantics + BL-033 lifecycle confirmed**.
+- residuals:
+  - When the first (reply-limit) conversation ended, the *new* Stop-path proposed turn surfaced in the **sidebar**
+    Conversation-control panel while the main window stayed on the ended conversation (did not auto-switch). This is
+    the known BL-031 sidebar/history residual (TL-002), reproduced with the Claude toolkit — still BL-031/UI cleanup.
+  - Agent creation was via API for determinism, not the UI form; a future run should exercise the UI creation form.
+  - Screenshot artifacts still land at a default path (not `design/test-artifacts/TL-004/`) — BL-035 covers this.
+- replay notes:
+  - **Claude's tester surface is Claude-in-Chrome, not cmux/browser-use.** Load the deferred tools first
+    (`ToolSearch select:...tabs_context_mcp,navigate,computer,read_page,...`); create a new tab; check
+    `tabs_context_mcp` before acting; the extension can drop on Chrome auto-update.
+  - `ws://localhost:3000/ws` `start_pair_chat` is the reliable topic-controlled start when native `<select>`
+    automation is unreliable (TL-002 precedent held for Claude too).
+  - The inline Continue/Stop card auto-scrolls to the viewport bottom; the button y shifts as the timeline grows —
+    screenshot before each click. Real clicks were confirmed against the resulting backend event every time (LB-89).

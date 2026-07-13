@@ -307,3 +307,23 @@ here.**
   the split-out PO-sanctioned primer housekeeping, the backlog closure — so each is independently revertable and the
   BL-032 commit contains *exactly* its scope. Bundling would have laundered out-of-scope edits onto the mainline
   under a fix label; dropping would have destroyed sanctioned work. Split, don't bundle or drop.
+
+### 2026-07-13 — as Tester (first real run, TL-004): the backend log is the truth; the pixels are only intent
+
+- **The discipline transferred cleanly to my toolkit.** First time holding the Tester hat for real: declare-strategy-
+  first, real-not-fake (two real codex clients, no bridge), and **cross-check every UI transition against the backend
+  log + `/api/*`** — all toolkit-agnostic. Only the browser surface differed (Claude-in-Chrome, not Codex's
+  cmux/browser-use). Both paths validated end-to-end: Continue reply-limit (2/2 → `conversation_end` → terminated) and
+  Stop (denied, `approved_delivered`=0, not delivered → terminated).
+- **A screenshot shows *intent*; the backend event shows *truth*.** The UI rendered proposed/delivered/WAITING
+  cleanly, but the authoritative confirmation was always the log: `pending → approved_delivered` per Continue,
+  `denied` + zero delivery per Stop, `MCP connection closed after conversation_end → terminated` per agent. LB-89's
+  "real click, then verify the resulting backend event" held on the first click (approve_each toggle → backend
+  `set_relay_approval_mode`). Never sign a UI observation without its backend echo.
+- **What I sidestepped, and owe next time.** I used WS `start_pair_chat` + API agent-creation to dodge native
+  `<select>` flakiness (documented, TL-002 precedent) — legitimate, but I have **not** yet proven I can drive the full
+  UI creation/start form; and I didn't preserve per-test screenshot artifacts (BL-035). Next run: attempt the UI form
+  path and save artifacts under `design/test-artifacts/`.
+- **A real finding fell out for free** even on a "nothing new" rehearsal: when the reply-limit conversation ended, the
+  next proposed turn surfaced in the sidebar while the main pane stayed on the ended conversation — the known BL-031
+  residual, reproduced with my toolkit. Validation surfaces reality; that's the point of the seat.
