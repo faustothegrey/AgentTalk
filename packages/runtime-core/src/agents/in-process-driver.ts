@@ -96,6 +96,10 @@ export class InProcessAgentDriver {
     
     if (evt.type === 'conversation_end') {
       this.runtime.endConversation();
+      if (this.agent.status === 'busy') {
+        this.agent.setStatus('ready');
+      }
+      this.agent.currentTurnId = undefined;
       this.stop();
       return;
     }

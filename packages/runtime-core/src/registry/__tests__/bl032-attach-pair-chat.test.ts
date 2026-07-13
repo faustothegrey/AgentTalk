@@ -145,4 +145,52 @@ describe('BL-032 attach pair-chat healthcheck delivery', () => {
       text: 'Relay reply processed',
     });
   });
+
+  it('delivers conversation_end to attached provider clients through the exec-turn bridge', async () => {
+    const source = await registry.createAgent('end-source', { provider: 'mcp', providerName: 'codex' });
+    const target = await registry.createAgent('end-target', { provider: 'mcp', providerName: 'codex' });
+    const conversation = {
+      id: 'conversation-bl033-end',
+      agentIds: [source.id, target.id],
+      topic: 'BL-033 end routing',
+      maxRepliesPerAgent: 1,
+      replyCounts: { [source.id]: 0, [target.id]: 0 },
+      status: 'active' as const,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      transcript: [],
+    };
+
+    (registry as any).conversationCoordinator.markConversationCompleted(conversation, 'done');
+
+    await expect(pullExecTurnWithin(source.id)).resolves.toMatchObject({
+      type: 'conversation_end',
+      conversationId: conversation.id,
+      reason: 'done',
+    });
+    await expect(pullExecTurnWithin(target.id)).resolves.toMatchObject({
+      type: 'conversation_end',
+      conversationId: conversation.id,
+      reason: 'done',
+    });
+  });
+
+  it('does not requeue conversation_end as interrupted work when the attached client exits', async () => {
+    const agent = await registry.createAgent('end-disconnect', { provider: 'mcp', providerName: 'codex' });
+    agent.setStatus('starting');
+    agent.setStatus('ready');
+    agent.setStatus('busy');
+    agent.queueExecTurn({
+      type: 'conversation_end',
+      conversationId: 'conversation-bl033-disconnect',
+      reason: 'done',
+    });
+
+    await expect(pullExecTurnWithin(agent.id)).resolves.toMatchObject({ type: 'conversation_end' });
+
+    registry.handleMcpDisconnect(agent.id, 1006, 'client exited after conversation_end');
+
+    expect(agent.status).toBe('terminated');
+    await expect(pullExecTurnWithin(agent.id, 25)).rejects.toThrow('Timed out waiting for exec turn');
+  });
 });

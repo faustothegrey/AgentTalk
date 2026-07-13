@@ -85,6 +85,37 @@ describe('InProcessAgentDriver', () => {
 
     driver.stop();
   });
+
+  it('settles back to ready when conversation_end stops the conversation loop', async () => {
+    const driver = new InProcessAgentDriver(agent, registry, {
+      completer: {
+        maintainsSession: true,
+        complete: vi.fn().mockResolvedValue({ text: '' }),
+      } as unknown as Completer,
+    });
+    driver.start();
+
+    agent.queueTurn({
+      type: 'conversation_start',
+      peerIds: ['agent-2'],
+      topic: 'test',
+      initiator: false,
+    });
+
+    await new Promise(r => setTimeout(r, 20));
+    expect(agent.status).toBe('ready');
+
+    agent.queueTurn({
+      type: 'conversation_end',
+      conversationId: 'conversation-bl033-driver',
+      reason: 'done',
+    });
+
+    await new Promise(r => setTimeout(r, 20));
+    expect(agent.status).toBe('ready');
+    expect(agent.currentTurnId).toBeUndefined();
+  });
+
   it('handles fact_collection_begin', async () => {
     mockFetch.mockResolvedValue({
       ok: true,

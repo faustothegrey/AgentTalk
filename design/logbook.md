@@ -2482,3 +2482,59 @@ BL-031 Continue/Stop control behavior.
 actual proposed turns are visible and actionable, Continue gates delivery, Stop denies the pending turn and closes the
 conversation. This is tester evidence, not an independent merge verdict, because Codex also authored the latest
 implementation rework.
+
+### LB-87 · 2026-07-13 — [implementer] BL-033 attach conversation_end lifecycle fix
+
+**Scope.** Codex was temporarily assigned the **Implementer** role by the PO for BL-033. The implementation stayed in
+runtime lifecycle code and focused regression tests; it did not change BL-031's Continue/Stop UI behavior.
+
+**Root cause.** Pair-chat completion already emitted `conversation_end` through the semantic protocol path used by
+the in-process conversation driver. Real attached provider clients, however, block on `await_turn`, which drains the
+exec-turn queue. That left `agentalk-mcp-client` waiting after the conversation was marked completed. Separately, the
+in-process driver stopped itself while the agent was still `busy`, so API-backed conversation drivers could also leave
+stale busy status after handling `conversation_end`.
+
+**Change.**
+- `packages/runtime-core/src/registry/registry.ts`: `sendProtocol` now keeps the existing semantic delivery and also
+  bridges only `conversation_end` to the exec-turn queue for attached/provider-style agents.
+- `packages/runtime-core/src/registry/registry.ts`: an attached client disconnecting while its active exec turn is
+  `conversation_end` is treated as a clean terminal lifecycle event, not as interrupted work to requeue.
+- `packages/runtime-core/src/agents/in-process-driver.ts`: the in-process driver clears the active turn and returns a
+  busy agent to `ready` before stopping on `conversation_end`.
+- Regression coverage was added for the attached exec-turn bridge, the no-requeue disconnect case, and the
+  in-process busy-state cleanup.
+
+**Verification.**
+- `npx vitest run packages/runtime-core/src/registry/__tests__/bl032-attach-pair-chat.test.ts` passed: 4 tests.
+- `npx vitest run packages/runtime-core/src/agents/__tests__/in-process-driver.test.ts` passed: 10 tests.
+- `npm run build` passed.
+- `npm test` passed: contract hash v7 verified, client contract alignment verified, 56 files / 317 tests.
+- `npm run backlog:check` passed: 34 items, 0 warnings.
+
+**Disposition.** BL-033 implementation is ready for independent review and real-provider retest. This is not a closure
+verdict.
+
+### LB-88 · 2026-07-13 — [tester/PO-driven] BL-033 real-provider validation closes the stale busy lifecycle bug
+
+**Run shape.** The PO drove the browser UI; Codex provided implementation instrumentation. Runtime used the
+BL-031-validation worktree with the BL-033 lifecycle patch ported in, so the test combined the corrected
+Continue/Stop UI with the new attach lifecycle fix. Real `agentalk-mcp-client` sessions were used with real Codex and
+Claude provider CLIs. No fake provider bridge, mocked model, or headless browser automation was used.
+
+**Reply-limit path.** Conversation `conversation-1783915345597` ran `bl033-codex` and `bl033-target` to the reply
+limit. It completed with `replyCounts` 5/5 and the system row `All agents reached reply limit`. Both real clients
+received `conversation_end`, logged `Conversation ended: All agents reached reply limit`, and initiated graceful
+shutdown. Backend final state was `bl033-codex: terminated` and `bl033-target: terminated`.
+
+**Stop path.** Conversation `conversation-1783915815888` ran `codex-1` and `claude-1`. The PO clicked **Stop** on the
+first proposed Codex turn. The pending relay became `denied`, the proposed turn was not delivered (`replyCounts` 0/0),
+and the transcript ended with `Conversation stopped by operator before delivering codex-1's proposed turn to
+claude-1.` Both real clients received `conversation_end` with that reason and shut down gracefully. Backend final
+state was `codex-1: terminated` and `claude-1: terminated`.
+
+**Residual outside BL-033.** Starting a fresh conversation can still surface older conversation/control content in the
+sidebar. That is UI/history cleanup for BL-031, not a BL-033 lifecycle failure.
+
+**Disposition.** BL-033 is closed by PO-driven real-provider evidence and ready for implementation-reviewer
+validation. The originally observed failure, agents stuck `busy` with clients waiting after `conversation_end`, did
+not reproduce on either completion path.

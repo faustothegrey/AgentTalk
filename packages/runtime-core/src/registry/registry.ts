@@ -579,7 +579,18 @@ export class Registry extends EventEmitter {
       }
       
       agent.queueTurn(turnPayload);
+      if (evtPayload.type === 'conversation_end' && this.agentUsesExecTurns(agent)) {
+        agent.queueExecTurn(turnPayload);
+      }
     }
+  }
+
+  private agentUsesExecTurns(agent: Agent): boolean {
+    return agent.provider === 'mcp' || agent.provider === 'gemini' || agent.provider === 'claude' || agent.provider === 'codex';
+  }
+
+  private isConversationEndTurn(turn: Record<string, unknown> | undefined): boolean {
+    return turn?.type === 'conversation_end';
   }
 
   private normalizeOutboundPayload(
@@ -948,6 +959,15 @@ export class Registry extends EventEmitter {
         if (code === 1011) {
           console.warn(`[Registry] MCP connection closed with internal error for agent ${agentId} -> error. Reason: ${reason}`);
           try { this.setAgentStatus(agent, 'error'); } catch {}
+          return;
+        }
+
+        if (this.isConversationEndTurn(agent.activeExecTurn)) {
+          console.log(`[Registry] MCP connection closed after conversation_end for agent ${agentId} -> terminated`);
+          agent.activeTurn = undefined;
+          agent.activeExecTurn = undefined;
+          agent.currentTurnId = undefined;
+          try { this.setAgentStatus(agent, 'terminated'); } catch {}
           return;
         }
 

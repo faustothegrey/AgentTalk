@@ -1092,12 +1092,12 @@ tags: [attach-mode, conversation, healthcheck, validation-blocker, tester-findin
 
 <!-- @item
 id: BL-033
-status: todo
+status: done
 date: 2026-07-13
 epic: null
 tags: [attach-mode, conversation-lifecycle, mcp]
 -->
-- [todo · surfaced during the BL-031 real-provider validation run (LB-86)] — **MCP pair-chat agents remain busy after
+- [done · closed by PO-driven real-provider validation 2026-07-13 (LB-88); surfaced during the BL-031 real-provider validation run (LB-86)] — **MCP pair-chat agents remain busy after
   conversation_end**. After both a natural reply-limit completion and an operator Stop completion, the conversations
   were correctly marked `completed`, but the involved MCP agents stayed in `busy` status and the real
   `agentalk-mcp-client` processes continued waiting for turns. Suspected implementation shape: `conversation_end` is
@@ -1105,7 +1105,10 @@ tags: [attach-mode, conversation-lifecycle, mcp]
   blocked on the exec-turn path; additionally, the in-process driver stop path does not restore the agent from `busy`
   to a terminal/ready state after handling the end event. Scope this separately from BL-031: preserve the verified
   Continue/Stop relay gating behavior, and make pair-chat completion cleanly settle attached agents/clients without
-  leaving stale busy state.
+  leaving stale busy state. **Implementation pass 2026-07-13 (LB-87):** targeted runtime fix added; pending
+  independent reviewer validation. **Validation pass 2026-07-13 (LB-88):** real Codex and Claude companion clients
+  received `conversation_end` and shut down on both reply-limit and operator Stop completion; final agent states were
+  `terminated`, not stale `busy`.
 
 <!-- @item
 id: BL-031
