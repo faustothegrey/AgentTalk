@@ -510,6 +510,41 @@ describe('startServer', () => {
     });
   });
 
+  it('should forward consensusMode:arbiter through the team form (BL-037 wall 1)', async () => {
+    for (const id of ['planner-a', 'planner-b', 'worker-1']) {
+      const a = await registry.createAgent(id);
+      a.setStatus('starting');
+      a.setStatus('ready');
+    }
+    const arbiterRes = await fetch(`${baseUrl}/api/teams`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        members: [
+          { agentId: 'planner-a', role: 'planner' },
+          { agentId: 'planner-b', role: 'planner' },
+          { agentId: 'worker-1', role: 'worker' },
+        ],
+        consensusMode: 'arbiter',
+      }),
+    });
+    expect(arbiterRes.status).toBe(200);
+    await expect(arbiterRes.json()).resolves.toMatchObject({ consensusMode: 'arbiter' });
+  });
+
+  it('should default consensusMode to protocol when not specified', async () => {
+    const worker = await registry.createAgent('worker-1');
+    worker.setStatus('starting');
+    worker.setStatus('ready');
+    const res = await fetch(`${baseUrl}/api/teams`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ teamComposition: 'worker-only', teamWorkerAgent: 'worker-1' }),
+    });
+    expect(res.status).toBe(200);
+    await expect(res.json()).resolves.toMatchObject({ consensusMode: 'protocol' });
+  });
+
   it('should expose google drive oauth status', async () => {
     const response = await fetch(`${baseUrl}/api/integrations/google-drive/status`);
     expect(response.status).toBe(200);
