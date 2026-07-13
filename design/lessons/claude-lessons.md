@@ -354,3 +354,17 @@ here.**
   from `status: ready`; the very next conversation refuted it (driver stops at `conversation_end` → BL-040). I
   corrected it in the record immediately. The status lied; the second conversation told the truth. Verify-don't-assert
   applies to my own just-typed claims.
+
+### 2026-07-13 (evening) — goose-executor spike (as planner+implementer+reviewer, resource fallback, PO "do or die")
+- **Find the real seam before proposing the build.** I first framed goose as an "MCP client" and hand-waved "build a
+  tool loop." Reading `llm-agent.mjs` showed the attach path is a bespoke WS + SHA-256 wire-contract handshake goose
+  can't speak — the actual seam was **goose as a one-shot *executor*** behind the existing worker (3 tiny edits, all
+  reused transport). Twenty minutes reading the target code turned a vague spike into a bounded, low-risk change. The
+  PO's pushback ("a CLI does a lot around an LLM") was right and redirected me from *build* to *reuse*.
+- **Probe the output shape before writing the parser.** `goose --output-format json` prints an ASCII banner *before*
+  the JSON — a naive `JSON.parse(stdout)` would have silently returned `stdout` via the catch and looked "fine" on
+  trivial prompts. One cheap probe caught it; I stripped to the first `{`. Guessing the shape would have shipped a bug.
+- **Name the honest gap, don't dress it up.** The live run showed connect + wire-contract handshake + `await_turn`
+  blocking — but NO delivered turn (plain `mcp` agents skip the auto-healthcheck I assumed). Each half proven
+  separately, conjunction not shown. Labeling that precisely (not "live PASS") is the whole point; the delivered-turn
+  gate belongs to a stronger model anyway, since gpt-4o-mini tests the model not the plumbing.
