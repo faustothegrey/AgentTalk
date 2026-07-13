@@ -1230,6 +1230,7 @@ tags: [consensus, arbiter, api-agents, tester-finding, product-gap]
   `arbiter-coordinator.ts` (the `gpt-4o-mini` convergence Judge) is built but dead from every UI/API control.
   **(2) `POST /api/agents` ignores `providerName`** (`server.ts:593` reads only `{id, provider, model}`) → `api` agents
   default to `google` (`registry.ts:250`); can't create OpenRouter/Nous API agents via the product.
+  **→ PROMOTED to BL-039** (2026-07-13; the enabler for the OpenRouter-coordination decision).
   **(3) `google` endpoint 400s** on the consensus tool schema (*"Forced function calling (ANY mode) with response mime
   type application/json is unsupported"*) → API-driven planners can't run the protocol at all.
   **Decisions needed (PO/architect):** wire `consensusMode` to the product **or** retire the arbiter as dead code;
@@ -1263,5 +1264,24 @@ tags: [healthcheck, gemini, attach-mode, tester-finding, latency]
   hang. **Real fix must target the agy/gemini client executor** (why the first `exec_rpc` never returns) **or replace
   the healthcheck with a lightweight liveness ping** that doesn't depend on a full agy generation. The
   provider-timeout code is a fine building block but insufficient alone. Source: TL-006, TL-002 residual, LB-89.
+
+<!-- @item
+id: BL-039
+status: todo
+date: 2026-07-13
+epic: null
+tags: [api-agents, openrouter, product-gap, enabler]
+-->
+- [todo · promoted from BL-037 #2 (2026-07-13); the enabler for `decision-api-agents-for-coordination.md`] —
+  **`POST /api/agents` must accept `providerName` (unblock OpenRouter/non-google API agents)** — the create handler
+  reads only `{id, provider, model}` (`server.ts:593`) and **drops `providerName`**, so an `api`-provider agent
+  always defaults to `google` (`registry.ts:250`, `providerName || 'google'`). This is the **single real blocker** to
+  creating OpenRouter/Nous-backed API agents through the product — the foundation of the PO's 2026-07-13 decision to
+  run the **coordination layer on OpenRouter agents** (keeping MCP clients for the implementation layer). **Fix:**
+  accept + forward `providerName` through create → `activate` → `createAgent` so `ApiCompleter` gets the intended
+  `ApiProvider`. **Verified prerequisite met:** OpenRouter is schema-compatible — a faithful consensus request
+  (forced `tool_choice` + json `response_format` + tools) returned HTTP 200 with a valid `opinion` tool call on
+  `openai/gpt-4o-mini` (the Google 400 was google-specific). Small, targeted. Source:
+  `design/decision-api-agents-for-coordination.md`, TL-005, LB-91.
 
 *(add new items above this line)*
