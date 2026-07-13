@@ -183,5 +183,7 @@ for project decisions or reviewer ledgers for merge verification.
     both fail.
   - Prefer `click`/`type` for React controls in cmux browser. Use shortcut commands only for low-risk text inspection
     or after validating the resulting app event.
+  - `cmux tab-action --action select` did not work for returning focus to the UI surface. Use
+    `cmux move-surface --surface <ui-surface> --pane <pane> --focus true`, then verify with `cmux tree --all`.
   - After temporary browser instrumentation such as `addinitscript`, replace or reset the browser surface before the
     next validation run.

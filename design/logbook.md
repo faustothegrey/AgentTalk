@@ -2549,7 +2549,9 @@ not take space away from the UI.
 **Finding.**
 - cmux test layout should keep the product UI visible in the primary browser surface. Companion clients may be run as
   additional tabs/surfaces in the same pane, but the tester must return focus to the UI immediately and close every
-  extra surface during teardown.
+  extra surface during teardown. `cmux tab-action --action select` failed when used to return focus to the UI; the
+  working focus command is `cmux move-surface --surface <ui-surface> --pane <pane> --focus true`, followed by
+  `cmux tree --all` verification.
 - The observed cmux browser WebSocket error was misleading. Node probes and manual `new WebSocket(...)` probes inside
   cmux browser both reached backend/Vite `/ws` and received `relay_approval_state`. A temporary WebSocket lifecycle
   trace showed React dev StrictMode creating two app sockets: the first closed with `1006`, while the second opened

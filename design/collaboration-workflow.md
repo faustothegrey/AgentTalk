@@ -153,7 +153,9 @@ orchestration migration, so it can be reviewed, refined, and reused deliberately
   testlog; the video is **not** AI-analyzed by default, so it adds no token cost unless the PO asks for specific frame
   or clip analysis. When using **cmux** for autonomous UI validation, keep the product UI visible in the primary
   browser surface; launch companion clients as additional tabs/surfaces in the same pane when needed, return focus to
-  the UI immediately, and close every extra surface during teardown. Prefer real browser `click`/`type`
+  the UI immediately, and close every extra surface during teardown. In the current cmux CLI, `tab-action --action
+  select` is not a reliable way to return to the UI tab; use `cmux move-surface --surface <ui-surface> --pane <pane>
+  --focus true` and verify with `cmux tree --all`. Prefer real browser `click`/`type`
   interactions for React-controlled fields and toggles; direct shortcut commands such as `fill`/`check` must be
   followed by proof that the app state changed, not just the DOM value. A dev-console WebSocket error is not by
   itself proof that cmux WebSocket is broken: in React StrictMode a first app socket may close during remount while a

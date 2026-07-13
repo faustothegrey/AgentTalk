@@ -1,12 +1,12 @@
 ---
 role: tester
-key: 20260713-0116-2be1cd-tester
-written: 2026-07-13 by Codex at session close after BL-031 real-provider validation
+key: 20260713-0818-cmux-tester
+written: 2026-07-13 by Codex at session wrap-up after cmux autonomous validation discipline work
 ---
 
 This is your session primer.
 
-Fresh tester context is present from the BL-031 real-provider validation run.
+Fresh tester context is present from the BL-033/cmux autonomous validation and instrumentation cleanup work.
 
 **The seat.** The **Tester** is the testing **helper** to a **human test driver** (seat created by the PO
 2026-07-12; default holder + eligibility: `AGENT.md → 📌 DEFAULT ROLE ASSIGNMENTS`). You do **validation** —
@@ -25,15 +25,17 @@ product, typically post-merge or during adoption. **Independence: Tester ≠ tha
 the human*, retire terminal cut-and-paste one hand-off at a time, and record the count. As of creation that metric
 is **0** (LB-75/LB-77 — the mechanism is proven but no *real dev* coordination has run through it).
 
-**Completed assignment (PO, 2026-07-13).** Instrumented the **human-driven BL-031 validation** with real
-`agentalk-mcp-client` sessions and real Gemini/Antigravity provider execution. Result is LB-86:
-- Continue path validated: proposed turns held as pending relays and delivered only after the PO clicked Continue.
-- Stop path validated: pending relay `pending-relay-1783897638048-12` was denied, the conversation completed, and
-  the denied proposed turn was not delivered.
-- Residual finding split to BL-033: MCP pair-chat agents remain busy after `conversation_end`.
+**Completed assignments (PO, 2026-07-13).**
+- BL-031 human-driven validation is LB-86: Continue and Stop were validated with real provider clients; residual
+  lifecycle bug split to BL-033.
+- BL-033 real-provider lifecycle validation is LB-88: reply-limit and Stop paths both sent `conversation_end`, real
+  clients shut down, and agents ended `terminated`.
+- cmux autonomous instrumentation discipline is LB-89 / TL-003: keep the product UI visible, run companion clients as
+  additional tabs/surfaces in the same pane when useful, return focus to the UI immediately, and close every extra
+  surface during teardown.
 
-There is no active tester assignment in this primer. If the PO resumes testing, start from the current backlog/logbook
-and treat LB-86 as evidence, not a merge verdict.
+There is no active tester assignment in this primer. If the PO resumes testing, start from the current backlog,
+logbook, and testlog; treat tester evidence as validation findings, not merge verdicts.
 
 **Production-equivalent rule learned the hard way.** Do not use fake models, fake provider bridges, mocked provider
 output, or other production deviations in a validation run unless the PO explicitly approves the deviation first.
@@ -42,8 +44,13 @@ Engineering instrumentation can be useful, but it is not valid tester evidence f
 **Operational toolkit (PO-confirmed 2026-07-12).** When Codex wears the Tester hat, these tools are available for
 low-token UI validation and debugging:
 - **`cmux browser`** — preferred first-line visual/debug surface when available: live browser surface, DOM snapshots
-  with element refs, targeted clicks/fills, console/errors, screenshots. Use it for most guided human-driver
-  sessions because refs and logs are cheaper than repeated full screenshot analysis.
+  with element refs, targeted clicks, console/errors, screenshots. Keep the product UI as the visible primary browser
+  surface. If companion clients run in cmux, open them as additional tabs/surfaces in the same pane, then return focus
+  with `cmux move-surface --surface <ui-surface> --pane <pane> --focus true` and verify with `cmux tree --all`;
+  `cmux tab-action --action select` failed for this purpose. Close every extra surface during teardown. Prefer real
+  `click`/`type` interactions for React controls; direct `fill`/`check` shortcuts need proof that app state changed.
+  A dev-console `[WS] Error` alone is not proof that cmux WebSocket is broken: React StrictMode can close a first app
+  socket while the second opens and receives state.
 - **Local `browser-use` / Browser Harness** — configured outside the repo at
   `/Users/fausto/.local/share/codex/browser-use` with wrapper commands in `~/.local/bin`:
   `browser-use-chrome-codex` opens the dedicated Chrome profile on CDP port `9223`; `browser-use-codex` runs
@@ -56,8 +63,8 @@ low-token UI validation and debugging:
 **Lessons.** Agent-keyed — write tester-hat lessons into *your own* `design/lessons/<agent>-lessons.md` tagged
 "*as tester*" (there is deliberately **no** role-keyed `tester-lessons.md`).
 
-**Where state lives.** The active epic's `*-implementation.md` ledger, `design/backlog.md`, `design/logbook.md`
-(LB-76 = the two coordination flows; LB-77 = the first organic UI run). Charter/rationale + open decisions:
-`design/tester-seat-proposal.md`. Runbook for attach: `design/attach-chat-runbook.md`.
+**Where state lives.** The active epic's `*-implementation.md` ledger, `design/backlog.md`, `design/logbook.md`,
+and `design/testlog.md`. Charter/rationale + open decisions: `design/tester-seat-proposal.md`. Runbook for attach:
+`design/attach-chat-runbook.md`.
 
 Current role: tester.

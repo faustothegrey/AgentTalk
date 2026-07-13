@@ -113,7 +113,8 @@ here.**
 ### 2026-07-13 — cmux Tester surface discipline
 - As tester, keep the product UI visible in the main cmux browser surface. If companion clients must run in cmux,
   open them as additional tabs/surfaces in the same pane, return focus to the UI immediately, and close every extra
-  surface during teardown.
+  surface during teardown. `cmux tab-action --action select` failed for returning focus; use
+  `cmux move-surface --surface <ui-surface> --pane <pane> --focus true` and verify with `cmux tree --all`.
 - For React-controlled UI, prefer real `click`/`type` browser interactions over direct `fill`/`check` shortcuts when
   the state change must drive app behavior; direct DOM changes can look right while bypassing React state.
 - A dev-console WebSocket error is not enough evidence that cmux WebSocket is broken. In React StrictMode the first
