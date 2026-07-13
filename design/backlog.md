@@ -1302,4 +1302,41 @@ tags: [api-agents, driver-lifecycle, conversation, tester-finding]
   terminate the CLI-client path). Low-severity workaround today: create fresh API agents per conversation (cheap). Note:
   the agent `status` (`ready`) is misleading — it does not reflect the stopped driver. Source: TL-007, decision note.
 
+<!-- @item
+id: BL-041
+status: todo
+date: 2026-07-13
+epic: null
+tags: [consensus, planning-protocol, robustness, provider-cost, tester-finding]
+-->
+- [todo · Tester finding 2026-07-13 (TL-010)] — **Cap the planning reject/resubmit loop — a malformed agent can spin
+  it unbounded (provider-cost + robustness risk)** — when a planner emits a protocol message the orchestrator rejects
+  (invalid JSON / wrong `message_payload` envelope / unmet `ack_planning_protocol`), it replies "Please resubmit your
+  intended response as valid JSON" and re-prompts — with **no bound**. In TL-010 a goose planner span **120 turns** on
+  `openai/gpt-4o` (peer 12) without advancing; `maxRepliesPerAgent=2` did **not** cap it because an ack/resubmit is
+  not counted as a "reply". A badly-behaved agent thus stalls the planning session *and* burns real provider budget.
+  **Fix:** a bounded retry per protocol step (e.g. N resubmits → interrupt planning with a clear error), and/or count
+  resubmits against a cap. Independent of provider — surfaced with goose but applies to any agent that emits malformed
+  protocol JSON. Source: TL-010, testlog.
+
+<!-- @item
+id: BL-042
+status: todo
+date: 2026-07-13
+epic: null
+tags: [goose, consensus, planning-protocol, coordination-profile, optional]
+-->
+- [todo · optional · Tester finding 2026-07-13 (TL-009/TL-010)] — **(Optional) Full goose consensus recipe — embed the
+  protocol contract so goose can plan** — goose is verified as a dev + pair-chat agent (spike, TL-008) but **cannot
+  complete the strict multi-phase consensus protocol** (TL-009: content good on gpt-4o but stalls opinion→
+  agreement_proposal + 60s force-shutdown; TL-010: the `--max-turns 3 --no-profile --system` coordination profile
+  fixed latency but goose emits `{message_type,text}` while the protocol wants a `message_payload` envelope + an
+  `ack_planning_protocol` handshake → reject/resubmit runaway). Root cause: the protocol expects an exact JSON contract
+  delivered in the turn briefing, which a general agentic wrapper doesn't reproduce reliably. **If** goose-as-planner
+  is still wanted, author a **full protocol recipe** — a goose `--recipe`/`--system` that embeds every `message_type`'s
+  exact `message_payload` schema + the ack handshake and the phase-advancement rules (≈ replicating the contract).
+  **Default recommendation instead:** goose for implementation + pair chat; keep strict consensus on the M06 CLI-agent
+  path. The env-driven coordination profile (`AGENTTALK_GOOSE_MAX_TURNS`/`_NO_PROFILE`/`_SYSTEM`, client
+  `ee258b6`) is the building block. Source: TL-009, TL-010, `decision-api-agents-for-coordination.md`.
+
 *(add new items above this line)*
