@@ -120,3 +120,11 @@ here.**
 - A dev-console WebSocket error is not enough evidence that cmux WebSocket is broken. In React StrictMode the first
   app socket can close during remount while the second opens and receives state; prove the surviving socket before
   treating WS as a blocker.
+
+### 2026-07-13 — Parallel-session wrap-up discipline
+- Before writing a session wrap-up, re-check `git log` and the current source, not just `git status`: another actor may
+  have advanced `master` and superseded uncommitted work or conclusions while I was running a live probe.
+- A successful one-off harness run is useful evidence, but it does not overrule a later product-run decision recorded
+  in logbook/backlog. Preserve the distinction between "observed in a harness" and "accepted product direction."
+- When a proposed fix is refuted by a reviewer or PO decision, prime the next session around the accepted direction,
+  not around the earlier implementation attempt.
