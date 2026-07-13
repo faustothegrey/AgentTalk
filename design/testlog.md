@@ -542,3 +542,30 @@ for project decisions or reviewer ledgers for merge verification.
   - deepseek-v4-flash on OpenRouter is capable + conformant for this protocol; the bottleneck is coordination + the
     60s budget, not the model.
   - A schema-accurate `--system` recipe is essential — mirror `response-schema.ts` payloads exactly.
+
+### TL-012 · 2026-07-13 · goose consensus, deepseek + reactive-role recipe — NO_CONSENSUS (phase-skip); the win was NOT snatched
+
+- objective: the "one last run" — add reactive role discipline (don't both propose; comply immediately when the
+  orchestrator designates you) + brevity, on top of TL-011's deepseek + schema-accurate recipe, to actually complete
+  consensus. Harness `scratchpad/tl012-goose-consensus-final.mjs`.
+- result: **NO_CONSENSUS.** The recipe fixed the TL-011 proposer *race* but caused the opposite error: **planner-a
+  jumped straight to `submit_plan` while still in the discussion phase**, skipping agreement_proposal/acceptance. The
+  orchestrator correctly rejected it (regression-correction budget, "not a valid move at current phase: discussion …
+  (correction attempt 1/2)"), then asked planner-a to propose; it didn't comply in time → "Planning interrupted:
+  required event agreement_proposal not received." planner-b also tried a (late) submit_plan after teardown ("Agent
+  not found"). Content + schema again excellent (valid submit_plan payloads, real plans); the wall is the handshake.
+- finding — the honest bottom line after FOUR attempts (TL-009→012): **the recurring, unsolved blocker is the
+  two-planner agreement HANDSHAKE choreography** (opinion → the designated ONE proposes → the OTHER accepts → first
+  submits). deepseek nails schema + content; prompt tuning keeps *shifting* the failure around this junction rather
+  than solving it: TL-009 stalled at opinion, TL-010 wrong schema at ack, TL-011 both raced to propose, TL-012
+  skipped ahead to submit_plan. Reliably driving the distributed multi-phase handshake between two general agentic
+  wrappers via prompt-only instructions did not land within this effort budget.
+- conclusion: **goose is confirmed for dev + pair chat; strict two-planner consensus is not reliably reachable by
+  recipe tuning alone.** Getting it over the line likely needs more than a prompt — e.g. the orchestrator asserting
+  roles more forcibly (assign proposer/acceptor explicitly and reject everything else), a longer planning-turn
+  budget, or a purpose-built agent — i.e. real BL-042 work with uncertain payoff. Recommend: **stop here**; keep
+  strict consensus on the M06 CLI-agent path; bank the goose dev + pair-chat wins. BL-041 (ack-loop cap) held across
+  all four runs — no runaways.
+- replay notes: recipe over-steer is real — "reach agreement fast" made deepseek skip phases. The safe framing is
+  "advance EXACTLY one phase per orchestrator request; never skip." But see conclusion: this is chasing a moving
+  target.
