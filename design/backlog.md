@@ -1255,6 +1255,13 @@ tags: [healthcheck, gemini, attach-mode, tester-finding, latency]
   timeout for slow providers; make the healthcheck a *lightweight liveness ping* that does NOT require a full LLM
   generation (a real fix — the dedicated `handleHealthcheck` path also runs a full turn, `llm-agent.mjs:138`); or
   reduce agy client cold-start latency. Note: contradicts the expectation that this residual was already resolved.
-  Source: TL-006, TL-002 residual, LB-89.
+  **Fix attempt 1 (provider-specific timeouts; gemini/agy → 90000ms) — REFUTED at gate 2 (Claude, 2026-07-13, live
+  verify):** the timeout *is* correctly raised to 90000 (confirmed in the agy client turn), unit tests pass, but a
+  real agy agent **still fails** — `did not respond to healthcheck within 90000ms`, and the client produced **no
+  response at all** (process alive + silent past 90s). So the root cause is **not "the timeout was too short" — the
+  agy client HANGS on the healthcheck `exec_rpc`** (never produces a `healthcheck_ack`). No timeout value fixes a
+  hang. **Real fix must target the agy/gemini client executor** (why the first `exec_rpc` never returns) **or replace
+  the healthcheck with a lightweight liveness ping** that doesn't depend on a full agy generation. The
+  provider-timeout code is a fine building block but insufficient alone. Source: TL-006, TL-002 residual, LB-89.
 
 *(add new items above this line)*
