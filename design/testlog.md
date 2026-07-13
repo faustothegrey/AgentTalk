@@ -397,3 +397,57 @@ for project decisions or reviewer ledgers for merge verification.
   - Node 24 global `WebSocket` (WHATWG: `addEventListener`/`ev.data`) works for the `/ws` driver — no `ws` dep.
   - Goose workers self-terminate on `conversation_end`, so use **fresh agents+workers per path** (as TL-001 does).
   - Teardown via tracked child PIDs (SIGTERM) + targeted port-PID sweep; never broad `pkill`.
+
+### TL-009 · 2026-07-13 · planner-planner-worker CONSENSUS with THREE goose agents on gpt-4o — PARTIAL (protocol engaged, stalled at phase advancement)
+
+- objective: run the **consensus/arbiter scenario (TL-005 shape)** — the M06 planner-planner-worker `'protocol'`
+  consensus — with **goose agents on a stronger model (`openai/gpt-4o`)**, capturing transcripts to also answer the
+  TL-008 reply-quality question. Goose uses the **CLI-attach path** that TL-005 flagged as "the only working path,
+  untested" (its three walls were all API-path-specific: providerName-drop [now BL-039-fixed], google 400, arbiter
+  orphaned).
+- role/driver: Claude, autonomous (resource fallback; PO "do both"). Scripted via REST teams API + runtime `/ws`;
+  full event recording via `AGENTTALK_RECORDING_PATH`. Harness: `scratchpad/tl009-goose-consensus.mjs`.
+- worktree/commit: `/Users/fausto/Software/AgentTalk` `master` at `508f405`; orchestrator rebuilt from current src.
+- feasibility-first (TL-005 lesson): probed models before spend — `anthropic/claude-3.5-sonnet(-*)` and
+  `google/gemini-2.0-flash-001` both **404 on this OpenRouter account**; **`openai/gpt-4o` works** (used it).
+- environment: isolated `PORT=3001` / MCP `3011`; 3 `provider:'mcp'` agents (2 planners + 1 worker) each with an
+  attached `llm-agent.mjs --provider goose --model openai/gpt-4o` worker; team `maxRepliesPerAgent=2`.
+- real/fake path: **real goose executors on real gpt-4o**; no mocks. Task: agree on one concrete improvement to a
+  generic multi-agent system (conceptual, to isolate the protocol state-machine from file-tool availability).
+- result: **PARTIAL — NO_CONSENSUS; planning interrupted at phase advancement.** But goose got **further than any
+  prior consensus attempt** in this log:
+  - **Goose DID speak the protocol:** planners emitted real `submit_exec_result` → `consensus_respond` tool calls
+    with structured payloads (`proposal`, `expected_response_types:['opinion','agreement_proposal']`) — the worker
+    maps goose output onto the consensus tools correctly. **Reply content (gpt-4o) was coherent and on-topic** (e.g.
+    planner-b: "Improving resource allocation dynamically based on agent performance metrics is a promising
+    direction… let's discuss potential methods for implementing adaptive resource management.").
+  - **Where it stalled:** planners stayed in the **`opinion`** phase and never emitted **`agreement_proposal`**
+    despite orchestrator reminders ("Reminder (2/2): please call agreement_proposal now"). → "Planning interrupted
+    because required event(s) were not received: agreement_proposal." Worker received **0 turns** (correct — no
+    plan). Both planners force-terminated.
+- findings:
+  - **Two structural mismatches, NOT a plumbing bug** (both survive the stronger model, so they're not just
+    capability):
+    1. **Phase-advancement discipline.** Goose reliably produces an *opinion* but doesn't switch `message_type` to
+       `agreement_proposal`/`agreement_acceptance`/`submit_plan` on demand. Goose's agentic wrapper (tool-use,
+       todos) dilutes the "emit exactly this next protocol message" instruction. gpt-4o improved *content*, not
+       *transition compliance*.
+    2. **Turn-latency budget.** `[TeamCoordinator] Forced shutdown for agent … after 60000ms` — goose's per-turn
+       wall-clock (its multi-step loop, `--max-turns 30`, + gpt-4o latency) can exceed the orchestrator's **60s
+       planning-turn budget**. A coordination turn shouldn't need goose's tool loop at all.
+  - **Capability map is now clear:** goose ✅ dev/implementation turns (spike) · ✅ simple supervised relay / pair
+    chat (TL-008) · ⚠️ strict multi-phase consensus state-machine (TL-009). This *confirms* the coordination-vs-dev
+    split in `decision-api-agents-for-coordination.md` and extends it: goose planners *can* engage (unlike the
+    API-blocked TL-005) but don't *complete* the protocol.
+- residuals / follow-ups (candidate backlog):
+  - For goose-as-planner: (a) a goose **coordination profile** — `--max-turns 3`, no dev tools, a `--system` prompt
+    that forces a single structured protocol message; (b) raise/relax the 60s planning-turn budget for slower
+    attach workers; (c) accept goose for *implementation* turns and keep strict consensus on a different agent type.
+  - Transcript capture worked (server log + recording); the `/ws` phase-event filter caught little — read the
+    backend log for protocol detail.
+- replay notes:
+  - Probe every non-default OpenRouter model id with a one-word `goose run` before a full run — this account 404s on
+    several anthropic/google ids.
+  - Consensus team = exactly **2 planners + 1 worker**, `POST /api/teams {members:[{agentId,role}]}` then
+    `POST /api/teams/:id/task {description, maxRepliesPerAgent}`; a completed plan needs `.../tasks/:id/confirm`.
+  - The 60s force-shutdown is the ceiling to watch for any slow attach worker in planning.
