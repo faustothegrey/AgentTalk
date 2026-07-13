@@ -2612,3 +2612,23 @@ the M06-verified path), where the CLI's own tool-use runs the protocol — and w
 have real file tools, so they actually inspect the code). The PO chose to **log and stop** rather than run the
 CLI-attached version. Work items → **BL-037**. The point-(1) soundness arbiter is the "**Conductor/SM agent**" idea
 (architect territory; earlier this session). Source: TL-005; observed against `master 44e3f8d`.
+
+### LB-92 · 2026-07-13 — [governance/providers] agy/Gemini declared UNFIT as an MCP attach client (PO-parked)
+
+**Decision (PO, 2026-07-13).** **agy/Gemini is declared unfit to serve as an MCP attach client for the time being**,
+until further facts emerge. **The fix is DEFERRED** — do not spend resources on it now (**BL-038 → deferred**).
+
+**Why (it's not just a timeout).** TL-006 + the gate-2 review of fix-attempt-1 (provider-specific timeouts, gemini/agy
+→ 90000ms) established: the healthcheck reaches an attached agent as a full `exec_rpc` (the BL-032 bridge, correct +
+working for codex), the timeout *was* correctly raised to 90000ms — and **a real agy agent still fails**
+(`did not respond to healthcheck within 90000ms`) with **no response at all**, its client process **alive and silent
+past 90s**. So the agy client **HANGS on the first healthcheck `exec_rpc`**; no timeout value fixes a hang. The PO
+agrees this is deeper than a timeout.
+
+**Scope + implication.** This is about the **MCP-attach-client capability** (the `agentalk-mcp-client` / `llm-agent.mjs`
+bridge into the orchestrator). **Practical effect:** multi-agent attach tests, pair-chats, and consensus runs use
+**codex / claude** clients, **not agy**, until reopened. Whether this touches agy's **Implementer workflow role**
+(📌 DEFAULT ROLE ASSIGNMENTS) is a **separate PO call** — not decided here; if the Implementer is needed and agy is
+unavailable, the Standing Conditional Reassignment applies. **Reopen condition:** new facts about the agy executor
+hang (why the first `exec_rpc` never returns), or a lightweight-liveness-ping healthcheck that doesn't require a full
+agy generation. Source: TL-006, BL-038, LB-89; gate-2 refute committed `fc04018`.

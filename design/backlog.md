@@ -1240,12 +1240,12 @@ tags: [consensus, arbiter, api-agents, tester-finding, product-gap]
 
 <!-- @item
 id: BL-038
-status: todo
+status: deferred
 date: 2026-07-13
 epic: null
 tags: [healthcheck, gemini, attach-mode, tester-finding, latency]
 -->
-- [todo · Tester finding 2026-07-13 (TL-006); reopens the TL-002 residual] — **Attach-mode Gemini/agy agents time out
+- [deferred · **PO-PARKED 2026-07-13 (LB-92): agy declared unfit as an MCP attach client; fix deferred until further facts emerge — do not spend resources now**; Tester finding 2026-07-13 (TL-006); reopens the TL-002 residual] — **Attach-mode Gemini/agy agents time out
   the startup healthcheck (30s)** — re-running TL-001 with real `agy` clients, both agents attached fine but
   `start_pair_chat` failed: `Agent tl006-a did not respond to healthcheck within 30000ms`. **Root cause:** the
   healthcheck reaches an attached agent as a full `exec_rpc` requiring a complete provider-CLI generation (the BL-032
