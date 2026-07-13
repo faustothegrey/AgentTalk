@@ -569,3 +569,39 @@ for project decisions or reviewer ledgers for merge verification.
 - replay notes: recipe over-steer is real — "reach agreement fast" made deepseek skip phases. The safe framing is
   "advance EXACTLY one phase per orchestrator request; never skip." But see conclusion: this is chasing a moving
   target.
+
+### TL-013 · 2026-07-13 · ARBITER (semantic) consensus with goose+deepseek — ✅ CONSENSUS REACHED
+
+- objective: after the PO clarified we are NOT aiming for strict-protocol adherence (TL-009→012 were all in
+  `'protocol'` mode by accident) — test the **arbiter** mode the product actually intends: planners debate
+  **free-form**, a gpt-4o-mini **Judge** declares convergence semantically, a Synthesizer authors the plan. No
+  handshake for the planners to fail.
+- role/driver: Claude, autonomous (PO-directed). Harness `scratchpad/tl013-arbiter-mode.mjs`.
+- enabler (branch `task-arbiter-enable`, `d06893f`): BL-037 wall (1) — `POST /api/teams` now forwards
+  `consensusMode` to `createTeam` (was hardcoded to the `'protocol'` default). +2 server tests (19/19). Rebuilt dist.
+- setup: isolated `PORT=3001`/`3011`; 3 goose agents (deepseek-v4-flash), planners on a **free-form debate profile**
+  (`--no-profile`, `--max-turns 3`, a "debate → converge, say I AGREE" system prompt — NO protocol JSON). Team
+  created with `consensusMode: 'arbiter'` (confirmed in the create response); task assigned `maxRepliesPerAgent 3`.
+- result: **✅ CONSENSUS REACHED.** `status: awaiting_confirmation`, `planningComplete: true`, a real synthesized
+  plan produced. Evidence (orchestrator recording — authoritative):
+  - **The planners debated** (9 transcript entries): b proposed a "shared global progress tracker"; a proposed a
+    "basic task prioritization queue"; both converged with explicit "I AGREE".
+  - **Arbiter verdict: `converged`** — rationale: *"Both planners have agreed on the same concrete plan to implement
+    a basic task prioritization queue…"*
+  - **Synthesized plan**: a coherent Markdown plan (task prioritization queue: objective, features, expected
+    outcome). Task → `awaiting_confirmation` (ready for operator confirm → worker delegation).
+- findings:
+  - **Arbiter mode works end-to-end with goose (mcp-attach) + deepseek planners.** My earlier worry that the attach
+    worker wouldn't act on the arbiter's `message_received` turns was WRONG — the planners debated fine. Reading the
+    recording (not my harness summary) is what caught this.
+  - **Validates the PO's framing decisively:** 4 strict-protocol runs (TL-009→012) all died on the handshake; the
+    **first** arbiter run succeeded. Semantic agreement, not protocol adherence, is the right near-term path.
+  - **Honest caveats:** (1) my harness read `currentTask` from `/api/teams` (which returns `currentTaskId`) → it
+    displayed an empty transcript and falsely printed NO_CONSENSUS; the **recording** showed the real success. Fix
+    the harness to fetch the task/planning-run. (2) The agreement was semantically **loose** — the two planners
+    actually endorsed *different* ideas ("I AGREE" to both a progress tracker AND a prioritization queue) and the
+    Judge leniently declared `converged` on one. The mechanism is sound; the **Judge's convergence bar is lax** —
+    future tuning (a stricter judge rubric, or making planners align on ONE idea first) would harden it.
+- replay notes: arbiter planners want a FREE-FORM profile (no protocol recipe); `--no-profile` + a short debate
+  nudge worked. Read the recording / planning-run for ground truth, not just team status. Judge + Synthesizer are
+  hardcoded to openrouter `gpt-4o-mini` in `arbiter-coordinator.ts` (`callApi`).

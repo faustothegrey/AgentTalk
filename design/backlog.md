@@ -1238,6 +1238,14 @@ tags: [consensus, arbiter, api-agents, tester-finding, product-gap]
   with Google's endpoint (or route consensus API agents to OpenRouter). Note: the only currently-working consensus path
   is **MCP-attached CLI agents** (`McpCompleter`). The per-reply-**soundness** arbiter from the original scenario is the
   separate "**Conductor/SM agent**" idea (architect). Source: TL-005, LB-91.
+  **UPDATE 2026-07-13 — wall (1) RESOLVED + arbiter validated (TL-013):** `POST /api/teams` now forwards
+  `consensusMode` to `createTeam` (branch `task-arbiter-enable`, `d06893f`, +2 server tests), so the arbiter Judge
+  path is reachable through the product. **Validated live in TL-013**: goose+deepseek planners debated free-form, the
+  gpt-4o-mini Judge declared `converged`, and a real plan was synthesized (`awaiting_confirmation`). Walls (2)
+  `providerName` → **BL-039** (done), and (3) google tool-schema 400 — both are **API-agent-specific and moot for the
+  MCP-attach path** (goose isn't an API completer hitting google; it debates as an attach worker). Remaining on this
+  item: consider hardening the **Judge's convergence bar** (TL-013 caveat: it was lax — declared converged though the
+  two planners endorsed different ideas). Merge of `task-arbiter-enable` is PO-gated.
 
 <!-- @item
 id: BL-038
