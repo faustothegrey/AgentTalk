@@ -1304,12 +1304,12 @@ tags: [api-agents, driver-lifecycle, conversation, tester-finding]
 
 <!-- @item
 id: BL-041
-status: todo
+status: done
 date: 2026-07-13
 epic: null
 tags: [consensus, planning-protocol, robustness, provider-cost, tester-finding]
 -->
-- [todo · Tester finding 2026-07-13 (TL-010)] — **Cap the planning reject/resubmit loop — a malformed agent can spin
+- [done · merged 2026-07-13 (master `019db72`); Tester finding 2026-07-13 (TL-010)] — **Cap the planning reject/resubmit loop — a malformed agent can spin
   it unbounded (provider-cost + robustness risk)** — when a planner emits a protocol message the orchestrator rejects
   (invalid JSON / wrong `message_payload` envelope / unmet `ack_planning_protocol`), it replies "Please resubmit your
   intended response as valid JSON" and re-prompts — with **no bound**. In TL-010 a goose planner span **120 turns** on
@@ -1318,6 +1318,10 @@ tags: [consensus, planning-protocol, robustness, provider-cost, tester-finding]
   **Fix:** a bounded retry per protocol step (e.g. N resubmits → interrupt planning with a clear error), and/or count
   resubmits against a cap. Independent of provider — surfaced with goose but applies to any agent that emits malformed
   protocol JSON. Source: TL-010, testlog.
+  **Resolution (merged `019db72`):** added a per-agent ack re-request budget (`MAX_ACK_REREQUESTS=2` +
+  `ackRetryCounts`) in `team-coordinator.ts`, mirroring the existing regression-correction budget; on exhaustion the
+  offender is ejected peer-safe (`ejectPlanner` → `awaiting_operator`), budget resets on a valid ack and clears on task
+  teardown. Regression test `team-ack-budget.test.ts` (never-ack → ejected; single stumble → graceful). Suite 281/281.
 
 <!-- @item
 id: BL-042
