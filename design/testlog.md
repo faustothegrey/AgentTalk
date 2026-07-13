@@ -274,3 +274,45 @@ for project decisions or reviewer ledgers for merge verification.
     highest-value tester move here.
   - To create a non-google API agent you currently must bypass `POST /api/agents` (it drops `providerName`) — so the
     API-driven path is effectively google-only until BL-037.
+
+### TL-006 · 2026-07-13 · TL-001 with real agy/Gemini agents — healthcheck still times out (TL-002 residual NOT resolved)
+
+- objective: re-run TL-001 (Continue + Stop) with **real agy/Gemini clients** to verify the TL-002 Gemini
+  healthcheck-timeout residual is resolved (PO reported it "should have been resolved by codex").
+- role/driver: Claude as Tester, autonomous, PO-requested.
+- worktree/commit: `/Users/fausto/Software/AgentTalk`, `master` at `aa315ac`.
+- strategy: **isolated backend on `PORT=3001`** (agy already occupied the default `:3000/:5173` with 6 agents + an
+  active conversation — two live test instances can't share fixed ports). Real agy clients attached to the isolated
+  MCP port; pair chat started via WS; **no browser** (the objective is the healthcheck, which is backend-log-observable).
+- evidence sources: isolated backend log; agy client log; `/api`.
+- real/fake path: **real agy/gemini clients ×2** (`--provider gemini`), no fakes.
+- environment: backend `http://localhost:3001`, MCP `ws://localhost:64501/`.
+- steps: created 2 gemini agents, launched 2 real agy clients (both attached fine), set `approve_each`, started a pair
+  chat → the startup healthcheck ran.
+- result: **FAILED at the healthcheck.** `Agent tl006-a did not respond to healthcheck within 30000ms`. **TL-002
+  residual is NOT resolved.**
+- diagnosis (grounded):
+  - The backend sends `EVT {type:'healthcheck', token, prompt}` (backend log line 76), but the **client receives it as
+    `{type:'exec_rpc', prompt:'…respond with a healthcheck_ack JSON…', timeoutMs:30000}`** (agy client log). So agy's
+    original observation — *the healthcheck is transformed into an `exec_rpc`* — is **factually correct** (the BL-032
+    bridge: `InProcessAgentDriver` + `McpCompleter` deliver it via the exec queue, the only channel an attached client
+    drains). It is **by design, not an McpCompleter bug** (verified working with codex in TL-004).
+  - The gemini client **received the exec_rpc but never produced the `healthcheck_ack`** — its process stayed **alive
+    and still generating well past 30s**. So the failure is the **agy/gemini CLI not completing a full generation turn
+    within (or near) the 30s window** (cold-start + first-turn latency, or a hang) — not the transform. Codex, being
+    faster, acks fine.
+  - Note: even the client's dedicated `handleHealthcheck` path (`llm-agent.mjs:138`) runs a **full executor turn**, so
+    the timeout would persist there too — the root cause is that a healthcheck requires a full provider-CLI generation,
+    which agy is too slow for.
+- residuals:
+  - **agy's `:3000/:5173` instance went down during my teardown.** I used broad `pkill` patterns (`PORT=3001` etc.);
+    per identify-before-reap I **cannot fully rule out that I contributed** (or agy yielded). launchd (4034) intact.
+    **Lesson re-applied: teardown with targeted PIDs, never broad `pkill`.**
+  - **Parallel-testing port collision:** two testers can't share the fixed `:3000/:5173`. Running an isolated backend
+    on `PORT=3001` is the clean workaround (backend honors `PORT`); the frontend proxy would also need repointing for a
+    second UI. Relates to BL-036 (extend to test-infra isolation).
+  - The gemini healthcheck timeout → **BL-038**.
+- replay notes:
+  - **Isolate parallel test instances via `PORT=<n>`** (backend) — no port collision.
+  - The healthcheck delivered to an attached agent is an `exec_rpc` requiring a full CLI generation; slow CLIs (agy)
+    blow the 30s budget. To validate a gemini run you must first get past this.

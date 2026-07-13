@@ -1238,4 +1238,23 @@ tags: [consensus, arbiter, api-agents, tester-finding, product-gap]
   is **MCP-attached CLI agents** (`McpCompleter`). The per-reply-**soundness** arbiter from the original scenario is the
   separate "**Conductor/SM agent**" idea (architect). Source: TL-005, LB-91.
 
+<!-- @item
+id: BL-038
+status: todo
+date: 2026-07-13
+epic: null
+tags: [healthcheck, gemini, attach-mode, tester-finding, latency]
+-->
+- [todo · Tester finding 2026-07-13 (TL-006); reopens the TL-002 residual] — **Attach-mode Gemini/agy agents time out
+  the startup healthcheck (30s)** — re-running TL-001 with real `agy` clients, both agents attached fine but
+  `start_pair_chat` failed: `Agent tl006-a did not respond to healthcheck within 30000ms`. **Root cause:** the
+  healthcheck reaches an attached agent as a full `exec_rpc` requiring a complete provider-CLI generation (the BL-032
+  bridge; the client's prompt asks for a `healthcheck_ack` JSON) — the agy/gemini CLI's cold-start + first-turn latency
+  exceeds (or hangs past) the 30s window; the client process stays alive still generating. **Codex acks fine** (fast
+  enough — TL-004), so it's gemini-CLI latency, not the `McpCompleter` transform. **Options:** raise the healthcheck
+  timeout for slow providers; make the healthcheck a *lightweight liveness ping* that does NOT require a full LLM
+  generation (a real fix — the dedicated `handleHealthcheck` path also runs a full turn, `llm-agent.mjs:138`); or
+  reduce agy client cold-start latency. Note: contradicts the expectation that this residual was already resolved.
+  Source: TL-006, TL-002 residual, LB-89.
+
 *(add new items above this line)*
