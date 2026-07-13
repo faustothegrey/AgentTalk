@@ -203,6 +203,25 @@ describe('startServer', () => {
     await expect(response.json()).resolves.toEqual({ error: 'Agent agent-1 already exists' });
   });
 
+  it('BL-039: forwards providerName so api agents can select a non-google ApiProvider', async () => {
+    const response = await fetch(`${baseUrl}/api/agents`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: 'agent-or', provider: 'api', providerName: 'openrouter', model: 'openai/gpt-4o-mini' }),
+    });
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      id: 'agent-or',
+      providerName: 'openrouter',
+      model: 'openai/gpt-4o-mini',
+    });
+
+    // The registry agent must carry providerName so completer selection resolves to openrouter,
+    // not the `providerName || 'google'` default (registry.ts). Without the server forwarding, this is undefined.
+    expect(registry.getAgent('agent-or').providerName).toBe('openrouter');
+  });
+
   it('should include execution mode metadata when creating and listing agents', async () => {
     const createResponse = await fetch(`${baseUrl}/api/agents`, {
       method: 'POST',

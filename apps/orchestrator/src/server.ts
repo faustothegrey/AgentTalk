@@ -592,12 +592,19 @@ export function startServer(
     console.log('[Server] POST /api/agents', req.body);
     const { id, provider } = req.body;
     const model = getNonEmptyString(req.body?.model);
+    const providerName = getNonEmptyString(req.body?.providerName);
     const requestedExecutionMode = isExecutionMode(req.body?.executionMode) ? req.body.executionMode : 'auto';
-    recorder?.record('api', 'create_agent_request', { id, provider, model, requestedExecutionMode });
+    recorder?.record('api', 'create_agent_request', { id, provider, providerName, model, requestedExecutionMode });
 
     try {
       const agentId = id || (provider ? `agent-${provider}-${Date.now()}` : `agent-${Date.now()}`);
-      const agent = await registry.createAgent(agentId, { requestedExecutionMode });
+      // BL-039: forward providerName so `api`-provider agents can select a non-`google` ApiProvider
+      // (e.g. openrouter). Without this the registry defaults to `google` and non-google models fail.
+      // Conditional spread keeps it absent (not `undefined`) under exactOptionalPropertyTypes.
+      const agent = await registry.createAgent(agentId, {
+        requestedExecutionMode,
+        ...(providerName !== undefined ? { providerName } : {}),
+      });
       if (isUsageCaptureProvider(provider)) {
         agent.provider = provider;
       }
@@ -617,6 +624,7 @@ export function startServer(
         id: agent.id,
         status: agent.status,
         provider: agent.provider,
+        providerName: agent.providerName,
         model: agent.model,
         requestedExecutionMode: agent.requestedExecutionMode,
         resolvedExecutionMode: agent.resolvedExecutionMode,
