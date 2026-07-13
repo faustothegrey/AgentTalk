@@ -451,3 +451,50 @@ for project decisions or reviewer ledgers for merge verification.
   - Consensus team = exactly **2 planners + 1 worker**, `POST /api/teams {members:[{agentId,role}]}` then
     `POST /api/teams/:id/task {description, maxRepliesPerAgent}`; a completed plan needs `.../tasks/:id/confirm`.
   - The 60s force-shutdown is the ceiling to watch for any slow attach worker in planning.
+
+### TL-010 · 2026-07-13 · goose consensus with a COORDINATION PROFILE (--max-turns 3 + --no-profile + --system) — latency fixed, consensus still fails (schema + runaway loop)
+
+- objective: retest TL-009 consensus with a goose **coordination profile** targeting TL-009's two failures —
+  `--max-turns 3` + `--no-profile` (drop dev tools) + a `--system` prompt forcing a single structured protocol
+  message AND phase advancement. Does taming goose's wrapper let it complete consensus?
+- role/driver: Claude, autonomous (PO-directed hypothesis). Same harness as TL-009 with the coordination env set:
+  `scratchpad/tl010-goose-consensus-coord.mjs`. Model `openai/gpt-4o`, 3 goose agents (2 planner + 1 worker).
+- enabling change (committed, branch `task-goose-executor`): `getProviderCommand('goose')` now reads
+  `AGENTTALK_GOOSE_MAX_TURNS` / `AGENTTALK_GOOSE_NO_PROFILE` / `AGENTTALK_GOOSE_SYSTEM` (defaults unchanged → TL-008
+  behavior preserved). Client build green: lint + contract v7 + **16/16 tests** (+3 profile tests). Pre-run probe
+  confirmed the profile emits a clean single JSON message: `{"message_type":"opinion","text":"…"}`.
+- result: **NO_CONSENSUS — but a different, more precise failure than TL-009.**
+  - **The profile FIXED what it targeted (latency):** no `Forced shutdown … after 60000ms` this run — turns are fast
+    (no tool loop). That half of the hypothesis worked.
+  - **Consensus still fails on a DEEPER blocker: protocol-schema conformance + an ack handshake.** The orchestrator
+    repeatedly returned `ack_planning_protocol` ("Acknowledge planning protocol before discussing task content") and
+    **"Please resubmit your intended response as valid JSON."** Goose emitted `{"message_type":"opinion","text":…}`
+    but the protocol wants a richer envelope — a **`message_payload`** with per-type fields (e.g. `fact_collection_end`
+    → `{summary}`, `work_accept` → `{text}`). Goose never cleared the acknowledgment gate, so it never really
+    entered opinion→agreement.
+  - **New risk exposed — unbounded resubmit loop:** because turns are now fast, instead of a 60s shutdown goose span
+    a tight reject→resubmit loop — **planner-a took 120 turns** (planner-b 12) on gpt-4o. `maxRepliesPerAgent=2` did
+    NOT cap it (an ack/resubmit isn't counted as a reply). A malformed agent can spin the planning loop and rack up
+    provider cost.
+- findings:
+  - **Two targeted rounds (TL-009 stronger model, TL-010 coordination profile) both fail to reach consensus.** The
+    capability boundary is now firm: goose ✅ dev turns · ✅ simple supervised relay/pair chat (TL-008) · ❌ strict
+    multi-phase consensus protocol. The profile shifted the failure from *latency/phase-stall* to
+    *schema-conformance/runaway-loop* — progress in understanding, not a pass.
+  - **Root cause:** the consensus protocol expects an exact JSON contract (`message_payload` schemas per
+    message_type + an `ack_planning_protocol` handshake) delivered in the turn briefing. A general agentic wrapper
+    (goose) doesn't reproduce it reliably even when guided; making it work would require embedding the **full**
+    protocol schema in the `--system` prompt (≈ replicating the contract) — the protocol is built for agents that
+    follow the in-turn briefing precisely (the M06 CLI agents).
+- residuals / follow-ups (candidate backlog):
+  - **BL (new): cap the planning reject/resubmit loop** — an agent emitting malformed protocol JSON should hit a
+    bounded retry, not spin (120 gpt-4o calls here). Product robustness + provider-cost safety.
+  - If goose-as-planner is still wanted: author a **full protocol recipe** (`--system` embedding every
+    `message_type`'s `message_payload` schema + the ack handshake), or a goose `--recipe`. Otherwise the clean call:
+    **goose for implementation + pair chat; keep strict consensus on the M06 CLI-agent path.**
+  - The env-driven coordination profile itself is a keeper — it fixed latency and is the right knob for future
+    coordination-turn tuning.
+- replay notes:
+  - Watch worker "turns received": a healthy planner is single digits; **120 = runaway** (schema-reject loop).
+  - The coordination profile lives in `provider-runtime.mjs` via 3 env vars; set them per-agent, not globally, so
+    dev agents keep tools + `--max-turns 30`.
