@@ -352,3 +352,48 @@ for project decisions or reviewer ledgers for merge verification.
   - Create openrouter API agents via the API with `providerName: 'openrouter'` (BL-039); the UI form can't yet.
   - **Use fresh agents per conversation** until BL-040 (API-agent driver reuse) is fixed.
   - WS `start_pair_chat` + UI Continue/Stop is the reliable pattern (same as TL-004); Chrome extension was up.
+
+### TL-008 · 2026-07-13 · TL-001 (Continue + Stop) with TWO goose agents (OpenRouter) — BOTH paths PASS
+
+- objective: run TL-001 (supervised pair chat: Continue/reply-limit + Stop) with **two goose agents** — the first
+  end-to-end exercise of the new goose executor (branch `task-goose-executor` in `agentalk-mcp-client`) through the
+  full attach + supervised-relay stack. Proves the "delivered turn" conjunction left open by the goose spike.
+- role/driver: Claude, autonomous (resource fallback: planner+implementer+reviewer+tester; PO "do or die"). Fully
+  **scripted** via the runtime WS `/ws` + MCP attach — no human UI driver, no Chrome.
+- worktree/commit: `/Users/fausto/Software/AgentTalk` `master` at `63e7f86`; orchestrator **rebuilt** (`tsc -b`,
+  `dist/server.js` current with `src/server.ts`) so the test ran against live code, not a stale artifact.
+- strategy: isolated instance (`PORT=3001`, `AGENTTALK_MCP_PORT=3011`) — no clash with any PO instance (none on
+  :3000). Two `provider:'mcp'` agents per path + two `llm-agent.mjs --provider goose --model openai/gpt-4o-mini`
+  workers. A runtime `/ws` client set `approve_each`, drove `start_pair_chat` (maxReplies 3), auto-approved every
+  `pending_relay_updated` (Continue) or denied the first (Stop). Harness:
+  `scratchpad/tl008-goose-pairchat.mjs`.
+- evidence sources: backend server log (relay lifecycle, `send_to_agent`, `conversation_end`), `/api/conversations`
+  status, `/api/agents` final states, worker stdout (`Received turn` / `Waiting for turn`).
+- real/fake path: **real goose executors** driven by real OpenRouter `gpt-4o-mini`; no mocks. Model is a weak coder
+  by design (validates the substrate + relay mechanism, not agent-reply quality).
+- result: **BOTH paths PASS.**
+  - **Continue/reply-limit** (`conversation-1783953449973`): **completed**; 6 relays alternating a↔b all approved,
+    reached the reply limit; both agents ended `terminated` on `conversation_end` (correct BL-033 lifecycle).
+  - **Stop** (`conversation-1783953473349`): goose-a proposed a turn (`submit_exec_result` → `send_to_agent` →
+    pending relay); operator **`deny_pending_relay`** → conversation **completed/stopped**, `conversation_end`
+    reason "stopped by operator before delivering tl008-stop-a's proposed turn" — **turn NOT delivered**. Matches
+    TL-001/TL-007 exactly.
+- findings:
+  - **Goose is a viable coordination agent through the full supervised-relay protocol**, not just a dev executor:
+    it attached, passed the healthcheck (no agy-style timeout — one-shot executor, fresh `goose run` per turn),
+    conversed turn-by-turn, and honored reply-limit + operator-stop. **TL-006 failed here with agy; goose passes.**
+  - Turn latency was low (~2–3s/turn) — gpt-4o-mini + short prompts; no persistent-PTY fragility.
+  - Parity: goose now matches the TL-007 OpenRouter-API result for TL-001, but as a **dev-capable** attach worker
+    (API agents can't develop; goose can). This is the second dev-capable, vendor-neutral agent path working live.
+- residuals:
+  - **Transcript content not captured** this run (only the relay/lifecycle flow). The mechanism is what TL-001
+    validates, but next run should persist each agent's reply text for content review.
+  - Stop-path agents read `ready` in the final snapshot (taken ~0.5s post-stop) rather than `terminated`; the
+    `conversation_end` was sent to both (log) — cosmetic timing of the snapshot vs the worker's 5s shutdown, not a
+    lifecycle miss.
+- replay notes:
+  - Rebuild the orchestrator (`npm run build --workspace @agenttalk/orchestrator`) before an isolated-instance run;
+    `dist/index.js` mtime can lag while `server.js` is current (incremental `tsc -b`).
+  - Node 24 global `WebSocket` (WHATWG: `addEventListener`/`ev.data`) works for the `/ws` driver — no `ws` dep.
+  - Goose workers self-terminate on `conversation_end`, so use **fresh agents+workers per path** (as TL-001 does).
+  - Teardown via tracked child PIDs (SIGTERM) + targeted port-PID sweep; never broad `pkill`.

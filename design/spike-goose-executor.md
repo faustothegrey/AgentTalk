@@ -1,8 +1,9 @@
 # Spike — Goose as a dev-capable executor (OpenRouter-backed)
 
-**Status:** GO — **IMPLEMENTED + VERIFIED at the client level** (unit tests + real-code-path dev turn + full build
-green + live attach handshake). One conjunction remains: a *delivered* turn processed by the attached goose worker
-(needs a team task). **Date:** 2026-07-13. **Ran by:** Claude (resource-fallback: planner + implementer + reviewer
+**Status:** GO — **IMPLEMENTED + VERIFIED end-to-end.** Client-level verification (unit tests + real-code-path dev
+turn + full build green + live attach handshake) **plus TL-008**: TL-001 (Continue + Stop supervised pair chat)
+run with **two goose agents** — BOTH paths PASS (delivered turns, reply-limit, operator-stop). The last conjunction
+is now closed. See `design/testlog.md` TL-008. **Date:** 2026-07-13. **Ran by:** Claude (resource-fallback: planner + implementer + reviewer
 for this spike; PO-directed "do or die"). **Merges/decisions:** PO. **Code is UNCOMMITTED in the working tree.**
 
 ## What was built + verified this session
