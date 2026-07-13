@@ -327,3 +327,30 @@ here.**
 - **A real finding fell out for free** even on a "nothing new" rehearsal: when the reply-limit conversation ended, the
   next proposed turn surfaced in the sidebar while the main pane stayed on the ended conversation — the known BL-031
   residual, reproduced with my toolkit. Validation surfaces reality; that's the point of the seat.
+
+### 2026-07-13 (evening arc) — as Tester + temp Implementer + Impl Reviewer + architect: the "failed" runs drove everything; ground-truth before spend; live > "verification passed"
+
+- **As Tester: ground-truth feasibility from the *source* BEFORE spending provider budget — cheapest high-value move.**
+  TL-005 predicted the arbiter wall (createTeam hardcodes `protocol`) and the API-consensus blockers by *reading the
+  code*, before a single doomed run. The two doomed execs (404, 400) cost almost nothing because I'd already traced
+  why they'd fail. Trace first, spend second.
+- **The "failed" runs were the most valuable of the whole session.** TL-005 (arbiter orphaned), TL-006 (agy hangs on
+  the healthcheck), the BL-038 gate-2 refute — every *negative* finding drove a real decision: park agy (LB-92), and
+  **pivot the coordination layer to OpenRouter** (validated end-to-end in TL-007). A green that confirms the happy
+  path teaches less than a red that redirects the program.
+- **As Impl Reviewer: the live run beats the report's "verification passed" — every time.** BL-038's fix passed its
+  unit tests (the 90s timeout value *was* routed to gemini) and I still REFUTED it: live, agy times out at 90s and
+  produces nothing. IP-15 in its purest form — the unit test checks the *config*, not whether agy *acks*; only the
+  live run checks reality. Never sign a verdict on a green I didn't try to break against the real thing.
+- **As architect: resolve the one load-bearing unknown with a cheap probe before banking the decision.** I recommended
+  OpenRouter but flagged the schema-compat risk, ran a 5-minute direct API probe (`gpt-4o-mini` → 200 + valid tool
+  call; the Google 400 was google-specific), *then* wrote the decision note. Minutes of probing turned "probably works"
+  into "verified," and it was the difference between a sound decision and a guess.
+- **Teardown: identify-before-reap — I broke it, it bit, I re-applied it.** In TL-006 I used broad `pkill` and agy's
+  live instance went down (couldn't rule out I caused it). In TL-007 I switched to **targeted PIDs from a tracked
+  file** and left agy's ports untouched. The 2026-07-09 lesson had to land a *second* time, the hard way. Broad
+  `pkill` is never worth it.
+- **Distrust the confident in-run sentence — mine most of all.** Mid-TL-007 I wrote "API agents stay ready/reusable"
+  from `status: ready`; the very next conversation refuted it (driver stops at `conversation_end` → BL-040). I
+  corrected it in the record immediately. The status lied; the second conversation told the truth. Verify-don't-assert
+  applies to my own just-typed claims.
