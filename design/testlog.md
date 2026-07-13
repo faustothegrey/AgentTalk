@@ -316,3 +316,39 @@ for project decisions or reviewer ledgers for merge verification.
   - **Isolate parallel test instances via `PORT=<n>`** (backend) — no port collision.
   - The healthcheck delivered to an attached agent is an `exec_rpc` requiring a full CLI generation; slow CLIs (agy)
     blow the 30s budget. To validate a gemini run you must first get past this.
+
+### TL-007 · 2026-07-13 · TL-001 on a real instance with two OpenRouter API agents — BOTH paths PASS
+
+- objective: run TL-001 (Continue/reply-limit + Stop) on a **real AgentTalk instance** with **two OpenRouter
+  (`gpt-4o-mini`) API agents** — validating the coordination direction (decision-api-agents-for-coordination.md) now
+  that BL-039 unblocks non-google API agents.
+- role/driver: Claude as Tester, autonomous, PO-requested.
+- worktree/commit: instance run from branch `task-BL-039` (`313d089`, the providerName fix); default ports `:3000/:5173`.
+- strategy: create the 2 API agents via the **API** (the UI has no `providerName` field — BL-039 is API-level);
+  browser-driven Continue/Stop via Claude-in-Chrome; WS `start_pair_chat`; backend log + `/api` as ground truth.
+- real/fake path: **real OpenRouter `gpt-4o-mini` API agents ×2**, no fakes. No MCP clients / no attach.
+- environment: backend `http://localhost:3000`, frontend `http://localhost:5173`, Claude-in-Chrome tab.
+- steps: created 2 openrouter agents (create response echoed `providerName: openrouter` — BL-039 working); toggled
+  Conversation control → Approve each (backend-confirmed); started a pair chat; drove Continue (UI click) + auto-approved
+  the remainder to reply-limit; then a **fresh** pair chat + **Stop** (UI click).
+- result: **BOTH paths PASS.**
+  - **Healthcheck via OpenRouter acks fast** ("Hello! I am responsive.") — no agy-style hang, no attach ritual.
+  - **Continue/reply-limit:** completed **2/2**, `conversation_end` "All agents reached reply limit."
+  - **Stop:** the proposed turn was **denied, delivered-count 0** (not delivered), `conversation_end` "stopped by
+    operator…", conversation completed **0/0**.
+- findings:
+  - **OpenRouter API agents are excellent for the coordination layer** — reliable, fast, zero attach fragility. The
+    decision is validated end-to-end.
+  - **⚠️ API agents are NOT cleanly reusable across conversations → BL-040.** The `InProcessAgentDriver` calls
+    `this.stop()` at `conversation_end` (the BL-033 lifecycle). For a CLI client that's fine (the client terminates
+    too); for an **API agent there's no client**, so the agent shows `ready` but its **driver is stopped** — a second
+    conversation's healthcheck is never processed → 30s timeout. **Fresh agents each conversation work; reuse doesn't.**
+    (My in-run "stay ready/reusable" note was wrong — the *status* is ready, the *driver* is dead.)
+  - **API-agent lifecycle at conversation_end:** `busy → ready` (NOT `terminated` like CLI clients).
+  - **Residual reproduced:** BL-031 sidebar/history — the main window stayed on the completed conversation, so the
+    Stop-path proposed turn surfaced in the sidebar (same as TL-004/TL-006).
+  - **Cosmetic:** API agents' proposed turns render as raw protocol JSON (they emit the structured protocol payload).
+- replay notes:
+  - Create openrouter API agents via the API with `providerName: 'openrouter'` (BL-039); the UI form can't yet.
+  - **Use fresh agents per conversation** until BL-040 (API-agent driver reuse) is fixed.
+  - WS `start_pair_chat` + UI Continue/Stop is the reliable pattern (same as TL-004); Chrome extension was up.

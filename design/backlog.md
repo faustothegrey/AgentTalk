@@ -1284,4 +1284,22 @@ tags: [api-agents, openrouter, product-gap, enabler]
   `openai/gpt-4o-mini` (the Google 400 was google-specific). Small, targeted. Source:
   `design/decision-api-agents-for-coordination.md`, TL-005, LB-91.
 
+<!-- @item
+id: BL-040
+status: todo
+date: 2026-07-13
+epic: null
+tags: [api-agents, driver-lifecycle, conversation, tester-finding]
+-->
+- [todo · Tester finding 2026-07-13 (TL-007)] — **API agents are not reusable across conversations — the driver stops
+  at conversation_end** — the `InProcessAgentDriver` calls `this.stop()` on `conversation_end` (the BL-033 lifecycle
+  path). For an **MCP-attached** agent that's correct (the client shuts down too). For an **API agent** there is no
+  client, so the agent goes `busy → ready` (looks reusable) but its **driver is stopped** — the next conversation's
+  startup healthcheck is never processed and times out at 30s. Observed in TL-007: the first conversation completed
+  cleanly, but a **second** conversation with the *same* agents failed (`tl007-a did not respond to healthcheck within
+  30000ms`); **fresh** agents worked. **Fix options:** re-activate/restart the driver when a ready API agent is pulled
+  into a new conversation, OR make `conversation_end` not stop the driver for `provider === 'api'` agents (only
+  terminate the CLI-client path). Low-severity workaround today: create fresh API agents per conversation (cheap). Note:
+  the agent `status` (`ready`) is misleading — it does not reflect the stopped driver. Source: TL-007, decision note.
+
 *(add new items above this line)*
