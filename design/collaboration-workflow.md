@@ -140,12 +140,20 @@ orchestration migration, so it can be reviewed, refined, and reused deliberately
   its DoD?). The **human drives** the product hands-on (clicks, experiences it, brings the "this feels off" UX
   judgment); the **agent Tester instruments and guides** — reads the logs, checks backend/process status, dictates
   the step-by-step, and **confirms each step's actual outcome against ground truth** (verify-don't-assert). It does
-  **not** operate the UI itself. **Scope fence (critical):** it produces **findings, not merge verdicts** — it never
-  blocks or authorises a merge (that stays gate 3 + PO); its outputs are backlog items, logbook entries, and
-  reproduction notes. It **owns the organic-coordination adoption metric** (drives real batons through the UI *with
-  the human*, records the count). It is **orthogonal to the 3-gate build sequence** — it operates on the merged /
-  running product, typically post-merge or during adoption. Independence: **Tester ≠ that task's Implementer**.
-  Lessons are agent-keyed, tagged `as tester` (no role-keyed lessons file). Charter: `design/tester-seat-proposal.md`.
+  **not** operate the UI itself by default. When the PO assigns an **autonomous validation run**, the Tester may
+  execute the test directly and chooses the strategy most appropriate to the risk being validated: API/log/process
+  evidence for lifecycle/backend correctness; browser automation or browser-use with targeted visual observation for
+  UX/visual requirements; real `agentalk-mcp-client` sessions for end-to-end provider behavior; exploratory browser
+  checkpoints where the point is what the user can see and understand. The Tester must declare the strategy before
+  running it, including (1) the test objective, (2) the evidence sources it will use, (3) what remains unverified, and
+  (4) whether it is using real providers or fake/mock paths. Fake providers/models are never substituted for a real
+  production-path validation without explicit PO consent. **Scope fence (critical):** it produces **findings, not
+  merge verdicts** — it never blocks or authorises a merge (that stays gate 3 + PO); its outputs are backlog items,
+  logbook entries, and reproduction notes. It **owns the organic-coordination adoption metric** (drives real batons
+  through the UI *with the human* or through an explicitly PO-assigned autonomous validation run, records the count).
+  It is **orthogonal to the 3-gate build sequence** — it operates on the merged / running product, typically
+  post-merge or during adoption. Independence: **Tester ≠ that task's Implementer**. Lessons are agent-keyed, tagged
+  `as tester` (no role-keyed lessons file). Charter: `design/tester-seat-proposal.md`.
 
 **Planner and Reviewer are SEPARATE roles (split adopted 2026-06-29); the Reviewer itself split into three seats
 (PO decision, 2026-07-08).** The old fused `planner-reviewer` is retired, and so is the single all-gates Reviewer.
