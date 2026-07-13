@@ -109,3 +109,13 @@ here.**
 - Keep browser-use helper wrappers simple and typed to their host language. During the autonomous BL-033 rehearsal,
   parsing mixed text+JSON and using JavaScript `.slice` on a Python string created noisy false failures even though
   the product path was correct.
+
+### 2026-07-13 — cmux Tester surface discipline
+- As tester, keep the product UI visible in the main cmux browser surface. If companion clients must run in cmux,
+  open them as additional tabs/surfaces in the same pane, return focus to the UI immediately, and close every extra
+  surface during teardown.
+- For React-controlled UI, prefer real `click`/`type` browser interactions over direct `fill`/`check` shortcuts when
+  the state change must drive app behavior; direct DOM changes can look right while bypassing React state.
+- A dev-console WebSocket error is not enough evidence that cmux WebSocket is broken. In React StrictMode the first
+  app socket can close during remount while the second opens and receives state; prove the surviving socket before
+  treating WS as a blocker.

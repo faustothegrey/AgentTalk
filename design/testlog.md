@@ -124,16 +124,64 @@ for project decisions or reviewer ledgers for merge verification.
     cmux-codex-stop-b.`, both agents ended `terminated`.
 - residuals:
   - cmux browser initially failed to expose/render agent-creation controls until a tab switch/reload.
-  - cmux browser WebSocket behavior was intermittent; backend WebSocket was used for exact `approve_each` and
-    `start_pair_chat` setup, while cmux browser was still used for Continue/Stop user actions.
-  - cmux browser `fill` changed the textarea DOM value but did not reliably update React state before Start; backend
-    WebSocket start was used to preserve the exact test topic.
+  - cmux browser WebSocket behavior appeared intermittent during the run; TL-003 later narrowed this to a misleading
+    dev-console error from React StrictMode remount, not a general cmux WebSocket failure.
+  - cmux browser `fill`/`check` shortcuts changed DOM values but did not reliably update React state before Start or
+    before approval-mode changes; backend WebSocket start was used to preserve the exact test topic. TL-003 later
+    confirmed that real click interactions do update the application state.
   - Claude CLI is not available from this environment as a real provider client until the cmux wrapper/PATH issue is
     corrected.
   - Gemini/agy timed out the product healthcheck during this run.
 - replay notes:
-  - For cmux autonomous tests, launch companion clients inside cmux terminal surfaces and use `cmux read-screen` to
-    verify provider CLI startup before starting product flows.
+  - For cmux autonomous tests, keep the UI surface visible. Launch companion clients as additional tabs/surfaces in
+    the same pane when needed, return focus to the UI immediately, and close those extra surfaces during teardown.
   - Treat cmux browser as a strong low-token visual/action surface, but cross-check every product state transition
     against backend logs and `/api/conversations`.
   - If exact form state matters, verify React-observed state by the resulting backend event, not only by DOM value.
+
+### TL-003 · 2026-07-13 · cmux browser WebSocket and React-control diagnostic
+
+- objective: Explain why cmux browser showed `[WS] Error` in the console and why some UI controls appeared to change
+  without changing product behavior.
+- role/driver: Codex as Tester, diagnostic requested by the PO after TL-002.
+- worktree/commit: `/Users/fausto/Software/AgentTalk`, `master` at `9c40cd0`.
+- strategy: Compare WebSocket behavior from Node, manual WebSocket probes inside cmux browser, and the app's own
+  WebSocket lifecycle; then test React-controlled checkbox behavior with real click versus shortcut commands.
+- evidence sources:
+  - Node `ws` probes against `ws://localhost:3000/ws` and `ws://localhost:5173/ws`.
+  - cmux browser manual `new WebSocket(...)` probes against the same URLs.
+  - Temporary cmux `addinitscript` tracing `window.WebSocket` lifecycle events during page reload.
+  - Backend log for `set_relay_approval_mode`.
+- real/fake path: No fake provider path; this was instrumentation-only, not provider validation.
+- environment:
+  - frontend: `http://localhost:5173/`
+  - backend: `http://localhost:3000`
+  - cmux browser surface: started as `surface:2`, then replaced with clean `surface:6` after removing the temporary
+    WebSocket instrumentation.
+- steps:
+  - Confirmed Node could open both backend and Vite-proxied WebSockets and receive `relay_approval_state`.
+  - Confirmed cmux browser manual WebSockets could also open both URLs and receive `relay_approval_state`.
+  - Added a temporary WebSocket lifecycle tracer and reloaded the app.
+  - Observed Vite HMR socket open, then two app sockets to `/ws`: the first closed with `1006`, while the second
+    opened and received `relay_approval_state`.
+  - Clicked the approval-mode checkbox with a real browser click and observed backend `set_relay_approval_mode`.
+- artifacts:
+  - No durable screenshot/video artifact; evidence is textual command output in the session transcript.
+- result:
+  - The console `[WS] Error` is not sufficient evidence of a broken cmux WebSocket path. In dev, React StrictMode can
+    create a first app socket that closes during remount while the second app socket opens and works.
+  - Real browser clicks update React/application state. Direct shortcut commands such as `fill`/`check` can leave a
+    misleading DOM value unless followed by proof that app state changed.
+  - cmux autonomous test layout should use tabs/surfaces in the same pane for companion clients and keep the product
+    UI as the visible surface; extra surfaces must be closed at teardown.
+- residuals:
+  - The app still logs the first StrictMode socket error to console in dev, which can mislead testers.
+  - The optional Agent ID and textarea/topic shortcut behavior from TL-002 still need product-level UI cleanup if they
+    reproduce under real clicks.
+- replay notes:
+  - Do not treat a dev-console WebSocket error as a blocker until a manual WebSocket probe and app-state event check
+    both fail.
+  - Prefer `click`/`type` for React controls in cmux browser. Use shortcut commands only for low-risk text inspection
+    or after validating the resulting app event.
+  - After temporary browser instrumentation such as `addinitscript`, replace or reset the browser surface before the
+    next validation run.

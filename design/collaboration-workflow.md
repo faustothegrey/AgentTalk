@@ -151,7 +151,13 @@ orchestration migration, so it can be reviewed, refined, and reused deliberately
   `design/testlog.md`; project decisions and cross-cutting findings still go in `design/logbook.md`. When video is
   useful, the Tester may save a passive screen recording artifact (preferably `.webm`) and record its path in the
   testlog; the video is **not** AI-analyzed by default, so it adds no token cost unless the PO asks for specific frame
-  or clip analysis. **Scope fence (critical):** it produces **findings, not
+  or clip analysis. When using **cmux** for autonomous UI validation, keep the product UI visible in the primary
+  browser surface; launch companion clients as additional tabs/surfaces in the same pane when needed, return focus to
+  the UI immediately, and close every extra surface during teardown. Prefer real browser `click`/`type`
+  interactions for React-controlled fields and toggles; direct shortcut commands such as `fill`/`check` must be
+  followed by proof that the app state changed, not just the DOM value. A dev-console WebSocket error is not by
+  itself proof that cmux WebSocket is broken: in React StrictMode a first app socket may close during remount while a
+  second socket opens and receives state. **Scope fence (critical):** it produces **findings, not
   merge verdicts** — it never blocks or authorises a merge (that stays gate 3 + PO); its outputs are backlog items,
   logbook entries, and reproduction notes. It **owns the organic-coordination adoption metric** (drives real batons
   through the UI *with the human* or through an explicitly PO-assigned autonomous validation run, records the count).

@@ -2538,3 +2538,25 @@ sidebar. That is UI/history cleanup for BL-031, not a BL-033 lifecycle failure.
 **Disposition.** BL-033 is closed by PO-driven real-provider evidence and ready for implementation-reviewer
 validation. The originally observed failure, agents stuck `busy` with clients waiting after `conversation_end`, did
 not reproduce on either completion path.
+
+### LB-89 · 2026-07-13 — [tester] cmux UI validation discipline: keep UI visible; WebSocket console error was misleading
+
+**Context.** During autonomous BL-033 instrumentation rehearsals, Codex initially used cmux splits for companion
+clients and treated a cmux browser console `[WS] Error` as possible evidence of WebSocket instability. The PO clarified
+that the product UI must keep the full visible surface during tests and that companion clients, if run in cmux, should
+not take space away from the UI.
+
+**Finding.**
+- cmux test layout should keep the product UI visible in the primary browser surface. Companion clients may be run as
+  additional tabs/surfaces in the same pane, but the tester must return focus to the UI immediately and close every
+  extra surface during teardown.
+- The observed cmux browser WebSocket error was misleading. Node probes and manual `new WebSocket(...)` probes inside
+  cmux browser both reached backend/Vite `/ws` and received `relay_approval_state`. A temporary WebSocket lifecycle
+  trace showed React dev StrictMode creating two app sockets: the first closed with `1006`, while the second opened
+  and received state.
+- For React-controlled UI, cmux shortcut commands such as `fill`/`check` can change DOM values without proving the
+  application state changed. Real browser `click`/`type` interactions are preferred; shortcut interactions need a
+  resulting app-state event as proof.
+
+**Disposition.** Update future Tester runs and replay notes accordingly. Do not call cmux WebSocket broken from a
+single dev-console `[WS] Error`; prove whether the surviving app socket and the resulting product state work.
