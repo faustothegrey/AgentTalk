@@ -1158,6 +1158,23 @@ tags: [ui, relay-approval, ux]
   LB-82 + LB-83 + LB-84 + LB-85 + LB-86.
 
 <!-- @item
+id: BL-035
+status: todo
+date: 2026-07-13
+epic: null
+tags: [tester, observability, artifacts, browser]
+-->
+- [todo · surfaced 2026-07-13 during autonomous Tester instrumentation rehearsal] — **Tester run artifacts:
+  durable testlog + passive screen recording** — the Tester role now needs replayable validation records, not only
+  chat-local narration. `design/testlog.md` exists as the durable index, but artifact capture is still manual and
+  lossy: Browser Use screenshots currently overwrite a temp path, logs are not bundled, and no `.webm` recording is
+  saved. Implement a lightweight Tester harness convention that creates `design/test-artifacts/<test-id>/`, captures
+  targeted screenshots and logs, and, when available, records a passive browser/session `.webm`. The recording is an
+  offline human-review artifact and must not be AI-analyzed by default; only paths and metadata go into context unless
+  the PO requests a specific visual review. Prefer a browser-harness or tab-level recording path that does not add
+  token cost; fall back to screenshot checkpoints when recording is unavailable.
+
+<!-- @item
 id: BL-034
 status: todo
 date: 2026-07-13

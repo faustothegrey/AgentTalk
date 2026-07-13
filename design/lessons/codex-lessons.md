@@ -95,3 +95,17 @@ here.**
   instrumentation, but it is invalid for a production-equivalent validation run unless the PO approves that deviation.
 - Tester: cover both operator decisions before calling a supervised flow validated. Continue and Stop needed separate
   real-provider evidence, while the post-end busy-agent lifecycle bug belonged in a follow-up backlog item.
+
+### 2026-07-13 — Tester instrumentation and artifact discipline
+- As tester, declare the validation strategy before running autonomously: objective, evidence sources, unverified
+  scope, and real-vs-fake path. That makes API/log-heavy validation and browser-use visual checkpoints auditable
+  without pretending they prove the same thing.
+- Preserve replayable test evidence in `design/testlog.md`; use `logbook.md` for project decisions and cross-cutting
+  findings. A testlog entry should include conversation IDs, agent IDs, provider path, artifact paths, result, and
+  residuals.
+- Treat `.webm` recordings as passive artifacts by default. Saving a video path costs effectively no tokens; token
+  cost only appears if I ask vision to analyze frames/clips. Prefer targeted screenshots/frames when AI visual
+  analysis is needed.
+- Keep browser-use helper wrappers simple and typed to their host language. During the autonomous BL-033 rehearsal,
+  parsing mixed text+JSON and using JavaScript `.slice` on a Python string created noisy false failures even though
+  the product path was correct.

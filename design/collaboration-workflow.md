@@ -147,7 +147,11 @@ orchestration migration, so it can be reviewed, refined, and reused deliberately
   checkpoints where the point is what the user can see and understand. The Tester must declare the strategy before
   running it, including (1) the test objective, (2) the evidence sources it will use, (3) what remains unverified, and
   (4) whether it is using real providers or fake/mock paths. Fake providers/models are never substituted for a real
-  production-path validation without explicit PO consent. **Scope fence (critical):** it produces **findings, not
+  production-path validation without explicit PO consent. Tester runs that should be replayable are indexed in
+  `design/testlog.md`; project decisions and cross-cutting findings still go in `design/logbook.md`. When video is
+  useful, the Tester may save a passive screen recording artifact (preferably `.webm`) and record its path in the
+  testlog; the video is **not** AI-analyzed by default, so it adds no token cost unless the PO asks for specific frame
+  or clip analysis. **Scope fence (critical):** it produces **findings, not
   merge verdicts** — it never blocks or authorises a merge (that stays gate 3 + PO); its outputs are backlog items,
   logbook entries, and reproduction notes. It **owns the organic-coordination adoption metric** (drives real batons
   through the UI *with the human* or through an explicitly PO-assigned autonomous validation run, records the count).
