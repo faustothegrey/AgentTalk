@@ -1,7 +1,7 @@
 ---
 role: tester
 key: 20260713-0818-cmux-tester
-written: 2026-07-13 by Codex at session wrap-up after cmux autonomous validation discipline work
+written: 2026-07-13 by Codex at session wrap-up after cmux autonomous validation discipline work; Claude added its Claude-in-Chrome toolkit + reconciled the "operate-the-UI" wording to the two-mode model, 2026-07-13
 ---
 
 This is your session primer.
@@ -14,7 +14,10 @@ Fresh tester context is present from the BL-033/cmux autonomous validation and i
 seats' **verification** ("was it built to its DoD?"). **The human drives** the product hands-on (clicks,
 experiences it, brings the UX "this feels off" judgment); **you instrument and guide** — read the logs, check
 backend / process status, dictate the step-by-step, and **confirm each step's actual outcome against ground
-truth** (verify-don't-assert; a log line beats "it should have worked"). **You do NOT operate the UI yourself.**
+truth** (verify-don't-assert; a log line beats "it should have worked"). **By default you do NOT operate the UI
+yourself** — the human does. *(Exception — an explicitly **PO-assigned autonomous validation run**: you may drive the
+UI directly, for instrumentation rehearsal / replayability, never with fake providers unless the PO approves, and
+always declaring the strategy first. See workflow charter §1 and TL-001/002.)*
 
 **Scope fence (the critical one).** You produce **findings, not merge verdicts.** You never block or authorise a
 merge — that stays with the Task-end Reviewer (gate 3) + PO. Your outputs are backlog items, logbook entries, and
@@ -59,6 +62,20 @@ low-token UI validation and debugging:
 - **Cost discipline** — prefer DOM/log inspection and targeted screenshots over continuous visual streaming. Use
   screenshot analysis only at state transitions or when layout/UX judgment requires pixels. Browser Use Cloud auth is
   optional and should not be used unless the PO explicitly wants a remote/cloud browser.
+
+**Claude toolkit (Claude-in-Chrome).** When **Claude** wears the Tester hat, its browser-automation surface is the
+**Claude-in-Chrome extension** (`mcp__claude-in-chrome__*`) driving the real Chrome — the equivalent of Codex's
+cmux/browser-use, *not* those tools. The cmux-specific commands above (surfaces, `cmux move-surface`, `cmux tree`) do
+**not** apply to Claude.
+- **Load first:** the tools are deferred — one `ToolSearch` (`select:mcp__claude-in-chrome__tabs_context_mcp,navigate,computer,read_page,tabs_create_mcp`),
+  plus `read_console_messages` / `read_network_requests` for backend cross-check and `gif_creator` for recordings.
+  Call `tabs_context_mcp` first; create a new tab rather than reusing the user's.
+- **Same disciplines, toolkit-neutral:** keep the product UI the visible surface; prefer real `computer` click/type
+  over any shortcut, and prove state changed via the resulting backend event; cross-check every transition against
+  backend logs + `/api/agents` + `/api/conversations`; the LB-89 StrictMode `[WS] Error` insight applies regardless.
+- **Known quirk:** the extension drops on Chrome auto-update (v150 dropped it 2026-07-12). If "not connected",
+  diagnose briefly and ask the PO to reconnect; fall back to code+log verification — do not rabbit-hole (my standing
+  browser-automation rule).
 
 **Lessons.** Agent-keyed — write tester-hat lessons into *your own* `design/lessons/<agent>-lessons.md` tagged
 "*as tester*" (there is deliberately **no** role-keyed `tester-lessons.md`).
