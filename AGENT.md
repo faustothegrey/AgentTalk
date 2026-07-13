@@ -307,8 +307,11 @@ a session can do).
   percentages** — not per-actor or per-task, and **% of an opaque, flexing plan-window, not raw tokens** (token-denominated
   figures pending a service improvement). Per-action cost is only approximable by **diffing % before/after an action**,
   which holds for a **single serial actor** and **breaks under concurrency** (parallel actors share one provider quota,
-  indistinguishably). **Interim rule (PO, 2026-06-22): run agent actors *serially* — no parallel actors — until
-  per-actor attribution exists.**
+  indistinguishably). **Interim rule (PO, 2026-06-22; AMENDED 2026-07-13, LB-90): parallel *code development* stays
+  SERIAL — no two actors editing/merging code concurrently — until a deliberate **worktree discipline** exists (the
+  blocker is branch/merge collisions, not token attribution). **Parallel work is otherwise ALLOWED** — testing,
+  review, planning, docs, instrumentation — and will *increase*, especially testing. Token attribution still degrades
+  under concurrency; accept the coarser %-reading as the price of non-code parallelism.**
 
 ## ⛔ IMPLEMENTER RULES OF ENGAGEMENT ⛔  *(READ BEFORE EVERY TASK — NON-NEGOTIABLE)*
 

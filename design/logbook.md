@@ -2562,3 +2562,23 @@ not take space away from the UI.
 
 **Disposition.** Update future Tester runs and replay notes accordingly. Do not call cmux WebSocket broken from a
 single dev-console `[WS] Error`; prove whether the surviving app socket and the resulting product state work.
+
+### LB-90 · 2026-07-13 — [governance] Serial-actor rule RELAXED: parallel work allowed for everything except code development
+
+**Decision (PO).** The interim "run agent actors serially — no parallel actors" rule (PO 2026-06-22) is **amended**:
+- **Parallel *code development* stays SERIAL** — no two actors editing/merging code concurrently — **until a
+  deliberate worktree discipline exists.** The blocker is **branch/merge collisions**, not token attribution: three
+  times on 2026-07-13 a parallel Codex session advanced `master`/primers/backlog under Claude mid-task, forcing
+  topology re-verification (BL-031 primer went stale within minutes; the BL-033 delivery arrived uncommitted in two
+  worktrees; origin advanced twice under an in-flight session). Nothing was lost, but the friction is real and a
+  worktree discipline is the precondition for lifting this half.
+- **Parallel work is otherwise ALLOWED** — testing, review, planning, docs, instrumentation — and **will increase,
+  especially testing** (the Tester seat's autonomous/human-driven validation runs are the primary driver).
+
+**Implication.** Token/%-attribution still degrades under concurrency (per-actor cost becomes un-separable — the
+2026-06-22 rationale); the PO accepts the coarser meter reading as the price of non-code parallelism. Actors doing
+parallel non-code work should still self-monitor best-effort and expect the aggregate %-view to be un-attributable.
+
+**Canonical:** `AGENT.md → Resource Expenditure Monitoring → Known limits` (the amended interim rule). Related: the
+three 2026-07-13 near-misses (see the plan-reviewer primer caution + this session's coordination flags), the Tester
+seat (LB-77, `design/tester-seat-proposal.md`), the testlog (`design/testlog.md`). Governance finding.
