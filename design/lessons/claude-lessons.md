@@ -368,3 +368,20 @@ here.**
   blocking — but NO delivered turn (plain `mcp` agents skip the auto-healthcheck I assumed). Each half proven
   separately, conjunction not shown. Labeling that precisely (not "live PASS") is the whole point; the delivered-turn
   gate belongs to a stronger model anyway, since gpt-4o-mini tests the model not the plumbing.
+
+### 2026-07-13 (late) — goose consensus arc → arbiter WIN (as tester + implementer + reviewer, solo/degraded team)
+- **Confirm the TARGET/mode before spending, not just the method.** I burned FOUR runs (TL-009→012) making goose+
+  deepseek pass the strict `'protocol'` consensus handshake — when the PO's actual intent was the **arbiter/semantic**
+  mode all along, and I'd defaulted to `'protocol'` because `POST /api/teams` silently defaults there. The PO's
+  correction unlocked it in ONE run (TL-013). Lesson: when a task keeps failing in a new way each iteration, stop and
+  re-verify you're aiming at the mode/goal the PO wants — a wrong yardstick masquerades as a hard problem.
+- **Read the ground-truth artifact, not your own harness summary.** TL-013 was a WIN but my harness printed
+  NO_CONSENSUS (it read `currentTask`, but `/api/teams` returns `currentTaskId`). The orchestrator's recording ndjson
+  showed the real success — full debate, verdict, synthesized plan. I nearly reported a false failure. Always confirm
+  a load-bearing pass/fail against the recording/planning-run, especially when the result surprises me.
+- **Find the real seam before proposing a build (again).** goose fit as a one-shot *executor* behind the existing
+  worker, not as an MCP client speaking the bespoke wire-contract — 3 small edits, all reuse. Twenty minutes reading
+  the target code turned a vague spike into a bounded change. Held true for the arbiter enabler too (one un-forwarded
+  param).
+- **Probe model ids before a full run** — several anthropic/google ids 404 on this OpenRouter account; a one-word
+  `goose run` catches it for ~nothing.

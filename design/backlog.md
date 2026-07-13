@@ -1351,4 +1351,23 @@ tags: [goose, consensus, planning-protocol, coordination-profile, optional]
   path. The env-driven coordination profile (`AGENTTALK_GOOSE_MAX_TURNS`/`_NO_PROFILE`/`_SYSTEM`, client
   `ee258b6`) is the building block. Source: TL-009, TL-010, `decision-api-agents-for-coordination.md`.
 
+<!-- @item
+id: BL-043
+status: todo
+date: 2026-07-13
+epic: null
+tags: [arbiter, consensus, heterogeneous-team, claude, goose, experiment, next-session]
+-->
+- [todo · PO idea 2026-07-13 · **next-session experiment**] — **Heterogeneous arbiter: a Claude-backed MCP client as
+  the Arbiter/Judge, goose agents for planners + worker** — TL-013 proved arbiter (semantic) consensus works with
+  all-goose+deepseek, but the **Judge's convergence bar was lax** (it declared `converged` though the planners
+  endorsed different ideas — the Judge is hardcoded to openrouter `gpt-4o-mini` via `callApi` in
+  `arbiter-coordinator.ts`). The PO's test: run the debate with **goose planners/worker** but the **Judge (and
+  Synthesizer) backed by a real Claude MCP client** — a strong model judging convergence + authoring the plan.
+  **Value:** (a) harder convergence rigor (fixes the TL-013 caveat); (b) first true **mixed-provider** team test
+  (goose attach + Claude attach + the arbiter path). **Work needed:** make the arbiter Judge/Synthesizer **pluggable**
+  — today they're a hardcoded `callApi({provider:'openrouter', model:'openai/gpt-4o-mini'})`; route them to a
+  Claude-backed completer/MCP client instead (config or a dedicated arbiter-agent seat). Depends on
+  `task-arbiter-enable` (BL-037 wall 1) being merged. Source: PO, TL-013.
+
 *(add new items above this line)*
