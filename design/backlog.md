@@ -1196,4 +1196,23 @@ tags: [observability, ui, attach-mode, client-repo]
   auth/TLS. Related: the TUI-scraping model is also why provider "thinking" preamble sometimes leaks into replies.
   Source: 2026-07-13 design discussion following the wetty question.
 
+<!-- @item
+id: BL-036
+status: todo
+date: 2026-07-13
+epic: null
+tags: [governance, worktree, parallel-dev, process]
+-->
+- [todo · surfaced 2026-07-13 (PO decision LB-90)] — **Define a parallel-code-development worktree discipline** —
+  LB-90 relaxed the serial-actor rule for *everything except code development*; the **blocker to lifting the code-dev
+  half is a deliberate worktree discipline.** Three near-misses on 2026-07-13 showed the collision surface: a parallel
+  session advanced `master`/primers under an in-flight session (stale primer within minutes); a delivery arrived
+  **uncommitted in two worktrees on two branches** (the BL-033 mess); origin advanced twice under a running session;
+  and two actors independently claimed the same backlog id (BL-035). **Design a convention that makes concurrent code
+  work collision-safe:** per-task worktrees + branch-naming (`task-<id>`), who-owns-`master` / merge serialization,
+  how uncommitted work is isolated (never the same edits uncommitted in two trees), backlog-id allocation without
+  races, and stale-worktree/branch cleanup at close. Deliverable is a short discipline doc + any tooling
+  (e.g. an id-reservation or worktree-create helper). When adopted, LB-90's code-dev restriction can be lifted.
+  Source: LB-90 + the 2026-07-13 coordination near-misses.
+
 *(add new items above this line)*
