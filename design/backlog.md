@@ -1215,4 +1215,27 @@ tags: [governance, worktree, parallel-dev, process]
   (e.g. an id-reservation or worktree-create helper). When adopted, LB-90's code-dev restriction can be lifted.
   Source: LB-90 + the 2026-07-13 coordination near-misses.
 
+<!-- @item
+id: BL-037
+status: todo
+date: 2026-07-13
+epic: null
+tags: [consensus, arbiter, api-agents, tester-finding, product-gap]
+-->
+- [todo · Tester finding 2026-07-13 (TL-005 / LB-91)] — **API-driven multi-agent consensus is non-functional through
+  the product; the arbiter is orphaned** — three stacked walls found while trying to run a planner-planner-worker
+  "agree on a file to refactor" scenario with API agents (real keys present; these are wiring gaps, not credentials):
+  **(1) Arbiter unreachable** — `consensusMode` defaults to `'protocol'` and the only product team-creation path
+  (`POST /api/teams` → `createTeam(members, provider)`, `server.ts:738`) never sets `'arbiter'`, so
+  `arbiter-coordinator.ts` (the `gpt-4o-mini` convergence Judge) is built but dead from every UI/API control.
+  **(2) `POST /api/agents` ignores `providerName`** (`server.ts:593` reads only `{id, provider, model}`) → `api` agents
+  default to `google` (`registry.ts:250`); can't create OpenRouter/Nous API agents via the product.
+  **(3) `google` endpoint 400s** on the consensus tool schema (*"Forced function calling (ANY mode) with response mime
+  type application/json is unsupported"*) → API-driven planners can't run the protocol at all.
+  **Decisions needed (PO/architect):** wire `consensusMode` to the product **or** retire the arbiter as dead code;
+  accept `providerName` in agent creation (unlock non-google API agents); make `buildProtocolToolSchema` compatible
+  with Google's endpoint (or route consensus API agents to OpenRouter). Note: the only currently-working consensus path
+  is **MCP-attached CLI agents** (`McpCompleter`). The per-reply-**soundness** arbiter from the original scenario is the
+  separate "**Conductor/SM agent**" idea (architect). Source: TL-005, LB-91.
+
 *(add new items above this line)*

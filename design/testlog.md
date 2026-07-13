@@ -236,3 +236,41 @@ for project decisions or reviewer ledgers for merge verification.
     automation is unreliable (TL-002 precedent held for Claude too).
   - The inline Continue/Stop card auto-scrolls to the viewport bottom; the button y shifts as the timeline grows —
     screenshot before each click. Real clicks were confirmed against the resulting backend event every time (LB-89).
+
+### TL-005 · 2026-07-13 · Arbiter/scrum-master consensus scenario — feasibility-blocked (findings, no run)
+
+- objective: PO scenario — two agents look at AgentTalk and agree on one file to refactor, with a third **arbiter**
+  that (1) assesses each reply's soundness and (2) declares agreement. Assess against the running product; run if
+  feasible.
+- role/driver: Claude as Tester, autonomous, PO-requested.
+- worktree/commit: `/Users/fausto/Software/AgentTalk`, `master` at `44e3f8d`.
+- strategy: declare-first, then **ground-truth feasibility before running** (the discipline paid off). Attempted the
+  reachable `'protocol'` planner-planner-worker consensus via API-driven agents (`Autostart G+C` shape, replicated over
+  the API).
+- evidence sources: source trace (`registry.ts`, `arbiter-coordinator.ts`, `server.ts`, `api-client.ts`); backend log
+  (agent exec errors); `/api/agents`, `/api/teams`.
+- real/fake path: **real** API keys (OPENROUTER/GEMINI/OPENAI set); API-driven `ApiCompleter` agents, no fakes.
+- environment: backend `http://localhost:3000`, MCP `ws://localhost:56747/`; API-only (no browser needed).
+- steps:
+  - Traced the arbiter path → found `consensusMode` hardcoded to `'protocol'` by the product (arbiter orphaned).
+  - Created 3 `api` agents + a planner-planner-worker team (protocol mode) and assigned a "agree on one file to
+    refactor" task with a real file list (API agents have no file tools).
+  - Round 1 (`openai/gpt-4o-mini`): **404** — `providerName` ignored → defaulted to `google`, which can't serve an
+    OpenAI model.
+  - Round 2 (`gemini-2.5-flash`): **400** — *"Forced function calling (ANY mode) with response mime type
+    application/json is unsupported"* — the consensus tool schema is incompatible with Google's endpoint.
+- artifacts: backend log in scratchpad; no UI/screenshots (API-only run).
+- result: **BLOCKED (no successful consensus run).** Three product walls (full detail in **LB-91**): (1) arbiter
+  unreachable; (2) `POST /api/agents` ignores `providerName` → API agents locked to `google`; (3) `google` 400s on the
+  protocol tool schema. **API-driven multi-agent consensus is non-functional via the product.** The PO chose to log
+  and stop rather than run the CLI-attached alternative.
+- residuals:
+  - The **CLI-attached** planner-planner-worker path (`McpCompleter`, M06-verified) was **not tested** — it's the only
+    working path and is more faithful (CLI agents can actually read the code). Candidate for a future run (A″).
+  - Work items → **BL-037**; the per-reply-soundness arbiter is the "Conductor/SM agent" (architect).
+- replay notes:
+  - **Ground-truth feasibility before spending provider budget.** Two doomed runs (404, 400) were still cheap because
+    the task failed on the first exec; but the source trace *predicted* the arbiter wall before any spend — that's the
+    highest-value tester move here.
+  - To create a non-google API agent you currently must bypass `POST /api/agents` (it drops `providerName`) — so the
+    API-driven path is effectively google-only until BL-037.
