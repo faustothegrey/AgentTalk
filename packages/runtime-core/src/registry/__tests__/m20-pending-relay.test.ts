@@ -162,6 +162,30 @@ describe('M20 pending relay lifecycle', () => {
     expect(outcome).toBe('not-delivered');
   });
 
+  it('stops the active conversation when a conversation relay is denied', async () => {
+    const source = await createReadyAgent('agent-1');
+    const target = await createReadyAgent('agent-2');
+    registry.setRelayApprovalMode('approve_each');
+    const conversation = await registry.startConversation([source.id, target.id], 'Stop Test Topic', 100);
+
+    await registry.handleMcpToolCall(source.id, 'send_to_agent', {
+      to: target.id,
+      payload: 'Stop here',
+    });
+    const relay = registry.listPendingRelays()[0]!;
+
+    const denied = registry.denyPendingRelay(relay.id);
+    expect(denied.status).toBe('denied');
+
+    const latest = registry.getConversations().find((item) => item.id === conversation.id)!;
+    expect(latest.status).toBe('completed');
+    expect(latest.transcript.at(-1)).toMatchObject({
+      kind: 'system',
+      from: 'system',
+      payload: `Conversation stopped by operator before delivering ${source.id}'s proposed turn to ${target.id}.`,
+    });
+  });
+
   it('leaves user-directed messages outside the approval lifecycle', async () => {
     const source = await createReadyAgent('agent-1');
     registry.setRelayApprovalMode('approve_each');

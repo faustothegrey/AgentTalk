@@ -763,6 +763,15 @@ export class Registry extends EventEmitter {
 
     relay.status = 'denied';
     relay.decidedAt = new Date().toISOString();
+
+    const conversation = this.findActiveConversationByAgents(relay.fromAgentId, relay.toAgentId);
+    if (conversation) {
+      this.conversationCoordinator.markConversationCompleted(
+        conversation,
+        `Conversation stopped by operator before delivering ${relay.fromAgentId}'s proposed turn to ${relay.toAgentId}.`,
+      );
+    }
+
     this.emitPendingRelay(relay);
     return relay;
   }

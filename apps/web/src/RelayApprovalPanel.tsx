@@ -6,6 +6,7 @@ type Theme = typeof themeType;
 interface RelayApprovalPanelProps {
   mode: RelayApprovalMode;
   pendingRelays: PendingRelay[];
+  inlineRelayCount?: number;
   connected: boolean;
   theme: Theme;
   onModeChange: (mode: RelayApprovalMode) => void;
@@ -33,6 +34,7 @@ function formatStatus(status: PendingRelay['status']): string {
 export function RelayApprovalPanel({
   mode,
   pendingRelays,
+  inlineRelayCount = 0,
   connected,
   theme,
   onModeChange,
@@ -45,8 +47,8 @@ export function RelayApprovalPanel({
     <div style={{ borderTop: `1px solid ${theme.border}`, padding: '12px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px' }}>
         <div>
-          <div style={{ fontSize: '12px', fontWeight: 700, color: theme.textBright }}>Relay approvals</div>
-          <div style={{ fontSize: '11px', color: theme.textMuted }}>Agent to agent</div>
+          <div style={{ fontSize: '12px', fontWeight: 700, color: theme.textBright }}>Conversation control</div>
+          <div style={{ fontSize: '11px', color: theme.textMuted }}>Agent turns</div>
         </div>
         <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: connected ? theme.textPrimary : theme.textDim, cursor: connected ? 'pointer' : 'not-allowed' }}>
           <input
@@ -61,7 +63,9 @@ export function RelayApprovalPanel({
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '260px', overflowY: 'auto' }}>
         {pendingRelays.length === 0 ? (
-          <div style={{ color: theme.textDim, fontSize: '12px' }}>No pending agent relays.</div>
+          <div style={{ color: theme.textDim, fontSize: '12px' }}>
+            {inlineRelayCount > 0 ? 'Current turn is controlled in the conversation.' : 'No pending agent turns.'}
+          </div>
         ) : pendingRelays.map((relay) => {
           const text = payloadPreview(relay.payload);
           return (
@@ -90,21 +94,21 @@ export function RelayApprovalPanel({
                 <div style={{ display: 'flex', gap: '8px' }}>
                   <button
                     type="button"
-                    title="Approve relay"
+                    title="Continue conversation"
                     disabled={!connected}
                     onClick={() => onApprove(relay.id)}
                     style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', backgroundColor: theme.bg, color: theme.success, border: `1px solid ${theme.borderInput}`, borderRadius: '6px', padding: '7px 8px', cursor: connected ? 'pointer' : 'not-allowed', fontSize: '12px', fontWeight: 700 }}
                   >
-                    <Check size={14} /> Approve
+                    <Check size={14} /> Continue
                   </button>
                   <button
                     type="button"
-                    title="Deny relay"
+                    title="Stop conversation"
                     disabled={!connected}
                     onClick={() => onDeny(relay.id)}
                     style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', backgroundColor: theme.bg, color: theme.error, border: `1px solid ${theme.borderInput}`, borderRadius: '6px', padding: '7px 8px', cursor: connected ? 'pointer' : 'not-allowed', fontSize: '12px', fontWeight: 700 }}
                   >
-                    <X size={14} /> Deny
+                    <X size={14} /> Stop
                   </button>
                 </div>
               )}

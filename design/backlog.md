@@ -1112,12 +1112,12 @@ tags: [attach-mode, conversation-lifecycle, mcp]
 
 <!-- @item
 id: BL-031
-status: todo
+status: done
 date: 2026-07-12
 epic: null
-tags: [ui, relay-approval, ux, validation-failed]
+tags: [ui, relay-approval, ux]
 -->
-- [todo · **VALIDATION FAILED 2026-07-13 (LB-79)** after BL-032 unblocked pair-chat startup; surfaced 2026-07-12 by the PO during the first un-scripted UI-driven relay run (LB-77); reframed same
+- [done · **MERGED 2026-07-13 — real-provider validated (LB-86: Continue/Stop works) after the LB-79→LB-85 rework saga; backend gate-2 by Claude, inline UI accepted on live validation, PO-directed merge**; surfaced 2026-07-12 by the PO during the first un-scripted UI-driven relay run (LB-77); reframed same
   day from a sidebar-card patch into the redesign below — the patch is **superseded**, do not do both] —
   **Inline relay approval in the conversation window** — move agent→agent relay approval *out* of the cramped
   sidebar card and *into* the main conversation thread. **Root cause of the observed confusion:** today the main
