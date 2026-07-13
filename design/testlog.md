@@ -498,3 +498,47 @@ for project decisions or reviewer ledgers for merge verification.
   - Watch worker "turns received": a healthy planner is single digits; **120 = runaway** (schema-reject loop).
   - The coordination profile lives in `provider-runtime.mjs` via 3 env vars; set them per-agent, not globally, so
     dev agents keep tools + `--max-turns 30`.
+
+### TL-011 · 2026-07-13 · goose consensus with deepseek-v4-flash + a SCHEMA-ACCURATE recipe — CLOSEST YET (schema barrier broken; fails on a proposer race + latency)
+
+- objective: PO hypothesis — a more capable, cheap model (`deepseek/deepseek-v4-flash`) plus a corrected coordination
+  recipe should let goose complete consensus. Also tests my TL-010 diagnosis that the `--system` prompt specified the
+  **wrong** JSON shape.
+- role/driver: Claude, autonomous (PO-directed). Harness `scratchpad/tl011-goose-consensus-deepseek.mjs` (TL-010 with
+  the deepseek model + a rewritten recipe). BL-041 (ack-loop cap) now in the live dist → a stall is bounded, not a
+  runaway. Feasibility-first: probed the model id (all deepseek ids PONG'd; bad ids still 404 → real).
+- the recipe fix (BL-042 direction): TL-010's `--system` told goose to emit `{message_type,text}`; the orchestrator
+  requires a **`message_payload` envelope** with per-type fields (`response-schema.ts`). TL-011's `--system` encodes
+  the exact contract (per-type `message_payload`, ack-first, one-opinion-then-propose/accept/submit).
+- result: **NO_CONSENSUS — but by far the closest run, and the schema barrier is BROKEN.**
+  - **Schema conformance: SOLVED.** deepseek emitted correctly-enveloped messages — a well-formed `agreement_proposal`
+    `{text, proposal, expected_response_types}` and a well-formed `submit_plan` `{plan, text, proposal}`. Agents got
+    through **ack → fact_collection → discussion → proposal** — far past TL-009/TL-010 (which stalled at ack/opinion).
+  - **Content quality: excellent.** deepseek produced a real, specific plan (a `ProtocolStateMachine` with
+    IDLE/FACT_COLLECTING/…/SUBMITTING states, file refs, transition validation). Confirms the capable-model bet.
+  - **My TL-010 diagnosis confirmed:** the wrong-shape system prompt WAS a real contributor; fixing it unblocked
+    schema conformance. It was not purely a model limitation.
+- where it failed now (a NEW, more advanced blocker):
+  - **Proposer/acceptor race.** The protocol wants ONE planner to `agreement_proposal` and the OTHER to
+    `agreement_acceptance`. Both raced: planner-b proposed but wasn't the awaited proposer → `Unexpected
+    agreement_proposal: not awaiting proposal from this agent`; planner-a was asked ("Reminder (2/2): call
+    agreement_proposal now") but didn't comply in time → "Planning interrupted: required event agreement_proposal not
+    received." planner-b THEN submitted a (great) plan, but the task was already interrupted → "no active task".
+  - **60s turn-latency ceiling recurred** — `Forced shutdown … after 60000ms` for both planners (deepseek's longer
+    generations, e.g. the submit_plan, can exceed the orchestrator's planning-turn budget).
+- findings:
+  - **The consensus gap is now SMALL and concrete**, not structural: capable model + schema-accurate recipe cleared
+    conformance and content; what remains is (a) **role discipline** — planners must be *reactive* to the
+    orchestrator's proposer/acceptor designation (don't both proactively propose; wait to be asked, then comply
+    immediately), and (b) **the 60s planning-turn budget** vs slower model turns.
+  - Updated capability map: goose ✅ dev · ✅ pair chat · ⚠️→ consensus **nearly** works with a capable model + full
+    recipe (proposal phase reached, valid plan produced) — one recipe tweak + a latency allowance from a pass.
+- residuals / next (candidate TL-012):
+  - Recipe: add explicit reactivity — "NEVER send agreement_proposal unless the orchestrator asked YOU; if asked to
+    accept, send agreement_acceptance immediately repeating the exact proposal." Feeds BL-042.
+  - Latency: raise/relax the 60s planning-turn force-shutdown for slower attach workers (own small item?), or pin a
+    faster deepseek turn (shorter max output).
+- replay notes:
+  - deepseek-v4-flash on OpenRouter is capable + conformant for this protocol; the bottleneck is coordination + the
+    60s budget, not the model.
+  - A schema-accurate `--system` recipe is essential — mirror `response-schema.ts` payloads exactly.
