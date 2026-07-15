@@ -48,6 +48,11 @@ and reports. The PO can **interrupt at any time**. With one agent and no messagi
 impossible; the cap bounds a *hang*. **This run is also our first fault-tolerance probe** — we watch what a real
 hang looks like under supervision to seed later detection.
 
+**Blast-radius sandbox (PO mandate, 2026-07-16).** The worker runs in a **per-task git worktree** (assigned via the
+launcher's `workdir`); its file changes are contained to its own branch and **cannot reach mainline except by a
+PO-gated merge** — an agent cannot touch the primary checkout or `master`. This is the security boundary for
+autonomous code work. Discipline detail: **BL-036**.
+
 ## 5. Deliverables & Definition of Done (each row must be *verified by running it*)
 | # | Deliverable | DoD (verifiable) |
 |---|---|---|

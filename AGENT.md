@@ -327,6 +327,14 @@ a session can do).
   blocker is branch/merge collisions, not token attribution). **Parallel work is otherwise ALLOWED** — testing,
   review, planning, docs, instrumentation — and will *increase*, especially testing. Token attribution still degrades
   under concurrency; accept the coarser %-reading as the price of non-code parallelism.**
+  **MANDATE (PO, 2026-07-16): all code development now happens in a per-task git worktree — never in the primary
+  checkout.** Each task gets its own worktree + branch; mainline is reached only by a PO-gated merge; the worktree
+  is cleaned up at close. This *is* the deliberate worktree discipline this rule waited on — with each actor
+  isolated in its own worktree the branch/merge-collision blocker is gone, so **parallel code development is now
+  ALLOWED** under it. It is also the **safety sandbox for autonomous agents**: an agent's file changes stay
+  contained to its worktree/branch and cannot reach mainline until the gate (the launcher's `workdir` param is the
+  per-agent assignment hook). Remaining discipline *detail* — branch-naming, merge serialization, id allocation,
+  stale-worktree cleanup — is **BL-036**. Docs/governance may still be edited directly on master; **code may not**.
 
 ## ⛔ IMPLEMENTER RULES OF ENGAGEMENT ⛔  *(READ BEFORE EVERY TASK — NON-NEGOTIABLE)*
 

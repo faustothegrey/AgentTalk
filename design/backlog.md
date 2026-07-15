@@ -1214,6 +1214,11 @@ tags: [governance, worktree, parallel-dev, process]
   races, and stale-worktree/branch cleanup at close. Deliverable is a short discipline doc + any tooling
   (e.g. an id-reservation or worktree-create helper). When adopted, LB-90's code-dev restriction can be lifted.
   Source: LB-90 + the 2026-07-13 coordination near-misses.
+  **UPDATE (PO mandate, 2026-07-16):** worktrees are now **mandatory for all code development** (recorded in AGENT.md,
+  Resource-Monitoring interim rule) — the policy call is made and LB-90's code-dev restriction is lifted under it.
+  This item's remaining scope narrows to the **discipline detail + tooling** (branch-naming, merge serialization,
+  id allocation without races, stale-worktree cleanup, and the per-agent `workdir`→worktree assignment used by the
+  launcher / Hermes). Doubles as the **autonomous-agent safety sandbox** for the Bite ladder.
 
 <!-- @item
 id: BL-037
