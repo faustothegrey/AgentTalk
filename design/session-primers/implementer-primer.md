@@ -1,64 +1,56 @@
 ---
 role: implementer
-key: 20260712-0100-725a1b-implementer
-written: 2026-07-12 by Codex, after M20 closed
+key: 20260716-0055-bite0-impl
+written: 2026-07-16 by Claude (session close — Bite 0 launcher implemented on branch task-bite0, pending PO-gated merge)
 ---
 
 This is your session primer.
 
-## 1. What AgentTalk is
+**Project.** AgentTalk is a multi-agent orchestration system: isolated LLM agents (Claude/Codex/Gemini) attach as
+MCP clients over WebSocket, pull turns via `await_turn`, and coordinate through a planner→implementer→reviewer
+workflow. Current thrust: the **autonomous-development ladder** — PO sets a goal, AgentTalk forms a team, works it,
+and reports, with a human-gated dimmer from `approve-each → autonomous`.
 
-AgentTalk is a multi-agent orchestration substrate: independently launched coding agents attach over MCP/WebSocket,
-take turns, exchange role messages, and coordinate work through workflow batons and gate events.
+**Roles.** Human = PO (Fausto). Current bindings live ONLY in `AGENT.md → 📌 DEFAULT ROLE ASSIGNMENTS` — read it.
+**Critical current state:** **Codex and Gemini (agy) are UNAVAILABLE until further notice** (PO, 2026-07-15).
+**Claude is the sole available agent** → resource-scarcity fallback: you wear every hat (planner, all reviewer
+seats, implementer), declare each loudly, keep each gate's discipline separate. The **Standing Conditional
+Reassignment is ACTIVE** (implementer unavailable → you may implement). **Merges stay PO-gated.**
 
-The self-hosting program is the current arc: AgentTalk should gradually carry the coordination that builds
-AgentTalk, while the project reports honestly when the terminal remains the easier fallback.
+**Workflow / source of truth.** `design/collaboration-workflow.md` (method) + artifacts: `design/backlog.md`
+(BL items), `AGENT.md` (governance), `design/logbook.md`, the Bite 0 plan below. There is **no `*-implementation.md`
+ledger** for this thread yet — it's plan + branch + backlog.
 
-## 2. Roles
+**Active work — Bite 0 of the autonomy ladder.** `design/bite0-autonomous-launch-plan.md` is the spec. Model
+(settled with PO): the PO writes a **config file** `{instance, agents[], goal, cap}`; a **deterministic launcher**
+(the "(AgentTalk) launcher" — NOT an agent, no inference) starts the instance, launches the declared agent(s) via
+the BL-037 on-demand launcher, delivers the goal as the first turn, **machine-enforces a cap** (wall-clock +
+resource meter — the anti-loop rail), and reports at end. **"Hermes" is a SEPARATE future *agent* layer** (will
+invoke the launcher + monitor a live session) — deferred, NOT Bite 0. Don't re-conflate them.
 
-This primer is for the implementer role. Product Owner is Fausto, the human, and owns scope, direction, role
-assignment, and merges. Current role bindings live only in `AGENT.md` -> "DEFAULT ROLE ASSIGNMENTS"; read that table
-before acting. If the PO assigns you implementation, declare the role loudly, obey the approved plan/ledger, and do
-not review your own work.
+**What's DONE (this session):**
+- **BL-037** (merged, sibling repo `agentalk-mcp-client` master): the on-demand HTTP launcher (`lib/agent-launcher.mjs`).
+- **Bite 0 launcher** implemented on branch **`task-bite0`** in a **git worktree** at
+  `/home/fausto/Software/att-worktrees/task-bite0` (sibling repo). `lib/bite0-launcher.mjs` = the deterministic
+  config→launch→cap→report core. 11 hermetic core tests + 2 E2E (real core drives the real BL-037 launcher + a
+  real spawned harness; proves happy-path completion AND a real wall-clock cap terminating a real hung process).
+  Full sibling suite 33/33, lint clean, BL-037 untouched. **Committed (`a86733d`), NOT merged — PO-gated.**
 
-## 3. Workflow and sources of truth
+**Your immediate next steps (PO-prioritized, 2026-07-16):**
+- **BL-039** — add NDJSON run-artifact capture (D6, deferred). Small: injected `record()` effect + test.
+- **BL-040** — the live run against a real AgentTalk instance + authed CLI (acceptance §6). **Blocker: the main
+  repo is not built on this machine** (no `node_modules`/`dist`, `tsc` missing) — `npm install` + build first.
+- Also open: the **Bite 0 merge decision** (PO-gated). **Independence caveat:** you authored Bite 0, so a gate-2
+  review by you isn't independent — flag it; real independence needs Codex/agy back or **BL-038** (Goose/OpenRouter).
 
-Read `AGENT.md` first, especially the Implementer Rules of Engagement. Skim `design/implementer-pitfalls.md` before
-touching files. Ground the task in `design/collaboration-workflow.md`, the approved `*-plan.md`, and the active
-`*-implementation.md` ledger.
+**Op notes / gotchas:**
+- **Worktree mandate (PO, 2026-07-16):** ALL code development happens in a per-task git worktree (`task-<id>`),
+  never the primary checkout; docs/governance may still be edited on master. Recorded in `AGENT.md`. Worktrees
+  don't share `node_modules` — symlink the sibling repo's in.
+- **Missing key store:** this fresh machine has NO `session-primer-key.json` — the primer-handshake consumed-set is
+  absent, so verify against git/ledger, don't trust primers blindly. (Report the missing store to the PO.)
+- **Usage meter works now** (`node scripts/usage.mjs`): at close, claude weekly 8%, session 40%. Plenty of weekly runway.
+- **Git:** main repo `master` ahead of origin (unpushed — PO hasn't asked to push); sibling repo `master` has BL-037;
+  `task-bite0` branch holds the Bite 0 launcher in the worktree.
 
-Before edits, declare Rule-6 scope, retry budgets, allowed/forbidden surfaces, and what "done" means. Use fresh
-evidence; do not claim a proof that would pass without the change.
-
-Skim `design/lessons/codex-lessons.md` if you are Codex, and poll `node scripts/usage.mjs`. Both are best-effort;
-neither blocks real work.
-
-## 4. Current state
-
-M20 is closed on `master`.
-
-Recent mainline:
-
-- `0f82006` - merge(M20-T3): real approved-relay proof (BL-030) - M20 CLOSED
-- `2ad1bd5` - docs(M20): epic closure - BL-030 done; mechanism built, adoption is program work
-- `0fe6657` - docs(M20): mark D8 (freeze/fence) VERIFIED - all 8 DoD rows green
-
-The M20 mechanism now exists: approval mode defaults `off`; when switched to `approve_each`, agent-to-agent relays
-can be held as pending relays, approved or denied through WS/UI, and delivered through the existing queue path. M20
-proved one demonstration approved relay and one denied negative using real attached Codex CLIs. The reported ratio
-was deliberately labeled as a demonstration metric, not an organic productivity statistic.
-
-There is no active implementer task in this primer. Wait for a PO assignment and a gate-approved plan before opening
-a branch or editing code.
-
-## 5. Op notes
-
-- Do not infer the current milestone from this primer; verify the latest ledger and backlog.
-- The PO reference clock remains invariant: PO gates, opinions, merge decisions, and direct PO messages are not
-  mediated by AgentTalk.
-- BL-030 is done as mechanism work; adoption and real burden reduction remain program work.
-- BL-028 remains adjacent and was not part of M20.
-- The sibling client repo should be checked manually whenever a task has cross-repo risk; local status at close was
-  clean on `master`.
-
-Current role: implementer.
+Verify all of the above against ground truth before acting. Report your understanding, then STOP for the PO's go.

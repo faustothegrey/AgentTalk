@@ -307,3 +307,25 @@ here.**
   the split-out PO-sanctioned primer housekeeping, the backlog closure — so each is independently revertable and the
   BL-032 commit contains *exactly* its scope. Bundling would have laundered out-of-scope edits onto the mainline
   under a fix label; dropping would have destroyed sanctioned work. Split, don't bundle or drop.
+
+### 2026-07-16 — Autonomy-ladder inception + Bite 0 build (architect → planner → temp implementer, degraded mode)
+
+- **As architect: check the docs' *cause*, not just their verdict, before honoring a PO instinct.** The PO's gut
+  was "re-hire Hermes" for the conductor. AGENT.md said only "retired." Grepping LB-49 showed the cause was a
+  *wedging loop + lossy tmux transport* — the two failures the conductor can least tolerate. That let me steelman
+  the instinct AND flag the exact risk, and the PO's refinement (Hermes = deterministic infra, out of scrum)
+  resolved it. Reading the *why* behind a retirement is what turned "yes/no" into a real design conversation.
+- **Naming discipline is architecture.** I conflated the deterministic launcher with "Hermes" for several turns;
+  the PO untwisted it (launcher = deterministic script; Hermes = a future *agent* that invokes it). The conflation
+  had leaked into a whole plan doc. Lesson: when a role is half software / half agent, name the two layers
+  explicitly and early — the seam reopens every turn until you do. I added a §0 "two layers" note so it can't.
+- **As temp implementer in degraded mode: deliver the verifiable core, refuse to fake the rest.** Bite 0's live
+  run needs the unbuilt main repo + an authed CLI this box lacks. Rather than write unverifiable orchestrator
+  wiring, I built the deterministic cap/orchestration core + a real E2E (real BL-037 launcher + real spawned
+  harness + real wall-clock terminating a real hung process), and filed D6 + the live run as BL-039/040 with the
+  honest blocker stated. A partial delivery clearly reported beat an over-wired green.
+- **Worktree mandate landed cleanly as both the BL-036 discipline AND the autonomy safety-sandbox** — the
+  launcher's `workdir` param is the per-agent worktree hook. One mechanism, two payoffs; recorded in AGENT.md.
+- **Flag your own lost independence, every time.** Sole agent in fallback → I authored Bite 0 and would review it.
+  Said so plainly in the delivery and the primer; real gate-2 needs Codex back or BL-038 (Goose). Reviewer honesty
+  applies to the reviewer's own position.

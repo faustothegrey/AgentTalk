@@ -1254,4 +1254,34 @@ tags: [self-hosting, attach, native-loop, goose, openrouter, provider-diversity]
   bridge that injects the hash (à la `bridge.mjs`/BL-017) or server-side handling for skill-path agents. Deliberately
   **off Bite 0's critical path** (Bite 0 uses the built Claude-via-launcher worker). Source: PO, this session.
 
+<!-- @item
+id: BL-039
+status: todo
+date: 2026-07-16
+epic: null
+tags: [self-hosting, bite0, launcher, observability]
+-->
+- [todo · immediate next (PO, 2026-07-16)] — **Bite 0 launcher: NDJSON run-artifact capture (D6)** — the Bite 0
+  launcher (`agentalk-mcp-client:lib/bite0-launcher.mjs`) enforces the cap and reports, but does **not** yet write
+  the per-run NDJSON artifact the plan's D6 requires (config already carries `instance.recording`). Add a recording
+  hook (reuse the session recorder) that captures launch → goal-delivery → outcome/cap events, so each run is
+  observable post-hoc — the substrate for watching how hangs actually happen (the fault-tolerance probe). Small;
+  extends the existing core with an injected `record()` effect + a test. Source: Bite 0 delivery, deferred honestly.
+
+<!-- @item
+id: BL-040
+status: todo
+date: 2026-07-16
+epic: null
+tags: [self-hosting, bite0, live-validation, acceptance]
+-->
+- [todo · immediate next (PO, 2026-07-16)] — **Bite 0 launcher: live run against a real AgentTalk instance + authed
+  CLI (acceptance)** — the PO-babysat acceptance step from the Bite 0 plan §6. The core + cap are proven hermetically
+  and by E2E (real BL-037 launcher + real spawned harness + real wall-clock termination), but the **live** path —
+  the launcher *starting a real orchestrator instance* (D1's instance-start, stubbed in the E2E) and driving a real
+  authed provider CLI to complete/​fail a real bounded task — is unexercised. Prereqs on this machine: **build the
+  main repo** (`npm install` + `tsc` build; currently absent — no `node_modules`/`dist`) and confirm an authed CLI.
+  Deliverable: one supervised live run to COMPLETED and one forced cap-breach, with the artifact from BL-039.
+  Source: Bite 0 delivery §6.
+
 *(add new items above this line)*
