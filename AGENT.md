@@ -108,6 +108,16 @@ and discipline still hold separately**.
 | Architect | Claude | any agent | PO-assigned per epic; ≠ that epic's Planner |
 | Tester | Codex (PO-assigned 2026-07-12) | any agent | agent-held **helper** to a **human test driver** (instruments/guides — logs, backend status, step-by-step, verification; does NOT operate the UI); produces **findings, not merge verdicts**; owns the organic-coordination metric; ≠ that task's Implementer |
 
+> **⚠️ Availability (PO, 2026-07-15 `[PO]`): Codex and Gemini (agy) are UNAVAILABLE until further notice.**
+> Effect: **Claude is the sole available agent** (plus the human PO). This triggers the **resource-scarcity
+> fallback** — Claude MAY hold several roles at once, does the handshake once per role, keeps **each role's gate
+> and discipline separately**, and **declares every hat** it wears. The **Standing Conditional Reassignment is now
+> ACTIVE** (Implementer unavailable → a planner/reviewer seat-holder may also implement). Codex's default seats
+> (Planner · Implementation Reviewer · Tester) have **no available holder** — Claude covers them under the
+> fallback. **Unchanged:** merges stay **PO-gated**, the 3-gate sequence still holds, and every gate is exercised
+> under its own seat's discipline (never waived because one actor wears several hats). This lapses when the PO
+> declares Codex/agy available again.
+
 **Shape of the current map (PO rationale, 2026-07-08):** Codex holds the *content* seats (authors the plan,
 verifies the implementation against it — not self-review: the plan is gate-1-approved by another agent);
 Claude holds the *check* seats (both bracket gates + architecture + SM process authority). Noted concentration:
@@ -139,6 +149,10 @@ one agent holds SM and both quality gates — accepted because merges stay PO-ga
   findings not verdicts; owns the organic-coordination metric. Charter/rationale: `design/tester-seat-proposal.md`;
   origin: the first organic UI-relay session (LB-77 / BL-031). First assignment: Codex instruments a human-driven
   BL-031 validation / M20 adoption run.
+- 2026-07-15 — **PO declared Codex and Gemini (agy) UNAVAILABLE until further notice.** Claude is the sole
+  available agent; resource-scarcity fallback in effect and the Standing Conditional Reassignment flipped to
+  ACTIVE (see the ⚠️ Availability note above and the status line in the reassignment block). Merges stay
+  PO-gated. Reverts when the PO declares them available again.
 
 ### Vocabulary note — "spawn" is not used in this project
 
@@ -234,8 +248,9 @@ in every context (docs, messages, primers, lessons). Violations should be correc
       revoke:   the Implementer returns → exception lapses automatically → the implementer default
                 (📌 DEFAULT ROLE ASSIGNMENTS) is live again
       reason:   avoids a development deadlock when no other implementer is available
-      status:   DORMANT as of 2026-06-27 — the default Implementer is currently considered AVAILABLE,
-                so this grant is NOT in effect right now.
+      status:   ACTIVE as of 2026-07-15 — the PO declared the default Implementer (agy) UNAVAILABLE until
+                further notice (see the ⚠️ Availability note in 📌 DEFAULT ROLE ASSIGNMENTS), so this grant
+                IS in effect right now. Lapses when the PO declares agy available again.
     ```
 - **Report to the Scrum Master freely — encouraged.** Beyond the mandatory STOP-and-report gates (out-of-role,
   show-stopper, blocker — all unchanged and still mandatory), you are **encouraged to report to / consult the Scrum
