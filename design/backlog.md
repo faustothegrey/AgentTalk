@@ -1215,4 +1215,38 @@ tags: [governance, worktree, parallel-dev, process]
   (e.g. an id-reservation or worktree-create helper). When adopted, LB-90's code-dev restriction can be lifted.
   Source: LB-90 + the 2026-07-13 coordination near-misses.
 
+<!-- @item
+id: BL-037
+status: done
+date: 2026-07-15
+epic: null
+tags: [self-hosting, launcher, agents, on-demand]
+-->
+- [done · 2026-07-15 (merged)] — **HTTP launcher: launch agents on demand, no shell command** — Option A of
+  `design/http-launcher-proposal.md`. New `agent-launcher` service in `agentalk-mcp-client` (`lib/agent-launcher.mjs`
+  core + bin, binds `127.0.0.1`): `POST /agents` creates+starts the agent via the orchestrator's existing HTTP API
+  and spawns the `llm-agent` harness locally, which attaches over WS as a manual launch would; plus `GET /agents`,
+  `DELETE /agents/:id`, `GET /healthz`. **Orchestrator core untouched** — the M05 "orchestrator launches nothing"
+  invariant is preserved (integration 5a). Built by Claude as temporary implementer (PO-directed, agy offline);
+  E2E-validated (real launcher → real orchestrator-stub HTTP → real harness spawn → real WS attach); full suite
+  20/20, lint clean; PO-gated merge (`agentalk-mcp-client` master). **Follow-on (todo):** wire the web UI "start
+  agent" button to `/agents`, and make readiness reflect the real WS-attach event, not the launcher's `201`
+  ("launched ≠ ready"). Why: first concrete "create a team on demand" piece toward the autonomous-development goal.
+
+<!-- @item
+id: BL-038
+status: todo
+date: 2026-07-15
+epic: null
+tags: [self-hosting, attach, native-loop, goose, openrouter, provider-diversity]
+-->
+- [todo · surfaced 2026-07-15 (PO)] — **Native-loop attach lane via Goose + OpenRouter** — enable MCP-attach agents
+  backed by OpenRouter models, driven by **Goose** running the `attach-skill.md` poll loop
+  (`await_turn`→work→`submit_*`→`await_turn`). This is the **native-loop/skill lane** (M05 open follow-up), distinct
+  from the built PTY-harness lane (claude/codex/gemini via `llm-agent.mjs`). Value: restores **independent agents
+  (workers AND reviewers) without Codex/agy**, and adds provider diversity for Bite 1+. **Known blocker:** the
+  server demands `clientInfo.contractHash` at `initialize` (LB-66); a generic MCP client can't know it — needs a
+  bridge that injects the hash (à la `bridge.mjs`/BL-017) or server-side handling for skill-path agents. Deliberately
+  **off Bite 0's critical path** (Bite 0 uses the built Claude-via-launcher worker). Source: PO, this session.
+
 *(add new items above this line)*
