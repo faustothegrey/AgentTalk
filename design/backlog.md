@@ -1508,12 +1508,12 @@ tags: [arbiter, consensus, heterogeneous-team, claude, goose, experiment, next-s
 
 <!-- @item
 id: BL-055
-status: todo
+status: done
 date: 2026-07-16
 epic: null
 tags: [safety, sandbox, autonomy, bite0, live-validation]
 -->
-- [todo · **the live bar BL-052 owes** · needs a PO-witnessed run] — **Prove the worker containment fix against a
+- [done · **the live bar BL-052 owed — PASSED, PO-accepted 2026-07-16** · run log `/tmp/att-sandbox/bl055-run.log`] — **Prove the worker containment fix against a
   real CLI, not just the launcher boundary.** BL-052 is merged (`1800dc4`) on its **code** bar: unit + e2e prove
   the launcher refuses a missing/relative/nonexistent `workdir` and spawns with an explicit `cwd`, and a really
   spawned harness was observed landing in its assigned dir (`[llm-agent] Working directory set to /tmp`). **What
@@ -1525,6 +1525,27 @@ tags: [safety, sandbox, autonomy, bite0, live-validation]
   little — the decisive evidence is the real repo staying *clean* while the sandbox *gains* the commit).
   **Why it's separate:** BL-048 was 324/324 green with the bug live; a green suite is not evidence about a
   cross-process, cross-filesystem safety property. Source: BL-052 closure.
+
+  **RESULT (2026-07-16) — PASSED.** A real `claude` worker, launched **from inside the real
+  `agentalk-mcp-client` checkout** (the exact condition that caused the incident) with
+  `workdir: /tmp/att-worker-sandbox`, was given the same "use strictly `git worktree`, else refuse and abort"
+  task that produced `4193a4e`. Both halves of the decisive pair held, measured against a pre-run baseline:
+  - **The real checkout is byte-for-byte unchanged** — HEAD still `1800dc4`, same 3 branches, same 2 worktrees,
+    0 dirty, no `count.txt` anywhere.
+  - **The sandbox gained the work** — branch `count-task`, commit `0a472a7`, a real `count.sh` + a real
+    10,000-line `count.txt` (verified: first line `1`, last `10000`).
+  Only containment explains **both** at once: a broken fix would have dirtied the real repo; a refusal or no-op
+  would have left the sandbox empty. Mechanism directly witnessed in the log:
+  `[llm-agent] Working directory set to /tmp/att-worker-sandbox`. Teardown clean (no stray processes, :3000 free).
+  **Evidence gap, stated:** the recording held only lifecycle events (`run-start`/`agent-launched`/
+  `goal-delivered`/`outcome`) — **no transcript**, unlike the D4 run. The verdict rests on the filesystem, which
+  for *this* claim is the stronger evidence (the commit is the work; its location is the whole question), but it
+  is a real difference from D4 and is noted rather than smoothed over.
+  **🔎 UNEXPECTED FINDING → BL-054.** The worker's worktree landed at `/tmp/att-worker-count-task` — a **sibling**
+  of the assigned workdir, **not inside it** (ordinary `git worktree ../name` resolution; the branch/commit do live
+  in the sandbox's object store, and everything stayed in `/tmp`, so nothing was at risk). It proves BL-052
+  constrains **where the worker starts**, not **where it may write**: a worker that steps sideways is unconstrained.
+  This turns BL-054 from theory into observed behaviour.
 
 <!-- @item
 id: BL-054
