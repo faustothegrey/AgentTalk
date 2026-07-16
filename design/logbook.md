@@ -2632,3 +2632,96 @@ bridge into the orchestrator). **Practical effect:** multi-agent attach tests, p
 unavailable, the Standing Conditional Reassignment applies. **Reopen condition:** new facts about the agy executor
 hang (why the first `exec_rpc` never returns), or a lightweight-liveness-ping healthcheck that doesn't require a full
 agy generation. Source: TL-006, BL-038, LB-89; gate-2 refute committed `fc04018`.
+
+### LB-93 · 2026-07-16 — [providers/attach] BL-045 root-caused AND fixed: `agy mcp` is not a subcommand; agy needs HOME-level MCP config (verified live)
+
+**Finding.** The agy attach client does not hang on generation — **it is never asked to generate**.
+`getPersistentProviderCommand` (`agentalk-mcp-client`, `lib/executor-runtime.mjs`) starts the persistent gemini
+session as **`agy mcp`**, by analogy with `codex mcp-server` and `claude -p --verbose`, both of which are real.
+**`agy` has no `mcp` subcommand** (`agy --help` lists: agent, agents, changelog, help, install, models, plugin,
+plugins, update). agy ignores the unrecognised arg and boots its **interactive TUI** (Go/bubbletea). Spawned with
+`stdio: ['pipe','pipe','pipe']` exactly as the executor does, that TUI stays **alive**, emits **zero bytes**,
+**accepts** the JSON-RPC stdin write without error, and **never answers** — LB-92's "process alive and silent past
+90s", precisely. It later answers our protocol frames on stderr with `failed to send message: no active
+conversation`: **it read MCP frames as chat input.** It is a chat UI, not an MCP server.
+
+**This satisfies LB-92's reopen condition** ("new facts about the agy executor hang — why the first `exec_rpc` never
+returns"). **BL-045 → todo** (un-parked 2026-07-16).
+
+**Corrects LB-92 / BL-045 — partially.** *Disproven:* BL-045's recorded cause, "the agy/gemini CLI's cold-start +
+first-turn latency exceeds the 30s window; the client stays alive still generating". Latency never entered into it.
+*Upheld and now explained:* LB-92's "this is deeper than a timeout" — no timeout value fixes a chat UI being fed
+JSON-RPC. The gate-2 refutation of fix-attempt-1 was sound evidence pointing at the right conclusion; only the
+attributed cause was wrong. TL-006's "**Codex acks fine**, so it's gemini-CLI latency" was a reasonable inference
+from what was known, but the discriminator was never speed — it was **whether the subcommand exists**.
+
+**Why it hid.** `GeminiPersistentExecutor` has two paths, gated on `AGENTTALK_PERSISTENT_MCP === 'true'`. The gated
+one is the BL-032 bridge (`agy --dangerously-skip-permissions [--continue] --print <prompt>` — every flag real per
+`agy --help`) and **looks correct**. The fall-through is `agy mcp` and is broken. **`AGENTTALK_PERSISTENT_MCP=true`
+is set in exactly one place across both repos: `__tests__/exec-rpc.test.ts:222`** — not the launcher, not
+`llm-agent.mjs`, not the scripts, not the orchestrator. **The working path is test-only; the broken path is
+production-only.** Green tests, broken production — that is the whole story of this bug. Three further client
+defects turned a bad command into an *infinite* hang: `initialize()` set `_status='ready'` unconditionally (the base
+`_onSpawned()` is a no-op, so no readiness handshake could fail); the `'close'` handler rejected only a *current*
+request (nothing was in flight at startup); and the fall-through path honoured **no timeout at all**
+(`sink.timeoutMs` was read only inside the bridge branch).
+
+**Evidence.** Reproduced through the real code path (`createExecutor({providerName:'gemini',
+requestedExecutionMode:'auto'})`) against the real binary, **~20s, zero LLM cost, no orchestrator attach**:
+`status after initialize(): ready` (the harness believes the session is healthy) → `NO RESPONSE after 20000ms`. Now
+also reproduced **in the client test suite**: the new hardening tests fail on un-hardened code via vitest's own 5s
+limit — i.e. the hang itself is the failure.
+
+**Shipped** (`agentalk-mcp-client`, branch `task-BL-045`, PO-gated, not merged): a **per-turn deadline**
+(`sink.timeoutMs`, default 300000 matching the one-shot spawn timeout) — the rail that actually catches an
+alive-but-silent child, which emits no `close` and so is invisible to any exit handler; `_exitInfo` recorded on close
+so a later turn reports the exit code (diagnostics — that case already rejected); and a readiness check that stops
+`initialize()` claiming `ready` after the child exits (limited: `_onSpawned` is a no-op for claude/gemini, so it
+mainly helps codex — the deadline is the backstop). Verified against the real agy binary: rejects at ~8s with
+"did not respond within 8000ms" instead of hanging. Build gate green (lint + verify-contract + 46 tests, was 40).
+**This bounds the failure; it does not fix agy.**
+
+**FIXED + VERIFIED LIVE (same session, PO-authorised generations).** agy **can** serve as an MCP attach client. The
+full round trip now works against the real binary: **bridge connected · initialize · tools/list · tools/call** —
+agy called an MCP tool over the bridge and returned its token as the generation result (`methods seen:
+server/discover, initialize, notifications/initialized, tools/list, tools/call`). Four things were required, each
+uncovered by the previous one:
+
+1. **`AGENTTALK_PERSISTENT_MCP=true`** — necessary but nowhere near sufficient (it was the whole candidate fix above).
+2. **HOME-level `mcp_config.json`.** agy **only** spawns MCP servers declared in `~/.gemini/config/mcp_config.json`
+   (pre-migration `~/.gemini/antigravity-cli/mcp_config.json`; the client writes both). A **project-local**
+   `mcp_config` is *discovered and then silently ignored* — **google-antigravity/antigravity-cli#60**, open since
+   2026-05-20 against agy v1.0.0, whose own impact note names our exact case: *"External tools requiring per-project
+   MCP registration (orchestration agents…) lose AGY integration unless they pollute the user's HOME directory."*
+   This is why `agy plugin validate` reports `✔ mcpServers : 1 processed` on a workspace plugin that loads **nothing**:
+   validation is a static schema check, not proof of loading.
+3. **Per-agent `HOME` redirect.** HOME-level config is global — one file, one bridge URL, every agent colliding.
+   Pointing `HOME` at the agent's own temp home makes "HOME-level" resolve **per agent**, preserving isolation and
+   leaving the real `~/.gemini/config/mcp_config.json` untouched. This is what makes #60 survivable for us.
+4. **Carrying agy's auth + keychain.** The redirect moves agy's credentials out from under it: its token lives in
+   `~/.gemini/antigravity-cli/antigravity-oauth-token` (the pre-existing copy list was the *gemini CLI's* files and
+   did not include it), and it reads credentials from the **macOS Keychain** via go-keyring, which resolves the login
+   keychain under `$HOME/Library`. Without the token copy every turn fails `Authentication required`; without a
+   `Library` symlink back to the real home, macOS raises a GUI **"keychain not found"** dialog — *invisible to an
+   automated probe (stdout/stderr only) and fatal for an unattended agent, since nobody is there to dismiss it.*
+   **Caught only because the PO watched the screen**, while the probe reported a clean green. Same failure shape as
+   BL-045 itself: fine to the harness, silently waiting on a human.
+
+**Refuted en route** (recorded so nobody re-derives them): *print mode lacks MCP support* — false, print mode was
+never the problem, #60 was; and the **plugin route** (`.agents/plugins/<name>/mcp_config.json`, commit `569dd09`) —
+valid per `agy plugin validate`, loads in neither print nor interactive mode, because it is project-local.
+
+**Healthcheck implication — fix-attempt-1 is needed after all.** Verified agy turns took **22–34s** (33.6s with a
+failing keychain lookup, 22.2s once fixed). That **exceeds the 30s default**. BL-045 called the provider-specific
+timeout (gemini/agy → 90000ms) "a fine building block but insufficient alone" — correct as a *complete* fix, but it
+is now **necessary**: 30s cannot accommodate a real agy turn. Ship both.
+
+**Still unverified.** All of the above ran against a **fake MCP server over the real WS transport** — not a live
+AgentTalk orchestrator, and not a real `start_pair_chat` healthcheck. Transport, handshake and tool-call path are
+real; the far end is not. That last mile is the PO-babysat step.
+
+**Fitness — PO call.** LB-92 declared agy UNFIT as an attach client "until further facts emerge". The facts have
+emerged and the blocker is fixed, so **the ruling now has a concrete path to being lifted** — but this entry does
+**not** lift it: that is the PO's decision, and it should follow the live-orchestrator check above. Until then attach
+tests, pair-chats and consensus continue on codex/claude. Source: BL-045, LB-92, TL-006, antigravity-cli#60;
+implementation + live proof in `agentalk-mcp-client` @ `task-BL-045` (`3072e01`, `e9f63b7`).
