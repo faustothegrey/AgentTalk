@@ -1,5 +1,3 @@
-import { existsSync } from 'fs';
-import { execSync } from 'child_process';
 import { Agent } from './agent.js';
 import { parseWithRetry, translateStructuredResponse } from './translation.js';
 import { WORKER_RESPONSE_INSTRUCTIONS, buildProtocolToolSchema } from './response-schema.js';
@@ -280,15 +278,22 @@ export class InProcessAgentDriver {
     const execOpts: { cwd?: string; timeoutMs?: number; throwOnExecError?: boolean } = { throwOnExecError: true };
     if (this.completer.maintainsSession) {
       const taskId = (evt as any).taskId || 'unknown';
-      const cwd = `/tmp/agentalk-task-${taskId}`;
-      if (!existsSync(cwd)) {
-        try {
-          execSync(`git worktree add ${cwd} -b task-${taskId}`, { stdio: 'ignore' });
-        } catch (e) {
-          // best effort
-        }
-      }
-      execOpts.cwd = cwd;
+      // BL-053: `cwd` is a task-scoped directory NAME, deliberately relative — never a path.
+      // The worker anchors it under the workdir it was assigned and provisions the worktree
+      // itself, because the worker is the only party that knows that directory: in attach mode
+      // the operator launches agents out-of-band, so the orchestrator never learns their workdir
+      // (`workdir` appears nowhere in this repo). Sending a name and letting the worker resolve
+      // it is what keeps the two ends honest.
+      //
+      // This used to be `execSync('git worktree add /tmp/agentalk-task-<id> …')` right here, with
+      // no `cwd` option — so it ran in the ORCHESTRATOR's process cwd. Two consequences, both
+      // real: the worktree belonged to whatever repo the orchestrator happened to start in (the
+      // real checkout, if you weren't careful), and the worker was handed an absolute path
+      // outside its own workdir — silently overriding the containment BL-052 exists to provide.
+      // gemini honoured that path and escaped its workdir every turn; claude and codex discarded
+      // it and stayed put. That disagreement is what made the work "vanish" and cost us the false
+      // accusation recorded in BL-059.
+      execOpts.cwd = `agentalk-task-${taskId}`;
       execOpts.timeoutMs = 600_000;
     }
 
