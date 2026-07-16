@@ -1,6 +1,6 @@
 import { Agent } from './agent.js';
 import { parseWithRetry, translateStructuredResponse } from './translation.js';
-import { WORKER_RESPONSE_INSTRUCTIONS, buildProtocolToolSchema } from './response-schema.js';
+import { WORKER_RESPONSE_INSTRUCTIONS, WORKTREE_CONTEXT, buildProtocolToolSchema } from './response-schema.js';
 import { createConversationRuntime, type ConversationEvent } from '../conversations/runtime.js';
 import type { Registry } from '../registry/registry.js';
 import { McpError } from './completer.js';
@@ -260,10 +260,10 @@ export class InProcessAgentDriver {
       '- Is the approach sound?',
       '- Are there risks or missing steps?',
       '- Can you realistically execute this?',
-      '- Can you execute it strictly inside a `git worktree`?',
       '',
-      'You must use strictly `git worktree` for this task.',
-      'If you cannot or will not use a git worktree, you must refuse and abort the task.',
+      // BL-053: information, not a requirement — see WORKTREE_CONTEXT for why the old
+      // "use a worktree or refuse" text had to go.
+      WORKTREE_CONTEXT,
       '',
       `Original task: ${(evt as any).description}`,
       '',

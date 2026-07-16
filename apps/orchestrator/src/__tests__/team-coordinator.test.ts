@@ -132,16 +132,22 @@ describe('TeamCoordinator', () => {
 
     await coordinator.assignTask(team.id, 'Ship the feature');
 
+    // BL-053 (PO-approved): the plan TELLS the worker it is already in a task worktree; it no
+    // longer demands the worker arrange one, nor offers it a refuse-and-abort branch. The
+    // worker provisions the worktree before the turn, so this is a fact of the setup — asking
+    // the agent to verify it is what made agy refuse a perfectly good worktree.
     expect(sendProtocol).toHaveBeenCalledWith('worker', 'EVT', expect.objectContaining({
       type: 'team_work_assign',
-      plan: expect.stringContaining('use strictly `git worktree`'),
+      plan: expect.stringContaining('IS a git worktree, created for this task'),
     }));
-    expect(sendProtocol).toHaveBeenCalledWith('worker', 'EVT', expect.objectContaining({
+    // The refuse branch is gone, and its absence is the contract: while it existed, the only
+    // thing it could still do was turn a correct setup into a failure.
+    expect(sendProtocol).not.toHaveBeenCalledWith('worker', 'EVT', expect.objectContaining({
       plan: expect.stringContaining('abort the task'),
     }));
   });
 
-  it('should keep the git worktree requirement when delegating a confirmed plan to the worker', async () => {
+  it('should keep telling the worker about its task worktree when delegating a confirmed plan', async () => {
     const planner = new Agent('planner');
     planner.setStatus('starting');
     planner.setStatus('ready');
@@ -178,11 +184,14 @@ describe('TeamCoordinator', () => {
 
     await coordinator.confirmPlan(task.id);
 
+    // BL-053: the worktree context survives the planner round-trip and reaches the worker on a
+    // confirmed plan too — this is the path that regressed silently when the string lived in
+    // three separate copies.
     expect(sendProtocol).toHaveBeenLastCalledWith('worker', 'EVT', expect.objectContaining({
       type: 'team_work_assign',
-      plan: expect.stringContaining('use strictly `git worktree`'),
+      plan: expect.stringContaining('IS a git worktree, created for this task'),
     }));
-    expect(sendProtocol).toHaveBeenLastCalledWith('worker', 'EVT', expect.objectContaining({
+    expect(sendProtocol).not.toHaveBeenLastCalledWith('worker', 'EVT', expect.objectContaining({
       plan: expect.stringContaining('abort the task'),
     }));
   });

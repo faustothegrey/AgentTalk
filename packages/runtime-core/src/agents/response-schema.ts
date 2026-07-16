@@ -302,6 +302,33 @@ export function buildRetryPrompt(rawText: string): string {
  * System prompt fragment that instructs the LLM about the structured response contract.
  * Append this to any prompt where you expect a structured response.
  */
+/**
+ * BL-053. The single definition of what we tell a worker about its git worktree — one string,
+ * because this text previously existed as three near-copies (in-process-driver, team-coordinator,
+ * arbiter-coordinator, the last two byte-identical and independently declared) and drift between
+ * them was inevitable.
+ *
+ * It is INFORMATION, not a requirement, and that is the whole point. The worker provisions this
+ * worktree before the turn (see `provisionTaskDir` in the client), so being in one is a fact of
+ * the setup — not something the agent must arrange, and not something it should try to verify.
+ *
+ * It used to read: "use strictly `git worktree` for this task. If you cannot or will not use a
+ * git worktree, refuse the assignment and abort." That asked an LLM to police an invariant the
+ * harness already guarantees, and it failed exactly as you'd expect — agy inspected a
+ * provisioned worktree, reported "there is no existing Git repository in the current working
+ * directory" (false: `git status` works there; `.git` is simply a FILE in a linked worktree,
+ * not a directory), and dutifully took the refuse branch. The only power that branch had left
+ * was to fail a correctly-provisioned setup.
+ *
+ * Containment does not depend on this text and never did: it comes from the worker anchoring the
+ * task dir inside its own workdir. This string only ever governed task *isolation*, and it
+ * governed it by asking nicely.
+ */
+export const WORKTREE_CONTEXT = [
+  'Your current working directory IS a git worktree, created for this task.',
+  'Work directly in it — you do not need to create one.',
+].join(' ');
+
 export const STRUCTURED_RESPONSE_INSTRUCTIONS = [
   '',
   '## Response format',
