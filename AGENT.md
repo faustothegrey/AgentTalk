@@ -132,10 +132,26 @@ one agent holds SM and both quality gates — accepted because merges stay PO-ga
 - **Gemini (agy)** — key store `~/.config/AgentTalk_Gemini/session-primer-key.json` (bootstrapped 2026-06-27;
   agy's own `~/.gemini` tree is a write-protected/ephemeral sandbox, hence the stable XDG dir); lessons
   `design/lessons/gemini-lessons.md`; meter block `antigravity`.
-  **⚠️ Currently UNFIT as an MCP attach client (PO-parked 2026-07-13):** the agy client **hangs** on the startup
-  healthcheck `exec_rpc` — no ack even at 90s; deeper than a timeout. **Do NOT attach agy as a live MCP client** for
-  pair-chats / consensus / attach tests until reopened — use codex/claude clients instead. See LB-92 / BL-045
-  (deferred). *(Scope: the attach-client capability only; agy's Implementer role is a separate PO call.)*
+  **✅ FIT as an MCP attach client — the LB-92 UNFIT park is LIFTED (PO, 2026-07-16), on live PO-witnessed
+  evidence.** The hang is fixed and proven end-to-end: a real agy, launched by the real launcher against a **real
+  orchestrator**, attached, ran a real generation, and round-tripped MCP tool calls back through the bridge
+  (`submit_work_response` + `submit_work_result`) — the team reached **completed** and the **PO witnessed `391`**
+  (a *computed* 17×23, so no stub or hung TUI can explain it) rendered next to the worker in the Team panel. An
+  earlier probe also proved tool use: `answer.txt` = `391` written to disk. Turn latency **~14s** (bare
+  `agy --print` = **9.65s**) — well under the 30s healthcheck default, so the once-feared provider-specific 90s
+  timeout is **NOT** needed (LB-93's "necessary after all" is superseded).
+  **⚠️ TWO BOUNDS — read before relying on this:**
+  1. **Production is still broken without `AGENTTALK_PERSISTENT_MCP=true`.** The verified path is gated on that env
+     var; the fall-through is `agy mcp`, which is **not a subcommand** and hangs exactly as LB-92 described. Set the
+     flag when attaching agy, until **BL-057** removes the gate. *(All the proof above set it.)*
+  2. **agy's execution compliance is unreliable — it is fit to ATTACH, not yet trusted to EXECUTE.** Observed in both
+     directions on 2026-07-16: it once **wrote the file and then refused**, and once **accepted the plan
+     (`accepted: true`), reported the right number, and silently skipped the execution requirement it had just
+     accepted** (no worktree, no file, no commit). Do not read a `completed` as "the work was done" — check the
+     artifact. See **BL-059**.
+  `start_pair_chat` itself was not exercised (the launcher builds a worker-only team), but the healthcheck rides the
+  same `exec_rpc` mechanism proven above. See LB-94 / BL-045 / BL-057 / BL-059.
+  *(Scope: the attach-client capability only; agy's Implementer role is a separate PO call.)*
 - **Hermes** — **RETIRED from the process entirely (2026-07-02)**: its agent loop wedged and its tmux transport
   proved structurally lossy (LB-49). Do not route batons, reports, or authority through it; its lessons file is
   frozen history.

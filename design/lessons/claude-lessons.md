@@ -504,3 +504,42 @@ here.**
 - **My own lessons file paid out twice in one session** — the blocked bare `sleep`, and `pkill -f` exit-144
   self-killing (which I then did anyway and recognised instantly instead of debugging a phantom). Read-back is the
   mechanism; write-only would have cost me both.
+
+### 2026-07-16 (evening) — as implementer + all-hats (sole agent): BL-045 last mile
+
+- **I inherited a number and argued from it instead of measuring it.** I told the PO agy turns take 22–34s (from a
+  commit message) and built a whole recommendation on it — raise the timeout, "it's a coin flip, don't spend the
+  window". The PO said flatly *"I don't believe agy takes 30 to come up."* One `time agy --print` = **9.65s**. He was
+  right; the 22–34s was bridge overhead, not agy. **My own lessons file already said "don't argue a fence you haven't
+  run" — and I did exactly that, three hours later, on a number I'd never questioned because it was written down.**
+  Inherited figures need the same bar as my own claims: if it's load-bearing, measure it. It cost 10 seconds.
+- **The primer's top gotcha did not save me, because I lapsed while debugging.** I read *"orchestrator cwd → use the
+  throwaway sandbox, never the real checkout"* at startup, and then set cwd to the real checkout while fixing an
+  unrelated ENOENT — polluting the repo with a worktree + branch. Attention had narrowed to making the path *resolve*
+  and stopped asking what it *pointed at*. **Knowing a gotcha protects goal-setting, not debugging** — debugging is
+  exactly when the guard drops. The real fix is structural (BL-054's fence would have refused it), not "try harder to
+  remember". Recovery was clean and I reported it before being asked; that part I'd repeat.
+- **The artifact saved the session; the status field would have lied to me.** Run 1 said `completed` and proved
+  **nothing** — I nearly had to call it inconclusive-but-promising. Run 3 said **`failed`** and was the **win**: the
+  proof was `391` on disk. **Status was anti-correlated with truth both times.** Designing the observable up front
+  (computed answer, absent-vs-present pair) is the only reason today produced a defensible verdict — and it's the
+  second day running that this exact technique carried the result.
+- **The thing that looks like coverage isn't.** Two independent instances in one file: a flag only tests set, and a
+  Bite 0 config labelled `provider: "gemini"` that silently runs a *fake bridge*. Both read as "agy is exercised".
+  Neither was. **When a system reports green on a path I haven't personally traced end to end, assume the label, not
+  the path.**
+- **Two "stuck"s, both mine, neither the system's.** The PO aborted twice. Once was the launcher failing to *exit*
+  (no `startCommand` → it never stops the instance); once was my leftover worker **squatting on its agent id** → the
+  next run died on a 409 the UI showed as a hang. Both looked like "agy hangs" — the very hypothesis I was testing.
+  **When the thing you're testing for appears to reproduce, suspect your own harness first**; I'd have burned the
+  window "confirming" a hang that was my own litter.
+- **A green from an unwitnessed self-report is worth ~nothing, and I now have the pair to prove it.** `agy-w2` said
+  `accepted: true`, returned the right number, and skipped the entire execution requirement it had accepted — team
+  said `completed`, UI showed `391`. Only the *artifact* (no worktree, no commit, sandbox untouched at `e0a2b02`)
+  exposed it. **Always pair the claim with a filesystem/world check before repeating it upward** — and say plainly
+  that `completed` means "the worker answered", not "the work happened".
+- **The PO's throwaway question was a better bug report than my analysis.** *"What's port 3000 for? that's a pretty
+  stupid choice"* → the `PORT` env var moves the orchestrator but `vite.config.ts` hardcodes the proxy, so the knob
+  turns and nothing follows (BL-060). I had *worked around* that exact defect an hour earlier — ran headless on 3100,
+  then was forced back to 3000 for the UI — and **never once asked why**. Friction I route around silently is a bug I
+  am choosing not to file.

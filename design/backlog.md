@@ -1441,6 +1441,40 @@ tags: [healthcheck, gemini, attach-mode, tester-finding, root-cause-found]
   failure) + the verified fix (`3072e01`, `e9f63b7`). **Fitness:** LB-92's UNFIT ruling now has a concrete path to
   being lifted, but is **not** lifted here — a PO call, and it should follow the live-orchestrator check. Source: LB-93.
 
+  **✅ LIVE-ORCHESTRATOR LAST MILE — PROVEN 2026-07-16 (PO-witnessed).** The "still unverified" gap above is now
+  closed: a real `agy`, launched by the real BL-037 launcher against a **real orchestrator** (not a fake MCP
+  server), completed a **full MCP round trip**. Evidence (run 3, log `/tmp/bl045-run3.log`, recording
+  `runs/bl045-agy-live3.ndjson`, orchestrator log `/tmp/orch.log`):
+  - `19:50:21.941` goal delivered → `19:50:36` **`/tmp/att-worker-sandbox/answer.txt` = `391`** → `19:50:46` outcome.
+  - **Why `391` is the evidence, not the `status` field:** the goal was *compute 17×23 and write only the result*.
+    A computed answer on disk can only come from a real generation **plus a real file-writing tool call**; a stub,
+    a vacuous completion, or a hung TUI all leave the file **absent** — which is exactly what run 2 showed
+    (`answer.txt` ABSENT). The pair run2-absent / run3-`391` is the discriminator. Do not re-prove this from the
+    `completed`/`error` status: run 1 reported **`completed` while proving nothing at all** (no transcript, no
+    artifact — see BL-056).
+  - Bridge proven both directions: orchestrator log records `MCP tool call from bl045-agy: submit_work_response`.
+  - **The `error` outcome was NOT a defect — agy refused, correctly.** The orchestrator **appends** a hardcoded
+    clause to every plan (*"Execution requirement: use strictly `git worktree` … otherwise refuse and abort"*);
+    the probe goal (write a file) is not a git-worktree op, so agy refused with a lucid reason
+    (`accepted: false, reason: 'I cannot strictly execute this task inside a git worktree, as it is a simple
+    file-writing operation outside of any git repository context.'`). **Probe-design fault, not an agy fault.**
+  - **🔑 The 22–34s healthcheck figure above is DISPROVEN.** Measured bare turn `agy --print` = **9.65s**; the
+    live worker turn = **~14s** — comfortably **under the 30s default**. The 22–34s was *bridge + tool-call*
+    overhead, not agy cold-start. **Consequence: fix-attempt-1's provider-specific 90s timeout is NOT needed**
+    — that line above ("necessary after all; ship both") is wrong and is superseded here. The healthcheck is an
+    `exec_rpc` requiring a full generation, and agy now answers one in ~14s.
+  - **Boundary (do not overclaim):** proven for the **launcher/worker attach path with
+    `AGENTTALK_PERSISTENT_MCP=true`**. A real `start_pair_chat` was **still not exercised** (the launcher builds a
+    *worker-only* team and never calls it) — though the healthcheck rides the same `exec_rpc` mechanism just proven.
+    **Production remains one env var short → BL-057.**
+  - **Minor oddity (unresolved):** agy **wrote the file and *then* refused** — it did the work before declining.
+    Harmless here; a protocol-compliance smell worth a look.
+  - **Independence caveat:** sole-agent session — Claude authored the probe *and* judged it. The `391`-on-disk
+    artifact is deliberately operator-checkable so the claim does not rest on the author's word.
+  - **Telemetry:** budget session 70%→84% (Δ ~14%), weekly 22%→23% (Δ ~1%), antigravity 3%→4%; wall-clock
+    ~18:35→19:57; 3 live runs; **no code changed** (env-var probe only). Repo pollution: one stray worktree
+    created and removed (see LB entry) — real repo verified back at `b7de4c1`, clean.
+
 <!-- @item
 id: BL-046
 status: todo
@@ -1537,6 +1571,111 @@ tags: [arbiter, consensus, heterogeneous-team, claude, goose, experiment, next-s
   — today they're a hardcoded `callApi({provider:'openrouter', model:'openai/gpt-4o-mini'})`; route them to a
   Claude-backed completer/MCP client instead (config or a dedicated arbiter-agent seat). Depends on
   `task-arbiter-enable` (BL-044 wall 1) being merged. Source: PO, TL-013.
+
+<!-- @item
+id: BL-060
+status: todo
+date: 2026-07-16
+epic: null
+tags: [dx, config, ports, papercut, po-raised]
+-->
+- [todo · **PO-raised 2026-07-16** — *"what is port 3000 used for? if it's internal, that's a pretty stupid choice"*
+  · **agreed, and the env knob is worse than the default**] — **The orchestrator's internal HTTP+WS backend squats on
+  port 3000, and `PORT` only half-works.** What 3000 is: the orchestrator's HTTP API + WebSocket for the web UI
+  (`apps/orchestrator/src/index.ts:33`, `Number(process.env.PORT) || 3000`) — **internal**; only the browser and the
+  launcher's `orchestratorUrl` use it.
+  **Three faults, worst last:**
+  1. **3000 is the most contended port in JS dev** (Next.js / CRA / Express / Rails all default there). Collision is
+     arithmetic, not luck: **observed 2026-07-16** — the PO's DiagramTalk (`next-server`) held 3000 while AgentTalk
+     needed it.
+  2. **Inconsistent with the project's own better pattern:** the **MCP** server already takes a **dynamic** port
+     (hence `ws://localhost:54417` etc., differing every run, parsed from stdout by `scripts/launcher.mjs:57`). The
+     collision-free choice was made deliberately for MCP and skipped for the UI backend.
+  3. **🔑 `PORT` is illusory — the knob turns and nothing happens.** The orchestrator honours `PORT`, but
+     **`apps/web/vite.config.ts:12-15` HARDCODES** `http://localhost:3000` + `ws://localhost:3000` with no env
+     read. So moving the orchestrator **silently breaks the UI** — configurable in name only. Hit for real on
+     2026-07-16: a headless probe ran fine on 3100, but the UI witness **forced** the orchestrator back onto 3000,
+     which is the only reason the DiagramTalk collision mattered at all.
+  **Fix (small):** have `vite.config.ts` read `process.env.PORT ?? <default>` so both halves agree, and move the
+  default off 3000 to something unclaimed; optionally adopt the dynamic-port + discovery pattern the MCP side
+  already uses. **Behaviour change → PO call.** Source: PO question at 2026-07-16 session close; LB-94 run notes.
+
+<!-- @item
+id: BL-059
+status: todo
+date: 2026-07-16
+epic: null
+tags: [agy, gemini, protocol-compliance, false-green, autonomy-risk]
+-->
+- [todo · **found 2026-07-16 during the BL-045 UI witness** · **`completed` ≠ the work was done**] — **agy accepts a
+  plan and then does not execute it — and the team still reports `completed`.** Observed live, PO-witnessed run
+  `agy-w2` (orchestrator log `/tmp/orch-ui.log`, recording `runs/bl045-ui3.ndjson`): goal was *compute 17×23, create
+  a git worktree, write `answer.txt`, commit it*. agy called `submit_work_response { accepted: true }` then
+  `submit_work_result { result: '391' }` — **the number is right and really computed**, but **no worktree, no
+  `answer.txt`, no commit** (sandbox still at `e0a2b02` with only `README.md`). Team → **`completed`**; the UI
+  rendered `391`. **A green run in which the accepted execution requirement was silently skipped.**
+  **The inverse also observed the same day** (run 3, BL-045): agy **wrote the file and *then* refused**
+  (`accepted: false`) — doing work it declined. So compliance is unreliable **in both directions**: it does work it
+  refuses, and skips work it accepts.
+  **Why this matters more than it looks:** the ladder's whole premise is an agent that *executes*. `completed` is
+  currently a claim by the worker about itself, checked by nobody — and with **BL-056** (no task read endpoint, no
+  durable transcript) there is often **no artifact to check it against**. That combination — a self-asserted green
+  plus an unreadable transcript — is exactly an **unwitnessed Bite 1 run reporting success for work it did not do**.
+  **Not an agy-only question:** is the orchestrator's `submit_work_result` supposed to be *evidence* or just *prose*?
+  Nothing verifies the claim against the world. **Possible directions:** require an artifact/DoD check before a team
+  may report `completed`; or treat `submit_work_result` as unverified narration in the UI and label it as such.
+  **Related:** the orchestrator **appends a hardcoded clause to every plan** (*"use strictly `git worktree` …
+  otherwise refuse and abort"*) — it reshapes any non-git task into a refusal and is what agy accepted-then-ignored
+  here; worth revisiting alongside this. Source: BL-045 live UI witness, 2026-07-16.
+
+<!-- @item
+id: BL-057
+status: todo
+date: 2026-07-16
+epic: null
+tags: [agy, gemini, attach-mode, test-only-path, production-gap, one-line-fix]
+-->
+- [todo · **found 2026-07-16 while proving BL-045's last mile** · **the BL-045 fix is real but PRODUCTION CANNOT
+  REACH IT**] — **`AGENTTALK_PERSISTENT_MCP=true` is set by NOTHING outside the test suite, so the verified agy path
+  is test-only and the broken path is production-only.** `GeminiPersistentExecutor` has two paths gated on
+  `process.env.AGENTTALK_PERSISTENT_MCP === 'true'` (`lib/executor-runtime.mjs:455` initialize, `:546` executeTurn).
+  The **gated** path is the BL-045 fix (HOME redirect + `writeAgyMcpConfig` + `agy --print`) — **live-proven**. The
+  **fall-through** is `super.*` → `getPersistentProviderCommand()` → **`{ command: 'agy', args: ['mcp'] }`**
+  (`:73-78`) — and **`agy` has no `mcp` subcommand** (re-confirmed 2026-07-16 at zero cost: `agy --help` lists
+  agent/agents/changelog/help/install/models/plugin/plugins/update — no `mcp`). That is LB-92's original hang,
+  still live in production today.
+  **This is the SAME "green tests, broken production" structure LB-93 named as the root cause — it survived the
+  fix, because the fix was written *inside* the test-only branch.** Grep evidence: the only setters of the flag are
+  `__tests__/exec-rpc.test.ts:222-226` and `__tests__/agy-mcp-config.test.mjs:68`. `agent-launcher.mjs` sets only
+  `AGENTTALK_PERSISTENT_MCP_URL` — **a different variable** (easy to misread as coverage; it is not).
+  **Why it was invisible:** `scripts/bl040-d1d3.config.json` declares `"provider": "gemini"` and *looks* like Bite 0
+  exercising agy — but `scripts/run-d1d3.sh` exports `AGENTTALK_PERSISTENT_COMMAND_JSON` pointing at
+  `fake-worker-bridge.cjs`, overriding the command entirely. **That config never launches agy.** Fake bridge wearing
+  the gemini label — the same shape as the test-only flag: the thing that looks like coverage isn't.
+  **Candidate fix (a decision, not a mechanic):** (a) set the flag on the launcher spawn env (`lib/agent-launcher.mjs:145`,
+  where env is already built as `{ ...process.env, ... }`) — smallest diff; or (b) **delete the flag and the
+  `agy mcp` fall-through entirely** — the fall-through is dead code that can only ever hang, and keeping a
+  test-only/production-only split is what caused BL-045. **(b) is the honest fix; it is a behaviour change → PO call.**
+  **Verified workaround (needs no code):** `export AGENTTALK_PERSISTENT_MCP=true` before the launcher — the env
+  flows through to the worker. This is how BL-045's last mile was proven; see that item.
+  Source: BL-045 live-orchestrator probe, 2026-07-16.
+
+<!-- @item
+id: BL-058
+status: todo
+date: 2026-07-16
+epic: null
+tags: [bite0, config, launcher, broken-artifact, papercut]
+-->
+- [todo · found 2026-07-16 · **a checked-in Bite 0 config cannot start an orchestrator as written**] —
+  **`scripts/bl040-d1d3.config.json` has a broken `startCommand.cwd`.** It says `"cwd": "../../AgentTalk"`, but
+  `scripts/launcher.mjs:40` resolves it against **`clientRoot`** (the repo root, `:29`), not against `scripts/` —
+  so it lands on **`/Users/fausto/AgentTalk`**, which does not exist, and the run dies with a confusing
+  **`Error: spawn node ENOENT`** (the ENOENT is the *cwd*, not `node` — highly misleading). Correct value is
+  `"../AgentTalk"`, or better an **absolute path**. Cost real time on 2026-07-16: the value was copied in good
+  faith into a new probe config and inherited the bug. **Fix:** correct the config; consider having
+  `makeStartInstance` **fail fast with a clear message** when `cwd` does not exist, rather than surfacing ENOENT.
+  Source: BL-045 live-orchestrator probe, 2026-07-16.
 
 <!-- @item
 id: BL-056

@@ -2751,3 +2751,60 @@ emerged and the blocker is fixed, so **the ruling now has a concrete path to bei
 **not** lift it: that is the PO's decision, and it should follow the live-orchestrator check above. Until then attach
 tests, pair-chats and consensus continue on codex/claude. Source: BL-045, LB-92, TL-006, antigravity-cli#60;
 implementation + live proof in `agentalk-mcp-client` @ `task-BL-045` (`3072e01`, `e9f63b7`).
+
+### LB-94 · 2026-07-16 — [providers/attach] agy's live-orchestrator last mile PASSED — and the fix is still one env var from production
+
+**The finding, in one line:** the BL-045 agy fix is **real and now live-proven against a real orchestrator**, but
+**production cannot reach it** — the verified path is gated behind `AGENTTALK_PERSISTENT_MCP=true`, which **only the
+test suite sets**. Green tests, broken production — *the very structure LB-93 named as the root cause, surviving the
+fix that named it*, because the fix was written inside the test-only branch. → **BL-057**.
+
+**Proven (BL-045 last mile, PO-witnessed).** A real `agy`, launched by the real launcher against a real orchestrator,
+did a full MCP round trip: attach → `exec_rpc` → real generation → file-writing tool → `submit_work_response` back
+through the bridge. **The evidence is `/tmp/att-worker-sandbox/answer.txt` = `391`**, not any status field. Goal was
+*compute 17×23, write only the result*: a computed answer on disk requires a real generation **plus** a real tool
+call; a stub / vacuous completion / hung TUI all leave it **absent** — which run 2 showed. **run2-absent vs
+run3-`391` is the discriminator.** Detail + timeline in BL-045.
+
+**🔑 Two prior "facts" DISPROVEN today — both had been carried forward unexamined:**
+1. **"agy turns take 22–34s, so 30s is too short."** FALSE. Measured `agy --print` bare = **9.65s**; live worker turn
+   = **~14s**, under the 30s default. The 22–34s was **bridge + tool-call overhead**, not agy. **Consequence:
+   fix-attempt-1's provider-specific 90s timeout is NOT needed** — LB-93's "necessary after all; ship both" is wrong.
+   *The PO called this from intuition ("I don't believe agy takes 30 to come up") against the written record; a 10-second
+   `time agy --print` settled it. Measure before arguing a number you inherited.*
+2. **A `status: "completed"` proves the worker worked.** FALSE. Run 1 reported **`completed` while proving nothing** —
+   no transcript, no artifact, agy possibly never invoked. A status field is not evidence of work. (**BL-056**: the
+   reply is unreachable — no task read endpoint, transcript reaches the browser once as an event. **It blocked
+   verification twice today, on two unrelated tasks.** That promotes it from papercut to a real gate on autonomy: an
+   unwitnessed Bite 1 run is unreviewable by construction.)
+
+**An `error` outcome was not a defect.** The orchestrator **appends a hardcoded clause to every plan** (*"Execution
+requirement: use strictly `git worktree` … otherwise refuse and abort"*). The probe goal (write a file) is not a
+git-worktree op, so agy refused, lucidly, and the team went to `error`. **Probe-design fault.** Worth knowing that
+this clause is injected into *every* plan — it silently reshapes any non-git task into a refusal.
+
+**⚠️ Process incident — I polluted the real repo, and the primer had warned me in as many words.** The primer's first
+op-note is *"Two sandboxes, not one: `in-process-driver.ts:283` runs `git worktree add` in the **orchestrator's** CWD →
+start it with `cwd=/tmp/att-sandbox`."* I read it at startup, then — while fixing an unrelated `ENOENT` — set the
+orchestrator's cwd to `/Users/fausto/Software/AgentTalk`, **the real checkout**. It duly created a worktree +
+branch there. **No content damage** (HEAD unchanged, 0 commits, only the pre-existing `.plist` edit); removed via
+`git worktree remove --force` + `git branch -D`, verified back at `b7de4c1` clean. **The lesson is not "remember the
+gotcha" — I had remembered it.** It is that a warning held in mind for *goal-setting* silently lapses while
+debugging: attention narrowed to making a path **resolve** and stopped asking what it **pointed at**. The durable fix
+is structural, not attentional — **BL-054's blessed-root fence would have refused this**, and this is the second
+observed escape (after BL-055's sideways worktree) now arguing for it. Note the asymmetry: **BL-052 contains the
+*worker*; nothing contains the *orchestrator*.**
+
+**Also found:** `scripts/bl040-d1d3.config.json`'s `cwd` is broken (resolves to a nonexistent
+`/Users/fausto/AgentTalk`; surfaces as a misleading `spawn node ENOENT`) → **BL-058**. And the launcher **does not
+exit** when the config has no `startCommand` (worker keeps reconnecting, holds the pipe) — this is what looked like a
+2-minute "agy hang" and was aborted manually; **it was not agy**.
+
+**Fitness — the ban.** LB-92's UNFIT ruling was to be lifted only after the live-orchestrator check. **That check has
+now passed**, so the evidence for lifting exists — bounded: proven for the **launcher/worker attach path with the flag
+set**; `start_pair_chat` was never exercised (the launcher builds a *worker-only* team), though the healthcheck rides
+the same `exec_rpc` mechanism just proven. **Production stays broken until BL-057.** The lift itself is a PO act.
+
+**Independence caveat:** sole-agent session — Claude designed the probe and judged it. The `391` artifact is
+deliberately operator-checkable so the claim does not rest on the author's word. Source: BL-045, BL-057, BL-058,
+LB-92, LB-93; logs `/tmp/bl045-run{2,3}.log`, `/tmp/orch.log`, `runs/bl045-agy-live3.ndjson`.
