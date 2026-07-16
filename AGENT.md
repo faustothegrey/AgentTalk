@@ -147,13 +147,22 @@ one agent holds SM and both quality gates — accepted because merges stay PO-ga
      env var set** (full MCP round-trip, computed `589`). *(Deleted for all three providers, not just gemini: the
      flag gated nine sites and no fall-through had ever survived a live run. Details in BL-057's closing block.)*
      **If you find any doc still telling you to export that flag, it is stale — correct it.**
-  2. **agy's execution compliance is unreliable — it is fit to ATTACH, not yet trusted to EXECUTE.** **Now 3-for-3
-     at reporting success it did not earn** (2026-07-16): it **wrote the file and then refused**; and **twice**
-     **accepted the plan (`accepted: true`), reported the right number, and silently skipped the execution it had
-     just accepted** (no worktree, no file, no commit) — the third caught during BL-057's closing bar. **A correct
-     answer in the payload proves nothing; only a filesystem check has ever caught it.** Never read a `completed`
-     as "the work was done" — **check the artifact.** See **BL-059** (and **BL-053**: the worker may be unable to
-     reach the worktree it is told to use, so test the harness before blaming the model).
+  2. ~~**agy's execution compliance is unreliable — fit to ATTACH, not trusted to EXECUTE.**~~ **⛔ RETRACTED
+     2026-07-16 (PO-prompted) — THAT WAS FALSE, AND IT WAS OUR BUG, NOT agy's.** **agy is fit to EXECUTE: it did
+     the work, every time, and we were checking the wrong directory.** Both "accepted-then-skipped" runs are on
+     disk, complete: `wt/answer.txt` = **`391`** committed `2e52556`, and `wt057/answer.txt` = **`589`** committed
+     `241396a` — under `/tmp/agentalk-task-<id>/`, **not** under the worker's `workdir`.
+     **The mechanism — know this before you judge any agy run (it is [[BL-053]]):** `llm-agent.mjs:107` forwards the
+     `exec_rpc` `cwd`, and **gemini is the ONLY provider that honours it** (`lib/executor-runtime.mjs:567`); claude
+     (`:161`) and codex (`:713`) hardcode `process.cwd()`. **So agy alone works in the orchestrator's task worktree
+     — a worktree of the ORCHESTRATOR's cwd, not of the `workdir` you assigned it.** "The worker works in its
+     `workdir`" (BL-052) is true for claude/codex and **false for agy**. **Look in `/tmp/agentalk-task-<id>/`.**
+     **Still true, and now sharper:** never read `completed` as "the work was done" — **check the artifact.** But
+     **check it where the process actually stood**: an artifact check at the wrong coordinates is *worse* than none,
+     because it manufactures false confidence and a paper trail. Twice we ran that check rigorously, at the wrong
+     path, and wrote a model-honesty defect into this file that never existed. **Read the spawn cwd out of the code
+     (30 seconds) before concluding an agent didn't work.** See **BL-059** (retracted, kept as the record of the
+     mistake) and **BL-053** (the live defect that caused it).
   `start_pair_chat` itself was not exercised (the launcher builds a worker-only team), but the healthcheck rides the
   same `exec_rpc` mechanism proven above. See LB-94 / BL-045 / BL-057 / BL-059.
   *(Scope: the attach-client capability only; agy's Implementer role is a separate PO call.)*

@@ -563,8 +563,30 @@ here.**
   trusting the earlier claim. **The seat is not theatre even when one actor wears both hats**: the discipline of
   re-deriving rather than recalling is what worked, and it is exactly what "I trust you" would have skipped. The PO
   said *"merge, I trust you"* — the right response to trust was to run the bars anyway, not to bank the trust.
-- **`completed` lied to me a third time, and I had pre-committed to not believing it.** Run 2: `accepted: true`,
-  correct 589, exit 0, **no file, no worktree, no commit**. Because I designed the observable *before* the run
-  (fresh number, fresh path, verified absent), the lie was visible in one `cat`. **Even a correct answer in the
-  payload proves nothing** — that's new, and worse than I'd internalised: I'd been treating "reported the right
-  number" as partial evidence. It isn't. Only the filesystem is.
+- ~~**`completed` lied to me a third time**~~ — **⛔ FALSE. I was the one who lied to myself. See the correction
+  entry immediately below; do not learn anything from this bullet except how confidently I got it wrong.**
+
+### 2026-07-16 (same session, correction) — I accused a model of dishonesty. It was my bug. (hat: task-end reviewer)
+
+- **The single most important lesson I have written here: I ran the artifact check rigorously, at the wrong
+  coordinates, and that was WORSE than not checking at all.** I declared agy had faked `completed` — specific,
+  evidenced, internally consistent, wrong. agy had built the worktree, computed `589`, written the file and
+  **committed** it, in `/tmp/agentalk-task-<id>/` — the cwd it uniquely honours (BL-053). I checked the worker's
+  `workdir`. **A verification performed at the wrong place doesn't fail safe: it manufactures false confidence and
+  a paper trail** — I wrote the accusation into the backlog, into canonical `AGENT.md`, and into this file, where
+  future-me would have skimmed it as fact. **"Check the artifact, not the status" is only as good as knowing where
+  the process stood.** Read the spawn cwd out of the code (30 seconds) *before* concluding an agent didn't work.
+- **I cited the exact doubt that would have saved me, and then didn't act on it.** My own addendum named BL-053 as
+  *"the harness explanation to rule out before blaming the model"* — and then blamed the model without ruling it
+  out. **Naming a risk is not managing it.** The PO killed it in one sentence: *"check BL-053 first before we blame
+  agy."* When I write "X is worth ruling out," that is a **task**, not a caveat that earns me credit for
+  even-handedness. If it's worth writing, do it before the conclusion ships.
+- **The story was too good, and that should have been the tell.** "Status field lies, only the filesystem tells the
+  truth" is *vivid*, it flattered a discipline I'd just preached, and it had a satisfying tally (3-for-3). Yesterday
+  I wrote that the artifact "saved the session" — so today I was pattern-matching to my own best hit. **The
+  narrative I'm most pleased with is the one to attack hardest**, especially when it makes someone else the
+  unreliable party and me the rigorous one. Every prior "occurrence" was inherited on trust from my own past
+  artifact; **distrust-the-docs applies hardest to docs I wrote.**
+- **What actually worked: the PO's one-line challenge, and cheap ground truth.** Two `cat`s settled a two-session
+  narrative. When a conclusion blames an actor, the disproof is usually one command away — **run it before
+  publishing, not after being challenged.**

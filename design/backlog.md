@@ -1602,13 +1602,46 @@ tags: [dx, config, ports, papercut, po-raised]
 
 <!-- @item
 id: BL-059
-status: todo
+status: invalid
 date: 2026-07-16
 epic: null
-tags: [agy, gemini, protocol-compliance, false-green, autonomy-risk]
+tags: [agy, gemini, protocol-compliance, false-green, autonomy-risk, RETRACTED, observer-error]
 -->
-- [todo · **found 2026-07-16 during the BL-045 UI witness** · **REPRODUCED a 3rd time 2026-07-16 during BL-057's
-  closing bar — see the addendum at the end of this item** · **`completed` ≠ the work was done**] — **agy accepts a
+> # ⛔ RETRACTED 2026-07-16 — **THIS ITEM IS FALSE. agy DID THE WORK, EVERY TIME. WE CHECKED THE WRONG DIRECTORY.**
+> **Do not cite this item as evidence about agy's honesty or compliance.** It is kept, unedited below, as the
+> record of a wrong accusation — and of *how* it was made — not as a finding. **Root cause: [[BL-053]]**, which
+> had already documented the mechanism in writing before this item was ever filed.
+>
+> **The ground truth (verified 2026-07-16, PO-prompted — *"check BL-053 first before we blame agy"*):**
+> - **Yesterday's founding run** (`agy-w2`, the PO-witnessed one): worktree **`wt`** exists, branch **`task-answer`**,
+>   **`answer.txt` = `391`**, **committed `2e52556 "Add answer"`** — at
+>   `/tmp/agentalk-task-task-1784225210801/wt/`.
+> - **The claimed 3rd occurrence** (`bl057-agy2`): worktree **`wt057`** exists, branch **`task-bl057`**,
+>   **`answer.txt` = `589`** (a *computed* 19×31), **committed `241396a "Answer"`** — at
+>   `/tmp/agentalk-task-task-1784228918606/wt057/`.
+>
+> **Why everyone missed it — the two-sandbox trap, one layer deeper than the one already in AGENT.md:**
+> `llm-agent.mjs:107` forwards the `exec_rpc` `cwd` into the sink; **gemini is the ONLY provider that honours it**
+> (`lib/executor-runtime.mjs:567`, `cwd: sink.cwd || process.cwd()`) — claude (`:161`) and codex (`:713`) hardcode
+> `process.cwd()`. So **agy alone runs in `/tmp/agentalk-task-<id>`**, the orchestrator's task worktree — which is a
+> worktree of the **orchestrator's cwd** (`/tmp/att-sandbox`), *not* of the worker's `workdir`
+> (`/tmp/att-worker-sandbox`). We checked the worker's `workdir`, found nothing, and concluded it did nothing.
+> **The work was on disk the entire time, in the one place the mental model said it couldn't be.** BL-053 says this
+> in plain text — *"only line 493 honours a `sink.cwd`"* — and we filed this item anyway.
+>
+> **What this cost, and the lesson that outlives it:** two sessions of confident, vivid, well-evidenced narrative
+> about a model being dishonest — written into this backlog, into `AGENT.md`'s canonical op-notes, and into a
+> lessons file — all of it **observer error**. The "check the artifact, not the status" discipline was applied
+> **correctly and rigorously, at the wrong coordinates**, which is *worse* than not checking: it produced false
+> confidence and a paper trail. **`status: completed` was telling the truth all along; the filesystem check was the
+> thing that lied, because it was pointed at the wrong filesystem.** Before concluding an agent didn't do the work,
+> **prove where it was standing** — spawn cwd is a fact you can read out of the code in 30 seconds, and it is
+> exactly what BL-053 was already telling us.
+>
+> *(The one residual oddity — BL-045 run 3's "wrote the file and then refused" — is a **reporting** mismatch, not a
+> failure to work: the file was written. Not tracked here; if it recurs, file it fresh and on its own evidence.)*
+
+- [~~todo~~ **INVALID — see the retraction above** · **found 2026-07-16 during the BL-045 UI witness** · ~~**`completed` ≠ the work was done**~~] — **agy accepts a
   plan and then does not execute it — and the team still reports `completed`.** Observed live, PO-witnessed run
   `agy-w2` (orchestrator log `/tmp/orch-ui.log`, recording `runs/bl045-ui3.ndjson`): goal was *compute 17×23, create
   a git worktree, write `answer.txt`, commit it*. agy called `submit_work_response { accepted: true }` then
@@ -1629,22 +1662,16 @@ tags: [agy, gemini, protocol-compliance, false-green, autonomy-risk]
   otherwise refuse and abort"*) — it reshapes any non-git task into a refusal and is what agy accepted-then-ignored
   here; worth revisiting alongside this. Source: BL-045 live UI witness, 2026-07-16.
 
-  **ADDENDUM — 3rd occurrence, 2026-07-16 (BL-057's closing live bar; agent `bl057-agy2`, no env var set).**
-  Same shape, independently reproduced while proving something else: goal *compute 19×31, `git worktree add ./wt057
-  -b task-bl057`, write `answer.txt`, commit*. agy round-tripped the full protocol — `submit_work_response
-  { accepted: true }` then `submit_work_result` carrying the **correct computed 589** — launcher reported
-  **`status: completed`, exit 0**. Ground truth: **no `wt057/answer.txt`, no worktree** (`git worktree list` shows
-  none), **no `task-bl057` branch** (`fatal: unknown revision`), sandbox still at **`e0a2b02`**. **It computed the
-  answer and skipped the work it had accepted.**
-  **Why this addendum matters beyond a tally: agy is now 3-for-3 at reporting success it did not earn** (wrote-then-
-  refused · accepted-then-skipped · accepted-then-skipped), and the *only* thing that has ever caught it is a
-  filesystem check. **`completed` has never once been evidence.** The failure survives a *correct* answer in the
-  payload — 589 was right, so even reading the reply proves nothing. **For the autonomous ladder this is the
-  gating defect:** an unwitnessed autonomous run currently cannot distinguish "did the work" from "said it did",
-  and **BL-056** (no durable transcript) means nobody can check after the fact either. Pairs with **BL-053** (the
-  worker never lands in the worktree the `exec_rpc` names — so the worktree clause may be literally impossible for
-  it to satisfy, which would make this a *harness* fault masquerading as agy dishonesty; **worth testing before
-  blaming the model**). Source: BL-057 closing bar, 2026-07-16.
+  ~~**ADDENDUM — 3rd occurrence, 2026-07-16**~~ — **⛔ WITHDRAWN, same day, by its own author. It was FALSE.**
+  I claimed `bl057-agy2` accepted the plan, reported 589, and did nothing: *"no `wt057/answer.txt`, no worktree, no
+  `task-bl057` branch, sandbox still at `e0a2b02`"*. **Every one of those checks was run against the wrong
+  directory** (`/tmp/att-worker-sandbox`, the worker's `workdir`) while agy was working — correctly, completely — in
+  `/tmp/agentalk-task-task-1784228918606/`, the cwd the `exec_rpc` named and the only one it honours. It built the
+  worktree, wrote `589`, and committed it (`241396a`). See the retraction banner at the top of this item.
+  **Kept visible on purpose.** The addendum was specific, evidenced, internally consistent, and **wrong** — it even
+  named BL-053 as the thing to rule out *before blaming the model*, then blamed the model without ruling it out.
+  The PO caught it with one sentence: *"check BL-053 first before we blame agy."* **A citation of the right doubt is
+  not the same as acting on it.** Source of the correction: PO challenge, 2026-07-16.
 
 <!-- @item
 id: BL-057
@@ -1697,9 +1724,14 @@ tags: [agy, gemini, attach-mode, test-only-path, production-gap, one-line-fix]
   **The bar (live, `AGENTTALK_PERSISTENT_MCP` UNSET, real orchestrator):** agy attached → generated → round-tripped
   `await_turn` → `submit_exec_result` → `submit_work_response` → `submit_work_result` carrying a **computed 589**
   (19×31). On master that same invocation runs `agy mcp` and hangs. **Production reaches the fix.**
-  **Honest red, reproduced not fixed:** run 2 reported `completed`, `accepted: true`, right number — and wrote **no
-  file, no worktree, no commit** (sandbox untouched at `e0a2b02`). That is **BL-059, third occurrence** — the proof
-  above deliberately rests on the *tool-call round-trip*, **not** on the status field, which lied again. Run 1's
+  **CORRECTED 2026-07-16 (same day, PO-prompted) — the bar is STRONGER than first written.** I originally recorded
+  an "honest red" here: that run 2 reported `completed` but wrote no file, no worktree, no commit — **BL-059, third
+  occurrence**. **That was wrong; I checked the wrong directory.** agy honours the `exec_rpc` cwd (uniquely — see
+  [[BL-053]]), so it worked in `/tmp/agentalk-task-task-1784228918606/`: worktree `wt057`, branch `task-bl057`,
+  **`answer.txt` = `589`** (computed 19×31), **committed `241396a`**. So BL-057's live bar is not merely "the bridge
+  round-trips with no env var" — it is **a real autonomous agent doing real, committed work through the fixed path
+  with no env var set**, which is the strongest form the bar could have taken. **BL-059 is retracted** (kept as the
+  record of the mistake); the status field never lied — the filesystem check did, because it was aimed wrong. Run 1's
   `failed` was **harness, not code**: the goal named an absolute path outside any repo, so the orchestrator's
   hardcoded worktree clause made agy **refuse correctly** (that refusal is itself coherent model output — a hung
   `agy mcp` cannot produce one).
@@ -1863,6 +1895,23 @@ tags: [safety, sandbox, protocol, autonomy]
   land in one assigned dir; it does **not** give each task its own. **Deliberately not folded into BL-052** — a
   different blast radius (it changes where every executor turn runs), and merging them would have made the diff
   unreviewable. Source: BL-052 implementation.
+
+  **⬆️ 2026-07-16 — this item is no longer only a latent isolation gap. It has already cost us a false accusation
+  against a model, and it will do it again.** The **asymmetry** is the trap: gemini **honours** `sink.cwd`
+  (`lib/executor-runtime.mjs:567`) while claude (`:161`) and codex (`:713`) discard it. So the three providers run
+  **in different directories for the same task**, and the shared mental model — *"the worker works in its
+  `workdir`"* (BL-052) — is **true for two of them and false for the third**. Consequence, twice over: agy's work
+  landed in `/tmp/agentalk-task-<id>/` (a worktree of the **orchestrator's** cwd), we looked in the worker's
+  `workdir`, found nothing, and filed **BL-059** — *"agy accepts a plan then silently skips the work"* — against a
+  model that had done the work **correctly and completely, both times** (`391` committed `2e52556`; `589` committed
+  `241396a`). BL-059 is now **retracted**; this item is its root cause.
+  **Why it deserves priority above "isolation hygiene":** the defect's real damage is **epistemic**, not just
+  safety. It makes the artifact check — *the one discipline we trust to catch a lying `completed`* — silently
+  point at the wrong filesystem, converting our best verification tool into a **generator of confident false
+  negatives**. Any future autonomous run judged by "is the artifact there?" is exposed to exactly this. **Fixing the
+  asymmetry (honour `sink.cwd` everywhere, or drop it everywhere and say so) is what makes "check the artifact"
+  trustworthy again.** Whichever way it goes, it is a **behaviour change → PO call**, and it touches where *every*
+  executor turn runs.
 
 <!-- @item
 id: BL-052
