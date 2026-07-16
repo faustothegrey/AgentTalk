@@ -1275,12 +1275,12 @@ tags: [self-hosting, bite0, launcher, observability]
 
 <!-- @item
 id: BL-040
-status: todo
+status: done
 date: 2026-07-16
 epic: null
 tags: [self-hosting, bite0, live-validation, acceptance]
 -->
-- [todo · immediate next (PO, 2026-07-16)] — **Bite 0 launcher: live run against a real AgentTalk instance + authed
+- [done 2026-07-16 · PO-witnessed · **Bite 0 COMPLETE (D1–D6)**] — **Bite 0 launcher: live run against a real
   CLI (acceptance)** — the PO-babysat acceptance step from the Bite 0 plan §6. The core + cap are proven hermetically
   and by E2E (real BL-037 launcher + real spawned harness + real wall-clock termination), but the **live** path —
   the launcher *starting a real orchestrator instance* (D1's instance-start, stubbed in the E2E) and driving a real
@@ -1314,7 +1314,34 @@ tags: [self-hosting, bite0, live-validation, acceptance]
   **Remaining for D4/D5:** bake `deliverGoal`(create worker-only team + assignTask) + `waitForOutcome`(poll
   `team.status`) into `scripts/launcher.mjs`; then the deterministic acceptance (one COMPLETED + one forced
   cap-breach) — ideally witnessed via the UI once **BL-048** (UI reactivity) lands. Probe artifacts:
-  `/tmp/att-sandbox/session.ndjson`, `agentalk-mcp-client:scripts/explore-launch-worker.mjs` (untracked scratch).
+  `/tmp/att-sandbox/session.ndjson`, `agentalk-mcp-client:scripts/explore-launch-worker.mjs` (now tracked,
+  `27afae5`).
+  **✅ OUTCOME 2026-07-16 — D4/D5 BAKED IN + ACCEPTED. Bite 0 is COMPLETE.** Merged
+  `agentalk-mcp-client:34eec6a`. `deliverGoal` creates the worker-only team + assigns the task; `waitForOutcome`
+  polls the team's own status. **Deterministic acceptance, PO-witnessed in the UI** (BL-048/BL-049 landed first, on
+  purpose — otherwise D4's first run would have been half-invisible for reasons unrelated to D4):
+  **(A) COMPLETED** — a real `claude` worker took the goal through the product API and answered; verified against
+  the **recording**, not the exit code (`workerAccepted: True`, transcript `d4-worker → user | "pong"`); the PO saw
+  the team, its goal and `completed`. **(B) CAP-BREACH** — `cap-wallclock` at 20s with the worker really reaped
+  (`pid … exited (signal SIGTERM)`), task still `delegated`. Sandbox containment re-verified: the task branch +
+  worktree landed in `/tmp/att-sandbox`, nothing in the real repos.
+  **Three things the plan got wrong, corrected here (do not copy the old prose above):**
+  (1) **`failed`/`awaiting_operator` DO NOT EXIST** — the TeamStatus contract is
+  `idle|planning|awaiting_confirmation|working|completed|interrupted|error`. Waiting on the invented states would
+  have made every run die at the cap, looking like the worker's fault.
+  (2) **The cap does NOT cover `deliverGoal`** — the runner's cap race starts *after* it (step 4), and a team
+  rejects an agent that is not yet `ready` ("must be ready before joining a team"). The readiness wait is therefore
+  BOUNDED (`agents[0].readyTimeoutMs`, default 60s); unbounded, it would have hung outside the very rail Bite 0
+  exists to provide.
+  (3) **The worker's result TEXT is not reachable via the API** — tasks have no read endpoint and completing
+  deletes `team.currentTaskId`, so `waitForOutcome` returns the terminal TEAM state; the transcript lives in the
+  NDJSON. Stated as a limit, not papered over.
+  **Findings raised, deliberately NOT fixed here:** the UI shows *that* a run finished but never *what it produced*
+  (**BL-051** — the transcript is already in the browser, one render away); and a worker-only team hands the worker
+  a planner-worker prompt claiming *"the planner has created a plan"* when no planner exists — a **ghost plan**;
+  it works, but a more suspicious worker could refuse it (coordinator behaviour, out of scope, unrecorded elsewhere
+  → worth its own item if it ever bites). **Next rung: Bite 1** (the agent layer that invokes the launcher and
+  monitors a live session — do NOT re-conflate the deterministic launcher with that agent).
 
 <!-- @reconciliation-note 2026-07-16
 Two development lines forked at 1fbac5e and each independently allocated BL-037..BL-040. On reconcile (PO:
@@ -1512,13 +1539,302 @@ tags: [arbiter, consensus, heterogeneous-team, claude, goose, experiment, next-s
   `task-arbiter-enable` (BL-044 wall 1) being merged. Source: PO, TL-013.
 
 <!-- @item
-id: BL-048
+id: BL-056
 status: todo
+date: 2026-07-16
+epic: null
+tags: [ui, observability, self-hosting, autonomy]
+-->
+- [todo · surfaced by the BL-051 live run · **the panel is a live window, not a record**] — **A run's output does
+  not survive a page reload — and there is no way to see a past run at all.** BL-051 made the worker's answer
+  visible *while the socket is connected*; refresh the page and it is **gone for good**. Root cause is structural,
+  not cosmetic: **tasks have no read endpoint** (only `GET /api/teams` exists), and completing **deletes**
+  `team.currentTaskId`, so `App.tsx:282` can only drop a task it can no longer place — the comment there says as
+  much ("only dropped… the next `team_task_updated` repopulates it"), and after completion nothing ever
+  repopulates. The transcript lives in orchestrator state and reaches the browser **exactly once**, as an event.
+  **Why it matters for the ladder:** Bite 1 runs an agent-driven session the PO will want to *review*, possibly
+  after the fact — and "you had to be watching at the right moment" is not review, it is luck. The NDJSON recording
+  is today's only durable artifact, and it holds lifecycle events, **not** the transcript (verified on the BL-055
+  and BL-051 runs). **Likely shape:** a task read endpoint (`GET /api/teams/:id/task[s]`) + retain completed tasks,
+  or persist the transcript into the run recording. **Needs a PO go** (LB-93: UI stays fluid). Source: BL-051
+  closure, raised to the PO at merge.
+
+<!-- @item
+id: BL-055
+status: done
+date: 2026-07-16
+epic: null
+tags: [safety, sandbox, autonomy, bite0, live-validation]
+-->
+- [done · **the live bar BL-052 owed — PASSED, PO-accepted 2026-07-16** · run log `/tmp/att-sandbox/bl055-run.log`] — **Prove the worker containment fix against a
+  real CLI, not just the launcher boundary.** BL-052 is merged (`1800dc4`) on its **code** bar: unit + e2e prove
+  the launcher refuses a missing/relative/nonexistent `workdir` and spawns with an explicit `cwd`, and a really
+  spawned harness was observed landing in its assigned dir (`[llm-agent] Working directory set to /tmp`). **What
+  is still unproven is the claim the item actually makes:** that a *real autonomous worker cannot reach a real
+  repo*. **The bar:** re-run the D4 cap-breach scenario with a real `claude` CLI worker, launched from inside a
+  real checkout, with `workdir` pointing at a throwaway git repo — then confirm the worker's worktree/branch/commit
+  land **there** and the host checkout is untouched (`git worktree list` + `git status` + `git log` on the real
+  repo). **Design the observation so one mechanism explains it** (LB-93 / BL-048 lesson: "it appeared" proves
+  little — the decisive evidence is the real repo staying *clean* while the sandbox *gains* the commit).
+  **Why it's separate:** BL-048 was 324/324 green with the bug live; a green suite is not evidence about a
+  cross-process, cross-filesystem safety property. Source: BL-052 closure.
+
+  **RESULT (2026-07-16) — PASSED.** A real `claude` worker, launched **from inside the real
+  `agentalk-mcp-client` checkout** (the exact condition that caused the incident) with
+  `workdir: /tmp/att-worker-sandbox`, was given the same "use strictly `git worktree`, else refuse and abort"
+  task that produced `4193a4e`. Both halves of the decisive pair held, measured against a pre-run baseline:
+  - **The real checkout is byte-for-byte unchanged** — HEAD still `1800dc4`, same 3 branches, same 2 worktrees,
+    0 dirty, no `count.txt` anywhere.
+  - **The sandbox gained the work** — branch `count-task`, commit `0a472a7`, a real `count.sh` + a real
+    10,000-line `count.txt` (verified: first line `1`, last `10000`).
+  Only containment explains **both** at once: a broken fix would have dirtied the real repo; a refusal or no-op
+  would have left the sandbox empty. Mechanism directly witnessed in the log:
+  `[llm-agent] Working directory set to /tmp/att-worker-sandbox`. Teardown clean (no stray processes, :3000 free).
+  **Evidence gap, stated:** the recording held only lifecycle events (`run-start`/`agent-launched`/
+  `goal-delivered`/`outcome`) — **no transcript**, unlike the D4 run. The verdict rests on the filesystem, which
+  for *this* claim is the stronger evidence (the commit is the work; its location is the whole question), but it
+  is a real difference from D4 and is noted rather than smoothed over.
+  **🔎 UNEXPECTED FINDING → BL-054.** The worker's worktree landed at `/tmp/att-worker-count-task` — a **sibling**
+  of the assigned workdir, **not inside it** (ordinary `git worktree ../name` resolution; the branch/commit do live
+  in the sandbox's object store, and everything stayed in `/tmp`, so nothing was at risk). It proves BL-052
+  constrains **where the worker starts**, not **where it may write**: a worker that steps sideways is unconstrained.
+  This turns BL-054 from theory into observed behaviour.
+
+<!-- @item
+id: BL-054
+status: deferred
+date: 2026-07-16
+epic: null
+tags: [safety, sandbox, autonomy, policy]
+-->
+- [deferred · **PARKED by the PO 2026-07-16** — *"se sono worktree laterali pazienza per ora"* · **reopen condition:** before any **unattended/unwitnessed** autonomous run (Bite 1 is explicitly allowed to proceed WITHOUT this, PO call), or on the first sign of a worker touching anything outside `/tmp` · split out of BL-052] — **Should
+  `workdir` be restricted to a blessed root?** BL-052 makes `workdir` **mandatory** — but a required-yet-arbitrary
+  workdir still permits `workdir: /home/fausto/Software/AgentTalk`. It only makes the choice **explicit and
+  auditable**; it does not make it **safe**. The remaining question is whether the launcher should additionally
+  **refuse any workdir outside an allowed root** (e.g. `/tmp/att-*`, or a PO-configured list), turning "the
+  operator named a directory" into "the operator named a *permitted* directory". **Why it was split:** enforcement
+  is a **policy** decision about what the system is allowed to touch — it deserves its own PO call rather than
+  riding along inside a containment bugfix. **Why it matters:** Bite 1 puts an *agent* in charge of invoking the
+  launcher; at that point "explicit" stops being much of a guard, because the agent writes the config. A blessed
+  root is what keeps an autonomous caller from naming a real checkout. Source: BL-052 implementation, PO-approved
+  split.
+
+  **Sharpened by the BL-055 live run (2026-07-16) — this is observed, not theoretical.** The real worker's worktree
+  landed at `/tmp/att-worker-count-task`, a **sibling** of its assigned `/tmp/att-worker-sandbox` — ordinary
+  `git worktree ../name` resolution. Nothing was at risk (it stayed in `/tmp`; the branch/commit live in the
+  sandbox's object store), but it proves the shape of the remaining hole: **BL-052 constrains where a worker
+  STARTS, not where it may WRITE.** The worker never *asked* to go sideways — it just did.
+  **Two holes, two fences (the design, worked out 2026-07-16 — recorded so the next session doesn't re-derive it):**
+  1. **Policy — the wrong place is *requested*.** Launcher refuses a `workdir` outside a PO-configured root
+     (`/tmp/att-*`). Cheap (a few lines beside the BL-052 checks). **Weak alone — today's escape sails straight
+     past it**, since nothing was requested. Its real value is **Bite 1**: once an *agent* writes the config, the
+     allowlist is the one part the agent does not control.
+  2. **Enforcement — the wrong place is *used*.** Wrap the worker in **bubblewrap**: `bwrap --ro-bind / /
+     --dev /dev --proc /proc --bind <workdir> <workdir> --chdir <workdir> -- node llm-agent.mjs …`. The filesystem
+     itself refuses; no cooperation from the worker required — which matters, because the incident happened while
+     the worker was *obeying instructions*.
+  **Feasibility — TESTED on this machine, not assumed:** `bwrap` is installed, unprivileged user namespaces are
+  enabled (`kernel.unprivileged_userns_clone=1` — no root, no Docker), Landlock is compiled in
+  (`CONFIG_SECURITY_LANDLOCK=y`) as a future alternative. Measured under a bwrap fence: the sideways worktree is
+  **BLOCKED** (`fatal: could not create leading directories … Read-only file system`); a write into the real
+  checkout is **BLOCKED** (`Read-only file system`); creating a branch in the real repo is **BLOCKED**
+  (`cannot lock ref … Read-only file system`); and crucially the worker can still **READ** the real repo
+  (`git log` works — agents need this) and **commit normally inside its own sandbox**.
+  **Open questions before adopting (one short spike, same shape as BL-055):** (a) does the real `claude` CLI survive
+  a read-only `$HOME` — it needs `~/.claude` config/credentials and may want a writable cache; (b) does the MCP
+  WebSocket survive (the test shared the network namespace, so it *should* — untested). Both were tested with
+  `bash`/`git` only, **not** the provider CLI.
+  **Recommendation on the table when this reopens:** do **both** layers — layer 1 constrains the request, layer 2
+  constrains the use — and do not let layer 1 stand alone, or it is security theatre. Threat model is
+  **obedient-but-misdirected**, not adversarial: nothing here defends against an attacker.
+
+<!-- @item
+id: BL-053
+status: todo
+date: 2026-07-16
+epic: null
+tags: [safety, sandbox, protocol, autonomy]
+-->
+- [todo · found while fixing BL-052 · **the sibling defect, one layer down**] — **The `exec_rpc` `cwd` is
+  discarded — the protocol transmits per-task isolation that never reaches the process.** Every turn carries a
+  proper `cwd: /tmp/agentalk-task-<id>`, and `llm-agent.mjs` dutifully forwards it into `executeTurn` — then
+  `lib/executor-runtime.mjs` **throws it away**, hardcoding `process.cwd()` at **lines 162 and 679** (only line
+  493 honours a `sink.cwd`). So the one piece of per-task isolation the wire protocol actually carries is dead on
+  arrival. **Relationship to BL-052:** same safety story, different layer. BL-052 fixes containment at the
+  *process* boundary (the worker is spawned into an assigned directory); this is containment at the *turn*
+  boundary (each task gets its own directory **within** a session). BL-052 makes the worker's whole session
+  land in one assigned dir; it does **not** give each task its own. **Deliberately not folded into BL-052** — a
+  different blast radius (it changes where every executor turn runs), and merging them would have made the diff
+  unreviewable. Source: BL-052 implementation.
+
+<!-- @item
+id: BL-052
+status: done
+date: 2026-07-16
+epic: null
+tags: [safety, sandbox, autonomy, bite0, self-hosting]
+-->
+- [done · **🔴 SAFETY — the sandbox does not contain the WORKER** · found by the BL-040 D4 acceptance run ·
+  **MERGED `agentalk-mcp-client:1800dc4` (PO-gated, 2026-07-16)** · ⚠️ **the live bar is still owed — see
+  BL-055**] — **An
+  autonomous worker committed into a real repo.** During the D4 cap-breach scenario the worker (a real `claude`
+  CLI) created a git worktree `/home/fausto/Software/wt-count-task` and branch `task-count-1-10000` **inside the
+  agentalk-mcp-client checkout**, wrote `scratch/generate_count.py` + a 10,000-line file, and **committed**
+  (`4193a4e`) under the machine's git identity — before the cap reaped it. Not pushed; master unaffected; caught
+  only because the closing hygiene sweep listed worktrees.
+  **Root cause (one line):** `lib/agent-launcher.mjs:90` — `spawn('node', [llmAgentPath, ...args], { env, stdio:
+  'inherit' })` passes **no `cwd`**, so the worker inherits the launcher's working directory. The launcher was run
+  from a client worktree → the worker landed in a real git repo. The `exec_rpc` turn *does* carry
+  `cwd: /tmp/agentalk-task-<id>`, but that never reaches the spawned process; meanwhile the worker prompt
+  **orders** it to *"use strictly `git worktree` for this task"*. It obeyed — in the wrong repository.
+  **Why the existing sandbox missed it:** `/tmp/att-sandbox` protects the **orchestrator's** CWD
+  (`in-process-driver.ts:283` runs `git worktree add` there). Nothing constrains the **worker**, which is a
+  separate process with its own inherited CWD. Two different containment problems; only one was solved.
+  **Why it matters now:** this is the safety premise of the whole autonomy ladder — AGENT.md's worktree mandate
+  calls the per-task worktree *"the safety sandbox for autonomous agents"* and names the launcher's `workdir`
+  param as the assignment hook. ~~`agents[].workdir` … **verify whether it is honoured at all**; on this evidence
+  it is not.~~ **CORRECTED 2026-07-16 (implementation):** `workdir` **IS** honoured —
+  `agent-launcher.mjs:88` → env `AGENTTALK_WORKDIR` → `llm-agent.mjs:78-81` `process.chdir()`. The mechanism
+  worked; it was simply **optional**, and **no config or caller in either repo passed it**, so every launch took
+  the silent-inherit path. The defect was never a missing feature — it was a **safety-critical parameter that
+  failed open**. Bite 1
+  puts an *agent* in charge of invoking the launcher: an unattended worker that can commit into whatever repo the
+  parent happened to sit in is not an acceptable base for that.
+  **Fix direction (needs a PO call):** spawn the worker with an explicit `cwd` (the assigned workdir / the
+  `exec_rpc` cwd), and make a missing workdir a hard error rather than a silent inherit. Source: BL-040 D4
+  acceptance run.
+  **PO decision (2026-07-16):** hard error — *"Results would be unpredictable otherwise."* Accepted rationale:
+  when the default is dangerous **and** the violation produces no signal, refusing to start is the only design
+  where the safe path is also the easy path. No legitimate consumer of the inherit behaviour existed.
+  **Built (`bl052-worker-containment`, `d4011af`, plan: `design/bl052-plan.md`):** `launchAgent` refuses a
+  missing / relative / nonexistent `workdir` with **400, before the orchestrator create** (a refusal leaves no
+  half-made agent record); the check sits at the **`launchAgent` boundary** so `POST /agents` is covered too; the
+  worker is spawned with an **explicit `cwd`**; the dir is **never auto-created** (create-if-missing would make any
+  typo a fresh valid sandbox); callers + configs now name a throwaway workdir. Client suite **52/52**.
+  **Split out, deliberately:** **BL-053** (the `exec_rpc` cwd is discarded by `executor-runtime.mjs`) and
+  **BL-054** (should `workdir` be confined to a blessed root — policy, needs a PO call).
+  **Still open — the live bar → BL-055.** The D4 scenario has **not** been re-run against a real `claude` CLI
+  under the fix. Proven: the launcher boundary (unit + e2e, incl. a real spawned harness landing in its assigned
+  dir). **Not** proven: a real autonomous worker being unable to reach a real repo — which is the claim this item
+  actually makes. Closed as `done` on the **code** bar with the live bar tracked separately, because BL-048 taught
+  us a green suite can coexist with a live defect.
+  **Telemetry (task closure):**
+  - task:        BL-052
+  - wall-clock:  2026-07-16 16:23 → 16:44 (~21m)
+  - budget:      weekly 15%→15% (Δ ~0%), session 0%→3% (Δ ~3%)
+  - gate:        tsc n/a (JS), suite 52/52 (re-run on merged master), pollution clean (`wt-bl052` removed;
+                 `wt-count-task` D4 evidence deliberately retained)
+  - diff:        7 files, +126/-21, commits d4011af → merge 1800dc4 (pushed)
+  - outcome:     MERGED ✅ — code bar only; live bar owed (BL-055)
+  - caveat:      authored, reviewed and merged by ONE actor (Claude) — Codex + agy unavailable. Gates 1–3 were
+                 each exercised, but none was independent. This is a declared weakness, not a passed gate.
+
+<!-- @item
+id: BL-051
+status: done
+date: 2026-07-16
+epic: null
+tags: [ui, observability, self-hosting, bite0]
+-->
+- [done 2026-07-16 · **MERGED `f3cffd0`, PO-witnessed** · found by the D4 acceptance run · **the data was already in the browser**] — **The Team view never shows
+  what the worker actually produced.** `TeamSidebar.tsx:152-153` renders exactly two task fields — the goal
+  (`description`) and `Status:` — and nothing else. PO, watching the first fully autonomous Bite 0 run land:
+  *"C'e' il goal del task e lo status completed. Non c'e altro."* The worker had replied `pong`; the answer was
+  nowhere on screen. **This is a rendering gap, not a data gap:** `team_task_updated` carries the full
+  `transcript` (verified in the run's NDJSON — `d4-worker -> user | "pong"`) and it already lands in
+  `activeTeamTask` in the frontend's state. The result is one render away. **Why it matters:** the whole point of
+  the autonomy ladder is to watch a run and judge its *output*; today the UI answers "did it finish?" but not
+  "what did it do?" — which is the question that decides whether an autonomous run was any good. Related: the run
+  also gives no sense of *progress* — the team hits `working` ~6ms after `idle`, then sits still for ~29s, then
+  jumps to `completed`; there is nothing to watch in between (recording: `/tmp/att-sandbox/d4-complete.ndjson`).
+  Per **LB-93** the UI layer stays fluid — needs a PO go, no test infrastructure, live-validated. Source: BL-040
+  D4 acceptance run, PO-witnessed.
+
+  **✅ DONE 2026-07-16 — merged `f3cffd0` (PO-gated, "merge as-is").** Confirmed a **rendering** gap, not a data
+  gap: `TeamTask.transcript` (contracts `types.ts:64`) already arrives on `team_task_updated` and already lands in
+  `activeTeamTask` (`App.tsx:224`). `TeamSidebar` now renders a `TaskTranscript` — each entry as `from → to`
+  (+ `messageType`) with the payload in monospace, scrollable, with an explicit empty state — plus
+  `workerRefusalReason` when a worker refuses. One file, +48/-1. tsc clean, suite **325/325**.
+  **The live bar (LB-93: no UI test infra; a witnessed run IS the bar) — PASSED.** A real `claude` worker was given
+  `17 * 23`; the PO saw the panel render 4 entries ending in **`391`**.
+  **Why that is decisive:** `391` appears in **no code, no config, and no log** — the launcher records only the
+  **outgoing** prompt (the run log's `work_accept` is the *instructions*, not the reply), the NDJSON holds only
+  lifecycle events, and tasks have **no read endpoint**. The worker's answer therefore existed in exactly **one**
+  place: the rendered panel. Only the render could put it there — a hardcoded string could have faked "pong", which
+  is precisely why a *computed* answer was chosen. Green suites were irrelevant to this claim (BL-048 was 324/324
+  with its bug live).
+  **Telemetry (task closure):**
+  - task:        BL-051
+  - wall-clock:  2026-07-16 16:58 → 17:11 (~13m)
+  - budget:      weekly 15%→15% (Δ ~0%), session ~6%→~9% (Δ ~3%)
+  - gate:        tsc 0, suite 325/325 (re-run on merged master), pollution clean (`wt-bl051` removed)
+  - diff:        1 file, +48/-1, commits 457a80e → merge f3cffd0
+  - outcome:     MERGED ✅ (live bar PASSED, PO-witnessed)
+  - caveat:      one actor authored, reviewed and merged (Codex + agy unavailable) — gates exercised, none independent.
+  **Known warts, PO-accepted at merge ("merge as-is"), NOT defects:** the goal echoes twice (as the description and
+  again as the first transcript entry) and `Task assigned directly to worker.` is protocol bookkeeping — of 4
+  entries only the last two inform. **Left open → BL-056** (output does not survive a reload) and the *progress*
+  half of this item's original complaint (a run sits at `working` ~30s with nothing to watch) — that half is
+  **NOT** addressed here.
+
+<!-- @item
+id: BL-050
+status: todo
+date: 2026-07-16
+epic: null
+tags: [ui, observability, ux]
+-->
+- [todo · PO observation during the BL-049 live run · **deliberately not acted on**] — **The Team view does not
+  make it clear which team you are looking at.** PO, watching a real worker-only team appear: *"si capisce male
+  qual è il team sulla UI"* — with the team identified only by a generated `team-<epoch>` id, the panel reads
+  ambiguously, and the agent list rendered beside it (all agents, not just members) makes it easy to misread which
+  agents are actually **in** the team. Recorded verbatim because it was seen once, live, and observations that are
+  not written down get rediscovered later at full cost. **Explicitly parked by the PO** (*"non vorrei perderci
+  tempo adesso"*) — do not pick this up without a PO go. Consistent with **LB-93** (the UI layer stays fluid for
+  now); this is a legibility/UX item, not a defect: the data is correct, the presentation is ambiguous.
+
+<!-- @item
+id: BL-049
+status: done
+date: 2026-07-16
+epic: null
+tags: [ui, observability, self-hosting, bite0]
+-->
+- [done 2026-07-16 · PO-witnessed live · found by the BL-048 live run · **closed before D4 could trip on it**] —
+  **Teams/tasks carry the same
+  reconnect hole BL-048 just closed for agents — and have no resync path at all.** BL-048's audit (spike point 3)
+  found the *rendering* is fine: `team_updated → setActiveTeam` surfaces a team the human never opened, so no
+  "live view" is needed. The hole is elsewhere: a broadcast only reaches clients connected when it fires, and
+  while `GET /api/teams` exists server-side (`server.ts:745`), **the web client never calls it** — `api.teams`
+  exposes only `create` and `assignTask`, with no `list`. So a `team_updated` that arrives while the socket is
+  down is lost for good, and BL-048's `fetchAgents()` on WS open does not cover it (agents only). This is exactly
+  the failure that made the first BL-048 run show a frozen UI, still lying in wait: today nothing creates teams
+  externally, but **once D4 implements `deliverGoal` (team + task via API) the launcher's runs will drop them the
+  same way**. **Fix (symmetric to BL-048):** add `api.teams.list()` and resync the active team alongside the agents
+  in the `onOpen` handler (`App.tsx`). **Decide first:** whether a refetch that finds no team should clear a stale
+  `activeTeam` — that is a UI behaviour call, hence PO's. **Testing:** do NOT add UI test infrastructure — the PO
+  ruled that layer stays fluid (**LB-93**); the bar here is a **live, witnessed run**, and it must isolate what it
+  claims (BL-048's decisive evidence was a stale entity *disappearing* on reconnect — a reload or HMR remount
+  refetches and proves nothing). Source: BL-048 spike point 3 audit.
+  **OUTCOME (2026-07-16): DONE — `api.teams.list()` + `fetchTeams()` in the WS `onOpen` handler.** PO decisions
+  taken at the outset: (a) **align to backend truth** — the backend's most-recently-updated team wins, none clears
+  `activeTeam` (not a new selection policy: `team_updated` already calls `setActiveTeam` blindly); (b) **teams
+  only, no tasks** — there is **no read endpoint for tasks** (only `GET /api/teams` exists), so `activeTeamTask` is
+  cleared unless it still matches the team's `currentTaskId`, and the next `team_task_updated` repopulates it; full
+  task coverage would need new server API surface. Validated live (PO-witnessed) in two halves that admit no other
+  explanation: a team created **before the UI existed** appeared on connect though no `team_updated` ever reached
+  that client, and against a fresh backend it **disappeared** with no reload (broadcasts only add/update; only a
+  refetch removes). Side observation from the run → **BL-050** (team legibility, PO-parked).
+
+<!-- @item
+id: BL-048
+status: done
 date: 2026-07-16
 epic: null
 tags: [ui, observability, spike, self-hosting, bite0]
 -->
-- [todo · PO 2026-07-16 · **spike** · prereq for witnessing autonomous runs] — **Make the Web UI reactive to
+- [done 2026-07-16 · merged `d4ac001` · PO-witnessed live · **spike** · prereq for witnessing autonomous runs] —
+  **Make the Web UI reactive to
   EXTERNAL (API-/launcher-driven) events** — during the BL-040 D4 babysat run the PO could not *see* agents/teams/
   tasks created outside the UI. Root cause (traced): agent **creation** emits no registry event and no UI broadcast
   (only `recorder.record('runtime','agent_created')`, `server.ts:609`); the frontend fills its agent list via
@@ -1529,5 +1845,18 @@ tags: [ui, observability, spike, self-hosting, bite0]
   `case 'agent_added'` upserts into the list (+ refetch on unknown-id `status`); audit team/task rendering for
   entities the human never opened. Full design + files: **`design/spike-ui-external-events.md`**. Do it in a git
   worktree (touches `apps/web` + orchestrator). Source: BL-040 D4 babysat run, PO.
+  **OUTCOME (2026-07-16, merged `d4ac001`) — the plan above was wrong twice; keep reading before you copy it.**
+  (1) **Do NOT emit from `registry.createAgent()`** as prescribed: `POST /api/agents` assigns `provider`/`model`
+  *after* `createAgent()` returns (behind an `isUsageCaptureProvider` guard), so the emit would ship both
+  `undefined` — and nothing repairs it, because the registry emits `provider`/`model` only from `activateAgent()`
+  and the frontend has **no case for them**. The broadcast went in the route instead; `registry.ts` is untouched.
+  (2) **The broadcast alone did not fix the real case.** The launcher creates its worker ~100ms after the
+  orchestrator is ready while the UI's socket retries every 2s, so `agent_added` reached **zero clients** and the
+  whole `creating→starting→ready` burst fell inside the same window, leaving nothing for the unknown-id refetch to
+  fire on. **The suite was 324/324 with that hole in it** — only the PO-witnessed live run found it. Real fix:
+  `fetchAgents()` on WS `onOpen`, so every (re)connect resyncs with backend truth. Also shipped (PO-requested): a
+  server-initiated WS **keepalive** + a live connection indicator — without ping/pong a half-open socket keeps the
+  indicator green over a dead backend. Point 3 (team/task audit) done: rendering is fine, but teams carry the same
+  reconnect hole → **BL-049**.
 
 *(add new items above this line)*

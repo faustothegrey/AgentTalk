@@ -438,3 +438,69 @@ here.**
 - **Scope a spike to the exact hole, not the vibe.** "UI isn't reactive" → traced to a single missing
   `agent_added` broadcast (the WS + team/status plumbing already exists). A 4-file minimal fix, not a UI rewrite.
   Reading the code turned a vague complaint into a bounded BL-048.
+
+### 2026-07-16 (long session, part 2) — Bite 0 closed: BL-048/049 UI reactivity, BL-040 D4/D5 accepted live, BL-052 found (implementer + all reviewer seats + SM, degraded)
+
+- **A green suite proved nothing about the thing I was building, and I nearly shipped on it.** BL-048 was
+  **324/324 with the bug still live**: the broadcast I added reached *zero clients*, because the launcher creates
+  its worker ~100ms after the orchestrator is ready while the UI's socket retries every 2s. No test could have
+  caught it — the bug lives in the timing between two processes and a browser. The PO's insistence on a live run,
+  and on using the *real* launcher instead of my hand-rolled curl sequence, is what found it. **When the deliverable
+  is "a human can see X", the only bar is a human seeing X.**
+- **"It appeared" is weak evidence; "it disappeared" is strong.** My first proof was worthless — an HMR remount
+  re-runs the mount fetch, so the row would have appeared either way. The decisive test was watching a *stale*
+  entity vanish on reconnect: broadcasts only add, so **only a real refetch can remove**. Design the observation so
+  that exactly one mechanism can explain it, then the witness's word is enough.
+- **I declared "containment verified" while looking at half the system — and was wrong within the hour.** I checked
+  the orchestrator's cwd, saw the task branch land in `/tmp/att-sandbox`, and said so with confidence. The *worker*
+  is a separate process with its own inherited cwd; it committed into a real repo (BL-052). The closing hygiene
+  sweep caught it, not my reasoning. **"Verified" must name *what* was verified — I had verified one process and
+  claimed the system.**
+- **Reading the plan's assumptions against the contract paid three times in one task.** D4's plan named team states
+  (`failed`, `awaiting_operator`) that **do not exist**; taken literally, every run would have died at the cap
+  looking like the worker's fault. Same for the cap not covering `deliverGoal`, and the result text not being
+  API-reachable. All three found by reading the contract before writing, none by testing after. **The plan is a
+  claim about the code, not the code.**
+- **Correct the artifact that lied, not just the code.** BL-048's backlog entry and its spike both still
+  prescribed the emit site the work had *refuted*. An item marked `done` containing instructions known to be wrong
+  is worse than no item. Same reflex for the file header that still said "D2/D4 DEFERRED", and the scratch script
+  that called itself "untracked" as I committed it.
+- **Sequencing was the quiet win.** Doing BL-048 → BL-049 → D4 in that order meant D4's first run was watchable.
+  Reversed, its first run would have been half-invisible and we'd have debugged the wrong thing. Worth naming: the
+  cheapest bug is the one whose blast radius you removed beforehand.
+
+### 2026-07-16 (part 3) — BL-052/055 containment closed live, BL-051 shipped, BL-054 parked (implementer + all reviewer seats + SM, degraded)
+
+- **The bug was not the missing feature I was told to look for — it was a safety parameter that failed open.**
+  BL-052's own entry told me to "verify whether `workdir` is honoured at all; on this evidence it is not." It **was**
+  honoured (env → chdir); it was merely *optional*, and nothing passed it. Had I taken the item at its word I'd have
+  built a feature that already existed and never touched the actual defect. **The backlog entry is a claim about the
+  code, not the code** — and correcting the entry mattered as much as the fix: an item that misdescribes its own
+  defect sends the next reader hunting the wrong thing.
+- **The breakage list was the finding, not an objection to the fix.** Making `workdir` mandatory broke six callers
+  and three configs — tempting to read as "too invasive, soften it." The opposite was true: every one of those was a
+  path launching a worker into an inherited directory. When a fix's blast radius is large because *everything* was
+  unsafe, that's evidence **for** it. I nearly argued myself into the softer version.
+- **"Verified" must name what was verified — and I got this right today only because I got it wrong yesterday.**
+  I shipped BL-052 saying explicitly: *proven = the launcher boundary; NOT proven = a real worker unable to reach a
+  real repo*. Then filed BL-055 for the gap rather than letting `done` imply it. Yesterday I'd have said "containment
+  verified" and been wrong within the hour. **Closing on a partial bar is fine; closing while claiming the whole bar
+  is not.**
+- **Design the observation so exactly one mechanism explains it — twice, deliberately.** BL-055's evidence was a
+  *pair*: real repo clean **AND** sandbox gained the commit (a broken fix dirties the repo; a refusal empties the
+  sandbox — neither alone proves anything). BL-051 used a **computed** answer (`391`) precisely because a hardcoded
+  string would have faked "pong" and I'd never have known. Picking the observable *before* running is where the rigor
+  lives; afterwards you can only rationalise.
+- **The tool proved the recommendation — don't argue a fence you haven't run.** Rather than *describe* bwrap, I ran
+  it: sideways worktree BLOCKED, real-repo write BLOCKED, branch-creation BLOCKED, repo **read** and in-sandbox
+  commit still fine. Turned "we could sandbox it" into a measured claim in ~2 minutes. The PO parked it anyway — and
+  that's the right outcome: **the evidence is in BL-054 now, so reopening is a decision, not a re-investigation.**
+- **I could not verify my own UI work, and that fact was itself the finding.** The PO develops over SSH, so my
+  Chrome could never reach their dev server — two attempts, then stop (per the anti-rabbit-hole rule). But the deeper
+  point: the worker's answer existed **only** on their screen, for one socket connection — no read endpoint, no
+  transcript in the recording, only the outgoing prompt in the log. **The thing that made verification impossible for
+  me is exactly what makes an unattended Bite 1 run unreviewable** → BL-056. When you can't check your own work, ask
+  *why* the system won't let you; the answer is usually a real gap.
+- **My own lessons file paid out twice in one session** — the blocked bare `sleep`, and `pkill -f` exit-144
+  self-killing (which I then did anyway and recognised instantly instead of debugging a phantom). Read-back is the
+  mechanism; write-only would have cost me both.

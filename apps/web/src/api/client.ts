@@ -40,6 +40,9 @@ export const api = {
     }),
   },
   teams: {
+    // BL-049: the endpoint existed server-side from the start, but nothing here ever called it —
+    // leaving the UI with no way to resync teams after missing their broadcasts.
+    list: () => fetchWithTimeout('/api/teams').then(r => r.json()),
     create: (data: any) => fetchWithTimeout('/api/teams', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

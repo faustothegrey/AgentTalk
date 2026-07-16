@@ -613,6 +613,28 @@ export function startServer(
         model: agent.model,
         requestedExecutionMode: agent.requestedExecutionMode,
       });
+      // BL-048: push the new agent to connected UIs. The agent list is otherwise only
+      // filled on mount / after a UI-initiated create, so an agent created through the
+      // API (launcher, scripts) stayed invisible until a manual refresh — and its later
+      // 'status' events had no row to attach to.
+      // Broadcast from here rather than registry.createAgent(): provider and model are
+      // assigned to the agent above, AFTER createAgent() returns, so an emit inside the
+      // registry would ship a summary with both fields still undefined.
+      const addedSent = broadcast({
+        type: 'agent_added',
+        agent: {
+          id: agent.id,
+          status: agent.status,
+          usage: agent.usage,
+          usageStats: agent.usageStats,
+          provider: agent.provider,
+          model: agent.model,
+          requestedExecutionMode: agent.requestedExecutionMode,
+          resolvedExecutionMode: agent.resolvedExecutionMode,
+          sessionStatus: agent.sessionStatus,
+        },
+      });
+      console.log(`[Server] Agent added ${agent.id} → ${addedSent} client(s)`);
       res.json({
         id: agent.id,
         status: agent.status,
@@ -731,11 +753,14 @@ export function startServer(
       // AgentProvider union without runtime validation to keep behaviour
       // identical (the value is forwarded unchecked, exactly as before).
       const provider = getNonEmptyString(req.body?.provider) as AgentProvider | undefined;
+      // BL-037 wall (1): forward consensusMode so the arbiter (semantic Judge) path is reachable
+      // through the product. Only 'arbiter' opts in; anything else keeps the 'protocol' default.
+      const consensusMode = req.body?.consensusMode === 'arbiter' ? 'arbiter' : undefined;
       if (members.length === 0) {
         res.status(400).json({ error: 'A worker agent ID is required' });
         return;
       }
-      const team = registry.createTeam(members, provider);
+      const team = registry.createTeam(members, provider, consensusMode);
       res.json(team);
     } catch (err) {
       res.status(getErrorStatus(err)).json({ error: err instanceof Error ? err.message : String(err) });
@@ -886,8 +911,35 @@ export function startServer(
     return registry.listPendingRelays().filter((relay) => relay.status === 'pending');
   }
 
+  // BL-048 keepalive. Without it a half-open socket (network drop, suspended host — the UI is
+  // browsed over the LAN) is never detected: no FIN arrives, the server keeps a dead client in
+  // wss.clients and the browser keeps reporting itself connected. That makes the UI's connection
+  // indicator lie, which is worse than having none. A process kill is fine without this (the OS
+  // sends FIN/RST); a network death is not. Browsers cannot initiate pings, so the server must.
+  // Overridable so the rail is actually testable: 30s is the right cadence in production but no test
+  // can wait for it.
+  const HEARTBEAT_MS = Number(process.env.AGENTTALK_WS_HEARTBEAT_MS) || 30000;
+  const isAlive = new WeakMap<WebSocket, boolean>();
+
+  const heartbeat = setInterval(() => {
+    wss.clients.forEach((client) => {
+      if (isAlive.get(client) === false) {
+        console.log('[Server] WebSocket client failed to answer a ping — terminating');
+        client.terminate();
+        return;
+      }
+      isAlive.set(client, false);
+      client.ping();
+    });
+  }, HEARTBEAT_MS);
+  // Never let the heartbeat hold the process (or a test run) open, and stop it with the server.
+  heartbeat.unref?.();
+  server.on('close', () => clearInterval(heartbeat));
+
   wss.on('connection', (ws) => {
     console.log('[Server] New WebSocket connection');
+    isAlive.set(ws, true);
+    ws.on('pong', () => isAlive.set(ws, true));
     ws.send(JSON.stringify({
       type: 'relay_approval_state',
       mode: registry.getRelayApprovalMode(),
