@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { InProcessAgentDriver } from '../in-process-driver.js';
 import { Agent } from '../agent.js';
 import { McpError } from '../completer.js';
+import { WORKTREE_CONTEXT } from '../response-schema.js';
 import type { Completer } from '@agenttalk/llm-client';
 import type { Registry } from '../../registry/registry.js';
 
@@ -167,6 +168,78 @@ describe('InProcessAgentDriver', () => {
     expect(registry.handleMcpToolCall).toHaveBeenCalledWith('agent-1', 'submit_work_result', { result: 'I did the work.' });
 
     driver.stop();
+  });
+
+  // BL-062. The prompt is the product here, so these assert the prompt itself rather than the
+  // tool calls that follow it: the rung-1 run proved a worker can produce a correct result from
+  // an incoherent prompt, which means outcome assertions cannot see this class of defect at all.
+  const promptSentTo = (fetchMock: any): string => {
+    const body = JSON.parse(fetchMock.mock.calls[0][1].body);
+    const strings: string[] = [];
+    const walk = (v: any): void => {
+      if (typeof v === 'string') strings.push(v);
+      else if (Array.isArray(v)) v.forEach(walk);
+      else if (v && typeof v === 'object') Object.values(v).forEach(walk);
+    };
+    walk(body);
+    return strings.find((s) => s.includes('You are the WORKER')) ?? '';
+  };
+
+  const runWorkAssign = async (plan: string) => {
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        choices: [{ message: { content: '{"message_type":"work_accept","message_payload":{"text":"done"}}' } }]
+      })
+    });
+    const driver = new InProcessAgentDriver(agent, registry, { fetchFn: mockFetch });
+    driver.start();
+    agent.queueTurn({ type: 'team_work_assign', description: 'Do the refactor', plan });
+    await new Promise(r => setTimeout(r, 50));
+    driver.stop();
+    return promptSentTo(mockFetch);
+  };
+
+  it('BL-062: a worker-only assignment (no plan) is told to DO the task, not to review a plan', async () => {
+    const prompt = await runWorkAssign('');
+
+    // The defect: with no planner in the team, the worker was still told one had written a plan
+    // and asked to critique it. A worker that COMPLIED changed no files and reported completed —
+    // indistinguishable from a model skipping the work (the BL-059 accusation shape).
+    expect(prompt).not.toContain('planner has created a plan');
+    expect(prompt).not.toContain('Critically evaluate');
+    expect(prompt).toContain('You are the WORKER. You have been assigned a task to carry out.');
+
+    // The goal reached the worker twice: once as `Original task:`, once as a synthesized plan.
+    expect(prompt.split('Do the refactor').length - 1).toBe(1);
+
+    // BL-053's guarantee has to survive the move: the worker is still TOLD it is in a worktree —
+    // now from the prompt rather than from a stand-in plan — and told exactly once.
+    expect(prompt).toContain(WORKTREE_CONTEXT);
+    expect(prompt.split(WORKTREE_CONTEXT).length - 1).toBe(1);
+
+    // BL-053's negative half, which moved here with it: no refuse-and-abort branch. While that
+    // branch existed the only thing it could still do was turn a correct setup into a failure.
+    expect(prompt).not.toContain('abort the task');
+  });
+
+  it('BL-062: prompts are joined with real newlines, not a literal backslash-n', async () => {
+    // `.join('\\n')` glued every prompt together with the two characters \ and n (charCodes
+    // 92,110), so the model received one line with the escape printed through it as text.
+    for (const plan of ['', 'Refactor login']) {
+      const prompt = await runWorkAssign(plan);
+      expect(prompt).not.toContain('\\n');
+      expect(prompt).toContain('\n');
+      mockFetch.mockClear();
+      agent = new Agent('agent-1');
+    }
+  });
+
+  it('BL-062: a real plan still gets the two-agent plan-review prompt', async () => {
+    const prompt = await runWorkAssign('Refactor login');
+    expect(prompt).toContain('planner has created a plan for you to review');
+    expect(prompt).toContain('## Final Plan');
+    expect(prompt).toContain('Refactor login');
   });
 
   it('M08-T1: a rejected exec ends the turn cleanly — no crash, agent not forced to error', async () => {
