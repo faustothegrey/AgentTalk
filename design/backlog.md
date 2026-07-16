@@ -1288,6 +1288,18 @@ tags: [self-hosting, bite0, live-validation, acceptance]
   main repo** (`npm install` + `tsc` build; currently absent — no `node_modules`/`dist`) and confirm an authed CLI.
   Deliverable: one supervised live run to COMPLETED and one forced cap-breach, with the artifact from BL-039.
   Source: Bite 0 delivery §6.
+  **Investigation 2026-07-16 (Claude, temp implementer) — prereqs met + build mapped:** main repo now **builds**
+  (`npm install` + `tsc -b` clean; suite not re-run) and the **orchestrator boots cleanly** (`node
+  apps/orchestrator/dist/index.js`, "Ready to manage agents.", `GET /api/agents`→200). **Authed `claude` CLI present**
+  on PATH (+ codex/gemini/agy); **meter :9899 UP** (`claude ok:true`, session ~34%, weekly ~4%). **Key live finding
+  the E2E stubs hid:** the orchestrator's **MCP server is on a DYNAMIC separate port**, announced in stdout (`MCP
+  server URL set to: ws://localhost:<port>/`) — *not* the fixed `ws://…:3000/mcp` the example config assumes; the
+  real `startInstance` must parse the announced URL. **Build map:** a real-deps entrypoint (default `scripts/
+  launcher.mjs`) wires the `bite0-launcher` core to real effects; the attach flow mirrors **`scripts/m19-real-cli-
+  attach.mjs`** (`POST /api/agents {provider:'mcp'}` → `/start` → real CLI attaches via `bridge.mjs` over the SHA-256
+  wire-contract handshake → `await_turn` → goal turn → outcome via server log/status). **Remaining unknowns (the
+  babysat part):** real goal-delivery + outcome-detection semantics against the live orchestrator, and the real
+  authed-CLI worker turn (D4). D1 (instance-start) + D3 (cap) are verifiable solo with a fake-bridge worker.
 
 <!-- @reconciliation-note 2026-07-16
 Two development lines forked at 1fbac5e and each independently allocated BL-037..BL-040. On reconcile (PO:
