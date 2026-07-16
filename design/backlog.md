@@ -1394,14 +1394,25 @@ tags: [healthcheck, gemini, attach-mode, tester-finding, root-cause-found]
   `codex mcp-server` exists — the discriminator was never speed. Reproduced in ~20s at zero LLM cost via the real
   code path, and now reproduced in the client test suite. **Candidate fix:** set `AGENTTALK_PERSISTENT_MCP=true` on
   the launcher spawn env (there is no "fix `agy mcp`" alternative — an stdio MCP server mode does not exist in that
-  binary). **Risk (untested):** the bridge path configures agy by writing `GEMINI_CLI_HOME/.gemini/settings.json`,
-  but AGENT.md records agy's `~/.gemini` tree as write-protected/ephemeral, so agy may not read it at all — the
-  plausible outcome is "healthcheck passes (--print returns text), tools still don't work". Needs **1 agy
-  generation** to confirm; agy is PO-UNAVAILABLE since 2026-07-15, so this is a PO call. Note agy's `--print-timeout`
-  defaults to **5m** — if we go this way, reconcile that with the healthcheck window. **Hang-hardening shipped**
-  (`agentalk-mcp-client`, branch `task-BL-045`, PO-gated): per-turn deadline + loud dead-session errors + a readiness
-  check — **bounds the failure, does NOT fix agy**. **Unchanged:** agy remains UNFIT as an attach client (LB-92's
-  ruling stands until the candidate fix is tested); this changes what we know about *why*. Source: LB-93.
+  binary). **FIXED + VERIFIED LIVE 2026-07-16 (LB-93)** — the env flag alone was **not** the fix; three more things
+  were needed, each found by the previous one: (2) **HOME-level `~/.gemini/config/mcp_config.json`** — agy only
+  spawns MCP servers from there; a **project-local** mcp_config is *discovered then silently ignored*
+  (**antigravity-cli#60**, open, agy v1.0.0 — its impact note names orchestration agents exactly), which is why
+  `agy plugin validate` passes (`✔ mcpServers : 1 processed`) on a workspace plugin that loads nothing; (3) a
+  **per-agent `HOME` redirect** so global HOME-level config resolves per agent (isolation preserved, real `~`
+  untouched); (4) **carrying agy's auth + keychain** — its token is `~/.gemini/antigravity-cli/antigravity-oauth-token`
+  (the old copy list was the *gemini CLI's*), and it reads the **macOS Keychain** via go-keyring under `$HOME/Library`,
+  so a `Library` symlink is required or macOS raises a GUI "keychain not found" dialog — invisible to an automated
+  probe and fatal unattended; **caught only because the PO watched the screen while the probe reported green**.
+  **Verified:** full round trip against the real binary — bridge connected · initialize · tools/list · **tools/call**
+  (agy called an MCP tool and returned its token). **Refuted en route:** "print mode lacks MCP" (false — #60 was the
+  cause) and the plugin route (`569dd09`, project-local → ignored). **Healthcheck:** verified turns took **22–34s**,
+  exceeding the 30s default — so fix-attempt-1's provider-specific timeout (gemini/agy → 90000ms) is **necessary
+  after all** (it was refuted only as a *complete* fix); ship both. **Still unverified:** a live orchestrator + a real
+  `start_pair_chat` (all proof used a fake MCP server over the real WS transport) — the PO-babysat last mile.
+  **Shipped** (`agentalk-mcp-client`, branch `task-BL-045`, PO-gated): hang-hardening (per-turn deadline — bounds the
+  failure) + the verified fix (`3072e01`, `e9f63b7`). **Fitness:** LB-92's UNFIT ruling now has a concrete path to
+  being lifted, but is **not** lifted here — a PO call, and it should follow the live-orchestrator check. Source: LB-93.
 
 <!-- @item
 id: BL-046
