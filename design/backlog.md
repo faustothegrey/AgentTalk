@@ -1300,6 +1300,21 @@ tags: [self-hosting, bite0, live-validation, acceptance]
   wire-contract handshake → `await_turn` → goal turn → outcome via server log/status). **Remaining unknowns (the
   babysat part):** real goal-delivery + outcome-detection semantics against the live orchestrator, and the real
   authed-CLI worker turn (D4). D1 (instance-start) + D3 (cap) are verifiable solo with a fake-bridge worker.
+  **D1/D3/D6 slice MERGED** (`agentalk-mcp-client:1e80ef6`, PO-gated): real `startInstance` (parses the orchestrator's
+  DYNAMIC MCP url from stdout), BL-037 launch, meter, NDJSON — verified live (attach + wall-clock cap termination).
+  **D4 mechanism PROVEN live + sandboxed (babysat probe 2026-07-16), NOT yet baked into the launcher:** deliver a
+  goal to a lone worker via a **`worker-only` team** — `POST /api/teams {members:[{agentId,role:'worker'}]}` then
+  `POST /api/teams/:id/task {description}` — which `assignTask` sets to `delegated` (skips planning) and delivers to
+  the worker as an `exec_rpc` (wrapped in the worker-protocol prompt + the git-worktree mandate, `cwd:/tmp/
+  agentalk-task-<id>`). **Completion signal = `team.status: completed`** (task: `delegated → in_progress →
+  completed`). A real `claude` worker completed a trivial goal with a correct `work_accept` answer (captured in the
+  session recording). **⚠️ Sandbox requirement (PO):** the orchestrator runs `git worktree add … -b task-<id>` **in
+  its own CWD** (`in-process-driver.ts:283`), so it MUST be started with cwd = a throwaway git repo (used
+  `/tmp/att-sandbox`) — never the primary AgentTalk checkout, or it creates real `task-*` branches/worktrees there.
+  **Remaining for D4/D5:** bake `deliverGoal`(create worker-only team + assignTask) + `waitForOutcome`(poll
+  `team.status`) into `scripts/launcher.mjs`; then the deterministic acceptance (one COMPLETED + one forced
+  cap-breach) — ideally witnessed via the UI once **BL-048** (UI reactivity) lands. Probe artifacts:
+  `/tmp/att-sandbox/session.ndjson`, `agentalk-mcp-client:scripts/explore-launch-worker.mjs` (untracked scratch).
 
 <!-- @reconciliation-note 2026-07-16
 Two development lines forked at 1fbac5e and each independently allocated BL-037..BL-040. On reconcile (PO:
@@ -1463,5 +1478,24 @@ tags: [arbiter, consensus, heterogeneous-team, claude, goose, experiment, next-s
   — today they're a hardcoded `callApi({provider:'openrouter', model:'openai/gpt-4o-mini'})`; route them to a
   Claude-backed completer/MCP client instead (config or a dedicated arbiter-agent seat). Depends on
   `task-arbiter-enable` (BL-044 wall 1) being merged. Source: PO, TL-013.
+
+<!-- @item
+id: BL-048
+status: todo
+date: 2026-07-16
+epic: null
+tags: [ui, observability, spike, self-hosting, bite0]
+-->
+- [todo · PO 2026-07-16 · **spike** · prereq for witnessing autonomous runs] — **Make the Web UI reactive to
+  EXTERNAL (API-/launcher-driven) events** — during the BL-040 D4 babysat run the PO could not *see* agents/teams/
+  tasks created outside the UI. Root cause (traced): agent **creation** emits no registry event and no UI broadcast
+  (only `recorder.record('runtime','agent_created')`, `server.ts:609`); the frontend fills its agent list via
+  `api.agents.list()` on mount and only *updates existing* agents from `status` events (`App.tsx:199`), so an
+  externally-created agent never gets a row. The `/ws` broadcast path + `team_updated`/`team_task_updated`/`status`
+  handlers already exist — the hole is the missing `agent_added` push. **Fix (minimal, spike):** emit
+  `agent_registered` in `registry.ts` → `broadcast({type:'agent_added',agent})` in `server.ts` → frontend
+  `case 'agent_added'` upserts into the list (+ refetch on unknown-id `status`); audit team/task rendering for
+  entities the human never opened. Full design + files: **`design/spike-ui-external-events.md`**. Do it in a git
+  worktree (touches `apps/web` + orchestrator). Source: BL-040 D4 babysat run, PO.
 
 *(add new items above this line)*
