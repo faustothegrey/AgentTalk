@@ -1507,6 +1507,26 @@ tags: [arbiter, consensus, heterogeneous-team, claude, goose, experiment, next-s
   `task-arbiter-enable` (BL-044 wall 1) being merged. Source: PO, TL-013.
 
 <!-- @item
+id: BL-055
+status: todo
+date: 2026-07-16
+epic: null
+tags: [safety, sandbox, autonomy, bite0, live-validation]
+-->
+- [todo · **the live bar BL-052 owes** · needs a PO-witnessed run] — **Prove the worker containment fix against a
+  real CLI, not just the launcher boundary.** BL-052 is merged (`1800dc4`) on its **code** bar: unit + e2e prove
+  the launcher refuses a missing/relative/nonexistent `workdir` and spawns with an explicit `cwd`, and a really
+  spawned harness was observed landing in its assigned dir (`[llm-agent] Working directory set to /tmp`). **What
+  is still unproven is the claim the item actually makes:** that a *real autonomous worker cannot reach a real
+  repo*. **The bar:** re-run the D4 cap-breach scenario with a real `claude` CLI worker, launched from inside a
+  real checkout, with `workdir` pointing at a throwaway git repo — then confirm the worker's worktree/branch/commit
+  land **there** and the host checkout is untouched (`git worktree list` + `git status` + `git log` on the real
+  repo). **Design the observation so one mechanism explains it** (LB-93 / BL-048 lesson: "it appeared" proves
+  little — the decisive evidence is the real repo staying *clean* while the sandbox *gains* the commit).
+  **Why it's separate:** BL-048 was 324/324 green with the bug live; a green suite is not evidence about a
+  cross-process, cross-filesystem safety property. Source: BL-052 closure.
+
+<!-- @item
 id: BL-054
 status: todo
 date: 2026-07-16
@@ -1546,13 +1566,14 @@ tags: [safety, sandbox, protocol, autonomy]
 
 <!-- @item
 id: BL-052
-status: doing
+status: done
 date: 2026-07-16
 epic: null
 tags: [safety, sandbox, autonomy, bite0, self-hosting]
 -->
-- [doing · **🔴 SAFETY — the sandbox does not contain the WORKER** · found by the BL-040 D4 acceptance run ·
-  **fix built on `bl052-worker-containment` (`d4011af`), awaiting the PO merge gate**] — **An
+- [done · **🔴 SAFETY — the sandbox does not contain the WORKER** · found by the BL-040 D4 acceptance run ·
+  **MERGED `agentalk-mcp-client:1800dc4` (PO-gated, 2026-07-16)** · ⚠️ **the live bar is still owed — see
+  BL-055**] — **An
   autonomous worker committed into a real repo.** During the D4 cap-breach scenario the worker (a real `claude`
   CLI) created a git worktree `/home/fausto/Software/wt-count-task` and branch `task-count-1-10000` **inside the
   agentalk-mcp-client checkout**, wrote `scratch/generate_count.py` + a 10,000-line file, and **committed**
@@ -1589,10 +1610,21 @@ tags: [safety, sandbox, autonomy, bite0, self-hosting]
   typo a fresh valid sandbox); callers + configs now name a throwaway workdir. Client suite **52/52**.
   **Split out, deliberately:** **BL-053** (the `exec_rpc` cwd is discarded by `executor-runtime.mjs`) and
   **BL-054** (should `workdir` be confined to a blessed root — policy, needs a PO call).
-  **Still open — the live bar:** the D4 scenario has **not** been re-run against a real `claude` CLI under the fix.
-  What is proven is the launcher boundary (unit + e2e, incl. a real spawned harness landing in its assigned dir);
-  what is **not** proven is a real autonomous worker being unable to reach a real repo. Per LB-93/D4 precedent
-  that deserves a witnessed run before this is called done.
+  **Still open — the live bar → BL-055.** The D4 scenario has **not** been re-run against a real `claude` CLI
+  under the fix. Proven: the launcher boundary (unit + e2e, incl. a real spawned harness landing in its assigned
+  dir). **Not** proven: a real autonomous worker being unable to reach a real repo — which is the claim this item
+  actually makes. Closed as `done` on the **code** bar with the live bar tracked separately, because BL-048 taught
+  us a green suite can coexist with a live defect.
+  **Telemetry (task closure):**
+  - task:        BL-052
+  - wall-clock:  2026-07-16 16:23 → 16:44 (~21m)
+  - budget:      weekly 15%→15% (Δ ~0%), session 0%→3% (Δ ~3%)
+  - gate:        tsc n/a (JS), suite 52/52 (re-run on merged master), pollution clean (`wt-bl052` removed;
+                 `wt-count-task` D4 evidence deliberately retained)
+  - diff:        7 files, +126/-21, commits d4011af → merge 1800dc4 (pushed)
+  - outcome:     MERGED ✅ — code bar only; live bar owed (BL-055)
+  - caveat:      authored, reviewed and merged by ONE actor (Claude) — Codex + agy unavailable. Gates 1–3 were
+                 each exercised, but none was independent. This is a declared weakness, not a passed gate.
 
 <!-- @item
 id: BL-051
