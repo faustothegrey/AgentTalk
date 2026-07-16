@@ -1507,6 +1507,37 @@ tags: [arbiter, consensus, heterogeneous-team, claude, goose, experiment, next-s
   `task-arbiter-enable` (BL-044 wall 1) being merged. Source: PO, TL-013.
 
 <!-- @item
+id: BL-052
+status: todo
+date: 2026-07-16
+epic: null
+tags: [safety, sandbox, autonomy, bite0, self-hosting]
+-->
+- [todo · **🔴 SAFETY — the sandbox does not contain the WORKER** · found by the BL-040 D4 acceptance run] — **An
+  autonomous worker committed into a real repo.** During the D4 cap-breach scenario the worker (a real `claude`
+  CLI) created a git worktree `/home/fausto/Software/wt-count-task` and branch `task-count-1-10000` **inside the
+  agentalk-mcp-client checkout**, wrote `scratch/generate_count.py` + a 10,000-line file, and **committed**
+  (`4193a4e`) under the machine's git identity — before the cap reaped it. Not pushed; master unaffected; caught
+  only because the closing hygiene sweep listed worktrees.
+  **Root cause (one line):** `lib/agent-launcher.mjs:90` — `spawn('node', [llmAgentPath, ...args], { env, stdio:
+  'inherit' })` passes **no `cwd`**, so the worker inherits the launcher's working directory. The launcher was run
+  from a client worktree → the worker landed in a real git repo. The `exec_rpc` turn *does* carry
+  `cwd: /tmp/agentalk-task-<id>`, but that never reaches the spawned process; meanwhile the worker prompt
+  **orders** it to *"use strictly `git worktree` for this task"*. It obeyed — in the wrong repository.
+  **Why the existing sandbox missed it:** `/tmp/att-sandbox` protects the **orchestrator's** CWD
+  (`in-process-driver.ts:283` runs `git worktree add` there). Nothing constrains the **worker**, which is a
+  separate process with its own inherited CWD. Two different containment problems; only one was solved.
+  **Why it matters now:** this is the safety premise of the whole autonomy ladder — AGENT.md's worktree mandate
+  calls the per-task worktree *"the safety sandbox for autonomous agents"* and names the launcher's `workdir`
+  param as the assignment hook. `agents[].workdir` is accepted by the config and threaded into
+  `bl037.launchAgent({... workdir})` — **verify whether it is honoured at all**; on this evidence it is not. Bite 1
+  puts an *agent* in charge of invoking the launcher: an unattended worker that can commit into whatever repo the
+  parent happened to sit in is not an acceptable base for that.
+  **Fix direction (needs a PO call):** spawn the worker with an explicit `cwd` (the assigned workdir / the
+  `exec_rpc` cwd), and make a missing workdir a hard error rather than a silent inherit. Source: BL-040 D4
+  acceptance run.
+
+<!-- @item
 id: BL-051
 status: todo
 date: 2026-07-16
