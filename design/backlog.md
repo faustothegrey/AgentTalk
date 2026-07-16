@@ -1275,12 +1275,12 @@ tags: [self-hosting, bite0, launcher, observability]
 
 <!-- @item
 id: BL-040
-status: todo
+status: done
 date: 2026-07-16
 epic: null
 tags: [self-hosting, bite0, live-validation, acceptance]
 -->
-- [todo · immediate next (PO, 2026-07-16)] — **Bite 0 launcher: live run against a real AgentTalk instance + authed
+- [done 2026-07-16 · PO-witnessed · **Bite 0 COMPLETE (D1–D6)**] — **Bite 0 launcher: live run against a real
   CLI (acceptance)** — the PO-babysat acceptance step from the Bite 0 plan §6. The core + cap are proven hermetically
   and by E2E (real BL-037 launcher + real spawned harness + real wall-clock termination), but the **live** path —
   the launcher *starting a real orchestrator instance* (D1's instance-start, stubbed in the E2E) and driving a real
@@ -1314,7 +1314,34 @@ tags: [self-hosting, bite0, live-validation, acceptance]
   **Remaining for D4/D5:** bake `deliverGoal`(create worker-only team + assignTask) + `waitForOutcome`(poll
   `team.status`) into `scripts/launcher.mjs`; then the deterministic acceptance (one COMPLETED + one forced
   cap-breach) — ideally witnessed via the UI once **BL-048** (UI reactivity) lands. Probe artifacts:
-  `/tmp/att-sandbox/session.ndjson`, `agentalk-mcp-client:scripts/explore-launch-worker.mjs` (untracked scratch).
+  `/tmp/att-sandbox/session.ndjson`, `agentalk-mcp-client:scripts/explore-launch-worker.mjs` (now tracked,
+  `27afae5`).
+  **✅ OUTCOME 2026-07-16 — D4/D5 BAKED IN + ACCEPTED. Bite 0 is COMPLETE.** Merged
+  `agentalk-mcp-client:34eec6a`. `deliverGoal` creates the worker-only team + assigns the task; `waitForOutcome`
+  polls the team's own status. **Deterministic acceptance, PO-witnessed in the UI** (BL-048/BL-049 landed first, on
+  purpose — otherwise D4's first run would have been half-invisible for reasons unrelated to D4):
+  **(A) COMPLETED** — a real `claude` worker took the goal through the product API and answered; verified against
+  the **recording**, not the exit code (`workerAccepted: True`, transcript `d4-worker → user | "pong"`); the PO saw
+  the team, its goal and `completed`. **(B) CAP-BREACH** — `cap-wallclock` at 20s with the worker really reaped
+  (`pid … exited (signal SIGTERM)`), task still `delegated`. Sandbox containment re-verified: the task branch +
+  worktree landed in `/tmp/att-sandbox`, nothing in the real repos.
+  **Three things the plan got wrong, corrected here (do not copy the old prose above):**
+  (1) **`failed`/`awaiting_operator` DO NOT EXIST** — the TeamStatus contract is
+  `idle|planning|awaiting_confirmation|working|completed|interrupted|error`. Waiting on the invented states would
+  have made every run die at the cap, looking like the worker's fault.
+  (2) **The cap does NOT cover `deliverGoal`** — the runner's cap race starts *after* it (step 4), and a team
+  rejects an agent that is not yet `ready` ("must be ready before joining a team"). The readiness wait is therefore
+  BOUNDED (`agents[0].readyTimeoutMs`, default 60s); unbounded, it would have hung outside the very rail Bite 0
+  exists to provide.
+  (3) **The worker's result TEXT is not reachable via the API** — tasks have no read endpoint and completing
+  deletes `team.currentTaskId`, so `waitForOutcome` returns the terminal TEAM state; the transcript lives in the
+  NDJSON. Stated as a limit, not papered over.
+  **Findings raised, deliberately NOT fixed here:** the UI shows *that* a run finished but never *what it produced*
+  (**BL-051** — the transcript is already in the browser, one render away); and a worker-only team hands the worker
+  a planner-worker prompt claiming *"the planner has created a plan"* when no planner exists — a **ghost plan**;
+  it works, but a more suspicious worker could refuse it (coordinator behaviour, out of scope, unrecorded elsewhere
+  → worth its own item if it ever bites). **Next rung: Bite 1** (the agent layer that invokes the launcher and
+  monitors a live session — do NOT re-conflate the deterministic launcher with that agent).
 
 <!-- @reconciliation-note 2026-07-16
 Two development lines forked at 1fbac5e and each independently allocated BL-037..BL-040. On reconcile (PO:
@@ -1478,6 +1505,27 @@ tags: [arbiter, consensus, heterogeneous-team, claude, goose, experiment, next-s
   — today they're a hardcoded `callApi({provider:'openrouter', model:'openai/gpt-4o-mini'})`; route them to a
   Claude-backed completer/MCP client instead (config or a dedicated arbiter-agent seat). Depends on
   `task-arbiter-enable` (BL-044 wall 1) being merged. Source: PO, TL-013.
+
+<!-- @item
+id: BL-051
+status: todo
+date: 2026-07-16
+epic: null
+tags: [ui, observability, self-hosting, bite0]
+-->
+- [todo · found by the D4 acceptance run · **the data is already in the browser**] — **The Team view never shows
+  what the worker actually produced.** `TeamSidebar.tsx:152-153` renders exactly two task fields — the goal
+  (`description`) and `Status:` — and nothing else. PO, watching the first fully autonomous Bite 0 run land:
+  *"C'e' il goal del task e lo status completed. Non c'e altro."* The worker had replied `pong`; the answer was
+  nowhere on screen. **This is a rendering gap, not a data gap:** `team_task_updated` carries the full
+  `transcript` (verified in the run's NDJSON — `d4-worker -> user | "pong"`) and it already lands in
+  `activeTeamTask` in the frontend's state. The result is one render away. **Why it matters:** the whole point of
+  the autonomy ladder is to watch a run and judge its *output*; today the UI answers "did it finish?" but not
+  "what did it do?" — which is the question that decides whether an autonomous run was any good. Related: the run
+  also gives no sense of *progress* — the team hits `working` ~6ms after `idle`, then sits still for ~29s, then
+  jumps to `completed`; there is nothing to watch in between (recording: `/tmp/att-sandbox/d4-complete.ndjson`).
+  Per **LB-93** the UI layer stays fluid — needs a PO go, no test infrastructure, live-validated. Source: BL-040
+  D4 acceptance run, PO-witnessed.
 
 <!-- @item
 id: BL-050
