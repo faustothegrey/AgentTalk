@@ -236,7 +236,9 @@ export class InProcessAgentDriver {
       '```',
       '',
       'Put your complete findings summary inside the "summary" field. No preamble.',
-    ].join('\\n');
+      // BL-062: '\\n' is a literal backslash-n, not a newline — this prompt used to reach the
+      // model as one line with the escape printed through it as text.
+    ].join('\n');
 
     const text = await this.executeApiPrompt(prompt, true);
     if (!text) {
@@ -254,23 +256,45 @@ export class InProcessAgentDriver {
   }
 
   private async handleTeamWorkAssign(evt: ConversationEvent): Promise<void> {
-    const prompt = [
-      'You are the WORKER in a two-agent team. The planner has created a plan for you to review.',
-      'Critically evaluate the plan. Consider:',
-      '- Is the approach sound?',
-      '- Are there risks or missing steps?',
-      '- Can you realistically execute this?',
-      '',
-      // BL-053: information, not a requirement — see WORKTREE_CONTEXT for why the old
-      // "use a worktree or refuse" text had to go.
-      WORKTREE_CONTEXT,
-      '',
-      `Original task: ${(evt as any).description}`,
-      '',
-      `## Final Plan`,
-      `${(evt as any).plan}`,
-      WORKER_RESPONSE_INSTRUCTIONS,
-    ].join('\\n');
+    // BL-062: only a planner produces a plan. A worker-only team has neither, but used to be
+    // handed this same plan-review prompt anyway — with the goal synthesized into a stand-in
+    // "plan" (team-coordinator's buildWorkerPlan) — so the task arrived twice and the worker was
+    // told to *critique* work it was there to *do*. A worker that complied would return a
+    // critique, change no files, and report completed: indistinguishable from a model taking the
+    // task and skipping it, which is exactly the false accusation BL-059 records. Branch on the
+    // plan actually existing rather than on a role flag, so the shape follows the data.
+    const plan = (evt as any).plan;
+    const prompt = (plan
+      ? [
+          'You are the WORKER in a two-agent team. The planner has created a plan for you to review.',
+          'Critically evaluate the plan. Consider:',
+          '- Is the approach sound?',
+          '- Are there risks or missing steps?',
+          '- Can you realistically execute this?',
+          '',
+          // BL-053: information, not a requirement — see WORKTREE_CONTEXT for why the old
+          // "use a worktree or refuse" text had to go.
+          WORKTREE_CONTEXT,
+          '',
+          `Original task: ${(evt as any).description}`,
+          '',
+          `## Final Plan`,
+          `${plan}`,
+          WORKER_RESPONSE_INSTRUCTIONS,
+        ]
+      : [
+          'You are the WORKER. You have been assigned a task to carry out.',
+          'Do the work the task describes: make the changes, and verify them.',
+          '',
+          // BL-053: information, not a requirement — see WORKTREE_CONTEXT for why the old
+          // "use a worktree or refuse" text had to go.
+          WORKTREE_CONTEXT,
+          '',
+          `## Your task`,
+          `${(evt as any).description}`,
+          WORKER_RESPONSE_INSTRUCTIONS,
+        ]
+    ).join('\n');
 
     // M08-T3: the worker opts in to throwOnExecError so a genuine exec crash (McpError)
     // is rethrown and fenced below, rather than swallowed to `null` (the G3 hang). Planner

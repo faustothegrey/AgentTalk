@@ -108,7 +108,7 @@ describe('TeamCoordinator', () => {
     expect(emitPlanningComplete).not.toHaveBeenCalled();
   });
 
-  it('should require git worktree usage when assigning a worker-only team task', async () => {
+  it('should not invent a plan when assigning a worker-only team task', async () => {
     const worker = new Agent('worker');
     worker.setStatus('starting');
     worker.setStatus('ready');
@@ -132,19 +132,33 @@ describe('TeamCoordinator', () => {
 
     await coordinator.assignTask(team.id, 'Ship the feature');
 
-    // BL-053 (PO-approved): the plan TELLS the worker it is already in a task worktree; it no
-    // longer demands the worker arrange one, nor offers it a refuse-and-abort branch. The
-    // worker provisions the worktree before the turn, so this is a fact of the setup — asking
-    // the agent to verify it is what made agy refuse a perfectly good worktree.
-    expect(sendProtocol).toHaveBeenCalledWith('worker', 'EVT', expect.objectContaining({
-      type: 'team_work_assign',
-      plan: expect.stringContaining('IS a git worktree, created for this task'),
-    }));
-    // The refuse branch is gone, and its absence is the contract: while it existed, the only
-    // thing it could still do was turn a correct setup into a failure.
-    expect(sendProtocol).not.toHaveBeenCalledWith('worker', 'EVT', expect.objectContaining({
-      plan: expect.stringContaining('abort the task'),
-    }));
+    // BL-053 (PO-approved): the worker is TOLD it is already in a task worktree; it is no longer
+    // asked to arrange one, nor offered a refuse-and-abort branch. The worker provisions the
+    // worktree before the turn, so this is a fact of the setup — asking the agent to verify it is
+    // what made agy refuse a perfectly good worktree.
+    //
+    // BL-062 (PO-approved, 2026-07-16) MOVED where that is asserted, and this comment is the
+    // record of why. BL-053 delivered the guarantee by stuffing the worktree text into a
+    // stand-in `plan` synthesized from the description (buildWorkerPlan). That stand-in was
+    // itself the defect: it made the driver address a worker-only team as a plan REVIEWER
+    // ("the planner has created a plan for you to review") for work it was there to DO, and it
+    // delivered the task twice. So a worker-only assignment now carries NO plan, and BL-053's
+    // guarantee is asserted where it now lives — the prompt — in
+    // runtime-core/src/agents/__tests__/in-process-driver.test.ts:
+    //   · WORKTREE_CONTEXT reaches the worker-only prompt exactly once   (the positive)
+    //   · no refuse-and-abort branch                                      (the negative)
+    // Nothing was weakened: in-process-driver.ts is the only consumer of this field, so moving
+    // the text out of it loses no information on any path.
+    const workAssign = sendProtocol.mock.calls.find(
+      (c: any[]) => c[0] === 'worker' && c[2]?.type === 'team_work_assign',
+    );
+    expect(workAssign).toBeDefined();
+
+    // No planner ran, so there is no plan — and none is invented.
+    expect(workAssign![2].plan).toBe('');
+
+    // The task reaches the worker once, as the description, and is not echoed back as a plan.
+    expect(workAssign![2].description).toBe('Ship the feature');
   });
 
   it('should keep telling the worker about its task worktree when delegating a confirmed plan', async () => {

@@ -316,7 +316,14 @@ export class TeamCoordinator {
         teamId,
         taskId: task.id,
         role: 'worker',
-        plan: this.buildWorkerPlan(description),
+        // BL-062: no planner ran, so there is no plan. This used to send
+        // buildWorkerPlan(description) — the description echoed back as a stand-in plan — which
+        // made the driver render the goal twice and address the worker as a plan reviewer. Empty
+        // rather than null/absent: the cross-repo contract declares `plan: string`
+        // (contracts/protocol-payloads.ts:159), and widening it would move the contract hash the
+        // client checks against — far out of scope for a prompt fix. The driver treats empty and
+        // absent identically.
+        plan: '',
         description,
       });
     }
