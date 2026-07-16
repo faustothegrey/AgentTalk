@@ -1507,13 +1507,52 @@ tags: [arbiter, consensus, heterogeneous-team, claude, goose, experiment, next-s
   `task-arbiter-enable` (BL-044 wall 1) being merged. Source: PO, TL-013.
 
 <!-- @item
-id: BL-052
+id: BL-054
 status: todo
+date: 2026-07-16
+epic: null
+tags: [safety, sandbox, autonomy, policy]
+-->
+- [todo · deliberately split out of BL-052 · **needs a PO call — this is policy, not mechanism**] — **Should
+  `workdir` be restricted to a blessed root?** BL-052 makes `workdir` **mandatory** — but a required-yet-arbitrary
+  workdir still permits `workdir: /home/fausto/Software/AgentTalk`. It only makes the choice **explicit and
+  auditable**; it does not make it **safe**. The remaining question is whether the launcher should additionally
+  **refuse any workdir outside an allowed root** (e.g. `/tmp/att-*`, or a PO-configured list), turning "the
+  operator named a directory" into "the operator named a *permitted* directory". **Why it was split:** enforcement
+  is a **policy** decision about what the system is allowed to touch — it deserves its own PO call rather than
+  riding along inside a containment bugfix. **Why it matters:** Bite 1 puts an *agent* in charge of invoking the
+  launcher; at that point "explicit" stops being much of a guard, because the agent writes the config. A blessed
+  root is what keeps an autonomous caller from naming a real checkout. Source: BL-052 implementation, PO-approved
+  split.
+
+<!-- @item
+id: BL-053
+status: todo
+date: 2026-07-16
+epic: null
+tags: [safety, sandbox, protocol, autonomy]
+-->
+- [todo · found while fixing BL-052 · **the sibling defect, one layer down**] — **The `exec_rpc` `cwd` is
+  discarded — the protocol transmits per-task isolation that never reaches the process.** Every turn carries a
+  proper `cwd: /tmp/agentalk-task-<id>`, and `llm-agent.mjs` dutifully forwards it into `executeTurn` — then
+  `lib/executor-runtime.mjs` **throws it away**, hardcoding `process.cwd()` at **lines 162 and 679** (only line
+  493 honours a `sink.cwd`). So the one piece of per-task isolation the wire protocol actually carries is dead on
+  arrival. **Relationship to BL-052:** same safety story, different layer. BL-052 fixes containment at the
+  *process* boundary (the worker is spawned into an assigned directory); this is containment at the *turn*
+  boundary (each task gets its own directory **within** a session). BL-052 makes the worker's whole session
+  land in one assigned dir; it does **not** give each task its own. **Deliberately not folded into BL-052** — a
+  different blast radius (it changes where every executor turn runs), and merging them would have made the diff
+  unreviewable. Source: BL-052 implementation.
+
+<!-- @item
+id: BL-052
+status: doing
 date: 2026-07-16
 epic: null
 tags: [safety, sandbox, autonomy, bite0, self-hosting]
 -->
-- [todo · **🔴 SAFETY — the sandbox does not contain the WORKER** · found by the BL-040 D4 acceptance run] — **An
+- [doing · **🔴 SAFETY — the sandbox does not contain the WORKER** · found by the BL-040 D4 acceptance run ·
+  **fix built on `bl052-worker-containment` (`d4011af`), awaiting the PO merge gate**] — **An
   autonomous worker committed into a real repo.** During the D4 cap-breach scenario the worker (a real `claude`
   CLI) created a git worktree `/home/fausto/Software/wt-count-task` and branch `task-count-1-10000` **inside the
   agentalk-mcp-client checkout**, wrote `scratch/generate_count.py` + a 10,000-line file, and **committed**
@@ -1529,13 +1568,31 @@ tags: [safety, sandbox, autonomy, bite0, self-hosting]
   separate process with its own inherited CWD. Two different containment problems; only one was solved.
   **Why it matters now:** this is the safety premise of the whole autonomy ladder — AGENT.md's worktree mandate
   calls the per-task worktree *"the safety sandbox for autonomous agents"* and names the launcher's `workdir`
-  param as the assignment hook. `agents[].workdir` is accepted by the config and threaded into
-  `bl037.launchAgent({... workdir})` — **verify whether it is honoured at all**; on this evidence it is not. Bite 1
+  param as the assignment hook. ~~`agents[].workdir` … **verify whether it is honoured at all**; on this evidence
+  it is not.~~ **CORRECTED 2026-07-16 (implementation):** `workdir` **IS** honoured —
+  `agent-launcher.mjs:88` → env `AGENTTALK_WORKDIR` → `llm-agent.mjs:78-81` `process.chdir()`. The mechanism
+  worked; it was simply **optional**, and **no config or caller in either repo passed it**, so every launch took
+  the silent-inherit path. The defect was never a missing feature — it was a **safety-critical parameter that
+  failed open**. Bite 1
   puts an *agent* in charge of invoking the launcher: an unattended worker that can commit into whatever repo the
   parent happened to sit in is not an acceptable base for that.
   **Fix direction (needs a PO call):** spawn the worker with an explicit `cwd` (the assigned workdir / the
   `exec_rpc` cwd), and make a missing workdir a hard error rather than a silent inherit. Source: BL-040 D4
   acceptance run.
+  **PO decision (2026-07-16):** hard error — *"Results would be unpredictable otherwise."* Accepted rationale:
+  when the default is dangerous **and** the violation produces no signal, refusing to start is the only design
+  where the safe path is also the easy path. No legitimate consumer of the inherit behaviour existed.
+  **Built (`bl052-worker-containment`, `d4011af`, plan: `design/bl052-plan.md`):** `launchAgent` refuses a
+  missing / relative / nonexistent `workdir` with **400, before the orchestrator create** (a refusal leaves no
+  half-made agent record); the check sits at the **`launchAgent` boundary** so `POST /agents` is covered too; the
+  worker is spawned with an **explicit `cwd`**; the dir is **never auto-created** (create-if-missing would make any
+  typo a fresh valid sandbox); callers + configs now name a throwaway workdir. Client suite **52/52**.
+  **Split out, deliberately:** **BL-053** (the `exec_rpc` cwd is discarded by `executor-runtime.mjs`) and
+  **BL-054** (should `workdir` be confined to a blessed root — policy, needs a PO call).
+  **Still open — the live bar:** the D4 scenario has **not** been re-run against a real `claude` CLI under the fix.
+  What is proven is the launcher boundary (unit + e2e, incl. a real spawned harness landing in its assigned dir);
+  what is **not** proven is a real autonomous worker being unable to reach a real repo. Per LB-93/D4 precedent
+  that deserves a witnessed run before this is called done.
 
 <!-- @item
 id: BL-051
