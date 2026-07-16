@@ -1574,12 +1574,12 @@ tags: [arbiter, consensus, heterogeneous-team, claude, goose, experiment, next-s
 
 <!-- @item
 id: BL-062
-status: todo
+status: done
 date: 2026-07-16
 epic: null
 tags: [prompt, worker-only, launcher, autonomy, false-negative, bl059-adjacent]
 -->
-- [todo · found 2026-07-16 · **a worker-only team tells the worker a planner wrote a plan — then pastes the goal twice**] —
+- [done · **MERGED 2026-07-16** — `70d88c3` · found by the rung-1 calibration run · **a worker-only team told the worker a planner wrote a plan — then pasted the goal twice**] —
   **`in-process-driver.ts:256` (`handleTeamWorkAssign`) is the only prompt for assigning work to a worker, and it
   hardcodes the two-agent narrative.** Its opening line is *"You are the WORKER in a two-agent team. The planner has
   created a plan for you to review."*, followed by *"Critically evaluate the plan… Is the approach sound? Are there
@@ -1604,6 +1604,43 @@ tags: [prompt, worker-only, launcher, autonomy, false-negative, bl059-adjacent]
   behaviour change on a shared engine path** (`team-coordinator.ts` + the driver prompt) → **needs PO confirmation**,
   and the **two-agent planner→worker path must stay byte-for-byte**. Source: rung-1 calibration run (first real agy
   code task), 2026-07-16; transcript captured in the launcher's stdout.
+
+  **CLOSED 2026-07-16 — merged `70d88c3` (branch `task-BL-062`, per-task worktree, PO-gated).** Worker-only
+  assignment now carries **no plan** (`plan: ''` — the cross-repo contract declares `plan: string`, and widening it
+  would move the hash the client validates against, so the driver treats empty and absent alike) and the driver
+  branches on the plan **existing** rather than on a role flag, so the prompt shape follows the data. A worker-only
+  team is now told *"You are the WORKER. You have been assigned a task to carry out. Do the work…"*: task once,
+  worktree context once.
+  **A second, wider defect surfaced mid-fix and the PO widened scope to take it** (it was not in the original item):
+  **`.join('\\n')` is a literal backslash-n** — `charCodes 92,110`, proven with `node -e`, **not a newline**. Both
+  driver prompts — the work-assign **and the planner's fact-collection** — reached the model as **one line with the
+  escape printed through as text**. Fixed at both sites.
+  **BL-053's contract MOVED, and did not weaken** (PO-approved). It asserted a *mechanism* — the worktree text
+  riding inside the synthesized plan — which this item necessarily deletes. Its *guarantee* is now asserted where it
+  lives, in `in-process-driver.test.ts`: WORKTREE_CONTEXT reaches the worker-only prompt **exactly once** (it used to
+  arrive twice), plus the negative (no refuse-and-abort branch). Safe because `in-process-driver.ts:266` is the
+  **only** consumer of that field — verified, not assumed. The old test's comment carries the full rationale so the
+  next reader finds an explanation, not a deleted assertion.
+  **Verified live, not just green.** Unit tests prove a *string*; they cannot see this defect — the existing
+  outcome-based tests all passed *while it was live*, because agy succeeded despite it. So the bar was a re-run of
+  rung 1 against the fixed build, same goal byte-for-byte, reading the prompt out of the real transcript: the
+  plan-review framing is gone, the goal appears once, and the prompt arrives as real lines. agy then produced
+  `e1fca14` (correct one-line fix, 1 file `+1/−1`) — **two for two on real code tasks**. Control was clean: the
+  worktree dist carried the fix, the real repo's dist did not.
+  All three new bars **mutation-checked** (break the fix → that bar fails, alone).
+  **⚠️ Single pair of eyes:** authored, reviewed and closed by one actor under the resource-scarcity fallback
+  (implementer *and* task-end reviewer, which the independence default separates).
+  **Left deliberately unfixed (in scope discipline, not oversight):** the **two-agent** path still gets
+  WORKTREE_CONTEXT **twice** — once from the driver at `:266`, once appended by `buildWorkerPlan` at `:1340`
+  (`GIT_WORKTREE_REQUIREMENT` is the same constant). Same family, outside what the PO approved. Worth its own item.
+
+  **Telemetry (task closure):**
+  - task:        BL-062
+  - wall-clock:  2026-07-16 22:40 (filed) → 23:02 (merge) (~22 min; defect found 22:33 in the rung-1 run)
+  - budget:      weekly 31%→32% (Δ ~1%), session 67%→76% (Δ ~9%)  [per `scripts/usage.mjs`]
+  - gate:        tsc 0, suite 328/328 (325 baseline + 3), pollution clean (0 stray procs, real repos untouched)
+  - diff:        4 files, +151/-33, commits `a326f82` (file) · `9b615eb` (fix) · `70d88c3` (merge)
+  - outcome:     MERGED ✅ (local; **not pushed** — the PO says "push" as a separate act)
 
 <!-- @item
 id: BL-061
