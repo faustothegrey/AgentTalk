@@ -438,3 +438,33 @@ here.**
 - **Scope a spike to the exact hole, not the vibe.** "UI isn't reactive" → traced to a single missing
   `agent_added` broadcast (the WS + team/status plumbing already exists). A 4-file minimal fix, not a UI rewrite.
   Reading the code turned a vague complaint into a bounded BL-048.
+
+### 2026-07-16 (long session, part 2) — Bite 0 closed: BL-048/049 UI reactivity, BL-040 D4/D5 accepted live, BL-052 found (implementer + all reviewer seats + SM, degraded)
+
+- **A green suite proved nothing about the thing I was building, and I nearly shipped on it.** BL-048 was
+  **324/324 with the bug still live**: the broadcast I added reached *zero clients*, because the launcher creates
+  its worker ~100ms after the orchestrator is ready while the UI's socket retries every 2s. No test could have
+  caught it — the bug lives in the timing between two processes and a browser. The PO's insistence on a live run,
+  and on using the *real* launcher instead of my hand-rolled curl sequence, is what found it. **When the deliverable
+  is "a human can see X", the only bar is a human seeing X.**
+- **"It appeared" is weak evidence; "it disappeared" is strong.** My first proof was worthless — an HMR remount
+  re-runs the mount fetch, so the row would have appeared either way. The decisive test was watching a *stale*
+  entity vanish on reconnect: broadcasts only add, so **only a real refetch can remove**. Design the observation so
+  that exactly one mechanism can explain it, then the witness's word is enough.
+- **I declared "containment verified" while looking at half the system — and was wrong within the hour.** I checked
+  the orchestrator's cwd, saw the task branch land in `/tmp/att-sandbox`, and said so with confidence. The *worker*
+  is a separate process with its own inherited cwd; it committed into a real repo (BL-052). The closing hygiene
+  sweep caught it, not my reasoning. **"Verified" must name *what* was verified — I had verified one process and
+  claimed the system.**
+- **Reading the plan's assumptions against the contract paid three times in one task.** D4's plan named team states
+  (`failed`, `awaiting_operator`) that **do not exist**; taken literally, every run would have died at the cap
+  looking like the worker's fault. Same for the cap not covering `deliverGoal`, and the result text not being
+  API-reachable. All three found by reading the contract before writing, none by testing after. **The plan is a
+  claim about the code, not the code.**
+- **Correct the artifact that lied, not just the code.** BL-048's backlog entry and its spike both still
+  prescribed the emit site the work had *refuted*. An item marked `done` containing instructions known to be wrong
+  is worse than no item. Same reflex for the file header that still said "D2/D4 DEFERRED", and the scratch script
+  that called itself "untracked" as I committed it.
+- **Sequencing was the quiet win.** Doing BL-048 → BL-049 → D4 in that order meant D4's first run was watchable.
+  Reversed, its first run would have been half-invisible and we'd have debugged the wrong thing. Worth naming: the
+  cheapest bug is the one whose blast radius you removed beforehand.

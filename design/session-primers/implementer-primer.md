@@ -1,78 +1,98 @@
 ---
 role: implementer
-key: 20260716-0740-d4course-impl
-written: 2026-07-16 by Claude (session close — BL-039 merged, big reconcile pushed, BL-040 D1/D3 merged + D4 proven live, BL-048 UI spike scoped)
+key: 20260716-1545-bite0-done
+written: 2026-07-16 by Claude (session close — Bite 0 COMPLETE: BL-048/049 UI reactivity + BL-040 D4/D5 accepted live; BL-052 🔴 safety finding open)
 ---
 
 This is your session primer.
 
-**Project.** AgentTalk is a multi-agent orchestration system: isolated LLM agents (Claude/Codex/Gemini) attach as
-MCP clients over WebSocket, pull turns via `await_turn`, and coordinate through a planner→implementer→reviewer
-workflow. Current thrust: the **autonomous-development ladder** — Bite 0 → 1 → 2 … A deterministic **(AgentTalk)
-launcher** takes a config `{instance, agents[], goal, cap}`, starts an instance, launches the agent(s), delivers the
-goal, machine-enforces a resource cap, and reports.
+**Project.** AgentTalk orchestrates real, heterogeneous LLM agents (Claude/Codex/Gemini/goose) as one software
+team: they attach as MCP clients over WebSocket, pull turns via `await_turn`, and coordinate through a
+planner→implementer→reviewer workflow under a human Product Owner. Current thrust: the **autonomous-development
+ladder** — a deterministic **launcher** takes `{instance, agents[], goal, cap}`, starts an instance, launches the
+agent, delivers the goal, machine-enforces a resource cap, and reports.
 
-**Roles.** Human = PO (Fausto). Bindings live ONLY in `AGENT.md → 📌 DEFAULT ROLE ASSIGNMENTS`. **Codex + Gemini
-(agy) UNAVAILABLE** (PO, 2026-07-15) → **Claude is the sole agent**, resource-scarcity fallback: you wear every hat,
-declare each, keep each gate separate; **Standing Conditional Reassignment ACTIVE** (you may implement). **Merges
-stay PO-gated.** This primer is for the **implementer** thread.
+**Roles.** Human = PO (Fausto): scope, direction, **merges**. Bindings live ONLY in `AGENT.md → 📌 DEFAULT ROLE
+ASSIGNMENTS` — read it, don't trust this line. **Codex + Gemini (agy) UNAVAILABLE** (PO, 2026-07-15) → you are
+likely the sole agent under the resource-scarcity fallback: wear every hat, declare each, keep each gate
+separately. **Standing Conditional Reassignment ACTIVE** (you may implement). **Merges stay PO-gated.**
 
-**⚠️ DO THIS FIRST — `git fetch` both repos at startup.** Last session's biggest trap: the local checkout was **23
-commits behind** an active `origin/master` with a **4-way BL-037..040 ID collision**, only discovered at push time.
-`git fetch origin` in BOTH `AgentTalk` and `agentalk-mcp-client` before trusting any doc or building on local state.
-(That divergence is now reconciled + pushed — but make fetching a reflex.)
+**⚠️ `git fetch` BOTH repos at startup.** `AgentTalk` and `agentalk-mcp-client`. A past session built a whole
+delivery on a checkout 23 commits behind, discovered only at push time.
 
 **Workflow / source of truth.** `design/collaboration-workflow.md` + `design/backlog.md` (BL items) + `AGENT.md`.
-No `*-implementation.md` ledger for this thread — resume from the **backlog** (BL-037..040, BL-048) and the two
-design docs: `design/bite0-autonomous-launch-plan.md`, `design/spike-ui-external-events.md`.
+No `*-implementation.md` ledger for this thread — **resume from the backlog**, which is where the state is.
 
-**Where things stand (all pushed except noted):**
-- **BL-039** (NDJSON D6) — DONE, merged `agentalk-mcp-client:9090f37`.
-- **Reconcile** — two dev lines converged; Bite 0 kept BL-037..040, origin's OpenRouter/tester items → BL-044..047.
-  Pushed. Backlog validates (`node scripts/validate-backlog.mjs`, 48 items).
-- **BL-040 D1/D3/D6 slice** — MERGED `agentalk-mcp-client:1e80ef6`: `scripts/launcher.mjs` real-deps entrypoint
-  (real `startInstance` parses the DYNAMIC MCP url from orchestrator stdout; BL-037 launch; meter; NDJSON). Verified
-  live (attach + wall-clock cap termination).
-- **BL-040 D4** — **mechanism PROVEN live + sandboxed** (babysat probe) but **NOT yet baked into the launcher**
-  (`deliverGoal`/`waitForOutcome` are still stubs). Real `claude` worker completed a trivial goal correctly.
-- **BL-048** — UI-reactivity spike SCOPED (`design/spike-ui-external-events.md`); the UI doesn't show
-  externally-created agents. Not built.
-- **Unpushed:** `AgentTalk` master is **ahead of origin** (vite-host `abf5fcd`, spike/backlog `24a817d`, and more) —
-  the PO had not said "push" for these at close. `agentalk-mcp-client` master IS pushed (`1e80ef6`).
+## 🎉 Bite 0 is COMPLETE (2026-07-16, PO-witnessed)
 
-**FUTURE DEV COURSE (PO-laid, 2026-07-16 — the plan for next sessions):**
-1. **BL-048 first — make the UI reactive to external events** so the PO can *witness* runs. Minimal fix (root-caused
-   in the spike doc): emit `agent_registered` in `registry.ts` → `broadcast({type:'agent_added'})` in `server.ts` →
-   frontend `case 'agent_added'` upserts the agent; audit team/task rendering. Do it in a **git worktree**.
-2. **Then resume BL-040 D4/D5 with UI observability** — bake into `scripts/launcher.mjs`:
-   `deliverGoal` = `POST /api/teams {members:[{agentId,role:'worker'}]}` (worker-only) + `POST /api/teams/:id/task
-   {description}`; `waitForOutcome` = poll `GET /api/teams` for `team.status === 'completed'` (/`failed`/
-   `awaiting_operator`). Then the deterministic acceptance: one COMPLETED + one forced cap-breach, sandboxed,
-   witnessed in the UI. That closes Bite 0 (D2/D4/D5).
-3. **Bite 0 complete → Bite 1** (the *Hermes* agent layer that invokes the launcher + monitors a live session —
-   deferred, a distinct future bite; do NOT re-conflate the launcher (deterministic) with Hermes (an agent)).
+The launcher now runs a config end-to-end: starts a real orchestrator (parsing its **dynamic** MCP port from
+stdout), launches a real agent, delivers the goal via the product's HTTP API, detects the outcome, enforces the
+cap. Accepted with two live scenarios: **COMPLETED** (a real `claude` worker answered `pong` — verified in the
+*recording*, not the exit code) and **CAP-BREACH** (worker really reaped with SIGTERM). Merged
+`agentalk-mcp-client:34eec6a`; `AgentTalk` at `bd69873`. Both repos pushed and clean.
 
-**CRITICAL OP NOTES / GOTCHAS:**
-- **🔒 SANDBOX THE ORCHESTRATOR.** `in-process-driver.ts:283` runs `git worktree add /tmp/agentalk-task-<id> -b
-  task-<id>` **in the orchestrator's CWD**. Start the orchestrator with **cwd = a throwaway git repo** (last session
-  used `/tmp/att-sandbox`, `git init` + one commit) — **NEVER the primary AgentTalk checkout**, or every task creates
-  real `task-*` branches/worktrees in your repo. (Bring-up: `cd /tmp/att-sandbox && AGENTTALK_RECORDING_PATH=… PORT=3000
-  node <primary>/apps/orchestrator/dist/index.js`.)
-- **Dynamic MCP port.** The orchestrator prints `MCP server URL set to: ws://localhost:<PORT>/` AFTER "Ready to
-  manage agents." — parse it from stdout; it is NOT the fixed `:3000/mcp`.
-- **Worker provider.** BL-037 uses one `provider` for both the orchestrator record AND the harness CLI. The harness
-  rejects `provider:'mcp'` (wants claude/gemini/codex). Use a real provider; a fake bridge
-  (`AGENTTALK_PERSISTENT_COMMAND_JSON`) overrides the actual CLI for hermetic D1/D3.
-- **Capturing worker output.** Until BL-048, the UI shows nothing for API-driven runs — set
-  `AGENTTALK_RECORDING_PATH` and read the NDJSON (`team_task_updated` events carry the transcript + `work_accept`).
-- **🛑 Bash tool BLOCKS bare `sleep`** in foreground commands (they silently fail, exit 1, no output). Put waits
-  inside `.sh` files, or use `run_in_background` + read the output file. This ate several turns last session.
-- **Env is READY on this machine:** main repo built (`node_modules` + `dist` present; `npm run backlog:check`/`tsc -b`
-  clean); `claude`/`codex`/`gemini` CLIs authed on PATH; meter `:9899` UP (`claude` weekly ~5%, session ~43% at
-  close — ample). `node scripts/usage.mjs` works.
-- **Scratch tool:** `agentalk-mcp-client:scripts/explore-launch-worker.mjs` (UNTRACKED) launches one real worker
-  against a running orchestrator — handy for D4 probing.
-- **Independence caveat:** you author AND review as sole agent. Flag it; real gate-2 needs Codex/agy back or BL-038.
+Landed today: **BL-048** (UI reactive to external events + WS keepalive + connection indicator), **BL-049** (teams
+resync), **BL-040** (D4/D5). Also merged: the arbiter `consensusMode` enabler and the goose executor.
 
-Verify all of the above against ground truth (`git fetch` + read the backlog + the two design docs) before acting.
-Report your understanding, then STOP for the PO's go.
+## 🔴 START HERE — BL-052: the sandbox does NOT contain the worker
+
+**An autonomous worker committed into a real repo.** During the D4 cap-breach run the worker (a real `claude` CLI)
+created a worktree + branch **inside the `agentalk-mcp-client` checkout**, wrote files, and **committed**
+(`4193a4e`, branch `task-count-1-10000`) before the cap killed it. Not pushed; master unaffected; **left in place
+for the PO to inspect — do not delete it without asking.**
+
+Root cause is one line: `lib/agent-launcher.mjs:90` spawns the worker with **no `cwd`**, so it inherits the
+launcher's. The `exec_rpc` turn carries `cwd:/tmp/agentalk-task-<id>` but that never reaches the process, while the
+worker prompt *orders* it to "use strictly `git worktree`". It obeyed, in the wrong repository.
+**`/tmp/att-sandbox` protects the ORCHESTRATOR's cwd only** — the worker is a separate process. Two containment
+problems; only one was solved. `agents[].workdir` is accepted by the config and threaded to `launchAgent` —
+**verify whether it is honoured at all**; on the evidence it is not.
+
+This is the safety premise of the whole ladder, and **Bite 1 puts an agent in charge of the launcher**. Fix
+direction (needs a PO call): explicit `cwd`, and a missing workdir should be a **hard error**, not a silent
+inherit. Full detail: **BL-052**.
+
+**Also open, PO-parked:** **BL-051** — the UI shows *that* a run finished but never *what it produced* (the
+transcript is already in the browser inside `activeTeamTask`; `TeamSidebar.tsx:152-153` renders only the goal and
+the status — one render away). **BL-050** — the Team view doesn't make clear which team you're looking at.
+**Next rung after BL-052:** Bite 1 — the agent layer that invokes the launcher and monitors a live session. Do NOT
+re-conflate the deterministic launcher with that agent.
+
+## Op notes / gotchas (each of these cost real time)
+
+- **🔒 Sandbox the orchestrator.** `in-process-driver.ts:283` runs `git worktree add` in the orchestrator's CWD.
+  Start it with **cwd = a throwaway git repo** (`/tmp/att-sandbox`: `git init` + one commit) — never a real
+  checkout. Verified working; the task branch lands there. **But see BL-052: this does not cover the worker.**
+- **Dynamic MCP port.** The orchestrator prints `MCP server URL set to: ws://localhost:<PORT>/` **after** "Ready to
+  manage agents." Parse it; it is NOT `:3000/mcp`. In a launcher config, **omit `instance.mcpUrl`** — if you set
+  it, `startInstance` resolves with the stale value the moment it sees "Ready", before the real url arrives.
+- **Team states:** `idle|planning|awaiting_confirmation|working|completed|interrupted|error`. **`failed` and
+  `awaiting_operator` DO NOT EXIST** — old notes claim otherwise and would make `waitForOutcome` never resolve.
+- **An agent must be `ready` before joining a team** ("must be ready before joining a team"). `launchAgent` returns
+  at spawn; ready comes later, when the MCP client connects. The cap race starts **after** `deliverGoal`, so any
+  wait in there must be bounded or it hangs outside the anti-hang rail.
+- **The worker's result text is not reachable via the API** — tasks have no read endpoint and completing deletes
+  `team.currentTaskId`. Read the NDJSON (`AGENTTALK_RECORDING_PATH`) for the transcript.
+- **READ THE RECORDING, not your harness summary.** The launcher's exit code says `completed`; only the NDJSON
+  proves the worker did real work (`workerAccepted`, transcript). This has nearly caused a false verdict twice.
+- **🛑 Bare `sleep` in a foreground Bash tool call is BLOCKED** (silent exit 1). Put waits in a `.sh` file or use
+  background + read the log.
+- **Teardown with explicit PIDs, and loop over ALL matches** — `pgrep … | head -1` left a second orchestrator
+  holding :3000. `pkill -f <pattern>` can match the very shell running it and kill itself (exit 144).
+- **The UI dev server proxies `/api` and `/ws` to a hardcoded `localhost:3000`** — the orchestrator must be on
+  3000 or the UI sees nothing.
+- **Env:** both repos built; `claude` CLI authed on PATH; meter `:9899` UP (`node scripts/usage.mjs`; claude weekly
+  **14%**, session 51% at close — ample). **New:** `.claude/settings.local.json` now grants broad tool permissions
+  (PO, 2026-07-16) with lethal fs/disk commands in `deny` — you should not be asked to approve routine commands
+  any more. **The PO-gates in AGENT.md (merges, behaviour changes) are unchanged and still apply.**
+- **No UI test infrastructure, by PO decision (LB-93)** — `apps/web` has none and gets none. The bar for UI work is
+  a **live, witnessed run**. Do not file or build test infra for it; do not report its absence as a gap.
+- **Live validation must isolate what it claims.** BL-048 was **324/324 green with the bug still live**; the defect
+  only surfaced in a PO-witnessed run. And "I saw it appear" proves little — a reload or HMR remount refetches. The
+  decisive evidence was watching a **stale entity disappear** on reconnect: broadcasts only add, so only a real
+  refetch can remove.
+- **Independence caveat:** as sole agent you author AND review. Say so plainly in every delivery; real gate-2 needs
+  Codex/agy back or BL-038.
+
+Verify all of the above against ground truth (`git fetch`, read `design/backlog.md` BL-048→052 and `design/
+logbook.md` LB-93) before acting. Report your understanding, then STOP for the PO's go.
