@@ -1256,17 +1256,22 @@ tags: [self-hosting, attach, native-loop, goose, openrouter, provider-diversity]
 
 <!-- @item
 id: BL-039
-status: todo
+status: done
 date: 2026-07-16
 epic: null
 tags: [self-hosting, bite0, launcher, observability]
 -->
-- [todo · immediate next (PO, 2026-07-16)] — **Bite 0 launcher: NDJSON run-artifact capture (D6)** — the Bite 0
-  launcher (`agentalk-mcp-client:lib/bite0-launcher.mjs`) enforces the cap and reports, but does **not** yet write
-  the per-run NDJSON artifact the plan's D6 requires (config already carries `instance.recording`). Add a recording
-  hook (reuse the session recorder) that captures launch → goal-delivery → outcome/cap events, so each run is
-  observable post-hoc — the substrate for watching how hangs actually happen (the fault-tolerance probe). Small;
-  extends the existing core with an injected `record()` effect + a test. Source: Bite 0 delivery, deferred honestly.
+- [**DONE** 2026-07-16 (merged `agentalk-mcp-client:9090f37`, PO-gated)] — **Bite 0 launcher: NDJSON run-artifact
+  capture (D6)** — added an **optional** injected `record()` effect to the launcher core emitting `run-start →
+  agent-launched → goal-delivered → (cap-breach) → outcome`, plus a default `createNdjsonRecorder(filePath)` sink
+  honoring `config.instance.recording`. Recording is optional (absent → no-op; existing callers unchanged) and
+  best-effort (a throwing sink never disturbs the run); the core stays pure (no clock) — time+fs live at the
+  recorder edge. No pre-existing session recorder to reuse, so the sink was written fresh. Tests: record-sequence
+  (happy + cap-breach + best-effort), NDJSON round-trip, runner→file E2E. **Verify:** stash-and-rerun proved the
+  new tests depend on the fix (4 fail without it) while the 11 pre-existing tests stayed green (D7 preservation);
+  full sibling suite 38/38, lint clean, BL-037 untouched. Independence caveat: authored+reviewed by Claude (sole
+  agent, resource fallback). Source: Bite 0 delivery, deferred honestly. This merge also landed the Bite 0 launcher
+  core itself (`a86733d`), previously committed-but-unmerged.
 
 <!-- @item
 id: BL-040
