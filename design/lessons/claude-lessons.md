@@ -614,3 +614,16 @@ here.**
   invented backlog status (`status: invalid` — the project has exactly four: todo·doing·done·dropped, a rule *I*
   recorded in this file in July) plus bolded status tokens the parser couldn't read. **Re-deriving beats recalling,
   even an hour later, even in my own prose.** Run the validator; it knows the contract better than I remember it.
+
+### 2026-07-16 (BL-061, session close) — mutation-check the bar, or you don't know it's a bar (hat: implementer)
+
+- **A green test told me nothing until I broke the fix and watched it fail.** I mutated the silent degrade back in;
+  the integration bar failed with `expected 'PROVIDER RAN' to match /^ERROR:/`. **That** is when I knew it guarded
+  the actual defect rather than merely passing next to it. Cost: one command. After a day in which three "failures"
+  were my own harness and my best finding was my own error, the mutation check is the cheapest way to convert "it's
+  green" into "it would catch the bug" — and it's the discipline I'd add to my defaults.
+- **The obvious implementation of my own backlog item would have been worse than the bug it fixed.** BL-061 said
+  "fail loudly"; done naively, the throw escaped the event handler — agent dead, `busy` stuck true, orchestrator
+  waiting on a corpse. **A fail-closed guard that fails as a crash is not an improvement on a silent degrade.**
+  Writing the item was not the same as knowing how to do it; the shape only appeared by reading the call site.
+  Worth remembering the next time I file something and describe it as small.
