@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import path from 'path';
 import { Registry } from '../registry.js';
 
 vi.mock('child_process', () => ({
@@ -114,7 +115,14 @@ describe('Registry MCP-exec agent lifecycle', () => {
     expect(content.type).toBe('exec_rpc');
     expect(content.prompt).toContain('You are the WORKER');
     expect(content.prompt).toContain('My plan');
-    expect(content.cwd).toBe('/tmp/agentalk-task-task-1');
+    // BL-053 (PO-approved behaviour change): `cwd` is a task-scoped NAME, deliberately
+    // relative — never a path. It used to be '/tmp/agentalk-task-task-1', an absolute path
+    // into whatever repo the orchestrator started in, which the worker then obeyed straight
+    // out of its own workdir. The worker now anchors this name under the workdir it was
+    // assigned. Asserting it stays relative IS the contract: a leading '/' here would mean
+    // the orchestrator is again able to point a worker outside its sandbox.
+    expect(content.cwd).toBe('agentalk-task-task-1');
+    expect(path.isAbsolute(content.cwd)).toBe(false);
     expect(content.timeoutMs).toBe(600000);
 
     // 2. Submit exec_result representing the worker's JSON response
