@@ -1574,12 +1574,12 @@ tags: [arbiter, consensus, heterogeneous-team, claude, goose, experiment, next-s
 
 <!-- @item
 id: BL-061
-status: todo
+status: done
 date: 2026-07-16
 epic: null
 tags: [safety, sandbox, autonomy, fail-closed, bl053-followup]
 -->
-- [todo · **opened deliberately by BL-053, by its own author** · **the harness degrades silently where a model used
+- [done · **MERGED 2026-07-16** — client `508c617` · **opened deliberately by BL-053, by its own author** · **the harness degrades silently where a model used
   to (badly) notice**] — **When the worker cannot provision a task worktree, the turn now runs at the workdir root
   and nothing says so.** BL-053 removed the prompt clause that told the agent *"use a worktree or refuse"*, on the
   grounds that it asked an LLM to police an invariant the harness guarantees — and it demonstrably got that check
@@ -1600,6 +1600,42 @@ tags: [safety, sandbox, autonomy, fail-closed, bl053-followup]
   strictness:** pre-BL-053, a failed provision produced a hard error anyway (the orchestrator handed the executor a
   cwd that didn't exist → spawn ENOENT), so the *silent* degrade is itself the regression BL-053 introduced.
   Source: BL-053 closure, flagged to the PO at merge, 2026-07-16.
+
+  ---
+  **CLOSED 2026-07-16 — merged client `508c617` (same session it was filed in).**
+  **The contract is the DISTINCTION, not the outcome** — this is the whole item, and the half that is easy to get
+  wrong: *no task dir asked for* → `undefined`, run at the workdir root (**normal and load-bearing**: planner-shaped
+  turns / non-`maintainsSession` completers carry none and must keep working — tightening the guard until this
+  throws too would break every planner turn); *asked for and unavailable* → **throw**, never a silent substitute.
+  **Two things the item did not anticipate, both found by writing it:**
+  1. **The obvious implementation would have been worse than the bug.** `provisionTaskDir` was called
+     **synchronously, outside** the promise chain — a throw there escapes the event handler entirely: the agent
+     dies with `busy` stuck `true` and the orchestrator waits on a corpse. **A fail-closed guard that fails as a
+     crash is not an improvement on a silent degrade.** Provisioning now runs *inside* the chain, so the failure
+     travels the same road as any other turn failure (`submit_exec_result: ERROR…`, `busy` released).
+  2. **git's stderr was being swallowed** (`stdio: 'ignore'`). Piped now: the error says *"not a git repository"*
+     rather than merely that something went wrong. **A loud failure that cannot name its cause is just a quieter
+     one.**
+  **Bars (no live run — this is a failure path, provable deterministically, and a mutation-checked test is a
+  stronger bar than a live LLM):** 5 unit tests on the contract in **both** directions, plus an integration test
+  proving the throw **reaches the orchestrator** *and* the agent **survives it and serves the next turn**.
+  **Mutation-verified** — restoring the silent degrade fails the integration bar with
+  `expected 'PROVIDER RAN' to match /^ERROR:/`, i.e. it catches the exact defect: a turn quietly running at the
+  workdir root and reporting success. Suite **70 → 73**.
+  **Incidental finding worth knowing:** gemini's per-turn spawn **discards `baseCmd.args`** (it hardcodes agy's own
+  flags), so a `persistentCommandOverride` cannot carry a fake script path on that provider — which is why the
+  client's e2e fakes all run through **claude**. Cost one attempt here; not filed, but if someone tries to fake
+  gemini again this is why it fails with `agy exec failed with exit code 9`.
+  **Independence caveat:** sole agent — filed this item against my own change, then fixed and reviewed it myself.
+
+  **Telemetry (task closure):**
+  - task:        BL-061
+  - wall-clock:  ~22:10 → 22:31 (~21 min)
+  - budget:      weekly 28%→29% (Δ ~1%), session 38%→45% (Δ ~7%)
+  - gate:        suite 70→73, lint + verify-contract clean, mutation check passed, pollution clean
+                 (worktree removed, branch deleted, real repo clean)
+  - diff:        4 files, +187/−59; commit `e19e938`; merge `508c617`
+  - outcome:     MERGED ✅
 
 <!-- @item
 id: BL-060
