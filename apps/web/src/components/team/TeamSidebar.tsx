@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Users } from 'lucide-react';
-import { theme, Agent, Team, TeamTask, TeamComposition, Provider, TeamMember } from '../../api/types';
+import { theme, Agent, Team, TeamTask, TeamComposition, Provider, TeamMember, TranscriptEntry } from '../../api/types';
 
 interface TeamSidebarProps {
   agents: Agent[];
@@ -22,6 +22,47 @@ const geminiModelOptions = [
   { value: 'gemini-3-flash-preview', label: '3 Flash (Preview)' },
   { value: 'gemini-2.5-flash', label: '2.5 Flash' },
 ];
+
+// BL-051: the run's OUTPUT, not just its status. The task panel answered "did it finish?" but never
+// "what did it do?" — which is the question that decides whether an autonomous run was any good. The
+// transcript already arrives on `team_task_updated`; this renders it.
+function TaskTranscript({ entries }: { entries: TranscriptEntry[] }) {
+  if (!entries.length) {
+    return (
+      <div style={{ fontSize: '10px', color: theme.textDim, marginTop: '6px', fontStyle: 'italic' }}>
+        No output yet — the worker has not replied.
+      </div>
+    );
+  }
+  return (
+    <div style={{ marginTop: '8px', borderTop: `1px solid ${theme.border}`, paddingTop: '6px' }}>
+      <div style={{ fontSize: '9px', color: theme.textMuted, textTransform: 'uppercase', marginBottom: '4px' }}>
+        Output ({entries.length})
+      </div>
+      <div style={{ maxHeight: '220px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+        {entries.map((entry, idx) => (
+          <div key={`${entry.timestamp}-${idx}`} style={{ fontSize: '10px' }}>
+            <div style={{ color: theme.textDim, display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+              <span>{entry.from} → {entry.to}</span>
+              {entry.messageType && <span style={{ color: theme.textMuted }}>· {entry.messageType}</span>}
+            </div>
+            <div
+              style={{
+                color: theme.textSecondary,
+                whiteSpace: 'pre-wrap',
+                wordBreak: 'break-word',
+                fontFamily: 'monospace',
+                marginTop: '2px',
+              }}
+            >
+              {entry.payload}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 export function TeamSidebar({
   agents,
@@ -151,6 +192,12 @@ export function TeamSidebar({
               <div style={{ padding: '10px', backgroundColor: theme.bg, borderRadius: '6px', border: `1px solid ${theme.border}` }}>
                 <div style={{ fontSize: '12px', color: theme.textSecondary }}>{activeTeamTask.description}</div>
                 <div style={{ fontSize: '10px', color: theme.textMuted, marginTop: '4px' }}>Status: {activeTeamTask.status}</div>
+                {activeTeamTask.workerRefusalReason && (
+                  <div style={{ fontSize: '10px', color: theme.textSecondary, marginTop: '4px' }}>
+                    Refused: {activeTeamTask.workerRefusalReason}
+                  </div>
+                )}
+                <TaskTranscript entries={activeTeamTask.transcript ?? []} />
               </div>
             )}
             <button 
