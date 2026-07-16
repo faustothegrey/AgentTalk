@@ -261,7 +261,31 @@ function App() {
   // open but still reconnecting when the launcher created its worker, the broadcast went to zero
   // clients, and the agent stayed invisible while sitting 'ready' in the backend. This also covers
   // the backend restarting underneath an open UI.
-  const handleWsOpen = useCallback(() => { void fetchAgents(); }, [fetchAgents]);
+  // BL-049: teams carried the same hole as agents — a team_updated that fires while the socket is
+  // down was lost for good, and GET /api/teams existed but nothing ever called it. Align to backend
+  // truth (PO, 2026-07-16): the backend's current team wins, and none means none.
+  const fetchTeams = useCallback(async () => {
+    try {
+      const teams = (await api.teams.list()) as Team[];
+      // Most recently updated wins — the same "last team event wins" rule team_updated already
+      // applies by calling setActiveTeam blindly, so this stays consistent rather than inventing a
+      // selection policy. A team created while we were disconnected therefore surfaces here, which
+      // is the whole point: it is how a launcher-driven run becomes watchable.
+      const current = teams.length
+        ? teams.reduce((a, b) => (a.updatedAt >= b.updatedAt ? a : b))
+        : null;
+      setActiveTeam(current);
+      // Tasks have no read endpoint (only GET /api/teams exists), so a task we can no longer place
+      // cannot be refreshed — only dropped. Showing one that belongs to a team that is gone, or to a
+      // different task than the team now points at, is the same lie this task exists to remove; the
+      // next team_task_updated repopulates it.
+      setActiveTeamTask(prev => (prev && current && prev.id === current.currentTaskId ? prev : null));
+    } catch (err) {
+      console.error('[App] Failed to fetch teams:', err);
+    }
+  }, []);
+
+  const handleWsOpen = useCallback(() => { void fetchAgents(); void fetchTeams(); }, [fetchAgents, fetchTeams]);
 
   const { ws, isConnected, sendMessage: sendWsMessage } = useWebSocket({ onMessage: handleWsMessage, onOpen: handleWsOpen });
 
