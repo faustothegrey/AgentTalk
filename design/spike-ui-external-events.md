@@ -1,6 +1,29 @@
 # Spike — make the Web UI reactive to EXTERNAL (API-driven) events
 
-**Author:** Claude (temp implementer, resource fallback) · **Date:** 2026-07-16 · **Status:** SPIKE — scoped, not yet built
+**Author:** Claude (temp implementer, resource fallback) · **Date:** 2026-07-16
+**Status:** ✅ BUILT & MERGED (`d4ac001`, 2026-07-16) — PO-witnessed live validation.
+
+> ⚠️ **Read this before trusting the plan below — the live run refuted it twice.**
+> 1. **§Proposed fix step 1 is WRONG.** Emitting from `registry.createAgent()` ships `provider`/`model` as
+>    `undefined`: `POST /api/agents` assigns them *after* `createAgent()` returns, the registry emits
+>    `provider`/`model` only from `activateAgent()`, and the frontend has no case for either. The broadcast went
+>    into the route (where the data is complete); `registry.ts` was never touched.
+> 2. **§Proposed fix steps 1–2 were NOT sufficient.** The launcher creates its worker ~100ms after the
+>    orchestrator is ready while the UI's socket retries every 2s → `agent_added` reached **zero clients**, and the
+>    whole `creating→starting→ready` burst fell in the same window, so the unknown-id refetch had no event to fire
+>    on. The suite was **324/324 with the bug still live**. The fix that actually worked: **`fetchAgents()` on the
+>    WebSocket's `onOpen`** — resync on every (re)connect rather than trusting no event was missed.
+> 3. **§Validation was too weak as written.** "See the agent appear" cannot distinguish the broadcast from a page
+>    remount. The decisive test was watching a **stale agent disappear** on reconnect: `agent_added` can only add,
+>    so only a real refetch could remove it.
+> 4. **Point 3 (audit) done:** standalone team/task rendering already works — no live view needed. But teams carry
+>    the identical reconnect hole and have **no client-side list call at all** → **BL-049**.
+>
+> Also shipped (PO-requested, same branch): a server-initiated WS **keepalive** + a live connection indicator.
+> There was no ping/pong anywhere, so a half-open socket would have kept the new indicator green over a dead
+> backend — the keepalive is what makes it honest, not a nice-to-have.
+>
+> The sections below are preserved as the original scoping, not as instructions.
 **Motivation:** the BL-040 D4 babysat run (and every future autonomous/launcher-driven test) creates agents,
 teams and tasks **outside the UI** — via the API / the (AgentTalk) launcher, not by a human clicking in the web
 app. The PO needs to **witness** these runs live in the UI. Today the UI shows **nothing** for externally-created

@@ -1480,13 +1480,34 @@ tags: [arbiter, consensus, heterogeneous-team, claude, goose, experiment, next-s
   `task-arbiter-enable` (BL-044 wall 1) being merged. Source: PO, TL-013.
 
 <!-- @item
-id: BL-048
+id: BL-049
 status: todo
+date: 2026-07-16
+epic: null
+tags: [ui, observability, self-hosting, bite0]
+-->
+- [todo · found by the BL-048 live run · **bites the moment BL-040 D4 lands**] — **Teams/tasks carry the same
+  reconnect hole BL-048 just closed for agents — and have no resync path at all.** BL-048's audit (spike point 3)
+  found the *rendering* is fine: `team_updated → setActiveTeam` surfaces a team the human never opened, so no
+  "live view" is needed. The hole is elsewhere: a broadcast only reaches clients connected when it fires, and
+  while `GET /api/teams` exists server-side (`server.ts:745`), **the web client never calls it** — `api.teams`
+  exposes only `create` and `assignTask`, with no `list`. So a `team_updated` that arrives while the socket is
+  down is lost for good, and BL-048's `fetchAgents()` on WS open does not cover it (agents only). This is exactly
+  the failure that made the first BL-048 run show a frozen UI, still lying in wait: today nothing creates teams
+  externally, but **once D4 implements `deliverGoal` (team + task via API) the launcher's runs will drop them the
+  same way**. **Fix (symmetric to BL-048):** add `api.teams.list()` and resync the active team alongside the agents
+  in the `onOpen` handler (`App.tsx`). **Decide first:** whether a refetch that finds no team should clear a stale
+  `activeTeam` — that is a UI behaviour call, hence PO's. Source: BL-048 spike point 3 audit.
+
+<!-- @item
+id: BL-048
+status: done
 date: 2026-07-16
 epic: null
 tags: [ui, observability, spike, self-hosting, bite0]
 -->
-- [todo · PO 2026-07-16 · **spike** · prereq for witnessing autonomous runs] — **Make the Web UI reactive to
+- [done 2026-07-16 · merged `d4ac001` · PO-witnessed live · **spike** · prereq for witnessing autonomous runs] —
+  **Make the Web UI reactive to
   EXTERNAL (API-/launcher-driven) events** — during the BL-040 D4 babysat run the PO could not *see* agents/teams/
   tasks created outside the UI. Root cause (traced): agent **creation** emits no registry event and no UI broadcast
   (only `recorder.record('runtime','agent_created')`, `server.ts:609`); the frontend fills its agent list via
@@ -1497,5 +1518,18 @@ tags: [ui, observability, spike, self-hosting, bite0]
   `case 'agent_added'` upserts into the list (+ refetch on unknown-id `status`); audit team/task rendering for
   entities the human never opened. Full design + files: **`design/spike-ui-external-events.md`**. Do it in a git
   worktree (touches `apps/web` + orchestrator). Source: BL-040 D4 babysat run, PO.
+  **OUTCOME (2026-07-16, merged `d4ac001`) — the plan above was wrong twice; keep reading before you copy it.**
+  (1) **Do NOT emit from `registry.createAgent()`** as prescribed: `POST /api/agents` assigns `provider`/`model`
+  *after* `createAgent()` returns (behind an `isUsageCaptureProvider` guard), so the emit would ship both
+  `undefined` — and nothing repairs it, because the registry emits `provider`/`model` only from `activateAgent()`
+  and the frontend has **no case for them**. The broadcast went in the route instead; `registry.ts` is untouched.
+  (2) **The broadcast alone did not fix the real case.** The launcher creates its worker ~100ms after the
+  orchestrator is ready while the UI's socket retries every 2s, so `agent_added` reached **zero clients** and the
+  whole `creating→starting→ready` burst fell inside the same window, leaving nothing for the unknown-id refetch to
+  fire on. **The suite was 324/324 with that hole in it** — only the PO-witnessed live run found it. Real fix:
+  `fetchAgents()` on WS `onOpen`, so every (re)connect resyncs with backend truth. Also shipped (PO-requested): a
+  server-initiated WS **keepalive** + a live connection indicator — without ping/pong a half-open socket keeps the
+  indicator green over a dead backend. Point 3 (team/task audit) done: rendering is fine, but teams carry the same
+  reconnect hole → **BL-049**.
 
 *(add new items above this line)*
