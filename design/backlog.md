@@ -1573,6 +1573,39 @@ tags: [arbiter, consensus, heterogeneous-team, claude, goose, experiment, next-s
   `task-arbiter-enable` (BL-044 wall 1) being merged. Source: PO, TL-013.
 
 <!-- @item
+id: BL-062
+status: todo
+date: 2026-07-16
+epic: null
+tags: [prompt, worker-only, launcher, autonomy, false-negative, bl059-adjacent]
+-->
+- [todo · found 2026-07-16 · **a worker-only team tells the worker a planner wrote a plan — then pastes the goal twice**] —
+  **`in-process-driver.ts:256` (`handleTeamWorkAssign`) is the only prompt for assigning work to a worker, and it
+  hardcodes the two-agent narrative.** Its opening line is *"You are the WORKER in a two-agent team. The planner has
+  created a plan for you to review."*, followed by *"Critically evaluate the plan… Is the approach sound? Are there
+  risks or missing steps?"* — **but on a worker-only team there is no planner and no plan.** That is the shape the
+  launcher builds: `team-coordinator.ts:315`, the `else` branch whose own transcript line reads *"Task assigned
+  directly to worker."*, emits `team_work_assign` with **both** `description` **and** `plan:
+  buildWorkerPlan(description)`. `buildWorkerPlan` (`team-coordinator.ts:1522`) is a misnomer — it returns
+  `` `${plan}\n\n${GIT_WORKTREE_REQUIREMENT}` ``, i.e. the description echoed back with a suffix. **Observed live**
+  (rung-1 calibration, 2026-07-16): the worker is told to *critique a plan* for a task it is meant to *execute*; the
+  goal text appears **twice** (as `Original task:` and again under `## Final Plan`); the worktree context appears
+  **twice** (from `WORKTREE_CONTEXT` at `in-process-driver.ts:266` and again from the `GIT_WORKTREE_REQUIREMENT`
+  suffix baked into the synthesized plan).
+  **Why it matters — this is a false-negative generator, not a cosmetic defect.** agy did the work anyway (commit
+  `db2a464` in its task worktree: the correct one-line fix, ~27s, nothing else touched) — it succeeded *despite* the
+  prompt. **A worker that instead COMPLIES returns a plan critique, changes no files, and reports `completed`** —
+  which is indistinguishable from *"the model accepted the task and skipped the work."* **That is precisely the
+  BL-059 accusation shape**, which cost two sessions, was written into canonical `AGENT.md` and a lessons file, and
+  was then retracted as observer error. The next occurrence would be read as a model defect and would again be ours.
+  **Fix shape (a decision, not just a patch):** give worker-only assignment its own prompt — *here is your task, do
+  it* — instead of reusing the plan-review template, and stop synthesizing a `plan` from the `description` when no
+  planner ran (send no plan; have the driver omit the section). Rename/remove `buildWorkerPlan`. ⚠️ **This is a
+  behaviour change on a shared engine path** (`team-coordinator.ts` + the driver prompt) → **needs PO confirmation**,
+  and the **two-agent planner→worker path must stay byte-for-byte**. Source: rung-1 calibration run (first real agy
+  code task), 2026-07-16; transcript captured in the launcher's stdout.
+
+<!-- @item
 id: BL-061
 status: done
 date: 2026-07-16
