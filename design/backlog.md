@@ -1261,7 +1261,7 @@ date: 2026-07-16
 epic: null
 tags: [self-hosting, bite0, launcher, observability]
 -->
-- [**DONE** 2026-07-16 (merged `agentalk-mcp-client:9090f37`, PO-gated)] — **Bite 0 launcher: NDJSON run-artifact
+- [done · 2026-07-16 (merged `agentalk-mcp-client:9090f37`, PO-gated)] — **Bite 0 launcher: NDJSON run-artifact
   capture (D6)** — added an **optional** injected `record()` effect to the launcher core emitting `run-start →
   agent-launched → goal-delivered → (cap-breach) → outcome`, plus a default `createNdjsonRecorder(filePath)` sink
   honoring `config.instance.recording`. Recording is optional (absent → no-op; existing callers unchanged) and
