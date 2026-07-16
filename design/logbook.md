@@ -2563,6 +2563,32 @@ not take space away from the UI.
 **Disposition.** Update future Tester runs and replay notes accordingly. Do not call cmux WebSocket broken from a
 single dev-console `[WS] Error`; prove whether the surviving app socket and the resulting product state work.
 
+### LB-93 · 2026-07-16 — [governance/testing] NO UI-side test infrastructure for now — PO call: that layer stays fluid
+
+**Decision (PO, 2026-07-16).** `apps/web` has **no test infrastructure at all** (no jsdom, no testing-library, no
+test script), and **it stays that way for now**: *"preferirei non avere test lato UI ancora. Troppo presto, e cmq
+quella parte non mi preoccupa, la lascio fluida."* Standing until the PO says otherwise.
+
+**Why this is written down.** During BL-048 the absence was flagged **three times** as a coverage gap. It is not a
+gap — it is a **deliberate choice**: the UI layer is expected to keep churning, and freezing it into tests now buys
+rigidity, not safety. Reviewers and implementers should therefore **stop reporting "apps/web has no tests" as a
+finding**, and must not smuggle in test infrastructure while doing UI work.
+
+**What this does NOT license.** The UI is exempt from *automated* tests, **not** from verification. BL-048 is the
+proof of why that distinction matters: the suite was **324/324 green while the feature was still broken**, and the
+defect (a broadcast reaching zero clients because the socket had not reconnected yet) was only ever found by a
+**PO-witnessed live run**. So for UI work the bar is **live validation**, not "tests pass" — and the run must
+isolate what it claims: BL-048's decisive evidence was a *stale agent disappearing* on reconnect, since a page
+reload or an HMR remount would have re-fetched and proved nothing. Claiming a UI behaviour without having watched
+it is exactly the unearned VERIFIED the reviewer rules forbid.
+
+**Consequence for the record.** The follow-up item proposed at the time (stand up jsdom/testing-library) is
+**declined, not deferred** — do not file it. Untested-by-design UI behaviour shipped so far: the `onOpen` refetch
+and the backend-connection indicator (both live-validated, BL-048, merged `d4ac001`).
+
+**Canonical:** this entry. Related: BL-048 (merged `d4ac001`), BL-049 (the teams reconnect hole — same class,
+still open), `design/spike-ui-external-events.md`.
+
 ### LB-90 · 2026-07-13 — [governance] Serial-actor rule RELAXED: parallel work allowed for everything except code development
 
 **Decision (PO).** The interim "run agent actors serially — no parallel actors" rule (PO 2026-06-22) is **amended**:

@@ -1497,7 +1497,10 @@ tags: [ui, observability, self-hosting, bite0]
   externally, but **once D4 implements `deliverGoal` (team + task via API) the launcher's runs will drop them the
   same way**. **Fix (symmetric to BL-048):** add `api.teams.list()` and resync the active team alongside the agents
   in the `onOpen` handler (`App.tsx`). **Decide first:** whether a refetch that finds no team should clear a stale
-  `activeTeam` — that is a UI behaviour call, hence PO's. Source: BL-048 spike point 3 audit.
+  `activeTeam` — that is a UI behaviour call, hence PO's. **Testing:** do NOT add UI test infrastructure — the PO
+  ruled that layer stays fluid (**LB-93**); the bar here is a **live, witnessed run**, and it must isolate what it
+  claims (BL-048's decisive evidence was a stale entity *disappearing* on reconnect — a reload or HMR remount
+  refetches and proves nothing). Source: BL-048 spike point 3 audit.
 
 <!-- @item
 id: BL-048
