@@ -1507,6 +1507,27 @@ tags: [arbiter, consensus, heterogeneous-team, claude, goose, experiment, next-s
   `task-arbiter-enable` (BL-044 wall 1) being merged. Source: PO, TL-013.
 
 <!-- @item
+id: BL-056
+status: todo
+date: 2026-07-16
+epic: null
+tags: [ui, observability, self-hosting, autonomy]
+-->
+- [todo · surfaced by the BL-051 live run · **the panel is a live window, not a record**] — **A run's output does
+  not survive a page reload — and there is no way to see a past run at all.** BL-051 made the worker's answer
+  visible *while the socket is connected*; refresh the page and it is **gone for good**. Root cause is structural,
+  not cosmetic: **tasks have no read endpoint** (only `GET /api/teams` exists), and completing **deletes**
+  `team.currentTaskId`, so `App.tsx:282` can only drop a task it can no longer place — the comment there says as
+  much ("only dropped… the next `team_task_updated` repopulates it"), and after completion nothing ever
+  repopulates. The transcript lives in orchestrator state and reaches the browser **exactly once**, as an event.
+  **Why it matters for the ladder:** Bite 1 runs an agent-driven session the PO will want to *review*, possibly
+  after the fact — and "you had to be watching at the right moment" is not review, it is luck. The NDJSON recording
+  is today's only durable artifact, and it holds lifecycle events, **not** the transcript (verified on the BL-055
+  and BL-051 runs). **Likely shape:** a task read endpoint (`GET /api/teams/:id/task[s]`) + retain completed tasks,
+  or persist the transcript into the run recording. **Needs a PO go** (LB-93: UI stays fluid). Source: BL-051
+  closure, raised to the PO at merge.
+
+<!-- @item
 id: BL-055
 status: done
 date: 2026-07-16
@@ -1678,12 +1699,12 @@ tags: [safety, sandbox, autonomy, bite0, self-hosting]
 
 <!-- @item
 id: BL-051
-status: todo
+status: done
 date: 2026-07-16
 epic: null
 tags: [ui, observability, self-hosting, bite0]
 -->
-- [todo · found by the D4 acceptance run · **the data is already in the browser**] — **The Team view never shows
+- [done 2026-07-16 · **MERGED `f3cffd0`, PO-witnessed** · found by the D4 acceptance run · **the data was already in the browser**] — **The Team view never shows
   what the worker actually produced.** `TeamSidebar.tsx:152-153` renders exactly two task fields — the goal
   (`description`) and `Status:` — and nothing else. PO, watching the first fully autonomous Bite 0 run land:
   *"C'e' il goal del task e lo status completed. Non c'e altro."* The worker had replied `pong`; the answer was
@@ -1696,6 +1717,33 @@ tags: [ui, observability, self-hosting, bite0]
   jumps to `completed`; there is nothing to watch in between (recording: `/tmp/att-sandbox/d4-complete.ndjson`).
   Per **LB-93** the UI layer stays fluid — needs a PO go, no test infrastructure, live-validated. Source: BL-040
   D4 acceptance run, PO-witnessed.
+
+  **✅ DONE 2026-07-16 — merged `f3cffd0` (PO-gated, "merge as-is").** Confirmed a **rendering** gap, not a data
+  gap: `TeamTask.transcript` (contracts `types.ts:64`) already arrives on `team_task_updated` and already lands in
+  `activeTeamTask` (`App.tsx:224`). `TeamSidebar` now renders a `TaskTranscript` — each entry as `from → to`
+  (+ `messageType`) with the payload in monospace, scrollable, with an explicit empty state — plus
+  `workerRefusalReason` when a worker refuses. One file, +48/-1. tsc clean, suite **325/325**.
+  **The live bar (LB-93: no UI test infra; a witnessed run IS the bar) — PASSED.** A real `claude` worker was given
+  `17 * 23`; the PO saw the panel render 4 entries ending in **`391`**.
+  **Why that is decisive:** `391` appears in **no code, no config, and no log** — the launcher records only the
+  **outgoing** prompt (the run log's `work_accept` is the *instructions*, not the reply), the NDJSON holds only
+  lifecycle events, and tasks have **no read endpoint**. The worker's answer therefore existed in exactly **one**
+  place: the rendered panel. Only the render could put it there — a hardcoded string could have faked "pong", which
+  is precisely why a *computed* answer was chosen. Green suites were irrelevant to this claim (BL-048 was 324/324
+  with its bug live).
+  **Telemetry (task closure):**
+  - task:        BL-051
+  - wall-clock:  2026-07-16 16:58 → 17:11 (~13m)
+  - budget:      weekly 15%→15% (Δ ~0%), session ~6%→~9% (Δ ~3%)
+  - gate:        tsc 0, suite 325/325 (re-run on merged master), pollution clean (`wt-bl051` removed)
+  - diff:        1 file, +48/-1, commits 457a80e → merge f3cffd0
+  - outcome:     MERGED ✅ (live bar PASSED, PO-witnessed)
+  - caveat:      one actor authored, reviewed and merged (Codex + agy unavailable) — gates exercised, none independent.
+  **Known warts, PO-accepted at merge ("merge as-is"), NOT defects:** the goal echoes twice (as the description and
+  again as the first transcript entry) and `Task assigned directly to worker.` is protocol bookkeeping — of 4
+  entries only the last two inform. **Left open → BL-056** (output does not survive a reload) and the *progress*
+  half of this item's original complaint (a run sits at `working` ~30s with nothing to watch) — that half is
+  **NOT** addressed here.
 
 <!-- @item
 id: BL-050
