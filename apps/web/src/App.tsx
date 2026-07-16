@@ -158,7 +158,7 @@ function ConversationTranscript({ conversation, pendingRelays, onContinue, onSto
 }
 
 function App() {
-  const { agents, fetchAgents, removeAgent, updateAgentStatus, updateAgentUsage } = useAgents();
+  const { agents, fetchAgents, addAgent, hasAgent, removeAgent, updateAgentStatus, updateAgentUsage } = useAgents();
   const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
   const [globalError, setGlobalError] = useState<string | null>(null);
   const [globalNotice, setGlobalNotice] = useState<string | null>(null);
@@ -196,7 +196,16 @@ function App() {
 
   const handleWsMessage = useCallback((message: any) => {
     switch (message.type) {
-      case 'status': updateAgentStatus(message.id, message.status); break;
+      // BL-048: an agent created outside the UI (API / launcher) announces itself here.
+      case 'agent_added': if (message.agent) addAgent(message.agent); break;
+      case 'status':
+        // Defensive: a 'status' for an id we have never seen means we missed its
+        // 'agent_added' (created in the window between the initial list fetch and the
+        // WebSocket connecting). Without this the event has no row to attach to and the
+        // agent stays invisible, which is the exact BL-048 symptom.
+        if (!hasAgent(message.id)) void fetchAgents();
+        updateAgentStatus(message.id, message.status);
+        break;
       case 'usage': updateAgentUsage(message.id, message.usage); break;
       case 'agent_message': pushSidebarEvent('in', `Agent:${message.from}`, String(message.payload)); break;
       case 'conversation_started':
@@ -244,9 +253,17 @@ function App() {
         setGlobalError(message.error || 'Relay approval command failed');
         break;
     }
-  }, [updateAgentStatus, updateAgentUsage, pushSidebarEvent]);
+  }, [updateAgentStatus, updateAgentUsage, pushSidebarEvent, addAgent, hasAgent, fetchAgents]);
 
-  const { ws, isConnected, sendMessage: sendWsMessage } = useWebSocket({ onMessage: handleWsMessage });
+  // BL-048: resync on every (re)connect. Broadcasts only reach clients that are connected at the
+  // moment they fire, so any agent created while the socket was down would otherwise be lost for
+  // good — no later event exists to trigger the unknown-id refetch above. Proven live: the UI was
+  // open but still reconnecting when the launcher created its worker, the broadcast went to zero
+  // clients, and the agent stayed invisible while sitting 'ready' in the backend. This also covers
+  // the backend restarting underneath an open UI.
+  const handleWsOpen = useCallback(() => { void fetchAgents(); }, [fetchAgents]);
+
+  const { ws, isConnected, sendMessage: sendWsMessage } = useWebSocket({ onMessage: handleWsMessage, onOpen: handleWsOpen });
 
   const fetchConversationHistory = useCallback(async () => {
     try {
@@ -468,7 +485,7 @@ function App() {
       <GlobalNotifications globalError={globalError} globalNotice={globalNotice} onClearError={() => setGlobalError(null)} theme={theme} />
 
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
-        <Railbar activeTopTab={activeTopTab} onTabChange={(tab) => { setActiveTopTab(tab); }} collapsed={leftNavCollapsed} onToggleCollapse={() => setLeftNavCollapsed(!leftNavCollapsed)} />
+        <Railbar activeTopTab={activeTopTab} onTabChange={(tab) => { setActiveTopTab(tab); }} collapsed={leftNavCollapsed} onToggleCollapse={() => setLeftNavCollapsed(!leftNavCollapsed)} connected={isConnected} />
 
         <div style={{ width: `${sidebarWidth}px`, display: 'flex', flexDirection: 'column', backgroundColor: theme.bgRaised, borderRight: `1px solid ${theme.border}` }}>
           {activeTopTab === 'chat' && (

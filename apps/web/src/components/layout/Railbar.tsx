@@ -1,14 +1,17 @@
 import { MessagesSquare, Users, Activity, Settings, History as HistoryIcon, History, Menu, Terminal as TerminalIcon } from 'lucide-react';
 import { TopLevelTab, theme } from '../../api/types';
+import { BackendStatus } from './BackendStatus';
 
 interface RailbarProps {
   activeTopTab: TopLevelTab;
   onTabChange: (tab: TopLevelTab) => void;
   collapsed: boolean;
   onToggleCollapse: () => void;
+  /** WebSocket liveness, surfaced here because the rail is the one chrome visible on every tab. */
+  connected: boolean;
 }
 
-export function Railbar({ activeTopTab, onTabChange, collapsed, onToggleCollapse }: RailbarProps) {
+export function Railbar({ activeTopTab, onTabChange, collapsed, onToggleCollapse, connected }: RailbarProps) {
   const NavButton = ({ tab, icon: Icon, label }: { tab: TopLevelTab; icon: any; label: string }) => (
     <button
       onClick={() => onTabChange(tab)}
@@ -60,6 +63,7 @@ export function Railbar({ activeTopTab, onTabChange, collapsed, onToggleCollapse
         <div style={{ height: '1px', backgroundColor: theme.border, margin: '8px 12px', opacity: 0.5 }} />
         <NavButton tab="planning" icon={History} label="Planning" />
       </div>
+      <BackendStatus connected={connected} collapsed={collapsed} />
     </div>
   );
 }
