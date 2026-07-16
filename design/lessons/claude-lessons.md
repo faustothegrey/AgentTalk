@@ -590,3 +590,27 @@ here.**
 - **What actually worked: the PO's one-line challenge, and cheap ground truth.** Two `cat`s settled a two-session
   narrative. When a conclusion blames an actor, the disproof is usually one command away — **run it before
   publishing, not after being challenged.**
+
+### 2026-07-16 (BL-053) — the harness was wrong three times; the code, zero (hats: architect + implementer + task-end reviewer)
+
+- **Three live "failures" today were my scaffolding, not the system.** A `node_modules` symlink that resolved back
+  to the real repo (so the orchestrator silently ran OLD code and my change was never exercised); the same deps
+  stripped from the client worktree before a run (`Cannot find package 'ws'`); and a `grep` for `worktree add`
+  returning 1 that was **my own comment**. Each looked like a code result. **The pattern: I checked a proxy
+  (a count, a symlink I assumed, a green suite) instead of the thing itself.** What saved me every time was a
+  *contradiction I couldn't explain* — the orchestrator's repo grew when my change said it couldn't. **Cheap
+  invariants that must hold if the change is real are worth more than any amount of staring at the diff.**
+- **"Not implementable as instructed" is a finding to deliver, not an obstacle to route around.** The PO said
+  "create the task worktree inside workdir"; the orchestrator has no concept of `workdir` (the word is absent from
+  the repo) and in attach mode can never learn one. Reporting that — with the two viable shapes — took one question
+  and produced a **better** design than the instruction: the party that knows the workdir does the job. The
+  temptation was to invent a protocol field and call it done.
+- **Deleting a guard obliges you to say what you broke.** I argued the refuse-branch out of the prompt — correctly:
+  it asked an LLM to police an invariant the harness guarantees, and it refused a *working* worktree while claiming
+  "no Git repository". But removing it silently regressed task isolation in the fallback path. **I filed BL-061
+  against my own change rather than let the gap ride on the strength of a good argument.** A convincing rationale
+  for removing a check is not the same as having replaced it.
+- **The closure sweep caught my own docs, twice in one session.** Two vestigial flag setters (BL-057) and then an
+  invented backlog status (`status: invalid` — the project has exactly four: todo·doing·done·dropped, a rule *I*
+  recorded in this file in July) plus bolded status tokens the parser couldn't read. **Re-deriving beats recalling,
+  even an hour later, even in my own prose.** Run the validator; it knows the contract better than I remember it.

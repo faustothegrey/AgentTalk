@@ -1573,6 +1573,35 @@ tags: [arbiter, consensus, heterogeneous-team, claude, goose, experiment, next-s
   `task-arbiter-enable` (BL-044 wall 1) being merged. Source: PO, TL-013.
 
 <!-- @item
+id: BL-061
+status: todo
+date: 2026-07-16
+epic: null
+tags: [safety, sandbox, autonomy, fail-closed, bl053-followup]
+-->
+- [todo · **opened deliberately by BL-053, by its own author** · **the harness degrades silently where a model used
+  to (badly) notice**] — **When the worker cannot provision a task worktree, the turn now runs at the workdir root
+  and nothing says so.** BL-053 removed the prompt clause that told the agent *"use a worktree or refuse"*, on the
+  grounds that it asked an LLM to police an invariant the harness guarantees — and it demonstrably got that check
+  wrong (it refused a working worktree). **That reasoning holds. But it only holds while the harness actually
+  guarantees the invariant**, and today it doesn't: `provisionTaskDir` (client `lib/task-worktree.mjs`) returns
+  `undefined` when it can't create the worktree — e.g. the `workdir` is not a git repo — and the turn proceeds at
+  the workdir root with **no per-task isolation**. It is logged, not enforced.
+  **Scope of the harm:** *containment is unaffected* — that comes from the `basename` fence, independently — so this
+  is not a safety hole. What is lost is **task isolation**: concurrent tasks in one workdir would share a tree, and
+  a run's changes land on the sandbox's checked-out branch instead of a task branch.
+  **The honest fix (the completion of BL-053's own argument):** when the orchestrator *asked* for a task dir and the
+  worker *cannot* provide it, **fail the turn loudly** rather than degrade. Deterministic enforcement is the whole
+  reason the prompt clause was allowed to go. **Precise condition matters:** only when a name was sent and
+  provisioning failed — a turn with **no** task dir requested (non-`maintainsSession` completers) is normal and must
+  keep running at the workdir root.
+  **Why it wasn't folded into BL-053:** it is a behaviour change of its own (a turn that previously ran would now
+  fail), and BL-053 was already carrying two PO calls. **Note this is arguably restoring parity, not new
+  strictness:** pre-BL-053, a failed provision produced a hard error anyway (the orchestrator handed the executor a
+  cwd that didn't exist → spawn ENOENT), so the *silent* degrade is itself the regression BL-053 introduced.
+  Source: BL-053 closure, flagged to the PO at merge, 2026-07-16.
+
+<!-- @item
 id: BL-060
 status: todo
 date: 2026-07-16
@@ -1602,7 +1631,7 @@ tags: [dx, config, ports, papercut, po-raised]
 
 <!-- @item
 id: BL-059
-status: invalid
+status: dropped
 date: 2026-07-16
 epic: null
 tags: [agy, gemini, protocol-compliance, false-green, autonomy-risk, RETRACTED, observer-error]
@@ -1641,7 +1670,7 @@ tags: [agy, gemini, protocol-compliance, false-green, autonomy-risk, RETRACTED, 
 > *(The one residual oddity — BL-045 run 3's "wrote the file and then refused" — is a **reporting** mismatch, not a
 > failure to work: the file was written. Not tracked here; if it recurs, file it fresh and on its own evidence.)*
 
-- [~~todo~~ **INVALID — see the retraction above** · **found 2026-07-16 during the BL-045 UI witness** · ~~**`completed` ≠ the work was done**~~] — **agy accepts a
+- [dropped · **RETRACTED 2026-07-16 — THIS ITEM IS FALSE; see the banner above** · found 2026-07-16 during the BL-045 UI witness · ~~**`completed` ≠ the work was done**~~] — **agy accepts a
   plan and then does not execute it — and the team still reports `completed`.** Observed live, PO-witnessed run
   `agy-w2` (orchestrator log `/tmp/orch-ui.log`, recording `runs/bl045-ui3.ndjson`): goal was *compute 17×23, create
   a git worktree, write `answer.txt`, commit it*. agy called `submit_work_response { accepted: true }` then
@@ -1680,7 +1709,7 @@ date: 2026-07-16
 epic: null
 tags: [agy, gemini, attach-mode, test-only-path, production-gap, one-line-fix]
 -->
-- [**done · MERGED 2026-07-16** (`3403bdb`, `agentalk-mcp-client`) · option (b) taken, **widened to all three
+- [done · **MERGED 2026-07-16** (`3403bdb`, `agentalk-mcp-client`) · option (b) taken, **widened to all three
   providers** · **found 2026-07-16 while proving BL-045's last mile** · **the BL-045 fix is real but PRODUCTION CANNOT
   REACH IT**] — **`AGENTTALK_PERSISTENT_MCP=true` is set by NOTHING outside the test suite, so the verified agy path
   is test-only and the broken path is production-only.** `GeminiPersistentExecutor` has two paths gated on
@@ -1879,12 +1908,12 @@ tags: [safety, sandbox, autonomy, policy]
 
 <!-- @item
 id: BL-053
-status: todo
+status: done
 date: 2026-07-16
 epic: null
 tags: [safety, sandbox, protocol, autonomy]
 -->
-- [todo · found while fixing BL-052 · **the sibling defect, one layer down**] — **The `exec_rpc` `cwd` is
+- [done · **MERGED 2026-07-16** — AgentTalk `b2f2335`, client `34c87f5` · found while fixing BL-052 · **the sibling defect, one layer down**] — **The `exec_rpc` `cwd` is
   discarded — the protocol transmits per-task isolation that never reaches the process.** Every turn carries a
   proper `cwd: /tmp/agentalk-task-<id>`, and `llm-agent.mjs` dutifully forwards it into `executeTurn` — then
   `lib/executor-runtime.mjs` **throws it away**, hardcoding `process.cwd()` at **lines 162 and 679** (only line
@@ -1912,6 +1941,52 @@ tags: [safety, sandbox, protocol, autonomy]
   asymmetry (honour `sink.cwd` everywhere, or drop it everywhere and say so) is what makes "check the artifact"
   trustworthy again.** Whichever way it goes, it is a **behaviour change → PO call**, and it touches where *every*
   executor turn runs.
+
+  ---
+  **CLOSED 2026-07-16 — PO chose: honour `sink.cwd`, and create the task worktree inside the `workdir`.**
+  Merged AgentTalk `b2f2335`, client `34c87f5` (per-task worktrees, PO-gated).
+  **The instruction as given was not implementable, and the reason is the design:** the orchestrator has **no
+  concept of `workdir`** — the word appears nowhere in this repo. It cannot create a worktree in a directory it has
+  never heard of, and in **attach mode** (the operator launches agents out-of-band) it has no path to ever learn
+  one. **So the party that knows the workdir does the job:** the orchestrator sends a task-dir **NAME**
+  (`agentalk-task-<id>`, deliberately relative — never a path); the worker anchors it under its own workdir and
+  provisions the worktree itself. `path.basename` is the **fence**: whatever arrives — relative, absolute, or
+  `../..`-traversing — the task dir can only resolve **inside** the workdir. *(That fence proved itself by accident
+  mid-testing: a stale orchestrator sent the old absolute `/tmp/agentalk-task-<id>` and the worker still anchored
+  it under its workdir.)*
+  **What each provider does now:** gemini honoured `sink.cwd` already; **codex now honours it** (it spawns per
+  turn, so it can); **claude cannot, and this is structural** — its spawn happens once in `initialize()`, before any
+  turn exists, so a long-lived stdio session gets **session** isolation, not **task** isolation. Not a containment
+  hole (its cwd is the assigned workdir), but a real limit, left explicit in the code rather than papered over.
+  Per-task isolation for claude would mean restarting its session per task — deliberately not done.
+  **Second PO call, same session — the prompt clause.** After the worker began provisioning the worktree, the
+  hardcoded *"use strictly `git worktree` … if you cannot or will not, refuse and abort"* became a **liability**: it
+  asked an LLM to police an invariant the harness now guarantees, and agy promptly inspected a **working**
+  worktree, declared *"there is no existing Git repository in the current working directory"* (**false** —
+  `git rev-parse --is-inside-work-tree` is `true` there; `.git` is simply a **FILE** in a linked worktree, which is
+  what a naive repo-check gets wrong) and took the refuse branch. **The only power that branch had left was to fail
+  a correct setup.** Replaced with information — *"Your current working directory IS a git worktree, created for
+  this task. Work directly in it."* — and **one shared `WORKTREE_CONTEXT`**: the string had been living as
+  **three** copies (two of them byte-identical and independently declared), which is how it drifted at all.
+  **Bonus:** the orchestrator no longer shells out to git — `child_process` and `fs` imports are **gone** from
+  `in-process-driver`. The hermeticity mocks that exist only because this code created **real** worktrees during
+  unit runs ([[LB-9]]) are now redundant.
+  **The live bar (real orchestrator, real agy, PO-witnessed record):** agy **accepted**, worked in the provisioned
+  worktree, and committed **`667`** (a *computed* 23×29) at `43b47c3` on branch `task-task-1784231884039`
+  **inside** `/tmp/att-worker-sandbox`, while the orchestrator's own repo stayed at **10 worktrees / 10 branches —
+  untouched**. The delta is the proof: the immediately preceding run, on the old code, grew it **9 → 10**.
+  **Left open, deliberately → BL-061:** removing the refuse branch means a failure to provision now degrades
+  *silently* to the workdir root. Containment still holds; **task isolation** does not. Not fixed here.
+  **Independence caveat:** sole agent — authored, reviewed, and ran its own bars.
+
+  **Telemetry (task closure):**
+  - task:        BL-053
+  - wall-clock:  ~21:20 → 22:06 (~46 min)
+  - budget:      weekly 25%→28% (Δ ~3%), session 11%→38% (Δ ~27%)
+  - gate:        AgentTalk suite 325/325 (= baseline), client 63→70 (+7 fence tests), lint + verify-contract clean,
+                 pollution clean (both real repos untouched; worktrees removed; orchestrator + workers killed)
+  - diff:        10 files across 2 repos; commits `86befde`, `9787430`, `37c1779`; merges `b2f2335`, `34c87f5`
+  - outcome:     MERGED ✅
 
 <!-- @item
 id: BL-052
