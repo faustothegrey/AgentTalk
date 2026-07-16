@@ -627,3 +627,31 @@ here.**
   waiting on a corpse. **A fail-closed guard that fails as a crash is not an improvement on a silent degrade.**
   Writing the item was not the same as knowing how to do it; the shape only appeared by reading the call site.
   Worth remembering the next time I file something and describe it as small.
+
+### 2026-07-16 (rung 1 + BL-062, session close) — I made the BL-059 error twice, minutes after lecturing about it (hats: implementer + task-end reviewer + SM)
+
+- **I committed the exact error I had just called our most expensive lesson — twice, inside one hour.** I told the
+  PO that BL-059 happened because we checked at the wrong coordinates and manufactured confidence. Then I grepped
+  for `AGENTTALK_PERSISTENT_MCP`, hit `..._URL` (a different variable), and nearly reported that BL-057 hadn't
+  landed. Then I grepped `lib/agent-launcher.mjs` for a cap, found none, and **told the PO the launcher's cap
+  didn't exist** — it does, in `scripts/launcher.mjs`, a file I never opened, **whose path was sitting in the
+  backlog item I was about to read**. The pattern in both: I grepped for a **concept**, got a miss in **one file**,
+  and concluded absence **from the system**. Knowing the lesson as a narrative did nothing; I could recite BL-059
+  fluently while re-enacting it. **The only thing that would have caught either: naming the coordinates out loud
+  before concluding — "which file would this live in, and did I actually open it?"** Absence of evidence in one
+  grep is not evidence of absence. That question is now a precondition for any "X doesn't exist" claim I make.
+- **I set out to measure agy and mostly discovered myself.** Rung 1 existed to answer "can agy do real work?" It
+  found two defects in **our** code (the worker-only prompt telling the worker to critique a plan; `.join('\\n')`
+  mangling every driver prompt for who knows how long) and none in agy, which went 2/2. **The defects had survived
+  precisely because agy is better than our instructions** — it did the right thing despite being told to critique a
+  plan, so every outcome-based test passed and nothing ever surfaced. Two more of my errors were mine too: the
+  false cap report, and specifying BL-058's fix as an absolute path (worse than the `../AgentTalk` I'd rejected).
+  **When you instrument a system to grade an external party, expect the findings to be about you.** Also: I called
+  rung 1 a success for agy, but both runs were *dictation* — I handed it the literal string. Its judgment is still
+  unmeasured, and I nearly let "2/2" stand in for that.
+- **The cheap invariant beat the careful reasoning, again.** A 10-second timestamp comparison caught that `dist`
+  was 3 days stale — a live run would have exercised pre-BL-053 code and "proven" something about a system we no
+  longer have, with a transcript to show for it. Same shape as last session's catch. **Reasoning about whether the
+  build is current is worthless next to `find -newer`.** Corollary that paid off twice tonight: I read "2 stray
+  processes" and *checked* instead of reporting a leak — it was a transient read during teardown. Verify before
+  believing, in both directions: absence AND presence.
