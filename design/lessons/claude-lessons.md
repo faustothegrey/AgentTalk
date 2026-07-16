@@ -407,3 +407,34 @@ here.**
 - **Flag your own lost independence, every time.** Sole agent in fallback → I authored Bite 0 and would review it.
   Said so plainly in the delivery and the primer; real gate-2 needs Codex back or BL-038 (Goose). Reviewer honesty
   applies to the reviewer's own position.
+
+### 2026-07-16 (long session) — BL-039 merge, big reconcile, BL-040 D1/D3+D4 live, BL-048 spike (temp implementer + task-end reviewer + SM, degraded)
+
+- **`git fetch` at cold-start is not optional — the primer is a claim, origin is truth.** I trusted the local
+  primer/backlog and built a whole BL-039 closure on a checkout that was **23 commits behind** origin, with a 4-way
+  BL-037..040 ID collision waiting. It only surfaced when `git push` was rejected. The cold-start "verify against
+  ground truth" rule must include fetching the remote, not just reading local files. I put this at the TOP of the
+  next primer. Cheapest possible catch, skipped for hours.
+- **Auto-merge can pass textually while being semantically broken.** Merging origin in, git AUTO-merged `backlog.md`
+  with **duplicate BL-037..040** because the two lines added entries at different line offsets — no textual
+  conflict, but a real ID collision git can't see. Never trust a clean auto-merge on a structured doc; run the
+  domain validator (`validate-backlog.mjs` caught a separate `DONE`≠`done` drift too). Verify by the data's own
+  invariants, not by "merge succeeded."
+- **Renumber the side with fewer external references, but honor the PO's precedence call.** PO chose "Bite 0 takes
+  precedence" → origin's items renumbered even though they had MORE commit-message refs. I made the live backlog
+  correct, updated living docs, and left historical logs alone with a remap note (same discipline as accepting
+  commit-message drift). Don't rewrite history; annotate it.
+- **A live run earns findings a stubbed test never will.** BL-040 D1/D3 against the REAL orchestrator immediately
+  exposed two things the E2E stubs hid: "Ready" prints BEFORE the (dynamic) MCP url is announced, and BL-037
+  conflates the orchestrator provider with the harness CLI provider. Both fixed in-scope, within the retry budget.
+  Try-it/test-it/report-it beats source-diving for integration unknowns.
+- **The PO's safety instinct was load-bearing — the test WAS touching the real repo.** `in-process-driver.ts`
+  runs `git worktree add` in the orchestrator's CWD; running from the primary checkout created a real
+  `task-*` branch/worktree. A same-repo *worktree* wouldn't have sandboxed it (shared `.git`); the fix was a
+  throwaway git repo as CWD. When a human says "I don't feel ready for this to touch the code," find the exact
+  mechanism by which it does — don't reassure, verify.
+- **Harness gotcha that ate turns: bare `sleep` in a Bash tool command is BLOCKED** (silent exit 1, no output). I
+  misread it as the orchestrator failing to boot for several turns. Put waits in `.sh` files or use background+read.
+- **Scope a spike to the exact hole, not the vibe.** "UI isn't reactive" → traced to a single missing
+  `agent_added` broadcast (the WS + team/status plumbing already exists). A 4-file minimal fix, not a UI rewrite.
+  Reading the code turned a vague complaint into a bounded BL-048.

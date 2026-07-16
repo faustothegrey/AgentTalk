@@ -1,56 +1,78 @@
 ---
 role: implementer
-key: 20260716-0055-bite0-impl
-written: 2026-07-16 by Claude (session close — Bite 0 launcher implemented on branch task-bite0, pending PO-gated merge)
+key: 20260716-0740-d4course-impl
+written: 2026-07-16 by Claude (session close — BL-039 merged, big reconcile pushed, BL-040 D1/D3 merged + D4 proven live, BL-048 UI spike scoped)
 ---
 
 This is your session primer.
 
 **Project.** AgentTalk is a multi-agent orchestration system: isolated LLM agents (Claude/Codex/Gemini) attach as
 MCP clients over WebSocket, pull turns via `await_turn`, and coordinate through a planner→implementer→reviewer
-workflow. Current thrust: the **autonomous-development ladder** — PO sets a goal, AgentTalk forms a team, works it,
-and reports, with a human-gated dimmer from `approve-each → autonomous`.
+workflow. Current thrust: the **autonomous-development ladder** — Bite 0 → 1 → 2 … A deterministic **(AgentTalk)
+launcher** takes a config `{instance, agents[], goal, cap}`, starts an instance, launches the agent(s), delivers the
+goal, machine-enforces a resource cap, and reports.
 
-**Roles.** Human = PO (Fausto). Current bindings live ONLY in `AGENT.md → 📌 DEFAULT ROLE ASSIGNMENTS` — read it.
-**Critical current state:** **Codex and Gemini (agy) are UNAVAILABLE until further notice** (PO, 2026-07-15).
-**Claude is the sole available agent** → resource-scarcity fallback: you wear every hat (planner, all reviewer
-seats, implementer), declare each loudly, keep each gate's discipline separate. The **Standing Conditional
-Reassignment is ACTIVE** (implementer unavailable → you may implement). **Merges stay PO-gated.**
+**Roles.** Human = PO (Fausto). Bindings live ONLY in `AGENT.md → 📌 DEFAULT ROLE ASSIGNMENTS`. **Codex + Gemini
+(agy) UNAVAILABLE** (PO, 2026-07-15) → **Claude is the sole agent**, resource-scarcity fallback: you wear every hat,
+declare each, keep each gate separate; **Standing Conditional Reassignment ACTIVE** (you may implement). **Merges
+stay PO-gated.** This primer is for the **implementer** thread.
 
-**Workflow / source of truth.** `design/collaboration-workflow.md` (method) + artifacts: `design/backlog.md`
-(BL items), `AGENT.md` (governance), `design/logbook.md`, the Bite 0 plan below. There is **no `*-implementation.md`
-ledger** for this thread yet — it's plan + branch + backlog.
+**⚠️ DO THIS FIRST — `git fetch` both repos at startup.** Last session's biggest trap: the local checkout was **23
+commits behind** an active `origin/master` with a **4-way BL-037..040 ID collision**, only discovered at push time.
+`git fetch origin` in BOTH `AgentTalk` and `agentalk-mcp-client` before trusting any doc or building on local state.
+(That divergence is now reconciled + pushed — but make fetching a reflex.)
 
-**Active work — Bite 0 of the autonomy ladder.** `design/bite0-autonomous-launch-plan.md` is the spec. Model
-(settled with PO): the PO writes a **config file** `{instance, agents[], goal, cap}`; a **deterministic launcher**
-(the "(AgentTalk) launcher" — NOT an agent, no inference) starts the instance, launches the declared agent(s) via
-the BL-037 on-demand launcher, delivers the goal as the first turn, **machine-enforces a cap** (wall-clock +
-resource meter — the anti-loop rail), and reports at end. **"Hermes" is a SEPARATE future *agent* layer** (will
-invoke the launcher + monitor a live session) — deferred, NOT Bite 0. Don't re-conflate them.
+**Workflow / source of truth.** `design/collaboration-workflow.md` + `design/backlog.md` (BL items) + `AGENT.md`.
+No `*-implementation.md` ledger for this thread — resume from the **backlog** (BL-037..040, BL-048) and the two
+design docs: `design/bite0-autonomous-launch-plan.md`, `design/spike-ui-external-events.md`.
 
-**What's DONE (this session):**
-- **BL-037** (merged, sibling repo `agentalk-mcp-client` master): the on-demand HTTP launcher (`lib/agent-launcher.mjs`).
-- **Bite 0 launcher** implemented on branch **`task-bite0`** in a **git worktree** at
-  `/home/fausto/Software/att-worktrees/task-bite0` (sibling repo). `lib/bite0-launcher.mjs` = the deterministic
-  config→launch→cap→report core. 11 hermetic core tests + 2 E2E (real core drives the real BL-037 launcher + a
-  real spawned harness; proves happy-path completion AND a real wall-clock cap terminating a real hung process).
-  Full sibling suite 33/33, lint clean, BL-037 untouched. **Committed (`a86733d`), NOT merged — PO-gated.**
+**Where things stand (all pushed except noted):**
+- **BL-039** (NDJSON D6) — DONE, merged `agentalk-mcp-client:9090f37`.
+- **Reconcile** — two dev lines converged; Bite 0 kept BL-037..040, origin's OpenRouter/tester items → BL-044..047.
+  Pushed. Backlog validates (`node scripts/validate-backlog.mjs`, 48 items).
+- **BL-040 D1/D3/D6 slice** — MERGED `agentalk-mcp-client:1e80ef6`: `scripts/launcher.mjs` real-deps entrypoint
+  (real `startInstance` parses the DYNAMIC MCP url from orchestrator stdout; BL-037 launch; meter; NDJSON). Verified
+  live (attach + wall-clock cap termination).
+- **BL-040 D4** — **mechanism PROVEN live + sandboxed** (babysat probe) but **NOT yet baked into the launcher**
+  (`deliverGoal`/`waitForOutcome` are still stubs). Real `claude` worker completed a trivial goal correctly.
+- **BL-048** — UI-reactivity spike SCOPED (`design/spike-ui-external-events.md`); the UI doesn't show
+  externally-created agents. Not built.
+- **Unpushed:** `AgentTalk` master is **ahead of origin** (vite-host `abf5fcd`, spike/backlog `24a817d`, and more) —
+  the PO had not said "push" for these at close. `agentalk-mcp-client` master IS pushed (`1e80ef6`).
 
-**Your immediate next steps (PO-prioritized, 2026-07-16):**
-- **BL-039** — add NDJSON run-artifact capture (D6, deferred). Small: injected `record()` effect + test.
-- **BL-040** — the live run against a real AgentTalk instance + authed CLI (acceptance §6). **Blocker: the main
-  repo is not built on this machine** (no `node_modules`/`dist`, `tsc` missing) — `npm install` + build first.
-- Also open: the **Bite 0 merge decision** (PO-gated). **Independence caveat:** you authored Bite 0, so a gate-2
-  review by you isn't independent — flag it; real independence needs Codex/agy back or **BL-038** (Goose/OpenRouter).
+**FUTURE DEV COURSE (PO-laid, 2026-07-16 — the plan for next sessions):**
+1. **BL-048 first — make the UI reactive to external events** so the PO can *witness* runs. Minimal fix (root-caused
+   in the spike doc): emit `agent_registered` in `registry.ts` → `broadcast({type:'agent_added'})` in `server.ts` →
+   frontend `case 'agent_added'` upserts the agent; audit team/task rendering. Do it in a **git worktree**.
+2. **Then resume BL-040 D4/D5 with UI observability** — bake into `scripts/launcher.mjs`:
+   `deliverGoal` = `POST /api/teams {members:[{agentId,role:'worker'}]}` (worker-only) + `POST /api/teams/:id/task
+   {description}`; `waitForOutcome` = poll `GET /api/teams` for `team.status === 'completed'` (/`failed`/
+   `awaiting_operator`). Then the deterministic acceptance: one COMPLETED + one forced cap-breach, sandboxed,
+   witnessed in the UI. That closes Bite 0 (D2/D4/D5).
+3. **Bite 0 complete → Bite 1** (the *Hermes* agent layer that invokes the launcher + monitors a live session —
+   deferred, a distinct future bite; do NOT re-conflate the launcher (deterministic) with Hermes (an agent)).
 
-**Op notes / gotchas:**
-- **Worktree mandate (PO, 2026-07-16):** ALL code development happens in a per-task git worktree (`task-<id>`),
-  never the primary checkout; docs/governance may still be edited on master. Recorded in `AGENT.md`. Worktrees
-  don't share `node_modules` — symlink the sibling repo's in.
-- **Missing key store:** this fresh machine has NO `session-primer-key.json` — the primer-handshake consumed-set is
-  absent, so verify against git/ledger, don't trust primers blindly. (Report the missing store to the PO.)
-- **Usage meter works now** (`node scripts/usage.mjs`): at close, claude weekly 8%, session 40%. Plenty of weekly runway.
-- **Git:** main repo `master` ahead of origin (unpushed — PO hasn't asked to push); sibling repo `master` has BL-037;
-  `task-bite0` branch holds the Bite 0 launcher in the worktree.
+**CRITICAL OP NOTES / GOTCHAS:**
+- **🔒 SANDBOX THE ORCHESTRATOR.** `in-process-driver.ts:283` runs `git worktree add /tmp/agentalk-task-<id> -b
+  task-<id>` **in the orchestrator's CWD**. Start the orchestrator with **cwd = a throwaway git repo** (last session
+  used `/tmp/att-sandbox`, `git init` + one commit) — **NEVER the primary AgentTalk checkout**, or every task creates
+  real `task-*` branches/worktrees in your repo. (Bring-up: `cd /tmp/att-sandbox && AGENTTALK_RECORDING_PATH=… PORT=3000
+  node <primary>/apps/orchestrator/dist/index.js`.)
+- **Dynamic MCP port.** The orchestrator prints `MCP server URL set to: ws://localhost:<PORT>/` AFTER "Ready to
+  manage agents." — parse it from stdout; it is NOT the fixed `:3000/mcp`.
+- **Worker provider.** BL-037 uses one `provider` for both the orchestrator record AND the harness CLI. The harness
+  rejects `provider:'mcp'` (wants claude/gemini/codex). Use a real provider; a fake bridge
+  (`AGENTTALK_PERSISTENT_COMMAND_JSON`) overrides the actual CLI for hermetic D1/D3.
+- **Capturing worker output.** Until BL-048, the UI shows nothing for API-driven runs — set
+  `AGENTTALK_RECORDING_PATH` and read the NDJSON (`team_task_updated` events carry the transcript + `work_accept`).
+- **🛑 Bash tool BLOCKS bare `sleep`** in foreground commands (they silently fail, exit 1, no output). Put waits
+  inside `.sh` files, or use `run_in_background` + read the output file. This ate several turns last session.
+- **Env is READY on this machine:** main repo built (`node_modules` + `dist` present; `npm run backlog:check`/`tsc -b`
+  clean); `claude`/`codex`/`gemini` CLIs authed on PATH; meter `:9899` UP (`claude` weekly ~5%, session ~43% at
+  close — ample). `node scripts/usage.mjs` works.
+- **Scratch tool:** `agentalk-mcp-client:scripts/explore-launch-worker.mjs` (UNTRACKED) launches one real worker
+  against a running orchestrator — handy for D4 probing.
+- **Independence caveat:** you author AND review as sole agent. Flag it; real gate-2 needs Codex/agy back or BL-038.
 
-Verify all of the above against ground truth before acting. Report your understanding, then STOP for the PO's go.
+Verify all of the above against ground truth (`git fetch` + read the backlog + the two design docs) before acting.
+Report your understanding, then STOP for the PO's go.
