@@ -158,7 +158,7 @@ function ConversationTranscript({ conversation, pendingRelays, onContinue, onSto
 }
 
 function App() {
-  const { agents, fetchAgents, removeAgent, updateAgentStatus, updateAgentUsage } = useAgents();
+  const { agents, fetchAgents, addAgent, hasAgent, removeAgent, updateAgentStatus, updateAgentUsage } = useAgents();
   const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
   const [globalError, setGlobalError] = useState<string | null>(null);
   const [globalNotice, setGlobalNotice] = useState<string | null>(null);
@@ -196,7 +196,16 @@ function App() {
 
   const handleWsMessage = useCallback((message: any) => {
     switch (message.type) {
-      case 'status': updateAgentStatus(message.id, message.status); break;
+      // BL-048: an agent created outside the UI (API / launcher) announces itself here.
+      case 'agent_added': if (message.agent) addAgent(message.agent); break;
+      case 'status':
+        // Defensive: a 'status' for an id we have never seen means we missed its
+        // 'agent_added' (created in the window between the initial list fetch and the
+        // WebSocket connecting). Without this the event has no row to attach to and the
+        // agent stays invisible, which is the exact BL-048 symptom.
+        if (!hasAgent(message.id)) void fetchAgents();
+        updateAgentStatus(message.id, message.status);
+        break;
       case 'usage': updateAgentUsage(message.id, message.usage); break;
       case 'agent_message': pushSidebarEvent('in', `Agent:${message.from}`, String(message.payload)); break;
       case 'conversation_started':
@@ -244,7 +253,7 @@ function App() {
         setGlobalError(message.error || 'Relay approval command failed');
         break;
     }
-  }, [updateAgentStatus, updateAgentUsage, pushSidebarEvent]);
+  }, [updateAgentStatus, updateAgentUsage, pushSidebarEvent, addAgent, hasAgent, fetchAgents]);
 
   const { ws, isConnected, sendMessage: sendWsMessage } = useWebSocket({ onMessage: handleWsMessage });
 

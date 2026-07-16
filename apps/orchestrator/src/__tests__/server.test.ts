@@ -266,6 +266,27 @@ describe('startServer', () => {
     await expect(deleteResponse.json()).resolves.toEqual({ success: true });
   });
 
+  it('should broadcast agent_added when an agent is created through the API (BL-048)', async () => {
+    const socket = await openSocket();
+    const added = waitForMessage(socket, message => message.type === 'agent_added');
+
+    const res = await fetch(`${baseUrl}/api/agents`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: 'external-agent-1', provider: 'claude', model: 'sonnet' }),
+    });
+    expect(res.status).toBe(200);
+
+    const message = await added;
+    expect(message.agent.id).toBe('external-agent-1');
+    expect(message.agent.status).toBe('creating');
+    // Guards the reason this broadcast lives in the route and not in registry.createAgent():
+    // provider/model are assigned to the agent after createAgent() returns, so emitting from
+    // inside the registry would ship them as undefined and the UI row would render blank.
+    expect(message.agent.provider).toBe('claude');
+    expect(message.agent.model).toBe('sonnet');
+  });
+
   it('should accept websocket connections on /ws and ignore input for unattached clients', async () => {
     const socket = await openSocket();
 

@@ -613,6 +613,28 @@ export function startServer(
         model: agent.model,
         requestedExecutionMode: agent.requestedExecutionMode,
       });
+      // BL-048: push the new agent to connected UIs. The agent list is otherwise only
+      // filled on mount / after a UI-initiated create, so an agent created through the
+      // API (launcher, scripts) stayed invisible until a manual refresh — and its later
+      // 'status' events had no row to attach to.
+      // Broadcast from here rather than registry.createAgent(): provider and model are
+      // assigned to the agent above, AFTER createAgent() returns, so an emit inside the
+      // registry would ship a summary with both fields still undefined.
+      const addedSent = broadcast({
+        type: 'agent_added',
+        agent: {
+          id: agent.id,
+          status: agent.status,
+          usage: agent.usage,
+          usageStats: agent.usageStats,
+          provider: agent.provider,
+          model: agent.model,
+          requestedExecutionMode: agent.requestedExecutionMode,
+          resolvedExecutionMode: agent.resolvedExecutionMode,
+          sessionStatus: agent.sessionStatus,
+        },
+      });
+      console.log(`[Server] Agent added ${agent.id} → ${addedSent} client(s)`);
       res.json({
         id: agent.id,
         status: agent.status,
