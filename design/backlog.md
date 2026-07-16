@@ -1549,12 +1549,12 @@ tags: [safety, sandbox, autonomy, bite0, live-validation]
 
 <!-- @item
 id: BL-054
-status: todo
+status: deferred
 date: 2026-07-16
 epic: null
 tags: [safety, sandbox, autonomy, policy]
 -->
-- [todo · deliberately split out of BL-052 · **needs a PO call — this is policy, not mechanism**] — **Should
+- [deferred · **PARKED by the PO 2026-07-16** — *"se sono worktree laterali pazienza per ora"* · **reopen condition:** before any **unattended/unwitnessed** autonomous run (Bite 1 is explicitly allowed to proceed WITHOUT this, PO call), or on the first sign of a worker touching anything outside `/tmp` · split out of BL-052] — **Should
   `workdir` be restricted to a blessed root?** BL-052 makes `workdir` **mandatory** — but a required-yet-arbitrary
   workdir still permits `workdir: /home/fausto/Software/AgentTalk`. It only makes the choice **explicit and
   auditable**; it does not make it **safe**. The remaining question is whether the launcher should additionally
@@ -1565,6 +1565,35 @@ tags: [safety, sandbox, autonomy, policy]
   launcher; at that point "explicit" stops being much of a guard, because the agent writes the config. A blessed
   root is what keeps an autonomous caller from naming a real checkout. Source: BL-052 implementation, PO-approved
   split.
+
+  **Sharpened by the BL-055 live run (2026-07-16) — this is observed, not theoretical.** The real worker's worktree
+  landed at `/tmp/att-worker-count-task`, a **sibling** of its assigned `/tmp/att-worker-sandbox` — ordinary
+  `git worktree ../name` resolution. Nothing was at risk (it stayed in `/tmp`; the branch/commit live in the
+  sandbox's object store), but it proves the shape of the remaining hole: **BL-052 constrains where a worker
+  STARTS, not where it may WRITE.** The worker never *asked* to go sideways — it just did.
+  **Two holes, two fences (the design, worked out 2026-07-16 — recorded so the next session doesn't re-derive it):**
+  1. **Policy — the wrong place is *requested*.** Launcher refuses a `workdir` outside a PO-configured root
+     (`/tmp/att-*`). Cheap (a few lines beside the BL-052 checks). **Weak alone — today's escape sails straight
+     past it**, since nothing was requested. Its real value is **Bite 1**: once an *agent* writes the config, the
+     allowlist is the one part the agent does not control.
+  2. **Enforcement — the wrong place is *used*.** Wrap the worker in **bubblewrap**: `bwrap --ro-bind / /
+     --dev /dev --proc /proc --bind <workdir> <workdir> --chdir <workdir> -- node llm-agent.mjs …`. The filesystem
+     itself refuses; no cooperation from the worker required — which matters, because the incident happened while
+     the worker was *obeying instructions*.
+  **Feasibility — TESTED on this machine, not assumed:** `bwrap` is installed, unprivileged user namespaces are
+  enabled (`kernel.unprivileged_userns_clone=1` — no root, no Docker), Landlock is compiled in
+  (`CONFIG_SECURITY_LANDLOCK=y`) as a future alternative. Measured under a bwrap fence: the sideways worktree is
+  **BLOCKED** (`fatal: could not create leading directories … Read-only file system`); a write into the real
+  checkout is **BLOCKED** (`Read-only file system`); creating a branch in the real repo is **BLOCKED**
+  (`cannot lock ref … Read-only file system`); and crucially the worker can still **READ** the real repo
+  (`git log` works — agents need this) and **commit normally inside its own sandbox**.
+  **Open questions before adopting (one short spike, same shape as BL-055):** (a) does the real `claude` CLI survive
+  a read-only `$HOME` — it needs `~/.claude` config/credentials and may want a writable cache; (b) does the MCP
+  WebSocket survive (the test shared the network namespace, so it *should* — untested). Both were tested with
+  `bash`/`git` only, **not** the provider CLI.
+  **Recommendation on the table when this reopens:** do **both** layers — layer 1 constrains the request, layer 2
+  constrains the use — and do not let layer 1 stand alone, or it is security theatre. Threat model is
+  **obedient-but-misdirected**, not adversarial: nothing here defends against an attacker.
 
 <!-- @item
 id: BL-053
