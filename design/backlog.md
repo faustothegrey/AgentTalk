@@ -1358,12 +1358,12 @@ tags: [consensus, arbiter, api-agents, tester-finding, product-gap]
 
 <!-- @item
 id: BL-045
-status: deferred
+status: todo
 date: 2026-07-13
 epic: null
-tags: [healthcheck, gemini, attach-mode, tester-finding, latency]
+tags: [healthcheck, gemini, attach-mode, tester-finding, root-cause-found]
 -->
-- [deferred · **PO-PARKED 2026-07-13 (LB-92): agy declared unfit as an MCP attach client; fix deferred until further facts emerge — do not spend resources now**; Tester finding 2026-07-13 (TL-006); reopens the TL-002 residual] — **Attach-mode Gemini/agy agents time out
+- [todo · **UN-PARKED 2026-07-16 (LB-93): root cause found — these are the "further facts" the LB-92 park waited for; that park is superseded, see the ROOT CAUSE FOUND note at the end of this item**; was: PO-PARKED 2026-07-13 (LB-92), agy declared unfit as an MCP attach client, fix deferred; Tester finding 2026-07-13 (TL-006); reopens the TL-002 residual] — **Attach-mode Gemini/agy agents time out
   the startup healthcheck (30s)** — re-running TL-001 with real `agy` clients, both agents attached fine but
   `start_pair_chat` failed: `Agent tl006-a did not respond to healthcheck within 30000ms`. **Root cause:** the
   healthcheck reaches an attached agent as a full `exec_rpc` requiring a complete provider-CLI generation (the BL-032
@@ -1381,6 +1381,27 @@ tags: [healthcheck, gemini, attach-mode, tester-finding, latency]
   hang. **Real fix must target the agy/gemini client executor** (why the first `exec_rpc` never returns) **or replace
   the healthcheck with a lightweight liveness ping** that doesn't depend on a full agy generation. The
   provider-timeout code is a fine building block but insufficient alone. Source: TL-006, TL-002 residual, LB-89.
+  **ROOT CAUSE FOUND 2026-07-16 (LB-93) — the recorded cause above (gemini-CLI cold-start latency) is DISPROVEN.**
+  `agy` has **no `mcp` subcommand** (`agy --help`), but the client starts the persistent gemini session as `agy mcp`
+  (`lib/executor-runtime.mjs`, `getPersistentProviderCommand`); agy ignores the unknown arg and boots its
+  **interactive TUI**, which stays alive, emits nothing, accepts the JSON-RPC stdin write without error, and never
+  answers = LB-92's "alive and silent past 90s". Not latency — **it never runs a model at all** (it answers our
+  protocol frames on stderr with `failed to send message: no active conversation`, i.e. it read them as chat input).
+  The working bridge path (`agy --print`, flags all real) is gated on `AGENTTALK_PERSISTENT_MCP=true`, which **only
+  the test suite sets** (`__tests__/exec-rpc.test.ts:222`) — so the working path is test-only and the broken path
+  production-only: green tests, broken production. Explains the gate-2 refutation: no timeout fixes a chat UI being
+  fed JSON-RPC ("deeper than a timeout" upheld; only the attributed cause was wrong). **Codex acks fine** because
+  `codex mcp-server` exists — the discriminator was never speed. Reproduced in ~20s at zero LLM cost via the real
+  code path, and now reproduced in the client test suite. **Candidate fix:** set `AGENTTALK_PERSISTENT_MCP=true` on
+  the launcher spawn env (there is no "fix `agy mcp`" alternative — an stdio MCP server mode does not exist in that
+  binary). **Risk (untested):** the bridge path configures agy by writing `GEMINI_CLI_HOME/.gemini/settings.json`,
+  but AGENT.md records agy's `~/.gemini` tree as write-protected/ephemeral, so agy may not read it at all — the
+  plausible outcome is "healthcheck passes (--print returns text), tools still don't work". Needs **1 agy
+  generation** to confirm; agy is PO-UNAVAILABLE since 2026-07-15, so this is a PO call. Note agy's `--print-timeout`
+  defaults to **5m** — if we go this way, reconcile that with the healthcheck window. **Hang-hardening shipped**
+  (`agentalk-mcp-client`, branch `task-BL-045`, PO-gated): per-turn deadline + loud dead-session errors + a readiness
+  check — **bounds the failure, does NOT fix agy**. **Unchanged:** agy remains UNFIT as an attach client (LB-92's
+  ruling stands until the candidate fix is tested); this changes what we know about *why*. Source: LB-93.
 
 <!-- @item
 id: BL-046

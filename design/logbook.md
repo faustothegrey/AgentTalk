@@ -2632,3 +2632,63 @@ bridge into the orchestrator). **Practical effect:** multi-agent attach tests, p
 unavailable, the Standing Conditional Reassignment applies. **Reopen condition:** new facts about the agy executor
 hang (why the first `exec_rpc` never returns), or a lightweight-liveness-ping healthcheck that doesn't require a full
 agy generation. Source: TL-006, BL-038, LB-89; gate-2 refute committed `fc04018`.
+
+### LB-93 · 2026-07-16 — [providers/attach] BL-045 root cause: `agy mcp` is not a subcommand
+
+**Finding.** The agy attach client does not hang on generation — **it is never asked to generate**.
+`getPersistentProviderCommand` (`agentalk-mcp-client`, `lib/executor-runtime.mjs`) starts the persistent gemini
+session as **`agy mcp`**, by analogy with `codex mcp-server` and `claude -p --verbose`, both of which are real.
+**`agy` has no `mcp` subcommand** (`agy --help` lists: agent, agents, changelog, help, install, models, plugin,
+plugins, update). agy ignores the unrecognised arg and boots its **interactive TUI** (Go/bubbletea). Spawned with
+`stdio: ['pipe','pipe','pipe']` exactly as the executor does, that TUI stays **alive**, emits **zero bytes**,
+**accepts** the JSON-RPC stdin write without error, and **never answers** — LB-92's "process alive and silent past
+90s", precisely. It later answers our protocol frames on stderr with `failed to send message: no active
+conversation`: **it read MCP frames as chat input.** It is a chat UI, not an MCP server.
+
+**This satisfies LB-92's reopen condition** ("new facts about the agy executor hang — why the first `exec_rpc` never
+returns"). **BL-045 → todo** (un-parked 2026-07-16).
+
+**Corrects LB-92 / BL-045 — partially.** *Disproven:* BL-045's recorded cause, "the agy/gemini CLI's cold-start +
+first-turn latency exceeds the 30s window; the client stays alive still generating". Latency never entered into it.
+*Upheld and now explained:* LB-92's "this is deeper than a timeout" — no timeout value fixes a chat UI being fed
+JSON-RPC. The gate-2 refutation of fix-attempt-1 was sound evidence pointing at the right conclusion; only the
+attributed cause was wrong. TL-006's "**Codex acks fine**, so it's gemini-CLI latency" was a reasonable inference
+from what was known, but the discriminator was never speed — it was **whether the subcommand exists**.
+
+**Why it hid.** `GeminiPersistentExecutor` has two paths, gated on `AGENTTALK_PERSISTENT_MCP === 'true'`. The gated
+one is the BL-032 bridge (`agy --dangerously-skip-permissions [--continue] --print <prompt>` — every flag real per
+`agy --help`) and **looks correct**. The fall-through is `agy mcp` and is broken. **`AGENTTALK_PERSISTENT_MCP=true`
+is set in exactly one place across both repos: `__tests__/exec-rpc.test.ts:222`** — not the launcher, not
+`llm-agent.mjs`, not the scripts, not the orchestrator. **The working path is test-only; the broken path is
+production-only.** Green tests, broken production — that is the whole story of this bug. Three further client
+defects turned a bad command into an *infinite* hang: `initialize()` set `_status='ready'` unconditionally (the base
+`_onSpawned()` is a no-op, so no readiness handshake could fail); the `'close'` handler rejected only a *current*
+request (nothing was in flight at startup); and the fall-through path honoured **no timeout at all**
+(`sink.timeoutMs` was read only inside the bridge branch).
+
+**Evidence.** Reproduced through the real code path (`createExecutor({providerName:'gemini',
+requestedExecutionMode:'auto'})`) against the real binary, **~20s, zero LLM cost, no orchestrator attach**:
+`status after initialize(): ready` (the harness believes the session is healthy) → `NO RESPONSE after 20000ms`. Now
+also reproduced **in the client test suite**: the new hardening tests fail on un-hardened code via vitest's own 5s
+limit — i.e. the hang itself is the failure.
+
+**Shipped** (`agentalk-mcp-client`, branch `task-BL-045`, PO-gated, not merged): a **per-turn deadline**
+(`sink.timeoutMs`, default 300000 matching the one-shot spawn timeout) — the rail that actually catches an
+alive-but-silent child, which emits no `close` and so is invisible to any exit handler; `_exitInfo` recorded on close
+so a later turn reports the exit code (diagnostics — that case already rejected); and a readiness check that stops
+`initialize()` claiming `ready` after the child exits (limited: `_onSpawned` is a no-op for claude/gemini, so it
+mainly helps codex — the deadline is the backstop). Verified against the real agy binary: rejects at ~8s with
+"did not respond within 8000ms" instead of hanging. Build gate green (lint + verify-contract + 46 tests, was 40).
+**This bounds the failure; it does not fix agy.**
+
+**Open — needs a PO call.** Candidate fix: set `AGENTTALK_PERSISTENT_MCP=true` on the launcher spawn env (no
+alternative exists — agy has no stdio MCP server mode). **Untested risk:** the bridge path configures agy via
+`GEMINI_CLI_HOME/.gemini/settings.json`, but AGENT.md records agy's `~/.gemini` tree as write-protected/ephemeral
+(hence the stable XDG key store), so **agy may not read that config at all**; the plausible outcome is "healthcheck
+passes (`--print` returns text), tools still don't work" — progress, not a green light. Confirming costs **1 agy
+generation**, and agy is **PO-UNAVAILABLE since 2026-07-15**. Also: agy's `--print-timeout` defaults to **5m**, well
+past the 90s window — reconcile with the healthcheck window if we go this way.
+
+**Unchanged.** **agy remains UNFIT as an MCP attach client** — LB-92's ruling stands until the candidate fix is
+tested; attach tests, pair-chats, and consensus continue on codex/claude. This entry changes what we know about
+**why**, not agy's fitness. Source: BL-045, LB-92, TL-006; investigation in `agentalk-mcp-client` @ `task-BL-045`.
