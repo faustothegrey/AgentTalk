@@ -731,11 +731,14 @@ export function startServer(
       // AgentProvider union without runtime validation to keep behaviour
       // identical (the value is forwarded unchecked, exactly as before).
       const provider = getNonEmptyString(req.body?.provider) as AgentProvider | undefined;
+      // BL-037 wall (1): forward consensusMode so the arbiter (semantic Judge) path is reachable
+      // through the product. Only 'arbiter' opts in; anything else keeps the 'protocol' default.
+      const consensusMode = req.body?.consensusMode === 'arbiter' ? 'arbiter' : undefined;
       if (members.length === 0) {
         res.status(400).json({ error: 'A worker agent ID is required' });
         return;
       }
-      const team = registry.createTeam(members, provider);
+      const team = registry.createTeam(members, provider, consensusMode);
       res.json(team);
     } catch (err) {
       res.status(getErrorStatus(err)).json({ error: err instanceof Error ? err.message : String(err) });
