@@ -1480,13 +1480,30 @@ tags: [arbiter, consensus, heterogeneous-team, claude, goose, experiment, next-s
   `task-arbiter-enable` (BL-044 wall 1) being merged. Source: PO, TL-013.
 
 <!-- @item
-id: BL-049
+id: BL-050
 status: todo
+date: 2026-07-16
+epic: null
+tags: [ui, observability, ux]
+-->
+- [todo · PO observation during the BL-049 live run · **deliberately not acted on**] — **The Team view does not
+  make it clear which team you are looking at.** PO, watching a real worker-only team appear: *"si capisce male
+  qual è il team sulla UI"* — with the team identified only by a generated `team-<epoch>` id, the panel reads
+  ambiguously, and the agent list rendered beside it (all agents, not just members) makes it easy to misread which
+  agents are actually **in** the team. Recorded verbatim because it was seen once, live, and observations that are
+  not written down get rediscovered later at full cost. **Explicitly parked by the PO** (*"non vorrei perderci
+  tempo adesso"*) — do not pick this up without a PO go. Consistent with **LB-93** (the UI layer stays fluid for
+  now); this is a legibility/UX item, not a defect: the data is correct, the presentation is ambiguous.
+
+<!-- @item
+id: BL-049
+status: done
 date: 2026-07-16
 epic: null
 tags: [ui, observability, self-hosting, bite0]
 -->
-- [todo · found by the BL-048 live run · **bites the moment BL-040 D4 lands**] — **Teams/tasks carry the same
+- [done 2026-07-16 · PO-witnessed live · found by the BL-048 live run · **closed before D4 could trip on it**] —
+  **Teams/tasks carry the same
   reconnect hole BL-048 just closed for agents — and have no resync path at all.** BL-048's audit (spike point 3)
   found the *rendering* is fine: `team_updated → setActiveTeam` surfaces a team the human never opened, so no
   "live view" is needed. The hole is elsewhere: a broadcast only reaches clients connected when it fires, and
@@ -1501,6 +1518,15 @@ tags: [ui, observability, self-hosting, bite0]
   ruled that layer stays fluid (**LB-93**); the bar here is a **live, witnessed run**, and it must isolate what it
   claims (BL-048's decisive evidence was a stale entity *disappearing* on reconnect — a reload or HMR remount
   refetches and proves nothing). Source: BL-048 spike point 3 audit.
+  **OUTCOME (2026-07-16): DONE — `api.teams.list()` + `fetchTeams()` in the WS `onOpen` handler.** PO decisions
+  taken at the outset: (a) **align to backend truth** — the backend's most-recently-updated team wins, none clears
+  `activeTeam` (not a new selection policy: `team_updated` already calls `setActiveTeam` blindly); (b) **teams
+  only, no tasks** — there is **no read endpoint for tasks** (only `GET /api/teams` exists), so `activeTeamTask` is
+  cleared unless it still matches the team's `currentTaskId`, and the next `team_task_updated` repopulates it; full
+  task coverage would need new server API surface. Validated live (PO-witnessed) in two halves that admit no other
+  explanation: a team created **before the UI existed** appeared on connect though no `team_updated` ever reached
+  that client, and against a fresh backend it **disappeared** with no reload (broadcasts only add/update; only a
+  refetch removes). Side observation from the run → **BL-050** (team legibility, PO-parked).
 
 <!-- @item
 id: BL-048
