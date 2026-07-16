@@ -543,3 +543,28 @@ here.**
   turns and nothing follows (BL-060). I had *worked around* that exact defect an hour earlier — ran headless on 3100,
   then was forced back to 3000 for the UI — and **never once asked why**. Friction I route around silently is a bug I
   am choosing not to file.
+
+### 2026-07-16 (later) — BL-057 merged: the flag deleted, all three providers (hats: implementer + planner + both reviewer seats, sole-agent fallback)
+
+- **The backlog item was wrong about its own scope, and only reading the code found it.** BL-057 framed the flag as
+  a gemini problem with two gate sites; it had **nine, across all three providers**, and deleting it silently
+  deleted a whole codex implementation. **I nearly implemented the item as written** — the PO had approved
+  "option (b)" believing the gemini framing, and the frictionless path was to just do it. Going back to ask cost
+  one question and changed what shipped. **A PO's yes is scoped to the item they read; when the ground truth is
+  bigger than the item, the yes doesn't automatically stretch.** *(Written by me, yesterday, with high confidence —
+  my own artifact was the thing that misled me. Distrust-the-docs applies to docs I wrote.)*
+- **My theory about what would break was wrong, and running it was cheaper than thinking harder.** I predicted the
+  e2e launcher tests would break; they passed. The actual four failures were elsewhere. I'd built a confident
+  causal story from reading — one grep would not have settled it, but one `npm test` did, in 5 seconds.
+  **When the cost of checking is a single command, check before theorising.** I did, and it saved me from reporting
+  a blocker that did not exist.
+- **The closure sweep caught what the implementer pass missed — with the same brain, an hour apart.** Two vestigial
+  flag setters survived my "done", and I only found them because the task-end seat re-greps from scratch instead of
+  trusting the earlier claim. **The seat is not theatre even when one actor wears both hats**: the discipline of
+  re-deriving rather than recalling is what worked, and it is exactly what "I trust you" would have skipped. The PO
+  said *"merge, I trust you"* — the right response to trust was to run the bars anyway, not to bank the trust.
+- **`completed` lied to me a third time, and I had pre-committed to not believing it.** Run 2: `accepted: true`,
+  correct 589, exit 0, **no file, no worktree, no commit**. Because I designed the observable *before* the run
+  (fresh number, fresh path, verified absent), the lie was visible in one `cat`. **Even a correct answer in the
+  payload proves nothing** — that's new, and worse than I'd internalised: I'd been treating "reported the right
+  number" as partial evidence. It isn't. Only the filesystem is.

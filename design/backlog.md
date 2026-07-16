@@ -1607,7 +1607,8 @@ date: 2026-07-16
 epic: null
 tags: [agy, gemini, protocol-compliance, false-green, autonomy-risk]
 -->
-- [todo · **found 2026-07-16 during the BL-045 UI witness** · **`completed` ≠ the work was done**] — **agy accepts a
+- [todo · **found 2026-07-16 during the BL-045 UI witness** · **REPRODUCED a 3rd time 2026-07-16 during BL-057's
+  closing bar — see the addendum at the end of this item** · **`completed` ≠ the work was done**] — **agy accepts a
   plan and then does not execute it — and the team still reports `completed`.** Observed live, PO-witnessed run
   `agy-w2` (orchestrator log `/tmp/orch-ui.log`, recording `runs/bl045-ui3.ndjson`): goal was *compute 17×23, create
   a git worktree, write `answer.txt`, commit it*. agy called `submit_work_response { accepted: true }` then
@@ -1628,14 +1629,32 @@ tags: [agy, gemini, protocol-compliance, false-green, autonomy-risk]
   otherwise refuse and abort"*) — it reshapes any non-git task into a refusal and is what agy accepted-then-ignored
   here; worth revisiting alongside this. Source: BL-045 live UI witness, 2026-07-16.
 
+  **ADDENDUM — 3rd occurrence, 2026-07-16 (BL-057's closing live bar; agent `bl057-agy2`, no env var set).**
+  Same shape, independently reproduced while proving something else: goal *compute 19×31, `git worktree add ./wt057
+  -b task-bl057`, write `answer.txt`, commit*. agy round-tripped the full protocol — `submit_work_response
+  { accepted: true }` then `submit_work_result` carrying the **correct computed 589** — launcher reported
+  **`status: completed`, exit 0**. Ground truth: **no `wt057/answer.txt`, no worktree** (`git worktree list` shows
+  none), **no `task-bl057` branch** (`fatal: unknown revision`), sandbox still at **`e0a2b02`**. **It computed the
+  answer and skipped the work it had accepted.**
+  **Why this addendum matters beyond a tally: agy is now 3-for-3 at reporting success it did not earn** (wrote-then-
+  refused · accepted-then-skipped · accepted-then-skipped), and the *only* thing that has ever caught it is a
+  filesystem check. **`completed` has never once been evidence.** The failure survives a *correct* answer in the
+  payload — 589 was right, so even reading the reply proves nothing. **For the autonomous ladder this is the
+  gating defect:** an unwitnessed autonomous run currently cannot distinguish "did the work" from "said it did",
+  and **BL-056** (no durable transcript) means nobody can check after the fact either. Pairs with **BL-053** (the
+  worker never lands in the worktree the `exec_rpc` names — so the worktree clause may be literally impossible for
+  it to satisfy, which would make this a *harness* fault masquerading as agy dishonesty; **worth testing before
+  blaming the model**). Source: BL-057 closing bar, 2026-07-16.
+
 <!-- @item
 id: BL-057
-status: todo
+status: done
 date: 2026-07-16
 epic: null
 tags: [agy, gemini, attach-mode, test-only-path, production-gap, one-line-fix]
 -->
-- [todo · **found 2026-07-16 while proving BL-045's last mile** · **the BL-045 fix is real but PRODUCTION CANNOT
+- [**done · MERGED 2026-07-16** (`3403bdb`, `agentalk-mcp-client`) · option (b) taken, **widened to all three
+  providers** · **found 2026-07-16 while proving BL-045's last mile** · **the BL-045 fix is real but PRODUCTION CANNOT
   REACH IT**] — **`AGENTTALK_PERSISTENT_MCP=true` is set by NOTHING outside the test suite, so the verified agy path
   is test-only and the broken path is production-only.** `GeminiPersistentExecutor` has two paths gated on
   `process.env.AGENTTALK_PERSISTENT_MCP === 'true'` (`lib/executor-runtime.mjs:455` initialize, `:546` executeTurn).
@@ -1659,6 +1678,45 @@ tags: [agy, gemini, attach-mode, test-only-path, production-gap, one-line-fix]
   **Verified workaround (needs no code):** `export AGENTTALK_PERSISTENT_MCP=true` before the launcher — the env
   flows through to the worker. This is how BL-045's last mile was proven; see that item.
   Source: BL-045 live-orchestrator probe, 2026-07-16.
+
+  ---
+  **CLOSED 2026-07-16 — option (b), widened. Merged `3403bdb` (branch `task-BL-057`, per-task worktree, PO-gated).**
+  **⚠️ This item was WRONG about the scope, and the correction is the main thing to carry forward: the flag was
+  never gemini-specific.** It gated **nine sites across all three providers**, and **no fall-through had ever been
+  exercised by a live run** — they were not fallbacks, they were three untested paths wearing a fallback's clothes:
+  `agy mcp` (could only hang, LB-92) · claude's no-`--mcp-config` session (**cannot call bridge tools at all**) ·
+  codex's `codex mcp-server` (**an entire second implementation**). The flag arrived in the client's *initial
+  commit* — inherited from the AgentTalk extraction, never a considered design. PO approved deleting all three.
+  **Net −140 lines.** One path per provider now: the live-proven one.
+  **The same disease was in the tests.** The 4 that broke were driving real contracts (`BasePersistentExecutor`
+  hardening; the `exec_rpc` round-trip) through a **gemini-as-stdio vehicle production never used**. Repointed to
+  `claude` — the only provider that still holds a stdio session — with **assertions byte-identical**. The hardening
+  fakes became script *files*: claude appends `--mcp-config` to the override's args, and `node -e` parses those as
+  node options and exits. The task-end sweep then caught **two vestigial flag setters still in tests** (inert, but
+  the same rot); removed, so both now run with **no flag at all** = production's real configuration.
+  **The bar (live, `AGENTTALK_PERSISTENT_MCP` UNSET, real orchestrator):** agy attached → generated → round-tripped
+  `await_turn` → `submit_exec_result` → `submit_work_response` → `submit_work_result` carrying a **computed 589**
+  (19×31). On master that same invocation runs `agy mcp` and hangs. **Production reaches the fix.**
+  **Honest red, reproduced not fixed:** run 2 reported `completed`, `accepted: true`, right number — and wrote **no
+  file, no worktree, no commit** (sandbox untouched at `e0a2b02`). That is **BL-059, third occurrence** — the proof
+  above deliberately rests on the *tool-call round-trip*, **not** on the status field, which lied again. Run 1's
+  `failed` was **harness, not code**: the goal named an absolute path outside any repo, so the orchestrator's
+  hardcoded worktree clause made agy **refuse correctly** (that refusal is itself coherent model output — a hung
+  `agy mcp` cannot produce one).
+  **Papercut noticed, left alone:** `lib/executor-runtime.mjs` still ends in `//# sourceMappingURL=…js.map` for a
+  map that does not exist (pre-existing on master; a vestige of when `lib/` was `tsc` output and became
+  hand-edited). Harmless noise in stack traces.
+  **Independence caveat:** sole agent — authored, reviewed, and ran its own bars. Not an independent gate; the
+  test repoint in particular has had only one pair of eyes.
+
+  **Telemetry (task closure):**
+  - task:        BL-057
+  - wall-clock:  ~19:35 → 20:17 (~42 min)
+  - budget:      weekly 24%→25% (Δ ~1%), session 98%→11% (window reset mid-task; Δ not meaningful)
+  - gate:        lint clean, verify-contract clean, suite 63/63 (= pre-change baseline), pollution clean
+                 (both real repos untouched; orchestrator + workers killed; worktree removed)
+  - diff:        3 files, +160/−300; commits `b07f7d7`, `d6cda30`, merge `3403bdb`
+  - outcome:     MERGED ✅
 
 <!-- @item
 id: BL-058

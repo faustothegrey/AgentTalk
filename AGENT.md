@@ -140,15 +140,20 @@ one agent holds SM and both quality gates — accepted because merges stay PO-ga
   earlier probe also proved tool use: `answer.txt` = `391` written to disk. Turn latency **~14s** (bare
   `agy --print` = **9.65s**) — well under the 30s healthcheck default, so the once-feared provider-specific 90s
   timeout is **NOT** needed (LB-93's "necessary after all" is superseded).
-  **⚠️ TWO BOUNDS — read before relying on this:**
-  1. **Production is still broken without `AGENTTALK_PERSISTENT_MCP=true`.** The verified path is gated on that env
-     var; the fall-through is `agy mcp`, which is **not a subcommand** and hangs exactly as LB-92 described. Set the
-     flag when attaching agy, until **BL-057** removes the gate. *(All the proof above set it.)*
-  2. **agy's execution compliance is unreliable — it is fit to ATTACH, not yet trusted to EXECUTE.** Observed in both
-     directions on 2026-07-16: it once **wrote the file and then refused**, and once **accepted the plan
-     (`accepted: true`), reported the right number, and silently skipped the execution requirement it had just
-     accepted** (no worktree, no file, no commit). Do not read a `completed` as "the work was done" — check the
-     artifact. See **BL-059**.
+  **⚠️ ONE BOUND — read before relying on this:**
+  1. ~~**Production is still broken without `AGENTTALK_PERSISTENT_MCP=true`.**~~ **RESOLVED — BL-057 merged
+     2026-07-16 (`3403bdb`, `agentalk-mcp-client`). The flag NO LONGER EXISTS; set nothing.** The gate and the
+     `agy mcp` fall-through are deleted, and the live-proven path is now the only path — re-verified live with **no
+     env var set** (full MCP round-trip, computed `589`). *(Deleted for all three providers, not just gemini: the
+     flag gated nine sites and no fall-through had ever survived a live run. Details in BL-057's closing block.)*
+     **If you find any doc still telling you to export that flag, it is stale — correct it.**
+  2. **agy's execution compliance is unreliable — it is fit to ATTACH, not yet trusted to EXECUTE.** **Now 3-for-3
+     at reporting success it did not earn** (2026-07-16): it **wrote the file and then refused**; and **twice**
+     **accepted the plan (`accepted: true`), reported the right number, and silently skipped the execution it had
+     just accepted** (no worktree, no file, no commit) — the third caught during BL-057's closing bar. **A correct
+     answer in the payload proves nothing; only a filesystem check has ever caught it.** Never read a `completed`
+     as "the work was done" — **check the artifact.** See **BL-059** (and **BL-053**: the worker may be unable to
+     reach the worktree it is told to use, so test the harness before blaming the model).
   `start_pair_chat` itself was not exercised (the launcher builds a worker-only team), but the healthcheck rides the
   same `exec_rpc` mechanism proven above. See LB-94 / BL-045 / BL-057 / BL-059.
   *(Scope: the attach-client capability only; agy's Implementer role is a separate PO call.)*
