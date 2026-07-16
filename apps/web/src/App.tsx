@@ -485,7 +485,7 @@ function App() {
       <GlobalNotifications globalError={globalError} globalNotice={globalNotice} onClearError={() => setGlobalError(null)} theme={theme} />
 
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
-        <Railbar activeTopTab={activeTopTab} onTabChange={(tab) => { setActiveTopTab(tab); }} collapsed={leftNavCollapsed} onToggleCollapse={() => setLeftNavCollapsed(!leftNavCollapsed)} />
+        <Railbar activeTopTab={activeTopTab} onTabChange={(tab) => { setActiveTopTab(tab); }} collapsed={leftNavCollapsed} onToggleCollapse={() => setLeftNavCollapsed(!leftNavCollapsed)} connected={isConnected} />
 
         <div style={{ width: `${sidebarWidth}px`, display: 'flex', flexDirection: 'column', backgroundColor: theme.bgRaised, borderRight: `1px solid ${theme.border}` }}>
           {activeTopTab === 'chat' && (

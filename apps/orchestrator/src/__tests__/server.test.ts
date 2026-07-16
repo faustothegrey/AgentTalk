@@ -266,6 +266,39 @@ describe('startServer', () => {
     await expect(deleteResponse.json()).resolves.toEqual({ success: true });
   });
 
+  it('should ping /ws clients so a dead socket is detectable (BL-048 keepalive)', async () => {
+    // Own server: the heartbeat cadence is read at startServer time, and 30s is unwaitable in a test.
+    vi.stubEnv('AGENTTALK_WS_HEARTBEAT_MS', '50');
+    const ownRegistry = new Registry({ readinessTimeoutMs: 500, conversationStorePath });
+    const ownServer = startServer(ownRegistry, 0, { googleDrive });
+    await new Promise<void>((resolve) => ownServer.once('listening', resolve));
+    const { port } = ownServer.address() as AddressInfo;
+
+    const socket = new WebSocket(`ws://127.0.0.1:${port}/ws`);
+    try {
+      await new Promise<void>((resolve, reject) => {
+        socket.once('open', resolve);
+        socket.once('error', reject);
+      });
+
+      // Without a server-initiated ping a half-open socket is never detected: no FIN arrives, the
+      // browser keeps believing it is connected, and the UI's indicator goes on claiming the backend
+      // is alive. Browsers cannot ping on their own, so this is the whole detection mechanism.
+      await new Promise<void>((resolve, reject) => {
+        const timer = setTimeout(() => reject(new Error('server never pinged the client')), 2000);
+        socket.once('ping', () => { clearTimeout(timer); resolve(); });
+      });
+    } finally {
+      // Close the client BEFORE the server: server.close() waits for open connections to end rather
+      // than cutting them, so leaving this socket up hangs the teardown.
+      socket.close();
+      await new Promise<void>((resolve) => socket.once('close', () => resolve()));
+      await ownRegistry.destroy();
+      await new Promise<void>((resolve, reject) => ownServer.close((err) => (err ? reject(err) : resolve())));
+      vi.unstubAllEnvs();
+    }
+  });
+
   it('should broadcast agent_added when an agent is created through the API (BL-048)', async () => {
     const socket = await openSocket();
     const added = waitForMessage(socket, message => message.type === 'agent_added');

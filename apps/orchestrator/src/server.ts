@@ -911,8 +911,35 @@ export function startServer(
     return registry.listPendingRelays().filter((relay) => relay.status === 'pending');
   }
 
+  // BL-048 keepalive. Without it a half-open socket (network drop, suspended host — the UI is
+  // browsed over the LAN) is never detected: no FIN arrives, the server keeps a dead client in
+  // wss.clients and the browser keeps reporting itself connected. That makes the UI's connection
+  // indicator lie, which is worse than having none. A process kill is fine without this (the OS
+  // sends FIN/RST); a network death is not. Browsers cannot initiate pings, so the server must.
+  // Overridable so the rail is actually testable: 30s is the right cadence in production but no test
+  // can wait for it.
+  const HEARTBEAT_MS = Number(process.env.AGENTTALK_WS_HEARTBEAT_MS) || 30000;
+  const isAlive = new WeakMap<WebSocket, boolean>();
+
+  const heartbeat = setInterval(() => {
+    wss.clients.forEach((client) => {
+      if (isAlive.get(client) === false) {
+        console.log('[Server] WebSocket client failed to answer a ping — terminating');
+        client.terminate();
+        return;
+      }
+      isAlive.set(client, false);
+      client.ping();
+    });
+  }, HEARTBEAT_MS);
+  // Never let the heartbeat hold the process (or a test run) open, and stop it with the server.
+  heartbeat.unref?.();
+  server.on('close', () => clearInterval(heartbeat));
+
   wss.on('connection', (ws) => {
     console.log('[Server] New WebSocket connection');
+    isAlive.set(ws, true);
+    ws.on('pong', () => isAlive.set(ws, true));
     ws.send(JSON.stringify({
       type: 'relay_approval_state',
       mode: registry.getRelayApprovalMode(),
