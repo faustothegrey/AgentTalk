@@ -255,7 +255,15 @@ function App() {
     }
   }, [updateAgentStatus, updateAgentUsage, pushSidebarEvent, addAgent, hasAgent, fetchAgents]);
 
-  const { ws, isConnected, sendMessage: sendWsMessage } = useWebSocket({ onMessage: handleWsMessage });
+  // BL-048: resync on every (re)connect. Broadcasts only reach clients that are connected at the
+  // moment they fire, so any agent created while the socket was down would otherwise be lost for
+  // good — no later event exists to trigger the unknown-id refetch above. Proven live: the UI was
+  // open but still reconnecting when the launcher created its worker, the broadcast went to zero
+  // clients, and the agent stayed invisible while sitting 'ready' in the backend. This also covers
+  // the backend restarting underneath an open UI.
+  const handleWsOpen = useCallback(() => { void fetchAgents(); }, [fetchAgents]);
+
+  const { ws, isConnected, sendMessage: sendWsMessage } = useWebSocket({ onMessage: handleWsMessage, onOpen: handleWsOpen });
 
   const fetchConversationHistory = useCallback(async () => {
     try {
