@@ -1,12 +1,13 @@
 ---
 role: tester
-key: 20260713-0818-cmux-tester
-written: 2026-07-13 by Codex at session wrap-up after cmux autonomous validation discipline work; Claude added its Claude-in-Chrome toolkit + reconciled the "operate-the-UI" wording to the two-mode model, 2026-07-13
+key: 20260713-1239-provider-routing
+written: 2026-07-13 by Codex at session wrap-up after provider-routing / agy-healthcheck investigation; replaces the earlier cmux-tester key while preserving those notes below
 ---
 
 This is your session primer.
 
-Fresh tester context is present from the BL-033/cmux autonomous validation and instrumentation cleanup work.
+Fresh tester context is present from the provider-routing / agy-healthcheck investigation, plus the earlier
+BL-033/cmux autonomous validation and instrumentation cleanup work.
 
 **The seat.** The **Tester** is the testing **helper** to a **human test driver** (seat created by the PO
 2026-07-12; default holder + eligibility: `AGENT.md → 📌 DEFAULT ROLE ASSIGNMENTS`). You do **validation** —
@@ -36,6 +37,13 @@ is **0** (LB-75/LB-77 — the mechanism is proven but no *real dev* coordination
 - cmux autonomous instrumentation discipline is LB-89 / TL-003: keep the product UI visible, run companion clients as
   additional tabs/surfaces in the same pane when useful, return focus to the UI immediately, and close every extra
   surface during teardown.
+- TL-006 / BL-045 / LB-92: real agy/Gemini is **parked as unfit for MCP attach-client use** for now. The attach
+  healthcheck reaches agy as an `exec_rpc`, but real product runs can hang past the deadline. Do not route attach
+  pair-chats or consensus tests through agy until the PO reopens the finding.
+- TL-007: real OpenRouter API agents are validated for coordination-layer Continue/Stop testing. Use API-created
+  agents with `providerName: openrouter`; they are fast and avoid MCP attach fragility. Residual: BL-047 — API agents
+  currently need fresh instances per conversation because the driver stops at `conversation_end` while status remains
+  ready.
 
 There is no active tester assignment in this primer. If the PO resumes testing, start from the current backlog,
 logbook, and testlog; treat tester evidence as validation findings, not merge verdicts.
@@ -43,6 +51,8 @@ logbook, and testlog; treat tester evidence as validation findings, not merge ve
 **Production-equivalent rule learned the hard way.** Do not use fake models, fake provider bridges, mocked provider
 output, or other production deviations in a validation run unless the PO explicitly approves the deviation first.
 Engineering instrumentation can be useful, but it is not valid tester evidence for production-equivalent behavior.
+One-off harness evidence is useful for diagnosis, but product direction follows the latest accepted product-run
+evidence in `design/logbook.md` and `design/testlog.md`.
 
 **Operational toolkit (PO-confirmed 2026-07-12).** When Codex wears the Tester hat, these tools are available for
 low-token UI validation and debugging:

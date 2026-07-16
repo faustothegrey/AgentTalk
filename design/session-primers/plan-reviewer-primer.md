@@ -1,68 +1,62 @@
 ---
 role: plan-reviewer
-key: 20260713-0020-b7d4e9
-written: 2026-07-13 by Claude (session close — BL-032 closed via full 3-gate; BL-031 unblocked, pending validation)
+key: 20260713-1839-c7e4a9
+written: 2026-07-13 (late) by Claude — session close after the goose arc: dev-executor + BL-041 merged + arbiter consensus WIN (TL-013)
 ---
 
 This is your session primer.
 
-**Project (1–2 lines).** AgentTalk orchestrates several *real* heterogeneous LLM CLI agents (Claude Code, Codex,
-Gemini) as one software-development team that plans/builds/reviews/merges code by talking through a deterministic,
-auditable MCP substrate, under a human Product Owner (Fausto) who holds scope + merges. Aim: **self-hosting** — the
-team improves its own codebase; success = the PO's manual coordination burden falls, measurably, over time.
+**Project (1–2 lines).** AgentTalk orchestrates several *real* heterogeneous LLM agents as one software-development
+team that plans/builds/reviews/merges code through a deterministic, auditable MCP substrate, under a human Product
+Owner (Fausto) who holds scope + merges. Aim: **self-hosting** — the team improves its own codebase.
 
 **Roles.** Human = PO (apex; scope/direction/merges/relay). Agents: planner, three reviewer seats (plan /
-implementation / task-end — independence: no self-review; task-end ≠ implementation reviewer at close), implementer,
-architect, **Tester** (agent helper to a human test driver; default Codex; created 2026-07-12). Bindings live **only**
-in `AGENT.md → 📌 DEFAULT ROLE ASSIGNMENTS`. **This primer is for the plan-reviewer (gate 1); you [Claude] also hold
-task-end-reviewer, architect, delegated SM, and served as temp Implementation Reviewer on BL-032.** Do the First Entry
-Point handshake, verify this brief against the repo, report, and **STOP** for the PO's go — do not start work.
+implementation / task-end; no self-review), implementer, architect, Tester. Bindings live **only** in
+`AGENT.md → 📌 DEFAULT ROLE ASSIGNMENTS`. **This primer is for plan-reviewer — but read the degraded-team note:**
 
-**Workflow / source of truth.** `design/collaboration-workflow.md` (method) + artifacts: each epic/task's `*-plan.md`
-(spec+DoD) and `*-implementation.md` (ledger — real state), `design/backlog.md`, `design/logbook.md` (LB-N),
-`design/lessons/claude-lessons.md` (skim at start — read the 2026-07-13 BL-032 entry). Verify-don't-assert: ground
-every load-bearing claim in git/code before repeating it.
+**⚠️ DEGRADED SCRUM TEAM (PO, 2026-07-13, "for the foreseeable future").** **Codex is ruled out** (PO, no reason
+given) and **agy/Gemini is broken** (LB-92 attach hang). So **Claude (you) is effectively the SOLE agent, wearing
+all hats** (planner + all reviewer seats + implementer + tester + architect + delegated SM) under the
+resource-scarcity fallback. Declare your hats loudly each turn; **merges stay PO-gated**; keep each gate's discipline
+separately. Do the First Entry Point handshake, verify this brief against the repo, report, and **STOP** for the PO's go.
 
-**Where we are (REQUIRED — verify against git; state moved under me — see the caution).** Program is BETWEEN EPICS.
-**master HEAD = `71f3242`, ahead of `origin` by 2 (UNPUSHED).** ⚠️ **Caution: a parallel Codex BL-031 validation
-session advanced master + several primers/backlog/logbook *after* my BL-032 close** — verify HEAD and the ledgers
-before trusting any commit hash below. Recent arc on `master`:
-- **Tester seat created + proved out.** Codex-as-Tester (PO driving) caught **BL-032** on its first BL-031 validation
-  run (LB-77 first UI relay; LB-78 the blocked validation), then a second validation run confirmed BL-031 works with
-  real providers (**LB-86**) and found **BL-033**. The seat is paying off.
-- **BL-032 DONE** (`7dc3f19`, was merged `8f03bad`; master has since advanced) — attach-mode pair-chat startup fix.
-  Full 3-gate: Gate 1 (you, conditional-approve + 4 amendments) → impl (Codex, temp) → Gate 2 (you, PASS, 8/8 DoD
-  VERIFIED, IP-15 discriminate check) → Gate 3 (PO). Root cause was **not** a queue mismatch: a provider-attached
-  target that missed its healthcheck exec stayed wedged past the healthcheck deadline; fix aligns the healthcheck exec
-  deadline (grace 0) to the contract. Healthcheck strictness + M20 relay unchanged. Ledger:
-  `design/bl-032-attach-pair-chat-healthcheck-implementation.md`.
+**Workflow / source of truth.** `design/collaboration-workflow.md` + artifacts: `*-plan.md`/`*-implementation.md`,
+`design/backlog.md`, `design/logbook.md` (LB-N), **`design/testlog.md` (TL-N — the running Tester record; TL-013 is
+the latest and the big win)**, `design/lessons/claude-lessons.md` (skim at start). Verify-don't-assert.
 
-**⚠️ Open work in flight (don't lose):**
-- **BL-031 inline relay approval — VALIDATED, still UNMERGED.** Branch `fix/BL-031-inline-relay-approval` @ `da07821`
-  (worktree `AgentTalk-BL-031-validation`): my inline-approval `App.tsx` **+ Codex's added "supervised conversation
-  control"**. Real-provider validation passed (**LB-86**): Continue path (pending relays delivered only on the PO's
-  Continue) and Stop path (denied relay, conversation stopped) both work with real Gemini/Antigravity. Status `todo`;
-  **needs a merge decision.** **Independence knot for the PO:** I implemented the original inline UI; Codex implemented
-  the supervised-control additions AND was the tester — so BL-031's task-end merge needs a party clear of both
-  (likely the PO). Codex primed the impl-reviewer + planner primers itself; do **not** overwrite them.
-- **BL-033 (todo, new)** — MCP pair-chat agents remain `busy` after `conversation_end` while their `llm-agent`
-  clients keep waiting for turns (post-end lifecycle bug, found during the BL-031 validation; LB-86).
-- **Deferred (PO):** "how to handle UI fixes *systemically* in the workflow" (Tester pre- vs post-merge validation).
+**Where we are — the goose arc (verify against git; `master` at HEAD; two feature branches UNMERGED, PO-gated).**
+Between epics; the day was a testing/experiment arc that ended on a win:
+- **goose is a proven dev-capable, vendor-neutral agent.** Integrated as a one-shot OpenRouter-backed executor in
+  `agentalk-mcp-client` (branch **`task-goose-executor`**, pushed, **not merged**) + a coordination profile
+  (`AGENTTALK_GOOSE_MAX_TURNS`/`_NO_PROFILE`/`_SYSTEM`). **TL-008 pair chat PASS.** goose 1.41.0 via brew.
+- **Strict-protocol consensus FAILED across 4 runs (TL-009→012)** — the two-planner message_type handshake
+  (opinion→propose→accept→submit) is the wall; deepseek nails schema+content but the choreography doesn't land by
+  prompt tuning. **We are NOT pursuing strict protocol now** (PO: later, after research).
+- **BL-041 MERGED to master** (`019db72`) — bounded the ack-phase re-request runaway (eject after budget).
+- **🎯 TL-013 — ARBITER (semantic) consensus WORKS.** The PO's intended path: planners debate free-form, a
+  gpt-4o-mini Judge declares `converged`, a Synthesizer authors the plan. **goose+deepseek reached consensus
+  first try.** Enabler: `POST /api/teams` now forwards `consensusMode` (branch **`task-arbiter-enable`**, `d06893f`,
+  +2 tests, **not merged**). Caveat: the Judge's convergence bar was **lax** (planners endorsed different ideas, it
+  still converged).
 
-**Likely next work (PO decides — don't assume).** (a) resume **BL-031 Tester validation** → merge; (b) M20 adoption
-(move the organic-coordination metric off 0); (c) a new epic (inception → backlog gate → planner → **your gate 1** →
-implementer); (d) research from `design/research-agenda.md`.
+**Next up (what to pick up).**
+1. **PO merge decisions** on the two unmerged branches: `task-goose-executor` (client repo) and `task-arbiter-enable`
+   (AgentTalk). Both validated + tested; merge is the PO's call.
+2. **🌟 BL-043 (the PO's next-session experiment):** **Claude-backed MCP client as the Arbiter/Judge, goose agents
+   for planners+worker** — a strong judge fixes the TL-013 laxness + first true mixed-provider team. Needs the
+   arbiter Judge/Synthesizer made pluggable (today hardcoded `callApi({provider:'openrouter', model:'gpt-4o-mini'})`
+   in `arbiter-coordinator.ts`). Depends on `task-arbiter-enable` merging.
 
-**Gate-1 discipline that keeps paying off (do this).** Grep the **blast radius** of any shared-code change *before*
-approving — it caught the breakers in M16/M17/M20 and on BL-032 it **partly refuted the plan's own root-cause lead**
-(the relay path shares `sendProtocol→queueTurn` yet worked), reshaping T0. The grep is a hypothesis-tester, not just a
-breaker-finder. Also verify the plan's cited evidence (LB/BL ids) actually exists.
+**Where state lives.** Resume from `design/testlog.md` (TL-008→013) + `design/backlog.md` (BL-039..043), not chat.
 
 **Op notes / gotchas.**
-- **Meter:** `node scripts/usage.mjs`. Claude ~41% weekly at close (resets Jul 15 ~9am Rome).
-- **Attach runbook:** `design/attach-chat-runbook.md`. MCP port is random per backend restart. Wire-contract hashes
-  must match between repos (`ffa94e93…`).
-- **Chrome extension** drops on Chrome auto-update; fall back to code+test verification.
-- **Do NOT reap** `com.fausto.agenttalk-orchestrator` (PO's `launchd` service, non-default ports). Identify before reap.
-- Backlog: 33 items, 0 warnings. BL-032 `done`; BL-031 `todo` (validated, unmerged); BL-033 `todo` (new); stale
-  branch `task-M18-T3`.
+- `OPENROUTER_API_KEY` set. Models on this account: `openai/gpt-4o`, `openai/gpt-4o-mini`, `deepseek/deepseek-v4-flash`,
+  `deepseek/deepseek-chat`, `deepseek/deepseek-r1` all resolve; `anthropic/claude-3.5-sonnet*` and
+  `google/gemini-2.0-flash-001` **404** on this account — always probe a model id with a one-word `goose run` first.
+- **Run isolated: `PORT=3001 AGENTTALK_MCP_PORT=3011`** (a PO launchd instance may hold :3000 — do NOT reap
+  `com.fausto.agenttalk-orchestrator`). Rebuild `npx tsc -b` before an isolated dist run.
+- **READ THE RECORDING for ground truth, not your harness summary** — TL-013 nearly got mis-reported as a failure
+  because the harness read `currentTask` (the API returns `currentTaskId`); the `AGENTTALK_RECORDING_PATH` ndjson had
+  the real success. Hard lesson.
+- Teardown with **targeted PIDs**, never broad `pkill`. Harnesses live in the session scratchpad (`tl0NN-*.mjs`).
+- Budget at close: claude weekly **78%** (resets Jul 15 ~9am Rome), session ~84%.

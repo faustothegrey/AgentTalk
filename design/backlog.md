@@ -1289,4 +1289,167 @@ tags: [self-hosting, bite0, live-validation, acceptance]
   Deliverable: one supervised live run to COMPLETED and one forced cap-breach, with the artifact from BL-039.
   Source: Bite 0 delivery §6.
 
+<!-- @reconciliation-note 2026-07-16
+Two development lines forked at 1fbac5e and each independently allocated BL-037..BL-040. On reconcile (PO:
+"Bite 0 takes precedence") the Bite 0 items kept BL-037..BL-040; the OpenRouter/tester-thread items below were
+RENUMBERED: old BL-037→BL-044, BL-038→BL-045, BL-039→BL-046, BL-040→BL-047. Living docs were updated to match.
+HISTORICAL records were intentionally NOT rewritten — in `design/testlog.md`, `design/logbook.md` (LB-91/LB-92),
+pre-reconcile git commit messages, and the `task-BL-039` branch name, a bare "BL-037..040" carries its
+ORIGINAL (pre-remap) meaning; resolve it via this table. -->
+
+<!-- @item
+id: BL-044
+status: todo
+date: 2026-07-13
+epic: null
+tags: [consensus, arbiter, api-agents, tester-finding, product-gap]
+-->
+- [todo · Tester finding 2026-07-13 (TL-005 / LB-91)] — **API-driven multi-agent consensus is non-functional through
+  the product; the arbiter is orphaned** — three stacked walls found while trying to run a planner-planner-worker
+  "agree on a file to refactor" scenario with API agents (real keys present; these are wiring gaps, not credentials):
+  **(1) Arbiter unreachable** — `consensusMode` defaults to `'protocol'` and the only product team-creation path
+  (`POST /api/teams` → `createTeam(members, provider)`, `server.ts:738`) never sets `'arbiter'`, so
+  `arbiter-coordinator.ts` (the `gpt-4o-mini` convergence Judge) is built but dead from every UI/API control.
+  **(2) `POST /api/agents` ignores `providerName`** (`server.ts:593` reads only `{id, provider, model}`) → `api` agents
+  default to `google` (`registry.ts:250`); can't create OpenRouter/Nous API agents via the product.
+  **→ PROMOTED to BL-046** (2026-07-13; the enabler for the OpenRouter-coordination decision).
+  **(3) `google` endpoint 400s** on the consensus tool schema (*"Forced function calling (ANY mode) with response mime
+  type application/json is unsupported"*) → API-driven planners can't run the protocol at all.
+  **Decisions needed (PO/architect):** wire `consensusMode` to the product **or** retire the arbiter as dead code;
+  accept `providerName` in agent creation (unlock non-google API agents); make `buildProtocolToolSchema` compatible
+  with Google's endpoint (or route consensus API agents to OpenRouter). Note: the only currently-working consensus path
+  is **MCP-attached CLI agents** (`McpCompleter`). The per-reply-**soundness** arbiter from the original scenario is the
+  separate "**Conductor/SM agent**" idea (architect). Source: TL-005, LB-91.
+  **UPDATE 2026-07-13 — wall (1) RESOLVED + arbiter validated (TL-013):** `POST /api/teams` now forwards
+  `consensusMode` to `createTeam` (branch `task-arbiter-enable`, `d06893f`, +2 server tests), so the arbiter Judge
+  path is reachable through the product. **Validated live in TL-013**: goose+deepseek planners debated free-form, the
+  gpt-4o-mini Judge declared `converged`, and a real plan was synthesized (`awaiting_confirmation`). Walls (2)
+  `providerName` → **BL-046** (done), and (3) google tool-schema 400 — both are **API-agent-specific and moot for the
+  MCP-attach path** (goose isn't an API completer hitting google; it debates as an attach worker). Remaining on this
+  item: consider hardening the **Judge's convergence bar** (TL-013 caveat: it was lax — declared converged though the
+  two planners endorsed different ideas). Merge of `task-arbiter-enable` is PO-gated.
+
+<!-- @item
+id: BL-045
+status: deferred
+date: 2026-07-13
+epic: null
+tags: [healthcheck, gemini, attach-mode, tester-finding, latency]
+-->
+- [deferred · **PO-PARKED 2026-07-13 (LB-92): agy declared unfit as an MCP attach client; fix deferred until further facts emerge — do not spend resources now**; Tester finding 2026-07-13 (TL-006); reopens the TL-002 residual] — **Attach-mode Gemini/agy agents time out
+  the startup healthcheck (30s)** — re-running TL-001 with real `agy` clients, both agents attached fine but
+  `start_pair_chat` failed: `Agent tl006-a did not respond to healthcheck within 30000ms`. **Root cause:** the
+  healthcheck reaches an attached agent as a full `exec_rpc` requiring a complete provider-CLI generation (the BL-032
+  bridge; the client's prompt asks for a `healthcheck_ack` JSON) — the agy/gemini CLI's cold-start + first-turn latency
+  exceeds (or hangs past) the 30s window; the client process stays alive still generating. **Codex acks fine** (fast
+  enough — TL-004), so it's gemini-CLI latency, not the `McpCompleter` transform. **Options:** raise the healthcheck
+  timeout for slow providers; make the healthcheck a *lightweight liveness ping* that does NOT require a full LLM
+  generation (a real fix — the dedicated `handleHealthcheck` path also runs a full turn, `llm-agent.mjs:138`); or
+  reduce agy client cold-start latency. Note: contradicts the expectation that this residual was already resolved.
+  **Fix attempt 1 (provider-specific timeouts; gemini/agy → 90000ms) — REFUTED at gate 2 (Claude, 2026-07-13, live
+  verify):** the timeout *is* correctly raised to 90000 (confirmed in the agy client turn), unit tests pass, but a
+  real agy agent **still fails** — `did not respond to healthcheck within 90000ms`, and the client produced **no
+  response at all** (process alive + silent past 90s). So the root cause is **not "the timeout was too short" — the
+  agy client HANGS on the healthcheck `exec_rpc`** (never produces a `healthcheck_ack`). No timeout value fixes a
+  hang. **Real fix must target the agy/gemini client executor** (why the first `exec_rpc` never returns) **or replace
+  the healthcheck with a lightweight liveness ping** that doesn't depend on a full agy generation. The
+  provider-timeout code is a fine building block but insufficient alone. Source: TL-006, TL-002 residual, LB-89.
+
+<!-- @item
+id: BL-046
+status: todo
+date: 2026-07-13
+epic: null
+tags: [api-agents, openrouter, product-gap, enabler]
+-->
+- [todo · promoted from BL-044 #2 (2026-07-13); the enabler for `decision-api-agents-for-coordination.md`] —
+  **`POST /api/agents` must accept `providerName` (unblock OpenRouter/non-google API agents)** — the create handler
+  reads only `{id, provider, model}` (`server.ts:593`) and **drops `providerName`**, so an `api`-provider agent
+  always defaults to `google` (`registry.ts:250`, `providerName || 'google'`). This is the **single real blocker** to
+  creating OpenRouter/Nous-backed API agents through the product — the foundation of the PO's 2026-07-13 decision to
+  run the **coordination layer on OpenRouter agents** (keeping MCP clients for the implementation layer). **Fix:**
+  accept + forward `providerName` through create → `activate` → `createAgent` so `ApiCompleter` gets the intended
+  `ApiProvider`. **Verified prerequisite met:** OpenRouter is schema-compatible — a faithful consensus request
+  (forced `tool_choice` + json `response_format` + tools) returned HTTP 200 with a valid `opinion` tool call on
+  `openai/gpt-4o-mini` (the Google 400 was google-specific). Small, targeted. Source:
+  `design/decision-api-agents-for-coordination.md`, TL-005, LB-91.
+
+<!-- @item
+id: BL-047
+status: todo
+date: 2026-07-13
+epic: null
+tags: [api-agents, driver-lifecycle, conversation, tester-finding]
+-->
+- [todo · Tester finding 2026-07-13 (TL-007)] — **API agents are not reusable across conversations — the driver stops
+  at conversation_end** — the `InProcessAgentDriver` calls `this.stop()` on `conversation_end` (the BL-033 lifecycle
+  path). For an **MCP-attached** agent that's correct (the client shuts down too). For an **API agent** there is no
+  client, so the agent goes `busy → ready` (looks reusable) but its **driver is stopped** — the next conversation's
+  startup healthcheck is never processed and times out at 30s. Observed in TL-007: the first conversation completed
+  cleanly, but a **second** conversation with the *same* agents failed (`tl007-a did not respond to healthcheck within
+  30000ms`); **fresh** agents worked. **Fix options:** re-activate/restart the driver when a ready API agent is pulled
+  into a new conversation, OR make `conversation_end` not stop the driver for `provider === 'api'` agents (only
+  terminate the CLI-client path). Low-severity workaround today: create fresh API agents per conversation (cheap). Note:
+  the agent `status` (`ready`) is misleading — it does not reflect the stopped driver. Source: TL-007, decision note.
+
+<!-- @item
+id: BL-041
+status: done
+date: 2026-07-13
+epic: null
+tags: [consensus, planning-protocol, robustness, provider-cost, tester-finding]
+-->
+- [done · merged 2026-07-13 (master `019db72`); Tester finding 2026-07-13 (TL-010)] — **Cap the planning reject/resubmit loop — a malformed agent can spin
+  it unbounded (provider-cost + robustness risk)** — when a planner emits a protocol message the orchestrator rejects
+  (invalid JSON / wrong `message_payload` envelope / unmet `ack_planning_protocol`), it replies "Please resubmit your
+  intended response as valid JSON" and re-prompts — with **no bound**. In TL-010 a goose planner span **120 turns** on
+  `openai/gpt-4o` (peer 12) without advancing; `maxRepliesPerAgent=2` did **not** cap it because an ack/resubmit is
+  not counted as a "reply". A badly-behaved agent thus stalls the planning session *and* burns real provider budget.
+  **Fix:** a bounded retry per protocol step (e.g. N resubmits → interrupt planning with a clear error), and/or count
+  resubmits against a cap. Independent of provider — surfaced with goose but applies to any agent that emits malformed
+  protocol JSON. Source: TL-010, testlog.
+  **Resolution (merged `019db72`):** added a per-agent ack re-request budget (`MAX_ACK_REREQUESTS=2` +
+  `ackRetryCounts`) in `team-coordinator.ts`, mirroring the existing regression-correction budget; on exhaustion the
+  offender is ejected peer-safe (`ejectPlanner` → `awaiting_operator`), budget resets on a valid ack and clears on task
+  teardown. Regression test `team-ack-budget.test.ts` (never-ack → ejected; single stumble → graceful). Suite 281/281.
+
+<!-- @item
+id: BL-042
+status: todo
+date: 2026-07-13
+epic: null
+tags: [goose, consensus, planning-protocol, coordination-profile, optional]
+-->
+- [todo · optional · Tester finding 2026-07-13 (TL-009/TL-010)] — **(Optional) Full goose consensus recipe — embed the
+  protocol contract so goose can plan** — goose is verified as a dev + pair-chat agent (spike, TL-008) but **cannot
+  complete the strict multi-phase consensus protocol** (TL-009: content good on gpt-4o but stalls opinion→
+  agreement_proposal + 60s force-shutdown; TL-010: the `--max-turns 3 --no-profile --system` coordination profile
+  fixed latency but goose emits `{message_type,text}` while the protocol wants a `message_payload` envelope + an
+  `ack_planning_protocol` handshake → reject/resubmit runaway). Root cause: the protocol expects an exact JSON contract
+  delivered in the turn briefing, which a general agentic wrapper doesn't reproduce reliably. **If** goose-as-planner
+  is still wanted, author a **full protocol recipe** — a goose `--recipe`/`--system` that embeds every `message_type`'s
+  exact `message_payload` schema + the ack handshake and the phase-advancement rules (≈ replicating the contract).
+  **Default recommendation instead:** goose for implementation + pair chat; keep strict consensus on the M06 CLI-agent
+  path. The env-driven coordination profile (`AGENTTALK_GOOSE_MAX_TURNS`/`_NO_PROFILE`/`_SYSTEM`, client
+  `ee258b6`) is the building block. Source: TL-009, TL-010, `decision-api-agents-for-coordination.md`.
+
+<!-- @item
+id: BL-043
+status: todo
+date: 2026-07-13
+epic: null
+tags: [arbiter, consensus, heterogeneous-team, claude, goose, experiment, next-session]
+-->
+- [todo · PO idea 2026-07-13 · **next-session experiment**] — **Heterogeneous arbiter: a Claude-backed MCP client as
+  the Arbiter/Judge, goose agents for planners + worker** — TL-013 proved arbiter (semantic) consensus works with
+  all-goose+deepseek, but the **Judge's convergence bar was lax** (it declared `converged` though the planners
+  endorsed different ideas — the Judge is hardcoded to openrouter `gpt-4o-mini` via `callApi` in
+  `arbiter-coordinator.ts`). The PO's test: run the debate with **goose planners/worker** but the **Judge (and
+  Synthesizer) backed by a real Claude MCP client** — a strong model judging convergence + authoring the plan.
+  **Value:** (a) harder convergence rigor (fixes the TL-013 caveat); (b) first true **mixed-provider** team test
+  (goose attach + Claude attach + the arbiter path). **Work needed:** make the arbiter Judge/Synthesizer **pluggable**
+  — today they're a hardcoded `callApi({provider:'openrouter', model:'openai/gpt-4o-mini'})`; route them to a
+  Claude-backed completer/MCP client instead (config or a dedicated arbiter-agent seat). Depends on
+  `task-arbiter-enable` (BL-044 wall 1) being merged. Source: PO, TL-013.
+
 *(add new items above this line)*

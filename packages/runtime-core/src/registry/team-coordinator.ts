@@ -83,6 +83,12 @@ const MAX_AGREEMENT_ASKS = 2;
 // corrections the offender is ejected (peer-safe), not dual-killed. (Name kept
 // for low-churn continuity; meaning is now "protocol correction retries".)
 const MAX_REGRESSION_RETRIES = 2;
+// BL-041: bound the ack-phase re-request loop. A planner that keeps sending
+// non-ack messages during protocol_ack_pending is re-prompted to acknowledge;
+// without a cap this ran unbounded (TL-010: a malformed agent span it ~120 turns,
+// burning provider budget). After this many re-requests the offender is ejected
+// (peer-safe, fail-soft) — same disposition as an exhausted correction budget.
+const MAX_ACK_REREQUESTS = 2;
 const MAX_DISCUSSION_TURNS = 6;
 
 interface AgreementState {
@@ -148,6 +154,8 @@ export class TeamCoordinator {
   private readonly taskPendingProposal: Map<string, string> = new Map();
   private readonly taskAcceptedProposal: Map<string, string> = new Map();
   private readonly regressionRetryCounts: Map<string, number> = new Map();
+  // BL-041: per-agent ack-phase re-request budget, keyed `${taskId}:${agentId}`.
+  private readonly ackRetryCounts: Map<string, number> = new Map();
   private readonly factCollectionStates: Map<string, FactCollectionState> = new Map();
   private readonly planningPhases: Map<string, PlanningPhase> = new Map();
   private readonly discussionTurnCounts: Map<string, number> = new Map();
@@ -443,6 +451,22 @@ export class TeamCoordinator {
     const planningProtocolState = this.planningProtocolStates.get(task.id);
     if (planningProtocolState && planningProtocolState.pendingAckPlannerIds.size > 0) {
       if (planningProtocolState.pendingAckPlannerIds.has(senderAgentId)) {
+        // BL-041: bound the re-request loop. Without a cap, a planner that never
+        // sends a valid ack_planning_protocol (e.g. keeps emitting opinion/invalid
+        // JSON) is re-prompted forever, stalling the round and burning provider
+        // budget (TL-010: ~120 turns). On budget exhaustion, eject peer-safe —
+        // the same fail-soft disposition as an exhausted protocol-correction budget.
+        const ackKey = `${task.id}:${senderAgentId}`;
+        const ackRetries = this.ackRetryCounts.get(ackKey) ?? 0;
+        if (ackRetries >= MAX_ACK_REREQUESTS) {
+          this.ackRetryCounts.delete(ackKey);
+          void this.ejectPlanner(
+            senderAgentId,
+            `did not acknowledge the planning protocol after ${MAX_ACK_REREQUESTS} re-requests`,
+          );
+          return true;
+        }
+        this.ackRetryCounts.set(ackKey, ackRetries + 1);
         try {
           await this.deps.sendProtocol(senderAgentId, 'EVT', {
             type: 'custom_event_request',
@@ -1022,6 +1046,7 @@ export class TeamCoordinator {
     }
 
     state.pendingAckPlannerIds.delete(agentId);
+    this.ackRetryCounts.delete(`${task.id}:${agentId}`); // BL-041: acked → reset budget
     this.recordTaskTranscript(task, {
       kind: 'system',
       from: agentId,
@@ -2163,6 +2188,12 @@ export class TeamCoordinator {
     for (const key of this.regressionRetryCounts.keys()) {
       if (key.startsWith(`${taskId}:`)) {
         this.regressionRetryCounts.delete(key);
+      }
+    }
+    // BL-041: the ack-phase budget shares this task's teardown.
+    for (const key of this.ackRetryCounts.keys()) {
+      if (key.startsWith(`${taskId}:`)) {
+        this.ackRetryCounts.delete(key);
       }
     }
   }

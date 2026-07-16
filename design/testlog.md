@@ -187,3 +187,421 @@ for project decisions or reviewer ledgers for merge verification.
     `cmux move-surface --surface <ui-surface> --pane <pane> --focus true`, then verify with `cmux tree --all`.
   - After temporary browser instrumentation such as `addinitscript`, replace or reset the browser surface before the
     next validation run.
+
+### TL-004 · 2026-07-13 · Claude autonomous Tester rehearsal (first Claude-in-Chrome run)
+
+- objective: Re-run the existing testlog validations (Continue/reply-limit + Stop, i.e. BL-031 supervised control +
+  BL-033 lifecycle) autonomously as **Claude**, to validate Claude's Tester instrumentation via the Claude-in-Chrome
+  toolkit. Nothing new — BL-031/033 are closed; no new project evidence claimed.
+- role/driver: Claude as Tester, autonomous, explicitly requested by the PO ("testing your capability of testing").
+- worktree/commit: `/Users/fausto/Software/AgentTalk`, `master` at `1fbac5e` (the merged BL-031 supervised-control +
+  BL-033 lifecycle code).
+- strategy: **Claude-in-Chrome** (`mcp__claude-in-chrome__*`) for UI observation, real clicks, and screenshots; two
+  real `agentalk-mcp-client` **codex** clients per run; backend log + `/api/agents` + `/api/conversations` as ground
+  truth. Agents created via API and pair chat started via the browser WS `start_pair_chat` (documented topic-control
+  technique, TL-002 precedent) so the browser-driving focused on the Continue/Stop supervised flow.
+- evidence sources: Claude-in-Chrome screenshots at state transitions; backend log (healthcheck acks, pending-relay
+  `pending`/`approved_delivered`/`denied`, `conversation_end`, `-> terminated`); REST `/api/*` for final state.
+- real/fake path: **Real codex companion clients (×2 per run); no fake provider or mocked model.**
+- environment: frontend `http://localhost:5173`, backend `http://localhost:3000`, MCP `ws://localhost:55434/`,
+  Claude-in-Chrome tab `869995326`.
+- steps:
+  - Verified the Chrome extension was connected (`tabs_context_mcp`); stood up backend + UI; created agents via API.
+  - Toggled **Conversation control → Approve each** with a real click; **verified via backend**
+    (`set_relay_approval_mode approve_each`) — LB-89 real-click-updates-state discipline held.
+  - Continue path (`conversation-1783924052564`, `tl004-a`/`tl004-b`, maxReplies 2): started via WS, then clicked
+    **Continue** on each of the 4 proposed turns in the UI, confirming each `pending -> approved_delivered` in backend.
+  - Stop path (`conversation-1783924396706`, `tl004-stop-a`/`tl004-stop-b`): started via WS, clicked **Stop** on the
+    first proposed turn.
+- artifacts: 3 screenshots saved to disk at transitions (proposed turn, growing timeline, stop-proposed) — default
+  path, not yet per-test (same gap as TL-001); backend log in the session scratchpad.
+- result:
+  - **Continue** `conversation-1783924052564`: completed, replies **2/2**, 4 turns delivered via UI Continue, real
+    codex agents converged on "coverage (= behavior coverage) + one golden end-to-end test"; `conversation_end` sent
+    to both, both agents `terminated` (`/api/agents`), no stale `busy` — **BL-033 lifecycle confirmed**.
+  - **Stop** `conversation-1783924396706`: completed, replies **0/0**; the proposed turn was **denied and NOT
+    delivered** (`approved_delivered` count = 0), `conversation_end` reason *"stopped by operator before delivering …
+    proposed turn"* sent to both, both agents `terminated` — **BL-031 Stop semantics + BL-033 lifecycle confirmed**.
+- residuals:
+  - When the first (reply-limit) conversation ended, the *new* Stop-path proposed turn surfaced in the **sidebar**
+    Conversation-control panel while the main window stayed on the ended conversation (did not auto-switch). This is
+    the known BL-031 sidebar/history residual (TL-002), reproduced with the Claude toolkit — still BL-031/UI cleanup.
+  - Agent creation was via API for determinism, not the UI form; a future run should exercise the UI creation form.
+  - Screenshot artifacts still land at a default path (not `design/test-artifacts/TL-004/`) — BL-035 covers this.
+- replay notes:
+  - **Claude's tester surface is Claude-in-Chrome, not cmux/browser-use.** Load the deferred tools first
+    (`ToolSearch select:...tabs_context_mcp,navigate,computer,read_page,...`); create a new tab; check
+    `tabs_context_mcp` before acting; the extension can drop on Chrome auto-update.
+  - `ws://localhost:3000/ws` `start_pair_chat` is the reliable topic-controlled start when native `<select>`
+    automation is unreliable (TL-002 precedent held for Claude too).
+  - The inline Continue/Stop card auto-scrolls to the viewport bottom; the button y shifts as the timeline grows —
+    screenshot before each click. Real clicks were confirmed against the resulting backend event every time (LB-89).
+
+### TL-005 · 2026-07-13 · Arbiter/scrum-master consensus scenario — feasibility-blocked (findings, no run)
+
+- objective: PO scenario — two agents look at AgentTalk and agree on one file to refactor, with a third **arbiter**
+  that (1) assesses each reply's soundness and (2) declares agreement. Assess against the running product; run if
+  feasible.
+- role/driver: Claude as Tester, autonomous, PO-requested.
+- worktree/commit: `/Users/fausto/Software/AgentTalk`, `master` at `44e3f8d`.
+- strategy: declare-first, then **ground-truth feasibility before running** (the discipline paid off). Attempted the
+  reachable `'protocol'` planner-planner-worker consensus via API-driven agents (`Autostart G+C` shape, replicated over
+  the API).
+- evidence sources: source trace (`registry.ts`, `arbiter-coordinator.ts`, `server.ts`, `api-client.ts`); backend log
+  (agent exec errors); `/api/agents`, `/api/teams`.
+- real/fake path: **real** API keys (OPENROUTER/GEMINI/OPENAI set); API-driven `ApiCompleter` agents, no fakes.
+- environment: backend `http://localhost:3000`, MCP `ws://localhost:56747/`; API-only (no browser needed).
+- steps:
+  - Traced the arbiter path → found `consensusMode` hardcoded to `'protocol'` by the product (arbiter orphaned).
+  - Created 3 `api` agents + a planner-planner-worker team (protocol mode) and assigned a "agree on one file to
+    refactor" task with a real file list (API agents have no file tools).
+  - Round 1 (`openai/gpt-4o-mini`): **404** — `providerName` ignored → defaulted to `google`, which can't serve an
+    OpenAI model.
+  - Round 2 (`gemini-2.5-flash`): **400** — *"Forced function calling (ANY mode) with response mime type
+    application/json is unsupported"* — the consensus tool schema is incompatible with Google's endpoint.
+- artifacts: backend log in scratchpad; no UI/screenshots (API-only run).
+- result: **BLOCKED (no successful consensus run).** Three product walls (full detail in **LB-91**): (1) arbiter
+  unreachable; (2) `POST /api/agents` ignores `providerName` → API agents locked to `google`; (3) `google` 400s on the
+  protocol tool schema. **API-driven multi-agent consensus is non-functional via the product.** The PO chose to log
+  and stop rather than run the CLI-attached alternative.
+- residuals:
+  - The **CLI-attached** planner-planner-worker path (`McpCompleter`, M06-verified) was **not tested** — it's the only
+    working path and is more faithful (CLI agents can actually read the code). Candidate for a future run (A″).
+  - Work items → **BL-037**; the per-reply-soundness arbiter is the "Conductor/SM agent" (architect).
+- replay notes:
+  - **Ground-truth feasibility before spending provider budget.** Two doomed runs (404, 400) were still cheap because
+    the task failed on the first exec; but the source trace *predicted* the arbiter wall before any spend — that's the
+    highest-value tester move here.
+  - To create a non-google API agent you currently must bypass `POST /api/agents` (it drops `providerName`) — so the
+    API-driven path is effectively google-only until BL-037.
+
+### TL-006 · 2026-07-13 · TL-001 with real agy/Gemini agents — healthcheck still times out (TL-002 residual NOT resolved)
+
+- objective: re-run TL-001 (Continue + Stop) with **real agy/Gemini clients** to verify the TL-002 Gemini
+  healthcheck-timeout residual is resolved (PO reported it "should have been resolved by codex").
+- role/driver: Claude as Tester, autonomous, PO-requested.
+- worktree/commit: `/Users/fausto/Software/AgentTalk`, `master` at `aa315ac`.
+- strategy: **isolated backend on `PORT=3001`** (agy already occupied the default `:3000/:5173` with 6 agents + an
+  active conversation — two live test instances can't share fixed ports). Real agy clients attached to the isolated
+  MCP port; pair chat started via WS; **no browser** (the objective is the healthcheck, which is backend-log-observable).
+- evidence sources: isolated backend log; agy client log; `/api`.
+- real/fake path: **real agy/gemini clients ×2** (`--provider gemini`), no fakes.
+- environment: backend `http://localhost:3001`, MCP `ws://localhost:64501/`.
+- steps: created 2 gemini agents, launched 2 real agy clients (both attached fine), set `approve_each`, started a pair
+  chat → the startup healthcheck ran.
+- result: **FAILED at the healthcheck.** `Agent tl006-a did not respond to healthcheck within 30000ms`. **TL-002
+  residual is NOT resolved.**
+- diagnosis (grounded):
+  - The backend sends `EVT {type:'healthcheck', token, prompt}` (backend log line 76), but the **client receives it as
+    `{type:'exec_rpc', prompt:'…respond with a healthcheck_ack JSON…', timeoutMs:30000}`** (agy client log). So agy's
+    original observation — *the healthcheck is transformed into an `exec_rpc`* — is **factually correct** (the BL-032
+    bridge: `InProcessAgentDriver` + `McpCompleter` deliver it via the exec queue, the only channel an attached client
+    drains). It is **by design, not an McpCompleter bug** (verified working with codex in TL-004).
+  - The gemini client **received the exec_rpc but never produced the `healthcheck_ack`** — its process stayed **alive
+    and still generating well past 30s**. So the failure is the **agy/gemini CLI not completing a full generation turn
+    within (or near) the 30s window** (cold-start + first-turn latency, or a hang) — not the transform. Codex, being
+    faster, acks fine.
+  - Note: even the client's dedicated `handleHealthcheck` path (`llm-agent.mjs:138`) runs a **full executor turn**, so
+    the timeout would persist there too — the root cause is that a healthcheck requires a full provider-CLI generation,
+    which agy is too slow for.
+- residuals:
+  - **agy's `:3000/:5173` instance went down during my teardown.** I used broad `pkill` patterns (`PORT=3001` etc.);
+    per identify-before-reap I **cannot fully rule out that I contributed** (or agy yielded). launchd (4034) intact.
+    **Lesson re-applied: teardown with targeted PIDs, never broad `pkill`.**
+  - **Parallel-testing port collision:** two testers can't share the fixed `:3000/:5173`. Running an isolated backend
+    on `PORT=3001` is the clean workaround (backend honors `PORT`); the frontend proxy would also need repointing for a
+    second UI. Relates to BL-036 (extend to test-infra isolation).
+  - The gemini healthcheck timeout → **BL-038**.
+- replay notes:
+  - **Isolate parallel test instances via `PORT=<n>`** (backend) — no port collision.
+  - The healthcheck delivered to an attached agent is an `exec_rpc` requiring a full CLI generation; slow CLIs (agy)
+    blow the 30s budget. To validate a gemini run you must first get past this.
+
+### TL-007 · 2026-07-13 · TL-001 on a real instance with two OpenRouter API agents — BOTH paths PASS
+
+- objective: run TL-001 (Continue/reply-limit + Stop) on a **real AgentTalk instance** with **two OpenRouter
+  (`gpt-4o-mini`) API agents** — validating the coordination direction (decision-api-agents-for-coordination.md) now
+  that BL-039 unblocks non-google API agents.
+- role/driver: Claude as Tester, autonomous, PO-requested.
+- worktree/commit: instance run from branch `task-BL-039` (`313d089`, the providerName fix); default ports `:3000/:5173`.
+- strategy: create the 2 API agents via the **API** (the UI has no `providerName` field — BL-039 is API-level);
+  browser-driven Continue/Stop via Claude-in-Chrome; WS `start_pair_chat`; backend log + `/api` as ground truth.
+- real/fake path: **real OpenRouter `gpt-4o-mini` API agents ×2**, no fakes. No MCP clients / no attach.
+- environment: backend `http://localhost:3000`, frontend `http://localhost:5173`, Claude-in-Chrome tab.
+- steps: created 2 openrouter agents (create response echoed `providerName: openrouter` — BL-039 working); toggled
+  Conversation control → Approve each (backend-confirmed); started a pair chat; drove Continue (UI click) + auto-approved
+  the remainder to reply-limit; then a **fresh** pair chat + **Stop** (UI click).
+- result: **BOTH paths PASS.**
+  - **Healthcheck via OpenRouter acks fast** ("Hello! I am responsive.") — no agy-style hang, no attach ritual.
+  - **Continue/reply-limit:** completed **2/2**, `conversation_end` "All agents reached reply limit."
+  - **Stop:** the proposed turn was **denied, delivered-count 0** (not delivered), `conversation_end` "stopped by
+    operator…", conversation completed **0/0**.
+- findings:
+  - **OpenRouter API agents are excellent for the coordination layer** — reliable, fast, zero attach fragility. The
+    decision is validated end-to-end.
+  - **⚠️ API agents are NOT cleanly reusable across conversations → BL-040.** The `InProcessAgentDriver` calls
+    `this.stop()` at `conversation_end` (the BL-033 lifecycle). For a CLI client that's fine (the client terminates
+    too); for an **API agent there's no client**, so the agent shows `ready` but its **driver is stopped** — a second
+    conversation's healthcheck is never processed → 30s timeout. **Fresh agents each conversation work; reuse doesn't.**
+    (My in-run "stay ready/reusable" note was wrong — the *status* is ready, the *driver* is dead.)
+  - **API-agent lifecycle at conversation_end:** `busy → ready` (NOT `terminated` like CLI clients).
+  - **Residual reproduced:** BL-031 sidebar/history — the main window stayed on the completed conversation, so the
+    Stop-path proposed turn surfaced in the sidebar (same as TL-004/TL-006).
+  - **Cosmetic:** API agents' proposed turns render as raw protocol JSON (they emit the structured protocol payload).
+- replay notes:
+  - Create openrouter API agents via the API with `providerName: 'openrouter'` (BL-039); the UI form can't yet.
+  - **Use fresh agents per conversation** until BL-040 (API-agent driver reuse) is fixed.
+  - WS `start_pair_chat` + UI Continue/Stop is the reliable pattern (same as TL-004); Chrome extension was up.
+
+### TL-008 · 2026-07-13 · TL-001 (Continue + Stop) with TWO goose agents (OpenRouter) — BOTH paths PASS
+
+- objective: run TL-001 (supervised pair chat: Continue/reply-limit + Stop) with **two goose agents** — the first
+  end-to-end exercise of the new goose executor (branch `task-goose-executor` in `agentalk-mcp-client`) through the
+  full attach + supervised-relay stack. Proves the "delivered turn" conjunction left open by the goose spike.
+- role/driver: Claude, autonomous (resource fallback: planner+implementer+reviewer+tester; PO "do or die"). Fully
+  **scripted** via the runtime WS `/ws` + MCP attach — no human UI driver, no Chrome.
+- worktree/commit: `/Users/fausto/Software/AgentTalk` `master` at `63e7f86`; orchestrator **rebuilt** (`tsc -b`,
+  `dist/server.js` current with `src/server.ts`) so the test ran against live code, not a stale artifact.
+- strategy: isolated instance (`PORT=3001`, `AGENTTALK_MCP_PORT=3011`) — no clash with any PO instance (none on
+  :3000). Two `provider:'mcp'` agents per path + two `llm-agent.mjs --provider goose --model openai/gpt-4o-mini`
+  workers. A runtime `/ws` client set `approve_each`, drove `start_pair_chat` (maxReplies 3), auto-approved every
+  `pending_relay_updated` (Continue) or denied the first (Stop). Harness:
+  `scratchpad/tl008-goose-pairchat.mjs`.
+- evidence sources: backend server log (relay lifecycle, `send_to_agent`, `conversation_end`), `/api/conversations`
+  status, `/api/agents` final states, worker stdout (`Received turn` / `Waiting for turn`).
+- real/fake path: **real goose executors** driven by real OpenRouter `gpt-4o-mini`; no mocks. Model is a weak coder
+  by design (validates the substrate + relay mechanism, not agent-reply quality).
+- result: **BOTH paths PASS.**
+  - **Continue/reply-limit** (`conversation-1783953449973`): **completed**; 6 relays alternating a↔b all approved,
+    reached the reply limit; both agents ended `terminated` on `conversation_end` (correct BL-033 lifecycle).
+  - **Stop** (`conversation-1783953473349`): goose-a proposed a turn (`submit_exec_result` → `send_to_agent` →
+    pending relay); operator **`deny_pending_relay`** → conversation **completed/stopped**, `conversation_end`
+    reason "stopped by operator before delivering tl008-stop-a's proposed turn" — **turn NOT delivered**. Matches
+    TL-001/TL-007 exactly.
+- findings:
+  - **Goose is a viable coordination agent through the full supervised-relay protocol**, not just a dev executor:
+    it attached, passed the healthcheck (no agy-style timeout — one-shot executor, fresh `goose run` per turn),
+    conversed turn-by-turn, and honored reply-limit + operator-stop. **TL-006 failed here with agy; goose passes.**
+  - Turn latency was low (~2–3s/turn) — gpt-4o-mini + short prompts; no persistent-PTY fragility.
+  - Parity: goose now matches the TL-007 OpenRouter-API result for TL-001, but as a **dev-capable** attach worker
+    (API agents can't develop; goose can). This is the second dev-capable, vendor-neutral agent path working live.
+- residuals:
+  - **Transcript content not captured** this run (only the relay/lifecycle flow). The mechanism is what TL-001
+    validates, but next run should persist each agent's reply text for content review.
+  - Stop-path agents read `ready` in the final snapshot (taken ~0.5s post-stop) rather than `terminated`; the
+    `conversation_end` was sent to both (log) — cosmetic timing of the snapshot vs the worker's 5s shutdown, not a
+    lifecycle miss.
+- replay notes:
+  - Rebuild the orchestrator (`npm run build --workspace @agenttalk/orchestrator`) before an isolated-instance run;
+    `dist/index.js` mtime can lag while `server.js` is current (incremental `tsc -b`).
+  - Node 24 global `WebSocket` (WHATWG: `addEventListener`/`ev.data`) works for the `/ws` driver — no `ws` dep.
+  - Goose workers self-terminate on `conversation_end`, so use **fresh agents+workers per path** (as TL-001 does).
+  - Teardown via tracked child PIDs (SIGTERM) + targeted port-PID sweep; never broad `pkill`.
+
+### TL-009 · 2026-07-13 · planner-planner-worker CONSENSUS with THREE goose agents on gpt-4o — PARTIAL (protocol engaged, stalled at phase advancement)
+
+- objective: run the **consensus/arbiter scenario (TL-005 shape)** — the M06 planner-planner-worker `'protocol'`
+  consensus — with **goose agents on a stronger model (`openai/gpt-4o`)**, capturing transcripts to also answer the
+  TL-008 reply-quality question. Goose uses the **CLI-attach path** that TL-005 flagged as "the only working path,
+  untested" (its three walls were all API-path-specific: providerName-drop [now BL-039-fixed], google 400, arbiter
+  orphaned).
+- role/driver: Claude, autonomous (resource fallback; PO "do both"). Scripted via REST teams API + runtime `/ws`;
+  full event recording via `AGENTTALK_RECORDING_PATH`. Harness: `scratchpad/tl009-goose-consensus.mjs`.
+- worktree/commit: `/Users/fausto/Software/AgentTalk` `master` at `508f405`; orchestrator rebuilt from current src.
+- feasibility-first (TL-005 lesson): probed models before spend — `anthropic/claude-3.5-sonnet(-*)` and
+  `google/gemini-2.0-flash-001` both **404 on this OpenRouter account**; **`openai/gpt-4o` works** (used it).
+- environment: isolated `PORT=3001` / MCP `3011`; 3 `provider:'mcp'` agents (2 planners + 1 worker) each with an
+  attached `llm-agent.mjs --provider goose --model openai/gpt-4o` worker; team `maxRepliesPerAgent=2`.
+- real/fake path: **real goose executors on real gpt-4o**; no mocks. Task: agree on one concrete improvement to a
+  generic multi-agent system (conceptual, to isolate the protocol state-machine from file-tool availability).
+- result: **PARTIAL — NO_CONSENSUS; planning interrupted at phase advancement.** But goose got **further than any
+  prior consensus attempt** in this log:
+  - **Goose DID speak the protocol:** planners emitted real `submit_exec_result` → `consensus_respond` tool calls
+    with structured payloads (`proposal`, `expected_response_types:['opinion','agreement_proposal']`) — the worker
+    maps goose output onto the consensus tools correctly. **Reply content (gpt-4o) was coherent and on-topic** (e.g.
+    planner-b: "Improving resource allocation dynamically based on agent performance metrics is a promising
+    direction… let's discuss potential methods for implementing adaptive resource management.").
+  - **Where it stalled:** planners stayed in the **`opinion`** phase and never emitted **`agreement_proposal`**
+    despite orchestrator reminders ("Reminder (2/2): please call agreement_proposal now"). → "Planning interrupted
+    because required event(s) were not received: agreement_proposal." Worker received **0 turns** (correct — no
+    plan). Both planners force-terminated.
+- findings:
+  - **Two structural mismatches, NOT a plumbing bug** (both survive the stronger model, so they're not just
+    capability):
+    1. **Phase-advancement discipline.** Goose reliably produces an *opinion* but doesn't switch `message_type` to
+       `agreement_proposal`/`agreement_acceptance`/`submit_plan` on demand. Goose's agentic wrapper (tool-use,
+       todos) dilutes the "emit exactly this next protocol message" instruction. gpt-4o improved *content*, not
+       *transition compliance*.
+    2. **Turn-latency budget.** `[TeamCoordinator] Forced shutdown for agent … after 60000ms` — goose's per-turn
+       wall-clock (its multi-step loop, `--max-turns 30`, + gpt-4o latency) can exceed the orchestrator's **60s
+       planning-turn budget**. A coordination turn shouldn't need goose's tool loop at all.
+  - **Capability map is now clear:** goose ✅ dev/implementation turns (spike) · ✅ simple supervised relay / pair
+    chat (TL-008) · ⚠️ strict multi-phase consensus state-machine (TL-009). This *confirms* the coordination-vs-dev
+    split in `decision-api-agents-for-coordination.md` and extends it: goose planners *can* engage (unlike the
+    API-blocked TL-005) but don't *complete* the protocol.
+- residuals / follow-ups (candidate backlog):
+  - For goose-as-planner: (a) a goose **coordination profile** — `--max-turns 3`, no dev tools, a `--system` prompt
+    that forces a single structured protocol message; (b) raise/relax the 60s planning-turn budget for slower
+    attach workers; (c) accept goose for *implementation* turns and keep strict consensus on a different agent type.
+  - Transcript capture worked (server log + recording); the `/ws` phase-event filter caught little — read the
+    backend log for protocol detail.
+- replay notes:
+  - Probe every non-default OpenRouter model id with a one-word `goose run` before a full run — this account 404s on
+    several anthropic/google ids.
+  - Consensus team = exactly **2 planners + 1 worker**, `POST /api/teams {members:[{agentId,role}]}` then
+    `POST /api/teams/:id/task {description, maxRepliesPerAgent}`; a completed plan needs `.../tasks/:id/confirm`.
+  - The 60s force-shutdown is the ceiling to watch for any slow attach worker in planning.
+
+### TL-010 · 2026-07-13 · goose consensus with a COORDINATION PROFILE (--max-turns 3 + --no-profile + --system) — latency fixed, consensus still fails (schema + runaway loop)
+
+- objective: retest TL-009 consensus with a goose **coordination profile** targeting TL-009's two failures —
+  `--max-turns 3` + `--no-profile` (drop dev tools) + a `--system` prompt forcing a single structured protocol
+  message AND phase advancement. Does taming goose's wrapper let it complete consensus?
+- role/driver: Claude, autonomous (PO-directed hypothesis). Same harness as TL-009 with the coordination env set:
+  `scratchpad/tl010-goose-consensus-coord.mjs`. Model `openai/gpt-4o`, 3 goose agents (2 planner + 1 worker).
+- enabling change (committed, branch `task-goose-executor`): `getProviderCommand('goose')` now reads
+  `AGENTTALK_GOOSE_MAX_TURNS` / `AGENTTALK_GOOSE_NO_PROFILE` / `AGENTTALK_GOOSE_SYSTEM` (defaults unchanged → TL-008
+  behavior preserved). Client build green: lint + contract v7 + **16/16 tests** (+3 profile tests). Pre-run probe
+  confirmed the profile emits a clean single JSON message: `{"message_type":"opinion","text":"…"}`.
+- result: **NO_CONSENSUS — but a different, more precise failure than TL-009.**
+  - **The profile FIXED what it targeted (latency):** no `Forced shutdown … after 60000ms` this run — turns are fast
+    (no tool loop). That half of the hypothesis worked.
+  - **Consensus still fails on a DEEPER blocker: protocol-schema conformance + an ack handshake.** The orchestrator
+    repeatedly returned `ack_planning_protocol` ("Acknowledge planning protocol before discussing task content") and
+    **"Please resubmit your intended response as valid JSON."** Goose emitted `{"message_type":"opinion","text":…}`
+    but the protocol wants a richer envelope — a **`message_payload`** with per-type fields (e.g. `fact_collection_end`
+    → `{summary}`, `work_accept` → `{text}`). Goose never cleared the acknowledgment gate, so it never really
+    entered opinion→agreement.
+  - **New risk exposed — unbounded resubmit loop:** because turns are now fast, instead of a 60s shutdown goose span
+    a tight reject→resubmit loop — **planner-a took 120 turns** (planner-b 12) on gpt-4o. `maxRepliesPerAgent=2` did
+    NOT cap it (an ack/resubmit isn't counted as a reply). A malformed agent can spin the planning loop and rack up
+    provider cost.
+- findings:
+  - **Two targeted rounds (TL-009 stronger model, TL-010 coordination profile) both fail to reach consensus.** The
+    capability boundary is now firm: goose ✅ dev turns · ✅ simple supervised relay/pair chat (TL-008) · ❌ strict
+    multi-phase consensus protocol. The profile shifted the failure from *latency/phase-stall* to
+    *schema-conformance/runaway-loop* — progress in understanding, not a pass.
+  - **Root cause:** the consensus protocol expects an exact JSON contract (`message_payload` schemas per
+    message_type + an `ack_planning_protocol` handshake) delivered in the turn briefing. A general agentic wrapper
+    (goose) doesn't reproduce it reliably even when guided; making it work would require embedding the **full**
+    protocol schema in the `--system` prompt (≈ replicating the contract) — the protocol is built for agents that
+    follow the in-turn briefing precisely (the M06 CLI agents).
+- residuals / follow-ups (candidate backlog):
+  - **BL (new): cap the planning reject/resubmit loop** — an agent emitting malformed protocol JSON should hit a
+    bounded retry, not spin (120 gpt-4o calls here). Product robustness + provider-cost safety.
+  - If goose-as-planner is still wanted: author a **full protocol recipe** (`--system` embedding every
+    `message_type`'s `message_payload` schema + the ack handshake), or a goose `--recipe`. Otherwise the clean call:
+    **goose for implementation + pair chat; keep strict consensus on the M06 CLI-agent path.**
+  - The env-driven coordination profile itself is a keeper — it fixed latency and is the right knob for future
+    coordination-turn tuning.
+- replay notes:
+  - Watch worker "turns received": a healthy planner is single digits; **120 = runaway** (schema-reject loop).
+  - The coordination profile lives in `provider-runtime.mjs` via 3 env vars; set them per-agent, not globally, so
+    dev agents keep tools + `--max-turns 30`.
+
+### TL-011 · 2026-07-13 · goose consensus with deepseek-v4-flash + a SCHEMA-ACCURATE recipe — CLOSEST YET (schema barrier broken; fails on a proposer race + latency)
+
+- objective: PO hypothesis — a more capable, cheap model (`deepseek/deepseek-v4-flash`) plus a corrected coordination
+  recipe should let goose complete consensus. Also tests my TL-010 diagnosis that the `--system` prompt specified the
+  **wrong** JSON shape.
+- role/driver: Claude, autonomous (PO-directed). Harness `scratchpad/tl011-goose-consensus-deepseek.mjs` (TL-010 with
+  the deepseek model + a rewritten recipe). BL-041 (ack-loop cap) now in the live dist → a stall is bounded, not a
+  runaway. Feasibility-first: probed the model id (all deepseek ids PONG'd; bad ids still 404 → real).
+- the recipe fix (BL-042 direction): TL-010's `--system` told goose to emit `{message_type,text}`; the orchestrator
+  requires a **`message_payload` envelope** with per-type fields (`response-schema.ts`). TL-011's `--system` encodes
+  the exact contract (per-type `message_payload`, ack-first, one-opinion-then-propose/accept/submit).
+- result: **NO_CONSENSUS — but by far the closest run, and the schema barrier is BROKEN.**
+  - **Schema conformance: SOLVED.** deepseek emitted correctly-enveloped messages — a well-formed `agreement_proposal`
+    `{text, proposal, expected_response_types}` and a well-formed `submit_plan` `{plan, text, proposal}`. Agents got
+    through **ack → fact_collection → discussion → proposal** — far past TL-009/TL-010 (which stalled at ack/opinion).
+  - **Content quality: excellent.** deepseek produced a real, specific plan (a `ProtocolStateMachine` with
+    IDLE/FACT_COLLECTING/…/SUBMITTING states, file refs, transition validation). Confirms the capable-model bet.
+  - **My TL-010 diagnosis confirmed:** the wrong-shape system prompt WAS a real contributor; fixing it unblocked
+    schema conformance. It was not purely a model limitation.
+- where it failed now (a NEW, more advanced blocker):
+  - **Proposer/acceptor race.** The protocol wants ONE planner to `agreement_proposal` and the OTHER to
+    `agreement_acceptance`. Both raced: planner-b proposed but wasn't the awaited proposer → `Unexpected
+    agreement_proposal: not awaiting proposal from this agent`; planner-a was asked ("Reminder (2/2): call
+    agreement_proposal now") but didn't comply in time → "Planning interrupted: required event agreement_proposal not
+    received." planner-b THEN submitted a (great) plan, but the task was already interrupted → "no active task".
+  - **60s turn-latency ceiling recurred** — `Forced shutdown … after 60000ms` for both planners (deepseek's longer
+    generations, e.g. the submit_plan, can exceed the orchestrator's planning-turn budget).
+- findings:
+  - **The consensus gap is now SMALL and concrete**, not structural: capable model + schema-accurate recipe cleared
+    conformance and content; what remains is (a) **role discipline** — planners must be *reactive* to the
+    orchestrator's proposer/acceptor designation (don't both proactively propose; wait to be asked, then comply
+    immediately), and (b) **the 60s planning-turn budget** vs slower model turns.
+  - Updated capability map: goose ✅ dev · ✅ pair chat · ⚠️→ consensus **nearly** works with a capable model + full
+    recipe (proposal phase reached, valid plan produced) — one recipe tweak + a latency allowance from a pass.
+- residuals / next (candidate TL-012):
+  - Recipe: add explicit reactivity — "NEVER send agreement_proposal unless the orchestrator asked YOU; if asked to
+    accept, send agreement_acceptance immediately repeating the exact proposal." Feeds BL-042.
+  - Latency: raise/relax the 60s planning-turn force-shutdown for slower attach workers (own small item?), or pin a
+    faster deepseek turn (shorter max output).
+- replay notes:
+  - deepseek-v4-flash on OpenRouter is capable + conformant for this protocol; the bottleneck is coordination + the
+    60s budget, not the model.
+  - A schema-accurate `--system` recipe is essential — mirror `response-schema.ts` payloads exactly.
+
+### TL-012 · 2026-07-13 · goose consensus, deepseek + reactive-role recipe — NO_CONSENSUS (phase-skip); the win was NOT snatched
+
+- objective: the "one last run" — add reactive role discipline (don't both propose; comply immediately when the
+  orchestrator designates you) + brevity, on top of TL-011's deepseek + schema-accurate recipe, to actually complete
+  consensus. Harness `scratchpad/tl012-goose-consensus-final.mjs`.
+- result: **NO_CONSENSUS.** The recipe fixed the TL-011 proposer *race* but caused the opposite error: **planner-a
+  jumped straight to `submit_plan` while still in the discussion phase**, skipping agreement_proposal/acceptance. The
+  orchestrator correctly rejected it (regression-correction budget, "not a valid move at current phase: discussion …
+  (correction attempt 1/2)"), then asked planner-a to propose; it didn't comply in time → "Planning interrupted:
+  required event agreement_proposal not received." planner-b also tried a (late) submit_plan after teardown ("Agent
+  not found"). Content + schema again excellent (valid submit_plan payloads, real plans); the wall is the handshake.
+- finding — the honest bottom line after FOUR attempts (TL-009→012): **the recurring, unsolved blocker is the
+  two-planner agreement HANDSHAKE choreography** (opinion → the designated ONE proposes → the OTHER accepts → first
+  submits). deepseek nails schema + content; prompt tuning keeps *shifting* the failure around this junction rather
+  than solving it: TL-009 stalled at opinion, TL-010 wrong schema at ack, TL-011 both raced to propose, TL-012
+  skipped ahead to submit_plan. Reliably driving the distributed multi-phase handshake between two general agentic
+  wrappers via prompt-only instructions did not land within this effort budget.
+- conclusion: **goose is confirmed for dev + pair chat; strict two-planner consensus is not reliably reachable by
+  recipe tuning alone.** Getting it over the line likely needs more than a prompt — e.g. the orchestrator asserting
+  roles more forcibly (assign proposer/acceptor explicitly and reject everything else), a longer planning-turn
+  budget, or a purpose-built agent — i.e. real BL-042 work with uncertain payoff. Recommend: **stop here**; keep
+  strict consensus on the M06 CLI-agent path; bank the goose dev + pair-chat wins. BL-041 (ack-loop cap) held across
+  all four runs — no runaways.
+- replay notes: recipe over-steer is real — "reach agreement fast" made deepseek skip phases. The safe framing is
+  "advance EXACTLY one phase per orchestrator request; never skip." But see conclusion: this is chasing a moving
+  target.
+
+### TL-013 · 2026-07-13 · ARBITER (semantic) consensus with goose+deepseek — ✅ CONSENSUS REACHED
+
+- objective: after the PO clarified we are NOT aiming for strict-protocol adherence (TL-009→012 were all in
+  `'protocol'` mode by accident) — test the **arbiter** mode the product actually intends: planners debate
+  **free-form**, a gpt-4o-mini **Judge** declares convergence semantically, a Synthesizer authors the plan. No
+  handshake for the planners to fail.
+- role/driver: Claude, autonomous (PO-directed). Harness `scratchpad/tl013-arbiter-mode.mjs`.
+- enabler (branch `task-arbiter-enable`, `d06893f`): BL-037 wall (1) — `POST /api/teams` now forwards
+  `consensusMode` to `createTeam` (was hardcoded to the `'protocol'` default). +2 server tests (19/19). Rebuilt dist.
+- setup: isolated `PORT=3001`/`3011`; 3 goose agents (deepseek-v4-flash), planners on a **free-form debate profile**
+  (`--no-profile`, `--max-turns 3`, a "debate → converge, say I AGREE" system prompt — NO protocol JSON). Team
+  created with `consensusMode: 'arbiter'` (confirmed in the create response); task assigned `maxRepliesPerAgent 3`.
+- result: **✅ CONSENSUS REACHED.** `status: awaiting_confirmation`, `planningComplete: true`, a real synthesized
+  plan produced. Evidence (orchestrator recording — authoritative):
+  - **The planners debated** (9 transcript entries): b proposed a "shared global progress tracker"; a proposed a
+    "basic task prioritization queue"; both converged with explicit "I AGREE".
+  - **Arbiter verdict: `converged`** — rationale: *"Both planners have agreed on the same concrete plan to implement
+    a basic task prioritization queue…"*
+  - **Synthesized plan**: a coherent Markdown plan (task prioritization queue: objective, features, expected
+    outcome). Task → `awaiting_confirmation` (ready for operator confirm → worker delegation).
+- findings:
+  - **Arbiter mode works end-to-end with goose (mcp-attach) + deepseek planners.** My earlier worry that the attach
+    worker wouldn't act on the arbiter's `message_received` turns was WRONG — the planners debated fine. Reading the
+    recording (not my harness summary) is what caught this.
+  - **Validates the PO's framing decisively:** 4 strict-protocol runs (TL-009→012) all died on the handshake; the
+    **first** arbiter run succeeded. Semantic agreement, not protocol adherence, is the right near-term path.
+  - **Honest caveats:** (1) my harness read `currentTask` from `/api/teams` (which returns `currentTaskId`) → it
+    displayed an empty transcript and falsely printed NO_CONSENSUS; the **recording** showed the real success. Fix
+    the harness to fetch the task/planning-run. (2) The agreement was semantically **loose** — the two planners
+    actually endorsed *different* ideas ("I AGREE" to both a progress tracker AND a prioritization queue) and the
+    Judge leniently declared `converged` on one. The mechanism is sound; the **Judge's convergence bar is lax** —
+    future tuning (a stricter judge rubric, or making planners align on ONE idea first) would harden it.
+- replay notes: arbiter planners want a FREE-FORM profile (no protocol recipe); `--no-profile` + a short debate
+  nudge worked. Read the recording / planning-run for ground truth, not just team status. Judge + Synthesizer are
+  hardcoded to openrouter `gpt-4o-mini` in `arbiter-coordinator.ts` (`callApi`).

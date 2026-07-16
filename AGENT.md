@@ -132,6 +132,10 @@ one agent holds SM and both quality gates — accepted because merges stay PO-ga
 - **Gemini (agy)** — key store `~/.config/AgentTalk_Gemini/session-primer-key.json` (bootstrapped 2026-06-27;
   agy's own `~/.gemini` tree is a write-protected/ephemeral sandbox, hence the stable XDG dir); lessons
   `design/lessons/gemini-lessons.md`; meter block `antigravity`.
+  **⚠️ Currently UNFIT as an MCP attach client (PO-parked 2026-07-13):** the agy client **hangs** on the startup
+  healthcheck `exec_rpc` — no ack even at 90s; deeper than a timeout. **Do NOT attach agy as a live MCP client** for
+  pair-chats / consensus / attach tests until reopened — use codex/claude clients instead. See LB-92 / BL-045
+  (deferred). *(Scope: the attach-client capability only; agy's Implementer role is a separate PO call.)*
 - **Hermes** — **RETIRED from the process entirely (2026-07-02)**: its agent loop wedged and its tmux transport
   proved structurally lossy (LB-49). Do not route batons, reports, or authority through it; its lessons file is
   frozen history.

@@ -146,6 +146,30 @@ describe('BL-032 attach pair-chat healthcheck delivery', () => {
     });
   });
 
+  it('converts conversation_start into an exec turn for attached provider clients', async () => {
+    const source = await createReadyMcpAgent('conversation-source');
+    const target = await createReadyMcpAgent('conversation-target');
+
+    const start = registry.startConversation([source.id, target.id], 'BL-033 start routing', 2);
+    const [sourceHealthcheck, targetHealthcheck] = await Promise.all([
+      pullExecTurn(source.id),
+      pullExecTurn(target.id),
+    ]);
+
+    expect(sourceHealthcheck).toMatchObject({ type: 'exec_rpc' });
+    expect(targetHealthcheck).toMatchObject({ type: 'exec_rpc' });
+
+    await submitHealthcheckAck(source.id, 'source responsive');
+    await submitHealthcheckAck(target.id, 'target responsive');
+    await expect(start).resolves.toMatchObject({ status: 'active' });
+
+    const firstConversationTurn = await pullExecTurnWithin(source.id);
+    expect(firstConversationTurn).toMatchObject({ type: 'exec_rpc' });
+    expect(firstConversationTurn.prompt).toContain('Begin the discussion');
+    expect(firstConversationTurn.prompt).toContain('BL-033 start routing');
+    expect(firstConversationTurn).not.toMatchObject({ type: 'conversation_start' });
+  });
+
   it('delivers conversation_end to attached provider clients through the exec-turn bridge', async () => {
     const source = await registry.createAgent('end-source', { provider: 'mcp', providerName: 'codex' });
     const target = await registry.createAgent('end-target', { provider: 'mcp', providerName: 'codex' });

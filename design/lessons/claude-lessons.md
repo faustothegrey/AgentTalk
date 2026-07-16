@@ -308,6 +308,84 @@ here.**
   BL-032 commit contains *exactly* its scope. Bundling would have laundered out-of-scope edits onto the mainline
   under a fix label; dropping would have destroyed sanctioned work. Split, don't bundle or drop.
 
+### 2026-07-13 — as Tester (first real run, TL-004): the backend log is the truth; the pixels are only intent
+
+- **The discipline transferred cleanly to my toolkit.** First time holding the Tester hat for real: declare-strategy-
+  first, real-not-fake (two real codex clients, no bridge), and **cross-check every UI transition against the backend
+  log + `/api/*`** — all toolkit-agnostic. Only the browser surface differed (Claude-in-Chrome, not Codex's
+  cmux/browser-use). Both paths validated end-to-end: Continue reply-limit (2/2 → `conversation_end` → terminated) and
+  Stop (denied, `approved_delivered`=0, not delivered → terminated).
+- **A screenshot shows *intent*; the backend event shows *truth*.** The UI rendered proposed/delivered/WAITING
+  cleanly, but the authoritative confirmation was always the log: `pending → approved_delivered` per Continue,
+  `denied` + zero delivery per Stop, `MCP connection closed after conversation_end → terminated` per agent. LB-89's
+  "real click, then verify the resulting backend event" held on the first click (approve_each toggle → backend
+  `set_relay_approval_mode`). Never sign a UI observation without its backend echo.
+- **What I sidestepped, and owe next time.** I used WS `start_pair_chat` + API agent-creation to dodge native
+  `<select>` flakiness (documented, TL-002 precedent) — legitimate, but I have **not** yet proven I can drive the full
+  UI creation/start form; and I didn't preserve per-test screenshot artifacts (BL-035). Next run: attempt the UI form
+  path and save artifacts under `design/test-artifacts/`.
+- **A real finding fell out for free** even on a "nothing new" rehearsal: when the reply-limit conversation ended, the
+  next proposed turn surfaced in the sidebar while the main pane stayed on the ended conversation — the known BL-031
+  residual, reproduced with my toolkit. Validation surfaces reality; that's the point of the seat.
+
+### 2026-07-13 (evening arc) — as Tester + temp Implementer + Impl Reviewer + architect: the "failed" runs drove everything; ground-truth before spend; live > "verification passed"
+
+- **As Tester: ground-truth feasibility from the *source* BEFORE spending provider budget — cheapest high-value move.**
+  TL-005 predicted the arbiter wall (createTeam hardcodes `protocol`) and the API-consensus blockers by *reading the
+  code*, before a single doomed run. The two doomed execs (404, 400) cost almost nothing because I'd already traced
+  why they'd fail. Trace first, spend second.
+- **The "failed" runs were the most valuable of the whole session.** TL-005 (arbiter orphaned), TL-006 (agy hangs on
+  the healthcheck), the BL-038 gate-2 refute — every *negative* finding drove a real decision: park agy (LB-92), and
+  **pivot the coordination layer to OpenRouter** (validated end-to-end in TL-007). A green that confirms the happy
+  path teaches less than a red that redirects the program.
+- **As Impl Reviewer: the live run beats the report's "verification passed" — every time.** BL-038's fix passed its
+  unit tests (the 90s timeout value *was* routed to gemini) and I still REFUTED it: live, agy times out at 90s and
+  produces nothing. IP-15 in its purest form — the unit test checks the *config*, not whether agy *acks*; only the
+  live run checks reality. Never sign a verdict on a green I didn't try to break against the real thing.
+- **As architect: resolve the one load-bearing unknown with a cheap probe before banking the decision.** I recommended
+  OpenRouter but flagged the schema-compat risk, ran a 5-minute direct API probe (`gpt-4o-mini` → 200 + valid tool
+  call; the Google 400 was google-specific), *then* wrote the decision note. Minutes of probing turned "probably works"
+  into "verified," and it was the difference between a sound decision and a guess.
+- **Teardown: identify-before-reap — I broke it, it bit, I re-applied it.** In TL-006 I used broad `pkill` and agy's
+  live instance went down (couldn't rule out I caused it). In TL-007 I switched to **targeted PIDs from a tracked
+  file** and left agy's ports untouched. The 2026-07-09 lesson had to land a *second* time, the hard way. Broad
+  `pkill` is never worth it.
+- **Distrust the confident in-run sentence — mine most of all.** Mid-TL-007 I wrote "API agents stay ready/reusable"
+  from `status: ready`; the very next conversation refuted it (driver stops at `conversation_end` → BL-040). I
+  corrected it in the record immediately. The status lied; the second conversation told the truth. Verify-don't-assert
+  applies to my own just-typed claims.
+
+### 2026-07-13 (evening) — goose-executor spike (as planner+implementer+reviewer, resource fallback, PO "do or die")
+- **Find the real seam before proposing the build.** I first framed goose as an "MCP client" and hand-waved "build a
+  tool loop." Reading `llm-agent.mjs` showed the attach path is a bespoke WS + SHA-256 wire-contract handshake goose
+  can't speak — the actual seam was **goose as a one-shot *executor*** behind the existing worker (3 tiny edits, all
+  reused transport). Twenty minutes reading the target code turned a vague spike into a bounded, low-risk change. The
+  PO's pushback ("a CLI does a lot around an LLM") was right and redirected me from *build* to *reuse*.
+- **Probe the output shape before writing the parser.** `goose --output-format json` prints an ASCII banner *before*
+  the JSON — a naive `JSON.parse(stdout)` would have silently returned `stdout` via the catch and looked "fine" on
+  trivial prompts. One cheap probe caught it; I stripped to the first `{`. Guessing the shape would have shipped a bug.
+- **Name the honest gap, don't dress it up.** The live run showed connect + wire-contract handshake + `await_turn`
+  blocking — but NO delivered turn (plain `mcp` agents skip the auto-healthcheck I assumed). Each half proven
+  separately, conjunction not shown. Labeling that precisely (not "live PASS") is the whole point; the delivered-turn
+  gate belongs to a stronger model anyway, since gpt-4o-mini tests the model not the plumbing.
+
+### 2026-07-13 (late) — goose consensus arc → arbiter WIN (as tester + implementer + reviewer, solo/degraded team)
+- **Confirm the TARGET/mode before spending, not just the method.** I burned FOUR runs (TL-009→012) making goose+
+  deepseek pass the strict `'protocol'` consensus handshake — when the PO's actual intent was the **arbiter/semantic**
+  mode all along, and I'd defaulted to `'protocol'` because `POST /api/teams` silently defaults there. The PO's
+  correction unlocked it in ONE run (TL-013). Lesson: when a task keeps failing in a new way each iteration, stop and
+  re-verify you're aiming at the mode/goal the PO wants — a wrong yardstick masquerades as a hard problem.
+- **Read the ground-truth artifact, not your own harness summary.** TL-013 was a WIN but my harness printed
+  NO_CONSENSUS (it read `currentTask`, but `/api/teams` returns `currentTaskId`). The orchestrator's recording ndjson
+  showed the real success — full debate, verdict, synthesized plan. I nearly reported a false failure. Always confirm
+  a load-bearing pass/fail against the recording/planning-run, especially when the result surprises me.
+- **Find the real seam before proposing a build (again).** goose fit as a one-shot *executor* behind the existing
+  worker, not as an MCP client speaking the bespoke wire-contract — 3 small edits, all reuse. Twenty minutes reading
+  the target code turned a vague spike into a bounded change. Held true for the arbiter enabler too (one un-forwarded
+  param).
+- **Probe model ids before a full run** — several anthropic/google ids 404 on this OpenRouter account; a one-word
+  `goose run` catches it for ~nothing.
+
 ### 2026-07-16 — Autonomy-ladder inception + Bite 0 build (architect → planner → temp implementer, degraded mode)
 
 - **As architect: check the docs' *cause*, not just their verdict, before honoring a PO instinct.** The PO's gut
