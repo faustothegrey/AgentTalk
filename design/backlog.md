@@ -759,12 +759,12 @@ tags: [self-hosting, relay, human-in-the-loop, program]
 
 <!-- @item
 id: BL-067
-status: todo
+status: done
 date: 2026-07-17
 epic: null
 tags: [engine, ids, data-loss, silent, follow-up, under-scope]
 -->
-- [todo · **the two sites BL-066 MISSED** — same defect, same fix, filed by its own author · agent-id collision **verified**; conversation-id storage **verified** (Map + persisted)] — **Agent and conversation ids still collide: `Date.now()` alone, no counter.** Follow-up to [[BL-066]]. BL-066 fixed team/task ids and its closing block claimed the class was closed. **It was four of six.**
+- [done · **MERGED 2026-07-17** (`91834ae`) · **the two sites BL-066 MISSED** — same defect, same fix, filed by its own author · agent-id collision **verified**; conversation-id storage **verified** (Map + persisted)] — **Agent and conversation ids still collide: `Date.now()` alone, no counter.** Follow-up to [[BL-066]]. BL-066 fixed team/task ids and its closing block claimed the class was closed. **It was four of six.**
 
   **`server.ts:599`** — `` `agent-${provider}-${Date.now()}` `` (used whenever `POST /api/agents` omits an explicit id — the UI's own agent-creation panel does exactly that). **⚠️ CORRECTED 2026-07-17 by its own author, before implementing: this item first claimed agents are "silently evicted", and marked it *verified*. THAT WAS WRONG.** `createAgent` **guards**: `if (this.agents.has(id)) throw` (`registry.ts:178`) — a line the survey never looked for, because it saw `agents.set(id, agent)` (`:191`) and **reasoned by analogy with teams instead of reading the function.** The real symptom is an **HTTP 409** for a caller who asked for a *fresh* agent: loud, confusing, and harmless to data. **Different severity from conversations, and they were filed as one.** (409 is also the code the implementer-primer warns "reads like a hang".)
 
@@ -773,6 +773,37 @@ tags: [engine, ids, data-loss, silent, follow-up, under-scope]
   **Fix:** the existing `mintId(prefix)` from `registry/ids.ts` at both sites. Nothing parses either id format (re-verified). **Bars:** frozen clock, same discipline as BL-066 — two agents / two conversations minted in one millisecond get distinct ids and neither evicts the other; both red before the fix.
 
   **Why this filing exists at all (keep the mechanism, not the apology):** BL-066's survey grepped for the shape it had already concluded — ``id: `team-`` / ``id: `task-`` — and so could only ever confirm itself. **A search shaped by your conclusion is not evidence about the class.** The honest survey is "every `Date.now()` that reaches an id", which is how these two surfaced — by accident, from an id rendered on screen during unrelated work.
+
+
+  **CLOSED — MERGED 2026-07-17 (`91834ae`).** `mintId` at both sites. **The two halves had different
+  severities and this item first gave them one** — corrected before implementing (see the ⚠️ above): conversations
+  are data loss (evicted *and persisted*); agents are a **409**, loud and harmless. Both bars freeze the clock and
+  were proven to bite against the mutation they own. **The agent bar's first draft was VACUOUS:** on unfixed code
+  the second POST fails, so its body has no `id`, and `a.id !== undefined` passed for a reason unrelated to the
+  guarantee — it asserts both statuses are 200 first. The conversation bar drives the coordinator with **stub
+  deps**, because `startConversation` awaits a real healthcheck and a frozen clock stops that completing: the bar
+  **times out instead of biting**, which reads identically in the summary and proves nothing.
+
+  **★ The finding that outlives this fix — the disease, not the symptom.** `registry.ts:616`
+  (`` `msg-${Date.now()}-${this.outboundMessageSeq}` ``) and `:802`
+  (`` `pending-relay-${Date.now()}-${++this.pendingRelaySeq}` ``) **ALREADY append a counter.** Two people hit this
+  defect, solved it locally, and **it never became a convention** — so it was re-introduced six times. **This was a
+  missing convention, not six bugs**, and `mintId` only cures it if the next person finds it. *Nothing enforces it
+  today.*
+
+  **Surveyed, NOT fixed (out of scope, reported):** `registry.ts:280` `usage-${Date.now()}` and
+  `conversations/runtime.ts:230` `req-${Date.now()}` are **correlation ids, not Map keys** (ambiguous in a
+  recording, not lost; only the first verified) · **`apps/web/src/App.tsx:194` uses `String(Date.now())` as a React
+  key** — two events in one ms collide (real, cheap, unfiled). Genuinely safe: `healthcheck-manager.ts:15` and
+  `scheduler.ts:90` append `Math.random()`.
+
+  **Telemetry (task closure):**
+  - task:        BL-067
+  - wall-clock:  2026-07-17 ~13:35 → 14:12 (~37m, file→merge)
+  - budget:      weekly 46%→47%, session 18%→34% (Δ ~16%, incl. BL-056's live runs)
+  - gate:        tsc 0, suite 355/355 (353 + 2), bars isolation-stable 4/4
+  - diff:        4 files, +104/-2, commit `89a38e5` → merge `91834ae`
+  - outcome:     MERGED ✅
 
 <!-- @item
 id: BL-066
@@ -2400,12 +2431,12 @@ tags: [bite0, config, launcher, broken-artifact, papercut]
 
 <!-- @item
 id: BL-056
-status: todo
+status: done
 date: 2026-07-16
 epic: null
 tags: [ui, observability, self-hosting, autonomy]
 -->
-- [todo · surfaced by the BL-051 live run · **the panel is a live window, not a record**] — **A run's output does
+- [done · **MERGED 2026-07-17** (`3e9ff4c`) · **D5/D6 witnessed live by the PO** · surfaced by the BL-051 live run · **the panel is a live window, not a record**] — **A run's output does
   not survive a page reload — and there is no way to see a past run at all.** BL-051 made the worker's answer
   visible *while the socket is connected*; refresh the page and it is **gone for good**. Root cause is structural,
   not cosmetic: **tasks have no read endpoint** (only `GET /api/teams` exists), and completing **deletes**
@@ -2418,6 +2449,61 @@ tags: [ui, observability, self-hosting, autonomy]
   and BL-051 runs). **Likely shape:** a task read endpoint (`GET /api/teams/:id/task[s]`) + retain completed tasks,
   or persist the transcript into the run recording. **Needs a PO go** (LB-93: UI stays fluid). Source: BL-051
   closure, raised to the PO at merge.
+
+
+  **CLOSED — MERGED 2026-07-17 (`3e9ff4c`). Plan: `design/bl056-plan.md`.**
+
+  **★ The filing's premise was WRONG, and the fix turns on it.** This item says the transcript is *lost*. It never
+  was: **`tasks` (`team-coordinator.ts:133`) is NEVER pruned** — no `.delete`, no `.clear` anywhere — and
+  `TeamTask` already carries `teamId`. Every task from every run was in memory the whole time. **What was lost is
+  the POINTER.** `currentTaskId` answers *"what is this team doing NOW"*; the UI used it to answer *"what did this
+  team DO"*. Two questions, one pointer — and completion correctly retires the first. **So the five `delete
+  team.currentTaskId` sites are RIGHT and are untouched** (D4, proven: the diff against `team-coordinator.ts` /
+  `arbiter-coordinator.ts` is **empty**). The fix is additive: one read method, one route, one fetch.
+
+  **What the killed `ui-team-run-in-main` earned.** Master never lied — it renders the panel only when a task
+  exists, deliberately (`App.tsx:282`: showing a stale task "is the same lie this task exists to remove"). The
+  branch **added** `Team is assembled. No task has been given yet.` over a **15-minute interrupted run** — a lie
+  written *by accident*, because **the data model could not distinguish "never given a task" from "task
+  unreachable"**. Master only dodged it by saying nothing. **`200 []` vs `404` is that distinction** (D3), and it
+  is the durable fix for the class: the next person to improve that panel no longer has to guess.
+
+  **Bars.** D1–D4 automated (the majority of this item was orchestrator-side and never needed the LB-93
+  exemption — it sat behind a "needs a PO go" gate as though it were a UI item). D5/D6 **witnessed live, PO
+  watching**, per LB-93 (`apps/web/**` is excluded from vitest):
+  - **D5** — a real gemini worker computed 17×23; a **fresh page load** rendered the task, `Status: completed`,
+    `OUTPUT (4)`, and **`391`**, for a team whose `currentTaskId` is gone. **The tab was not open during the run**,
+    so nothing arrived by socket.
+  - **D6** — a team created and never given a task renders **"This team has not been given a task."** The same
+    sentence `a4d0cbe` guessed; this one the API asserts.
+
+  **★ `completed` is not evidence — the run that proved it.** The first witness run reported
+  `status: "completed"` and had done **nothing**: the transcript read `ERROR: could not provision task worktree …
+  fatal: not a git repository`, and `391` appeared nowhere. The team status was technically honest and completely
+  useless. **The only thing that told the truth was the transcript — which, before this fix, was unreachable the
+  moment the run ended.** On master that run reports as a success. That is this item's case, delivered by
+  accident, against its own demonstration.
+
+  **Blocked on, and fixed first:** [[BL-066]] / [[BL-067]] — `getTeamTasks` filters by `teamId`, and ids were not
+  unique. The fix stood on sand until they landed. Found because a BL-056 bar flaked.
+
+  **SCOPE BOUNDARY — in-memory retention fixes the PAGE RELOAD, not an ORCHESTRATOR RESTART.** The map is process
+  memory. **Demonstrated, not argued:** restarting the orchestrator mid-session erased all 8 of that day's teams
+  permanently, including the 15-minute run this item was built on. **If "review an agent-driven session after the
+  fact" must survive a restart, that is persistence — a separate item, unfiled, PO's call.**
+
+  **Also observed, unfiled:** the `tasks` map grows **unbounded** (never pruned) — it is what makes this fix cheap
+  and a real leak on a long-lived orchestrator. And `scripts/launcher.mjs`'s own header documents this defect as a
+  known limit of its D4 ("the worker's result TEXT is not reachable") — **this fix unblocks the launcher too.**
+
+  **Telemetry (task closure):**
+  - task:        BL-056
+  - wall-clock:  2026-07-17 ~12:50 → 14:20 (~90m incl. two blocking id items + live runs)
+  - budget:      weekly ~44%→47%, session 0%→~35%
+  - gate:        tsc 0, suite 359/359 (355 + 4), leak bar isolation-stable 4/4, D4 empty-diff, sweep clean
+                 (witness orchestrator declared)
+  - diff:        6 files, +143/-5, commits `b159a01`+`a635bc5` → merge `3e9ff4c`
+  - outcome:     MERGED ✅ — D5/D6 PO-witnessed
 
 <!-- @item
 id: BL-055
