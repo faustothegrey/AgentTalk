@@ -25,6 +25,12 @@ export class ScenarioScheduler {
   private lastResult: ScenarioResult | null = null;
   private lastRunAt: string | null = null;
   private currentTaskOverride: string | undefined;
+  // BL-069: the run suffix must not derive its uniqueness from the clock. `Date.now()`
+  // alone repeats when two runs land in the same millisecond, and the suffix reaches
+  // registry agent-Map keys via cloneWithSuffix — the same clock-collision class BL-066
+  // removed elsewhere. The counter guarantees distinctness regardless of clock resolution;
+  // the timestamp stays only for legibility (same shape as registry.ts's msg-/pending-relay ids).
+  private runSeq = 0;
 
   constructor(
     private readonly config: ScenarioSchedulerConfig,
@@ -68,7 +74,7 @@ export class ScenarioScheduler {
     let result: ScenarioResult | null = null;
 
     try {
-      const runSuffix = Date.now();
+      const runSuffix = this.nextRunSuffix();
       const cloned = this.cloneWithSuffix(this.config.scenarioDefinition, runSuffix);
 
       console.log(`[ScenarioScheduler] Starting run (suffix: ${runSuffix})`);
@@ -113,7 +119,12 @@ export class ScenarioScheduler {
     return result;
   }
 
-  private cloneWithSuffix(definition: ScenarioDefinition, suffix: number): ScenarioDefinition {
+  /** Mint a per-run suffix whose uniqueness comes from the counter, never the clock (BL-069). */
+  private nextRunSuffix(): string {
+    return `${Date.now()}-${++this.runSeq}`;
+  }
+
+  private cloneWithSuffix(definition: ScenarioDefinition, suffix: string): ScenarioDefinition {
     const idMap = new Map<string, string>();
     const agents = definition.agents.map((agent) => {
       const newId = `${agent.id}-${suffix}`;
