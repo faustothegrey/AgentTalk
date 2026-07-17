@@ -1929,13 +1929,13 @@ tags: [safety, sandbox, autonomy, fail-closed, bl053-followup]
 
 <!-- @item
 id: BL-060
-status: todo
+status: done
 date: 2026-07-16
 epic: null
 tags: [dx, config, ports, papercut, po-raised]
 -->
-- [todo · **PO-raised 2026-07-16** — *"what is port 3000 used for? if it's internal, that's a pretty stupid choice"*
-  · **agreed, and the env knob is worse than the default**] — **The orchestrator's internal HTTP+WS backend squats on
+- [done · **MERGED + PUSHED 2026-07-17** — `PORT` now turns both halves; default moved 3000 → 3100 · PO-witnessed live on 5173 with no env var set · re-found the hard way: an agent handed the PO a 3100 URL the UI could not have served] — **PO-raised 2026-07-16** — *"what is port 3000 used for? if it's internal, that's a pretty stupid choice"*
+  · **agreed, and the env knob is worse than the default** — **The orchestrator's internal HTTP+WS backend squats on
   port 3000, and `PORT` only half-works.** What 3000 is: the orchestrator's HTTP API + WebSocket for the web UI
   (`apps/orchestrator/src/index.ts:33`, `Number(process.env.PORT) || 3000`) — **internal**; only the browser and the
   launcher's `orchestratorUrl` use it.
@@ -1954,6 +1954,48 @@ tags: [dx, config, ports, papercut, po-raised]
   **Fix (small):** have `vite.config.ts` read `process.env.PORT ?? <default>` so both halves agree, and move the
   default off 3000 to something unclaimed; optionally adopt the dynamic-port + discovery pattern the MCP side
   already uses. **Behaviour change → PO call.** Source: PO question at 2026-07-16 session close; LB-94 run notes.
+
+  **2026-07-17 — CLOSED. MERGED + PUSHED (`ff3a519`). PO-approved the behaviour change; PO witnessed it live.**
+  **How it was re-found — worth more than the fix.** Setting up the rung-3 watch, Claude told the PO to watch at
+  **3100** — a URL the UI *cannot* serve. The PO challenged it (*"are you sure? it used to be 5173"*), and the
+  challenge exposed fault 3 exactly as filed: the UI is vite on **5173**, whose proxy **hardcoded 3000**, so the
+  PO would have watched a blank page. **This item was filed 2026-07-16 and read that same morning; the trap still
+  landed.** Reading a hazard is not the same as recognising it in the moment — the PO's question was the control
+  that caught it, not the doc.
+  **Fix (follows this item's own sketch):** `apps/web/vite.config.ts` and `apps/orchestrator/src/index.ts` now read
+  the **same `PORT` knob** with the **same default**, moved **3000 → 3100** (3100 was already the de-facto alternate
+  in the live-run recipe and every rung config, so it is the least-churn choice; nominally Grafana Loki's default —
+  *PO: "couldn't care less"*). `scripts/m16-live-baton-proof.mjs` hardcoded 3000 as the orchestrator and would have
+  broken the moment the default moved; it reads the knob now.
+  **⚠️ NOT TOUCHED, and the trap in this task:** `localhost:3000` in `scripts/m15-live-arbiter.mjs` and
+  `apps/orchestrator/src/diagramtalk-bridge.ts` is **DiagramTalk's** port (`DIAGRAMTALK_URL`), not the
+  orchestrator's. A grep-and-replace of "3000" silently repoints the DiagramTalk bridge. **Not every 3000 in this
+  repo is ours.**
+  **The PO's launchd service was never at risk:** `com.fausto.agenttalk-orchestrator` pins `PORT=3741` explicitly,
+  so moving the default cannot reach it (verified before touching code).
+  **Bars:** `apps/web/**` is excluded from vitest (LB-93), so the 4 bars live in `scripts/__tests__/`. They cover
+  **two different guarantees**, and each was mutation-checked against **the mutation it OWNS**:
+  | mutation | bars 1–3 (proxy follows PORT) | bar 4 (defaults agree) |
+  |---|---|---|
+  | proxy hardcoded back to 3000 | **red** | green — not its job |
+  | defaults drifted 3100 → 3200 | green — not their job | **red** |
+  **Declared weakness of bar 4:** it reads the orchestrator's source *text* rather than executing it, because the
+  default lives inside `main()` and importing it starts a server. It guards against silent drift between the two
+  halves; it is not a behavioural bar. Said plainly rather than left to read as stronger than it is.
+  **Live bar (LB-93 — PO is the only witness, remote over SSH):** with **no env var set anywhere**, the orchestrator
+  bound **3100** on its own, vite came up on **5173**, and `/api/agents` returned `[]` **through the proxy** —
+  pre-fix that would have been a connection error against an empty 3000. **3000 stayed free for DiagramTalk.**
+  **Independence caveat:** authored AND reviewed by Claude, sole available agent (PO 2026-07-15). The PO's
+  challenge was the only outside check — and it is what found the defect.
+
+  **Telemetry (task closure):**
+  - task:        BL-060
+  - wall-clock:  2026-07-17 09:00 → 09:12 (~12m)
+  - budget:      weekly ~39%, session ~52%→57% (Δ ~5%) [per scripts/usage.mjs]
+  - gate:        tsc 0, suite 335/335 (58 files; baseline 331 + 4 new bars), pollution clean (4 files, all in
+                 scope; node_modules symlink staged around, never committed)
+  - diff:        4 files, +101/-5; commits `9fdd9bd` (fix) + `ff3a519` (merge)
+  - outcome:     MERGED ✅ + PUSHED ✅ (PO said both words)
 
 <!-- @item
 id: BL-059
