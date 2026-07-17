@@ -759,12 +759,12 @@ tags: [self-hosting, relay, human-in-the-loop, program]
 
 <!-- @item
 id: BL-064
-status: todo
+status: done
 date: 2026-07-17
 epic: null
 tags: [observability, autonomy, ladder, run-artifact, client, bl056-sibling]
 -->
-- [todo · filed from the rung-2 run (2026-07-17), which it BLOCKED · PO-approved design: sidecar NDJSON via an env-passed path · sibling of BL-056, not a replacement — see the boundary below] —
+- [done · **MERGED + PUSHED 2026-07-17** — client `1ffcd01` · filed from the rung-2 run, which it BLOCKED · PO-approved design: sidecar NDJSON via an env-passed path · sibling of BL-056, not a replacement — see the boundary below] —
   **The worker's report text is captured NOWHERE, so an agent-driven run cannot be graded.** The full model
   response exists client-side at **`llm-agent.mjs:125`** (`submit_exec_result` → `text: result.response`) and is
   **never logged** before it crosses MCP. It is **not** in the run recording — the NDJSON holds lifecycle only
@@ -798,6 +798,45 @@ tags: [observability, autonomy, ladder, run-artifact, client, bl056-sibling]
   mutation-check** (restore the defect, keep the test, demand a red — no mutation-check ⇒ no VERIFIED), plus the
   existing client suite green. ⚠️ **`scope-check` is single-repo blind ([[BL-022]])** — a green scope-check on this
   task inspects **none** of the diff, because the whole diff lives in the other repo. Do not read it as a fence.
+
+  **CLOSED 2026-07-17 — merged + pushed, client `1ffcd01` (branch `task-BL-064`, per-task worktree, PO-gated).**
+  The launcher derives `<recording>.responses.ndjson` and hands it down as `AGENTTALK_RESPONSE_LOG`; `llm-agent`
+  files the report there **before** it crosses MCP. Main recording verified unaffected — still exactly
+  `run-start · agent-launched · goal-delivered · outcome`, no interleaving.
+  **PROVEN LIVE, not merely unit-green** (a passing unit test was never the claim): a real agy run captured
+  *"The result of 17 multiplied by 23 is 391. I am confident because decomposing the problem into (17 * 20) +
+  (17 * 3) yields 340 + 51, which straightforwardly equals 391."* — **391 is COMPUTED**, so no stub explains it,
+  and the second clause is **the reasoning**, i.e. the exact class of text that was unrecoverable that morning.
+  **The bar nearly repeated the very defect this item exists to fix.** A test asserting *"the env var is passed"*
+  proves the **plumbing** while the **guarantee** (the report gets written) goes unasserted — a bar starting
+  **below** the defect, the same shape that let BL-063's duplication live at `in-process-driver.test.ts:218-219`.
+  Hence `createResponseRecorder`: the where-does-it-go decision is extracted so the bar can hit the guarantee
+  itself. **Mutation-checked both halves:** remove the plumbing → `expected undefined to be
+  '/runs/…responses.ndjson'`; restore the pre-BL-064 world → **3 of 4 fail**. The 4th survives **correctly** (it
+  asserts the no-op-when-unset case, which the mutation satisfies by definition) — recorded rather than rounded up
+  to 4/4.
+  **Known limits, not hidden:** `usage` records `0/0` — that is what `result.tokenDetails` yields for
+  gemini/persistent. **The sidecar carries the report, not the cost.**
+  **Trap for the next worktree run:** `.gitignore` has `node_modules/` **with a trailing slash**, which matches a
+  *directory*; a symlinked `node_modules` is a **file** and slips past it, so `git add -A` in a seeded worktree
+  will commit the symlink. Stage explicitly.
+  **Pre-existing red found while sweeping (NOT caused by this task, left for a PO call):** the client suite is
+  **file-level red on master and on `origin/master` alike** — `runs/rung15-probe-STALE-see-notes.test.ts` fails
+  collection with `Cannot find module '../in-process-driver.js'`. It is the **INVALID** rung-1.5 probe (see
+  BL-063): gitignored local scratch, written against **AgentTalk** paths, sitting in the **client** repo where
+  vitest collects it. All 79 tests pass; only that file errors. Verified pre-existing by running `origin/master`
+  (`1 failed | 11 passed`, 73 tests). **Not deleted on purpose** — BL-063 preserved it deliberately as the record
+  of an invalid probe, and destroying that record is a PO call, not a sweep-up. Options: delete it, rename it out
+  of the test glob, or exclude `runs/` in the client's vitest config.
+
+  **Telemetry (task closure):**
+  - task:        BL-064
+  - wall-clock:  2026-07-17 ~07:58 → 08:16 (~18 min)
+  - budget:      telemetry unavailable at close (`antigravity` read `ok:false` after the rung-2 run; LB-11)
+  - gate:        client suite 79/79 (was 73) + **live proof** (computed `391` + reasoning captured);
+                 pollution clean (node_modules symlink kept out by explicit staging)
+  - diff:        6 files, +170/-1; commits `17fb8be` (fix) + `1ffcd01` (merge), pushed & verified via fetch
+  - outcome:     MERGED ✅ + PUSHED ✅
 
 <!-- @item
 id: BL-063
