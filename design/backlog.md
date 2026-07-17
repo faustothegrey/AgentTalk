@@ -925,6 +925,39 @@ tags: [scope-fence, tooling, cross-repo, friction-m18]
   was fenced." **2026-07-10 backlog gate:** rather than fix this for M19, the **PO constrained M19-T1's refactor
   target to the AgentTalk repo** — so the fence is not blind for that task. The hole remains; ranked for after M19.
 
+  **2026-07-17 — a CANDIDATE FIX exists, from the rung-2 run (agy). PO: file it as this task's starting point.**
+  **Artifact (durable, gitignored):** `agentalk-mcp-client/runs/rung2-take2-agy-8b9db8b.patch`, plus
+  `rung2-take2-transcript.log` and the report sidecar `rung2-take2.ndjson.responses.ndjson` (the first agy run
+  whose *reasoning* survives — [[BL-064]] shipped hours earlier and is what made it readable).
+  **Do NOT merge the patch from the sandbox — it returns as a reviewed task.**
+  **What agy found and chose (its own words, from the sidecar):** `getChangedFiles()` ran `git diff`/`git status`
+  exclusively with `cwd: repoRoot` and never consulted the manifest for sibling repos. Its fix makes
+  `getChangedFiles(scope)` extract every distinct `../<repo>` prefix declared across `allowed`/`forbidden`/`free`,
+  iterate those repos, and prefix the returned paths. **It rejected an alternative and said why:** *"I chose this
+  approach over attempting to run `git` from the parent directory (`..`) because `git` is restricted to its own
+  workspace boundary."* That is a correct argument, and it matches this item's own fix sketch (per-repo section,
+  script iterates declared repos).
+  **Its bar BITES — verified independently, not taken on the paste.** agy pasted a mutation-check transcript; that
+  is a *claim*. Claude restored the buggy source itself, kept agy's test, and re-ran: `× checks changes in other
+  repositories declared in the scope manifest` → `AssertionError: expected undefined to be defined` →
+  `1 failed | 7 passed (8)` — **reproducing agy's transcript exactly.** The bar is a real e2e: it stands up two
+  temp git repos, copies the script in, runs it, and demands `❌ [OUT OF SCOPE] ../other-repo/foo.js`. Passing:
+  **8/8** (baseline 7). Scope respected — `scripts/` only.
+  **⚠️ CONCERN THE MUTATION-CHECK DOES NOT COVER — a fence that FAILS OPEN.** `if (!fs.existsSync(targetCwd))
+  continue;` silently **skips a declared repo that is not on disk**, and agy described this as a feature
+  (*"gracefully skipped"*). **That is this item's own defect class, reintroduced one layer up:** unfenced while
+  reporting green. It also cuts against this codebase's settled instinct — [[BL-052]] refuses rather than inherits,
+  [[BL-061]] fails closed when a worktree cannot be provisioned. **A decision, not a patch tweak: should a missing
+  declared repo be a hard failure, a loud warning, or a silent skip?** Related residual: a repo the manifest never
+  declares is still invisible, so a task that forgets to declare one is unfenced-while-green — inherent to the
+  sketch, worth stating in the refusal message.
+  **Also needs cleanup:** `scripts/__tests__/test-runner.js` (+62 lines) is scratch scaffolding duplicating the
+  test's scenario — not a vitest file, so it is dead weight (the same shape as the unused import agy left in
+  [[BL-063]]). And `catch (e) {}` on the `git status` call swallows errors silently.
+  **DoD:** the fail-open decision made and implemented; the scratch runner removed; agy's bar kept and re-proven by
+  **mutation-check** (no mutation-check ⇒ no VERIFIED); `npx vitest run scripts` green.
+  **Independence caveat:** the rung-2 task was designed AND graded by Claude, the sole available agent.
+
 <!-- @item
 id: BL-023
 status: todo
