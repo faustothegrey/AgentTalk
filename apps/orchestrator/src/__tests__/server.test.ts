@@ -564,6 +564,47 @@ describe('startServer', () => {
     });
   });
 
+  // BL-067 — the other mint site BL-066 missed. This id is minted in server.ts,
+  // not the registry, so the bar has to come through the real HTTP boundary: it
+  // is only reachable when the caller omits an explicit id, which the UI's own
+  // agent-creation panel does.
+  //
+  // Clock frozen, as with every id bar: the collision is then certain rather
+  // than a race the machine happens to win.
+  it('mints distinct agent ids for two API-created agents in one millisecond (BL-067)', async () => {
+    vi.spyOn(Date, 'now').mockReturnValue(1_784_289_424_679);
+
+    const first = await fetch(`${baseUrl}/api/agents`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ provider: 'gemini' }),
+    });
+    const second = await fetch(`${baseUrl}/api/agents`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ provider: 'gemini' }),
+    });
+
+    // Assert the STATUSES first. Without this, the id comparison below is
+    // vacuous: on the unfixed code the second POST fails, so its body carries no
+    // `id`, and `a.id !== undefined` passes for a reason unrelated to the
+    // guarantee. It looked green while proving nothing.
+    expect(first.status).toBe(200);
+    expect(second.status).toBe(200);
+
+    const a = (await first.json()) as { id: string };
+    const b = (await second.json()) as { id: string };
+    expect(a.id).not.toBe(b.id);
+
+    // Unlike teams, a colliding agent id does NOT evict: createAgent guards with
+    // `if (this.agents.has(id)) throw` (registry.ts:178). The damage is a
+    // spurious "already exists" 500 for a caller who asked for a fresh agent —
+    // a loud failure, not silent data loss. Both agents must exist.
+    expect(registry.getAgents()).toHaveLength(2);
+
+    vi.restoreAllMocks();
+  });
+
   it('should forward consensusMode:arbiter through the team form (BL-037 wall 1)', async () => {
     for (const id of ['planner-a', 'planner-b', 'worker-1']) {
       const a = await registry.createAgent(id);
