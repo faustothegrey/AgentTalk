@@ -790,3 +790,26 @@ here.**
   and `:802` **already** appended a counter — the knowledge existed, twice, and never became a convention. **The
   bug was the missing convention; the six sites were its symptoms**, and `mintId` cures nothing unless the next
   person finds it. I shipped the cure and not the convention, and said so.
+
+### 2026-07-17 (later) — id convention guard: filed, not built
+
+- **Today as planner I recommended an approach and then refuted it with the survey meant to justify it —
+  and that is the win, not the embarrassment.** I told the PO "ship a narrow test that fails when a
+  `Date.now()` reaches a Map key." Then I ran the honest broad survey (**every** `Date.now()`, 49 sites)
+  *before* writing a line, and it killed the idea at both ends at once: broad it flags ~40 ordinary
+  elapsed-time sites (BL-023's cry-wolf), narrowed to the id shape it **misses** `scenario-scheduler.ts:71`
+  — the very class it claims to guard, because the clock lands in a variable, becomes an argument, and is
+  interpolated in another function in another file. **A pattern-scan of practical precision cannot follow a
+  value across that; the honest survey found it in one pass.** The generalisation to keep: *run the
+  disconfirming survey before you commit to the instrument, not after* — the recommendation I gave an hour
+  earlier was worth exactly nothing next to five minutes of grep.
+- **This time I read the function instead of reasoning by analogy — the correction that BL-067 had to make
+  the hard way.** Before filing BL-069 low-severity I checked `createAgent` (`registry.ts:178`, throws) and
+  the `tick()` re-entrancy guard, so "loud throw, not silent eviction" is read, not assumed. Yesterday the
+  agent-id item shipped "silently evicted / verified" and had to retract. **The 30-second read of the guard
+  is the whole difference between a finding and a false finding.**
+- **The cheapest honest outcome was two backlog items and zero code.** The disease (unenforced convention)
+  is real; every cure on offer is either noise or a cross-repo contracts change. Filing the refutation *with*
+  the evidence — so the next person doesn't re-propose the dead guard — is the deliverable. Sole-agent caveat
+  held: I authored and reviewed my own call, and what caught the flaw was execution (the survey), never my
+  own re-reading.
