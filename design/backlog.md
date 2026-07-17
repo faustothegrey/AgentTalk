@@ -784,12 +784,12 @@ tags: [engine, ids, convention, enforcement, refuted-approach, contracts, cross-
 
 <!-- @item
 id: BL-069
-status: todo
+status: done
 date: 2026-07-17
 epic: null
 tags: [engine, ids, follow-up, low-severity, scenarios]
 -->
-- [todo · **a SEVENTH site of the BL-066/067 class** — found by the broad survey, invisible to the shaped one · **severity LOW and stated precisely, not by analogy**: a loud throw, not silent eviction · its real value is as **evidence that the shaped grep leaks** — see BL-068] — **The scenario scheduler's run suffix is the clock, not a counter.**
+- [done · **MERGED 2026-07-17** (`340bd7f`, fix `6bc2a6b`) · **a SEVENTH site of the BL-066/067 class** — found by the broad survey, invisible to the shaped one · **severity LOW and stated precisely, not by analogy**: a loud throw, not silent eviction · its real value is as **evidence that the shaped grep leaks** — see BL-068] — **The scenario scheduler's run suffix was the clock, not a counter.**
 
   **`scenario-scheduler.ts:71`** — `const runSuffix = Date.now();` → **`:119`** — `` const newId = `${agent.id}-${suffix}` `` → `idMap.set(agent.id, newId)`, and those ids reach the registry's agent `Map` (`registry.createAgent(agentDef.id)` in `scenario-runner.ts:27`; `registry.removeAgent(agentId)` at `:98`). **Uniqueness comes from the clock resolution** — the exact property [[BL-066]] removed everywhere else.
 
@@ -798,6 +798,31 @@ tags: [engine, ids, follow-up, low-severity, scenarios]
   **Why it is filed at all.** It is the same defect class — and it is the concrete counter-example that killed the pattern-scanning guard in [[BL-068]]: `Date.now()` → variable → argument → interpolation in another function in another file. **The shaped grep (``id: `team-``/``id: `task-``) could never have found it; the honest one ("every `Date.now()`") found it in a single pass.**
 
   **Fix if ever taken:** advance a counter for `runSuffix` (or mint via `mintId`) so the clone cannot depend on the clock. **Bar:** frozen clock — two `tick()` runs at an unmoving clock produce distinct agent ids; red before the fix. **Do not** scope it as "make scenario ids unique enough".
+
+  **CLOSED — MERGED 2026-07-17 (`340bd7f`, fix `6bc2a6b`).** Fix matches the local idiom already at
+  `registry.ts:616`/`:802` — timestamp for legibility, `++this.runSeq` for the uniqueness guarantee — extracted
+  into a `private nextRunSuffix()` seam (`scenario-scheduler.ts`) so the bar can hit it under a frozen clock
+  without a heavy end-to-end `tick()`. `cloneWithSuffix`'s `suffix` param went `number` → `string`; no other
+  behaviour changed (diff is the two lines + the seam + the counter field).
+
+  **Bar (as specified — frozen clock, mutation-checked per assertion).**
+  `apps/orchestrator/src/__tests__/scenario-scheduler-runsuffix.test.ts` (the runtime-scenarios package is not in
+  vitest's `include`, so scheduler bars live under the orchestrator app — same as `scenario-runner.test.ts`). Two
+  assertions: distinct suffixes, and distinct cloned agent ids, both with the clock frozen at
+  `2026-01-01T00:00:00.000Z`. **Both confirmed RED against the pre-fix `Date.now()`-only body** (`worker-1767225600000`
+  collided with itself) → neither passes vacuously. Green with the fix; dist grepped to confirm the artifact under
+  test carried the change.
+
+  **Telemetry (task closure):**
+  - task:        BL-069
+  - wall-clock:  2026-07-17 ~17:40 → ~17:50 (~10m, worktree build included)
+  - budget:      claude meter `ok:false` (LB-11) at close; codex weekly 55%, antigravity 6% per prior read
+  - gate:        tsc 0 (unpiped); suite 359 → 361 (the +2 are these bars, nothing else moved); scope 2 files; dist gitignored, staged explicitly
+  - diff:        2 files (+73/-2); fix `6bc2a6b`, merge `340bd7f`
+  - outcome:     MERGED ✅ (branch `task-BL-069`, worktree cleaned)
+
+  **Independence caveat (sole agent):** authored and reviewed by one actor. What carried the verdict was the
+  mutation check going red and the frozen clock making it machine-speed-independent — not a re-read of the diff.
 
 <!-- @item
 id: BL-067
