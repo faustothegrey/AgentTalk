@@ -1047,6 +1047,14 @@ export class Registry extends EventEmitter {
     return this.teamCoordinator.getTeams();
   }
 
+  // BL-056: `currentTaskId` answers "what is this team doing NOW", and completion
+  // correctly clears it. Nothing answered "what did this team DO", so a finished
+  // run became unreachable even though its task never left `tasks`. This is that
+  // second question — and the only reason a completed run can be rendered at all.
+  getTeamTasks(teamId: string): TeamTask[] {
+    return this.teamCoordinator.getTeamTasks(teamId);
+  }
+
   /**
    * Cleanup all agents and polling loops.
    */

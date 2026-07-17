@@ -751,6 +751,24 @@ export function startServer(
     res.json(registry.getTeams());
   });
 
+  // BL-056: the read side of a team's tasks. Without it a finished run is
+  // unreachable — the transcript reached the browser once, as an event, and a
+  // reload lost it for good.
+  //
+  // An unknown team is 404; a known team that was never given a task is 200 [].
+  // That distinction is the point, not pedantry: with only "no data" to go on, a
+  // UI cannot tell "never ran" from "ran, unreachable", so any empty state it
+  // writes is a guess. `ui-team-run-in-main` guessed, and shipped "Team is
+  // assembled. No task has been given yet." over a 15-minute interrupted run.
+  app.get('/api/teams/:id/tasks', (req, res) => {
+    const team = registry.getTeams().find((t) => t.id === req.params.id);
+    if (!team) {
+      res.status(404).json({ error: `Team ${req.params.id} not found` });
+      return;
+    }
+    res.json(registry.getTeamTasks(req.params.id));
+  });
+
   app.post('/api/teams', (req, res) => {
     try {
       const members = normalizeCreateTeamMembers(req.body);
