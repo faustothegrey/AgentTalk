@@ -174,6 +174,10 @@ function App() {
   const [isResizing, setIsResizing] = useState(false);
   const [activeTeam, setActiveTeam] = useState<Team | null>(null);
   const [activeTeamTask, setActiveTeamTask] = useState<TeamTask | null>(null);
+  // BL-056 D6: "no task yet" and "not fetched yet" are different facts, and a panel that cannot tell
+  // them apart can only guess. Guessing is what put "Team is assembled. No task has been given yet."
+  // over a 15-minute interrupted run.
+  const [activeTeamTaskLoaded, setActiveTeamTaskLoaded] = useState(false);
   const [usageLoading, setUsageLoading] = useState(false);
   const [geminiUsageCapture, setGeminiUsageCapture] = useState<any>(null);
   const [claudeUsageCapture, setClaudeUsageCapture] = useState<any>(null);
@@ -275,11 +279,25 @@ function App() {
         ? teams.reduce((a, b) => (a.updatedAt >= b.updatedAt ? a : b))
         : null;
       setActiveTeam(current);
-      // Tasks have no read endpoint (only GET /api/teams exists), so a task we can no longer place
-      // cannot be refreshed — only dropped. Showing one that belongs to a team that is gone, or to a
-      // different task than the team now points at, is the same lie this task exists to remove; the
-      // next team_task_updated repopulates it.
+      if (!current) setActiveTeamTaskLoaded(false);
+      // A task that can no longer be placed is still dropped here — showing one that belongs to a
+      // team that is gone is the lie the original comment refused to tell, and that stays refused.
+      // BL-056 changes only what happens NEXT: the drop used to be terminal, because tasks had no
+      // read endpoint and completion clears `currentTaskId`. So a finished run's transcript reached
+      // the browser exactly once, as an event, and a reload lost it for good.
       setActiveTeamTask(prev => (prev && current && prev.id === current.currentTaskId ? prev : null));
+      if (!current) return;
+      // Repopulate from the read endpoint — the step the drop above always needed and never had.
+      // The team's own task list is the authority: `currentTaskId` is deliberately NOT consulted,
+      // because on a completed run it is already gone and this is exactly that case.
+      const tasks = (await api.teams.listTasks(current.id)) as TeamTask[];
+      const latest = tasks.length
+        ? tasks.reduce((a, b) => (a.updatedAt >= b.updatedAt ? a : b))
+        : null;
+      // [] is not "unknown" — it is the positive fact that this team was never given a task, and it
+      // is what lets the panel say something true instead of guessing (BL-056 D3/D6).
+      setActiveTeamTask(prev => (prev && prev.id === latest?.id ? prev : latest));
+      setActiveTeamTaskLoaded(true);
     } catch (err) {
       console.error('[App] Failed to fetch teams:', err);
     }
@@ -519,7 +537,7 @@ function App() {
             </ChatSidebar>
           )}
           {activeTopTab === 'team' && (
-            <TeamSidebar agents={agents} activeTeam={activeTeam} activeTeamTask={activeTeamTask} onAutostartTeam={handleAutostartTeam} onDisbandTeam={() => { setActiveTeam(null); setActiveTeamTask(null); }} onCreateTeam={handleCreateTeam} geminiModel={geminiModelForTeam} onGeminiModelChange={setGeminiModelForTeam}>
+            <TeamSidebar agents={agents} activeTeam={activeTeam} activeTeamTask={activeTeamTask} activeTeamTaskLoaded={activeTeamTaskLoaded} onAutostartTeam={handleAutostartTeam} onDisbandTeam={() => { setActiveTeam(null); setActiveTeamTask(null); setActiveTeamTaskLoaded(false); }} onCreateTeam={handleCreateTeam} geminiModel={geminiModelForTeam} onGeminiModelChange={setGeminiModelForTeam}>
               <AgentList agents={agents} selectedAgentId={selectedAgentId} onSelect={(id) => { setSelectedAgentId(id); setActiveConversationId(null); }} onRemove={removeAgent} />
               <AgentCreation loading={loading} onCreate={handleCreateAgent} />
             </TeamSidebar>
