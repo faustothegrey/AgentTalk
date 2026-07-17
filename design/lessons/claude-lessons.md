@@ -721,3 +721,38 @@ here.**
   fix — the exact accusation shape. I checked the right coordinates first (agy's own probe file proved where it
   worked), and wrote **"delivery incomplete, reason unobservable"** into the record instead of a model-honesty
   defect. **The honest verdict was available only because I knew what I could not see.**
+
+### 2026-07-17 (BL-022 + BL-060 + rung 3; hats: implementer + implementation reviewer + task-end reviewer + SM)
+
+- **Today as implementer I nearly banked a red I hadn't earned — and it was the third costume of the same
+  mistake.** Mutating BL-022's fix, my `perl` substitution *deleted* `const files = new Set();` instead of neutering
+  the arg. Both bars went red on a `ReferenceError` and looked exactly like bars that bite. I only caught it by
+  reading the mutant I'd actually produced rather than the exit code. **A crash-red and a bite-red are
+  indistinguishable at the summary line; the failure *message* is where they diverge** ("ReferenceError" vs
+  "expected undefined to be defined"). Then, per-assertion, both bars died on `expect(error).toBeDefined()` —
+  short-circuiting ahead of the `toContain` guarantees — so I had to neutralise the early assertion and re-mutate
+  before I could honestly say the guarantees bit. **New refinement for BL-060: mutate each bar against the mutation
+  it OWNS.** Its 4 bars cover 2 guarantees, and each stays green under the other's mutation. A bar that survives
+  "the" mutation isn't automatically vacuous — it may be guarding something else. Prove which, or you'll either
+  delete a good bar or keep a dead one.
+- **Today as implementer the PO caught what I structurally could not — and the trap was in the primer I'd read
+  that morning.** I told him to watch the rung-3 run at :3100. He asked "are you sure? it used to be 5173." He was
+  right, and it was worse than a wrong URL: vite's proxy hardcoded :3000, so 3100 could not have rendered anything.
+  That is **BL-060 fault 3, filed the day before, in the file I opened at turn 1**. I had *read* the hazard and
+  still walked into it. **Reading a hazard is not recognising it in the moment** — the two live in different parts
+  of the mind, and only an outside question bridges them. As sole agent I say the independence caveat on every
+  delivery; today it stopped being ceremony. The lesson isn't "read harder", it's **treat the PO's challenges as
+  the control they are, and check the assertion rather than defend it.** I also typed a merge hash (`0f1e7ef`) into
+  a closing block *before the merge existed*; caught it on the verify pass, but it should never have been typed.
+  **Never write a hash you haven't read out of `git log`.**
+- **Today as implementation reviewer I was wrong about agy, and the honest result is more interesting than my
+  prediction.** I bet out loud that rung 3 would fail — that agy wouldn't catch a fail-open in its own work. It
+  did: unprompted, with the goal never saying "fail open", it named that an unresolvable CWD silently classifies a
+  process as LEGITIMATE, a false negative. Its mutation-check reproduced exactly on replay (2-for-2 honest now).
+  **And it still missed the bigger one it was standing on:** its whole classifier defaults to LEGITIMATE with no
+  positive evidence for "service", so the item's own scenario reports clean. **The precise shape: it found a
+  symptom of the root cause while the root cause went unnamed — introspection sees the fail-open in a branch, not
+  the one in the premise.** Note the mirror with BL-022 the same day: there the mutation-check sailed through agy's
+  fail-open and only a diff read caught it; here introspection caught one and only a diff read caught the other.
+  **Every instrument we add finds a class of defect and creates a new blind spot at its own altitude.** Record the
+  prediction *before* the run — being wrong in writing is what made this gradable.
