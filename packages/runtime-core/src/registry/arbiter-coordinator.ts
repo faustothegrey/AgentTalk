@@ -3,6 +3,7 @@ import type { OutboundProtocolPacketType } from '../protocol/protocol.js';
 import type { Team, TeamTask } from '@agenttalk/contracts/types';
 import { Agent } from '../agents/agent.js';
 import { callApi } from '@agenttalk/llm-client/api-client.js';
+import { mintId } from './ids.js';
 
 export interface ArbiterCoordinatorDeps {
   getAgent: (id: string) => Agent;
@@ -56,7 +57,7 @@ export class ArbiterCoordinator {
     }
 
     const task: TeamTask = {
-      id: `task-${Date.now()}`,
+      id: mintId('task'),
       teamId: team.id,
       description,
       maxRepliesPerAgent,

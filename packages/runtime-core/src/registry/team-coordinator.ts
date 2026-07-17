@@ -1,5 +1,6 @@
 import { existsSync, mkdirSync, writeFileSync } from 'fs';
 import path from 'path';
+import { mintId } from './ids.js';
 import type { EventPayload } from '@agenttalk/contracts/protocol-payloads';
 import type { OutboundProtocolPacketType } from '../protocol/protocol.js';
 import type { AgentProvider, Team, TeamComposition, TeamTask, TeamMember, TeamRole, TranscriptEntry } from '@agenttalk/contracts/types';
@@ -174,7 +175,7 @@ export class TeamCoordinator {
 
     const now = new Date().toISOString();
     const team: Team = {
-      id: `team-${Date.now()}`,
+      id: mintId('team'),
       composition,
       provider,
       members,
@@ -259,7 +260,7 @@ export class TeamCoordinator {
 
     const now = new Date().toISOString();
     const task: TeamTask = {
-      id: `task-${Date.now()}`,
+      id: mintId('task'),
       teamId,
       description,
       planningComplete: false,
@@ -335,7 +336,7 @@ export class TeamCoordinator {
     }
 
     const task: TeamTask = {
-      id: `task-${Date.now()}`,
+      id: mintId('task'),
       teamId: team.id,
       description,
       maxRepliesPerAgent,
