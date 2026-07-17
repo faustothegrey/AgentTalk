@@ -813,3 +813,26 @@ here.**
   the evidence — so the next person doesn't re-propose the dead guard — is the deliverable. Sole-agent caveat
   held: I authored and reviewed my own call, and what caught the flaw was execution (the survey), never my
   own re-reading.
+
+### 2026-07-17 (evening) — BL-058 + BL-069, sole-agent implementer+reviewer
+
+- **Looking past the named symptom is where the second bug lives.** BL-058 was filed as "broken `cwd`". Fixing
+  only that would have shipped a config that still can't run — the same file also pointed `orchestratorUrl` at
+  `:3000` while the orchestrator it launches binds its default `:3100` (BL-060). The filer never saw it because
+  the run died at the cwd ENOENT *first*. The item's own DoD ("start as written") required both. Lesson: when a
+  filing names one defect in an artifact, **read the whole artifact against reality** — the first bug often masks
+  the second, and "done" is the item's *goal*, not its literal sentence.
+- **The mutation check is the verdict, not the green.** BL-069's bar was green with the fix — meaningless until I
+  reverted the seam to the pre-fix `Date.now()` body and watched **both** assertions go red (`worker-1767225600000`
+  colliding with itself under a frozen clock). Per-assertion, staged, clock frozen so the verdict can't depend on
+  machine speed. As sole agent authoring AND reviewing, that red is the only thing that earned the confidence — a
+  re-read of my own diff earns nothing.
+- **The worktree cost more than the fix.** BL-069 was two lines; the mandated worktree was the node_modules
+  symlink dance + two full `tsc -b` builds. Correct per the code-in-worktree mandate, but an honest data point for
+  BL-036: a solo serial actor doing a trivial change pays disproportionate setup, and there's no helper script.
+  I did the dance right (relative `@agenttalk` targets, `.bin` explicit) — but it wanting a `wt-setup.mjs` is the
+  real finding.
+- **Cheapest honest outcome beats a manufactured one.** BL-068 (the id-convention guard) — I recommended it, then
+  the disconfirming survey killed it *before* I built it (49 `Date.now()` sites, ~40 noise; narrowed, it misses
+  BL-069). Filed the refutation with the evidence and built nothing. Two of three items this session shipped zero
+  code and were still the right deliverable.
