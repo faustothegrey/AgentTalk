@@ -2456,13 +2456,13 @@ tags: [agy, gemini, attach-mode, test-only-path, production-gap, one-line-fix]
 
 <!-- @item
 id: BL-058
-status: todo
+status: done
 date: 2026-07-16
 epic: null
 tags: [bite0, config, launcher, broken-artifact, papercut]
 -->
-- [todo · found 2026-07-16 · **a checked-in Bite 0 config cannot start an orchestrator as written**] —
-  **`scripts/bl040-d1d3.config.json` has a broken `startCommand.cwd`.** It says `"cwd": "../../AgentTalk"`, but
+- [done · **MERGED 2026-07-17** (client `56269cf`) · config fixed + **a second defect found and fixed** (wrong port) · fail-fast guard deferred] — **a checked-in Bite 0 config could not start an orchestrator as written.**
+  **`scripts/bl040-d1d3.config.json` had a broken `startCommand.cwd`.** It said `"cwd": "../../AgentTalk"`, but
   `scripts/launcher.mjs:40` resolves it against **`clientRoot`** (the repo root, `:29`), not against `scripts/` —
   so it lands on **`/Users/fausto/AgentTalk`**, which does not exist, and the run dies with a confusing
   **`Error: spawn node ENOENT`** (the ENOENT is the *cwd*, not `node` — highly misleading). Correct value is
@@ -2470,6 +2470,33 @@ tags: [bite0, config, launcher, broken-artifact, papercut]
   faith into a new probe config and inherited the bug. **Fix:** correct the config; consider having
   `makeStartInstance` **fail fast with a clear message** when `cwd` does not exist, rather than surfacing ENOENT.
   Source: BL-045 live-orchestrator probe, 2026-07-16.
+
+  **CLOSED — MERGED 2026-07-17 (client `56269cf`).** Two config values, both pointing at a reality that no longer
+  exists — so the item's own DoD ("start as written") needed both fixed:
+  - **`cwd`** `../../AgentTalk` → **`../AgentTalk`** (verified: resolves to `/Users/fausto/Software/AgentTalk`, the
+    real repo; `../../AgentTalk` = the absent `/Users/fausto/AgentTalk` that produced the misleading `spawn node
+    ENOENT`).
+  - **`orchestratorUrl`** `:3000` → **`:3100`** — **a SECOND defect the filing never saw.** The `startCommand`
+    launches the orchestrator with **no `PORT`**, so it binds its default **3100** (BL-060, `index.ts:36`), while
+    agents were pointed at 3000. Invisible to the original report because the run died at the `cwd` ENOENT *before*
+    reaching the port. Found by looking past the named symptom.
+
+  **Verified (not asserted):** booted `apps/orchestrator/dist/index.js` from the fixed `cwd` → reached `Ready to
+  manage agents.` and **bound 3100** (`lsof` confirmed), then killed cleanly. No agy worker needed — that path is
+  BL-045's, not this config's.
+
+  **Deferred follow-up (the item's optional second half):** `makeStartInstance` (client `launcher.mjs:40`) still
+  surfaces a raw `ENOENT` when `cwd` is missing instead of a clear "configured cwd does not exist: <path>". That is
+  a code change in the client launcher (a DX guard, not a broken artifact) — left open. File as its own item if the
+  papercut recurs.
+
+  **Telemetry (task closure):**
+  - task:        BL-058
+  - wall-clock:  2026-07-17 ~15:46 → ~16:10 (~24m)
+  - budget:      claude session/weekly — meter `ok:false` (LB-11) at close; codex weekly 55%, antigravity 6% per prior read
+  - gate:        JSON valid; live boot reached ready + bound 3100; backlog:check green
+  - diff:        client 1 file (+2/-2), commit `56269cf`; AgentTalk backlog doc-only
+  - outcome:     MERGED ✅ (client committed; push PO-gated)
 
 <!-- @item
 id: BL-056
