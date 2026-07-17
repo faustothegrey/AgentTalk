@@ -1,7 +1,7 @@
 ---
 role: implementer
-key: 20260716-2312-27b4ac
-written: 2026-07-16 by Claude (session close — BL-062 merged & pushed; agy 2/2 on real code tasks)
+key: 20260717-0702-7afc17
+written: 2026-07-17 by Claude (session close — rung 1.5 run: agy's first REAL engineering task, not dictation)
 ---
 
 This is your session primer.
@@ -18,7 +18,8 @@ ASSIGNMENTS` — read it, don't trust this line. **Codex + Gemini (agy) are UNAV
 each gate separately. **Standing Conditional Reassignment ACTIVE** (you may implement). **Merges stay PO-gated —
 the PO says "merge" and "push" as separate words.** ⚠️ agy is unavailable as an *Implementer* but is fit as an
 *MCP attach client* **and fit to execute** — different things. **Say the independence caveat out loud in every
-delivery:** as sole agent you author AND review; BL-062 was closed by one pair of eyes.
+delivery:** as sole agent you author AND review. Rung 1.5 is a live example of why that matters: I designed the
+task, graded it, and my grading instrument was wrong (below).
 
 **⚠️ `git fetch` BOTH repos at startup** (`AgentTalk`, `agentalk-mcp-client`). A past session built a whole
 delivery on a checkout 23 commits behind and found out at push time.
@@ -27,99 +28,125 @@ delivery on a checkout 23 commits behind and found out at push time.
 No `*-implementation.md` ledger for this thread — **resume from the backlog**. Closed items carry a closing block
 + telemetry; read those before re-deriving anything.
 
-## Where we are (2026-07-16 close)
+## Where we are (2026-07-17 close)
 
-AgentTalk mainline `a41891a` (**pushed**); client `508c617`, untouched tonight. Suites: AgentTalk **328/328**,
-client 73/73. Nothing is in flight — no branches, no worktrees, clean tree (the modified
-`com.fausto.agenttalk-orchestrator.plist` is the PO's, pre-existing, not yours).
+AgentTalk mainline `d46234d` + this session's docs commits; client `508c617`, untouched. Suite **328/328**.
+**Nothing merged, nothing pushed, no branches, no worktrees in either repo.** The modified
+`com.fausto.agenttalk-orchestrator.plist` is the PO's, pre-existing, not yours.
 
-**The ladder started, and rung 1 passed twice.** We ran the real launcher → real orchestrator → real agy against a
-real bug, attended. **agy is 2 for 2 on real code tasks**: correct minimal one-line fix, committed, nothing else
-touched, ~27s (`db2a464`, then `e1fca14` post-fix). It is fit to execute.
+**Rung 1.5 ran, and it is the first REAL measurement of agy's judgment.** Rung 1 was **dictation** (agy was handed
+the literal string). Rung 1.5 handed it only a *symptom* — no file, no line, no answer — against a real defect I
+had first proven live. **Verdict: agy can engineer. Its bars cannot be trusted.**
 
-**But read this before you conclude anything from that: both runs were DICTATION, not engineering.** The goal
-handed agy the literal string to write. **agy's judgment is still completely unmeasured.** The open question the
-ladder exists to answer is untouched.
+- ✅ **The fix was correct and path-complete.** In ~144s agy located the mechanism across 3 files and chose the
+  non-obvious fix, avoiding the trap: the *obvious* fix (delete the driver's copy) leaves `arbiter-coordinator`
+  still duplicating. agy instead deleted the append from **both** coordinators, leaving the driver the single
+  source. runtime-core **97/97 green**.
+- ❌ **Its regression test is VACUOUS — mutation-proven.** The goal explicitly demanded a test that fails before and
+  passes after. agy's test feeds the driver a **raw** plan, but the duplication never lived in the driver — it came
+  from the *coordinator* appending before the driver saw it. I restored the bug completely and **agy's test still
+  passed.** It is the *same false-assurance shape the codebase already had* at `in-process-driver.test.ts:218-219`,
+  which is exactly why the bug survived. **The worker inherits the codebase's blind spots.**
+- ⚠️ Left an **unused import** (`WORKTREE_CONTEXT`, `team-coordinator.ts:7`) + a stray blank line in the arbiter.
 
-**BL-062 done** (`70d88c3`) — the rung-1 run's real yield. A worker-only team was handed the *two-agent
-plan-review* prompt ("the planner has created a plan for you to review — critically evaluate it") with the goal
-synthesized into a stand-in plan, so it arrived twice. **A worker that COMPLIED would change no files and report
-`completed` — the BL-059 accusation shape.** agy succeeded despite it, which is exactly why no outcome-based test
-ever caught it. Mid-fix a second defect surfaced and the PO widened scope: **`.join('\\n')` is a literal
-backslash-n** (charCodes 92,110 — prove it with `node -e`, don't squint at it), so **every** driver prompt,
-including the planner's fact-collection one, reached the model as one line with the escape printed as text. Both
-fixed. BL-053's contract **moved** (PO-approved) from the EVT payload to the prompt, where its guarantee is now
-asserted.
+**⛔ READ THIS BEFORE YOU JUDGE ANY agy RUN — I nearly filed BL-059 all over again.** My pre-registered probe
+printed `2` *after* agy's correct fix, which reads as "the fix failed." **It didn't — my probe was invalid.** The
+probe hardcoded the *pre-fix* plan shape (`plan + WORKTREE_CONTEXT`, i.e. old `buildWorkerPlan` output), and agy
+had **deleted `buildWorkerPlan`**. It fed the driver an input that can no longer occur and counted a duplicate it
+manufactured itself. **A pre-registered probe encodes the OLD world; a correct fix can INVALIDATE the measurement
+rather than fail it.** Before believing any post-fix number: **ask whether the probe's INPUT still exists after the
+change.** Mutation-checking is the only thing that caught it.
 
 ## What's next (PO has not chosen — ask)
 
-- **Rung 2 = BL-056** (durable transcript). The PO deferred it to a **fresh session with full budget** — it's a
-  design job (task read endpoint, retain completed tasks, UI) and needs a PO go (LB-93). **Its argument is weaker
-  than the item claims:** the launcher's stdout already gives you the prompt + lifecycle durably, and git gives you
-  the artifact. What's actually missing is **agy's response text** — which is where the *why* lives when a run
-  fails. It matters before *unattended* runs, not attended ones.
-- **Rung 1.5 — a HARDER agy task.** Cheaper than BL-056 (spends agy's meter, 3%, not yours) and answers the
-  question that matters: can agy handle *judgment*, multiple files, a test suite? Now worth doing because the
-  prompt is no longer a confound.
-- **BL-058** — still open. **My spec was the wrong call: I told agy to use an absolute path, which pins a
-  checked-in config to Fausto's machine. `../AgentTalk` is the portable fix.** agy complied exactly; the spec was
-  the weak link, not the worker.
-- **New candidate, unfiled:** the **two-agent** path still gets `WORKTREE_CONTEXT` **twice** — driver `:266` +
-  `buildWorkerPlan` `:1340` (`GIT_WORKTREE_REQUIREMENT` is the same constant). Same family as BL-062, deliberately
-  left out of its scope.
+- **BL-063 — UNFILED. File it first; it is not in `backlog.md`.** agy's fix is genuinely good and worth having, but
+  it must come back as a proper task: it needs the **real integration test agy didn't write** (one that drives the
+  *coordinator→driver* path, not the driver alone — that is the whole point, and the missing coverage is the bug's
+  cause), plus the unused import cleaned up. **Do not merge agy's patch as-is.** Independence: it should be
+  reviewed by someone who didn't design the task — flag the conflict to the PO if that's still you.
+  **Artifacts preserved (durable, gitignored) in `agentalk-mcp-client/runs/`:** `rung15-agy-e966992.patch` (the
+  fix), `rung15-run-transcript.log`, `rung15.config.json` (a working attach-mode config), and
+  `rung15-probe-STALE-see-notes.test.ts` — **that probe is the INVALID one above; do not reuse it without fixing
+  its input assumption.** The `/tmp/rung15` sandbox is NOT durable — assume it is gone.
+- **BL-056 (durable transcript) — its argument is now STRONGER than my last primer claimed.** I wrote "it matters
+  before *unattended* runs, not attended ones." **That was wrong, and rung 1.5 disproved it.** I asked agy to
+  justify its fix over the alternatives it rejected; it did, and **that text is gone** — not in the NDJSON
+  (lifecycle only), not in the launcher stdout. For grading *judgment* the artifact shows the answer and hides the
+  thinking. This is the best evidence we have for BL-056.
+- **Rung 2** — agy's meter is nearly free (didn't visibly move for a real 3-file task). The next rung's question:
+  can agy be trusted to write a bar that actually bites? On this evidence, **no** — so either the goal must demand
+  a mutation-check explicitly, or the reviewer must mutation-check every agy bar. Cheap either way.
+- **BL-058** — still open. My spec was the wrong call (absolute path pins a checked-in config to Fausto's machine;
+  `../AgentTalk` is the portable fix). agy complied exactly; the spec was the weak link.
 - **BL-060**, **BL-050**, **BL-054** (PO-parked), **BL-036** (worktree discipline detail).
 
-## Op notes / gotchas (starred ones are new tonight)
+## Op notes / gotchas (starred ones are new this session)
 
-- **★ The launcher already does the whole run** — `agentalk-mcp-client/scripts/launcher.mjs <config.json>`: boots
-  the orchestrator, **parses the dynamic MCP url from stdout**, launches the agent, creates a worker-only team,
-  delivers the goal through the product's own API, races a **real cap** (`wallClockMs` + a meter delta), records
-  NDJSON. **Don't hand-build a harness — write a config.** Copy `scripts/bl040-d1d3.config.json`'s shape.
-- **★ There are TWO launchers. `lib/agent-launcher.mjs` is the low-level worker launch; `scripts/launcher.mjs` is
-  the ladder.** I grepped the first for a cap, found none, and told the PO the cap didn't exist. **It does** — it's
-  in the second, and the config carries it. Wrong coordinates again (see the lesson below).
-- **★ `run-d1d3.sh` forces a fake worker** via `AGENTTALK_PERSISTENT_COMMAND_JSON` → `fake-worker-bridge.cjs`.
-  Invoke `launcher.mjs` **directly, without that env var**, and `provider: gemini` gives you real agy. Don't read
-  that config as agy coverage.
-- **★ Redirect the launcher's stdout to a file — that's your transcript.** It holds the exact prompt the worker
-  received, which is how BL-062 was found. The NDJSON holds **lifecycle only** (run-start / agent-launched /
-  goal-delivered / outcome). Neither holds agy's **response** (BL-056).
-- **★ CHECK THE DIST BEFORE ANY LIVE RUN.** The repo's `dist` was 3 days stale on arrival — a run would have
-  exercised **pre-BL-053** code and "proven" something about a system we no longer have. `find packages apps -name
-  "*.ts" -not -path "*/dist/*" -newer <a dist file>`, then `npm run build`, then **grep the dist for your change**.
-- **★ Worktree `node_modules` — the trap is real, and here is the recipe that works.** Symlink every entry of the
-  real `node_modules` individually **plus `.bin`**, but **skip `@agenttalk`**; then create
-  `node_modules/@agenttalk/<name>` → the **worktree's** own `packages/*`/`apps/*` (derive `<name>` from each
-  `package.json`). `runtime-core` IS resolved via `@agenttalk`, so a blanket symlink makes tests import the **real**
-  repo. Baseline the suite before touching anything (325/325 at a326f82).
-- **★ Mutation-check every bar.** Break the fix → the bar must fail, alone. All three BL-062 bars were checked this
-  way. One command; converts "it's green" into "it would catch the bug".
-- **`completed` is NOT evidence** — check the artifact, in **`<workdir>/agentalk-task-<id>/`**. Design the
-  observable *before* the run (a computed answer; absent-before/present-after).
-- **Two sandboxes.** Orchestrator cwd ≠ worker `workdir`. Give the worker a **throwaway clone** — post-BL-053 the
-  orchestrator no longer shells git in its own cwd, so pointing it at the real checkout is safe, but the worker's
-  workdir must be a **real git repo** or provisioning **fails the turn** (BL-061, by design).
-- **Fresh `agentId` per run; kill leftovers first** — a squatting worker makes the next run die on **HTTP 409**
-  that looks like a hang. **But verify before believing in a stray:** mine were a *transient read during teardown*.
-  `ps -p <pid> -o args=`, check the port.
-- **`workdir` is MANDATORY** on `launchAgent`/configs: absolute, must exist, never auto-created (BL-052).
-- **UI needs the orchestrator on 3000** (`apps/web/vite.config.ts` hardcodes the proxy — BL-060). **DiagramTalk
-  also wants 3000** — `lsof -nP -iTCP:3000` and **ask before touching it**. **The PO develops REMOTELY over SSH:
-  you cannot witness the UI; the PO is the only witness.**
+- **★ You can run the whole ladder WITH THE UI, and here is the recipe** (the PO asked to watch; it works):
+  1. `PORT=3000 AGENTTALK_MCP_PORT=54322 node apps/orchestrator/dist/index.js > /tmp/<run>/orchestrator.log 2>&1 &`
+     — **3000 because `apps/web/vite.config.ts` hardcodes the proxy** (BL-060). **Pin the MCP port** (`54322`) and
+     you don't need to scrape stdout for the dynamic url.
+  2. `npm run frontend` → vite **5173**, already `host: 0.0.0.0` (PO, 2026-07-16) → reachable over LAN/SSH.
+  3. Config with **NO `startCommand`** + explicit `orchestratorUrl`/`mcpUrl` → the launcher **attaches** to your
+     running instance (`launcher.mjs:38`) and **`stopInstance` leaves it alive** (`:203` only kills a proc it
+     spawned). **With `startCommand` the launcher KILLS the orchestrator at run end and the UI dies with it.**
+  4. Verify the proxy before launching: `curl -s http://127.0.0.1:5173/api/agents` must answer.
+- **★ `AGENTTALK_MCP_PORT` pins the MCP port** (`apps/orchestrator/src/server.ts:881`; `0` = dynamic). `PORT`
+  defaults to 3000 (`index.js:33`).
+- **★ The PO runs a launchd service `com.fausto.agenttalk-orchestrator` (was PID 4064) on PORT 3741 /
+  AGENTTALK_MCP_PORT 54321 — LEAVE IT ALONE.** It is not a stray. **`pgrep -fl "orchestrator/dist|agenttalk"` does
+  NOT find it** (I checked and wrongly reported "nothing running"); **`lsof -nP -iTCP:<port>` does**, and
+  `launchctl list | grep -i agenttalk` names it. **Check ports with `lsof`, never a guessed `pgrep` pattern.**
+- **★ The worker turn timeout is `600000` (10 min), not the 5 min the client default suggests.** I read
+  `DEFAULT_PERSISTENT_TURN_TIMEOUT_MS = 300000` (`executor-runtime.mjs:135`) and told the PO agy had 5 minutes —
+  **wrong**: the exec event carries `timeoutMs: 600000`. A real 3-file task + suite fit in **~144s**, so this has
+  never been the binding constraint. Read the *event*, not the default.
+- **★ Sandbox recipe that worked (worker workdir, node_modules and all):** `git clone <real-repo> /tmp/<run>/sandbox`
+  then **`git remote remove origin`** (agy then physically cannot push — this is the containment, not a nicety).
+  node_modules: symlink each entry of the real `node_modules` + `.bin`, **skip `@agenttalk`**, then point
+  `node_modules/@agenttalk/<name>` at the **sandbox's own** `packages/*`/`apps/*`. Baseline the suite before the
+  run (**328/328**).
+- **★ Why the task-worktree/node_modules trap did NOT bite, and when it will.** BL-053 means the worker's worktree
+  is created **at runtime** inside the workdir (`agentalk-task-<id>`), so you cannot pre-seed node_modules in it —
+  Node walks **up** to the sandbox's. That is fine **only because runtime-core's tests import the code under test
+  RELATIVELY** (`from '../in-process-driver.js'`) → they exercise the worktree's edits. **Cross-package
+  `@agenttalk/*` imports resolve UP to the sandbox's unmodified copy**, so a *full-suite* green from inside the
+  worktree is partly **vacuous**. Scope agy's bar to the package it edits; re-verify the diff yourself.
+  **`tsc -b` is NOT a usable bar inside that worktree** — the clone has no built `dist`, so `@agenttalk/*` type
+  decls don't resolve; the errors are your sandbox's, not the worker's. (And `cmd | head` returns **head's** exit
+  code — don't read that as tsc passing.)
+- **★ Mutation-check every bar — including the worker's.** One command turns "it's green" into "it would catch the
+  bug": restore the defect (`git checkout <base> -- <src files>`, keep the test), re-run, demand a **fail**. This
+  is what exposed agy's vacuous test *and* saved me from a false accusation. **Do not accept any agy-authored test
+  without it.**
+- **`completed` is NOT evidence** — check the artifact, in **`<workdir>/agentalk-task-<id>/`** (BL-053 verified
+  working live this run). Design the observable *before* the run — but see the ⛔ probe warning above.
+- **Fresh `agentId` per run; check for leftovers first** — a squatting worker makes the next run die on **HTTP 409**
+  that looks like a hang. **Verify before believing in a stray** (`lsof`/`ps -p <pid> -o args=`).
+- **`workdir` is MANDATORY** on `launchAgent`/configs: absolute, must exist, be a **real git repo** (else the turn
+  fails by design — BL-061), never auto-created (BL-052).
+- **DiagramTalk also wants 3000** — `lsof -nP -iTCP:3000` and **ask before touching it**. **The PO develops
+  REMOTELY over SSH: you cannot witness the UI; the PO is the only witness.**
 - **🛑 Bare `sleep` in a foreground Bash call is BLOCKED** (silent exit 1) and **`timeout` is not installed.** Put
-  waits in a `.sh` poll loop; background long runs and read the log.
-- **`pkill -f <pattern>` kills its own shell**; `pgrep -f`/`grep` match the shell running them.
+  waits in a `.sh` poll loop; background long runs and read the log. (Worked well this session.)
 - **`rm -rf` is in the settings `deny` list** — fresh dir names, or `git worktree remove --force` + `git branch -D`.
 - **Chained `cd repoA && git push` then `git push`** pushes **repoA twice** and says "Everything up-to-date", which
   reads like success. **Use `git -C <repo>`, and verify with a `fetch` afterwards, not the push output.**
+  (Related: `cd` **persists between Bash calls** — I ran `ls scripts/` and read the *wrong repo's* scripts. Use
+  absolute paths.)
 - **Backlog edits:** run **`npm run backlog:check`** (it gates). Valid statuses are **todo · doing · done ·
   dropped · deferred** — *`deferred` is real and widely used; `AGENT.md` says four and is wrong.* The prose status
   token must be **plain**: `- [done · **MERGED …**]`, never `- [**done · …**]`.
 - **No UI test infrastructure, by PO decision (LB-93)** — the bar for UI work is a **live, witnessed run**.
-- **Env:** both repos built; `claude` + `agy` CLIs authed on PATH; meter `:9899` UP — poll with
-  **`node scripts/usage.mjs`** (never hand-parse). At this close: claude weekly **32%**, session **76%** (resets
-  01:49 Rome); codex weekly 35%; antigravity **3%** — agy is nearly free, use it.
+- **Env:** both repos built and **dist verified current** at close; `claude` + `agy` CLIs authed on PATH. Meter
+  `:9899` — poll with **`node scripts/usage.mjs`** (never hand-parse). At this close the **claude block read
+  `ok:false`** (LB-11, best-effort — never block on it); codex weekly 39%; **antigravity 4% — agy is nearly free,
+  use it.** My session window hit 93% before the PO's overnight gap and has almost certainly reset — **confirm,
+  don't assume.**
+- **★ Check `dist` freshness the RIGHT way.** `find ... -newer <a dist file>` is the cheap invariant — but use the
+  **NEWEST** dist file as the reference, not `index.js`: `tsc -b` only rewrites what changed, so `index.js` can be
+  weeks old while the build is current. I nearly rebuilt for nothing off that misread. Then **grep the dist for
+  your change** before any live run.
 
-Verify all of the above against ground truth (`git fetch` both; read `design/backlog.md` BL-062 / BL-056 / BL-058
-closing blocks and `design/logbook.md` LB-93/LB-94) before acting. Report your understanding, then STOP for the
-PO's go.
+Verify all of the above against ground truth (`git fetch` both; read `design/backlog.md` and `design/logbook.md`
+LB-93/LB-94) before acting. Report your understanding, then STOP for the PO's go.

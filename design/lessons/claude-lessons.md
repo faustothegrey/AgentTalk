@@ -655,3 +655,36 @@ here.**
   build is current is worthless next to `find -newer`.** Corollary that paid off twice tonight: I read "2 stray
   processes" and *checked* instead of reporting a leak — it was a transient read during teardown. Verify before
   believing, in both directions: absence AND presence.
+
+### 2026-07-17 (rung 1.5 — the first non-dictation agy run; hats: implementer + task-end reviewer + SM)
+
+- **The probe I pre-registered to grade agy was itself wrong, and it accused agy of failing.** I did the ritual
+  properly — designed the observable *before* the run, proved the defect live (count = 2), moved the probe out of
+  the sandbox so it couldn't leak the answer. Then agy's correct fix made my probe print `2` again, which reads as
+  "the fix didn't work." It wasn't: my probe **hardcoded the pre-fix plan shape** (`plan + WORKTREE_CONTEXT`, i.e.
+  the old `buildWorkerPlan` output), and agy had *deleted* `buildWorkerPlan`. I was feeding the driver an input
+  that can no longer occur and counting a duplicate I had manufactured myself. **A pre-registered probe encodes the
+  OLD world; a correct fix can invalidate the measurement rather than fail it.** Three sessions running I have now
+  produced a false accusation from a check at the wrong coordinates — the constant isn't the grep, it's me
+  concluding from an instrument I didn't re-validate against the new state. **Next time: before reading a probe's
+  post-fix number, ask "does this probe's INPUT still exist after the change?"** Mutation-checking is what saved
+  me; the reading alone would have shipped the accusation.
+- **agy passed the judgment test and failed the honesty-of-bars test — the exact split I keep failing myself.** Given
+  only the symptom (no file, no line), it found the mechanism across 3 files in ~144s and chose the path-complete
+  fix, avoiding the trap that would have left `arbiter-coordinator` still broken. That is real engineering; rung 1's
+  "2/2" never showed it because rung 1 was dictation. **But the regression test it wrote passes with the bug fully
+  restored** (I mutation-checked it) — vacuous, and *the same false-assurance shape the codebase already had at
+  `:218-219`*, which is why the bug survived. **The worker inherits the codebase's blind spots.** Asking for "a test
+  that fails before and passes after" is not enough — nobody, human or model, verifies that claim unless the bar is
+  mutation-checked. That check belongs in the goal, not in my head.
+- **I asserted two things without opening the file, inside a session whose whole lesson was not doing that.** Told
+  the PO agy had a 5-minute ceiling (`DEFAULT_PERSISTENT_TURN_TIMEOUT_MS`) — the event carries `timeoutMs: 600000`;
+  I read the default and never checked for an override. Told the PO no orchestrator was running (`pgrep -fl`
+  "orchestrator/dist|agenttalk") — the PO's launchd service was live on 3741/54321 and `lsof` found it in one
+  command. **`pgrep` on a guessed arg pattern is not a presence check; `lsof` on the port is.** Both were cheap to
+  verify and I chose the cheap-to-*state* instead.
+- **The run's most valuable output was the thing we couldn't see.** I asked agy to justify its fix over the
+  alternatives; it did, and **that text is gone** — not in the NDJSON (lifecycle only), not in the launcher stdout.
+  For grading *judgment*, the artifact gives the answer and hides the thinking. **BL-056's argument is stronger than
+  the primer (mine, last session) credits it** — I wrote "it matters before unattended runs, not attended ones," and
+  then hit the wall on an attended run, because judgment is invisible in a diff.
