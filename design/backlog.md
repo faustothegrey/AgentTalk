@@ -759,13 +759,13 @@ tags: [self-hosting, relay, human-in-the-loop, program]
 
 <!-- @item
 id: BL-063
-status: todo
+status: done
 date: 2026-07-17
 epic: null
 tags: [worktree-context, duplication, prompt, vacuous-test, rung15, agy-authored, bl053-adjacent]
 -->
-- [todo · **filed from the rung-1.5 run (agy's first real engineering task, 2026-07-17)** · agy's fix is good and is
-  preserved as a patch — **do NOT merge it as-is: its regression test is mutation-proven vacuous**] —
+- [done · **MERGED 2026-07-17** — `a971b25` · filed from the rung-1.5 run (agy's first real engineering task) · agy's
+  fix was good and was taken; its regression test was mutation-proven vacuous and was NOT] —
   **`WORKTREE_CONTEXT` reaches a two-agent worker TWICE.** Both coordinators append it to the plan before the driver
   ever sees it — `team-coordinator.ts:1530` (`buildWorkerPlan`: `` `${plan}\n\n${GIT_WORKTREE_REQUIREMENT}` ``, called
   at `:1347`) and `arbiter-coordinator.ts:385` (`` `${task.plan!}\n\n${GIT_WORKTREE_REQUIREMENT}` ``) — and then
@@ -793,6 +793,39 @@ tags: [worktree-context, duplication, prompt, vacuous-test, rung15, agy-authored
   duplicate it counts; **do not reuse it without fixing its input assumption.**
   **Independence caveat:** the task that produced this fix was designed AND graded by Claude, the sole available
   agent — the author/reviewer split the workflow relies on does not currently exist. Flagged to the PO.
+
+  **CLOSED 2026-07-17 — merged `a971b25` (branch `task-BL-063`, per-task worktree, PO-gated).** Both coordinators now
+  send `plan: task.plan!` and the driver is the single source of `WORKTREE_CONTEXT`. agy's fix was taken as filed —
+  it was path-complete. **agy's regression test was not taken.**
+  **Two things surfaced that this item did not predict, and both matter more than the fix:**
+  1. **The fix broke a live behaviour contract.** `apps/orchestrator/src/__tests__/team-coordinator.test.ts:204`
+     demanded the context ride **inside** the `plan` payload — BL-053's guarantee asserted at the coordinator. That is
+     the very mechanism this item deletes. **PO approved moving it** (2026-07-17): the assertion now lives on the
+     **rendered prompt** (coordinator → driver), where the worker actually reads it. **Asserting the mechanism is what
+     hid the defect** — the coordinator appended, the driver appended again, no bar spanned both, so each half looked
+     correct in isolation.
+  2. **The arbiter path was unbarred ENTIRELY.** With `arbiter-coordinator`'s append fully restored, **all 328 tests
+     passed.** So **agy's "runtime-core 97/97 green" was never evidence the fix was safe** — the contract it broke
+     lives in `apps/orchestrator`, a suite agy never ran (the primer's warning that scoping agy's bar to the package
+     it edits makes a full-suite green partly vacuous — here it hid a real red, and a genuine consequence nobody had
+     seen).
+  **Both new bars are mutation-checked per ASSERTION, not per test** — the plan-equality check short-circuits ahead of
+  the count check, so a naive mutation-run reds out without ever executing the guarantee. Neutralising it proved the
+  count assertion itself bites: **`expected 2 to be 1`** on each path.
+  **Method note worth keeping:** the vacuity trap is structural, not agy's alone — a bar that starts **below** where
+  the defect is injected cannot see it, however green it looks. `in-process-driver.test.ts:218-219` (untouched, still
+  guarding BL-062's worker-only path) is the original instance; agy's test reproduced its shape. **The worker inherits
+  the codebase's blind spots.**
+
+  **Telemetry (task closure):**
+  - task:        BL-063
+  - wall-clock:  2026-07-17 06:58 → 07:39 (~41 min)
+  - budget:      weekly ~36% at close (Δ unavailable — the `claude` meter read `ok:false` at session start, LB-11),
+                 session 22% at close
+  - gate:        tsc 0, suite 329/329 (57 files; baseline 328 + 1 new arbiter bar), pollution clean (4 files, all in
+                 scope; `in-process-driver.test.ts` untouched → BL-062's worker-only path byte-for-byte)
+  - diff:        5 files, +185/-25; commits `7e353f7` (filing) + `7e60892` (fix) + `a971b25` (merge)
+  - outcome:     MERGED ✅ (not pushed — PO says "merge" and "push" as separate words)
 
 <!-- @item
 id: BL-022
