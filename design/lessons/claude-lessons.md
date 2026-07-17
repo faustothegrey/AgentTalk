@@ -688,3 +688,36 @@ here.**
   For grading *judgment*, the artifact gives the answer and hides the thinking. **BL-056's argument is stronger than
   the primer (mine, last session) credits it** — I wrote "it matters before unattended runs, not attended ones," and
   then hit the wall on an attended run, because judgment is invisible in a diff.
+
+### 2026-07-17 (BL-063 + BL-064 + rung 2; hats: implementer + plan reviewer + task-end reviewer + SM)
+
+- **A bar that starts BELOW the defect cannot see it — and I nearly shipped that trap twice in one day, hours
+  after diagnosing it.** BL-063's duplication survived because `in-process-driver.test.ts:218-219` asserted "context
+  appears exactly once" while driving the **driver alone**; the extra copy was appended **upstream** by the
+  coordinator. agy's regression test repeated that shape and passed with the bug fully restored. Then, writing
+  BL-064's own bar, I caught myself about to assert *"the env var is passed"* — which proves the **plumbing** while
+  the **guarantee** (the report gets written) goes unasserted. **Same shape, new costume.** The fix both times was
+  to move the seam: test where the defect is *injected*, not where it's *observed*. **Also: mutation-check per
+  ASSERTION, not per test.** Both BL-063 bars reddened under mutation on a plan-equality check that short-circuits
+  *ahead of* the count assertion — the guarantee never executed. I only learned the count assertion bites by
+  neutralising the earlier one. A test that fails for the wrong reason looks identical to one that bites.
+- **Three specs in a row were the weak link, and all three failed the same way: I scoped from the code and my
+  memory instead of reading the item's own text.** BL-058 (absolute path), then I *offered the PO BL-028* for rung 2
+  without having read its fix sketch — which says **"do not land the timeout alone"** and names an unbuilt
+  dependency; then the rung-2 goal demanded a **pasted mutation-check transcript** from a system with **no report
+  channel**. agy complied exactly each time; the instrument or the spec was wrong. **Read the backlog item's own
+  fix sketch BEFORE offering it, not after the PO picks it.** Caught the BL-028 one before it cost a run — because
+  I finally did the 30-second read.
+- **"The bar bites" and "the fix is right" are different claims, and today they came apart.** agy's rung-2
+  mutation-check was honest — I restored the bug myself and reproduced its pasted transcript exactly. But only
+  *reading the diff* caught that its fix **fails open**: a declared repo missing from disk is silently skipped,
+  i.e. BL-022's own defect class one layer up. **A mechanical mutation-check does not retire the reviewer's read.**
+- **Rung 2 flipped rung 1.5's verdict — and I must not overclaim why.** With the report channel live (BL-064,
+  shipped the same session), agy delivered a fix, a genuinely biting e2e bar, and an honest transcript. Take 1 and
+  take 2 ran the **same goal text** against the **same defect**; take 1 gave diagnosis-no-fix-`completed`-unreadable.
+  **n=1, and the mutation demand was in take 1's goal too** — so what changed *for certain* is that take 2 was
+  **gradable**, not that the demand caused the delivery. Say that, not the tidier story.
+- **The BL-059 discipline finally held under live pressure.** Rung 2 take 1 was `completed` with no commit and no
+  fix — the exact accusation shape. I checked the right coordinates first (agy's own probe file proved where it
+  worked), and wrote **"delivery incomplete, reason unobservable"** into the record instead of a model-honesty
+  defect. **The honest verdict was available only because I knew what I could not see.**
