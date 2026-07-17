@@ -72,8 +72,12 @@ pre-existing, not yours. Suite **335/335** (was 331; +4 BL-060 bars). Client sti
   positive evidence for "service"** — `launchctl` is never called — so **this item's own scenario (an orchestrator
   leaked from the repo root) reports clean.** Its test also only passes inside a path containing `agentalk-task-`
   → **red on master**. Fix is small and known: positive evidence via `launchctl list`; **unknown ⇒ UNKNOWN, never
-  clean**; decouple the test from its path. **PO decision open: does an UNKNOWN process FAIL the sweep (exit≠0) or
-  report loudly at exit 0?** The item's own lesson cuts both ways.
+  clean**; decouple the test from its path. **✅ DECIDED (PO, 2026-07-17): UNKNOWN FAILS the sweep — exit
+  non-zero.** No "assume fine" branch survives; that absence is the fix. **But it fires on the PO's own
+  processes** (a hand-started orchestrator, a stray `npm run dev`) — so the refusal must be **actionable**: name
+  process/ports/cwd/command and offer **stop it, or declare it** (allowlist/env = positive evidence too). **The
+  escape valve is part of the deliverable, not a follow-up** — a check that cries wolf at the PO gets disabled,
+  which is this item's own bonus lesson.
 - **⚠️ BL-023's own fix sketch has TWO CORRECTED PREMISES — the filing records them, don't re-inherit them:**
   **`pgrep -f dist/index.js` DOES find the launchd service (4064)**, and **`ppid` cannot discriminate** — the
   service runs at ppid 1 and *an orphaned leak reparents to ppid 1 too*. Only `launchctl` is positive evidence.

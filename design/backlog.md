@@ -1084,9 +1084,20 @@ tags: [hygiene, pollution, gates, friction-m18]
   **What this task now needs (small, and precisely known):** positive evidence via **`launchctl list`** (or the
   equivalent registry) to establish "managed"; **unknown/ambiguous ⇒ report as UNKNOWN, never clean** (fail closed,
   per [[BL-052]]/[[BL-061]]); **decouple the test from its own path**; and keep agy's read-only `lsof`/`ps` +
-  report-not-reap, which are right. **Open decision for the PO:** does an UNKNOWN process **fail** the sweep (exit
-  non-zero) or **report loudly** at exit 0? The item's own bonus lesson cuts both ways — false findings are worse
-  than no check, but a silent miss is what filed this item.
+  report-not-reap, which are right.
+  **✅ DECIDED (PO, 2026-07-17): an UNKNOWN process FAILS the sweep — exit non-zero.** Fail closed, consistent with
+  [[BL-052]] (refuse rather than inherit) and [[BL-061]]. So the classes are: **managed** (positive evidence —
+  `launchctl` knows it) ⇒ LEGITIMATE · **not-managed + task-worktree/`(deleted)` cwd** ⇒ LEAKED · **not-managed +
+  anything else** ⇒ **UNKNOWN ⇒ exit non-zero**. There is no "assume fine" branch left — that absence *is* the fix.
+  **⚠️ Consequence the implementer must design for, not discover:** this **fires on the PO's own processes**. A
+  hand-started orchestrator (the live-run recipe starts one every time) and a `npm run dev` that happens to be up
+  at closure are both not-managed and not in a task worktree ⇒ UNKNOWN ⇒ fail. That is *correct* at closure — a
+  live-run orchestrator left behind IS this item's leak — but it collides head-on with this item's own bonus lesson
+  (*false findings are worse than no check*), and a check that cries wolf at the PO gets disabled.
+  **So the refusal must be actionable, not just loud:** name the process, its ports, its cwd and command, and state
+  the two ways out — **stop it, or declare it** (an allowlist / env for "yes, it's mine, I know"). A declared
+  process is positive evidence too, and it keeps the fence fail-closed while staying usable. **The escape valve is
+  part of the deliverable, not a follow-up.**
   **Independence caveat:** the rung-3 task was designed AND graded by Claude, the sole available agent.
 
 <!-- @item
