@@ -910,12 +910,12 @@ tags: [worktree-context, duplication, prompt, vacuous-test, rung15, agy-authored
 
 <!-- @item
 id: BL-022
-status: todo
+status: done
 date: 2026-07-09
 epic: null
 tags: [scope-fence, tooling, cross-repo, friction-m18]
 -->
-- [todo · **M18 C7 friction item** — filed from evidence at epic close; the fence we shipped in M18-T1 has a
+- [done · **MERGED + PUSHED 2026-07-17** — `28aa670` · PO decided the open question: a declared repo missing from disk is a HARD FAILURE, not a silent skip · cross-repo shape + e2e bar originate from agy's rung-2 run] — **M18 C7 friction item** — filed from evidence at epic close; the fence we shipped in M18-T1 has a
   hole we hit in M18-T3a the same day] — **`scope-check` is single-repo blind** — `scripts/scope-check.mjs`
   diffs only the AgentTalk working tree, so any task whose code lives in `agentalk-mcp-client` (or any other
   repo) is **unfenced while reporting green**. M18-T3a's *primary* change was `bridge.mjs`; its `scope-check`
@@ -957,6 +957,42 @@ tags: [scope-fence, tooling, cross-repo, friction-m18]
   **DoD:** the fail-open decision made and implemented; the scratch runner removed; agy's bar kept and re-proven by
   **mutation-check** (no mutation-check ⇒ no VERIFIED); `npx vitest run scripts` green.
   **Independence caveat:** the rung-2 task was designed AND graded by Claude, the sole available agent.
+
+  **2026-07-17 — CLOSED. MERGED + PUSHED (`28aa670`).**
+  **The decision (PO):** a declared repo missing from disk is a **HARD FAILURE**. Implemented as a refusal that
+  names each missing repo and its resolved path, and states the residual the item asked for: *the fence only sees
+  repos the manifest DECLARES, so an undeclared repo is unfenced while green.* The **same rule was extended one
+  step** — a declared path that exists but is **not a readable git repo** now refuses too, because the
+  `catch (e) {}` on `git status` was swallowing that case into the identical unfenced-while-green hole. Consistent
+  with [[BL-052]] (refuse rather than inherit) and [[BL-061]] (fail closed).
+  **What came from agy (rung 2):** the `getChangedFiles(scope)` cross-repo shape (derive each distinct `../<repo>`
+  prefix from `allowed`/`forbidden`/`free`, iterate, prefix the returned paths) and the e2e bar. Its patch was NOT
+  merged from the sandbox — the shape was re-applied by hand and its bar kept. Its scratch
+  `scripts/__tests__/test-runner.js` was deliberately **not** carried over.
+  **Mutation-check — per ASSERTION, not per test, and it is the load-bearing evidence:**
+  | mutation | agy's bar | new fail-hard bar |
+  |---|---|---|
+  | blind again (scope ignored) | **red** | **red** |
+  | fail-open restored (silent skip) | **PASSES** | **red** |
+  The bottom-left cell is the finding: **agy's bar cannot see the fail-open at all** — a mutation-check of its
+  delivery alone would have blessed it. This is the concrete proof of the item's own warning that *"the
+  mutation-check does not retire the reviewer's read"*; only reading the diff found it.
+  **Two honest process notes** (both are [[IP-16]] shaped — a red earned for the wrong reason):
+  (1) the first mutation attempt deleted `const files = new Set();` instead of neutering the arg, so both bars
+  reddened on a `ReferenceError` — a crash-red is indistinguishable from a bite-red in the output; caught and
+  re-mutated. (2) Both bars initially failed on `expect(error).toBeDefined()`, which **short-circuits ahead of**
+  the `toContain` guarantees; the early assertion had to be neutralised and re-mutated before the guarantees
+  could honestly be called proven.
+  **Independence caveat:** authored AND reviewed by Claude, sole available agent (PO 2026-07-15).
+
+  **Telemetry (task closure):**
+  - task:        BL-022
+  - wall-clock:  2026-07-17 08:33 → 08:50 (~17m)
+  - budget:      weekly 38%→39% (Δ ~1%), session 43%→50% (Δ ~7%) [per scripts/usage.mjs]
+  - gate:        tsc 0, suite 331/331 (57 files; baseline 329 + 2 new e2e bars), scripts 9/9 (baseline 7),
+                 pollution clean (2 files, both in scope; node_modules symlink removed before staging)
+  - diff:        2 files, +165/-17; commits `a380e6b` (fix) + `28aa670` (merge)
+  - outcome:     MERGED ✅ + PUSHED ✅ (PO said both words)
 
 <!-- @item
 id: BL-023
