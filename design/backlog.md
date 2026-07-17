@@ -759,12 +759,12 @@ tags: [self-hosting, relay, human-in-the-loop, program]
 
 <!-- @item
 id: BL-066
-status: todo
+status: done
 date: 2026-07-17
 epic: null
 tags: [engine, ids, data-loss, silent, autonomy, proven]
 -->
-- [todo · **proven live, not theorised** — probe output below · **PO authorised the engine change 2026-07-17** · blocks BL-056, whose fix is keyed on `teamId`] — **Team and task ids collide: `Date.now()` alone is the id, so two created in the same millisecond are the SAME id — and the second silently overwrites the first.** Four mint sites: `team-coordinator.ts:177` (`team-${Date.now()}`), `:262`, `:338` (`task-${Date.now()}`), `arbiter-coordinator.ts:59`. Storage is `Map.set(id, …)` (`team-coordinator.ts:186`), so a collision is a **silent overwrite — no error, no warning, an object simply ceases to exist.**
+- [done · **MERGED 2026-07-17** (`fc3b55a`) · **proven live, not theorised** — probe output below · unblocked BL-056, whose fix is keyed on `teamId`] — **Team and task ids collide: `Date.now()` alone is the id, so two created in the same millisecond are the SAME id — and the second silently overwrites the first.** Four mint sites: `team-coordinator.ts:177` (`team-${Date.now()}`), `:262`, `:338` (`task-${Date.now()}`), `arbiter-coordinator.ts:59`. Storage is `Map.set(id, …)` (`team-coordinator.ts:186`), so a collision is a **silent overwrite — no error, no warning, an object simply ceases to exist.**
 
   **Proof** (probe, 2026-07-17 — two `createTeam` calls back-to-back):
   ```
@@ -779,6 +779,38 @@ tags: [engine, ids, data-loss, silent, autonomy, proven]
   **How it was found (worth keeping — the mechanism, not the anecdote):** a BL-056 bar written for another purpose ("does not leak another team's tasks") flaked. **In the full suite it PASSES 354/354; in isolation it fails 5 of 6** — full-suite load spaces the two `createTeam` calls into different milliseconds. **A green produced by timing, in a suite that would have passed every gate.** Had the bar been deleted as flaky, the defect would have shipped under a green.
 
   **Fix shape:** `Date.now()` + a monotonic counter (or random suffix) at all four sites. **Risk is provably low: nothing anywhere parses or asserts the generated id format** (grep: one test passes a literal `'team-1'` as input; no format assertions, no recording parses it). **Bars:** two teams back-to-back get distinct ids; two tasks back-to-back get distinct ids; both red on master.
+
+
+  **CLOSED — MERGED 2026-07-17 (`fc3b55a`).** One shared `mintId(prefix)` (`registry/ids.ts`) →
+  `<prefix>-<epochMs>-<sequence>`, wired into all four sites. **The counter carries uniqueness, not the
+  timestamp** — so it holds under any clock resolution, NTP skew, or a clock that steps backwards. The timestamp
+  stays only to keep an id legible; **nothing may depend on it for identity.** One mint shared by both
+  coordinators, so their separate task maps never need reasoning about twice.
+
+  **Every bar freezes the clock — that is the deliverable, not a detail.** The defect was found by a bar whose
+  verdict was decided by *timing*: 354/354 green under full-suite load, 5-of-6 red in isolation, because load
+  spaced two mints into different milliseconds. **A bar that reports on the machine rather than the code is not
+  evidence.** Frozen, the collision is certain: isolation-stable 5/5. It also states the honest property —
+  "ids are usually unique" is not one; **"ids are unique even when the clock does not move"** is.
+
+  **Each bar was proven to bite against the mutation it OWNS — and the first reading was wrong.** Four reds
+  looked like four bites; two were **crash-reds**: the task bars died on `Error: Team is already working on a
+  task`, killed by the *team* collision before ever testing a *task* id. Staging the fix (team ids only) made the
+  task bar fail on its own assertion — `expected 'task-...' not to be 'task-...'` — and only then were the task
+  sites fixed. **Read the mutant and read the failure message; the summary line cannot tell the two apart**
+  (the primer hazard, hit and caught).
+
+  **Verified it unblocked BL-056 rather than asserting it:** BL-056's leak bar, isolated, went 5-of-6 red →
+  **6-for-6 green**.
+
+  **Telemetry (task closure):**
+  - task:        BL-066
+  - wall-clock:  2026-07-17 ~13:00 → 13:29 (~30m, file→merge)
+  - budget:      weekly 45%→46% (Δ ~1%), session 12%→18% (Δ ~6%)
+  - gate:        tsc 0, suite 353/353 (baseline 350 + 3), isolation-stable 5/5, sweep clean (BL-023; the
+                 restarted orchestrator declared via `AGENTTALK_SWEEP_DECLARED=54344`)
+  - diff:        4 files, +116/-4, commits `bf958ed` → merge `fc3b55a`
+  - outcome:     MERGED ✅ (not pushed — PO said "merge")
 
 <!-- @item
 id: BL-065
