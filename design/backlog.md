@@ -758,6 +758,23 @@ tags: [self-hosting, relay, human-in-the-loop, program]
 ### Todo (next first)
 
 <!-- @item
+id: BL-067
+status: todo
+date: 2026-07-17
+epic: null
+tags: [engine, ids, data-loss, silent, follow-up, under-scope]
+-->
+- [todo · **the two sites BL-066 MISSED** — same defect, same fix, filed by its own author · agent-id collision **verified**; conversation-id storage **verified** (Map + persisted)] — **Agent and conversation ids still collide: `Date.now()` alone, no counter.** Follow-up to [[BL-066]]. BL-066 fixed team/task ids and its closing block claimed the class was closed. **It was four of six.**
+
+  **`server.ts:599`** — `` `agent-${provider}-${Date.now()}` `` (used whenever `POST /api/agents` omits an explicit id — the UI's own agent-creation panel does exactly that). Storage is `Map<string, Agent>` (`registry.ts:104`) with `this.agents.set(id, agent)` (`:191`) → **two agents created in the same millisecond: one silently evicted.**
+
+  **`conversation-coordinator.ts:59`** — `` `conversation-${Date.now()}` ``. Storage is `Map<string, Conversation>` (`conversation-store.ts:7`) with `.set(conversation.id, …)` (`:39`) **followed by `persist()`** → the eviction is **written to disk**, so this one is durable, not just in-memory.
+
+  **Fix:** the existing `mintId(prefix)` from `registry/ids.ts` at both sites. Nothing parses either id format (re-verified). **Bars:** frozen clock, same discipline as BL-066 — two agents / two conversations minted in one millisecond get distinct ids and neither evicts the other; both red before the fix.
+
+  **Why this filing exists at all (keep the mechanism, not the apology):** BL-066's survey grepped for the shape it had already concluded — ``id: `team-`` / ``id: `task-`` — and so could only ever confirm itself. **A search shaped by your conclusion is not evidence about the class.** The honest survey is "every `Date.now()` that reaches an id", which is how these two surfaced — by accident, from an id rendered on screen during unrelated work.
+
+<!-- @item
 id: BL-066
 status: done
 date: 2026-07-17
@@ -781,8 +798,15 @@ tags: [engine, ids, data-loss, silent, autonomy, proven]
   **Fix shape:** `Date.now()` + a monotonic counter (or random suffix) at all four sites. **Risk is provably low: nothing anywhere parses or asserts the generated id format** (grep: one test passes a literal `'team-1'` as input; no format assertions, no recording parses it). **Bars:** two teams back-to-back get distinct ids; two tasks back-to-back get distinct ids; both red on master.
 
 
-  **CLOSED — MERGED 2026-07-17 (`fc3b55a`).** One shared `mintId(prefix)` (`registry/ids.ts`) →
-  `<prefix>-<epochMs>-<sequence>`, wired into all four sites. **The counter carries uniqueness, not the
+  **CLOSED — MERGED 2026-07-17 (`fc3b55a`) — but INCOMPLETE: it fixed FOUR of SIX sites. See [[BL-067]].**
+  One shared `mintId(prefix)` (`registry/ids.ts`) → `<prefix>-<epochMs>-<sequence>`, wired into the four
+  team/task sites.
+  **⚠️ The "four mint sites" figure in this item is WRONG — there are six.** Agent ids (`server.ts:599`) and
+  conversation ids (`conversation-coordinator.ts:59`) carry the identical defect and were NOT fixed here. The
+  miss has a mechanism worth keeping: the survey grepped for ``id: `team-`` and ``id: `task-`` — **the exact
+  shape already assumed** — so it returned the assumption rather than the class, and "all four sites" read as
+  complete. **A grep shaped by your conclusion cannot disconfirm it.** Found only when a stray `POST /api/agents`
+  put `agent-gemini-1784289424679` on screen during unrelated work. **The counter carries uniqueness, not the
   timestamp** — so it holds under any clock resolution, NTP skew, or a clock that steps backwards. The timestamp
   stays only to keep an id legible; **nothing may depend on it for identity.** One mint shared by both
   coordinators, so their separate task maps never need reasoning about twice.
