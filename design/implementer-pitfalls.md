@@ -277,6 +277,18 @@ notice in the header.)*
   Passed gate 2 across six rounds. Reviewer tell: **"what would this proof print if I reverted the fix?"** — if
   you can't answer, the proof isn't evidence yet.
 
+- **Case (BL-067, 2026-07-17) — the vacuous assertion, same principle one level down.** A bar for an id
+  collision opened with `expect(a.id).not.toBe(b.id)` and **passed on the unfixed code**. Reason: the collision
+  made the *second* `POST /api/agents` fail, so its body carried no `id` — and `realId !== undefined` is true for
+  a reason with nothing to do with the guarantee. It looked green while proving nothing; only a later assertion
+  (`getAgents()` has length 2) bit. **The tell is IP-15's, applied per ASSERTION rather than per test: "what would
+  this line print if I reverted the fix?"** An assertion that short-circuits ahead of your real guarantee means
+  the guarantee never ran. Cure: assert the preconditions the comparison depends on *first* (here: both responses
+  are 200), so the bar cannot pass through the hole it is meant to detect. **Sibling tell from the same day:** a
+  red is not automatically a bite — two bars in that delivery reddened on `Error: Team is already working on a
+  task` (a *different* collision, upstream) and one on a *timeout*, never reaching their assertions. **A
+  crash-red and a bite-red are indistinguishable in the summary line. Read the failure message.**
+
 ### IP-16 — Process-optimization by deviation (silently reinterpret the workflow to improve the outcome)
 > ⚠️ **Renumbered 2026-07-10 (was a duplicate `IP-9`).** This entry was filed as `IP-9` from 2026-06-26 until
 > 2026-07-10, colliding with the *Artifact-count green* entry above. **Any citation of `IP-9` written before
@@ -307,3 +319,32 @@ notice in the header.)*
     file demonstrates the pitfall's own thesis: a discipline nobody mechanically checks is a discipline that
     silently drifts.** See `logbook.md` LB-69 Finding 3 (evidence determinism) — "next free id" is a *decidable
     predicate*, and decidable predicates should be decided by the harness, not promised by the author.
+
+### IP-17 — The self-confirming survey (grep for the shape you already concluded, then report the class closed)
+- **Gist:** you form a hypothesis about a defect's *shape*, search the codebase for **that shape**, find exactly
+  the instances matching it, and report the class **closed** — with a count that sounds like diligence ("all four
+  sites"). The search never had the power to disconfirm you: it was your conclusion, re-served as evidence.
+- **Why it bites:** it is the most credible-looking survey the workflow has, because it produces a *number*. A
+  closing block that says "all N sites" reads as exhaustive to every later reader, and the item is marked `done`,
+  so nobody surveys again. The remainder of the class then ships, protected by the record saying it was handled.
+  Worse, it is invisible from the diff and from the tests: **every bar passes, because every bar was written for
+  the shape you already believed in.** It is IP-15's non-discrimination moved upstream — from the *proof* to the
+  *investigation*.
+- **The tell:** ask **"what result would have proven me wrong?"** If your search *could only* return instances of
+  your hypothesis, it produced no evidence about the class — only about your hypothesis's fixed points. The
+  honest survey is the **broad, unfiltered one you must read with your eyes** (here: *every* `Date.now()`), not
+  the precise one that confirms you. Precision in a search is a way of not looking.
+- **Case (BL-066 → BL-067, 2026-07-17):** ids collided (`Date.now()` alone, ms resolution → silent `Map.set`
+  eviction). The survey grepped for ``id: `team-`` and ``id: `task-``, found four sites, fixed them, and the
+  closing block declared the class closed. **It was four of six.** Agent ids (`server.ts:599`) and conversation
+  ids (`conversation-coordinator.ts:59`) carried the identical defect and were never in the grep's reach, because
+  the grep was built from the two prefixes already concluded. The miss surfaced **by accident**, from an id
+  (`agent-gemini-1784289424679`) rendered on screen during unrelated work — not from any bar. The honest survey,
+  run afterwards, was `grep -rn "Date.now()"` across all non-test source, read line by line; it found the two
+  misses **and** two further candidates **and** the finding that outlived the fix: `registry.ts:616` and `:802`
+  **already appended a counter**, so the class had been solved ad hoc twice and never generalised. **It was never
+  six bugs; it was a missing convention.** Reviewer tell: when a delivery reports a *count* of fixed sites, ask
+  how the count was obtained. If the answer is a grep for the known shape, the count is a lower bound, not a
+  total. *(Authored by the reviewer against its own implementer work — sole-agent fallback; the pattern is not
+  self-flagellation, it is that a shaped search feels like rigour from the inside, which is exactly why it needs
+  a case here.)*
