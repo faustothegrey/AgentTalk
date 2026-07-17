@@ -1,7 +1,50 @@
 import { describe, expect, it, vi } from 'vitest';
 import { TeamCoordinator } from '@agenttalk/runtime-core/registry/team-coordinator';
 import { Agent } from '@agenttalk/runtime-core/agents/agent';
+import { InProcessAgentDriver } from '@agenttalk/runtime-core/agents/in-process-driver';
+import { WORKTREE_CONTEXT } from '@agenttalk/runtime-core/agents/response-schema';
+import type { Registry } from '@agenttalk/runtime-core/registry/registry';
 import type { TeamTask } from '@agenttalk/contracts/types';
+
+/**
+ * BL-063: render a `team_work_assign` payload through the REAL driver and return the worker
+ * prompt. The payload must be one the coordinator actually emitted — handing the driver a
+ * hand-written plan is what let the duplication survive: the extra copy was appended
+ * *upstream*, so a bar starting at the driver cannot see it (in-process-driver.test.ts).
+ */
+const renderWorkerPrompt = async (workAssignPayload: unknown): Promise<string> => {
+  // Raw — driver.start() drives the status transitions itself.
+  const workerAgent = new Agent('worker-driven');
+
+  const registry = {
+    handleMcpToolCall: vi.fn().mockResolvedValue({}),
+    pauseTaskForOperator: vi.fn().mockResolvedValue(undefined),
+  } as unknown as Registry;
+
+  const fetchFn = vi.fn().mockResolvedValue({
+    ok: true,
+    json: async () => ({
+      choices: [{ message: { content: '{"message_type":"work_accept","message_payload":{"text":"done"}}' } }],
+    }),
+  });
+
+  process.env.GEMINI_API_KEY = 'test-key';
+  const driver = new InProcessAgentDriver(workerAgent, registry, { fetchFn });
+  driver.start();
+  workerAgent.queueTurn(workAssignPayload as never);
+  await new Promise((r) => setTimeout(r, 50));
+  driver.stop();
+
+  const body = JSON.parse(fetchFn.mock.calls[0][1].body);
+  const strings: string[] = [];
+  const walk = (v: unknown): void => {
+    if (typeof v === 'string') strings.push(v);
+    else if (Array.isArray(v)) v.forEach(walk);
+    else if (v && typeof v === 'object') Object.values(v).forEach(walk);
+  };
+  walk(body);
+  return strings.find((s) => s.includes('You are the WORKER')) ?? '';
+};
 
 describe('TeamCoordinator', () => {
   it('should emit an explicit planning-complete notification when the planner submits a plan', async () => {
@@ -201,13 +244,34 @@ describe('TeamCoordinator', () => {
     // BL-053: the worktree context survives the planner round-trip and reaches the worker on a
     // confirmed plan too — this is the path that regressed silently when the string lived in
     // three separate copies.
-    expect(sendProtocol).toHaveBeenLastCalledWith('worker', 'EVT', expect.objectContaining({
-      type: 'team_work_assign',
-      plan: expect.stringContaining('IS a git worktree, created for this task'),
-    }));
-    expect(sendProtocol).not.toHaveBeenLastCalledWith('worker', 'EVT', expect.objectContaining({
-      plan: expect.stringContaining('abort the task'),
-    }));
+    //
+    // BL-063 moved this assertion (PO-approved, 2026-07-17). It used to demand the context ride
+    // INSIDE the `plan` payload. That was the mechanism, not the guarantee — and asserting the
+    // mechanism here is what hid the defect: the coordinator appended the context, the driver
+    // appended it AGAIN, and the worker was told twice. No bar spanned both, so both halves
+    // looked correct. The guarantee — the worker is TOLD, exactly once — is now asserted where
+    // the worker actually reads it: the rendered prompt, coordinator → driver.
+    const workAssign = sendProtocol.mock.calls.find(
+      (c: unknown[]) => c[0] === 'worker' && (c[2] as { type?: string })?.type === 'team_work_assign',
+    );
+    expect(workAssign).toBeDefined();
+
+    // The plan payload is now the plan, and nothing but the plan.
+    expect(workAssign![2].plan).toBe([
+      '1. Update `scripts/llm-agent.mjs` to tighten the worker instructions.',
+      '2. Ensure the worker is told to use `git worktree` and abort otherwise.',
+      '3. Verify the resulting worker assignment payload.',
+    ].join('\n'));
+
+    const prompt = await renderWorkerPrompt(workAssign![2]);
+
+    // The guarantee, end-to-end: told once. Restore the append in either coordinator and this
+    // count goes to 2 — which is the mutation-check this bar exists to pass.
+    expect(prompt).toContain(WORKTREE_CONTEXT);
+    expect(prompt.split(WORKTREE_CONTEXT).length - 1).toBe(1);
+
+    // BL-053's negative half travels with it: no refuse-and-abort branch reaches the worker.
+    expect(prompt).not.toContain('abort the task');
   });
 
   it('should interrupt planning when submit_plan is missing before timeout', async () => {

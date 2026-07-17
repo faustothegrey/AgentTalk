@@ -1,6 +1,39 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { Registry } from '../registry.js';
+import { Agent } from '../../agents/agent.js';
+import { InProcessAgentDriver } from '../../agents/in-process-driver.js';
+import { WORKTREE_CONTEXT } from '../../agents/response-schema.js';
+import type { Completer } from '@agenttalk/llm-client';
 import { callApi } from '@agenttalk/llm-client/api-client.js';
+
+/**
+ * BL-063: render a coordinator-emitted `team_work_assign` through the REAL driver and return the
+ * worker prompt. The payload must come FROM the coordinator — the duplication is appended
+ * upstream, so a bar that hands the driver a hand-written plan cannot see it.
+ */
+const renderWorkerPrompt = async (workAssignPayload: unknown): Promise<string> => {
+  const workerAgent = new Agent('worker-driven');
+  const driverRegistry = {
+    handleMcpToolCall: vi.fn().mockResolvedValue({}),
+    pauseTaskForOperator: vi.fn().mockResolvedValue(undefined),
+  } as unknown as Registry;
+
+  // The completer is injected rather than a fetchFn: this file mocks `callApi`, so the real
+  // ApiCompleter would never reach a fake fetch. This captures the prompt the driver builds.
+  const complete = vi.fn().mockResolvedValue({
+    text: '{"message_type":"work_accept","message_payload":{"text":"done"}}',
+  });
+
+  const driver = new InProcessAgentDriver(workerAgent, driverRegistry, {
+    completer: { complete } as unknown as Completer,
+  });
+  driver.start();
+  workerAgent.queueTurn(workAssignPayload as never);
+  await new Promise((r) => setTimeout(r, 50));
+  driver.stop();
+
+  return String(complete.mock.calls[0]?.[0] ?? '');
+};
 
 vi.mock('@agenttalk/llm-client/api-client.js', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@agenttalk/llm-client/api-client.js')>();
@@ -34,6 +67,48 @@ describe('ArbiterCoordinator', () => {
 
   afterEach(async () => {
     await registry.destroy();
+  });
+
+  it('BL-063: an arbiter-confirmed plan reaches the worker with the worktree context exactly once', async () => {
+    const plannerA = await registry.createAgent('planner-a', { provider: 'mcp', providerName: 'mock', model: 'planner-a' });
+    const plannerB = await registry.createAgent('planner-b', { provider: 'mcp', providerName: 'mock', model: 'planner-b' });
+    const worker = await registry.createAgent('worker-1', { provider: 'mcp', providerName: 'mock', model: 'worker-1' });
+
+    await registry.activateAgent(plannerA.id);
+    await registry.activateAgent(plannerB.id);
+    await registry.activateAgent(worker.id);
+
+    const team = registry.createTeam([
+      { agentId: plannerA.id, role: 'planner' },
+      { agentId: plannerB.id, role: 'planner' },
+      { agentId: worker.id, role: 'worker' },
+    ], undefined, 'arbiter');
+
+    const task = await registry.assignTeamTask(team.id, 'Ship the arbiter feature');
+
+    // Reaching confirmation organically needs the LLM judge to converge; the delegation payload is
+    // what's under test, so the pre-delegation state is staged directly.
+    const plan = '1. Touch the arbiter path.\n2. Confirm the worker payload.';
+    task.plan = plan;
+    task.status = 'awaiting_confirmation';
+
+    const sendProtocol = vi.spyOn(registry, 'sendProtocol');
+    await registry.confirmTeamPlan(task.id);
+
+    const workAssign = sendProtocol.mock.calls.find(
+      (c) => c[0] === worker.id && (c[2] as { type?: string })?.type === 'team_work_assign',
+    );
+    expect(workAssign).toBeDefined();
+
+    // The plan payload is the plan, and nothing but the plan.
+    expect((workAssign![2] as { plan: string }).plan).toBe(plan);
+
+    // BL-063: the arbiter is the SECOND copy of this defect and the reason the obvious fix (delete
+    // only the driver's append) is wrong — it would leave this path duplicating. Nothing in the
+    // suite covered it: with the arbiter's append restored, all 328 tests still passed.
+    const prompt = await renderWorkerPrompt(workAssign![2]);
+    expect(prompt).toContain(WORKTREE_CONTEXT);
+    expect(prompt.split(WORKTREE_CONTEXT).length - 1).toBe(1);
   });
 
   it('defaults to protocol mode and uses TeamCoordinator', async () => {

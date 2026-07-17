@@ -2,7 +2,6 @@ import type { EventPayload } from '@agenttalk/contracts/protocol-payloads';
 import type { OutboundProtocolPacketType } from '../protocol/protocol.js';
 import type { Team, TeamTask } from '@agenttalk/contracts/types';
 import { Agent } from '../agents/agent.js';
-import { WORKTREE_CONTEXT } from '../agents/response-schema.js';
 import { callApi } from '@agenttalk/llm-client/api-client.js';
 
 export interface ArbiterCoordinatorDeps {
@@ -373,16 +372,12 @@ export class ArbiterCoordinator {
     this.deps.emitTeam(team);
     this.deps.emitTeamTask(task);
 
-    // BL-053: was a local re-declaration of the same string team-coordinator already had.
-    // Both now point at the one shared definition. See WORKTREE_CONTEXT.
-    const GIT_WORKTREE_REQUIREMENT = WORKTREE_CONTEXT;
-
     await this.deps.sendProtocol(worker.agentId, 'EVT', {
       type: 'team_work_assign',
       teamId: team.id,
       taskId: task.id,
       role: 'worker',
-      plan: `${task.plan!}\n\n${GIT_WORKTREE_REQUIREMENT}`,
+      plan: task.plan!,
       description: task.description,
     });
   }
