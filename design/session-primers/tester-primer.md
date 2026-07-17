@@ -1,7 +1,12 @@
 ---
 role: tester
-key: 20260713-1239-provider-routing
+key: none
 written: 2026-07-13 by Codex at session wrap-up after provider-routing / agy-healthcheck investigation; replaces the earlier cmux-tester key while preserving those notes below
+key_retired: 2026-07-17 by Claude (PO-approved) — was `20260713-1239-provider-routing`, never consumed by any
+  agent, so it kept reading as "fresh" at every cold start ~4 days on. `none` = no fresh cold-start due for this
+  role; it does NOT retire the seat, and the body below (Codex's provider-routing / agy-healthcheck notes) stays
+  as historical context. If the PO reassigns Tester, mint a FRESH key — never revive this one: a consumed or
+  retired key only ever yields a benign re-read. Git history holds the original.
 ---
 
 This is your session primer.
