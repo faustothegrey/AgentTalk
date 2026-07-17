@@ -30,7 +30,10 @@ async function main() {
     console.log('Google Drive integration configured.');
   }
 
-  const port = Number(process.env.PORT) || 3000;
+  // Default deliberately off 3000 (BL-060): 3000 is the most contended port in
+  // JS dev and is DiagramTalk's on the PO's machine. `apps/web/vite.config.ts`
+  // reads the same `PORT` knob and the same default, so the two halves agree.
+  const port = Number(process.env.PORT) || 3100;
   startServer(registry, port, {
     ...(recorder ? { recorder } : {}),
     ...(googleDrive ? { googleDrive } : {}),

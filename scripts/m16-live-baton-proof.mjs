@@ -4,9 +4,11 @@ import { WebSocket } from 'ws';
 import * as fs from 'fs';
 import * as path from 'path';
 
-const BASE_URL = 'http://127.0.0.1:3000';
+// Same `PORT` knob and default as the orchestrator and vite.config.ts (BL-060).
+const ORCHESTRATOR_PORT = process.env.PORT ?? '3100';
+const BASE_URL = `http://127.0.0.1:${ORCHESTRATOR_PORT}`;
 const WS_URL = 'ws://127.0.0.1:9898';
-const UI_WS_URL = 'ws://127.0.0.1:3000/ws';
+const UI_WS_URL = `ws://127.0.0.1:${ORCHESTRATOR_PORT}/ws`;
 
 async function startAgent(agentId, isSender) {
   console.log(`[${agentId}] Registering...`);
