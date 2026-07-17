@@ -3,6 +3,7 @@ import type { EventPayload } from '@agenttalk/contracts/protocol-payloads';
 import type { OutboundProtocolPacketType } from '../protocol/protocol.js';
 import type { Conversation, TranscriptEntry } from '@agenttalk/contracts/types';
 import { Agent } from '../agents/agent.js';
+import { mintId } from './ids.js';
 
 interface ConversationCoordinatorDeps {
   conversations: ConversationStore;
@@ -56,7 +57,7 @@ export class ConversationCoordinator {
     });
 
     const conversation: Conversation = {
-      id: `conversation-${Date.now()}`,
+      id: mintId('conversation'),
       agentIds,
       topic,
       maxRepliesPerAgent,

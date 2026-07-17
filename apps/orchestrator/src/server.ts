@@ -9,6 +9,7 @@ const require = createRequire(import.meta.url);
 const wireContract = require('@agenttalk/contracts/wire-contract.json');
 
 import { Registry } from '@agenttalk/runtime-core/registry/registry';
+import { mintId } from '@agenttalk/runtime-core/registry/ids';
 import { McpServer } from '@agenttalk/mcp-transport';
 import { activeBacklogItems, readBacklog } from './backlog.js';
 import { AGENTTALK_MCP_TOOLS } from '@agenttalk/runtime-core/registry/mcp-tools';
@@ -596,7 +597,11 @@ export function startServer(
     recorder?.record('api', 'create_agent_request', { id, provider, model, requestedExecutionMode });
 
     try {
-      const agentId = id || (provider ? `agent-${provider}-${Date.now()}` : `agent-${Date.now()}`);
+      // BL-067: `Date.now()` alone collided — two API-created agents in one
+      // millisecond produced the same id, and createAgent's guard (registry.ts:178)
+      // turned the second into a spurious "already exists" 500 for a caller who
+      // asked for a fresh agent. The counter, not the clock, makes it unique.
+      const agentId = id || (provider ? mintId(`agent-${provider}`) : mintId('agent'));
       const agent = await registry.createAgent(agentId, { requestedExecutionMode });
       if (isUsageCaptureProvider(provider)) {
         agent.provider = provider;
