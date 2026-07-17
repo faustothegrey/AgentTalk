@@ -758,6 +758,48 @@ tags: [self-hosting, relay, human-in-the-loop, program]
 ### Todo (next first)
 
 <!-- @item
+id: BL-064
+status: todo
+date: 2026-07-17
+epic: null
+tags: [observability, autonomy, ladder, run-artifact, client, bl056-sibling]
+-->
+- [todo · filed from the rung-2 run (2026-07-17), which it BLOCKED · PO-approved design: sidecar NDJSON via an env-passed path · sibling of BL-056, not a replacement — see the boundary below] —
+  **The worker's report text is captured NOWHERE, so an agent-driven run cannot be graded.** The full model
+  response exists client-side at **`llm-agent.mjs:125`** (`submit_exec_result` → `text: result.response`) and is
+  **never logged** before it crosses MCP. It is **not** in the run recording — the NDJSON holds lifecycle only
+  (`run-start · agent-launched · goal-delivered · outcome`; `bite0-launcher.mjs:154/158/171`) — and it is **not**
+  recoverable from the launcher either: `agent-launcher.mjs:146` spawns the child with **`stdio: 'inherit'`**, so
+  the child's output reaches the operator's terminal but the launcher process **cannot read it**. Orchestrator-side
+  it lands in `task.transcript`, which has **no read endpoint** and is dropped on completion — that is BL-056's
+  root cause.
+  **Why it matters — it is a hard blocker on the autonomous-development ladder, twice proven.** **Rung 1.5**
+  (2026-07-16): agy was asked to justify its fix over the alternatives it rejected; it did, and **that text is
+  gone**. **Rung 2** (2026-07-17): the goal's central deliverable was a **pasted mutation-check transcript** — and
+  the run was **ungradable**, because the report channel does not exist. agy diagnosed correctly (it built a
+  two-repo fixture, `runs/rung2-agy-diagnosis-probe.mjs`), delivered no fix and no commit, and reported
+  `completed` — **and we cannot know why.** That `completed`-with-no-artifact shape is the **BL-059 accusation
+  shape**; without the report, the only available reading of a future occurrence is a model-honesty defect, which
+  is exactly the false conclusion that cost two sessions. **For grading judgment, the artifact shows the answer and
+  hides the thinking.**
+  **Fix shape (PO-approved 2026-07-17):** the launcher passes the run's recording path to `llm-agent` via **env**;
+  `llm-agent` appends an **`agent-response`** event (`{ agentId, text, usage }`) to a **SIDECAR**
+  `<recording>.responses.ndjson`, reusing the existing `createNdjsonRecorder` (`bite0-launcher.mjs:193`).
+  **Sidecar, not the main recording:** two processes appending to one file would interleave on a large response.
+  **Rejected alternatives (recorded so they are not re-litigated):** switching the spawn to `stdio: 'pipe'` and
+  parsing a marker line (touches the spawn path; buffering/backpressure risk for a pure-observability win); a bare
+  `console.log` (unstructured, and durable only if the operator remembers to redirect).
+  **Boundary vs [[BL-056]] — this does NOT close it.** BL-056 is the **UI-facing** half: survive a page reload, review
+  a past run, task read endpoint, retain completed tasks (needs a PO go per LB-93). BL-064 is the **run-artifact**
+  half: the grading channel for the ladder. They can land independently; BL-056's read endpoint would later be a
+  cleaner source for the same text.
+  **Scope:** `agentalk-mcp-client` only (`llm-agent.mjs`, `lib/bite0-launcher.mjs`, `lib/agent-launcher.mjs`) — no
+  orchestrator change, no contract-hash movement. **DoD:** a test that fails before / passes after, **proven by
+  mutation-check** (restore the defect, keep the test, demand a red — no mutation-check ⇒ no VERIFIED), plus the
+  existing client suite green. ⚠️ **`scope-check` is single-repo blind ([[BL-022]])** — a green scope-check on this
+  task inspects **none** of the diff, because the whole diff lives in the other repo. Do not read it as a fence.
+
+<!-- @item
 id: BL-063
 status: done
 date: 2026-07-17
