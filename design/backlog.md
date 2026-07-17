@@ -1022,6 +1022,73 @@ tags: [hygiene, pollution, gates, friction-m18]
   than reaps** — only the actor that started a process may kill it. Bonus lesson: a hygiene check that cannot
   distinguish "leak" from "service" produces false findings, which is worse than no check.
 
+  **2026-07-17 — a CANDIDATE SKELETON exists, from the rung-3 run (agy). PO: file it as this task's starting point.**
+  **Artifacts (durable, gitignored):** `agentalk-mcp-client/runs/rung3-agy-7aa4a0a.patch`, plus
+  `rung3-run-transcript.log` and the report sidecar `rung3.ndjson.responses.ndjson`.
+  **Do NOT merge the patch from the sandbox — it returns as a reviewed task.** Run: 09:14→09:18 (~3.5 min of a
+  15-min cap); scope clean (only `scripts/`, 2 files, no leftovers); the sole `kill` is of its own dummy process,
+  which the goal permitted; containment held (sandbox worktree, zero remotes).
+
+  **⚠️ TWO PREMISES OF THE FIX SKETCH ABOVE ARE NOW CORRECTED — read before scoping:**
+  1. **`pgrep` is NOT blind to the launchd service.** Verified live 2026-07-17: `pgrep -f dist/index.js` returns
+     **4064**, the PO's `com.fausto.agenttalk-orchestrator`. The op-note claiming "pgrep does not find it" is
+     imprecise — a *guessed* pattern misses it; this exact pattern does not.
+  2. **`ppid` CANNOT discriminate, and this is the trap at the centre of the item.** The launchd service runs at
+     **ppid 1** — but an **orphaned leak also reparents to ppid 1**. Classify `ppid 1` as "service" and every leak
+     reads clean (fail-open); classify it as "leak" and you reproduce **exactly the false finding that got this
+     item's own premise corrected** (IP-15). The only **positive** evidence is **`launchctl list`**, which names
+     4064 and knows nothing about a hand-started process.
+
+  **What agy built:** `scripts/check-orchestrator-ports.mjs` — `lsof -iTCP -sTCP:LISTEN` for listening node procs,
+  then per-PID `lsof -p <pid> -a -d cwd` + `ps -o command=`; "orchestrator-ish" = cmd/cwd contains `index.js` or
+  `orchestrator`. Read-only via `lsof`/`ps`, which **correctly honours report-not-reap**. It rejected an alternative
+  and said why (`netstat` lacks PIDs in some contexts). A reasonable **skeleton**.
+
+  **✅ THE RUNG-3 QUESTION IS ANSWERED — YES, and against Claude's explicit prediction.** agy **found a fail-open in
+  its own work, unprompted**: the goal never said "fail open", never named `ppid` or `launchctl`, and only asked
+  what the check *cannot see*. Its own words: *"If `lsof` fails to retrieve the CWD... my script defaults the CWD to
+  `'unknown'`. Because `'unknown'` does not explicitly match the test directory naming convention, the process is
+  **silently classified as LEGITIMATE, causing a false negative**."* It **also** volunteered what its test does not
+  prove (that a genuinely legitimate orchestrator is correctly ignored — *"it only asserts the presence of the dummy
+  PID log"*). **Its mutation-check reproduced exactly** on independent replay (Claude restored `isLeaked = false`
+  itself: same assertion, right reason) — the second consecutive honest agy transcript. This is a real advance on
+  rung 2, where it shipped a fail-open and called it *"gracefully skipped"*.
+
+  **❌ AND THE DELIVERY IS REFUTED — it missed the CENTRAL fail-open while naming a peripheral one.**
+  1. **The classifier IS a fail-open, by design, and agy did not name it.**
+     `const isLeaked = isDeleted || isTaskWorktree;` — **default LEGITIMATE**, with **no positive evidence for
+     "service" anywhere**; `launchctl` is never called. It does not distinguish *leak from service*; it
+     distinguishes *task-worktree process from everything else*. **So the ORIGINAL BL-023 scenario — an
+     orchestrator leaked by a proof run from the repo root — reports LEGITIMATE.** Proven live:
+     ```
+     [LEGITIMATE] PID: 4064  | CWD: /Users/fausto/Software/AgentTalk/apps/orchestrator
+     [LEGITIMATE] PID: 46412 | CWD: /private/tmp/rung3/sandbox
+     All good: no leaked orchestrator processes found.        exit 0
+     ```
+     **4064 is the PO's real launchd service; 46412 was hand-started by Claude minutes earlier** — `launchctl`
+     knows nothing about it, and left behind it is *precisely this item's leak*. **Both read LEGITIMATE.** That is
+     this item's literal title, unresolved, reporting green.
+  2. **The test only passes where it was born.** It flags the dummy as LEAKED only because the dummy's CWD contains
+     `agentalk-task-`. **Verified: the identical files run from a checkout without that in the path FAIL**
+     (`expected … to contain '[LEAKED] PID: …'`). **Merged to master it goes red on the first run.** The goal
+     explicitly required a test that does not depend on the ambient environment. *(Its dummy is also only
+     "orchestrator-ish" because the filename `dummy-orchestrator.mjs` contains the substring "orchestrator".)*
+
+  **The shape of the result, stated precisely:** agy named a *symptom* of the root cause (unknown CWD ⇒ LEGITIMATE)
+  while the *root cause* — default-legitimate with no positive service evidence — went unnamed. **Introspection
+  found the fail-open it could see; it did not find the one it was standing on.** Note this is the mirror of
+  [[BL-022]]: there, the mutation-check passed through agy's fail-open and only a diff read caught it; here, agy's
+  own introspection caught a fail-open and only a diff read caught the bigger one. **Neither instrument retires the
+  reviewer's read.**
+
+  **What this task now needs (small, and precisely known):** positive evidence via **`launchctl list`** (or the
+  equivalent registry) to establish "managed"; **unknown/ambiguous ⇒ report as UNKNOWN, never clean** (fail closed,
+  per [[BL-052]]/[[BL-061]]); **decouple the test from its own path**; and keep agy's read-only `lsof`/`ps` +
+  report-not-reap, which are right. **Open decision for the PO:** does an UNKNOWN process **fail** the sweep (exit
+  non-zero) or **report loudly** at exit 0? The item's own bonus lesson cuts both ways — false findings are worse
+  than no check, but a silent miss is what filed this item.
+  **Independence caveat:** the rung-3 task was designed AND graded by Claude, the sole available agent.
+
 <!-- @item
 id: BL-024
 status: todo
