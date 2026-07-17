@@ -758,6 +758,43 @@ tags: [self-hosting, relay, human-in-the-loop, program]
 ### Todo (next first)
 
 <!-- @item
+id: BL-063
+status: todo
+date: 2026-07-17
+epic: null
+tags: [worktree-context, duplication, prompt, vacuous-test, rung15, agy-authored, bl053-adjacent]
+-->
+- [todo · **filed from the rung-1.5 run (agy's first real engineering task, 2026-07-17)** · agy's fix is good and is
+  preserved as a patch — **do NOT merge it as-is: its regression test is mutation-proven vacuous**] —
+  **`WORKTREE_CONTEXT` reaches a two-agent worker TWICE.** Both coordinators append it to the plan before the driver
+  ever sees it — `team-coordinator.ts:1530` (`buildWorkerPlan`: `` `${plan}\n\n${GIT_WORKTREE_REQUIREMENT}` ``, called
+  at `:1347`) and `arbiter-coordinator.ts:385` (`` `${task.plan!}\n\n${GIT_WORKTREE_REQUIREMENT}` ``) — and then
+  **`in-process-driver.ts:277`/`:291` appends `WORKTREE_CONTEXT` again** when rendering the prompt. The worker-only
+  path is clean (BL-062 set `plan: ''`), so **only the two-agent path duplicates**.
+  **Why it survived, and why the fix alone is not the deliverable:** `in-process-driver.test.ts:218-219` already
+  asserts the context appears **exactly once** — but it drives the **driver alone** (`runWorkAssign(plan)` hands the
+  driver a raw plan, `:197`), and the duplication is **injected by the coordinator upstream**. A bar that starts
+  below the defect cannot see it. **agy's regression test repeats that exact shape and is therefore vacuous: the bug
+  was fully restored and its test still passed** (mutation-checked, 2026-07-17). **The worker inherited the
+  codebase's blind spot.**
+  **Fix shape (agy's, and it is the right one — path-complete, avoids the trap):** delete the append from **both**
+  coordinators (`plan: task.plan!`), leaving the driver the **single source** of the context. The *obvious* fix —
+  deleting only the driver's copy — leaves `arbiter-coordinator` still duplicating. Also delete the now-dead
+  `buildWorkerPlan` + `GIT_WORKTREE_REQUIREMENT`, and **the now-unused `WORKTREE_CONTEXT` import at
+  `team-coordinator.ts:7`** (agy left it, plus a stray blank line in the arbiter).
+  **DoD — the real test is the whole point of this item:** a regression test that drives the **coordinator→driver**
+  path (not the driver alone) and **fails before / passes after**, proven by **mutation-check** (restore the defect,
+  keep the test, demand a red). No mutation-check ⇒ no VERIFIED. ⚠️ **Behaviour change on shared engine code**
+  (`team-coordinator.ts`, `arbiter-coordinator.ts`) → **needs PO confirmation**; the worker-only path (BL-062) must
+  stay byte-for-byte.
+  **Artifacts (durable, gitignored) in `agentalk-mcp-client/runs/`:** `rung15-agy-e966992.patch` (the fix),
+  `rung15-run-transcript.log`, `rung15.config.json`. ⛔ **`rung15-probe-STALE-see-notes.test.ts` is INVALID** — it
+  hardcodes the pre-fix plan shape (old `buildWorkerPlan` output) that a correct fix deletes, so it manufactures the
+  duplicate it counts; **do not reuse it without fixing its input assumption.**
+  **Independence caveat:** the task that produced this fix was designed AND graded by Claude, the sole available
+  agent — the author/reviewer split the workflow relies on does not currently exist. Flagged to the PO.
+
+<!-- @item
 id: BL-022
 status: todo
 date: 2026-07-09
