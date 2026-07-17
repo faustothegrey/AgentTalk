@@ -1,7 +1,10 @@
 ---
 role: plan-reviewer
-key: 20260713-1839-c7e4a9
+key: none
 written: 2026-07-13 (late) by Claude — session close after the goose arc: dev-executor + BL-041 merged + arbiter consensus WIN (TL-013)
+key_retired: 2026-07-17 by Claude (PO-approved) — was `20260713-1839-c7e4a9`, never consumed by any agent, so it
+  kept reading as "fresh" at every cold start ~4 days after the work it describes. `none` = no fresh cold-start due
+  for this role; the body below stays as historical context. Git history holds the original key.
 ---
 
 This is your session primer.

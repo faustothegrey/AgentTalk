@@ -1,7 +1,10 @@
 ---
 role: planner
-key: 20260713-0116-2be1cd-planner
+key: none
 written: 2026-07-13 by Codex at session close after BL-031 real-provider validation
+key_retired: 2026-07-17 by Claude (PO-approved) — was `20260713-0116-2be1cd-planner`, never consumed by any
+  agent, so it kept reading as "fresh" at every cold start ~4 days after the work it describes. `none` = no fresh
+  cold-start due for this role; the body below stays as historical context. Git history holds the original key.
 ---
 
 This is your session primer.
