@@ -756,3 +756,37 @@ here.**
   fail-open and only a diff read caught it; here introspection caught one and only a diff read caught the other.
   **Every instrument we add finds a class of defect and creates a new blind spot at its own altitude.** Record the
   prediction *before* the run — being wrong in writing is what made this gradable.
+
+### 2026-07-17 (BL-056 + BL-066 + BL-067; hats: planner + plan reviewer + implementer + implementation reviewer + task-end reviewer + SM)
+
+- **Today as implementer/planner I was wrong four times, and every single wrong was the same move: I reasoned from
+  code instead of running it.** (1) *"The UI lies"* — it was the doomed branch's UI, not master's; I looked at a
+  screen and generalised to the product. (2) *"The data was never lost, only the pointer"* — my plan's central
+  claim, holed by an id collision I had not found yet. (3) *"All four mint sites"* — six; the survey grepped for
+  ``id: `team-`` / ``id: `task-``, **the exact shape I had already concluded**, so it returned my assumption
+  wearing the costume of evidence. (4) *"Agents are silently evicted"* — filed as **verified**; `createAgent`
+  guards at `registry.ts:178`, and I had read `agents.set(...)` and reasoned by analogy with teams instead of
+  reading the function. **Every correction came from the terminal; not one came from thinking harder.** The
+  generalisation I want to keep: **a search shaped by your conclusion cannot disconfirm it** — the honest survey
+  is the broad one you have to read ("every `Date.now()`"), not the precise one that confirms you. And note the
+  altitude: I did all four *while* quoting the primer's warnings about exactly this. Reading a hazard is not
+  recognising it; only execution is.
+- **Today as implementation reviewer I nearly banked a green I had not earned — twice, in opposite directions.**
+  The full suite read **354/354 green with a live defect**: my leak bar passed only because full-suite *load*
+  spaced two `createTeam` calls into different milliseconds; isolated it failed 5-of-6. **A bar whose verdict is
+  decided by machine speed is evidence about the machine.** Had I deleted it as flaky — the obvious move — the id
+  collision ships under a green. Then the mirror: four reds that looked like four bites, two of which were
+  **crash-reds** (killed by a *different* collision before reaching their assertion), and one bar that passed
+  **vacuously** (`a.id !== undefined` where `b` had no `id`). **Freezing the clock is what converted all of it
+  from luck into fact** — and *staging* the fix (team ids only, then task ids) is what proved each bar owned its
+  own mutation. "The suite is green" and "the code is right" are independent propositions.
+- **Today as task-end reviewer the most valuable thing I produced was a failed demonstration.** My first live
+  witness run reported `status: "completed"` having done **nothing** — the transcript read `fatal: not a git
+  repository` and `391` appeared nowhere. The status was technically honest and completely useless, and **the only
+  artefact that told the truth was the transcript, which is precisely what BL-056 was making reachable.** The fix
+  caught its own demonstration lying. Keep two things from that: `completed` is never evidence, **check the
+  artifact** — and when a demo fails, read it before repairing it, because a failure that lands inside your own
+  thesis is worth more than the success you were staging. Also: the id defect was never six bugs. `registry.ts:616`
+  and `:802` **already** appended a counter — the knowledge existed, twice, and never became a convention. **The
+  bug was the missing convention; the six sites were its symptoms**, and `mintId` cures nothing unless the next
+  person finds it. I shipped the cure and not the convention, and said so.

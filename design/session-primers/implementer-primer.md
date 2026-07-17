@@ -1,7 +1,7 @@
 ---
 role: implementer
-key: 20260717-0937-791eb9
-written: 2026-07-17 by Claude (session close — BL-022 + BL-060 merged & pushed; rung 3 answered its question YES)
+key: 20260717-1428-3c9f4a
+written: 2026-07-17 by Claude (session close — BL-056 merged+pushed after BL-066/BL-067 cleared the ground under it)
 ---
 
 This is your session primer.
@@ -9,150 +9,190 @@ This is your session primer.
 **Project.** AgentTalk orchestrates real, heterogeneous LLM agents (Claude/Codex/Gemini-agy/goose) as one software
 team: they attach as MCP clients over WebSocket, pull turns via `await_turn`, and coordinate through a
 planner→implementer→reviewer workflow under a human Product Owner. Current thrust: the **autonomous-development
-ladder** — improving AgentTalk *with* AgentTalk, an orchestrator (you) driving a worker (agy) against real backlog
-items.
+ladder** — improving AgentTalk *with* AgentTalk.
 
 **Roles.** Human = PO (Fausto): scope, direction, **merges**. Bindings live ONLY in `AGENT.md → 📌 DEFAULT ROLE
 ASSIGNMENTS` — read it, don't trust this line. **Codex and Gemini (agy) are UNAVAILABLE as *agents*** (PO,
 2026-07-15) → you are likely sole agent under the resource-scarcity fallback: wear every hat, declare each, keep
 each gate separately. **Standing Conditional Reassignment ACTIVE** (you may implement). **Merges stay PO-gated —
-the PO says "merge" and "push" as separate words, and means it.** agy is unavailable as an *Implementer* but is fit
-as an *MCP attach client* **and fit to execute** — different things. **Say the independence caveat out loud in every
-delivery:** as sole agent you author AND review.
+the PO says "merge" and "push" as separate words, and means it.** agy is unavailable as an *Implementer* but is
+fit as an *MCP attach client* and fit to execute. **Say the independence caveat out loud in every delivery:** as
+sole agent you author AND review. It is not ceremony — see the bottom of this file.
 
 **⚠️ `git fetch` BOTH repos at startup** (`AgentTalk`, `agentalk-mcp-client`). A past session built a whole
 delivery on a checkout 23 commits behind and found out at push time.
 
 **Workflow / source of truth.** `design/collaboration-workflow.md` + `design/backlog.md` (BL items) + `AGENT.md`.
 No `*-implementation.md` ledger for this thread — **resume from the backlog**. Closed items carry a closing block +
-telemetry; read those before re-deriving anything.
+telemetry; read those before re-deriving anything. Plans for BL items live in `design/bl0NN-plan.md` when the item
+warrants one (`bl052-plan.md`, `bl056-plan.md` are the shape).
 
 ## Where we are (2026-07-17 close)
 
-**AgentTalk `4c49ddd` — MERGED, PUSHED, verified by fetch. Client unchanged at `1ffcd01`. No worktrees, no
-branches in flight, no stray processes.** The modified `com.fausto.agenttalk-orchestrator.plist` is the PO's,
-pre-existing, not yours. Suite **335/335** (was 331; +4 BL-060 bars). Client still carries its one pre-existing red
-(below).
+**AgentTalk `4c16dfb` — MERGED, PUSHED, verified by fetch + reading the code back out of `origin/master`. Client
+unchanged at `786f58a` (also pushed).** Suite **359/359**, tsc 0. The modified
+`com.fausto.agenttalk-orchestrator.plist` is the PO's, pre-existing, not yours.
 
-**Shipped today, both PO-gated and live-verified:**
-- **BL-022** (`28aa670`) — `scope-check` was single-repo blind. Now inspects every declared `../<repo>` and **fails
-  hard** on one missing from disk (PO's call; extended to "exists but not a readable git repo", which a
-  `catch (e) {}` was swallowing into the same hole). Cross-repo shape + e2e bar came from **agy's rung-2 run**.
-- **BL-060** (`ff3a519`) — **`PORT` was a knob that turned and did nothing.** The orchestrator honoured it while
-  `apps/web/vite.config.ts` hardcoded 3000. Both halves now read the same knob, same default, **moved 3000 → 3100**.
-  **See "ports" below — this changes your run recipe.**
-- **Rung 3 answered its question: YES — agy caught a fail-open in its OWN work, unprompted** (goal never said "fail
-  open"). It missed the bigger one it was standing on. Skeleton filed as **BL-023**'s starting point.
+**Shipped today, all PO-gated:**
+- **BL-056** (`3e9ff4c`) — a finished run is retrievable; the empty state is honest. **D5/D6 PO-witnessed live.**
+- **BL-066** (`fc3b55a`) + **BL-067** (`91834ae`) — ids mint from a counter, not the clock. Six sites.
 
-## Read this before you write a single test
+**Left running deliberately** (kill them and today's runs are gone — that is BL-056's scope boundary, not a bug):
+witness orchestrator **pid 98730**, cwd `/private/tmp/att-bl056`, ports **3100** + MCP **54344**, with **three
+attached gemini workers**. Four worktrees exist (`att-bl056`, `att-bl066`, `att-bl067` all merged and disposable)
+plus ~7 stale branches — that is BL-036 making its own case.
 
-- **A bar that starts BELOW the defect cannot see it, however green.** Test where the defect is **injected**, not
-  where it is observed.
-- **Mutation-check per ASSERTION, not per test.** An early assertion that short-circuits ahead of your real
-  guarantee means the guarantee never ran. Neutralise the early one and re-mutate.
-- **★ A crash-red looks EXACTLY like a bite-red.** My first BL-022 mutation deleted `const files = new Set();`
-  instead of neutering the arg; both bars reddened on a `ReferenceError` and I nearly banked it as evidence.
-  **Read the mutant you actually produced, and read the failure message — "expected undefined to be defined" and
-  "ReferenceError" are different worlds.**
-- **★ Mutate each bar against the mutation it OWNS.** BL-060's 4 bars cover 2 guarantees: hardcoding the proxy
-  reddens 1–3 and *not* 4; drifting the defaults reddens 4 and *not* 1–3. A bar that stays green under "the"
-  mutation isn't necessarily vacuous — it may guard something else. Prove which.
-- **"The bar bites" ≠ "the fix is right", and "it introspected" ≠ "it saw the big one".** Both agy runs prove it:
-  rung 2's mutation-check passed straight through its fail-open; rung 3's introspection named a *peripheral*
-  fail-open while the *root* one (default-legitimate) went unnamed. **Neither instrument retires the reviewer's
-  read.**
-- **A pasted transcript is a claim.** Reproduce it. agy's is now 2-for-2 honest — you learn that by replaying it,
-  not by trusting it.
+## Read this before you write a single line
+
+**★ The one lesson from 2026-07-17, and it cost four premises: I was wrong every time I reasoned from code
+instead of running it, and right every time I ran something.** Four in one day:
+1. *"The UI lies"* — it was the doomed branch's UI, not master's. I looked at a screen and generalised.
+2. *"The data was never lost, only the pointer"* — my plan's central claim, holed by an id collision I hadn't
+   found yet.
+3. *"All four mint sites"* — six. The survey grepped for ``id: `team-`` / ``id: `task-``: **the exact shape I had
+   already concluded**, so it returned my assumption. **A grep shaped by your conclusion cannot disconfirm it.**
+4. *"Agents are silently evicted"* — filed as **verified**. `createAgent` guards at `registry.ts:178`; I read
+   `agents.set(...)` and reasoned by analogy with teams instead of reading the function.
+
+Two were caught only because the **PO** pointed at something. **Run it. The terminal is the only thing that was
+right all day.**
+
+- **★ `completed` is NOT evidence — check the ARTIFACT.** A witness run reported `status: "completed"` having done
+  **nothing**: the transcript said `fatal: not a git repository` and the answer appeared nowhere. Team status was
+  technically honest and completely useless — the worker returned a result, and that result happened to be an
+  error string. **The orchestrator cannot read semantics.**
+- **★ A crash-red looks EXACTLY like a bite-red, and the summary line cannot tell them apart.** Twice today:
+  task-id bars died on `Team is already working on a task` (killed by a *different* collision before testing their
+  own thing); a conversation bar **timed out** because a frozen clock stalled a healthcheck await. **Read the
+  mutant and read the failure message.**
+- **★ Mutation-check per ASSERTION, not per test — an early assertion can pass VACUOUSLY.** My agent-id bar's
+  `expect(a.id).not.toBe(b.id)` passed on unfixed code because the second POST failed and `b` had no `id`:
+  `realId !== undefined` is true for a reason unrelated to the guarantee. **Assert the statuses first.**
+- **★ Stage the fix to prove each bar owns its mutation.** Fix team ids only → the task bar then failed on its
+  *own* assertion. Only then fix the task sites. Without staging you cannot tell which bar guards what.
+- **★ FREEZE THE CLOCK for any id/timing bar.** The whole id class was found by a bar that passed 354/354 under
+  full-suite load and failed 5-of-6 in isolation — load spaced two mints into different milliseconds. **A bar
+  whose verdict depends on machine speed is evidence about the machine.** Frozen, it is certain. And "ids are
+  usually unique" is not a property; **"ids are unique even when the clock does not move"** is.
+- **★ A green suite can be luck.** 354/354 was green with the defect live. Deleting the "flaky" bar would have
+  shipped it under a green.
+
+## Op notes / gotchas (starred = new 2026-07-17)
+
+**Ports & live runs**
+- **Orchestrator default `3100`; the UI is vite on `5173`** (`npm run frontend`, or `npx vite` in `apps/web`),
+  bound `0.0.0.0` → the PO reaches it at `http://<lan-ip>:5173/` (LAN IP was `192.168.178.112`). **The API on 3100
+  has no UI — never send the PO there.** Both halves read the same `PORT` knob and default (BL-060) — **set
+  nothing**.
+- **Not every `3000` is ours**: `localhost:3000` in `m15-live-arbiter.mjs` / `diagramtalk-bridge.ts` is
+  **DiagramTalk's**. A grep-and-replace of "3000" silently repoints it.
+- **The PO's launchd service `com.fausto.agenttalk-orchestrator` (pid 4064) runs on 3741/54321 — LEAVE IT ALONE.**
+  It pins its ports explicitly, so moving a default cannot reach it.
+- **Live-run recipe:** `AGENTTALK_MCP_PORT=54344 nohup node apps/orchestrator/dist/index.js > log 2>&1 &` from the
+  worktree you want to test. **The MCP url is announced on stdout** (`MCP server URL set to: ws://localhost:<p>/`)
+  *after* `Ready to manage agents.` Poll readiness with a `.sh` loop — **bare foreground `sleep` is BLOCKED**.
+- **★ Swapping the running build DROPS attached workers** (they do not reattach). Build the new `dist` FIRST, then
+  kill+start. Better: swap *before* asking the PO to launch anything.
+
+**Launching agy workers (both scripts exist; they are NOT redundant)**
+- **★ `node scripts/launcher.mjs <config.json>`** (client repo) — a full Bite-0 run: creates a worker-only team,
+  assigns the goal, polls to termination. **Config with NO `startCommand` + explicit `orchestratorUrl`/`mcpUrl` →
+  it ATTACHES and leaves your orchestrator alive.** Fresh `agentId` per run (a squatter → **409**, which reads
+  like a hang).
+- **★ `node scripts/explore-launch-worker.mjs`** — attaches ONE worker to an already-running orchestrator and
+  **creates no team**. This is what you want when you need a team with **no task**, or the UI open *before* the
+  agent exists. `MCP_URL='ws://localhost:<p>/' ORCH_URL=... WORKER_PROVIDER=gemini WORKER_ID=<fresh>
+  WORKER_WORKDIR=<dir>`.
+- **★ `WORKER_WORKDIR` must be an EXISTING GIT REPO** — the worker provisions `<workdir>/agentalk-task-<id>/` as a
+  **worktree**, so a plain dir fails with `fatal: not a git repository` **and the run still reports `completed`.**
+  `git init` + one commit + **`git remote remove origin`** (that removal *is* the containment: the worker then
+  physically cannot push).
+- **★ `POST /api/agents` cannot give you a ready agent** — attach mode means agents come from outside; it sits at
+  `creating` forever. Launch one.
+- **BL-053 (fixed):** the worker works in `<workdir>/agentalk-task-<id>/` — a worktree of the workdir **you
+  assign**, not of the orchestrator's cwd.
+
+**Worktrees (MANDATED for all code — PO 2026-07-16)**
+- `git worktree add /private/tmp/att-<id> -b task-<ID>`, then wire node_modules: symlink each `node_modules/*`
+  entry, **★ plus `.bin` explicitly — `*` does NOT glob dotfiles** (this bit me: `vitest: command not found`).
+  **Skip `@agenttalk`**, then recreate its entries **with their RELATIVE targets** (`../../packages/x`) so they
+  resolve **into the worktree** — otherwise you are testing the primary checkout's code, not yours. Verify with
+  `os.path.realpath`. Also symlink `apps/web/node_modules`.
+- **★ Baseline the suite BEFORE you change anything.** It is the number every later claim is measured against.
+- **`.gitignore` says `node_modules/`** — the trailing slash matches a DIRECTORY, so a **symlinked**
+  `node_modules` is a file and slips past it. **Stage explicitly**, never `git add -A`.
+
+**Measurement traps (all four bit me today)**
+- **★ `$?` after a pipe measures the LAST command**, not your script. I nearly filed a false defect against
+  BL-023's sweep because `node check.mjs | head` reported exit 0 while the script exits 1. **Run it unpiped.**
+- **★ `grep -o "some/route"` matches SUBSTRINGS.** `api/teams/:id/tasks` matched the prefix of an existing
+  `POST /api/teams/:id/tasks/:taskId/confirm` and told me master had a route it did not have. **Anchor the
+  pattern** (`app.get('/api/...'`).
+- **★ A status code can be non-discriminating.** `GET /api/teams/nope/tasks` → **404 whether the route exists**
+  (unknown team, by design) **or not** (Express). Same code, opposite meanings. **The BODY discriminated** (JSON
+  `{"error":...}` vs Express HTML). Design the probe so **one mechanism explains the result**.
+- **★ Check `dist` freshness by GREPPING dist for your change**, not timestamps. `tsc -b` only rewrites what
+  changed.
+- **NEVER type a commit hash you haven't read.** Write the block, merge, `git log`, then fill it in.
+
+**Backlog**
+- **`npm run backlog:check`** gates. Statuses: **todo · doing · done · dropped · deferred** (`AGENT.md` says four
+  and is wrong).
+- **Keep the `- [status · …] —` bracket on ONE line** — the parser reads only the first line.
+- **★ NEVER put `[[wiki-links]]` inside the status bracket** — the parser stops at the first `]` and the title
+  silently becomes garbage. **The gate still reports "OK — 0 warnings"**, so *read the printed title*, not the
+  exit code. Put links in the body.
+
+**Repo / git**
+- **Chained `cd repoA && git push` then `git push` pushes repoA twice** and says "Everything up-to-date". Use
+  `git -C <repo>`, and **verify with `fetch` + reading the change out of `origin/master`** — never the push
+  output. (`git merge -F -` does NOT read stdin, unlike `git commit -F -`; use a message file.)
+- **★ Two branches inserting tests at the same anchor WILL conflict on rebase.** Do **not** union the conflict
+  sides blindly — it silently unbalances the file and esbuild then says only "Unexpected end of file". Resolve as:
+  `git checkout --ours <file>` (= the new base) then **re-insert your block at the anchor** programmatically.
+- **No UI test infrastructure, by PO decision (LB-93)** — `apps/web/**` is excluded from vitest. The bar for UI
+  work is a **live, witnessed run**. **★ You CAN now witness the UI yourself** via the Claude-in-Chrome tools
+  (`localhost` is pre-authorized) — but that makes you able to *see* it, not to *judge* it. The PO is the control.
+- **★ `mintId(prefix)` (`registry/ids.ts`) is now the id convention — USE IT.** Never write
+  `` `thing-${Date.now()}` ``. **Nothing enforces this yet**, which is exactly how the class got re-introduced six
+  times.
+- **Env:** both repos built. Meter `:9899` — poll with **`node scripts/usage.mjs`** (never hand-parse). At close:
+  claude weekly ~47% / session ~35%; codex 49%; antigravity ~6%.
 
 ## What's next (PO has not chosen — ask)
 
-- **BL-023 — ready to implement, skeleton + one real decision.** agy's `scripts/check-orchestrator-ports.mjs`
-  (`runs/rung3-agy-7aa4a0a.patch`, **do not merge from the sandbox**) is a decent read-only `lsof`/`ps` skeleton
-  that correctly reports-not-reaps. **But `isLeaked = isDeleted || isTaskWorktree` defaults to LEGITIMATE with no
-  positive evidence for "service"** — `launchctl` is never called — so **this item's own scenario (an orchestrator
-  leaked from the repo root) reports clean.** Its test also only passes inside a path containing `agentalk-task-`
-  → **red on master**. Fix is small and known: positive evidence via `launchctl list`; **unknown ⇒ UNKNOWN, never
-  clean**; decouple the test from its path. **✅ DECIDED (PO, 2026-07-17): UNKNOWN FAILS the sweep — exit
-  non-zero.** No "assume fine" branch survives; that absence is the fix. **But it fires on the PO's own
-  processes** (a hand-started orchestrator, a stray `npm run dev`) — so the refusal must be **actionable**: name
-  process/ports/cwd/command and offer **stop it, or declare it** (allowlist/env = positive evidence too). **The
-  escape valve is part of the deliverable, not a follow-up** — a check that cries wolf at the PO gets disabled,
-  which is this item's own bonus lesson.
-- **⚠️ BL-023's own fix sketch has TWO CORRECTED PREMISES — the filing records them, don't re-inherit them:**
-  **`pgrep -f dist/index.js` DOES find the launchd service (4064)**, and **`ppid` cannot discriminate** — the
-  service runs at ppid 1 and *an orphaned leak reparents to ppid 1 too*. Only `launchctl` is positive evidence.
-- **Pre-existing client red, PO call, do not silently delete:** `npx vitest run` in the client fails **file
-  collection** on `runs/rung15-probe-STALE-see-notes.test.ts` — the INVALID rung-1.5 probe, preserved deliberately
-  as the record of an invalid probe. **All 79 tests pass**; only that file errors. Options: delete, rename out of
-  the glob, or exclude `runs/`.
-- **Rung 4?** The open question is no longer "can agy write a biting bar" (rung 2: yes) or "can it introspect a
-  fail-open" (rung 3: yes). It is whether it can find the fail-open **it is standing on** — the one in its own
-  central design premise, not a peripheral branch.
-- **BL-056** — still open, NOT closed by BL-064 (that was the run-artifact half; BL-056 is the UI-facing half;
-  needs a PO go per LB-93).
-- **BL-028** — ⛔ do NOT scope it as "make the idle timeout fire." The timeout is genuinely dead, **but the item
-  says land it WITH the typed non-reply `reason`** — and that vocabulary does not exist (grep: no `awaiting-input`).
-- **BL-050**, **BL-054** (PO-parked), **BL-036** (worktree discipline detail — earning its place: see the
-  node_modules trap below, and 7 stale local branches are lying around).
+- **★ The id CONVENTION GUARD — the only open item that treats the disease.** `registry.ts:616`
+  (`` `msg-${Date.now()}-${this.outboundMessageSeq}` ``) and `:802` **already** appended a counter *before* today.
+  **Two people hit this defect, solved it locally, and it never became a convention — so it was re-introduced six
+  times.** It was never six bugs; it was a missing convention, and `mintId` only cures it if the next person finds
+  it. Proposed: a test that scans source for a `Date.now()` reaching an id and fails. **Reservation, stated up
+  front:** pattern-scanning tests are brittle and become the noise the next person deletes — which is BL-023's "a
+  check that cries wolf gets disabled", one item removed. Worth doing carefully.
+- **Surveyed, unfiled** (from BL-067's honest survey — *every* `Date.now()`, not a shaped grep):
+  `apps/web/src/App.tsx:194` uses `String(Date.now())` as a **React key** (real, cheap) · `registry.ts:280`
+  `usage-…` and `conversations/runtime.ts:230` `req-…` are **correlation ids, not Map keys** (low; only the first
+  verified). Genuinely safe: `healthcheck-manager.ts:15`, `scheduler.ts:90` (both append `Math.random()`).
+- **Orchestrator-restart durability** — BL-056 explicitly does **NOT** cover it, and the boundary is
+  *demonstrated*: a `kill` erased 8 real runs permanently, including the 15-minute one the item was built on. If
+  "review a session after the fact" must survive a restart, that is persistence (BL-064 territory). **Unfiled,
+  PO's call.**
+- **The `tasks` map grows UNBOUNDED** (never pruned). It is what made BL-056 cheap and it is a real leak on a
+  long-lived orchestrator. Unfiled.
+- **BL-065** — suspected timing flake in `executor-hardening.test.mjs`, observed once, NOT reproduced. **Do not
+  "fix" it by relaxing the assertion.**
+- **BL-036** (worktree discipline: 4 worktrees + ~7 stale branches right now) · **BL-028** (⛔ do NOT scope it as
+  "make the idle timeout fire" — it needs the typed non-reply `reason`, which does not exist) · **BL-050** ·
+  **BL-054** (PO-parked) · **BL-056's UI sibling BL-051** is already done.
+- **Rung 4** — the open question is whether agy can find the fail-open **it is standing on**, in its own central
+  premise, not a peripheral branch. *(Note the mirror, and take it seriously: today I failed exactly that test,
+  four times, and only execution caught me. Do not grade agy against a bar you cannot pass.)*
 
-## Op notes / gotchas (starred ones are new this session)
+**What the independence caveat bought, so you don't treat it as ceremony:** as sole agent I filed, planned,
+implemented, reviewed and merged three items. The mechanisms that actually caught things were **running the code**
+and **the PO's questions** — never my own careful reading. BL-056 became a *witnessed* fix only because the PO
+said "you use browser-use and I watch"; BL-066 exists because a bar I wrote for something else flaked and I chose
+to read it instead of deleting it. **Say the caveat out loud, then go looking for what it predicts you'll miss.**
 
-- **★ PORTS CHANGED — the old recipe is stale (BL-060).** **Orchestrator default is now `3100`, not 3000.**
-  `apps/web/vite.config.ts` and `apps/orchestrator/src/index.ts` read the **same `PORT` knob and the same default**,
-  so they move together — **set nothing** and it just works. **The UI is vite on `5173`** (`npm run frontend`),
-  bound `0.0.0.0` so the PO can reach it over SSH (`http://<lan-ip>:5173/`). **The API on 3100 has no UI — do not
-  send the PO there** (I did; that's how BL-060 got found).
-- **★ Not every `3000` in this repo is ours.** `localhost:3000` in `scripts/m15-live-arbiter.mjs` and
-  `apps/orchestrator/src/diagramtalk-bridge.ts` is **DiagramTalk's** (`DIAGRAMTALK_URL`). A grep-and-replace of
-  "3000" silently repoints the DiagramTalk bridge.
-- **★ Live-run recipe (updated):** `AGENTTALK_MCP_PORT=54322 nohup node apps/orchestrator/dist/index.js > log 2>&1 &`
-  — **no `PORT` needed** (defaults to 3100). Pin the MCP port only because the launcher config names it. Config with
-  **NO `startCommand`** + explicit `orchestratorUrl`/`mcpUrl` → the launcher **attaches** and `stopInstance` leaves
-  your instance alive. **Fresh `agentId` per run** (a squatter → HTTP 409 that reads like a hang). Poll readiness
-  with a `.sh` loop — **bare foreground `sleep` is BLOCKED** by the harness (`timeout` is not installed).
-- **★ The PO's launchd service `com.fausto.agenttalk-orchestrator` (pid 4064) runs on 3741/54321 — LEAVE IT ALONE.**
-  It **pins `PORT`/`AGENTTALK_MCP_PORT` explicitly**, so moving a default cannot reach it (verify before you touch
-  a default). `lsof -nP -iTCP:<port>` and `launchctl list | grep agenttalk` both find it; so does
-  `pgrep -f dist/index.js`.
-- **★ BL-053 is FIXED and re-confirmed live: the worker works in `<workdir>/agentalk-task-<id>/`** — a worktree of
-  the **workdir you assign**, not of the orchestrator's cwd. Rung 3's log: `/private/tmp/rung3/sandbox/agentalk-task-…`.
-  **Belt-and-braces anyway:** build `dist` in the sandbox and start the orchestrator **from there**, so even a
-  regression can't hand agy a worktree of your real checkout (which *does* have a pushable origin).
-- **★ `completed` is NOT evidence — check the artifact.** If you still can't explain it, write **"delivery
-  incomplete, reason unobservable"** — not a model-honesty defect (that's the BL-059 shape; it was false and cost
-  two sessions).
-- **★ Sandbox recipe (worker workdir):** `git clone <real-repo> /tmp/<run>/sandbox` then **`git remote remove
-  origin`** — that is the containment, not a nicety: agy then physically cannot push. node_modules: symlink each
-  entry + `.bin`, **skip `@agenttalk`**, then point `node_modules/@agenttalk/<name>` at the **sandbox's own**
-  `packages/*`/`apps/*`. **Baseline the suite before the run** (and re-baseline if you merge into the sandbox).
-- **★ `.gitignore` says `node_modules/` — trailing slash matches a DIRECTORY.** A symlinked `node_modules` is a
-  **file** and slips past it, so **`git add -A` commits the symlink.** **Stage explicitly.** (A fresh worktree has
-  no node_modules; you *will* symlink one. Hit twice today.)
-- **★ `apps/web/**` is EXCLUDED from vitest** (LB-93, no UI test infra). A bar about the web app must live in
-  `scripts/__tests__/**/*.test.mjs` — the only included glob that reaches it. Vite's import analysis **rejects a
-  dynamic import with a variable query string**; use a static specifier + `vi.resetModules()`.
-- **★ Check `dist` freshness by GREPPING dist for your change** — not timestamps. `tsc -b` only rewrites what
-  changed.
-- **★ NEVER type a commit hash you haven't read.** I wrote a merge hash into a closing block *before the merge
-  existed*. Caught it on the verify pass, but a fabricated hash in the ledger is exactly what makes a later reader
-  stop trusting the record. **Write the block, merge, then `git log` and fill the hash in.**
-- **Backlog edits:** run **`npm run backlog:check`** (it gates). Statuses: **todo · doing · done · dropped ·
-  deferred** (`AGENT.md` says four and is wrong). **★ Keep the `- [status · …] —` bracket on ONE line** — the parser
-  reads only the first line. **Some existing items have a bracket spanning two lines; editing their status leaves a
-  stray `] —` mid-body.** Read the item back after editing (I mangled BL-060 this way).
-- **Chained `cd repoA && git push` then `git push`** pushes repoA **twice** and says "Everything up-to-date".
-  **Use `git -C <repo>`, and verify with a `fetch` + reading the change out of `origin/master`** — never the push
-  output. (`git merge -F -` does NOT read stdin, unlike `git commit -F -`; use a message file.)
-- **No UI test infrastructure, by PO decision (LB-93)** — the bar for UI work is a **live, witnessed run**, and
-  **the PO develops REMOTELY over SSH: you cannot witness the UI; the PO is the only witness.**
-- **Env:** both repos built. Meter `:9899` — poll with **`node scripts/usage.mjs`** (never hand-parse). At close:
-  claude weekly ~41% / session ~68%; codex weekly 42%; antigravity 12%.
-
-**What the independence caveat bought, so you don't treat it as ceremony:** as sole agent I filed, implemented,
-reviewed and merged both items. Mutation-checking caught a vacuous bar — and **the PO caught what I could not**:
-BL-060 exists because he challenged a port I asserted from a stale note, and the trap was documented in the very
-primer I'd read that morning. **Reading a hazard is not recognising it in the moment.** Say the caveat out loud,
-then go looking for what it predicts you'll miss — and treat the PO's questions as the control they are.
-
-Verify all of the above against ground truth (`git fetch` both; read `design/backlog.md` — BL-023/BL-056 — and
-`design/logbook.md` LB-93/LB-94) before acting. Report your understanding, then STOP for the PO's go.
+Verify all of the above against ground truth (`git fetch` both; read `design/backlog.md` — the BL-056/066/067
+closing blocks — and `design/logbook.md` LB-93/LB-94) before acting. Report your understanding, then STOP for the
+PO's go.
