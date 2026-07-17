@@ -758,6 +758,35 @@ tags: [self-hosting, relay, human-in-the-loop, program]
 ### Todo (next first)
 
 <!-- @item
+id: BL-065
+status: todo
+date: 2026-07-17
+epic: null
+tags: [flake, tests, client, trust, observed-once]
+-->
+- [todo · **filed from a live observation, not a theory** — seen once while clearing the client's standing red; NOT reproduced since · **do not "fix" it by relaxing the assertion** — read the honest-attribution note below first] — **`executor-hardening.test.mjs` can fail under full-suite load: a suspected timing flake.** The test
+  `persistent executor hardening > fails a turn loudly when the session died earlier, instead of waiting on a dead
+  child` **failed once** during the first full-suite run of the vitest-scope fix (client `786f58a`), in a
+  **freshly-created worktree** (cold caches, cold transform, symlinked `node_modules` — i.e. the slowest possible
+  run).
+  **Honest attribution — the numbers, not a verdict:** **1 failure in 4 full runs WITH the fix; 0 in 3 full runs on
+  master; 0 in 3 isolated runs of the file itself.** Small samples both ways. The fix **does** change which files
+  vitest collects (it stops collecting gitignored `runs/`), which changes worker scheduling — **so the fix cannot
+  be ruled out**, and neither can plain cold-worktree timing. **It was NOT chased further and the test was NOT
+  touched** (out of scope; Rule 2 — report a discovered fault, don't silently fix it).
+  **Why it matters more than a one-off annoyance:** the test is timing-sensitive *by construction* — it is about a
+  **dead child** and **waiting** — so a slow/loaded machine is exactly its failure mode, and CI is a slow, loaded
+  machine. **A suite that can go red under load erodes every verdict the autonomous-development ladder rests on**
+  (we grade agy against this suite). That is the same reason the standing collection red was worth clearing at all.
+  **Reproduce before scoping:** run the full client suite repeatedly, ideally on a cold/loaded machine or with
+  constrained parallelism (`--no-file-parallelism`, or `--pool=forks --poolOptions.forks.singleFork`), and try a
+  fresh worktree — the one observed failure was a first-run-in-a-fresh-worktree. If it will not reproduce, say so
+  and **park it rather than inventing a fix**: an unreproducible flake "fixed" by loosening the bar is worse than
+  the flake, because it retires a real guarantee (the executor must fail loudly on a dead session — that guarantee
+  is the point of the test).
+  **Source:** observed 2026-07-17 while landing the client vitest-scope fix; full numbers in that session's report.
+
+<!-- @item
 id: BL-064
 status: done
 date: 2026-07-17
