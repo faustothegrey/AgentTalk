@@ -758,6 +758,48 @@ tags: [self-hosting, relay, human-in-the-loop, program]
 ### Todo (next first)
 
 <!-- @item
+id: BL-068
+status: todo
+date: 2026-07-17
+epic: null
+tags: [engine, ids, convention, enforcement, refuted-approach, contracts, cross-repo]
+-->
+- [todo · **the disease behind BL-066/BL-067; the six sites were its symptoms** · the obvious guard is **REFUTED by its own survey** — read that before proposing it again · the cure with teeth is a **cross-repo contract change** = PO scope call · PO chose "file the findings, build nothing" 2026-07-17] — **The id convention is unenforced, and the obvious guard does not work.** `mintId(prefix)` (`registry/ids.ts`) is now the convention. **Nothing makes the next person find it.**
+
+  **The disease (BL-067's closing finding, restated because it outlives both fixes).** `registry.ts:616` (`` `msg-${Date.now()}-${this.outboundMessageSeq}` ``) and `:802` (`` `pending-relay-${Date.now()}-${++this.pendingRelaySeq}` ``) **already appended a counter** before BL-066 existed. Two people hit this defect, solved it locally, and **it never became a convention** — so it was re-introduced six times. **It was never six bugs; it was a missing convention.** `mintId` cures the six sites and cures the class only if the next person finds it.
+
+  **The proposed guard — a test that scans source for a `Date.now()` reaching an id — is REFUTED, before implementation, by the survey that was meant to justify it (2026-07-17).** It fails at both ends at once:
+
+  1. **Broad, it cries wolf.** There are **49 `Date.now()` sites** in source (`packages`/`apps`/`scripts`, excluding tests/dist). **~40 are ordinary elapsed-time arithmetic** — deadlines, cutoffs, `Date.now() - startedAt`, `new Date(Date.now() + intervalSeconds*1000)`. A scan that flags them is [[BL-023]]'s *"a check that cries wolf gets disabled"* on day one — one item removed from the thing it is trying to prevent.
+  2. **Narrowed to the id shape, it leaks — and it leaks on this very class.** `scenario-scheduler.ts:71` assigns `Date.now()` to a **variable** (`runSuffix`), passes it as an **argument**, and interpolates it in a **different function** (`:119`, `` `${agent.id}-${suffix}` ``). **No pattern-scan of practical precision follows that.** See [[BL-069]] — filed separately, and found only by the broad survey.
+
+  **So the instrument is noisy at one end and blind at the other, and the site it misses is exactly the class it claims to guard.** Note the provenance: this refutation exists because the survey was run **before** the code, and run **broadly** ("every `Date.now()`") rather than shaped to its conclusion — which is precisely the discipline [[BL-067]] was filed to establish.
+
+  **The cure with teeth: branded id types.** `mintId` returns `TeamId`; `Team.id: TeamId`; then `` id: `team-${Date.now()}` `` **fails to compile**. `tsc` becomes the thing that tells the next person — no wolf to cry, and it follows values through variables and across files, which is the leak above. **Two honest limits, both read out of the code rather than assumed:**
+  - **It cannot cover agent ids.** `server.ts:604` — `const agentId = id || (provider ? mintId(...) : mintId('agent'))`. **External ids are legitimate for agents by design** (attach mode, `POST /api/agents`, scenario JSON). Branding covers **team/task/conversation only**; BL-069's site stays uncovered.
+  - **It is a cross-repo contract change.** The id types live in **`packages/contracts/src/types.ts`** — shared with **`agentalk-mcp-client`** and **`apps/web`**. That is not a narrow test; it is the contract surface, with the contract-hash coupling that comes with it.
+  - It also introduces its own escape hatch (`asTeamId(s)`) at external boundaries. Misusable — but **explicitly and greppably** so, unlike today's silent default.
+
+  **Where it stands.** The greenlit thing should not be built; the thing that would work is bigger than the greenlight. **PO scope call.** Reopen trigger regardless: **if a seventh id site is ever introduced**, or if `packages/contracts` is opened for another reason, this is the moment to take it.
+
+<!-- @item
+id: BL-069
+status: todo
+date: 2026-07-17
+epic: null
+tags: [engine, ids, follow-up, low-severity, scenarios]
+-->
+- [todo · **a SEVENTH site of the BL-066/067 class** — found by the broad survey, invisible to the shaped one · **severity LOW and stated precisely, not by analogy**: a loud throw, not silent eviction · its real value is as **evidence that the shaped grep leaks** — see BL-068] — **The scenario scheduler's run suffix is the clock, not a counter.**
+
+  **`scenario-scheduler.ts:71`** — `const runSuffix = Date.now();` → **`:119`** — `` const newId = `${agent.id}-${suffix}` `` → `idMap.set(agent.id, newId)`, and those ids reach the registry's agent `Map` (`registry.createAgent(agentDef.id)` in `scenario-runner.ts:27`; `registry.removeAgent(agentId)` at `:98`). **Uniqueness comes from the clock resolution** — the exact property [[BL-066]] removed everywhere else.
+
+  **Severity: LOW — and this time the function was read, not reasoned about.** `createAgent` **guards**: `if (this.agents.has(id)) throw new Error(...)` (`registry.ts:178`) → a collision is a **loud throw**, not silent data loss. And `tick()` opens with `if (this.running) { … return null; }` (`:62`), so two runs cannot overlap — a collision needs **a whole scenario run to complete inside one millisecond**. Not realistic. **This is filed for the class, not the risk.** *(Contrast BL-067, which first claimed "silently evicted" and had to correct itself: the same guard, read this time before filing.)*
+
+  **Why it is filed at all.** It is the same defect class — and it is the concrete counter-example that killed the pattern-scanning guard in [[BL-068]]: `Date.now()` → variable → argument → interpolation in another function in another file. **The shaped grep (``id: `team-``/``id: `task-``) could never have found it; the honest one ("every `Date.now()`") found it in a single pass.**
+
+  **Fix if ever taken:** advance a counter for `runSuffix` (or mint via `mintId`) so the clone cannot depend on the clock. **Bar:** frozen clock — two `tick()` runs at an unmoving clock produce distinct agent ids; red before the fix. **Do not** scope it as "make scenario ids unique enough".
+
+<!-- @item
 id: BL-067
 status: done
 date: 2026-07-17
