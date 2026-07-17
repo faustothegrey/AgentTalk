@@ -43,6 +43,10 @@ export const api = {
     // BL-049: the endpoint existed server-side from the start, but nothing here ever called it —
     // leaving the UI with no way to resync teams after missing their broadcasts.
     list: () => fetchWithTimeout('/api/teams').then(r => r.json()),
+    // BL-056: the read side of a run. `currentTaskId` answers "what is this team
+    // doing NOW" and completion clears it, so it could never answer "what did
+    // this team DO" — and that was the only pointer the UI had.
+    listTasks: (teamId: string) => fetchWithTimeout(`/api/teams/${teamId}/tasks`).then(r => r.json()),
     create: (data: any) => fetchWithTimeout('/api/teams', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

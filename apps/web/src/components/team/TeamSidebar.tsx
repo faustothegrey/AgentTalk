@@ -6,6 +6,7 @@ interface TeamSidebarProps {
   agents: Agent[];
   activeTeam: Team | null;
   activeTeamTask: TeamTask | null;
+  activeTeamTaskLoaded: boolean;
   onAutostartTeam: (provider: Provider) => void;
   onDisbandTeam: () => void;
   onCreateTeam: (members: TeamMember[], composition: TeamComposition) => Promise<void>;
@@ -68,6 +69,7 @@ export function TeamSidebar({
   agents,
   activeTeam,
   activeTeamTask,
+  activeTeamTaskLoaded,
   onAutostartTeam,
   onDisbandTeam,
   onCreateTeam,
@@ -198,6 +200,20 @@ export function TeamSidebar({
                   </div>
                 )}
                 <TaskTranscript entries={activeTeamTask.transcript ?? []} />
+              </div>
+            )}
+            {/* BL-056 D6: only claim "no task" once the read endpoint has actually answered. Before
+                it answers we know nothing, and saying anything would be a guess — which is how
+                "Team is assembled. No task has been given yet." came to sit over a 15-minute
+                interrupted run. The two states are distinct facts now, so the panel states them. */}
+            {!activeTeamTask && activeTeamTaskLoaded && (
+              <div style={{ padding: '10px', backgroundColor: theme.bg, borderRadius: '6px', border: `1px solid ${theme.border}`, fontSize: '11px', color: theme.textMuted }}>
+                This team has not been given a task.
+              </div>
+            )}
+            {!activeTeamTask && !activeTeamTaskLoaded && (
+              <div style={{ padding: '10px', fontSize: '11px', color: theme.textDim }}>
+                Loading this team's run…
               </div>
             )}
             <button 

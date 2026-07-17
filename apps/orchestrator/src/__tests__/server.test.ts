@@ -605,6 +605,80 @@ describe('startServer', () => {
     vi.restoreAllMocks();
   });
 
+  // BL-056: a finished run must stay RETRIEVABLE. The task never leaves the
+  // registry's `tasks` map — but `currentTaskId` is cleared on completion, and it
+  // was the only pointer, so the run became unreachable the moment it ended.
+  describe('GET /api/teams/:id/tasks (BL-056)', () => {
+    async function readyWorkerTeam(): Promise<string> {
+      const worker = await registry.createAgent('worker-1');
+      worker.setStatus('starting');
+      worker.setStatus('ready');
+      return registry.createTeam([{ agentId: 'worker-1', role: 'worker' }]).id;
+    }
+
+    it('returns a team task assigned through the API', async () => {
+      const teamId = await readyWorkerTeam();
+      await registry.assignTeamTask(teamId, 'count to three');
+
+      const response = await fetch(`${baseUrl}/api/teams/${teamId}/tasks`);
+
+      expect(response.status).toBe(200);
+      const tasks = (await response.json()) as Array<{ teamId: string; description: string }>;
+      expect(tasks).toHaveLength(1);
+      expect(tasks[0].description).toBe('count to three');
+      expect(tasks[0].teamId).toBe(teamId);
+    });
+
+    // The row the item exists for: the task must survive the loss of
+    // `currentTaskId`, which is what completion/interruption does to it.
+    it('still returns the task after currentTaskId is gone', async () => {
+      const teamId = await readyWorkerTeam();
+      await registry.assignTeamTask(teamId, 'count to three');
+
+      // Reproduce completion's effect on the team WITHOUT touching the engine:
+      // this is precisely the state a finished or interrupted run leaves behind.
+      const team = registry.getTeams().find((t) => t.id === teamId)!;
+      delete team.currentTaskId;
+
+      const response = await fetch(`${baseUrl}/api/teams/${teamId}/tasks`);
+
+      expect(response.status).toBe(200);
+      const tasks = (await response.json()) as Array<{ description: string }>;
+      expect(tasks).toHaveLength(1);
+      expect(tasks[0].description).toBe('count to three');
+    });
+
+    // BL-056 D3 — the row `ui-team-run-in-main` earned by getting it wrong.
+    // "Never given a task" and "task unreachable" must not look alike, or every
+    // empty state the UI writes is a guess. 200 [] vs 404 is that distinction.
+    it('distinguishes a team that was never given a task from an unknown team', async () => {
+      const teamId = await readyWorkerTeam();
+
+      const known = await fetch(`${baseUrl}/api/teams/${teamId}/tasks`);
+      expect(known.status).toBe(200);
+      await expect(known.json()).resolves.toEqual([]);
+
+      const unknown = await fetch(`${baseUrl}/api/teams/team-does-not-exist/tasks`);
+      expect(unknown.status).toBe(404);
+    });
+
+    it('does not leak another team\'s tasks', async () => {
+      const teamA = await readyWorkerTeam();
+      const worker2 = await registry.createAgent('worker-2');
+      worker2.setStatus('starting');
+      worker2.setStatus('ready');
+      const teamB = registry.createTeam([{ agentId: 'worker-2', role: 'worker' }]).id;
+
+      await registry.assignTeamTask(teamA, 'task for A');
+      await registry.assignTeamTask(teamB, 'task for B');
+
+      const response = await fetch(`${baseUrl}/api/teams/${teamB}/tasks`);
+      const tasks = (await response.json()) as Array<{ description: string }>;
+      expect(tasks).toHaveLength(1);
+      expect(tasks[0].description).toBe('task for B');
+    });
+  });
+
   it('should forward consensusMode:arbiter through the team form (BL-037 wall 1)', async () => {
     for (const id of ['planner-a', 'planner-b', 'worker-1']) {
       const a = await registry.createAgent(id);
