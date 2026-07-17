@@ -996,12 +996,12 @@ tags: [scope-fence, tooling, cross-repo, friction-m18]
 
 <!-- @item
 id: BL-023
-status: todo
+status: done
 date: 2026-07-09
 epic: null
 tags: [hygiene, pollution, gates, friction-m18]
 -->
-- [todo · **M18 C7 friction item — PREMISE CORRECTED 2026-07-09 at session close, before anyone acted on it**]
+- [done · **MERGED + PUSHED 2026-07-17** — `fc53522` · fails closed on UNKNOWN (PO decision) · never consults ppid, which cannot discriminate · escape valve shipped with the check · **M18 C7 friction item — PREMISE CORRECTED 2026-07-09 at session close, before anyone acted on it**]
   — **Gates cannot tell a leaked process from a managed service** — *(Original filing claimed `pid 3177` was an
   orchestrator leaked by the M18-T3 proof run, surviving 4+ hours across two gate-3 closures. **That was wrong.**
   At the PO's request I moved to kill it, identified it first, and found it was
@@ -1098,6 +1098,54 @@ tags: [hygiene, pollution, gates, friction-m18]
   the two ways out — **stop it, or declare it** (an allowlist / env for "yes, it's mine, I know"). A declared
   process is positive evidence too, and it keeps the fence fail-closed while staying usable. **The escape valve is
   part of the deliverable, not a follow-up.**
+
+  **2026-07-17 — CLOSED. MERGED + PUSHED (`fc53522`).** `scripts/check-orchestrator-ports.mjs` + 15 bars.
+  **The classifier never consults `ppid`** — that is the point, not an omission. Positive evidence only:
+  **LEGITIMATE** = `launchctl list` knows the PID (and the output *names the service*) · **DECLARED** = a human
+  declared it via `AGENTTALK_SWEEP_DECLARED` (pid **or** port) · **LEAKED** = task-worktree cwd or `(deleted)` cwd ·
+  **UNKNOWN** = no positive evidence either way ⇒ **exit 1**. The escape valve shipped with it: every refusal names
+  process/ports/cwd/command and offers **stop it, or declare it**.
+  **Live evidence — the exact case agy's rung-3 version got wrong:**
+  ```
+  [LEGITIMATE] PID 4064  | ports 54321, 3741 | why: service registry knows PID 4064 (com.fausto.agenttalk-orchestrator)
+  [UNKNOWN]    PID 51511 | ports 54399, 3100 | why: no positive evidence...
+  SWEEP FAILED: 1 process(es) without positive evidence.            exit 1
+  ```
+  4064 is the PO's real launchd service; 51511 was hand-started minutes earlier. **agy's version called 51511
+  LEGITIMATE.** Declaring its port flips it to DECLARED and the sweep goes clean. Re-run from the real checkout
+  post-merge: clean, exit 0.
+  **How the path-coupling was fixed at the root:** the classifier is a **pure function**, so the load-bearing bars
+  drive it with **synthetic records** — the machine's live process table is not a fixture. The one e2e **creates**
+  a temp dir named `agentalk-task-*` rather than depending on being run from inside one; it passes from
+  `/private/tmp/agenttalk-bl023`, where agy's bar fails.
+  **Mutation-check — each bar against the mutation it OWNS:**
+  | mutation | classification bars | e2e | sweep-verdict bars | escape-valve bars |
+  |---|---|---|---|---|
+  | fail-open (UNKNOWN ⇒ LEGITIMATE) | **6 red** | green (not its job) | red | — |
+  | blind to task worktrees | 1 red | **red** | green | — |
+  | sweep tolerates UNKNOWN | — | green | **3 red** | — |
+  | escape valve never fires | — | green | — | **1 red** |
+  **⚠️ Declared residuals — do not read the check as stronger than it is:**
+  1. The **LEAKED** markers (task-worktree cwd, `(deleted)` cwd) are **heuristics**. A leak wearing neither marker
+     lands in **UNKNOWN** — which still **fails**, so it is safe, but `LEAKED` vs `UNKNOWN` is *not* "we always know
+     which."
+  2. `isOrchestratorIsh` still filters on `index.js`/`orchestrator` substrings, so an orchestrator launched under an
+     unrelated wrapper name is not inspected at all (agy named this one; it is unfixed and inherent to the approach).
+  3. The demo of the DECLARED path was piped, so **exit 0 was not observed directly** — "Sweep clean" only prints on
+     the exit-0 branch and a mutation-checked unit bar covers the logic, but the number itself was not watched.
+  **Independence caveat — weight it here:** Claude **designed the rung that judged agy's attempt, refuted it, wrote
+  the replacement, and reviewed its own work**, as sole available agent. The mutation matrix is the only independent
+  check that ran, and this same day it twice failed to catch what a diff read caught. **This classifier deserves a
+  second pair of eyes when one is available.**
+
+  **Telemetry (task closure):**
+  - task:        BL-023
+  - wall-clock:  2026-07-17 09:32 → 09:47 (~15m)
+  - budget:      weekly ~41%, session ~73%→77% (Δ ~4%) [per scripts/usage.mjs]
+  - gate:        tsc 0, suite 350/350 (59 files; baseline 335 + 15 new bars), pollution clean (2 new files, both
+                 in scope; node_modules symlink staged around, never committed)
+  - diff:        2 files, +402/-0; commits `6de7aa6` (impl) + `fc53522` (merge)
+  - outcome:     MERGED ✅ + PUSHED ✅ (PO said both words)
   **Independence caveat:** the rung-3 task was designed AND graded by Claude, the sole available agent.
 
 <!-- @item
