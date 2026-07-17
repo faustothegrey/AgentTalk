@@ -758,6 +758,29 @@ tags: [self-hosting, relay, human-in-the-loop, program]
 ### Todo (next first)
 
 <!-- @item
+id: BL-066
+status: todo
+date: 2026-07-17
+epic: null
+tags: [engine, ids, data-loss, silent, autonomy, proven]
+-->
+- [todo · **proven live, not theorised** — probe output below · **PO authorised the engine change 2026-07-17** · blocks BL-056, whose fix is keyed on `teamId`] — **Team and task ids collide: `Date.now()` alone is the id, so two created in the same millisecond are the SAME id — and the second silently overwrites the first.** Four mint sites: `team-coordinator.ts:177` (`team-${Date.now()}`), `:262`, `:338` (`task-${Date.now()}`), `arbiter-coordinator.ts:59`. Storage is `Map.set(id, …)` (`team-coordinator.ts:186`), so a collision is a **silent overwrite — no error, no warning, an object simply ceases to exist.**
+
+  **Proof** (probe, 2026-07-17 — two `createTeam` calls back-to-back):
+  ```
+  TEAM A id: team-1784286771163
+  TEAM B id: team-1784286771163
+  COLLIDED: true
+  teams in registry: 1   (2 means no collision)
+  ```
+
+  **Why it matters more than its frequency suggests.** A human clicking the UI never hits it; today's 8 teams were minutes apart. **An autonomous orchestrator creating teams/tasks programmatically hits it exactly the way a test loop does — so this defect gets MORE likely the better the ladder works.** For tasks it is worse than a lost pointer: `tasks` is `Map<string, TeamTask>`, so a same-ms task id destroys a **transcript** — in the very map BL-056's fix depends on being lossless.
+
+  **How it was found (worth keeping — the mechanism, not the anecdote):** a BL-056 bar written for another purpose ("does not leak another team's tasks") flaked. **In the full suite it PASSES 354/354; in isolation it fails 5 of 6** — full-suite load spaces the two `createTeam` calls into different milliseconds. **A green produced by timing, in a suite that would have passed every gate.** Had the bar been deleted as flaky, the defect would have shipped under a green.
+
+  **Fix shape:** `Date.now()` + a monotonic counter (or random suffix) at all four sites. **Risk is provably low: nothing anywhere parses or asserts the generated id format** (grep: one test passes a literal `'team-1'` as input; no format assertions, no recording parses it). **Bars:** two teams back-to-back get distinct ids; two tasks back-to-back get distinct ids; both red on master.
+
+<!-- @item
 id: BL-065
 status: todo
 date: 2026-07-17
