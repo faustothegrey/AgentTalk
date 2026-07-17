@@ -4,14 +4,7 @@ import type { EventPayload } from '@agenttalk/contracts/protocol-payloads';
 import type { OutboundProtocolPacketType } from '../protocol/protocol.js';
 import type { AgentProvider, Team, TeamComposition, TeamTask, TeamMember, TeamRole, TranscriptEntry } from '@agenttalk/contracts/types';
 import { Agent } from '../agents/agent.js';
-import { WORKTREE_CONTEXT } from '../agents/response-schema.js';
 import type { StructuredMessageType } from '../agents/response-schema.js';
-
-// BL-053: was GIT_WORKTREE_REQUIREMENT — "use strictly `git worktree` … otherwise refuse and
-// abort" — declared here and byte-identically again in arbiter-coordinator. Now one shared
-// definition, and no longer a requirement the agent must self-police: the worker provisions the
-// worktree before the turn. See WORKTREE_CONTEXT.
-const GIT_WORKTREE_REQUIREMENT = WORKTREE_CONTEXT;
 
 const PLANNER_NO_CODE_TOUCH_REQUIREMENT = [
   'Planner role restriction: DO NOT modify code for any reason.',
@@ -1344,7 +1337,7 @@ export class TeamCoordinator {
       teamId: team.id,
       taskId: task.id,
       role: 'worker',
-      plan: this.buildWorkerPlan(task.plan!),
+      plan: task.plan!,
       description: task.description,
     });
   }
@@ -1524,10 +1517,6 @@ export class TeamCoordinator {
     } catch (err) {
       this.deps.logError('[TeamCoordinator] Failed to persist planning run:', err);
     }
-  }
-
-  private buildWorkerPlan(plan: string): string {
-    return `${plan}\n\n${GIT_WORKTREE_REQUIREMENT}`;
   }
 
   private recordTaskTranscript(
