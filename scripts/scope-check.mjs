@@ -14,6 +14,13 @@
  * `master` exists, e.g. CI), plus staged/unstaged/untracked worktree files.
  * Exit 0 = all changes in-scope; exit 1 = violations listed, one per line.
  *
+ * CROSS-REPO (BL-022): a manifest may declare sibling repos as `../<repo>/...`
+ * globs; each distinct `../<repo>` prefix is inspected too, and its paths are
+ * reported with that prefix. A declared repo that is missing from disk — or is
+ * not a readable git repo — is a hard failure, never a skip: skipping it would
+ * leave it unfenced while the check reported green. Note the residual: only
+ * DECLARED repos are seen, so an undeclared repo is unfenced while green.
+ *
  *   - IMPLEMENTER: run it as part of the Rule-5 self-check, BEFORE claiming
  *     done — a non-zero exit is either a file to revert or a scope
  *     conversation to have at the gate, never a manifest to widen (IP-14).
@@ -51,29 +58,84 @@ function getActiveBranch() {
   return execSync('git rev-parse --abbrev-ref HEAD', { cwd: repoRoot, encoding: 'utf-8' }).trim();
 }
 
-function getChangedFiles() {
+function declaredRepos(scope) {
+  // The manifest declares sibling repos as `../<repo>/...` globs. Every distinct
+  // `../<repo>` prefix is a repo this fence must inspect; '.' is always inspected.
+  const repos = new Set(['.']);
+  if (!scope) return repos;
+
+  const allGlobs = [...(scope.allowed || []), ...(scope.forbidden || []), ...(scope.free || [])];
+  for (const glob of allGlobs) {
+    if (!glob.startsWith('../')) continue;
+    const parts = glob.split('/');
+    if (parts.length >= 2) repos.add(`${parts[0]}/${parts[1]}`);
+  }
+  return repos;
+}
+
+function getChangedFiles(scope) {
   const files = new Set();
-  try {
-    const output = execSync('git diff --name-only master...HEAD', { cwd: repoRoot, encoding: 'utf-8' });
-    output.split('\n').filter(Boolean).forEach(f => files.add(f));
-  } catch (err) {
-    try {
-      const output = execSync('git diff --name-only origin/master...HEAD', { cwd: repoRoot, encoding: 'utf-8' });
-      output.split('\n').filter(Boolean).forEach(f => files.add(f));
-    } catch (e) {
-      // Fallback to local unstaged/staged files if not tracking master
+  const missing = [];
+
+  for (const repoRel of declaredRepos(scope)) {
+    const targetCwd = path.resolve(repoRoot, repoRel);
+
+    // A declared repo that is not on disk cannot be inspected. Fail hard rather
+    // than skip it: skipping would leave it unfenced while the check reports
+    // green — the exact defect this fence exists to prevent (BL-022).
+    if (!fs.existsSync(targetCwd)) {
+      missing.push(repoRel);
+      continue;
     }
+
+    const prefix = repoRel === '.' ? '' : `${repoRel}/`;
+
+    try {
+      const output = execSync('git diff --name-only master...HEAD', { cwd: targetCwd, encoding: 'utf-8', stdio: 'pipe' });
+      output.split('\n').filter(Boolean).forEach(f => files.add(`${prefix}${f}`));
+    } catch (err) {
+      try {
+        const output = execSync('git diff --name-only origin/master...HEAD', { cwd: targetCwd, encoding: 'utf-8', stdio: 'pipe' });
+        output.split('\n').filter(Boolean).forEach(f => files.add(`${prefix}${f}`));
+      } catch (e) {
+        // No master/origin-master to diff against (e.g. a fresh repo): the
+        // working-tree status below still reports this repo's changes.
+      }
+    }
+
+    // Also add untracked and unstaged/staged files in the working directory.
+    // A failure here means the path is not a readable git repo at all, which
+    // would leave it unfenced — surface it instead of swallowing it.
+    let statusOutput;
+    try {
+      statusOutput = execSync('git status --porcelain', { cwd: targetCwd, encoding: 'utf-8', stdio: 'pipe' });
+    } catch (e) {
+      console.error(`\n❌ Declared repository is not a readable git repository: ${repoRel} (${targetCwd})`);
+      console.error(`   git status failed: ${e.message.trim()}`);
+      console.error('   The fence cannot inspect it, so it cannot report green.');
+      process.exit(1);
+    }
+    statusOutput.split('\n').filter(Boolean).forEach(line => {
+      let file = line.substring(3).trim();
+      if (file.includes(' -> ')) {
+        file = file.split(' -> ')[1];
+      }
+      if (file) files.add(`${prefix}${file}`);
+    });
   }
 
-  // Also add untracked and unstaged/staged files in the working directory
-  const statusOutput = execSync('git status --porcelain', { cwd: repoRoot, encoding: 'utf-8' });
-  statusOutput.split('\n').filter(Boolean).forEach(line => {
-    let file = line.substring(3).trim();
-    if (file.includes(' -> ')) {
-      file = file.split(' -> ')[1];
+  if (missing.length > 0) {
+    console.error(`\n❌ Declared repositor${missing.length === 1 ? 'y is' : 'ies are'} not on disk:`);
+    for (const repoRel of missing) {
+      console.error(`   ${repoRel} → ${path.resolve(repoRoot, repoRel)}`);
     }
-    if (file) files.add(file);
-  });
+    console.error('\nThe scope manifest declares paths in it, so the fence cannot verify those paths');
+    console.error('were left alone. Refusing rather than skipping: a skipped repo is unfenced while');
+    console.error('the check reports green. Clone it beside this repo, or drop it from the manifest.');
+    console.error('\nNote: this fence only sees repos the manifest DECLARES. A repo you never declare');
+    console.error('stays invisible to it — an undeclared repo is unfenced while green.');
+    process.exit(1);
+  }
 
   return Array.from(files);
 }
@@ -148,7 +210,7 @@ function main() {
   console.log(`  Forbidden: ${scope.forbidden.length} patterns`);
   console.log(`  Free:      ${scope.free.length} patterns`);
 
-  const changedFiles = getChangedFiles();
+  const changedFiles = getChangedFiles(scope);
   console.log(`\nChanged files (${changedFiles.length}):`);
 
   let hasViolation = false;
