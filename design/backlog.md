@@ -778,26 +778,32 @@ tags: [agents, identity, trust, security, launcher, design-first]
 
 <!-- @item
 id: BL-071
-status: todo
+status: done
 date: 2026-07-18
 epic: null
 tags: [agents, environment, observability, platform, capabilities]
 -->
-- [todo · **P1 MERGED + PUSHED 2026-07-18 — master `0e594bc` (feat `ad99187`, branch `task-BL-071`); P2 remains → item stays todo** · sibling of [[BL-072]] (same "environment awareness" ask, PO 2026-07-18) · genuinely self-verifiable, unlike BL-072] — **Every team member AND the orchestrator should gather info about the host system they run on (OS, arch, versions…), captured at attach, because future behaviours may depend on it.** PO ask (2026-07-18): e.g. knowing it's a Mac (`darwin`/`arm64`), OS release, cpu/mem, node version, hostname, cwd. Some future behaviour may need to branch on platform or capabilities.
+- [done · **DONE 2026-07-18 — both phases MERGED + PUSHED. P1 AgentTalk `0e594bc`; P2 AgentTalk `6becfa2` + client `8f02b02` (lockstep v8)** · sibling of [[BL-072]] (same "environment awareness" ask, PO 2026-07-18) · genuinely self-verifiable, unlike BL-072] — **Every team member AND the orchestrator gather info about the host system they run on (OS, arch, versions…), because future behaviours may depend on it.** PO ask (2026-07-18): e.g. knowing it's a Mac (`darwin`/`arm64`), OS release, cpu/mem, node version, hostname. Delivered as two phases; both live-verified.
 
-  **STATUS — phased delivery (plan: `design/bl071-plan.md`):**
+  **STATUS — DONE (plans: `design/bl071-plan.md`, `design/bl071-p2-plan.md`):**
   - **P1 ✅ MERGED (`0e594bc`, 2026-07-18):** the *orchestrator's own* host env. Added `HostEnvironment`
     (`packages/contracts/src/types.ts` — pure type, wire-contract hash **v7 unchanged**), a pure
     `captureHostEnvironment()` helper (`packages/runtime-core/src/shared/environment.ts`), and the
     orchestrator serving its own self-observed host at **`GET /api/environment`** (captured once at boot).
-    Verified live via a real `index.js` boot (curl returned real `darwin` host data); full suite **365** green;
-    no behaviour change. Schema: `platform · arch · osRelease · nodeVersion · hostname · cpuCount ·
-    totalMemBytes · capturedAt`.
-  - **P2 ⏳ TODO (contract-coupled, gate reopens):** the *per-agent* env — client gathers its own, reports on
-    connect via a **dedicated MCP tool** (the plan-review gate showed piggybacking on an existing tool would
-    change the wire payload WITHOUT bumping the hash → silent drift; a new tool is hash-tracked), orchestrator
-    stores it on the `Agent` record. This is the **lockstep cross-repo hash bump** (both repos). **Blocked on
-    nothing technical**, but see BL-072 for the sibling "am I within AgentTalk" trust decision if bundled.
+    Verified live via a real `index.js` boot (curl returned real `darwin` host data). Schema: `platform · arch ·
+    osRelease · nodeVersion · hostname · cpuCount · totalMemBytes · capturedAt`.
+  - **P2 ✅ MERGED (AgentTalk `6becfa2` + client `8f02b02`, 2026-07-18, lockstep):** the *per-agent* env. New
+    **`report_environment`** MCP tool (wire contract **v7→v8**, hash `8df9593…`, identical in both repos — a
+    dedicated tool because the plan-review gate proved piggybacking would change the payload WITHOUT bumping the
+    hash → silent drift). The client (`agentalk-mcp-client`) gathers its own host and reports it **once on connect,
+    fire-and-forget** (non-critical metadata must not gate the turn loop); the orchestrator stores it on the
+    `Agent` record and surfaces it via **`GET /api/agents`**. Verified LIVE end-to-end: a real v8 client attached
+    to a real v8 orchestrator and its real `darwin` host appeared via `/api/agents` (no LLM turn). AgentTalk suite
+    **368**, client suite **84**, cross-repo contract alignment check green.
+  - **Follow-up left open (flagged, not fixed — out of P2 scope):** `scripts/m16-live-baton-proof.mjs` and
+    `scripts/m17-live-gate-proof.mjs` hardcode the old v7 hash and would be rejected by a v8 orchestrator (they
+    are manual live-proof scripts, not in the suite). Update them to v8 or read the hash dynamically. → consider
+    filing as its own BL if it bites.
 
   **Why this is the *easy* half (contrast with [[BL-072]]).** Host info is **fully self-verifiable ground truth** — the agent OBSERVES its own host via node `os.*` / `process.*` (`os.platform()`, `os.release()`, `os.arch()`, `os.cpus()`, `os.totalmem()`, `process.version`, hostname, cwd). It is not a claim and cannot be spoofed *to* the agent (nor faked *by* the launcher). No trust model needed.
 
