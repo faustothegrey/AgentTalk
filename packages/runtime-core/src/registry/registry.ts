@@ -542,6 +542,14 @@ export class Registry extends EventEmitter {
         return { content: [{ type: 'text', text: 'Usage stats updated successfully' }] };
       }
 
+      case 'report_environment': {
+        // BL-071 P2 — store the host the agent reported about itself. Self-observed
+        // ground truth (no trust model — that is BL-072). Surfaced via GET /api/agents.
+        agent.host = args.environment;
+        this.emit('agent_environment', { id: agent.id, host: agent.host });
+        return { content: [{ type: 'text', text: 'Environment reported successfully' }] };
+      }
+
       default:
         throw new Error(`Unknown MCP tool call: ${name}`);
     }
