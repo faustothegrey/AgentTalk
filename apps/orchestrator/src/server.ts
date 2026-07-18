@@ -602,6 +602,10 @@ export function startServer(
   app.post('/api/agents', async (req, res) => {
     console.log('[Server] POST /api/agents', req.body);
     const { id, provider } = req.body;
+    // BL-046 — `providerName` (e.g. 'openrouter') was read off nothing and dropped, so an
+    // `api`-provider agent always fell back to Registry.activateAgent's `|| 'google'` default
+    // regardless of what the caller asked for. Thread it through unchanged.
+    const providerName = getNonEmptyString(req.body?.providerName);
     const model = getNonEmptyString(req.body?.model);
     const requestedExecutionMode = isExecutionMode(req.body?.executionMode) ? req.body.executionMode : 'auto';
     // BL-024 — accept the new transport/vendor shape alongside the legacy `provider`.
@@ -615,7 +619,7 @@ export function startServer(
       req.body?.vendor === 'goose'
         ? req.body.vendor
         : undefined;
-    recorder?.record('api', 'create_agent_request', { id, provider, transport, vendor, model, requestedExecutionMode });
+    recorder?.record('api', 'create_agent_request', { id, provider, providerName, transport, vendor, model, requestedExecutionMode });
 
     try {
       // BL-067: `Date.now()` alone collided — two API-created agents in one
@@ -623,7 +627,12 @@ export function startServer(
       // turned the second into a spurious "already exists" 500 for a caller who
       // asked for a fresh agent. The counter, not the clock, makes it unique.
       const agentId = id || (provider ? mintId(`agent-${provider}`) : mintId('agent'));
-      const agent = await registry.createAgent(agentId, { requestedExecutionMode, transport, vendor });
+      const agent = await registry.createAgent(agentId, {
+        requestedExecutionMode,
+        transport,
+        vendor,
+        ...(providerName ? { providerName } : {}),
+      });
       if (isUsageCaptureProvider(provider)) {
         agent.provider = provider;
       }
