@@ -860,3 +860,35 @@ here.**
   subshell/loop context didn't reliably reach the hogs; the box was still at load avg 40+ after "cleanup". `pkill -x
   yes` + a `pgrep -x yes | wc -l` assertion is the honest cleanup. When you spawn CPU hogs, verify the count is
   zero afterward, don't trust the kill.
+
+### 2026-07-18 (later) — environment-awareness thread (BL-071 P1+P2, BL-072) + wt-setup (BL-036), sole agent all hats
+
+- **As architect: when a PO is torn between a "light" and a "proper" version of a feature, check whether they're
+  even the same feature.** BL-072 ("am I within AgentTalk?") looked like behaviour-tuning-vs-authorization as two
+  strengths of one thing. The reframe that dissolved the dilemma: they live in **different places** — tuning is a
+  signal *to the agent* (agent-side), authorization is a check the *orchestrator* makes (server-side, and it
+  already knows who it launched). So "go light now" costs **nothing** toward a future authorization; no corner
+  painted. Naming that turned a genuine hesitation into an easy call — and the honest outcome was `deferred` (record
+  the decision, build nothing until a consumer needs it), not code.
+- **As implementer: a contract-hash bump breaks more than the test you expect — grep the OLD hash before scoping.**
+  The v7→v8 wire-contract bump broke the m19 test (hardcoded hash literal) *and* 6 client spawn-tests via a totally
+  different mechanism, *and* the grep surfaced `m16/m17` live-proof scripts hardcoding v7 too. One `grep <oldhash>`
+  across both repos mapped the true blast radius in seconds; assuming "just the contract file" would have shipped a
+  broken suite. Self-check the changing value, don't reason about it.
+- **When my new code broke 6 tests, the right fix was better DESIGN, not test edits.** My on-connect
+  `report_environment` was `await`ed → the agent blocked forever on mocks that never ack it. Making it
+  **fire-and-forget** was both the correct production choice (non-critical metadata must never gate the turn loop /
+  stall on a slow peer) *and* fixed 5 tests without touching them. The 6th was a **mock being unfaithful** to the
+  real orchestrator (it treated *any* non-`await_turn` call as task-completion). Distinguish "my change is wrong"
+  from "a test/mock encodes an assumption my legitimate change violates" — and prefer the fix that improves the design.
+- **Phasing a cross-repo change de-risked it and shipped value early.** BL-071 split into P1 (orchestrator-local,
+  proven **contract-free** by reading the hash derivation — only `{mcpTools,packetTypes,protocolPrefix}` is hashed)
+  and P2 (per-agent, contract-coupled lockstep bump). P1 merged same-hour with zero cross-repo risk; P2's lockstep
+  was pre-de-risked by hand-computing the v8 hash before touching either repo.
+- **Dogfooding is the honest verification for tooling — and it caught a real bug.** `wt-setup.mjs`: the unit test
+  covers the pure `buildLinkPlan`, but the load-bearing proof was *running the helper* to create a worktree, see
+  **368 pass inside it**, then remove it clean. The first dogfood run crashed (`execFileSync` returns `null` when
+  stdout is inherited → `.trim()` on null) — a bug the unit test structurally couldn't catch. Run the thing.
+- **wt-setup.mjs now exists — I no longer hand-run the node_modules dance.** I did it 4× manually this session
+  before building the helper on the 5th (option A, in a worktree). Next time: `node scripts/wt-setup.mjs create
+  <id> [--baseline]` / `remove <id> [--delete-branch]`. (Client worktree is still a single symlink — no helper.)
