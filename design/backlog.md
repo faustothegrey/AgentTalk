@@ -1572,6 +1572,19 @@ tags: [architecture, brain, types, friction-m18]
   + 17 new), wire-contract hash unchanged. **Item stays `todo` — T2 next:** move the fact-collection timeout out of
   the frozen engine into the per-agent `capabilities` metadata (authorized; byte-identical + IP-15 proof); then T3
   (client cutover + legacy `provider` drop). Follow-up noted: add `contracts` to the vitest `include`.
+  **UPDATE (2026-07-18) — T2 MERGED (`0375ecd` on branch `task-BL-024-T2`, merge `8375387`, PO-gated).** Plan:
+  `design/bl024-t2-plan.md` (gate approved with recommendations). The frozen `getFactCollectionTimeoutMs` is now
+  **vendor-blind** — reads only `capabilities.factCollectionTimeoutMs` (team + members); no `team.provider`/
+  `agent.providerName === 'gemini'` sniff remains in the coordinator. **D1:** `normalizeAgentKind` closes the
+  `provider:'mcp'`+`providerName:'gemini'` gap (caps present iff the agent would have triggered the old 720s bump);
+  all T1 outputs unchanged. **D2:** `Team.capabilities` added, populated in the `registry.createTeam` wrapper (frozen
+  file's diff limited to the one §8-Q1-authorized function). Dead `DEFAULT_GEMINI_FACT_COLLECTION_TIMEOUT_MS` const
+  removed (contracts twin remains). **IP-15 proof:** new fact-collection-timeout test pins exact ms (720s for cases
+  a/b/c incl. the `mcp`+`providerName` gap, 480s default) and the discriminator fails if the edge injection is
+  reverted (**manually verified** via stash-and-rerun: neutering D1 → case (c) 720→480 fail, then restored). tsc
+  clean, suite **398/398** (389 + 9 new, existing tests unmodified), wire-contract hash **v8 unchanged**. **Item
+  stays `todo` — T3 next:** client cutover (send `{transport,vendor}`) + drop the legacy `provider` acceptance
+  (cross-repo). Not pushed at merge time — awaiting the PO's `push` word.
 
 <!-- @item
 id: BL-025
