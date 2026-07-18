@@ -75,6 +75,15 @@ describe('BL-024 T2 — getFactCollectionTimeoutMs is vendor-blind & byte-identi
     expect(timeoutFor(team, agents)).toBe(DEFAULT_MS);
   });
 
+  it("BL-024 T3b: a goose member gets the DEFAULT (goose has no capability, not the gemini bump)", () => {
+    const agents = { g: agentFrom('g', 'goose'), worker: agentFrom('worker', 'mcp') };
+    const team = teamWith([
+      { agentId: 'g', role: 'planner' },
+      { agentId: 'worker', role: 'worker' },
+    ]);
+    expect(timeoutFor(team, agents)).toBe(DEFAULT_MS);
+  });
+
   it("case (b): a member with provider:'gemini' → 720_000", () => {
     const agents = { g: agentFrom('g', 'gemini'), worker: agentFrom('worker', 'mcp') };
     const team = teamWith([
