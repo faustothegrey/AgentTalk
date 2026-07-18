@@ -836,3 +836,27 @@ here.**
   the disconfirming survey killed it *before* I built it (49 `Date.now()` sites, ~40 noise; narrowed, it misses
   BL-069). Filed the refutation with the evidence and built nothing. Two of three items this session shipped zero
   code and were still the right deliverable.
+
+### 2026-07-18 — BL-065 flake, sole-agent implementer + task-end reviewer
+
+- **A flake reproduces only under its *actual* observed condition — don't settle for a plausible proxy.** 37 runs
+  (normal + heavy CPU load + cold-cache-in-primary-checkout) found nothing; the fresh-worktree cold+load battery
+  hit 2/12 immediately. The counter-intuitive part: **uniform CPU load did NOT help** — it stretches the racy
+  `setTimeout(250)` timer *too*, giving the child more time to exit, so heavy load masks the race instead of
+  exposing it. The distinguishing factor in the filing was "fresh worktree" (new paths → cold transform +
+  cold OS file cache for the sources), and only reproducing *that exact* condition worked. Read the repro recipe
+  literally; the honest condition is in the filing.
+- **"Reproduce-or-park" can flip to "reproduce → scoped fix", and the forbidden fix isn't the only fix.** The item
+  warned in bold against relaxing the assertion. Reproducing it revealed the fix that *doesn't*: the failure was a
+  test **timing bug** (fixed 250ms wait for an async `'close'` event), not a product defect — both failure paths
+  were equally loud and correct; the test just pinned one string. Waiting on the observable reaped state
+  (`getStatus()==='error'`) made the guard deterministic with the assertion **byte-for-byte unchanged**. When a
+  filing forbids a fix, it's warning against *defeating the bar* — not against fixing the flake.
+- **Mutation-check a test-fix by breaking the PRODUCT, not the test.** The reviewer's worry about a deterministic
+  wait is "did it defang the guarantee?" Answer it directly: remove the product's exit guard, confirm the fixed
+  test still goes red, revert. That red is the verdict — as sole agent authoring and reviewing, re-reading the
+  test earns nothing; watching it bite a broken product is the only real evidence.
+- **Track background load-generators explicitly — `kill $HOGS` leaked 28 `yes` processes.** `jobs -p` captured in a
+  subshell/loop context didn't reliably reach the hogs; the box was still at load avg 40+ after "cleanup". `pkill -x
+  yes` + a `pgrep -x yes | wc -l` assertion is the honest cleanup. When you spawn CPU hogs, verify the count is
+  zero afterward, don't trust the kill.
