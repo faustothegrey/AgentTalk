@@ -1883,12 +1883,12 @@ tags: [observability, ui, attach-mode, client-repo]
 
 <!-- @item
 id: BL-036
-status: todo
+status: done
 date: 2026-07-13
 epic: null
 tags: [governance, worktree, parallel-dev, process]
 -->
-- [todo · surfaced 2026-07-13 (PO decision LB-90)] — **Define a parallel-code-development worktree discipline** —
+- [done · **DONE 2026-07-18 — all three bites complete** · tooling `scripts/wt-setup.mjs` (master `53d4f56`) · discipline doc `design/worktree-discipline.md` (master `48ac546`, pushed) · stale-branch prune done 2026-07-18 (PO confirm-then-prune)] — **Define a parallel-code-development worktree discipline** —
   LB-90 relaxed the serial-actor rule for *everything except code development*; the **blocker to lifting the code-dev
   half is a deliberate worktree discipline.** Three near-misses on 2026-07-13 showed the collision surface: a parallel
   session advanced `master`/primers under an in-flight session (stale primer within minutes); a delivery arrived
@@ -1920,8 +1920,16 @@ tags: [governance, worktree, parallel-dev, process]
   isolation, backlog-id allocation without races (allocate-on-master + count-check; `mintId` vs hand-alloc),
   sync-before-start (`git fetch` both), stale-worktree/branch cleanup, and the `workdir`→worktree assignment for
   autonomous agents — grounded in `scripts/wt-setup.mjs`, the AGENT.md mandate, and the 2026-07-13 near-misses.
-  **Item stays `todo` — ONE bite remains:** the one-time **stale-branch prune** (destructive; confirm-then-prune per
-  branch — the branch lists above).
+  **UPDATE (2026-07-18) — STALE-BRANCH PRUNE DONE (PO confirm-then-prune); BL-036 CLOSED.** Deleted 6 merged
+  branches (`-d`, AgentTalk: `docs-bl045-root-cause · task-BL-063 · task-arbiter-enable`; client: `task-BL-045 ·
+  task-BL-064 · task-goose-executor`) and 5 refuted/ancient unmerged branches (`-D`, AgentTalk:
+  `wip/BL-038-provider-timeouts` [REFUTED gate 2] · `task-M18-T3` [refuted arc]; client: `m11-t1-consensus-respond` ·
+  `m12-c-pf1-codex-bridge-fix` [bridge-removal superseded by BL-057] · `task-M18-T3`). **KEPT by PO decision:**
+  AgentTalk `task-BL-039` — holds one **unmerged** commit (`313d089`, `providerName` forwarding so `api`-provider
+  agents can select a non-`google` ApiProvider) that is **NOT on master**; preserved pending a decision on reviving
+  it as its own task. **Loose end (out of this local-prune scope, not actioned):** the *remote* `origin/task-BL-045`
+  is ahead of master (has commits not on master) — a separate remote-branch cleanup / possible unmerged work,
+  worth a look before deleting on GitHub.
 
 <!-- @item
 id: BL-037
