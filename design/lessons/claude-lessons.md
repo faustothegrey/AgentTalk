@@ -963,3 +963,16 @@ here.**
 - **Clean up the pollution the thing under test creates.** goose's executor provisions a *task worktree* in the
   workdir (BL-053); a live run leaves `agentalk-task-*` worktrees + `task-task-*` branches behind. Tear those down
   (and the throwaway workdir) as part of cleanup, not just the processes/ports.
+
+### 2026-07-18 (late) — BL-024 T3b-2, web UI migration, as implementer
+- **Audit the blast radius before agreeing something is "cleanup."** "Drop legacy `provider` acceptance" sounded
+  like a one-liner; a 2-minute grep showed it's sent by the live web UI + ~12 scripts + recordings. Surfacing that
+  turned a risky rushed sweep into a bounded, PO-approved slice (migrate the UI, defer the hard-drop). Grep the
+  callers before scoping the change, not after.
+- **For a UI change, drive the real UI — the network body is the proof.** Chrome extension + `read the backend log`
+  showed the migrated UI POSTing exactly `{transport:'attached', vendor:'gemini'}` and the agent reaching READY.
+  That's worth more than tsc-passes for a body-shape change; the vite proxy shares the `PORT` knob so
+  `PORT=3100 npm run dev` wires frontend→backend in one shot.
+- **Never put backticks in a `git commit -m` message from bash.** \`provider\` in the message body got
+  command-substituted to empty, mangling the commit ("the legacy  input"). Use single quotes around the whole -m,
+  or a heredoc/`-F` file, and keep backticks out. Cosmetic here, but avoidable.

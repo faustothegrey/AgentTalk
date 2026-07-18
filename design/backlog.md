@@ -1606,8 +1606,18 @@ tags: [architecture, brain, types, friction-m18]
   (400) and `provider-runtime` drops the silent `openai/gpt-4o-mini` default; claude/gemini/codex keep theirs.
   **Live proof:** real goose CLI 1.41.0 over OpenRouter attached over MCP and returned **computed** products —
   `17×23=391` (direct) and `31×19=589` (through the real launcher's cutover path). AgentTalk **401/401**, client
-  **86/86**, tsc clean, no wire-contract hash change. **Item stays `todo` — remaining: T3b-2** = drop the legacy
-  `provider` *input* acceptance from the server (recordings/UI/fixtures sweep) — cleanup, not needed for goose to work.
+  **86/86**, tsc clean, no wire-contract hash change.
+  **UPDATE (2026-07-18) — T3b-2 (part) MERGED + PUSHED: web UI cut over.** Audit found the legacy `provider` input is
+  a real migration, not a cleanup — sent by the **live web UI**, ~12 scripts, and recordings. PO call: **migrate the
+  web UI now, defer the hard-drop.** AgentTalk `2d0bdb8` (merge of `c74a8ee`): `App.tsx` create/start POSTs
+  (`handleCreateAgent`, `handleAutostartChat`, `handleAutostartTeam`) send `{transport:'attached', vendor}`.
+  **Live-proven through the real UI** (Chrome): created a Gemini agent → backend received
+  `{transport:'attached', vendor:'gemini'}` → agent READY. Suite 401/401, web tsc clean. Server still accepts legacy
+  input (unchanged). **Item stays `todo` — DEFERRED remainder (own future task):** the server **hard-drop** of legacy
+  `provider` input (`/api/agents` create+start, `/api/teams`) + migrate the **~12 scripts** (`test-live-*.mjs`, m07/m14/m17
+  smokes) + a **read-side recordings shim** (`planning_runs/*.json`); **keep** `agent.provider` as a derived
+  serialization field and DON'T delete the `AgentProvider` type; leave `isUsageCaptureProvider` alone (different axis).
+  Plan: `design/bl024-t3b-plan.md` §2/§4.
 
 <!-- @item
 id: BL-025
