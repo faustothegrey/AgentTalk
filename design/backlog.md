@@ -1563,8 +1563,15 @@ tags: [architecture, brain, types, friction-m18]
   `vendor`/`capabilities` at the edge, timeout → per-agent capability metadata (kills leak #2). Phasing T1 (type+edge,
   no engine change) · T2 (frozen-engine slice) · T3 (client cutover). **GATE PASSED (PO, 2026-07-18):** all four §8
   questions decided per recommendations, incl. **explicit authorization for the T2 frozen-engine edit** (byte-identical
-  timeout + IP-15 proof obligation). **Item stays `todo`:** design approved, implementation not started — next is to
-  plan T1. See the design doc for the recorded decisions.
+  timeout + IP-15 proof obligation). See the design doc for the recorded decisions.
+  **UPDATE (2026-07-18) — T1 MERGED (`5dfab83`, branch `task-BL-024-T1`, PO-gated).** Plan: `design/bl024-t1-plan.md`
+  (gate approved). Additive type+edge, **engine untouched**: `AgentTransport`/`AgentVendor`/`AgentCapabilities` +
+  pure `normalizeAgentKind` (contracts); Agent record carries the new axes alongside the still-populated legacy
+  `provider`/`providerName`; registry driver selection now keyed on `transport`; `POST /api/agents` accepts the new
+  shape. `team-coordinator.ts` (frozen) untouched → gemini timeout byte-identical. tsc clean, suite **389/389** (372
+  + 17 new), wire-contract hash unchanged. **Item stays `todo` — T2 next:** move the fact-collection timeout out of
+  the frozen engine into the per-agent `capabilities` metadata (authorized; byte-identical + IP-15 proof); then T3
+  (client cutover + legacy `provider` drop). Follow-up noted: add `contracts` to the vitest `include`.
 
 <!-- @item
 id: BL-025
