@@ -609,7 +609,10 @@ export function startServer(
     const transport =
       req.body?.transport === 'in-process' || req.body?.transport === 'attached' ? req.body.transport : undefined;
     const vendor =
-      req.body?.vendor === 'gemini' || req.body?.vendor === 'claude' || req.body?.vendor === 'codex'
+      req.body?.vendor === 'gemini' ||
+      req.body?.vendor === 'claude' ||
+      req.body?.vendor === 'codex' ||
+      req.body?.vendor === 'goose'
         ? req.body.vendor
         : undefined;
     recorder?.record('api', 'create_agent_request', { id, provider, transport, vendor, model, requestedExecutionMode });

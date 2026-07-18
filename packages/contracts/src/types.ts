@@ -29,18 +29,20 @@ export type AgentSessionStatus = 'starting' | 'ready' | 'busy' | 'restarting' | 
 // 'mcp' is the externally-launched / exec-RPC / MCP-attach path. Typed as a
 // union so a missed rename/typo is a compile error.
 //
-// ⚠️ DEPRECATED (BL-024) — this union conflates TWO axes: transport (api/mcp) and
-// vendor (gemini/claude/codex). It is being split into `AgentTransport` × `AgentVendor`
-// below. Kept populated through T1/T2 for the (frozen) engine; removed in T3.
-export type AgentProvider = 'api' | 'mcp' | 'gemini' | 'claude' | 'codex';
+// ⚠️ DEPRECATED as a BEHAVIOURAL axis (BL-024) — this union conflated transport (api/mcp) and
+// vendor (gemini/claude/codex/goose). After T2 the engine reads NO vendor name; the union now
+// survives only as a SERIALIZATION LABEL (recordings / usage-capture / DTOs read `agent.provider`).
+// The legacy `provider` INPUT is removed in T3b-2. `goose` was added (T3b) as a real vendor.
+export type AgentProvider = 'api' | 'mcp' | 'gemini' | 'claude' | 'codex' | 'goose';
 
 // BL-024 — the two axes `AgentProvider` conflated:
 //   transport = HOW the orchestrator drives the agent (the ONLY axis the engine needs).
 //   vendor    = WHOSE CLI it is (an edge/launcher concern; absent for an opaque attach).
-// 'in-process' was the old 'api'; 'attached' was the old 'mcp'/'gemini'/'claude'/'codex'
-// (the registry always treated those four identically — see registry driver selection).
+// 'in-process' was the old 'api'; 'attached' was the old 'mcp'/'gemini'/'claude'/'codex'/'goose'
+// (the registry always treated those alike — see registry driver selection). `goose` is a harness
+// over an arbitrary OpenRouter model, so a goose agent's identity is vendor × MODEL (see launcher).
 export type AgentTransport = 'in-process' | 'attached';
-export type AgentVendor = 'gemini' | 'claude' | 'codex';
+export type AgentVendor = 'gemini' | 'claude' | 'codex' | 'goose';
 
 // Per-agent capability metadata — where vendor-specific knobs live so they never
 // leak into the engine as vendor-name branches (BL-024 leak #2). T1 seeds the one
@@ -104,6 +106,8 @@ export function normalizeAgentKind(input: {
         return { transport: 'attached', vendor: 'claude', legacyProvider: 'claude', providerName };
       case 'codex':
         return { transport: 'attached', vendor: 'codex', legacyProvider: 'codex', providerName };
+      case 'goose':
+        return { transport: 'attached', vendor: 'goose', legacyProvider: 'goose', providerName };
       default:
         // Neither provider nor transport — provider-less; unchanged behaviour downstream.
         return { providerName };

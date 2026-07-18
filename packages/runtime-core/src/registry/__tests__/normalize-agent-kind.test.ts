@@ -53,9 +53,26 @@ describe('normalizeAgentKind (BL-024 T1)', () => {
         providerName: undefined,
       });
     });
+
+    it("'goose' → attached + vendor goose, NO caps (BL-024 T3b — real vendor)", () => {
+      expect(normalizeAgentKind({ provider: 'goose' })).toEqual({
+        transport: 'attached',
+        vendor: 'goose',
+        legacyProvider: 'goose',
+        providerName: undefined,
+      });
+      // goose is a harness over an arbitrary model — it gets NO gemini capability.
+      expect(normalizeAgentKind({ provider: 'goose' }).capabilities).toBeUndefined();
+    });
   });
 
   describe('new `{transport, vendor}` → legacy derived (reverse map)', () => {
+    it('attached + vendor goose → legacyProvider goose, no caps (reverse map)', () => {
+      const k = normalizeAgentKind({ transport: 'attached', vendor: 'goose' });
+      expect(k).toMatchObject({ transport: 'attached', vendor: 'goose', legacyProvider: 'goose' });
+      expect(k.capabilities).toBeUndefined();
+    });
+
     it('in-process → legacyProvider api', () => {
       expect(normalizeAgentKind({ transport: 'in-process' })).toMatchObject({
         transport: 'in-process',
