@@ -892,3 +892,38 @@ here.**
 - **wt-setup.mjs now exists — I no longer hand-run the node_modules dance.** I did it 4× manually this session
   before building the helper on the 5th (option A, in a worktree). Next time: `node scripts/wt-setup.mjs create
   <id> [--baseline]` / `remove <id> [--delete-branch]`. (Client worktree is still a single symlink — no helper.)
+
+### 2026-07-18 (part 2) — BL-036 doc+prune, BL-073, BL-074, BL-024 design→T1 (implementer + architect + planner + all reviewer seats, sole agent)
+- **As implementer: backlog/item line refs drift — the audit is a starting map, not the territory.** All three
+  BL-024 leak line refs were stale (`types.ts:13` pointed into an unrelated BL-071 type). Re-grepping the *current*
+  code is what surfaced the finding that made the whole epic tractable: the registry sniff sites **never**
+  distinguish the vendor names — they collapse to one `transport` predicate, so the only vendor-behavioural site is
+  the frozen-engine timeout. I'd never have seen that from the item's prose. **Read the code the item describes
+  before designing around the item.**
+- **As implementer: verify the CALL GRAPH before placing a change, don't assume a tidy method name.** I expected a
+  `startDriver()` method; the driver-selection block was actually *inside* `activateAgent`, right after provider is
+  set. Grepping the real callers (not guessing) put the transport-normalization in the exact one load-bearing
+  place — one edit covered the whole start path. Same lesson as the line-ref drift: ground truth over the mental
+  model.
+- **Dogfooding compounds — build tooling and immediately ride it on real tasks.** Shipped the worktree discipline →
+  used it on BL-073 → the teardown *crashed* (BL-074: `--base origin/master` makes the branch track origin, so
+  `branch -d` checks the unpushed upstream) → fixed it with `--no-track` → and the fix **validated itself** on
+  BL-024-T1's own clean teardown two tasks later. The bug lived in the interaction of a real unpushed merge with a
+  tracking branch — **no unit test could have caught it; only a real create→merge→remove cycle did.** The
+  throwaway-repo with/without-flag contrast (REFUSED vs SUCCESS) was the decisive proof, and I only got it right
+  after catching that my *first* harness ran `branch -d` while the worktree still existed (both refused for the
+  wrong reason — measure the ruler before the measurement).
+- **IP-15 has a legitimate "discriminating by construction" form.** T1's tests assert `transport`/`vendor`/
+  `capabilities` and a function that **did not compile-exist** before the change — they cannot pass without it, so a
+  stash-and-rerun would be theatre. I said so plainly rather than performing the ritual. (Still ran the full
+  suite + tsc as the real preservation check; the frozen-engine timeout tests passing *unmodified* is what proves
+  behaviour was preserved, because legacy `provider` stays populated.)
+- **As planner/architect: separate "gate approved" from "commit".** The PO said "commit" (the doc) on one turn and
+  "gate approved" later — I did NOT read the first as approving the plan gate, and recorded the gate decision in the
+  durable doc (not just chat) the moment it was given. Design-first + frozen-engine-authorization decisions belong
+  in the artifact, keyed `[PO]`, or they evaporate.
+- **Match the codebase's type conventions before building.** `exactOptionalPropertyTypes: true` → optional fields
+  are `?: T | undefined` here; I wrote plain `?: T` and ate a rebuild. Cheap, but grep an existing interface first.
+- **Budget shape of the day:** docs/small-fixes are nearly free; the T1 *implementation* is what moved session
+  usage to 84% by close. Weekly 68%. Wrapping before T2 (a careful frozen-engine change) rather than tail-ending it
+  was the right proportionality call — I flagged it and the PO agreed.
