@@ -1,3 +1,21 @@
+// BL-071 — a small, stable snapshot of the host a process runs on. Gathered by a
+// process ABOUT ITSELF via node's `os`/`process` (ground truth, not a claim), so no
+// trust model is needed (that is BL-072's concern). Deliberately minimal: future
+// behaviours may branch on it, so it is a lightweight contract — add fields explicitly
+// when a need arises rather than dumping `process.env`/PATH/cwd (leaky/unstable/sensitive).
+// NOTE: a pure type add here does NOT change the wire-contract hash, which covers only
+// { mcpTools, packetTypes, protocolPrefix } (see packages/contracts/scripts/verify-contract.js).
+export interface HostEnvironment {
+  platform: NodeJS.Platform; // os.platform() — e.g. 'darwin' | 'linux' | 'win32'
+  arch: string;              // os.arch()     — e.g. 'arm64' | 'x64'
+  osRelease: string;         // os.release()
+  nodeVersion: string;       // process.version — e.g. 'v22.3.0'
+  hostname: string;          // os.hostname()
+  cpuCount: number;          // os.cpus().length
+  totalMemBytes: number;     // os.totalmem()
+  capturedAt: string;        // ISO 8601 — when THIS process observed the above
+}
+
 export type AgentStatus = 'creating' | 'starting' | 'ready' | 'busy' | 'error' | 'reconnecting' | 'terminated';
 // 'persistent' is the canonical name for a long-lived agent process that handles
 // many turns over one session. 'interactive' is a deprecated alias kept for
