@@ -1904,6 +1904,17 @@ tags: [governance, worktree, parallel-dev, process]
   This item's remaining scope narrows to the **discipline detail + tooling** (branch-naming, merge serialization,
   id allocation without races, stale-worktree cleanup, and the per-agent `workdir`→worktree assignment used by the
   launcher / Hermes). Doubles as the **autonomous-agent safety sandbox** for the Bite ladder.
+  **UPDATE (2026-07-18) — TOOLING BITE DONE (merged, master `53d4f56`):** `scripts/wt-setup.mjs` (`create`/`remove`)
+  automates the AgentTalk per-task worktree node_modules dance and its footguns (skip `@agenttalk` then re-create
+  `@agenttalk/*` with RELATIVE targets, `.bin` explicit, `apps/web/node_modules`, `tsc -b`). Pure `buildLinkPlan`
+  unit-tested (4); verified by dogfooding (helper-made worktree ran 368 green, `remove --delete-branch` left no
+  leak); full suite 372. Plan: `design/bl036-plan.md`. **Item stays `todo` — two bites remain:**
+  (1) the **discipline DOC** (merge serialization, id allocation without races); (2) the one-time **stale-branch
+  prune** — confirmed present 2026-07-18, needs confirm-then-prune per branch (destructive):
+  *AgentTalk* `task-BL-039 · task-BL-063 · task-M18-T3 · task-arbiter-enable · docs-bl045-root-cause ·
+  wip/BL-038-provider-timeouts`; *client* `task-BL-045 · task-BL-064 · task-M18-T3 · task-goose-executor ·
+  m11-t1-consensus-respond · m12-c-pf1-codex-bridge-fix`. Client worktree tooling deliberately skipped (its
+  worktree is a single `node_modules` symlink — no helper warranted).
 
 <!-- @item
 id: BL-037
