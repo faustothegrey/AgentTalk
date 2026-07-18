@@ -236,6 +236,24 @@ describe('startServer', () => {
     expect(agents.find((a) => a.id === 'agent-silent')?.host).toBeUndefined();
   });
 
+  it('should thread providerName from the request body into the created agent (BL-046)', async () => {
+    const createResponse = await fetch(`${baseUrl}/api/agents`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: 'agent-openrouter', provider: 'api', providerName: 'openrouter' }),
+    });
+
+    expect(createResponse.status).toBe(200);
+
+    // The response body doesn't echo providerName; assert against the registered agent
+    // itself, which is where the defect (BL-046) actually lived: `providerName` was read
+    // off nothing in the handler, so `Registry.activateAgent`'s `|| 'google'` fallback
+    // (registry.ts) always won regardless of what the caller asked for.
+    const agent = registry.getAgent('agent-openrouter');
+    expect(agent.providerName).toBe('openrouter');
+    expect(agent.providerName).not.toBe('google');
+  });
+
   it('should return 409 when creating a duplicate agent', async () => {
     await registry.createAgent('agent-1');
 
