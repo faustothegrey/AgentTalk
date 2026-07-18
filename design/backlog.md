@@ -1585,6 +1585,17 @@ tags: [architecture, brain, types, friction-m18]
   clean, suite **398/398** (389 + 9 new, existing tests unmodified), wire-contract hash **v8 unchanged**. **Item
   stays `todo` — T3 next:** client cutover (send `{transport,vendor}`) + drop the legacy `provider` acceptance
   (cross-repo). Not pushed at merge time — awaiting the PO's `push` word.
+  **UPDATE (2026-07-18) — T3 SPLIT into T3a/T3b (PO-approved); T3a MERGED + PUSHED.** Plan: `design/bl024-t3-plan.md`
+  (§4 flag-day rationale; §7b gate decisions). **T3a** (client `agentalk-mcp-client` @ merge `3612511`, feat `71fb867`):
+  `agent-launcher` cuts over to `{transport:'attached', vendor}` for `gemini/claude/codex`; **server needs no change**
+  (`activateAgent` re-derives from the stored provider; `/api/agents` already accepts the new shape since T1). Client
+  suite **85/85**; **live cross-repo check** — the real orchestrator accepted the new body and derived `provider:'claude'`.
+  **`goose` ruling (PO):** goose is a **real vendor** but its axis mapping is **deferred** ("not now") — it is in neither
+  `AgentVendor` nor the legacy `AgentProvider` union, so T3a **keeps goose on the legacy `provider` path** (pinned by a
+  new test); sending `transport` would force it to opaque `'mcp'`, a behaviour change needing the deferred reverse-map
+  design. **Consequence: T3b (legacy-`provider` drop) is BLOCKED on the goose-as-vendor spec** — you cannot remove
+  legacy acceptance while goose is the sole remaining user of it. **Item stays `todo` — T3b pending the goose spec**
+  (union + reverse-map for goose, then drop legacy acceptance + fixture/recordings sweep).
 
 <!-- @item
 id: BL-025

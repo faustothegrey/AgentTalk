@@ -927,3 +927,20 @@ here.**
 - **Budget shape of the day:** docs/small-fixes are nearly free; the T1 *implementation* is what moved session
   usage to 84% by close. Weekly 68%. Wrapping before T2 (a careful frozen-engine change) rather than tail-ending it
   was the right proportionality call — I flagged it and the PO agreed.
+
+### 2026-07-18 (later) — BL-024 T2 + T3a, as implementer (resource fallback)
+- **The IP-15 stash-and-rerun is worth the two minutes.** For the T2 frozen-engine edit I had a self-contained
+  discriminator test, but actually *neutering the D1 edge and watching case (c) fail 720→480* is what proved the
+  test bites on the real change, not a hand-stripped fixture. As sole author+reviewer, running the failure mode is
+  the only thing that isn't just re-reading my own diff — the caveat is real, honour it every delivery.
+- **A live check beats two green unit suites for a cross-repo contract.** T3a's client tests use a *fake*
+  orchestrator; the AgentTalk side is unit-tested separately. Neither exercises the actual wire. One `curl` of the
+  new body against the *real* running orchestrator (accepted, derived `provider:'claude'`) is what actually closed
+  the loop. Stand the real thing up when the seam is between two repos.
+- **Investigate before implementing — the goose gap was a show-stopper I'd have papered over by coding.** Reading
+  `SUPPORTED_PROVIDERS` before touching the launcher surfaced that goose is in *neither* union. Stopping to get the
+  PO ruling (real vendor, deferred) — instead of silently mapping it — kept a behaviour change out of the diff and
+  produced a clean, bounded T3a. The rules that say "vendor-axis uncertainty → report, don't decide" earned their keep.
+- **Name the downstream consequence of a deferral.** Today's "goose later" ruling *blocks* T3b (can't drop legacy
+  `provider` while goose still rides it). Surfacing that immediately means BL-024's park-state reads as intentional,
+  not stalled. Deferrals have sequencing costs — say them out loud.
