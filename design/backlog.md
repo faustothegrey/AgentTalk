@@ -262,6 +262,26 @@ fault tolerance, plan at `design/milestone08-transport-fault-tolerance-plan.md`.
 ### Done
 
 <!-- @item
+id: BL-073
+status: done
+date: 2026-07-18
+epic: null
+tags: [tooling, wire-contract, live-proof, scripts]
+-->
+- [done · **DONE 2026-07-18** — opened+closed same session · merge `6815b6b` (branch `task-BL-073`, per-task
+  worktree, PO-gated) · flagged in BL-071's closing note] — **m16/m17 live-proof scripts hardcoded the retired v7
+  wire-contract hash** — `scripts/m16-live-baton-proof.mjs` and `scripts/m17-live-gate-proof.mjs` embedded the v7
+  hash (`ffa94e93…`, 2 sites each), so a current **v8** orchestrator rejects them at `initialize` (close code 1008).
+  **Fix:** read `packages/contracts/wire-contract.json` at module load and use `wireContract.hash` (the idiom
+  `test-live-gate.mjs` / `m19-real-cli-attach.mjs` already use), so a future contract bump can't re-break them.
+  **Verified:** 0 v7 literals remain; `CONTRACT_HASH` wired at both Client-init and `await_turn` sites per file;
+  syntax OK; read resolves to live v8 (`8df9593…`), not v7; both scripts execute past module-load in situ (reach the
+  connection attempt); full suite **372/372**. **Honest boundary:** the full live end-to-end (attaching to a
+  *running* v8 orchestrator) needs infra not stood up here — the hash-source fix itself is proven deterministically.
+  First real dogfood of the BL-036 worktree discipline (`wt-setup.mjs` create→work→remove). Independence caveat:
+  sole agent (resource fallback) — authored+reviewed by Claude; the real check was running the code.
+
+<!-- @item
 id: BL-019
 status: done
 date: 2026-07-09
