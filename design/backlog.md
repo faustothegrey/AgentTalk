@@ -262,6 +262,27 @@ fault tolerance, plan at `design/milestone08-transport-fault-tolerance-plan.md`.
 ### Done
 
 <!-- @item
+id: BL-074
+status: done
+date: 2026-07-18
+epic: null
+tags: [tooling, worktree, wt-setup, dx]
+-->
+- [done · **DONE 2026-07-18** — opened+closed same session · merge `3d84c43` (branch `task-BL-074`, per-task
+  worktree, PO-gated) · found by dogfooding the BL-036 discipline while closing [[BL-073]]] — **`wt-setup create`
+  made task branches track `origin/master`, crashing `remove --delete-branch`** — `create --base origin/master`
+  (the discipline doc's recommended base) set the new `task-<id>` branch's upstream to `origin/master`. Then
+  `remove --delete-branch`'s safe `git branch -d` compared against that **unpushed** upstream instead of local
+  `master`, refused, and threw uncaught — removing the worktree but **orphaning the branch**. **Fix:** add
+  `--no-track` to `git worktree add` (`scripts/wt-setup.mjs`), so the branch has no upstream and `-d` checks local
+  `master` (the actual merge target). **Safety preserved:** `-d` still refuses a genuinely-unmerged branch.
+  **Verified:** throwaway-repo test in the exact BL-073 state (real commit, merged to local master, not pushed) —
+  `git branch -d` **REFUSED** without the flag, **SUCCESS** with it; dogfooded the fixed tool (create off
+  `origin/master` → no upstream → `remove --delete-branch` clean, no leak); wt-setup unit test 4/4; full suite
+  **372/372**. Independence caveat: sole agent (resource fallback) — authored+reviewed by Claude; the real check was
+  the exact-scenario run + the dogfood.
+
+<!-- @item
 id: BL-073
 status: done
 date: 2026-07-18
