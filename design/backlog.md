@@ -758,6 +758,23 @@ tags: [self-hosting, relay, human-in-the-loop, program]
 ### Todo (next first)
 
 <!-- @item
+id: BL-070
+status: todo
+date: 2026-07-18
+epic: null
+tags: [flake, tests, client, reproduce-or-park]
+-->
+- [todo · **low priority — reproduce-or-park, no urgency** · sibling of [[BL-065]], found during that session · CLIENT repo (`agentalk-mcp-client`)] — **`exec-rpc.test.ts > "propagates the CLI agentId into nested persistent MCP bridge URLs"` can time out under cold + load: a suspected timing flake.** During the BL-065 repro session (2026-07-18), this test (`__tests__/exec-rpc.test.ts:199`) **timed out at 5000ms once**, under the same cold-`.vite` + CPU-load condition that reproduced BL-065. It was **out of BL-065's scope, not chased, and not touched** (Rule 2 — report the fault, don't silently fix it).
+
+  **Why it's a distinct failure class from BL-065.** BL-065 was a **~271ms race** on a *string* (a fixed 250ms sleep lost to an async `'close'` event), and its fix removed the racy wait with the assertion unchanged. This one is the **opposite shape: a genuine slow-test timeout** — the test is a heavy end-to-end bar that spawns a **real `llm-agent.mjs` child** (`--provider gemini --execution-mode persistent`), waits for it to connect to a mock MCP WebSocket server, and drives a full `exec_rpc` MCP round-trip — all inside vitest's **default 5000ms** per-test budget. On a cold/loaded first run the spawn + connect + round-trip can simply exceed 5000ms. So the plausible causes are (a) an honest slow-machine timeout the bar should tolerate, and/or (b) a real latency regression somewhere in the persistent-bridge spin-up — **not yet distinguished.**
+
+  **Reproduce before scoping (learn from BL-065: use the ACTUAL observed condition, not a proxy).** Run the full client suite repeatedly in a **fresh worktree with cold `node_modules/.vite`** under CPU load (BL-065's `node scripts/usage.mjs` heavy-load recipe; `pkill -x yes` after, assert `pgrep -x yes | wc -l` == 0). Uniform load *hid* the BL-065 race, so don't assume it will surface this one either — read the BL-065 recipe literally. Also try `--no-file-parallelism` / `--pool=forks --poolOptions.forks.singleFork` to change worker scheduling.
+
+  **Park condition & guardrail.** If it will not reproduce, **park it and say so** — do not "fix" it by blindly bumping the 5000ms timeout, which would hide a real spin-up regression if that's what this is. Any fix must first **attribute** the latency (slow box vs. regression): if it's genuinely just a slow-machine ceiling, a *justified, documented* timeout bump (or waiting on observable connection state instead of a fixed budget) is legitimate; if it points at a real bridge-spin-up regression, that's a product finding to file separately, not a test tweak.
+
+  **Source:** observed 2026-07-18 while landing the BL-065 fix; recorded in the BL-065 closing block ("Sibling flake found").
+
+<!-- @item
 id: BL-068
 status: todo
 date: 2026-07-17
