@@ -3,6 +3,13 @@ import { WebSocketClientTransport } from '@modelcontextprotocol/sdk/client/webso
 import { WebSocket } from 'ws';
 import * as fs from 'fs';
 import * as path from 'path';
+import { fileURLToPath } from 'url';
+
+// The wire-contract hash, read dynamically so a version bump never leaves this proof script
+// hard-rejected by an up-to-date orchestrator (BL-073). Same source the orchestrator uses.
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const wireContract = JSON.parse(fs.readFileSync(path.join(__dirname, '../packages/contracts/wire-contract.json'), 'utf8'));
+const CONTRACT_HASH = wireContract.hash;
 
 const BASE_URL = 'http://localhost:3001';
 const WS_URL = 'ws://localhost:9899';
@@ -25,7 +32,7 @@ async function startAgent(agentId, roleConfig) {
 
   console.log(`[${agentId}] Connecting via MCP WebSocket...`);
   const transport = new WebSocketClientTransport(new URL(`/?agentId=${agentId}`, WS_URL));
-  const client = new Client({ name: `test-client-${agentId}`, version: '1.0.0', contractHash: 'ffa94e93e3182d44924ed28381870c7bd814c908279942022d5925a4865a9446' }, { capabilities: {} });
+  const client = new Client({ name: `test-client-${agentId}`, version: '1.0.0', contractHash: CONTRACT_HASH }, { capabilities: {} });
 
   await client.connect(transport);
   console.log(`[${agentId}] Attached.`);
@@ -33,7 +40,7 @@ async function startAgent(agentId, roleConfig) {
   // Handle server tools (simulating the external MCP execution loop)
   const pollTurn = async () => {
     try {
-      const turnRes = await client.callTool({ name: 'await_turn', arguments: { contractHash: 'ffa94e93e3182d44924ed28381870c7bd814c908279942022d5925a4865a9446' } });
+      const turnRes = await client.callTool({ name: 'await_turn', arguments: { contractHash: CONTRACT_HASH } });
       const textContent = turnRes.content && turnRes.content[0] ? turnRes.content[0].text : turnRes.text;
       const turnData = typeof textContent === 'string' ? JSON.parse(textContent) : turnRes;
 
