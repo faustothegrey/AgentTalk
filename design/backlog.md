@@ -1555,6 +1555,16 @@ tags: [architecture, brain, types, friction-m18]
   **2026-07-11 M19 gate — SP2 CONFIRMED it: both real CLI candidates registered `provider:mcp`** (14 recorder events,
   0 vendor-shaped). Disposition **unchanged — stays a recorded constraint, NOT folded into M19** (planner pushback,
   architect-adopted; consistent with the 2026-07-10 out-of-scope ruling). M19 records `provider:mcp` and works within it.
+  **UPDATE (2026-07-18) — DESIGN DOC written (architect): `design/bl024-provider-split-design.md`.** Ground-truth
+  re-audit (line refs had drifted): the 3 leaks confirmed at `types.ts:31`, `team-coordinator.ts:1004-1017`,
+  `registry.ts:246/249/360/597`. **Key finding:** the registry sniff sites never distinguish the vendor names from
+  `'mcp'` — they collapse to one **transport** predicate (in-process vs attached); the *only* vendor-behavioural
+  site is the frozen-engine gemini timeout (leak #2). Proposed: `transport:'in-process'|'attached'` on the engine,
+  `vendor`/`capabilities` at the edge, timeout → per-agent capability metadata (kills leak #2). Phasing T1 (type+edge,
+  no engine change) · T2 (frozen-engine slice) · T3 (client cutover). **GATE PASSED (PO, 2026-07-18):** all four §8
+  questions decided per recommendations, incl. **explicit authorization for the T2 frozen-engine edit** (byte-identical
+  timeout + IP-15 proof obligation). **Item stays `todo`:** design approved, implementation not started — next is to
+  plan T1. See the design doc for the recorded decisions.
 
 <!-- @item
 id: BL-025
