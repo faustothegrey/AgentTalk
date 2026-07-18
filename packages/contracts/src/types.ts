@@ -28,7 +28,86 @@ export type AgentSessionStatus = 'starting' | 'ready' | 'busy' | 'restarting' | 
 // API-vendor axis (ApiProvider: openrouter/nous/google) and from providerName.
 // 'mcp' is the externally-launched / exec-RPC / MCP-attach path. Typed as a
 // union so a missed rename/typo is a compile error.
+//
+// ⚠️ DEPRECATED (BL-024) — this union conflates TWO axes: transport (api/mcp) and
+// vendor (gemini/claude/codex). It is being split into `AgentTransport` × `AgentVendor`
+// below. Kept populated through T1/T2 for the (frozen) engine; removed in T3.
 export type AgentProvider = 'api' | 'mcp' | 'gemini' | 'claude' | 'codex';
+
+// BL-024 — the two axes `AgentProvider` conflated:
+//   transport = HOW the orchestrator drives the agent (the ONLY axis the engine needs).
+//   vendor    = WHOSE CLI it is (an edge/launcher concern; absent for an opaque attach).
+// 'in-process' was the old 'api'; 'attached' was the old 'mcp'/'gemini'/'claude'/'codex'
+// (the registry always treated those four identically — see registry driver selection).
+export type AgentTransport = 'in-process' | 'attached';
+export type AgentVendor = 'gemini' | 'claude' | 'codex';
+
+// Per-agent capability metadata — where vendor-specific knobs live so they never
+// leak into the engine as vendor-name branches (BL-024 leak #2). T1 seeds the one
+// current consumer: gemini's longer fact-collection timeout.
+export interface AgentCapabilities {
+  factCollectionTimeoutMs?: number;
+}
+
+// The gemini fact-collection timeout, expressed as capability metadata rather than a
+// vendor branch. Mirrors DEFAULT_GEMINI_FACT_COLLECTION_TIMEOUT_MS in team-coordinator.ts;
+// T2 makes the engine read this instead of sniffing the vendor name.
+export const GEMINI_FACT_COLLECTION_TIMEOUT_MS = 720_000;
+
+// The normalized agent kind: both new axes AND the legacy union, kept consistent so the
+// (still-frozen) engine keeps reading `legacyProvider`/`providerName` unchanged in T1/T2.
+export interface NormalizedAgentKind {
+  transport?: AgentTransport | undefined;
+  vendor?: AgentVendor | undefined;
+  capabilities?: AgentCapabilities | undefined;
+  legacyProvider?: AgentProvider | undefined;
+  providerName?: string | undefined;
+}
+
+// Pure, dependency-free single source of truth for the transport↔vendor↔legacy mapping.
+// Accepts either a legacy `provider` (+ providerName) or the new `{transport, vendor}`,
+// and returns all fields consistently populated. The empty input (no provider, no
+// transport) passes through untouched — preserving today's "provider-less agents throw
+// at start()" behaviour. See design/bl024-provider-split-design.md §5.
+export function normalizeAgentKind(input: {
+  provider?: AgentProvider | undefined;
+  providerName?: string | undefined;
+  transport?: AgentTransport | undefined;
+  vendor?: AgentVendor | undefined;
+}): NormalizedAgentKind {
+  const { provider, providerName, transport, vendor } = input;
+  const geminiCaps = (): AgentCapabilities => ({ factCollectionTimeoutMs: GEMINI_FACT_COLLECTION_TIMEOUT_MS });
+
+  // New-shape caller wins when a transport is given.
+  if (transport) {
+    // 'attached' with a known vendor maps back to that vendor name; opaque attach → 'mcp'.
+    const legacyProvider: AgentProvider = transport === 'in-process' ? 'api' : (vendor ?? 'mcp');
+    return {
+      transport,
+      vendor,
+      capabilities: vendor === 'gemini' ? geminiCaps() : undefined,
+      legacyProvider,
+      providerName,
+    };
+  }
+
+  // Legacy-shape caller.
+  switch (provider) {
+    case 'api':
+      return { transport: 'in-process', legacyProvider: 'api', providerName };
+    case 'mcp':
+      return { transport: 'attached', legacyProvider: 'mcp', providerName };
+    case 'gemini':
+      return { transport: 'attached', vendor: 'gemini', capabilities: geminiCaps(), legacyProvider: 'gemini', providerName };
+    case 'claude':
+      return { transport: 'attached', vendor: 'claude', legacyProvider: 'claude', providerName };
+    case 'codex':
+      return { transport: 'attached', vendor: 'codex', legacyProvider: 'codex', providerName };
+    default:
+      // Neither provider nor transport — provider-less; unchanged behaviour downstream.
+      return { providerName };
+  }
+}
 
 export type TeamRole = 'planner' | 'worker';
 

@@ -1,9 +1,12 @@
 import { createWriteStream, WriteStream, mkdirSync, existsSync } from 'fs';
 import type {
+  AgentCapabilities,
   AgentExecutionMode,
   AgentProvider,
   AgentSessionStatus,
   AgentStatus,
+  AgentTransport,
+  AgentVendor,
   HostEnvironment,
   ResolvedExecutionMode,
   WorkflowRole,
@@ -31,6 +34,12 @@ export class Agent {
   usageStats?: { stats: string; timestamp: string };
   provider?: AgentProvider;
   providerName?: string;
+  // BL-024 — the split axes carried alongside the legacy `provider` (kept populated
+  // in T1/T2 for the frozen engine). `transport` is the engine-relevant axis; `vendor`
+  // and `capabilities` are edge concerns.
+  transport?: AgentTransport;
+  vendor?: AgentVendor;
+  capabilities?: AgentCapabilities;
   model?: string;
   // BL-071 P2 — the host this agent reported it runs on (via the report_environment
   // tool on connect). Self-observed by the agent; undefined until/unless it reports.
