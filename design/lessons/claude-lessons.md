@@ -976,3 +976,25 @@ here.**
 - **Never put backticks in a `git commit -m` message from bash.** \`provider\` in the message body got
   command-substituted to empty, mangling the commit ("the legacy  input"). Use single quotes around the whole -m,
   or a heredoc/`-F` file, and keep backticks out. Cosmetic here, but avoidable.
+
+### 2026-07-19 — Rung 4: goose autonomously fixed AgentTalk (BL-046 merged), across several hats
+- **As task-end reviewer: I checked the artifact at the WRONG coordinates and declared "goose did nothing" — the
+  exact BL-053/BL-059 trap I had literally written into this repo.** goose worked in the sandbox MAIN tree; I checked
+  its empty assigned worktree and called the run a failure. It wasn't — the fix was correct and sitting right there.
+  **Before concluding an autonomous agent didn't work, check BOTH the assigned worktree AND where the process
+  actually stood (main tree / spawn cwd).** goose specifically ignores the forwarded cwd (only gemini honours it —
+  BL-053). Reading the mechanism would have saved a false conclusion I stated to the PO.
+- **As implementer/orchestrator: a full opaque background batch + log-only diagnosis hid the real clue.** My first
+  diagnosis ("goose hit --max-turns") was half-wrong; I missed that the UI froze at `starting`. The PO's correction —
+  *"one step at a time, verify on the UI as well as the logs"* — was right. What actually cracked it was the smallest
+  possible isolation: a direct `goose run … -t "create foo.txt"` proving goose CAN edit files headlessly, in one
+  command. **Decompose to the smallest unit and verify on the real surface before theorising about the whole loop.**
+- **The pre-registered independent hidden bar is what let me safely REVERSE my own wrong call.** Because I'd written a
+  mutation-checked test that was RED before the run, I could apply goose's fix and watch it go GREEN — an anchor that
+  overrode both the lying `completed` status AND my own bad first read. Build the grader before the run, every time.
+- **`completed` ≠ done, proven twice in one session (BL-062).** The team said `completed` on both attempts; #1 had a
+  tsc error and no commit, #2 was clean. The status field is never a work signal — the artifact is. And a real code
+  task needs deps wired + a generous `--max-turns` (30 starved it, 150 sufficed).
+- **The PO's blunt-honesty preference paid off:** owning "I was wrong, here's the correction" immediately (twice) kept
+  the collaboration moving and the PO engaged ("goose-bumps"). Honesty over looking-right is not just principle here —
+  it's what made the debugging fast.

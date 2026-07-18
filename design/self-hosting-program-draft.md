@@ -453,3 +453,28 @@ operational + incremental:** the PO flips the mode on and starts approving real 
 dev work (retiring the cut-and-paste one hand-off at a time), then relaxes consent along the dimmer
 (approve-each → by-exception → autonomous), checking at each notch — with **BL-028** (typed non-reply / wake) as the
 dependency when autonomous delivery is approached. Ledger: `design/milestone20-po-approved-relay-implementation.md`.
+
+---
+
+## Rung 4 — CLEARED 2026-07-19: the flywheel's central claim gets its first real datum
+
+**The program's whole point — *AgentTalk improves AgentTalk* — has now happened for real, once, end-to-end.** On
+2026-07-19 a **goose / claude-sonnet-5** worker, launched by the deterministic Bite-0 launcher over the MCP
+substrate into a sandbox, **autonomously produced a correct, type-clean, tested, committed fix to AgentTalk's own
+code** (BL-046: `POST /api/agents` forwards `providerName`). It ran `tsc` and **self-corrected** a strict-TS error it
+made on its first attempt. Independently graded by running it (tsc 0, suite 208/208, an independent mutation-checked
+bar red→green), **PO-gated merged + pushed** (`216c664`), crediting goose. This is the "rung" ladder (rung 1 → 1.5 →
+2 → 3 → **4**) reaching its graduation — the concrete complement to the M16→M20 milestone ladder above. Plan +
+telemetry: `design/rung4-plan.md`; closure in backlog **BL-046**.
+
+**What it proved, and what it did NOT.** Proved: a real, heterogeneous, non-Claude/non-agy agent (goose, over
+OpenRouter) can be launched by the substrate to do a genuine engineering task on AgentTalk and land it — the
+BL-024 goose-vendor work paid off by *unblocking this rung without agy*. Did **not** prove the program's ultimate
+claim (a measured fall in the PO's real relay burden across a full dev epic): this was one bounded, PO-picked task
+with the human still gating scope + merge. It is a **datum, not the trend** — the honest next step is more rungs / a
+real multi-task epic run on the substrate, measured.
+
+**The rung's own friction (the flywheel eating its tail):** **BL-075** (goose ignores its assigned task-worktree
+`cwd`), **BL-076** (goose's worker report doesn't survive the protocol — work lands, report is lost), **BL-077** (the
+UI froze at `starting` — status transitions not broadcast). Two attempts were needed, and `completed` lied on both
+(BL-062 again — only the artifact told the truth).
