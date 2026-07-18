@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import os from 'node:os';
 import { existsSync, rmSync } from 'fs';
 import type { AddressInfo } from 'net';
 import type { Server } from 'http';
@@ -188,6 +189,30 @@ describe('startServer', () => {
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual({ success: true });
 
+  });
+
+  // BL-071 — the orchestrator exposes its OWN host environment (self-observed at
+  // boot). Same process as the test, so its host must equal a fresh os read here.
+  it('should expose the orchestrator host environment at GET /api/environment', async () => {
+    const response = await fetch(`${baseUrl}/api/environment`);
+    expect(response.status).toBe(200);
+
+    const env = await response.json();
+    expect(env).toMatchObject({
+      platform: os.platform(),
+      arch: os.arch(),
+      osRelease: os.release(),
+      nodeVersion: process.version,
+      hostname: os.hostname(),
+    });
+    expect(typeof env.cpuCount).toBe('number');
+    expect(env.cpuCount).toBeGreaterThan(0);
+    expect(typeof env.totalMemBytes).toBe('number');
+    expect(env.totalMemBytes).toBeGreaterThan(0);
+    expect(Number.isNaN(Date.parse(env.capturedAt))).toBe(false);
+    expect(Object.keys(env).sort()).toEqual(
+      ['arch', 'capturedAt', 'cpuCount', 'hostname', 'nodeVersion', 'osRelease', 'platform', 'totalMemBytes'].sort(),
+    );
   });
 
   it('should return 409 when creating a duplicate agent', async () => {

@@ -30,6 +30,7 @@ import {
 import {
   isUsageCaptureProvider,
 } from '@agenttalk/observability/usage-history/capture';
+import { captureHostEnvironment } from '@agenttalk/runtime-core/shared/environment';
 
 type MessageHistoryEvent =
   | { type: 'agent_message'; payload: string };
@@ -61,6 +62,9 @@ export function startServer(
 ) {
   const app = express();
   app.use(express.json());
+  // BL-071 — capture the orchestrator's own host once at boot (it does not change
+  // during a run). Self-observed ground truth; served read-only at GET /api/environment.
+  const orchestratorEnvironment = captureHostEnvironment();
   const recorder = options.recorder;
   const googleDrive = options.googleDrive;
   const usageHistoryStore = new UsageHistoryStore(usageHistoryStorePath);
@@ -196,6 +200,11 @@ export function startServer(
     }));
     console.log(`[Server] Returning ${agents.length} agents`);
     res.json(agents);
+  });
+
+  app.get('/api/environment', (_req, res) => {
+    console.log('[Server] GET /api/environment');
+    res.json(orchestratorEnvironment);
   });
 
   app.get('/api/conversations', (_req, res) => {
