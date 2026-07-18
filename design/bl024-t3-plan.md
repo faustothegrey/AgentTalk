@@ -83,6 +83,19 @@ provider axis (`:740`, `isUsageCaptureProvider`), the `ApiProvider`/`apiVendor` 
 4. Recordings/fixtures still replay (shim or migrated).
 5. Full suite green in **both** repos; `tsc -b` clean; **no wire-contract hash change**; cross-repo contract check green.
 
+## 7b. Gate decisions (PO, 2026-07-18)
+
+- **Split T3a/T3b:** ✅ approved ("proceed").
+- **`goose` (found mid-implementation):** the client's `SUPPORTED_PROVIDERS` includes `goose`, which is in **neither**
+  `AgentVendor` nor the legacy `AgentProvider` union, and AgentTalk has no `goose` handling. **PO ruling:** *goose is a
+  real vendor; its full meaning will be specified later — not now, and it is not needed to proceed.* **T3a therefore
+  cuts over only the three enumerated vendors (`gemini`/`claude`/`codex`); `goose` stays on the legacy `provider:'goose'`
+  path** (which T3a's server still accepts). Sending `transport` for goose would force `normalizeAgentKind` to map it to
+  opaque `'mcp'` (goose isn't a legacy provider) — a behaviour change requiring the deferred reverse-map design, so it is
+  explicitly avoided here. Goose-as-vendor (union + reverse-map) is folded into **T3b / the deferred goose spec.**
+- **T3a is client-only:** `activateAgent` re-derives transport/vendor from the stored `agent.provider`, and the create
+  handler already accepts `{transport,vendor}` (T1). So T3a touches **only** `agentalk-mcp-client` — no AgentTalk change.
+
 ## 8. Open questions for the plan gate
 
 1. **Split T3 into T3a (client cutover) + T3b (legacy drop)?** *(Recommend yes — avoids the two-repo flag-day; each
