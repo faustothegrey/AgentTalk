@@ -759,12 +759,36 @@ tags: [self-hosting, relay, human-in-the-loop, program]
 
 <!-- @item
 id: BL-072
-status: todo
+status: deferred
 date: 2026-07-18
 epic: null
 tags: [agents, identity, trust, security, launcher, design-first]
 -->
-- [todo · **design-first — read the trust model below before building anything** · sibling of [[BL-071]] (same "environment awareness" ask, PO 2026-07-18) · authorization vs. self-belief is the crux] — **Agents should be aware whether they are operating WITHIN AgentTalk — but that awareness cannot be independently verified, so decide deliberately what it's allowed to mean.** PO ask (2026-07-18): a team member should know it's running as part of an AgentTalk team (future behaviours may branch on it — e.g. coordinate, commit to a worktree, don't prompt interactively). The PO's own instinct — *"I think this can only be injected by the launcher and cannot be verified independently"* — is correct, with one important sharpening.
+- [deferred · **DECISION TAKEN, MECHANISM DEFERRED (PO, 2026-07-18)** · reopen trigger below · sibling of [[BL-071]] (DONE)] — **Agents should be aware whether they are operating WITHIN AgentTalk — but that awareness cannot be independently verified, so decide deliberately what it's allowed to mean.** PO ask (2026-07-18): a team member should know it's running as part of an AgentTalk team (future behaviours may branch on it — e.g. coordinate, commit to a worktree, don't prompt interactively). The PO's own instinct — *"I think this can only be injected by the launcher and cannot be verified independently"* — is correct, with one important sharpening.
+
+  **✅ DECISION (PO, 2026-07-18) — behaviour-tuning, NOT authorization; and defer the mechanism.**
+  - **Behaviour-tuning is the meaning** (a self-reported context signal the agent reads), **not authorization.** The
+    reframe that settled it: these are **not two versions of one feature** — they live in different places and do
+    different jobs. Behaviour-tuning is a signal *to the agent* (agent-side); authorization is a check the
+    *orchestrator* makes (server-side, and it already knows which agents it launched/accepted). So choosing the
+    light option **costs nothing toward a future authorization**: authorization would never route through the
+    agent's flag anyway. No corner is painted.
+  - **DEFER the mechanism (chosen: option B).** BL-072 has **no consumer today** — nothing currently branches on
+    "am I in a team." Building an `isWithinAgentTalk()` helper now would be infrastructure without a user (the
+    mirror of the over-engineering we avoided in BL-071). From the **orchestrator's** side the awareness is already
+    total (every agent that arrives via the protocol *is* within AgentTalk, and the registry knows it); the concept
+    is only missing *inside the agent's own logic*, where nothing yet consults it. So record the decision, build
+    nothing yet.
+  - **Two guardrails that make "light" safe (must hold whenever this is eventually built):**
+    1. **The flag is context, NEVER an authorization boundary.** The failure mode is always the same: someone later
+       hangs a security decision on a spoofable agent-side flag. One doc line prevents it.
+    2. **Prefer the OBSERVABLE over a bare env flag.** Ground "within AgentTalk" in the *live MCP connection to an
+       orchestrator*, not in an env var — note `llm-agent.mjs:240` reads `AGENTTALK_PERSISTENT_MCP_URL` **with a
+       `ws://localhost:3000/mcp` default**, so "the var is set" is NOT a clean signal; the live connection is.
+  - **🔓 REOPEN TRIGGER:** the first time a real behaviour needs to branch on within-AgentTalk-ness (e.g. "don't
+    prompt interactively when in a team", "always commit to the task worktree"). At that point build the **thin
+    agent-side signal** grounded in the live connection (option A) — and if the need is *authorization*, build it
+    **orchestrator-side**, never on the agent's word.
 
   **Two signals hide under one question; keep them apart:**
   1. **A static injected FLAG** (an env var such as `AGENTTALK_WITHIN=true`, or reading the already-injected `AGENTTALK_ORCHESTRATOR_URL` / `AGENTTALK_PERSISTENT_MCP_URL`). **NOT independently verifiable** — a standalone process can export the same var. **The agent takes it for granted.** That is acceptable *only* if it is treated as **self-reported context, never a security boundary.**
