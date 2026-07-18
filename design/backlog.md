@@ -936,12 +936,12 @@ tags: [engine, ids, data-loss, silent, autonomy, proven]
 
 <!-- @item
 id: BL-065
-status: doing
+status: done
 date: 2026-07-17
 epic: null
 tags: [flake, tests, client, trust, reproduced]
 -->
-- [doing · **REPRODUCED 2026-07-18 + fix on branch, awaiting PO merge** — 2/12 in a fresh worktree under CPU load, 0/37 warm; mechanism isolated; test-only fix, assertion unchanged, mutation-checked · client branch `task-BL-065` `c1d05f2`] — **`executor-hardening.test.mjs` can fail under full-suite load: a suspected timing flake.** The test
+- [done · **MERGED + PUSHED 2026-07-18 — client `8d0a823` (fix `c1d05f2`, branch `task-BL-065`)** — reproduced 2/12 in a fresh worktree under CPU load, 0/37 warm; mechanism isolated; test-only fix, assertion unchanged, mutation-checked, 16/16 green under the repro battery] — **`executor-hardening.test.mjs` can fail under full-suite load: a suspected timing flake.** The test
   `persistent executor hardening > fails a turn loudly when the session died earlier, instead of waiting on a dead
   child` **failed once** during the first full-suite run of the vitest-scope fix (client `786f58a`), in a
   **freshly-created worktree** (cold caches, cold transform, symlinked `node_modules` — i.e. the slowest possible
@@ -986,6 +986,17 @@ tags: [flake, tests, client, trust, reproduced]
   **Sibling flake found (out of scope, unfiled):** under cold + load, `exec-rpc.test.ts > "propagates the CLI agentId
   into nested persistent MCP bridge URLs"` timed out at 5000ms **once** — a separate heavier-test flake; file its own
   BL if it recurs.
+
+  **CLOSED 2026-07-18 — merged + pushed, client `8d0a823` (fix `c1d05f2`, branch `task-BL-065`, per-task worktree,
+  PO-gated).** The item was reproduce-or-park and turned out **reproducible** → became a scoped test-only fix.
+
+  **Telemetry (task closure):**
+  - task:        BL-065
+  - wall-clock:  2026-07-18 ~08:52 → 09:44 (~52m, prime → merge+push)
+  - budget:      weekly claude 52%→54% (Δ ~2%), session unavailable (`claude` block ok:false, LB-11)
+  - gate:        client suite 81/81 (merged master); mutation-check red-confirmed; diff test-only (+20/-2, 1 file)
+  - diff:        client 1 file +20/-2, commits `c1d05f2` → merge `8d0a823`; backlog `3cc2a98` + this closure
+  - outcome:     MERGED + PUSHED ✅
 
 <!-- @item
 id: BL-064
