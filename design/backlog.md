@@ -936,12 +936,12 @@ tags: [engine, ids, data-loss, silent, autonomy, proven]
 
 <!-- @item
 id: BL-065
-status: todo
+status: doing
 date: 2026-07-17
 epic: null
-tags: [flake, tests, client, trust, observed-once]
+tags: [flake, tests, client, trust, reproduced]
 -->
-- [todo · **filed from a live observation, not a theory** — seen once while clearing the client's standing red; NOT reproduced since · **do not "fix" it by relaxing the assertion** — read the honest-attribution note below first] — **`executor-hardening.test.mjs` can fail under full-suite load: a suspected timing flake.** The test
+- [doing · **REPRODUCED 2026-07-18 + fix on branch, awaiting PO merge** — 2/12 in a fresh worktree under CPU load, 0/37 warm; mechanism isolated; test-only fix, assertion unchanged, mutation-checked · client branch `task-BL-065` `c1d05f2`] — **`executor-hardening.test.mjs` can fail under full-suite load: a suspected timing flake.** The test
   `persistent executor hardening > fails a turn loudly when the session died earlier, instead of waiting on a dead
   child` **failed once** during the first full-suite run of the vitest-scope fix (client `786f58a`), in a
   **freshly-created worktree** (cold caches, cold transform, symlinked `node_modules` — i.e. the slowest possible
@@ -962,6 +962,30 @@ tags: [flake, tests, client, trust, observed-once]
   the flake, because it retires a real guarantee (the executor must fail loudly on a dead session — that guarantee
   is the point of the test).
   **Source:** observed 2026-07-17 while landing the client vitest-scope fix; full numbers in that session's report.
+
+  **REPRODUCED 2026-07-18 (Claude, implementer under resource fallback) — it is a TEST timing bug, not a product
+  defect.** 58 full-suite runs: **normal 0/10 · heavy CPU load (warm) 0/12 · cold `.vite` + load (primary checkout)
+  0/15 · fresh worktree cold + load 2/12 (~17%)**. Reproduces **only** in a fresh worktree — the exact original
+  condition — consistent with the reported 1/4. Both failures took **271ms / 289ms**, i.e. a race, **not** the
+  5000ms timeout.
+  **Mechanism:** hc-4 spawns a child that `exit(3)`s, waits a **fixed 250ms**, then calls `executeTurn` expecting
+  the *synchronous* `_sendToStdin` guard (`executor-runtime.mjs:283-284`) to throw
+  `"session is not available: the session exited with code 3"`. That guard only fires if the child's `'close'` event
+  has set `_exitInfo` within the 250ms. On a cold/loaded first run the `'close'` callback lands **after** the sleep,
+  so `executeTurn` meets a not-yet-reaped child, writes to stdin, and the child's later `'close'` rejects via the
+  *async* handler (`:195`) with `"Persistent claude session exited with code 3"` — **equally loud and correct, but a
+  different string** → the regex misses → red. Warm/uniform load doesn't hit it because the load stretches the 250ms
+  timer too. The guarantee the test protects (executor fails loudly on a dead session) is **never violated** — the
+  test merely pins the exact string of one of two equally-valid loud paths, gated on a racy sleep.
+  **Fix (test-only, assertion byte-for-byte unchanged — does NOT relax the bar):** replace the fixed `setTimeout(250)`
+  with a bounded `waitFor(() => executor.getStatus() === 'error')`, so the child is provably reaped before the turn
+  and the synchronous guard is the deterministic path under test. **Not** widened to accept both messages (that would
+  hide which path ran). **Mutation-checked:** removing the product's exit guard (`:283-284`) still reddens the fixed
+  test. **16/16 green** under the same cold+load battery that gave 2/12 unfixed; full client suite 81/81; diff is one
+  file, +20/-2. Awaiting the PO merge (client repo, `task-BL-065`, `c1d05f2`).
+  **Sibling flake found (out of scope, unfiled):** under cold + load, `exec-rpc.test.ts > "propagates the CLI agentId
+  into nested persistent MCP bridge URLs"` timed out at 5000ms **once** — a separate heavier-test flake; file its own
+  BL if it recurs.
 
 <!-- @item
 id: BL-064
