@@ -758,6 +758,43 @@ tags: [self-hosting, relay, human-in-the-loop, program]
 ### Todo (next first)
 
 <!-- @item
+id: BL-072
+status: todo
+date: 2026-07-18
+epic: null
+tags: [agents, identity, trust, security, launcher, design-first]
+-->
+- [todo · **design-first — read the trust model below before building anything** · sibling of [[BL-071]] (same "environment awareness" ask, PO 2026-07-18) · authorization vs. self-belief is the crux] — **Agents should be aware whether they are operating WITHIN AgentTalk — but that awareness cannot be independently verified, so decide deliberately what it's allowed to mean.** PO ask (2026-07-18): a team member should know it's running as part of an AgentTalk team (future behaviours may branch on it — e.g. coordinate, commit to a worktree, don't prompt interactively). The PO's own instinct — *"I think this can only be injected by the launcher and cannot be verified independently"* — is correct, with one important sharpening.
+
+  **Two signals hide under one question; keep them apart:**
+  1. **A static injected FLAG** (an env var such as `AGENTTALK_WITHIN=true`, or reading the already-injected `AGENTTALK_ORCHESTRATOR_URL` / `AGENTTALK_PERSISTENT_MCP_URL`). **NOT independently verifiable** — a standalone process can export the same var. **The agent takes it for granted.** That is acceptable *only* if it is treated as **self-reported context, never a security boundary.**
+  2. **The LIVE PROTOCOL RELATIONSHIP** — "I hold an MCP socket to an orchestrator AND just completed an `await_turn` / `exec_rpc` turn." This **IS observable**: the agent actively participates in it, so the awareness can be **grounded in an observable** rather than merely granted (cf. `ENV=prod` string vs. actually holding a live prod-DB connection). **Prefer deriving awareness from this** where the code allows.
+
+  **The one thing genuinely unverifiable:** whether the peer on the socket is *the real AgentTalk* vs. an impostor speaking the same protocol — an agent cannot authenticate the orchestrator from inside.
+
+  **Load-bearing principle (the actual design constraint):** **never make an agent's self-belief an enforcement point.** If "within AgentTalk" is ever used for **authorization** ("only in-team agents may do X"), it MUST be enforced **server-side by the orchestrator** — which already knows which agents it launched/accepted — not by an agent trusting its own env var. If it's only used for **behaviour tuning**, a spoofable self-reported flag is adequate and "take it for granted" is the correct, cheap answer. **So the deliverable is first a decision — behaviour-tuning (flag OK) vs. authorization (orchestrator-enforced) — then the mechanism.**
+
+  **Grounded facts (verified 2026-07-18):** the launcher already injects a rich `AGENTTALK_*` env set including `AGENTTALK_ORCHESTRATOR_URL` and `AGENTTALK_PERSISTENT_MCP_URL`, so a de-facto "within" signal partly exists as an injected value. **Source:** PO design discussion 2026-07-18; full write-up in that session's report.
+
+<!-- @item
+id: BL-071
+status: todo
+date: 2026-07-18
+epic: null
+tags: [agents, environment, observability, platform, capabilities]
+-->
+- [todo · **net-new — no host/env reporting exists anywhere today (verified 2026-07-18)** · sibling of [[BL-072]] (same "environment awareness" ask, PO 2026-07-18) · genuinely self-verifiable, unlike BL-072] — **Every team member AND the orchestrator should gather info about the host system they run on (OS, arch, versions…), captured at attach, because future behaviours may depend on it.** PO ask (2026-07-18): e.g. knowing it's a Mac (`darwin`/`arm64`), OS release, cpu/mem, node version, hostname, cwd. Some future behaviour may need to branch on platform or capabilities.
+
+  **Why this is the *easy* half (contrast with [[BL-072]]).** Host info is **fully self-verifiable ground truth** — the agent OBSERVES its own host via node `os.*` / `process.*` (`os.platform()`, `os.release()`, `os.arch()`, `os.cpus()`, `os.totalmem()`, `process.version`, hostname, cwd). It is not a claim and cannot be spoofed *to* the agent (nor faked *by* the launcher). No trust model needed.
+
+  **Design shape (for the plan, not prescribed here):**
+  - **Per-agent, do NOT assume co-location.** Attach mode is WebSocket; agents could in principle run on different hosts. Each agent reports **its own** environment; the **orchestrator reports its own** separately. They may differ.
+  - **Capture at the attach handshake** and store on the agent record in the registry (net-new field, e.g. `host` / `environment`). Surfacing it in the Team UI is a possible follow-on, not required for the core.
+  - Decide the **schema** deliberately (a small stable set beats a kitchen sink) — this is data other behaviours will branch on, so it's a lightweight contract, possibly touching `packages/contracts` (client sends it) → mind the contract-hash coupling if so.
+
+  **Grounded facts (verified 2026-07-18):** a scan of `apps/orchestrator/src` + `packages` found **zero** host/os/platform reporting at attach or anywhere else — this is genuinely net-new. **Source:** PO design discussion 2026-07-18; full write-up in that session's report.
+
+<!-- @item
 id: BL-070
 status: todo
 date: 2026-07-18
