@@ -90,7 +90,12 @@ function create(id, { base, baseline, root }) {
   const wt = worktreePath(root, id);
   if (existsSync(wt)) throw new Error(`worktree path already exists: ${wt}`);
 
-  const addArgs = ['worktree', 'add', wt, '-b', `task-${id}`];
+  // `--no-track`: when <base> is a remote ref (e.g. `origin/master`, the recommended
+  // base), git would otherwise set the new branch's upstream to it — and then
+  // `remove --delete-branch`'s safe `git branch -d` compares against that unpushed
+  // upstream instead of local `master`, refuses, and crashes (BL-074). No upstream
+  // ⇒ `-d` checks local `master`, the actual merge target. Harmless when base is local.
+  const addArgs = ['worktree', 'add', '--no-track', wt, '-b', `task-${id}`];
   if (base) addArgs.push(base);
   git(addArgs, { cwd: primary, stdio: ['ignore', 'inherit', 'inherit'] });
 
