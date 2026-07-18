@@ -389,8 +389,10 @@ function App() {
   const handleCreateAgent = async (provider: Provider, model: string, mode: ExecutionMode, id?: string) => {
     setLoading(true);
     try {
-      const agent = await api.agents.create({ provider, model, executionMode: mode, id });
-      await api.agents.start(agent.id, { provider, model, executionMode: mode });
+      // BL-024 T3b-2: send the transport/vendor axis, not the legacy `provider`. The Provider
+      // union (claude|gemini|codex) are all attached vendors.
+      const agent = await api.agents.create({ transport: 'attached', vendor: provider, model, executionMode: mode, id });
+      await api.agents.start(agent.id, { transport: 'attached', vendor: provider, model, executionMode: mode });
       await fetchAgents();
       setSelectedAgentId(agent.id);
     } catch (err: any) { setGlobalError(err.message); }
@@ -416,9 +418,9 @@ function App() {
       const providers: Provider[] = ['gemini', 'codex'];
       for (const p of providers) {
         const model = p === 'gemini' ? 'gemini-3.1-pro' : '';
-        const agent = await api.agents.create({ provider: p, model, executionMode: 'auto' });
+        const agent = await api.agents.create({ transport: 'attached', vendor: p, model, executionMode: 'auto' });
         createdIds.push(agent.id);
-        await api.agents.start(agent.id, { provider: p, model, executionMode: 'auto' });
+        await api.agents.start(agent.id, { transport: 'attached', vendor: p, model, executionMode: 'auto' });
       }
       await waitForAgentsReady(createdIds);
       await fetchAgents();
@@ -442,9 +444,9 @@ function App() {
       const createdIds: string[] = [];
       const model = teamProvider === 'gemini' ? geminiModelForTeam : '';
       for (let i = 0; i < 3; i++) {
-        const agent = await api.agents.create({ provider: teamProvider, model, executionMode: 'persistent' });
+        const agent = await api.agents.create({ transport: 'attached', vendor: teamProvider, model, executionMode: 'persistent' });
         createdIds.push(agent.id);
-        await api.agents.start(agent.id, { provider: teamProvider, model, executionMode: 'persistent' });
+        await api.agents.start(agent.id, { transport: 'attached', vendor: teamProvider, model, executionMode: 'persistent' });
       }
       await waitForAgentsReady(createdIds);
       await fetchAgents();
