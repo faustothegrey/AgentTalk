@@ -1596,6 +1596,18 @@ tags: [architecture, brain, types, friction-m18]
   design. **Consequence: T3b (legacy-`provider` drop) is BLOCKED on the goose-as-vendor spec** — you cannot remove
   legacy acceptance while goose is the sole remaining user of it. **Item stays `todo` — T3b pending the goose spec**
   (union + reverse-map for goose, then drop legacy acceptance + fixture/recordings sweep).
+  **UPDATE (2026-07-18) — goose spec GREENLIT (PO, reversing "not now") + T3b MERGED + PUSHED (cross-repo).** Plan:
+  `design/bl024-t3b-plan.md`. **The PO's aim was "a real goose client at the end" — achieved and LIVE-PROVEN.** goose
+  was fully broken (start failed at `registry.ts:293`); now it is a first-class vendor. AgentTalk (`92bd383`, merge of
+  `d0f7a99`): `AgentVendor`/`AgentProvider` += `'goose'` (serialization label post-T2), symmetric `normalizeAgentKind`
+  case (→ `attached`), server validates `vendor:'goose'`; goose gets **no** capability (default fact-collection
+  timeout, not the gemini bump). Client (`79b6268`, merge of `9d9bf5d`): goose cuts over to `{transport,vendor,model}`;
+  **model is a REQUIRED companion for goose** (a harness over an OpenRouter model) — launcher rejects goose-with-no-model
+  (400) and `provider-runtime` drops the silent `openai/gpt-4o-mini` default; claude/gemini/codex keep theirs.
+  **Live proof:** real goose CLI 1.41.0 over OpenRouter attached over MCP and returned **computed** products —
+  `17×23=391` (direct) and `31×19=589` (through the real launcher's cutover path). AgentTalk **401/401**, client
+  **86/86**, tsc clean, no wire-contract hash change. **Item stays `todo` — remaining: T3b-2** = drop the legacy
+  `provider` *input* acceptance from the server (recordings/UI/fixtures sweep) — cleanup, not needed for goose to work.
 
 <!-- @item
 id: BL-025

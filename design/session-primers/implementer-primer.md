@@ -30,38 +30,32 @@ docs, NOT chat.**
 
 ## Where we are (2026-07-18 close)
 
-**AgentTalk master `9c3c74d`** (pushed) — **+ an unpushed docs commit** with THIS primer + the T3a backlog record
-+ lessons (verify via fetch; the PO may or may not have pushed it). **Client `agentalk-mcp-client` master `3612511`**
-(pushed). No worktrees/branches of ours left (T2 + T3a cleaned up). PO's `.plist` shows modified — leave it. PO's
-launchd svc — leave alone; stand up your own orchestrator on **3100** (`PORT=3100 npm run backend`).
+**AgentTalk master `92bd383`** (pushed). **Client `agentalk-mcp-client` master `79b6268`** (pushed). No
+worktrees/branches of ours left (T2 + T3a + T3b cleaned up; the pre-existing `task-BL-039` is intentionally kept).
+PO's `.plist` shows modified — leave it. PO's launchd svc — leave alone; stand up your own orchestrator on **3100**
+(`PORT=3100 npm run backend`).
 
 **Shipped this session (all PO-gated, merged+pushed):**
 - **BL-024 T2 CLOSED** (`8375387`) — the **frozen engine is now vendor-blind**: `getFactCollectionTimeoutMs` reads
-  only `capabilities.factCollectionTimeoutMs` (team + members); no `provider`/`providerName === 'gemini'` sniff.
-  Edge injects 720s for exactly the old-bump configs (incl. the `mcp`+`providerName:'gemini'` gap). IP-15 proof
-  pins the ms and fails if the edge is reverted (manually verified). Suite 398/398.
-- **BL-024 T3a CLOSED** (client `3612511`) — `agent-launcher` sends `{transport:'attached', vendor}` for
-  gemini/claude/codex. **Server unchanged** (`activateAgent` re-derives from stored provider; `/api/agents` already
-  accepts the new shape since T1). Client suite 85/85; live-checked against a real orchestrator.
+  only `capabilities.factCollectionTimeoutMs`; no `provider`/`providerName === 'gemini'` sniff. IP-15 proof pins the
+  ms and fails if the edge is reverted.
+- **BL-024 T3a CLOSED** — `agent-launcher` sends `{transport:'attached', vendor}` for gemini/claude/codex.
+- **BL-024 T3b CLOSED** (AgentTalk `92bd383`, client `79b6268`) — **`goose` is a first-class vendor with a REQUIRED
+  model, and a REAL goose client works end-to-end.** goose was fully broken (start failed at `registry.ts:293`);
+  now `AgentVendor`/`AgentProvider` include `'goose'`, `normalizeAgentKind` has a symmetric goose case (→ attached),
+  the server validates `vendor:'goose'`, the client sends `{transport,vendor,model}` and **requires** a model for
+  goose (it's a harness over an OpenRouter model). **Live-proven:** real goose CLI 1.41.0 over OpenRouter attached
+  over MCP and returned computed `17×23=391` / `31×19=589`. AgentTalk 401/401, client 86/86.
 
-## What's next — BL-024 **T3b** is BLOCKED on the goose spec (read this before planning it)
+## What's next — BL-024 **T3b-2** (optional cleanup; not needed for goose to work)
 
-T3b = **drop the legacy `provider` acceptance** + retire/reduce the conflated `AgentProvider` union. **But it cannot
-start yet.** T3a deliberately left **`goose` on the legacy `provider` path** — because the PO ruled (2026-07-18)
-that *goose is a real vendor but its axis mapping is deferred ("not now, not needed to proceed")*. goose is in
-**neither** `AgentVendor` (`gemini|claude|codex`) **nor** the legacy `AgentProvider` union, and AgentTalk has zero
-goose handling. So:
-- **You cannot remove legacy `provider` acceptance while goose is the sole remaining user of it.**
-- **T3b's precondition is the goose-as-vendor spec:** add `'goose'` to `AgentVendor`; fix `normalizeAgentKind`'s
-  reverse map (`transport+vendor → legacyProvider`) — today it forces an unknown vendor to opaque `'mcp'`, which
-  would *change* goose's behaviour; extend server vendor-validation (`server.ts:~611`). THEN drop legacy + sweep
-  fixtures/recordings. See `design/bl024-t3-plan.md` §7b for the ruling and §5 for the recordings-compat plan.
-- **Also possibly latent:** a `provider:'goose'` create post-T1 maps to *no transport* → may already error at
-  `registry.ts:293`. Nobody has verified goose end-to-end. Worth a read-only check when goose is picked up (the PO
-  steered "not now").
-
-**Do NOT plan T3b until the PO greenlights the goose spec.** If asked what's next and no other BL is assigned,
-report this block and wait.
+T3b-2 = **drop the legacy `provider` *input* acceptance** from the server (`/api/agents` create/start, `/api/teams`)
+and sweep recordings/UI/fixtures. It's the last cleanup of the conflated union; goose already works without it (the
+orchestrator still accepts legacy `provider` as a deprecated input, mapped via `normalizeAgentKind`). **Do NOT delete
+the `AgentProvider` type / `agent.provider` field** — after T2 it's a *serialization label* still read by recordings /
+usage-capture / DTOs; only the *input acceptance* is dropped. Plan: `design/bl024-t3b-plan.md` §2 (T3b-2) + §4
+(recordings compat — recommend a read-side shim). Leave `isUsageCaptureProvider` (`server.ts:~740`) alone — different
+axis. If no other BL is assigned, report this and wait for the PO.
 
 ## Op notes / gotchas
 

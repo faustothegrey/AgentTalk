@@ -944,3 +944,22 @@ here.**
 - **Name the downstream consequence of a deferral.** Today's "goose later" ruling *blocks* T3b (can't drop legacy
   `provider` while goose still rides it). Surfacing that immediately means BL-024's park-state reads as intentional,
   not stalled. Deferrals have sequencing costs — say them out loud.
+
+### 2026-07-18 (evening) — BL-024 T3b, a real goose integration, as implementer
+- **"A real X client at the end" means reproduce-then-build-then-run-live — not type-plumbing.** I drifted into
+  abstract union-vs-label gate questions; the PO cut through with "I want a real goose integration." The right first
+  move was empirical: stand up the orchestrator and *reproduce the break* (`goose start` → registry.ts:293). That one
+  command reframed the whole task from "design the axis" to "unbreak goose, then prove it." Lead with reproduction.
+- **The environment often already has what you need — check before assuming.** goose CLI 1.41.0 was installed and
+  `OPENROUTER_API_KEY` was set. I nearly planned around "is a goose CLI available?" as an open question; a 5-second
+  `which goose` answered it and unlocked a real live proof. Probe the box before writing "best-effort / can't verify."
+- **A computed product is the anti-stub proof.** Asking goose for `17×23` / `31×19` and getting `391` / `589` back
+  is worth more than any status field — no stub, cache, or hung TUI produces a correct arithmetic product. Reuse the
+  PO's own agy-era trick (a computed answer) as the litmus for "did the real model actually run."
+- **Harness mistakes surface as honest product output — read them as such.** The first launcher run "completed" but
+  returned `ERROR: could not provision task worktree` because I passed `os.tmpdir()` (not a git repo) as workdir. That
+  wasn't a goose bug — the integration worked; my *driver* was wrong. Re-ran with a git-repo workdir → computed 589.
+  When a live run returns an error, check your harness inputs before blaming the code under test.
+- **Clean up the pollution the thing under test creates.** goose's executor provisions a *task worktree* in the
+  workdir (BL-053); a live run leaves `agentalk-task-*` worktrees + `task-task-*` branches behind. Tear those down
+  (and the throwaway workdir) as part of cleanup, not just the processes/ports.
