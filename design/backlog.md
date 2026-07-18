@@ -2292,12 +2292,12 @@ tags: [healthcheck, gemini, attach-mode, tester-finding, root-cause-found]
 
 <!-- @item
 id: BL-046
-status: todo
+status: done
 date: 2026-07-13
 epic: null
-tags: [api-agents, openrouter, product-gap, enabler]
+tags: [api-agents, openrouter, product-gap, enabler, rung4, autonomous, goose]
 -->
-- [todo · promoted from BL-044 #2 (2026-07-13); the enabler for `decision-api-agents-for-coordination.md`] —
+- [done · **MERGED 2026-07-19 (`216c664`, not pushed) · rung 4 — first autonomous goose-authored fix** · promoted from BL-044 #2 (2026-07-13); the enabler for `decision-api-agents-for-coordination.md`] —
   **`POST /api/agents` must accept `providerName` (unblock OpenRouter/non-google API agents)** — the create handler
   reads only `{id, provider, model}` (`server.ts:593`) and **drops `providerName`**, so an `api`-provider agent
   always defaults to `google` (`registry.ts:250`, `providerName || 'google'`). This is the **single real blocker** to
@@ -2308,6 +2308,89 @@ tags: [api-agents, openrouter, product-gap, enabler]
   (forced `tool_choice` + json `response_format` + tools) returned HTTP 200 with a valid `opinion` tool call on
   `openai/gpt-4o-mini` (the Google 400 was google-specific). Small, targeted. Source:
   `design/decision-api-agents-for-coordination.md`, TL-005, LB-91.
+
+  **✅ DONE — MERGED 2026-07-19 (`216c664`, local, NOT pushed). The FIRST AgentTalk fix produced AUTONOMOUSLY by a
+  launched worker over the substrate — rung 4 of the autonomous-development ladder ("AgentTalk improves AgentTalk").**
+  A **goose / claude-sonnet-5** worker, launched by the deterministic Bite-0 launcher
+  (`agentalk-mcp-client:scripts/launcher.mjs` + `runs/rung4.config.json`) over MCP, in a sandbox clone of AgentTalk,
+  autonomously: read the code, wrote the fix (`getNonEmptyString(req.body?.providerName)` threaded into `createAgent`
+  via a conditional spread — `exactOptionalPropertyTypes`-safe), added a sound test, ran `tsc` + `vitest` and
+  **self-corrected** an exactOptional type error it had made on the first attempt, and committed. **Independently
+  graded by Claude (task-end reviewer) — verified by RUNNING, not by the team status:** `tsc -b` exit 0, orchestrator
+  suite 208/208, a pre-registered independent hidden bar red→green. PO-gated merge crediting goose (`613cd9a` → merge
+  `216c664`). Plan + full record: `design/rung4-plan.md`.
+  **Two attempts — the honest record:** #1 (`--max-turns 30`, no deps in the worker's tree) produced a *functionally
+  correct* fix but a `tsc` error and **no commit** (ran out of turns); #2 (`--max-turns 150`, `node_modules` wired)
+  closed it cleanly. **`completed` ≠ done, TWICE** — the team reported `completed` on BOTH runs; only checking the
+  **artifact** (not the status field) told them apart. The reviewer initially mis-graded #1 as "no work" by checking
+  the empty assigned worktree instead of where goose actually worked — the exact BL-053/BL-059 "check at the right
+  coordinates" trap, caught and corrected. **Rung findings filed:** **BL-075** (goose ignores the forwarded
+  task-worktree `cwd` — works in the workdir main tree, not `agentalk-task-<id>`), **BL-076** (goose's worker report
+  doesn't survive the worker protocol — non-JSON "reached maximum actions" + bare `ack_planning_protocol`; BL-042 /
+  TL-009 family), **BL-077** (UI froze at `starting` — `ready`/`busy` transitions not broadcast to connected clients).
+
+  **Telemetry (task closure):**
+  - task:        BL-046 (rung 4 — autonomous goose worker)
+  - wall-clock:  2026-07-19 ~00:20 → ~01:10 (~50 min incl. diagnosis + 2 attempts + merge)
+  - budget:      telemetry unavailable (meter `claude` ok:false all session — LB-11)
+  - gate:        tsc 0, suite 208/208, independent hidden-bar red→green, pollution clean (sandbox + worktrees torn down)
+  - diff:        2 files, +29/-2; commits `613cd9a` (goose's fix) · `216c664` (merge)
+  - outcome:     MERGED ✅ (local; NOT pushed — PO says "merge" and "push" as separate words)
+
+<!-- @item
+id: BL-075
+status: todo
+date: 2026-07-19
+epic: null
+tags: [containment, worktree, goose, autonomy, rung4, bl053-family]
+-->
+- [todo · filed from the rung-4 run (BL-046), 2026-07-19] — **goose ignores its assigned task-worktree `cwd` — it
+  works in the workdir's MAIN tree, not `agentalk-task-<id>`** — the orchestrator provisions a per-task worktree and
+  forwards its name as the exec `cwd` (BL-053: the worker anchors it under its `workdir`). BL-053 established that
+  **gemini is the only provider that honours the forwarded cwd**; the rung-4 run **confirmed goose does NOT** — across
+  both attempts goose edited + committed in the sandbox **main tree** (`/tmp/att-rung4/sandbox`) while the assigned
+  worktree `agentalk-task-<id>` stayed empty. **Impact:** per-task isolation is not real for goose — concurrent goose
+  tasks in one workdir would share a tree, and changes land on the workdir's checked-out branch, not a task branch.
+  Benign in a throwaway sandbox (rung 4), real for multi-task or non-throwaway use. **Also a review hazard:** it made
+  the rung-4 reviewer mis-grade attempt #1 as "no work" by checking the empty worktree (the BL-059 "right coordinates"
+  trap). **Fix direction:** make goose's executor honour the forwarded `cwd` like gemini, or assign goose a `workdir`
+  that IS the task worktree. Source: rung-4 run (BL-046), `design/rung4-plan.md`.
+
+<!-- @item
+id: BL-076
+status: todo
+date: 2026-07-19
+epic: null
+tags: [goose, worker-protocol, observability, autonomy, rung4, bl042-family]
+-->
+- [todo · filed from the rung-4 run (BL-046), 2026-07-19] — **goose's worker report doesn't survive the worker
+  protocol — the work happens but the report is lost** — in both rung-4 runs goose DID the code work (edit + test +
+  commit), but its responses over the coordination channel were non-JSON meta ("I've reached the maximum number of
+  actions I can do without user input. Would you like me to continue?") then a bare
+  `{"message_type":"ack_planning_protocol"}` — **never a `work_accept` carrying the actual report** (tsc result,
+  mutation-check, blind spots). The outcome is only recoverable from the **artifact** (the commit), not from what goose
+  said. Same family as BL-042 / TL-009 (goose ↔ strict-protocol fit: it can DO dev work but doesn't reliably emit the
+  exact JSON envelopes). **Compounding:** the team still flipped to `completed` on this non-report (the BL-062
+  "completed ≠ done" trap — status is not a work signal). **Fix directions:** a goose worker recipe that wraps its
+  final result in the exact `work_accept` envelope; and/or capture goose's raw stdout as a report sidecar so the work
+  report is never lost even when the envelope isn't emitted. Source: rung-4 run (BL-046).
+
+<!-- @item
+id: BL-077
+status: todo
+date: 2026-07-19
+epic: null
+tags: [ui, observability, reactivity, web, rung4, bl048-family]
+-->
+- [todo · filed from the rung-4 run (BL-046), 2026-07-19] — **The web UI froze an agent at `starting` for a whole run
+  — `ready`/`busy` status transitions are not broadcast to connected clients** — during the rung-4 run the PO watched
+  the agent sit at `starting` the entire time, while the backend log showed `creating → starting → ready → busy`. Only
+  the `starting` transition was broadcast (`[Server] Status <id>: starting → N client(s)`); no corresponding broadcast
+  for `ready`/`busy` appears, so an already-connected UI never updates. A **fresh page load shows the true status**
+  (`READY`, confirmed live in Chrome) because it fetches from the API on mount — so the gap is in the live push, not
+  the data. **Impact:** the UI is not a trustworthy live witness of agent progress — which directly undercuts using it
+  to watch autonomous runs. Adjacent to BL-048 / BL-049. **Fix direction:** broadcast every agent status transition
+  (at least `ready`/`busy`) to connected clients. Source: rung-4 run (BL-046), PO live observation.
 
 <!-- @item
 id: BL-047
