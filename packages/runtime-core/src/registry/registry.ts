@@ -14,6 +14,8 @@ import type {
   AgentExecutionMode,
   AgentProvider,
   AgentStatus,
+  AgentTransport,
+  AgentVendor,
   Conversation,
   AgentSessionStatus,
   Team,
@@ -26,6 +28,7 @@ import type {
   WorkflowBatonMetadata,
   WorkflowGateEvent,
 } from '@agenttalk/contracts/types';
+import { normalizeAgentKind } from '@agenttalk/contracts/types';
 import { ConversationCoordinator } from './conversation-coordinator.js';
 import { TeamCoordinator } from './team-coordinator.js';
 import { ArbiterCoordinator } from './arbiter-coordinator.js';
@@ -172,6 +175,8 @@ export class Registry extends EventEmitter {
       requestedExecutionMode?: AgentExecutionMode;
       provider?: AgentProvider;
       providerName?: string;
+      transport?: AgentTransport;
+      vendor?: AgentVendor;
       model?: string;
     } = {}
   ): Promise<Agent> {
@@ -184,10 +189,21 @@ export class Registry extends EventEmitter {
     if (options.requestedExecutionMode) {
       agent.requestedExecutionMode = options.requestedExecutionMode;
     }
-    if (options.provider) agent.provider = options.provider;
-    if (options.providerName) agent.providerName = options.providerName;
+    // BL-024 — normalize legacy `provider` OR new `{transport, vendor}` into both axes,
+    // keeping `provider`/`providerName` populated so the (frozen) engine is unchanged.
+    const kind = normalizeAgentKind({
+      provider: options.provider,
+      providerName: options.providerName,
+      transport: options.transport,
+      vendor: options.vendor,
+    });
+    if (kind.legacyProvider) agent.provider = kind.legacyProvider;
+    if (kind.providerName) agent.providerName = kind.providerName;
+    if (kind.transport) agent.transport = kind.transport;
+    if (kind.vendor) agent.vendor = kind.vendor;
+    if (kind.capabilities) agent.capabilities = kind.capabilities;
     if (options.model) agent.model = options.model;
-    
+
     this.agents.set(id, agent);
     return agent;
   }
@@ -231,6 +247,14 @@ export class Registry extends EventEmitter {
     if (provider) agent.provider = provider;
     if (model) agent.model = model;
 
+    // BL-024 — derive transport/vendor/capabilities from the resolved provider so the
+    // driver selection below is transport-keyed. Legacy `provider` stays the source of
+    // truth in T1 (client still sends it); the engine is untouched.
+    const kind = normalizeAgentKind({ provider: agent.provider, providerName: agent.providerName });
+    if (kind.transport) agent.transport = kind.transport;
+    if (kind.vendor) agent.vendor = kind.vendor;
+    if (kind.capabilities) agent.capabilities = kind.capabilities;
+
     this.emit('execution_mode', {
       id: agent.id,
       requestedExecutionMode: agent.requestedExecutionMode,
@@ -243,10 +267,13 @@ export class Registry extends EventEmitter {
     if (provider) this.emit('provider', { id: agent.id, provider });
     if (model) this.emit('model', { id: agent.id, model });
 
-    if (agent.provider === 'api' || agent.provider === 'mcp' || agent.provider === 'gemini' || agent.provider === 'claude' || agent.provider === 'codex') {
-      console.log(`[Registry] Starting InProcessAgentDriver for ${agent.provider}-backed agent ${id}`);
+    // BL-024 — driver selection keyed on TRANSPORT, not the conflated provider union.
+    // 'in-process' (was 'api') runs an ApiCompleter here; 'attached' (was mcp/gemini/
+    // claude/codex — all treated identically) runs an McpCompleter. Behaviour-identical.
+    if (agent.transport === 'in-process' || agent.transport === 'attached') {
+      console.log(`[Registry] Starting InProcessAgentDriver for ${agent.transport} agent ${id} (provider=${agent.provider})`);
       let completer: Completer;
-      if (agent.provider === 'api') {
+      if (agent.transport === 'in-process') {
         const apiProvider = (agent.providerName || 'google') as ApiProvider;
         // Inject the consensus protocol tool builder so structured turns are constrained exactly as
         // before the llm-client extraction (the package itself stays consensus-agnostic).
@@ -254,7 +281,7 @@ export class Registry extends EventEmitter {
       } else {
         completer = new McpCompleter(agent, this);
       }
-      
+
       const driver = new InProcessAgentDriver(agent, this, {
         completer
       });
@@ -357,7 +384,7 @@ export class Registry extends EventEmitter {
       }
 
       case 'await_turn': {
-        const turn = (agent.provider === 'mcp' || agent.provider === 'gemini' || agent.provider === 'claude' || agent.provider === 'codex') ? await agent.awaitExecTurn() : await agent.awaitTurn();
+        const turn = this.agentUsesExecTurns(agent) ? await agent.awaitExecTurn() : await agent.awaitTurn();
         if (turn.turnId) {
           agent.currentTurnId = turn.turnId as string;
         } else if (turn.messageId) {
@@ -594,7 +621,8 @@ export class Registry extends EventEmitter {
   }
 
   private agentUsesExecTurns(agent: Agent): boolean {
-    return agent.provider === 'mcp' || agent.provider === 'gemini' || agent.provider === 'claude' || agent.provider === 'codex';
+    // BL-024 — the exec/attached transport (was the mcp/gemini/claude/codex union).
+    return agent.transport === 'attached';
   }
 
   private isConversationEndTurn(turn: Record<string, unknown> | undefined): boolean {

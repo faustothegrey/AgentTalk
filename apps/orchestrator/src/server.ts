@@ -604,7 +604,15 @@ export function startServer(
     const { id, provider } = req.body;
     const model = getNonEmptyString(req.body?.model);
     const requestedExecutionMode = isExecutionMode(req.body?.executionMode) ? req.body.executionMode : 'auto';
-    recorder?.record('api', 'create_agent_request', { id, provider, model, requestedExecutionMode });
+    // BL-024 — accept the new transport/vendor shape alongside the legacy `provider`.
+    // Validated to the known unions; createAgent normalizes both into all fields.
+    const transport =
+      req.body?.transport === 'in-process' || req.body?.transport === 'attached' ? req.body.transport : undefined;
+    const vendor =
+      req.body?.vendor === 'gemini' || req.body?.vendor === 'claude' || req.body?.vendor === 'codex'
+        ? req.body.vendor
+        : undefined;
+    recorder?.record('api', 'create_agent_request', { id, provider, transport, vendor, model, requestedExecutionMode });
 
     try {
       // BL-067: `Date.now()` alone collided — two API-created agents in one
@@ -612,7 +620,7 @@ export function startServer(
       // turned the second into a spurious "already exists" 500 for a caller who
       // asked for a fresh agent. The counter, not the clock, makes it unique.
       const agentId = id || (provider ? mintId(`agent-${provider}`) : mintId('agent'));
-      const agent = await registry.createAgent(agentId, { requestedExecutionMode });
+      const agent = await registry.createAgent(agentId, { requestedExecutionMode, transport, vendor });
       if (isUsageCaptureProvider(provider)) {
         agent.provider = provider;
       }
