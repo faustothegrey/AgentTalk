@@ -72,7 +72,8 @@ const MAX_URGENCY_IGNORES = 2;
 const AGREEMENT_COMPLIANCE_TIMEOUT_MS = 60_000;
 const MAX_AGREEMENT_ENDORSEMENT_DISCUSSION_FALLBACKS = 2;
 const DEFAULT_FACT_COLLECTION_TIMEOUT_MS = 480_000;
-const DEFAULT_GEMINI_FACT_COLLECTION_TIMEOUT_MS = 720_000;
+// BL-024 T2: the gemini 720_000 bump moved out of the engine into capability metadata
+// (contracts `GEMINI_FACT_COLLECTION_TIMEOUT_MS`); the coordinator no longer names a vendor.
 const MAX_AGREEMENT_ASKS = 2;
 // M10-T2 (D2): bounded correction budget for ANY illegal protocol move — a
 // regression OR a forward/lateral move out of the legal set. After this many
@@ -998,19 +999,20 @@ export class TeamCoordinator {
     return normalized.length > 0 ? normalized : undefined;
   }
 
+  // BL-024 T2 (PO-authorized frozen-engine edit): vendor-blind. Reads only the
+  // `capabilities.factCollectionTimeoutMs` metadata that the edge injects (per-team and per-agent) —
+  // no `team.provider === 'gemini'` / `agent.providerName === 'gemini'` vendor sniff. The edge sets
+  // 720_000 for exactly the configurations that used to bump here, so the computed timeout is
+  // byte-identical to master for every current team (proven by the IP-15 discriminating test).
   private getFactCollectionTimeoutMs(team: Team): number {
     let maxTimeout = this.factCollectionTimeoutMs;
 
-    if (team.provider === 'gemini') {
-      maxTimeout = Math.max(maxTimeout, DEFAULT_GEMINI_FACT_COLLECTION_TIMEOUT_MS);
-    }
+    maxTimeout = Math.max(maxTimeout, team.capabilities?.factCollectionTimeoutMs ?? 0);
 
     for (const member of team.members) {
       try {
         const agent = this.deps.getAgent(member.agentId);
-        if (agent.providerName === 'gemini' || agent.provider === 'gemini') {
-          maxTimeout = Math.max(maxTimeout, DEFAULT_GEMINI_FACT_COLLECTION_TIMEOUT_MS);
-        }
+        maxTimeout = Math.max(maxTimeout, agent.capabilities?.factCollectionTimeoutMs ?? 0);
       } catch (err) {
         this.deps.logError(`[TeamCoordinator] Failed to resolve agent ${member.agentId} for timeout calc`, err);
       }

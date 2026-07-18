@@ -78,35 +78,50 @@ export function normalizeAgentKind(input: {
   const { provider, providerName, transport, vendor } = input;
   const geminiCaps = (): AgentCapabilities => ({ factCollectionTimeoutMs: GEMINI_FACT_COLLECTION_TIMEOUT_MS });
 
-  // New-shape caller wins when a transport is given.
-  if (transport) {
-    // 'attached' with a known vendor maps back to that vendor name; opaque attach → 'mcp'.
-    const legacyProvider: AgentProvider = transport === 'in-process' ? 'api' : (vendor ?? 'mcp');
-    return {
-      transport,
-      vendor,
-      capabilities: vendor === 'gemini' ? geminiCaps() : undefined,
-      legacyProvider,
-      providerName,
-    };
+  const base = (): NormalizedAgentKind => {
+    // New-shape caller wins when a transport is given.
+    if (transport) {
+      // 'attached' with a known vendor maps back to that vendor name; opaque attach → 'mcp'.
+      const legacyProvider: AgentProvider = transport === 'in-process' ? 'api' : (vendor ?? 'mcp');
+      return {
+        transport,
+        vendor,
+        capabilities: vendor === 'gemini' ? geminiCaps() : undefined,
+        legacyProvider,
+        providerName,
+      };
+    }
+
+    // Legacy-shape caller.
+    switch (provider) {
+      case 'api':
+        return { transport: 'in-process', legacyProvider: 'api', providerName };
+      case 'mcp':
+        return { transport: 'attached', legacyProvider: 'mcp', providerName };
+      case 'gemini':
+        return { transport: 'attached', vendor: 'gemini', capabilities: geminiCaps(), legacyProvider: 'gemini', providerName };
+      case 'claude':
+        return { transport: 'attached', vendor: 'claude', legacyProvider: 'claude', providerName };
+      case 'codex':
+        return { transport: 'attached', vendor: 'codex', legacyProvider: 'codex', providerName };
+      default:
+        // Neither provider nor transport — provider-less; unchanged behaviour downstream.
+        return { providerName };
+    }
+  };
+
+  const result = base();
+
+  // BL-024 T2: the fact-collection timeout capability is present iff the agent would have
+  // triggered the engine's old 720s vendor bump — i.e. vendor gemini OR `providerName === 'gemini'`
+  // (the `provider:'mcp'` + `providerName:'gemini'` case the vendor mapping alone misses). Setting it
+  // here — and NOT re-adding a vendor branch in the frozen coordinator — is what keeps the engine
+  // vendor-blind while preserving byte-identical timeouts. `vendor`/`legacyProvider` are unchanged.
+  if (providerName === 'gemini' && !result.capabilities) {
+    result.capabilities = geminiCaps();
   }
 
-  // Legacy-shape caller.
-  switch (provider) {
-    case 'api':
-      return { transport: 'in-process', legacyProvider: 'api', providerName };
-    case 'mcp':
-      return { transport: 'attached', legacyProvider: 'mcp', providerName };
-    case 'gemini':
-      return { transport: 'attached', vendor: 'gemini', capabilities: geminiCaps(), legacyProvider: 'gemini', providerName };
-    case 'claude':
-      return { transport: 'attached', vendor: 'claude', legacyProvider: 'claude', providerName };
-    case 'codex':
-      return { transport: 'attached', vendor: 'codex', legacyProvider: 'codex', providerName };
-    default:
-      // Neither provider nor transport — provider-less; unchanged behaviour downstream.
-      return { providerName };
-  }
+  return result;
 }
 
 export type TeamRole = 'planner' | 'worker';
@@ -124,6 +139,10 @@ export interface Team {
   id: string;
   composition: TeamComposition;
   provider?: AgentProvider | undefined;
+  // BL-024 T2: team-level capability metadata, mirroring AgentCapabilities. Populated at team
+  // creation from the (legacy) `provider` so the frozen coordinator reads a vendor-blind capability
+  // instead of sniffing `team.provider === 'gemini'`. Preserves the team-level 720s bump exactly.
+  capabilities?: AgentCapabilities | undefined;
   consensusMode?: 'protocol' | 'arbiter';
   members: TeamMember[];
   status: TeamStatus;
