@@ -215,6 +215,27 @@ describe('startServer', () => {
     );
   });
 
+  // BL-071 P2 — an agent that reported its own host via report_environment has that
+  // host surfaced through GET /api/agents (undefined for one that never reported).
+  it('should surface a reported per-agent host via GET /api/agents', async () => {
+    const reported = {
+      platform: 'linux', arch: 'arm64', osRelease: '6.1.0', nodeVersion: 'v22.3.0',
+      hostname: 'worker-box', cpuCount: 4, totalMemBytes: 8_589_934_592,
+      capturedAt: '2026-07-18T10:00:00.000Z',
+    };
+    const reporter = await registry.createAgent('agent-reporter', { provider: 'mcp' });
+    await registry.activateAgent(reporter.id);
+    await registry.handleMcpToolCall('agent-reporter', 'report_environment', { environment: reported });
+    await registry.createAgent('agent-silent');
+
+    const response = await fetch(`${baseUrl}/api/agents`);
+    expect(response.status).toBe(200);
+    const agents = await response.json() as Array<{ id: string; host?: unknown }>;
+
+    expect(agents.find((a) => a.id === 'agent-reporter')?.host).toEqual(reported);
+    expect(agents.find((a) => a.id === 'agent-silent')?.host).toBeUndefined();
+  });
+
   it('should return 409 when creating a duplicate agent', async () => {
     await registry.createAgent('agent-1');
 

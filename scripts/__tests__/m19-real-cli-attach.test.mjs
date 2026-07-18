@@ -24,7 +24,7 @@ describe('m19 real CLI attach helper', () => {
     const output = runRunbook();
 
     expect(output).toContain('PORT=3110 AGENTTALK_MCP_PORT=3111 npm run start --workspace @agenttalk/orchestrator');
-    expect(output).toContain('ws://localhost:3111/mcp?agentId=m19-codex&contractHash=ffa94e93e3182d44924ed28381870c7bd814c908279942022d5925a4865a9446');
+    expect(output).toContain('ws://localhost:3111/mcp?agentId=m19-codex&contractHash=8df959312e33fa6bf53cd17c36a59f230882b1de86b138ae20d2dc8f9eee3a1a');
     expect(output).toContain('mcp_servers.agenttalk-bridge.command="node"');
     expect(output).toContain('--mcp-config');
     expect(output).toContain('--allowedTools');

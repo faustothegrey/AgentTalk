@@ -197,6 +197,7 @@ export function startServer(
       requestedExecutionMode: a.requestedExecutionMode,
       resolvedExecutionMode: a.resolvedExecutionMode,
       sessionStatus: a.sessionStatus,
+      host: a.host, // BL-071 P2 — the host the agent reported (undefined until it reports)
     }));
     console.log(`[Server] Returning ${agents.length} agents`);
     res.json(agents);

@@ -4,6 +4,7 @@ import type {
   AgentProvider,
   AgentSessionStatus,
   AgentStatus,
+  HostEnvironment,
   ResolvedExecutionMode,
   WorkflowRole,
 } from '@agenttalk/contracts/types';
@@ -31,6 +32,9 @@ export class Agent {
   provider?: AgentProvider;
   providerName?: string;
   model?: string;
+  // BL-071 P2 — the host this agent reported it runs on (via the report_environment
+  // tool on connect). Self-observed by the agent; undefined until/unless it reports.
+  host?: HostEnvironment;
   requestedExecutionMode: AgentExecutionMode = 'auto';
   resolvedExecutionMode?: ResolvedExecutionMode;
   sessionStatus?: AgentSessionStatus;

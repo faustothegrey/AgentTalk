@@ -194,4 +194,32 @@ export const AGENTTALK_MCP_TOOLS: McpToolDefinition[] = [
       required: ['token'],
     },
   },
+  {
+    // BL-071 P2 — the agent reports the host IT runs on (self-observed ground truth).
+    // A dedicated tool so the change is wire-contract-hash-tracked (piggybacking on an
+    // existing tool would change the payload without bumping the hash — silent drift).
+    name: 'report_environment',
+    description: "Report this agent's own host environment (OS, arch, versions) to the orchestrator.",
+    inputSchema: {
+      type: 'object',
+      properties: {
+        environment: {
+          type: 'object',
+          description: 'A HostEnvironment snapshot the agent observed about its own host.',
+          properties: {
+            platform: { type: 'string' },
+            arch: { type: 'string' },
+            osRelease: { type: 'string' },
+            nodeVersion: { type: 'string' },
+            hostname: { type: 'string' },
+            cpuCount: { type: 'number' },
+            totalMemBytes: { type: 'number' },
+            capturedAt: { type: 'string' },
+          },
+          required: ['platform', 'arch', 'osRelease', 'nodeVersion', 'hostname', 'cpuCount', 'totalMemBytes', 'capturedAt'],
+        },
+      },
+      required: ['environment'],
+    },
+  },
 ];
