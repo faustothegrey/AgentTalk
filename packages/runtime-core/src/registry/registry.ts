@@ -918,6 +918,11 @@ export class Registry extends EventEmitter {
   createTeam(members: TeamMember[], provider?: AgentProvider, consensusMode?: 'protocol' | 'arbiter'): Team {
     const team = this.teamCoordinator.createTeam(members, provider);
     team.consensusMode = consensusMode ?? 'protocol';
+    // BL-024 T2: derive the team-level capability from the (legacy) provider via the single-source
+    // mapping, so the frozen coordinator reads `team.capabilities` instead of sniffing the vendor
+    // name. `provider:'gemini'` ⇒ {factCollectionTimeoutMs:720_000}; everything else ⇒ undefined.
+    const teamCaps = normalizeAgentKind({ provider }).capabilities;
+    if (teamCaps) team.capabilities = teamCaps;
     return team;
   }
 

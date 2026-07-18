@@ -106,4 +106,40 @@ describe('normalizeAgentKind (BL-024 T1)', () => {
       });
     });
   });
+
+  // BL-024 T2 — the gap the frozen engine used to cover with `agent.providerName === 'gemini'`:
+  // a `provider:'mcp'` agent whose providerName is gemini must still carry the fact-collection
+  // capability, or T2 would silently drop its 720s timeout. The capability is present iff the agent
+  // would have triggered the old bump — i.e. vendor gemini OR providerName gemini.
+  describe("providerName:'gemini' gap (T2 byte-identical closure)", () => {
+    it("provider:'mcp' + providerName:'gemini' → caps set, vendor/legacyProvider UNCHANGED", () => {
+      const k = normalizeAgentKind({ provider: 'mcp', providerName: 'gemini' });
+      expect(k).toEqual({
+        transport: 'attached',
+        legacyProvider: 'mcp',
+        providerName: 'gemini',
+        capabilities: { factCollectionTimeoutMs: GEMINI_FACT_COLLECTION_TIMEOUT_MS },
+      });
+      expect(k.vendor).toBeUndefined();
+    });
+
+    it("attached transport + providerName:'gemini' (no vendor) → caps set", () => {
+      expect(normalizeAgentKind({ transport: 'attached', providerName: 'gemini' })).toMatchObject({
+        transport: 'attached',
+        legacyProvider: 'mcp',
+        capabilities: { factCollectionTimeoutMs: GEMINI_FACT_COLLECTION_TIMEOUT_MS },
+      });
+    });
+
+    it("provider:'mcp' WITHOUT gemini providerName → NO caps (discriminator)", () => {
+      expect(normalizeAgentKind({ provider: 'mcp', providerName: 'claude' }).capabilities).toBeUndefined();
+      expect(normalizeAgentKind({ provider: 'mcp' }).capabilities).toBeUndefined();
+    });
+
+    it("provider:'gemini' still carries caps once (post-step does not duplicate/override)", () => {
+      expect(normalizeAgentKind({ provider: 'gemini', providerName: 'gemini' }).capabilities).toEqual({
+        factCollectionTimeoutMs: GEMINI_FACT_COLLECTION_TIMEOUT_MS,
+      });
+    });
+  });
 });
