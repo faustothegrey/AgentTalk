@@ -1,7 +1,9 @@
 # BL-024 · T1 — transport × vendor: type + edge (no engine change) — PLAN
 
-> **Status:** DRAFT for the plan-review gate. **Planner:** Claude (resource fallback). **Epic:** BL-024
-> (design: `design/bl024-provider-split-design.md`, PO gate passed 2026-07-18).
+> **Status:** ✅ **PLAN-GATE APPROVED (PO, 2026-07-18)** — §7 decided per recommendations (names
+> `transport`/`vendor`/`capabilities`; `normalizeAgentKind` in `contracts`; `Team.provider` deferred to T2;
+> sole-agent hats declared). Cleared for implementation in a `task-BL-024-T1` worktree. **Planner:** Claude
+> (resource fallback). **Epic:** BL-024 (design: `design/bl024-provider-split-design.md`, PO gate passed 2026-07-18).
 > **This is T1 of 3.** T1 = introduce the new axis + a driver factory, **behaviour-preserving, engine untouched**;
 > T2 = the frozen-engine timeout slice (authorized, separate task); T3 = client cutover + legacy drop.
 
