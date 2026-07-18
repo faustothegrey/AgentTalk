@@ -1915,6 +1915,13 @@ tags: [governance, worktree, parallel-dev, process]
   wip/BL-038-provider-timeouts`; *client* `task-BL-045 · task-BL-064 · task-M18-T3 · task-goose-executor ·
   m11-t1-consensus-respond · m12-c-pf1-codex-bridge-fix`. Client worktree tooling deliberately skipped (its
   worktree is a single `node_modules` symlink — no helper warranted).
+  **UPDATE (2026-07-18) — DISCIPLINE DOC BITE DONE:** `design/worktree-discipline.md` written — the adopted
+  convention covering branch-naming (`task-<id>`), merge serialization / who-owns-`master`, uncommitted-work
+  isolation, backlog-id allocation without races (allocate-on-master + count-check; `mintId` vs hand-alloc),
+  sync-before-start (`git fetch` both), stale-worktree/branch cleanup, and the `workdir`→worktree assignment for
+  autonomous agents — grounded in `scripts/wt-setup.mjs`, the AGENT.md mandate, and the 2026-07-13 near-misses.
+  **Item stays `todo` — ONE bite remains:** the one-time **stale-branch prune** (destructive; confirm-then-prune per
+  branch — the branch lists above).
 
 <!-- @item
 id: BL-037
