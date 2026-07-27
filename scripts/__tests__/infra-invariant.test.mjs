@@ -439,3 +439,119 @@ describe('BL-087 DoD row 9 — --json is parseable and complete', () => {
     expect(parsed.exitCode).toBe(1);
   });
 });
+
+// ---------------------------------------------------------------------------
+// BL-090 — the harness must go LOUD, not quiet.
+//
+// Neither defect was caught by the original 29 bars, because every one of them
+// supplies well-formed snapshots of the same repo. These bars supply the two
+// shapes that were never exercised: an unreadable repo, and two sides that
+// describe DIFFERENT repositories.
+// ---------------------------------------------------------------------------
+
+describe('BL-090 Defect A — "we could not look" gates', () => {
+  /** Same path string on both sides, so path-mismatch cannot mask the result. */
+  function liveAndGone() {
+    const { dir } = makeRepo();
+    const live = snapOf(dir);
+    fs.rmSync(dir, { recursive: true, force: true });
+    const gone = snapOf(dir);
+    return { live, gone };
+  }
+
+  it('D1 — an unavailable BEFORE side is critical, not warn', () => {
+    const { live, gone } = liveAndGone();
+    const f = diffSnapshots(gone, live, DEFAULT_EXPECT).find((x) => x.kind === 'repo-unavailable');
+    expect(f.severity).toBe(SEVERITY.CRITICAL);
+  });
+
+  it('D2 — an unavailable AFTER side is critical, not warn', () => {
+    const { live, gone } = liveAndGone();
+    const f = diffSnapshots(live, gone, DEFAULT_EXPECT).find((x) => x.kind === 'repo-unavailable');
+    expect(f.severity).toBe(SEVERITY.CRITICAL);
+  });
+
+  it('D3 — BOTH sides unavailable still gates: this is the mistyped-path case', () => {
+    // The reported defect. A one-sided-only rule would leave it standing, because a path
+    // that was always wrong is unavailable in both snapshots.
+    const { gone } = liveAndGone();
+    const f = diffSnapshots(gone, gone, DEFAULT_EXPECT).find((x) => x.kind === 'repo-unavailable');
+    expect(f.severity).toBe(SEVERITY.CRITICAL);
+    expect(f.detail).toMatch(/nothing was checked/i);
+  });
+
+  it('D3b — exit stays non-zero for an unavailable repo (contract guard, NOT a test of this fix)', () => {
+    // HONEST LABEL: this bar passes against the unfixed source too, because `exitCodeFor`
+    // returns 1 for WARN as well as CRITICAL. It therefore proves nothing about the severity
+    // change — D3 is what discriminates. Kept only as a guard on the exit contract, and named
+    // so no later reader mistakes it for evidence that BL-090 was fixed.
+    const { gone } = liveAndGone();
+    expect(exitCodeFor(diffSnapshots(gone, gone, DEFAULT_EXPECT))).not.toBe(0);
+  });
+});
+
+describe('BL-090 Defect B — two snapshots of different repos never diff silently', () => {
+  /** Two real repos that differ in HEAD, branch AND upstream — the false trio's ingredients. */
+  function twoRepos() {
+    const a = makeRepo();
+    const b = makeRepo();
+    git('checkout -q -b other', b.dir);
+    fs.writeFileSync(path.join(b.dir, 'tracked.txt'), 'two\n');
+    git('add tracked.txt', b.dir);
+    git('commit -q -m second', b.dir);
+    return { before: snapOf(a.dir), after: snapOf(b.dir) };
+  }
+
+  it('D4 — a path mismatch is exactly one critical finding', () => {
+    const { before, after } = twoRepos();
+    const hits = diffSnapshots(before, after, DEFAULT_EXPECT).filter((x) => x.kind === 'path-mismatch');
+    expect(hits).toHaveLength(1);
+    expect(hits[0].severity).toBe(SEVERITY.CRITICAL);
+  });
+
+  it('D5 — and it REPLACES the three false criticals rather than adding to them', () => {
+    // The measured regression: /Users/fausto/Software/AgentTalk vs /private/tmp/att-op-2 used to
+    // yield head-moved + branch-changed + upstream-diverged, all of them fiction.
+    const { before, after } = twoRepos();
+    const findings = diffSnapshots(before, after, DEFAULT_EXPECT);
+    const fiction = findings.filter((x) =>
+      ['head-moved', 'branch-changed', 'upstream-diverged'].includes(x.kind)
+    );
+    expect(fiction).toEqual([]);
+  });
+
+  it('D6 — matching paths are unaffected: a real HEAD move is still caught', () => {
+    // Parity. The fix must not buy its silence by suppressing genuine findings.
+    const { dir } = makeRepo();
+    const before = snapOf(dir);
+    fs.writeFileSync(path.join(dir, 'tracked.txt'), 'changed\n');
+    git('add tracked.txt', dir);
+    git('commit -q -m second', dir);
+    const findings = diffSnapshots(before, snapOf(dir), DEFAULT_EXPECT);
+    expect(findings.find((x) => x.kind === 'head-moved')?.severity).toBe(SEVERITY.CRITICAL);
+    expect(findings.some((x) => x.kind === 'path-mismatch')).toBe(false);
+  });
+});
+
+describe('BL-089 — the first porcelain entry keeps its filename', () => {
+  it('an unstaged-only first entry is parsed whole, and as unstaged', () => {
+    // `git()` trims the whole output, stripping the leading space of line 1 only. Reproduced
+    // against the main checkout, whose porcelain is exactly ` M com.fausto…plist`:
+    // the name lost its first character and the code " M" (unstaged) read as "M " (staged).
+    const { dir } = makeRepo();
+    fs.writeFileSync(path.join(dir, 'tracked.txt'), 'modified\n'); // modified, NOT staged
+    const entry = snapshotRepo(dir).porcelain[0];
+    expect(entry.path).toBe('tracked.txt');
+    expect(entry.code).toBe(' M');
+  });
+
+  it('a well-formed first entry is left alone', () => {
+    // The guard keys on "third character is not a space", so a staged entry must not be shifted.
+    const { dir } = makeRepo();
+    fs.writeFileSync(path.join(dir, 'tracked.txt'), 'modified\n');
+    git('add tracked.txt', dir);
+    const entry = snapshotRepo(dir).porcelain[0];
+    expect(entry.path).toBe('tracked.txt');
+    expect(entry.code).toBe('M ');
+  });
+});

@@ -170,9 +170,19 @@ export function snapshotRepo(repoPath, env) {
     return { path: repoPath, unavailable: 'not a git repository, or it has no commits' };
   }
 
-  const porcelain = (tryGit(['status', '--porcelain'], repoPath, env, '') || '')
+  // BL-089 — `git()` trims the whole command output, which strips the leading space of the FIRST
+  // porcelain line only. That line is then parsed one character short: ` M foo` reads as code
+  // "M " (staged) and path "oo". Fixed HERE, at the parse site, and deliberately NOT in `git()` —
+  // every other caller relies on that trim.
+  // Porcelain is exactly two status chars, a space, then the path, so a line whose third
+  // character is not a space is one the trim shortened; restore the space before parsing.
+  const porcelainLines = (tryGit(['status', '--porcelain'], repoPath, env, '') || '')
     .split('\n')
-    .filter(Boolean)
+    .filter(Boolean);
+  if (porcelainLines.length > 0 && porcelainLines[0][2] !== ' ') {
+    porcelainLines[0] = ` ${porcelainLines[0]}`;
+  }
+  const porcelain = porcelainLines
     .map((line) => ({ code: line.slice(0, 2), path: line.slice(3) }))
     .sort((a, b) => a.path.localeCompare(b.path));
 
@@ -322,8 +332,37 @@ export function takeSnapshot({ repos = {}, includeGlobal = true, portRange = DEF
 function diffRepo(name, before, after, expect, findings) {
   const at = (kind, severity, detail) => findings.push(finding(severity, kind, detail, { repo: name }));
 
+  // BL-090 Defect B — the two sides must describe the SAME repository. `path` has always been
+  // recorded by snapshotRepo and was simply never read: the caller matches on the KEY alone, so
+  // two snapshots whose `agenttalk` key points at different directories used to diff silently
+  // against each other (measured: three false criticals — head-moved, branch-changed,
+  // upstream-diverged). Checked FIRST because it is the root cause: once the sides describe
+  // different repositories, every comparison below is meaningless, including `unavailable`.
+  if (before.path !== after.path) {
+    at(
+      'path-mismatch',
+      SEVERITY.CRITICAL,
+      `${name}: the two snapshots describe DIFFERENT paths — ${before.path} → ${after.path}. ` +
+        `Nothing below can be compared; re-take both snapshots against the same repository.`,
+    );
+    return;
+  }
+
+  // BL-090 Defect A — "we could not look" must never outrank "we looked and it was fine" (the
+  // BL-023 UNKNOWN discipline, one level up). This was WARN, and the PO's gate watches only
+  // CRITICAL, so a mistyped or missing path produced NO gating AND no checking while the run
+  // still read as inspected. Either side unavailable gates: a mistyped path is unavailable on
+  // BOTH sides, so a one-sided-only rule would leave the defect standing.
+  // The early `return` is NOT the defect and stays — at CRITICAL it gates loudly and skips
+  // comparisons that are meaningless anyway.
   if (before.unavailable || after.unavailable) {
-    at('repo-unavailable', SEVERITY.WARN, `${name}: ${after.unavailable ?? before.unavailable}`);
+    at(
+      'repo-unavailable',
+      SEVERITY.CRITICAL,
+      `${name}: ${after.unavailable ?? before.unavailable} (${after.path ?? before.path}) — ` +
+        `nothing was checked for this repo. If the path is wrong, set it with --repo/--client or ` +
+        `$AGENTTALK_CLIENT_REPO.`,
+    );
     return;
   }
 
