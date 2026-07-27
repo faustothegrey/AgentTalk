@@ -210,7 +210,39 @@ config's `recording` would have overwritten them); run 2 records to `runs/o1-rea
 **Also corrected this round:** the monitor filter keys on **launcher events only** — never on strings that occur
 in the prompt template the launcher echoes, which is what produced the false `work_refuse` signal in run 1.
 
-## 6b. O-1 RESULT — 6 of 7 rows PASS, row 6 FAILED as written (2026-07-27 15:54–15:55)
+## 6d. O-1 RE-RUN RESULT — **7 of 7 rows PASS. O-1 CLEARED.** (2026-07-27 16:24–16:25)
+
+Launched 16:24:27, outcome `completed` 16:25:20 — **53 seconds**, inside the 15-minute cap. Same bar as §6,
+unchanged; corrected pre-flight ordering; harness checked **before** cleanup.
+
+| # | Row | Verdict | Evidence |
+|---|---|---|---|
+| 1 | Terminates on its own | **PASS** | `outcome: completed`, not `cap-wallclock`/`cap-resource` |
+| 2 | HEAD correct | **PASS** | worker reported `a1bfb0d83bc3034923880b1bd019134d56d032b8` = §6c reference |
+| 3 | Suite count correct | **PASS** | worker reported 471 tests / 75 files = §6c reference |
+| 4 | Showed its work | **PASS** | commands + actual output; re-ran the contracts half separately to quote it exactly |
+| 5 | No files changed | **PASS** | both coordinates clean, `HEAD` unmoved in each, zero commits on `task-op-1` |
+| 6 | Infrastructure intact | **PASS** | **harness exit 0** — two `info` rows (the nested pair), zero `warn`, zero `critical` |
+| 7 | Evidence exists | **PASS** | recording 672 B + sidecar 2413 B |
+
+**Row 6 is the one that moved, and it moved because the ordering was fixed, not because the bar was.** Run 1's
+criticals were the operator's own post-baseline commit; with the baseline taken last, the check returns exit 0
+with nothing above `info`. **The harness's severity model was not touched** — [[BL-088]] remains open and
+undecided.
+
+**One honest gap in the evidence:** the `LAUNCHER EXIT=` marker this run was supposed to append to
+`/tmp/att-invariant/o1-rerun-launcher.log` is **absent** (it was present in run 1), and I cannot account for it.
+The task harness reported exit 0 for the backgrounded command. Row 1's criterion is the recorded `outcome`
+status, which is unambiguous and independent of that marker — so the row stands — but the discrepancy is recorded
+rather than smoothed over.
+
+**The worker again volunteered the sharpest caveat in the report,** unprompted: that 471 is *"the count of tests
+vitest collected and ran under the default config … the suite's own reported total, not an independent
+enumeration of every test declaration in the tree; any test excluded by the vitest config would not appear in
+it."* That is a real limitation of the number this project quotes constantly, and it came from the worker, not
+from the bar.
+
+## 6b. O-1 RESULT (run 1) — 6 of 7 rows PASS, row 6 FAILED as written (2026-07-27 15:54–15:55)
 
 Launched 15:54:19, outcome `completed` at 15:55:22 — **63 seconds**, launcher exit 0, well inside the 15-minute
 wall-clock cap. Artifacts: `agentalk-mcp-client/runs/o1-readonly.ndjson` + its `.responses.ndjson` sidecar.
