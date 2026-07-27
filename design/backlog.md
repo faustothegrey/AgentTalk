@@ -2979,6 +2979,13 @@ tags: [infrastructure, safety, harness, operator-seat, autonomy, instrumental, p
   is **caught** (RED before, GREEN after — the bar written first); prove a clean run passes with zero findings;
   prove the script mutates nothing (run it twice, diff the world). Needs a plan + Gate 1 before code.
 
+  **PLANNED 2026-07-27 — `design/bl087-plan.md`, awaiting Gate 1 + PO answers to §9.** The plan's central idea is
+  an **asymmetry**: *additions* can be expected (a run legitimately adds a task branch and worktree), but
+  **removals, `HEAD` movement and upstream divergence are ALWAYS findings with no allowlist path** — because an
+  operator doing its job adds, while an operator burning infrastructure removes or moves. Severity tiers
+  (`critical`/`warn`/`info`) keep the cried-wolf failure at bay, and exit `2` is reserved for internal error so a
+  **crashing harness can never be misread as a clean run**.
+
 <!-- @item
 id: BL-086
 status: todo
