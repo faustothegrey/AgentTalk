@@ -777,13 +777,14 @@ tags: [workflow, scrum-master, retrospective, growth]
 
 <!-- @item
 id: BL-080
-status: doing
+status: done
 date: 2026-07-27
 epic: null
 tags: [self-hosting, ladder, spike, claude-worker, governance, agent-md]
 -->
-- [doing · **PO go 2026-07-27 (`[PO]`)** · plan: `design/spike-claude-worker-plan.md` (Gate 1 exercised by the PO
-  directly — sole available agent must not review its own plan) · below rung 5: a derisking spike, not a rung] —
+- [done · **SPIKE ANSWERED ✅ — run executed & closed 2026-07-27 (PO-closed); findings `1ea893a`, plan `9258f39`**
+  · closing block below · plan + full evidence: `design/spike-claude-worker-plan.md` §8 · Gate 1 exercised by the
+  PO directly — sole available agent must not review its own plan · below rung 5: a derisking spike, not a rung] —
   **Can a `claude` worker, governed by AGENT.md itself, do autonomous dev work inside an AgentTalk session?**
   The PO's long-horizon goal (2026-07-27): **run AgentTalk's own development inside an AgentTalk session**, the
   in-session agent inheriting the configuration built up so far, starting with **one agent that plans, implements
@@ -813,6 +814,53 @@ tags: [self-hosting, ladder, spike, claude-worker, governance, agent-md]
   bypassPermissions` and write access into a worktree — contained by cwd, bounded by a trivial goal — and the
   **10-minute wall-clock cap is the only anti-hang rail**, because the idle timeout is still dead code
   ([[LB-70]]/[[BL-028]]).
+
+  **✅ CLOSING BLOCK (2026-07-27) — the governance premise HOLDS.** One run, first attempt, no retries. A
+  **claude/opus** worker in an AgentTalk session inherited AGENT.md via the `CLAUDE.md` symlink, was **not** halted
+  by the turn-1 primer text, wrote the file and committed it. **Q1 YES** — it answered *"the forbidden word is
+  **spawn** … must be used in its place is **launch**"*, citing **`AGENT.md:200-203`** and naming `CLAUDE.md` as
+  auto-loaded: **headless `claude -p` does load `CLAUDE.md` from cwd.** **Q2 NO (did not halt)** — straight to
+  work, no handshake anywhere in the transcript. **Q3 YES** — commit `189012f`, *1 file changed, +14*, exactly the
+  one file. **Q4 YES** — full `work_accept` in the sidecar with contents, `git log` and `git status` inline, not
+  the literal `'Task completed.'`; **[[BL-076]]'s fix holds for a claude worker.** **Q5 INCONCLUSIVE.**
+
+  **⚠️ Two results are weaker than the headline — do not cite them as more.** (1) **Q2 was measured where the
+  hook could not fire:** `.claude/` is **gitignored** (`.gitignore:1`), so the `SessionStart` turn-1 gate exists in
+  **no worktree**, and `AGENTTALK_SKIP_PRIMER` was a **no-op**. What is proven is only that *AGENT.md's own text*
+  did not stop a worker **addressed as a worker**; a workdir in the **primary checkout** is **untested and
+  load-bearing** for the ladder. (2) **Q5 has no number:** the meter was stale at `09:33:15` across the whole
+  09:39–09:42 run window (session pinned 51% on three polls), and the sidecar's own `prompt_tokens: 391` is not
+  physically consistent with a turn that demonstrably read a 65 KB file. **The loop has no trustworthy cost
+  measurement today** — which matters because the ladder's entire claim is *measured* improvement.
+
+  **Confirmed live for the first time:** `ClaudePersistentExecutor` **never enters the per-task worktree it is
+  handed.** The exec_rpc carried `cwd: agentalk-task-…`, `llm-agent` provisioned it, and the work landed in the
+  **parent workdir** instead (`executor-runtime.mjs:175` spawns once at `initialize()` with `cwd: process.cwd()`).
+  **Per-task isolation is not real for claude; session isolation is** — harmless under the PO's chosen
+  one-session-one-goal shape, and precisely why that shape was right. A live hazard the moment a claude worker
+  gets two tasks in one session.
+
+  **Findings filed:** **F1 → [[BL-081]]** (the launcher leaks an orphaned orchestrator — *not fixed, out of
+  scope*). **F2** the sidecar's `usage` cannot be trusted as cost (see Q5). **F3** a positive signal: unprompted,
+  the worker distinguished pre-existing untracked paths from its own changes and volunteered *"not taken from
+  memory — I grepped the repo and read `AGENT.md:200-203`"* — verify-don't-assert behaviour, unasked (n=1, trivial
+  task, so weak — but it is what the inheritance is *for*).
+
+  **What this does NOT license:** the task was trivial by design — one file, no source, no tests, no
+  decomposition, ~3 min. It says **nothing** about a claude worker on a real backlog item, about goal
+  decomposition, or about the primary checkout. Those are **rung-5** questions. **Rung 5 is unblocked.**
+
+  **Telemetry (task closure):**
+  - task:        BL-080 (claude-worker spike)
+  - wall-clock:  2026-07-27 09:39 → 09:42 (~3 min run; ~1h incl. planning + closure)
+  - budget:      **unavailable** — meter stale `09:33:15` across the run window (session 51%, weekly 6%)
+  - gate:        n/a — no product source touched; `git diff --stat` empty in both repos
+  - diff:        plan `9258f39` (2 files, +204) · findings + BL-081 `1ea893a` (2 files, +113/-2)
+  - outcome:     **SPIKE ANSWERED ✅** — Q1–Q4 answered, Q5 inconclusive, 3 findings filed, 1 promoted to BL-081
+
+  **Cleanup at close:** worktree removed; branches `task-spike-claude` (**`-D`, unmerged — the evidence commit
+  `189012f` is destroyed; its full contents are transcribed in the plan doc**) and `task-task-…967-2` deleted;
+  stale worktree metadata pruned; the orphaned orchestrator killed and port 3400 freed. Both repos clean.
 
 <!-- @item
 id: BL-030
