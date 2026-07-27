@@ -1029,3 +1029,36 @@ here.**
   it as BL-078 instead of fixing it kept an engine behaviour change out of an observability diff, and turned a
   half-thought into a decision the PO can actually make. **The show-stopper fence is a feature of the output, not
   a restriction on it.**
+
+### 2026-07-27 (afternoon) — Rung 5: a governed claude worker landed a real fix; planner + architect + implementer + all reviewer seats
+- **As reviewer: my pre-registered independent grader was WRONG, twice, and the autonomous worker's reasoning was
+  better than my bar.** Grader v1 asserted "any turn after `conversation_end` is processed" — driven by a
+  `message_received`, which is *precisely* the event the worker deliberately excluded, because reviving on it
+  re-opens an unbounded relay. **My grader was demanding the harmful behaviour and was RED on a correct fix.** v2
+  then failed its own precondition. The only reason I didn't report a false "rung failed" verdict is that I'd put
+  **precondition guards** in both. **Lesson: a pre-registered bar is a hypothesis too — when it disagrees with a
+  fix, suspect the bar first, and never ship a grader without a precondition that distinguishes "the symptom is
+  present" from "my harness is broken."** I had written "build the grader before the run, every time" as a lesson
+  from rung 4; that was right but insufficient — *building it early doesn't make it correct*.
+- **My pre-registered scope criterion was also too blunt, in the same way.** §6 said any `registry.ts` change was
+  an automatic rung failure — which would have failed the very fix BL-047 sanctions (its option 1 *is* the
+  registry-side fix). Writing a bright-line rule felt rigorous; it was actually a refusal to think about which
+  changes are dangerous. **Fences should name the property (don't change established behaviour on shared paths),
+  not a file list.**
+- **Reproducing a second-hand claim paid off enormously, and I nearly didn't bother.** The worker reported an
+  adjacent uncapped-relay defect. That claim was the *premise* on which it rejected BL-047's option 2 — so if it
+  were false, the fix I'd just merged rested on a bad reason. Reproducing took one throwaway probe and produced
+  **heap exhaustion in 34 seconds**, which both validated the merge and turned an unfiled rumour into BL-083 with
+  real evidence. **Verify the claims that load-bear on what you just approved, not just the ones you doubt.**
+- **The governance thesis held, and the evidence is behavioural, not rhetorical.** Given one sentence and no rules
+  in the prompt, the worker reproduced before designing, refuted a filed fix direction on evidence, produced a
+  **purely additive** diff (236 insertions, zero deletions), mutation-checked its own bar, wrote a test *pinning
+  its own deliberate limitation*, and flagged an adjacent defect instead of fixing it. **None of that was in the
+  prompt — it was in `AGENT.md`.** The prompt shrank from rung 4's 3,000 words to one sentence.
+- **I checked git state in the wrong repository** because an earlier `cd` inside a compound Bash command persisted,
+  and briefly told the PO a branch and commit had vanished. It was the BL-059 wrong-coordinates trap in a new
+  costume, on the very day I'd written that trap into the primer. **Use `git -C <path>` for anything load-bearing;
+  never rely on ambient cwd across tool calls.**
+- **Leading a closing block with my own failure rather than the win was the right call.** BL-047's record opens with
+  "the reviewer's grader was wrong — twice" before it opens with the success. The next reader inherits the caveat
+  at the same moment as the claim, which is the only way a caveat survives.

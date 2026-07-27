@@ -1,75 +1,113 @@
 ---
 role: planner
-key: none
-written: 2026-07-13 by Codex at session close after BL-031 real-provider validation
-key_retired: 2026-07-17 by Claude (PO-approved) — was `20260713-0116-2be1cd-planner`, never consumed by any
-  agent, so it kept reading as "fresh" at every cold start ~4 days after the work it describes. `none` = no fresh
-  cold-start due for this role; the body below stays as historical context. Git history holds the original key.
+key: 20260727-1204-f7c2a1
+written: 2026-07-27 by Claude (session close — rung 5 landed: the first governed autonomous fix, merged and PUSHED)
 ---
 
 This is your session primer.
 
-## 1. What AgentTalk is
+**Project.** AgentTalk orchestrates real, heterogeneous LLM agents (Claude/Codex/Gemini-agy/goose) as one software
+team: they attach as MCP clients over WebSocket, pull turns via `await_turn`, and coordinate through a
+planner→implementer→reviewer workflow under a human Product Owner. Current thrust: the **autonomous-development
+ladder** — improving AgentTalk *with* AgentTalk.
 
-AgentTalk is a multi-agent orchestration substrate: independently launched coding agents attach over MCP/WebSocket,
-take turns, exchange role messages, and coordinate work through workflow batons and gate events.
+**Roles.** Human = PO (Fausto): scope, direction, **merges**, **pushes**. Bindings live ONLY in `AGENT.md → 📌
+DEFAULT ROLE ASSIGNMENTS` — read it, don't trust this line. **Codex and Gemini (agy) are UNAVAILABLE as *agents***
+(PO, 2026-07-15), so you are likely sole agent under the **resource-scarcity fallback**: wear every hat, do the
+handshake once per role, declare all of them, keep each gate separately. **Standing Conditional Reassignment
+ACTIVE** (you may implement). **"merge" and "push" are SEPARATE words and the PO means it** — stop at each and
+wait for the literal word. It held all of this session, across five separate acts.
+**Independence caveat — say it in every delivery:** as sole agent you author AND review. What catches things is
+**running the code and checking the artifact**; never a re-read of your own diff, never a status field.
 
-The self-hosting program is the current arc: AgentTalk should gradually carry the coordination that builds
-AgentTalk, while the project reports honestly when the terminal remains the easier fallback.
+**⚠️ `git fetch` BOTH repos at startup** (`AgentTalk`, `agentalk-mcp-client`) and verify HEAD against
+`origin/master`. Never trust a primer's hash — including this one.
 
-## 2. Roles
+**Workflow / source of truth.** `design/collaboration-workflow.md` + `design/backlog.md` (BL items) + `AGENT.md`.
+Plans live in `design/*-plan.md`. **Closed items carry a closing block + telemetry inside the backlog item — read
+those first.** Resume from the backlog and plan docs, **NOT from chat**.
 
-This primer is for the planner role. Product Owner is Fausto, the human, and owns scope, direction, role assignment,
-and merges. Current role bindings live only in `AGENT.md` -> "DEFAULT ROLE ASSIGNMENTS"; read that table before
-acting. Preserve the independence defaults: Plan Reviewer != Planner, Implementation Reviewer != Implementer, and
-Task-end Reviewer is fresh eyes unless the PO explicitly accepts a resource fallback.
+## The PO's long-horizon goal (stated 2026-07-27) — everything now aims at this
 
-## 3. Workflow and sources of truth
+> **Run AgentTalk's own development inside an AgentTalk session**, with the in-session agent inheriting the
+> configuration built up so far. A **single agent** that plans, implements and reviews alone is fine for now; more
+> agents later. Replacing the human-in-the-TUI is the point.
 
-Read `AGENT.md` first, including the primer handshake and resource meter rule. Then ground any assignment in
-`design/collaboration-workflow.md`.
+**Four PO decisions that shape all planning** (2026-07-27): provider **claude/opus** · the agent **commits and
+stops; the PO merges** (no approval channel is being built) · the **PO states a goal, the agent decomposes it** ·
+**inherit the rules, skip the primer ritual** (the launcher now sets `AGENTTALK_SKIP_PRIMER` — BL-082).
 
-State lives in durable artifacts, not chat:
+## Where we are (2026-07-27 close)
 
-- `design/backlog.md`
-- `design/logbook.md`
-- `design/self-hosting-program-draft.md`
-- the active milestone's `*-plan.md`
-- the active milestone's `*-implementation.md` ledger
+**Both repos PUSHED and in sync — verify by fetching:** AgentTalk **`1dc42d5`**, client **`c7a5991`**. No
+worktrees, task branches, or stray processes in either. Green at close: AgentTalk **`tsc -b` 0 · suite 410/410**
+(71 files); client **lint 0 · 93/93** (17 files). Backlog **83 items, 0 warnings**.
 
-Skim `design/lessons/codex-lessons.md` if you are Codex, and poll `node scripts/usage.mjs`. Both are best-effort;
-neither blocks real work.
+**Shipped this session, each PO-gated:**
+- **[[BL-080]]** — spike: proved a claude/opus worker **inherits `AGENT.md`** via the `CLAUDE.md` symlink in
+  headless `-p` mode. The premise the whole direction rests on.
+- **[[BL-081]]** (client) — the launcher no longer leaks an orphaned orchestrator per run (spawn detached, signal
+  the group). Confirmed working live on the rung-5 run.
+- **[[BL-082]]** (client) — launched workers are exempt from the turn-1 primer gate, every provider.
+- **[[BL-047]] = RUNG 5** — **the first AgentTalk fix authored end-to-end by a governed claude/opus worker**, from
+  a one-sentence goal it decomposed itself, **relay count 0**. Plan: `design/rung5-plan.md`.
+- **[[BL-083]]** filed — an uncapped relay that OOMs; found by the worker, reproduced by the reviewer.
 
-## 4. Current State
+## What's next — PO picks (no fresh task assigned; report + STOP for the go)
 
-M20 and BL-032 are closed on `master`.
+1. **[[BL-083]] — the one that can burn real money.** Two idle in-process agents with no active conversation relay
+   unbounded; live, every iteration is a **billed API call**. Needs **planning + Gate 1**: the fix direction is a
+   *behaviour decision* on shared engine code ("should an idle agent answer-and-relay at all?"), interacting with
+   [[BL-078]] and [[BL-028]]. **This is the natural next planning unit and why this primer is for the planner.**
+2. **Rung 6 — the fence test.** Hand a governed worker a task `AGENT.md` says it must **refuse** ([[BL-028]] is the
+   natural one, since fixing it switches on a behaviour currently off) and measure whether it stops and reports.
+   Rung 5 gave *circumstantial* evidence the fence binds — the worker declined BL-083 unprompted — but refusing has
+   never been the *whole* task. Rationale in `design/rung5-plan.md` §8.
+3. **[[BL-078]]** — still a PO **decision**, not an implementation.
+4. **Cost measurement is broken and the PO deliberately parked it** (*"let's put aside costs for now"*). The meter
+   goes stale for hours, and the per-run `usage` in the response sidecar is not physically consistent (391 prompt
+   tokens for a turn that read a 65 KB file). **The ladder's actual claim is *measured* improvement, so this comes
+   back eventually.** Do not silently treat a stale meter as a 0% delta — write `unavailable`.
 
-Recent mainline at primer write:
+## Hard-won gotchas — these cost real time this session
 
-- `e705bc3` - docs(BL-031): record real-provider validation wrap-up
-- `8f03bad` - docs(BL-032): mark done + unblock BL-031
-- `7dc3f19` - fix(BL-032): align attach-mode healthcheck exec deadline to the healthcheck contract
+- **An independent grader is a hypothesis too.** Mine was pre-registered, RED before the run, and **wrong twice**:
+  v1 demanded the exact behaviour the worker had deliberately (and correctly) excluded; v2 failed its own
+  precondition. **Always put a precondition guard in a grader** — it is the only reason a false "rung failed"
+  verdict wasn't reported. When a bar disagrees with a fix, suspect the bar.
+- **Reproduce a second-hand claim before filing or acting on it.** BL-083 was the *premise* the merged BL-047 fix
+  depended on. Reproducing it (34s to heap exhaustion) is what made the merge trustworthy.
+- **`completed` ≠ done — and check the artifact at BOTH paths.** For **claude**, work lands in the **parent
+  workdir**, NOT the per-task worktree it is handed (`ClaudePersistentExecutor` spawns once at `initialize()` with
+  `cwd: process.cwd()`). Per-task isolation is not real for claude; session isolation is → **one session = one
+  task.**
+- **The exec_rpc per-turn timeout is `600000` (10 min)** — separate from the launcher's wall-clock cap. Rung 5
+  finished in ~10 minutes, *uncomfortably* close. A bigger task may need this raised; check it before blaming a
+  worker for stalling.
+- **[[BL-028]] is still dead**, so the wall-clock cap is the **only** anti-hang rail. Nothing detects a hung agent.
+- **`.claude/` is gitignored** → the SessionStart primer hook exists in the primary checkout but in **no worktree**.
+- **The client repo carries NO governance file** (no `AGENT.md`/`CLAUDE.md`). A worker there inherits **nothing** —
+  which is why rung 5 had to be an AgentTalk-repo task. Unfiled design question.
+- **Watch your cwd.** A `cd` inside a compound Bash command persists; I ran git checks against the wrong repo once
+  and briefly reached a false conclusion. Use `git -C <path>` for anything load-bearing.
 
-BL-031 has a validation branch: `/Users/fausto/Software/AgentTalk-BL-031-validation`,
-`fix/BL-031-inline-relay-approval`, commit `da07821` (`fix(BL-031): validate supervised conversation control`).
-Codex acted as temporary implementer and tester. The real-provider, PO-driven tester run validated the human-facing
-Continue/Stop conversation-control behavior (LB-86), but Codex must not self-review the implementation.
+## Op notes
 
-New backlog item: **BL-033** — MCP pair-chat agents remain busy after `conversation_end`. This was split out from
-BL-031 because Continue/Stop gating works, but completion cleanup leaves attached agents/clients in stale busy/waiting
-state.
+- **Launching a worker:** `node scripts/launcher.mjs <config.json>` from `agentalk-mcp-client`. Config:
+  `provider`/`model`/`executionMode: persistent`/`workdir`; **`PORT` in `instance.env`** (not `startCommand.env`);
+  set **`instance.recording`** — the raw-response sidecar derives from it, and without it you cannot tell which
+  branch a run took. `runs/` is gitignored; configs there are disposable. Working examples:
+  `runs/rung5.config.json`, `runs/spike-claude.config.json`.
+- **Worktrees:** `node scripts/wt-setup.mjs create <id> --base origin/master` (AgentTalk only; the client repo has
+  no helper — plain `git worktree add` + symlink `node_modules`). It wires deps and builds. **Stage files
+  EXPLICITLY, never `git add -A`.** `remove <id> --delete-branch` uses a safe `-d` that refuses unmerged branches —
+  an exit-1 there can still mean the worktree *was* removed.
+- **Gates:** AgentTalk `npx tsc -b` (`exactOptionalPropertyTypes` — conditional spread is the idiom) + `npx vitest
+  run`; `npm run backlog:check` gates the backlog (update BOTH the header `status:` and the prose). Client:
+  `npm run lint` + `npm test`.
+- **Meter:** `node scripts/usage.mjs`. Best-effort, never blocking; it was stale for most of this session.
+- **Left deliberately untouched:** the PO's modified `com.fausto.agenttalk-orchestrator.plist`; the **untracked**
+  `design/bl024-t3b-plan.md` (exists on the PO's machine only — commit it before working BL-024); and the stale
+  `task-BL-039` branch.
 
-There is no active planner task in this primer. Wait for the PO/SM to open the next inception or task. If asked for
-planning, verify the current backlog and program draft first, then produce only the artifact requested by the baton.
-
-## 5. Op notes
-
-- Do not infer the current milestone from this primer; verify the latest ledger and backlog.
-- The PO reference clock remains invariant: PO gates, opinions, merge decisions, and direct PO messages are not
-  mediated by AgentTalk.
-- BL-031 is not an independent-review closure: Codex authored the latest implementation and tester evidence.
-- BL-033 is the most obvious follow-up if the PO wants to clean lifecycle behavior before merge/closure.
-- The production-equivalent testing rule is now explicit in Codex lessons: no fake provider/model deviation in a
-  validation run without explicit PO consent.
-
-Current role: planner.
+Verify all of the above against ground truth before acting. Report your understanding, then **STOP** for the PO's go.
