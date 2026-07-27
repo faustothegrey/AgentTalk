@@ -909,7 +909,8 @@ tags: [tooling, backlog-parser, api, silent-failure, observability, po-directed]
   fix'`); all **84** derived titles diffed before/after across the real backlog — **identical**, no regression;
   then the two workaround-contorted bullets were **restored to their natural prose** (links and bold back inside
   the status tags — the exact shape that broke) and the titles stayed correct, which is the real-data proof the
-  unit test alone cannot give. Gate: `tsc -b` 0 · suite **416/416** (72 files). Commits: `<merge>`.
+  unit test alone cannot give. Gate: `tsc -b` 0 · suite **416/416** (72 files), re-verified on the merged mainline. Commits: `94d651b` (fix)
+  · `f1d5b95` (merge).
 
 <!-- @item
 id: BL-083
