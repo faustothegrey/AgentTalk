@@ -2828,6 +2828,20 @@ tags: [engine, failure-propagation, api-agents, in-process-driver, m03, question
   attached and in-process paths, or (b) propagate, and work out the blast radius on M03's tests first. Source:
   BL-077 (`design/bl077-plan.md` §3).
 
+  **ANALYSED 2026-07-27 — `design/bl078-decision.md`; awaiting the PO's call, nothing decided or coded.**
+  The blast radius was measured, and it changes the answer: **(b) as filed is NOT safe.** Any throw out of
+  `handleMcpToolCall` (no outer catch) reaches the driver's loop and becomes `error` — and **five of the seven
+  such triggers are not agent faults**: the **conversation reply cap** (which is how a conversation *ends* —
+  `markConversationCompleted` runs on the line before the throw), the **[[BL-083]] relay budget** (proven live
+  by probe), a peer not in `ready`/`busy`, a **workflow-gate refusal** (propagating a *rejected* privilege
+  escalation would hand anyone who can trip a gate a team-wide DoS lever), and the planning-routing guard.
+  Since `handleAgentFailure` interrupts the task, sets `team.status='error'` and **requests shutdown of every
+  other member**, (b) would attach a team-wide kill to normal control flow. **This is [[BL-028]]'s blocker
+  restated: both items need one missing primitive — a typed reason separating "stopped normally" from "is
+  broken" (LB-67 Finding 1).** Brief recommends **(a) document the asymmetry now**, file the typed-reason work
+  as its own item with BL-078 + BL-028 depending on it, and flags a follow-up wart: BL-083's budget-exhausted
+  throw reads as `error`, consistent with the reply cap but arguably wrong — deliberately NOT touched.
+
 <!-- @item
 id: BL-079
 status: todo
