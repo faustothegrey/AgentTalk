@@ -2377,12 +2377,12 @@ tags: [goose, worker-protocol, observability, autonomy, rung4, bl042-family]
 
 <!-- @item
 id: BL-077
-status: todo
+status: done
 date: 2026-07-19
 epic: null
 tags: [ui, observability, reactivity, web, rung4, bl048-family]
 -->
-- [todo · filed from the rung-4 run (BL-046), 2026-07-19] — **The web UI froze an agent at `starting` for a whole run
+- [done · **MERGED 2026-07-27 (`e25f9dc`, not pushed)** · filed from the rung-4 run (BL-046), 2026-07-19] — **The web UI froze an agent at `starting` for a whole run
   — `ready`/`busy` status transitions are not broadcast to connected clients** — during the rung-4 run the PO watched
   the agent sit at `starting` the entire time, while the backend log showed `creating → starting → ready → busy`. Only
   the `starting` transition was broadcast (`[Server] Status <id>: starting → N client(s)`); no corresponding broadcast
@@ -2391,6 +2391,62 @@ tags: [ui, observability, reactivity, web, rung4, bl048-family]
   the data. **Impact:** the UI is not a trustworthy live witness of agent progress — which directly undercuts using it
   to watch autonomous runs. Adjacent to BL-048 / BL-049. **Fix direction:** broadcast every agent status transition
   (at least `ready`/`busy`) to connected clients. Source: rung-4 run (BL-046), PO live observation.
+
+  **✅ DONE — MERGED 2026-07-27 (`e25f9dc`, local, NOT pushed). Plan + full record: `design/bl077-plan.md`.**
+  **The filed diagnosis was half wrong, and the correction is the useful part:** the broadcast was never missing.
+  `server.ts:1178` already broadcasts *every* registry `status` event. The real cause is that **two** code paths
+  change an agent's status and only one emits — `Registry.setAgentStatus()` (`registry.ts:219`) emits, while
+  `Agent.setStatus()` (`agent.ts:78`) only mutates and logs. **`InProcessAgentDriver` holds a registry reference but
+  called `agent.setStatus()` directly at all six of its own transition sites** (`in-process-driver.ts` 44/46/69/72/78/98),
+  so every transition it owned was invisible. The lone `starting` the PO saw came from `activateAgent` — the one
+  transition that *does* go through the registry. **Fix:** a new side-effect-free `Registry.notifyAgentStatus()`
+  (sets status + emits), with the driver's six sites routed through it. **+16/-6 across two source files.**
+  **⚠️ Show-stopper flagged, deliberately NOT fixed (Implementer Rule 2):** `setAgentStatus` also carries the M03
+  failure-propagation side effect (`handleAgentFailure`). Routing the driver through it would have **newly fired task
+  interruption on a driver-path error** — an engine behaviour change. `notifyAgentStatus` therefore omits that side
+  effect, and a regression test (D3) pins failure propagation as unchanged. **Whether driver-path errors *should*
+  propagate is a real open question → see BL-078.**
+  **Verified by RUNNING, not by reading the diff:** the new bar is **mutation-checked** (revert the fix ⇒ both tests
+  RED); `tsc -b` exit 0; full suite **404/404**. **Live proof (the bar that matters for an observability fix):** on a
+  real orchestrator (`PORT=3100`), an already-connected client received `starting → ready → busy → ready` and the
+  backend logged `Status …: ready → 1 client(s)` / `busy → 2 client(s)` — **the exact lines absent during rung 4**;
+  then in **real Chrome**, the page's own WebSocket received `busy`+`ready` and the rendered badge went
+  **READY → BUSY → READY with no reload**.
+  **Incidental live finding (not in scope, not fixed): BL-047 reproduced** — a second conversation reusing the same
+  API agents failed with `did not respond to healthcheck within 30000ms`, confirming that item's diagnosis (the
+  driver stops at `conversation_end`). Worked around with fresh agents.
+  **Ground-truth correction:** the suite baseline is **402**, not the "208" carried in the rung-4 primer (208 is an
+  orchestrator subset). Post-merge master is **404/404**.
+
+  **Telemetry (task closure):**
+  - task:        BL-077
+  - wall-clock:  2026-07-27 ~06:24 → ~06:58 (~34 min, cold start → merge)
+  - budget:      claude session 9%→13% (Δ ~4%), weekly 2%→2% (Δ ~0%)  [meter healthy this session, unlike rung 4]
+  - gate:        tsc 0, suite 404/404, bar mutation-checked red→green, live UI proven in Chrome, pollution clean
+  - diff:        7 files, +266/-6; commits `16b606f` (fix) · `e25f9dc` (merge)
+  - outcome:     MERGED ✅ (local; NOT pushed — PO says "merge" and "push" as separate words)
+
+<!-- @item
+id: BL-078
+status: todo
+date: 2026-07-27
+epic: null
+tags: [engine, failure-propagation, api-agents, in-process-driver, m03, question, bl077-family]
+-->
+- [todo · filed from BL-077, 2026-07-27 — a **show-stopper flagged and deliberately not decided** by the implementer] —
+  **Should a driver-path agent error propagate failure? Today it silently does not** — M03 failure propagation runs
+  off `Registry.setAgentStatus()`, which calls `teamCoordinator.handleAgentFailure()` when an agent enters `error`
+  (`registry.ts:224-226`). But **`InProcessAgentDriver` never went through that method** — it set status directly —
+  so **an in-process/API agent that errors in its loop (`in-process-driver.ts:80`) has never interrupted its team's
+  active task.** BL-077 made that transition *visible* to the UI (via the intentionally side-effect-free
+  `notifyAgentStatus`) but deliberately **left the propagation semantics untouched**, because switching it on is an
+  engine behaviour change that other passed tasks may depend on — exactly the class of change that requires a PO
+  call, not an implementer's judgement. A BL-077 regression test currently **pins the non-propagating behaviour**, so
+  if the answer here is "it should propagate", that test is the thing to change first. **Note this is a *different*
+  gap from the dead idle-timeout (LB-70 / BL-028), though they compound: neither a hung agent nor an errored
+  in-process agent currently interrupts a task.** **Decide:** (a) leave as-is and document the asymmetry between the
+  attached and in-process paths, or (b) propagate, and work out the blast radius on M03's tests first. Source:
+  BL-077 (`design/bl077-plan.md` §3).
 
 <!-- @item
 id: BL-047
