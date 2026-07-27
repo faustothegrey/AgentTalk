@@ -2937,6 +2937,49 @@ tags: [ui, observability, reactivity, web, rung4, bl048-family]
   - outcome:     MERGED ✅ (local; NOT pushed — PO says "merge" and "push" as separate words)
 
 <!-- @item
+id: BL-087
+status: todo
+date: 2026-07-27
+epic: null
+tags: [infrastructure, safety, harness, operator-seat, autonomy, instrumental, po-crucial, needs-plan]
+-->
+- [todo · filed 2026-07-27 on PO direction ("crucial") · **the safety rail for handing session-launching to an
+  external agent** · prerequisite for the operator ladder O-0…O-3] — **Nothing asserts that the infrastructure
+  came back intact after a run — build a read-only invariant harness that snapshots and diffs it.**
+
+  **Why this is not hygiene.** Every autonomous run so far tested an **implementer**, whose blast radius was
+  structurally contained: its own worktree, its own branch, no merge rights. Handing **session launching** to an
+  external agent moves the seat to **operator**, which spawns process trees, binds ports, creates and removes
+  worktrees and branches, and kills process groups. **The fence that made the worker safe does not transfer.** A
+  hole in the infrastructure would come not from a bad diff but from a bad `git worktree remove`, a port
+  collision with a live orchestrator, or an orphaned tree holding the port.
+  **Today we verify by hand, ad hoc — and it has already failed once, in this session:** rung 6 left a nested
+  `agentalk-task-*` worktree and a `task-task-*` branch that were **not in the reviewer's cleanup model** and were
+  only noticed because a post-merge branch listing happened to be read. That is the exact class of residue an
+  operator agent will produce at scale.
+
+  **What it is:** one **read-only** script that captures infra state, and diffs a *before* against an *after*,
+  exiting non-zero on any delta that was not declared expected. Captures, across **both** repos: `HEAD` +
+  upstream sync state · `git worktree list` · `git branch --list` · the untracked-file set · listening ports in
+  the orchestrator range · live `launcher.mjs` / provider-CLI processes. Prints a **machine-readable** summary so
+  an operator agent can gate on it, and a human-readable one.
+
+  **The actual design problem — distinguishing legitimate deltas from residue.** A run *legitimately* adds a task
+  branch and worktree (plus the nested `task-task-*` pair). So the harness must take a declared expectation
+  ("this run may add worktrees matching `att-op-*` and branches matching `task-*`") and flag everything else.
+  **Both failure modes are real: a harness that flags everything gets ignored** (the same
+  cried-wolf failure as [[BL-079]]'s overstated claim, which we had to walk back), **and one that flags nothing is
+  theatre.** That trade-off is the plan's core content, not an implementation detail.
+
+  **Fence, stated as a property: the harness REPORTS and never repairs.** No auto-cleanup, no `git worktree
+  prune`, no killing processes. A harness that "fixes" what it finds is itself capable of burning the hole it
+  exists to prevent.
+
+  **DoD sketch:** deliberately plant a stray worktree, a stray branch, and a live orphan process, and prove each
+  is **caught** (RED before, GREEN after — the bar written first); prove a clean run passes with zero findings;
+  prove the script mutates nothing (run it twice, diff the world). Needs a plan + Gate 1 before code.
+
+<!-- @item
 id: BL-086
 status: todo
 date: 2026-07-27
