@@ -8,6 +8,9 @@ describe('registry config', () => {
       conversationStorePath: './transcripts/conversations.json',
       agentIdleTimeoutMs: 180000,
       healthcheckTimeoutMs: 30000,
+      // BL-083 — new key; `toEqual` is exhaustive, so it is listed here rather than the
+      // assertion being loosened.
+      maxUncappedRelaysPerPair: 50,
     });
   });
 
@@ -17,6 +20,7 @@ describe('registry config', () => {
       conversationStorePath: './transcripts/conversations.json',
       agentIdleTimeoutMs: 180000,
       healthcheckTimeoutMs: 5000,
+      maxUncappedRelaysPerPair: 50,
     });
   });
 });
