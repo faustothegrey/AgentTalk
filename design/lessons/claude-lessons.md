@@ -1170,3 +1170,45 @@ here.**
   hours earlier — and later a multi-path `git add` silently staged **nothing** because one path did not exist yet,
   so a brief I believed committed was untracked. The second was caught only by reading `git status` after the
   commit. **Writing the correction does not inoculate me against the error; checking the state afterwards does.**
+
+### 2026-07-27 (night) — BL-093/095 shipped, two agent-authored merges, and a rung that failed because I misread my own measurement
+- **As planner: I measured the task carefully and then read the measurement wrong, which is worse than not
+  measuring.** O-4 existed to observe a *killed* run — the one thing this project has never seen. I sized its
+  vehicle as "48 type errors, almost certainly unfinishable in 30 minutes." The worker finished in **nine**. But I
+  had already printed the breakdown into the backlog item myself: *30 × TS2345, 14 × TS2532, 2 × TS6133, 1 ×
+  TS6196, 1 × TS2322* — five error codes, 28 of them literally the same missing property in the same object
+  literal. **That histogram was the estimate and I read the total instead.** A count measures repetition as
+  readily as size, and the distribution is what tells them apart. Careful measurement followed by a careless read
+  manufactures confidence, which is the failure mode a rough guess would not have produced. **When time-boxing an
+  experiment, look at the shape of the work, not the size of the number.**
+- **As reviewer: the mutation check is what separates a live gate from a quiet one, and I should reach for it by
+  default.** BL-095 removed the tsconfig exclusion that hid 25 test files from `tsc -b`. "48 → 0 errors, tsc
+  clean" would have looked **byte-identical** to a run where nothing happened — because the gate was green that
+  morning too, *precisely because it was blind*. So I injected a deliberate `const x: number = "string"` into a
+  test file and confirmed `tsc -b` caught it, on the branch and again on merged mainline. The same instinct
+  covered BL-092: its handler sits on a path the suite never exercises, so I rebuilt the 403 from scratch rather
+  than trusting a green suite. **Ask of every "it's green now": would this look different if the change did
+  nothing?**
+- **As reviewer: I reported something lost before I had actually looked for it.** I told the PO the H-2 bar was
+  missing and its grading "unauditable" on the strength of two `find` calls with a `-maxdepth` that could not
+  reach it. A wider search recovered it immediately, hashing **exactly** to the digest committed before that run.
+  The claim cost nothing to check and I had made it prominent, in writing, as a finding. **A negative result about
+  an artifact is a claim like any other and needs the same rigour as a positive one** — arguably more, because
+  "it's gone" invites people to stop looking.
+- **As implementer: the trap I documented in my own plan caught me four hours later.** BL-093's §10 says *stage
+  explicitly, check `git status` after committing*. I then staged five paths, omitted `scripts/validate-backlog.mjs`,
+  and shipped a commit containing the feature but not its gate — caught only by the post-commit status check. That
+  is the **second consecutive session** this exact trap has fired on me. The lesson has stopped being "remember
+  the rule" and become structural: **the check after the action is the control; the rule before it is decoration.**
+- **As implementer/reviewer: I nearly shipped a validator that cries wolf, and caught it by reading rather than
+  running.** My first `blocked_by` cycle detector never un-marked a settled node, so any independent item
+  depending on an already-walked one would report a **false** cycle. A validator with false positives is worse
+  than none — the next reader learns to ignore it. I replaced it and then *proved* the fix with a real 3-chain
+  rather than declaring it fixed. **Detection code needs a negative test as much as a positive one: show it stays
+  quiet when it should.**
+- **Standing observation, now three sessions old: I keep building traps for failures that do not happen.** Both
+  workers cleared the IP-1 fence — one recognised that "fixing" `provider: 'unknown-attach'` to a real provider
+  would typecheck, stay green and *silently destroy the test*; the other left a forbidden production change
+  untouched when taking it might genuinely have fixed the bug. I pre-registered both expectations, which is the
+  only reason I can see the pattern. **The traps are still worth building — a fence never tested is not a fence —
+  but I should stop narrating them as likely.**
