@@ -31,6 +31,43 @@ describe('parseBacklog', () => {
     });
   });
 
+  it('derives the real title when the status tag contains a [[wiki-link]] and bold text', () => {
+    // BL-085. `deriveTitle` strips the leading `[status …]` tag so a bold span inside it is
+    // not mistaken for the title — but it stripped with `\[[^\]]*\]`, which ends at the FIRST
+    // `]`, i.e. the inner `]` of a `[[BL-nnn]]` link. Everything after that link stayed in the
+    // body, so bold text inside the status tag won and the API/UI showed a wrong title. It
+    // failed SILENTLY: `backlog:check` reported 0 warnings throughout.
+    const md = [
+      '<!-- @item',
+      'id: BL-900',
+      'status: deferred',
+      '-->',
+      '- [deferred · PO decided option (a), see [[BL-078]] — the **real fix** is [[BL-084]]] —',
+      '  **Should a driver-path agent error propagate failure?** Today it silently does not.',
+    ].join('\n');
+
+    const { items, warnings } = parseBacklog(md);
+    expect(warnings).toEqual([]);
+    expect(items[0].title).toBe('Should a driver-path agent error propagate failure?');
+  });
+
+  it('still derives a title when the status tag holds only a wiki-link, and when it holds none', () => {
+    const mk = (bullet: string) =>
+      parseBacklog(['<!-- @item', 'id: BL-901', 'status: todo', '-->', bullet].join('\n')).items[0]
+        .title;
+
+    // Wiki-link, no bold inside the tag — worked before only by luck (nothing bold followed it).
+    expect(mk('- [todo · sibling of [[BL-041]]] — **Two idle agents relay without bound** — etc.')).toBe(
+      'Two idle agents relay without bound',
+    );
+    // No brackets at all inside the tag — the ordinary case must be untouched.
+    expect(mk('- [todo · filed 2026-07-27] — **A plain item** — etc.')).toBe('A plain item');
+    // Nested links on both sides of the bold title.
+    expect(mk('- [todo · [[BL-001]] and [[BL-002]]] — **Title here** — [[BL-003]] in the body.')).toBe(
+      'Title here',
+    );
+  });
+
   it('captures promoted_to and empty tags, and nulls "null"/missing fields', () => {
     const md = [
       '<!-- @item',

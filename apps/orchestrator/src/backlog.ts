@@ -76,7 +76,18 @@ function nullable(v: string): string | null {
 function deriveTitle(body: string): string {
   // Drop the leading bullet + `[status …]` tag so a bold span inside it isn't mistaken
   // for the title (e.g. "[… **renamed per §3e**] — **Real Title**").
-  const stripped = body.replace(/^\s*-\s*\[[^\]]*\]/, '');
+  //
+  // BL-085: `[^\]]*` ended at the FIRST `]`, which is the inner `]` of a `[[BL-nnn]]`
+  // wiki-link — extremely common in a status tag ("sibling of [[BL-041]]"). Everything after
+  // that link stayed in the body, so bold text inside the tag became the title, silently and
+  // with zero warnings. So allow whole `[[…]]` groups inside the tag. The lenient original is
+  // kept as a fallback for any tag holding an unbalanced single bracket, which the strict
+  // pattern would decline to match at all — that way this can only ever fix a title, never
+  // take one away.
+  const WIKI_AWARE_TAG = /^\s*-\s*\[(?:\[\[[^\]]*\]\]|[^[\]])*\]/;
+  const stripped = WIKI_AWARE_TAG.test(body)
+    ? body.replace(WIKI_AWARE_TAG, '')
+    : body.replace(/^\s*-\s*\[[^\]]*\]/, '');
   const bold = stripped.match(/\*\*(.+?)\*\*/s);
   const raw =
     bold && bold[1]
