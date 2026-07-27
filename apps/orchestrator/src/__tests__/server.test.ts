@@ -2,16 +2,15 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import os from 'node:os';
 import { existsSync, rmSync } from 'fs';
 import type { AddressInfo } from 'net';
-import type { Server } from 'http';
 import { WebSocket } from 'ws';
 import { Registry } from '@agenttalk/runtime-core/registry/registry';
-import { startServer } from '../server.js';
+import { startServer, type ServerWithMcpReady } from '../server.js';
 import type { GoogleDriveIntegration, GoogleDriveResource } from '@agenttalk/integration-google-drive/google-drive/types';
 import type { SessionRecorder } from '@agenttalk/observability/recordings/session-recorder';
 
 describe('startServer', () => {
   let registry: Registry;
-  let server: Server;
+  let server: ServerWithMcpReady;
   let baseUrl: string;
   let googleDrive: GoogleDriveIntegration;
   let recorder: { record: ReturnType<typeof vi.fn> };
@@ -69,6 +68,10 @@ describe('startServer', () => {
     sockets = [];
     server = startServer(registry, 0, { googleDrive, recorder: recorder as unknown as SessionRecorder });
     await new Promise<void>((resolve) => server.once('listening', resolve));
+    // Await the MCP server's own bind too. Without this its `.then()` writes
+    // process.env.AGENTTALK_PERSISTENT_MCP_URL whenever it happens to resolve — possibly after this
+    // test has finished, polluting a later one (BL-092 investigation).
+    await server.mcpReady;
 
     const { port } = server.address() as AddressInfo;
     baseUrl = `http://127.0.0.1:${port}`;
@@ -361,6 +364,16 @@ describe('startServer', () => {
       await new Promise<void>((resolve, reject) => ownServer.close((err) => (err ? reject(err) : resolve())));
       vi.unstubAllEnvs();
     }
+  });
+
+  it('exposes `mcpReady`, so the MCP env write cannot land after a test has finished (BL-092 hygiene)', async () => {
+    // The MCP server's start() used to be fire-and-forget: its .then() wrote
+    // process.env.AGENTTALK_PERSISTENT_MCP_URL whenever it resolved, possibly after the test that
+    // started the server was over — polluting a later test. `beforeEach` now awaits `mcpReady`, so
+    // by the time any test body runs the write has ALREADY happened and cannot arrive late.
+    expect(server.mcpReady).toBeDefined();
+    await expect(server.mcpReady).resolves.toEqual(expect.any(Number));
+    expect(process.env.AGENTTALK_PERSISTENT_MCP_URL).toMatch(/^ws:\/\/localhost:\d+\/$/);
   });
 
   it('should broadcast agent_added when an agent is created through the API (BL-048)', async () => {

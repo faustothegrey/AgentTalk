@@ -20,6 +20,8 @@ describe('M17 Gate Event Recording', () => {
     } as any;
 
     server = startServer(registry, 0, { recorder: mockRecorder });
+    // See server.test.ts: await the MCP bind so its env write cannot land after this test finishes.
+    await server.mcpReady;
 
     await registry.createAgent('agent-1', { provider: 'mcp' });
     await registry.createAgent('agent-2', { provider: 'mcp' });

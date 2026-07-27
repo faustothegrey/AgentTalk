@@ -1,5 +1,5 @@
 import express from 'express';
-import { createServer } from 'http';
+import { createServer, type Server as HttpServer } from 'http';
 import { existsSync, readFileSync, readdirSync } from 'fs';
 import path from 'path';
 import { createRequire } from 'module';
@@ -53,6 +53,14 @@ function getErrorStatus(err: unknown): number {
 
   return 500;
 }
+
+/**
+ * The HTTP server, plus a handle on the MCP server's startup. `mcpReady` resolves with the MCP
+ * port once it is bound. Tests that create a server per `beforeEach` should await it, so the
+ * `process.env.AGENTTALK_PERSISTENT_MCP_URL` write cannot land after the test has finished
+ * (cross-test pollution — surfaced by the BL-092 investigation).
+ */
+export type ServerWithMcpReady = HttpServer & { mcpReady?: Promise<number> };
 
 export function startServer(
 
@@ -905,8 +913,10 @@ export function startServer(
     }
   });
 
-  const server = createServer(app);
+  const server: ServerWithMcpReady = createServer(app);
   const wss = new WebSocketServer({ server, path: '/ws' });
+  /** Resolves with the MCP server's bound port. Exposed on the returned server as `mcpReady`. */
+  let mcpReady: Promise<number> | undefined;
 
   // The orchestrator is attach-only: always start the multi-tenant WebSocket MCP server so
   // external MCP clients (codex/claude/gemini workers) can connect and pull turns.
@@ -931,11 +941,21 @@ export function startServer(
     // non-matching upgrades (including `/mcp`), so the MCP endpoint never receives
     // connections and agents silently fall back to the legacy protocol. A dedicated port
     // avoids the collision entirely. (Fix: WS-collision bug found in live test 2026-06-18.)
-    mcpServer.start(process.env.AGENTTALK_MCP_PORT ? Number(process.env.AGENTTALK_MCP_PORT) : 0).then((mcpPort) => {
-      process.env.AGENTTALK_PERSISTENT_MCP_URL = `ws://localhost:${mcpPort}/`;
-      console.log(`[Server] AgentTalk WebSocket MCP server listening on ws://localhost:${mcpPort}/`);
-      console.log(`[Server] AgentTalk MCP server URL set to: ${process.env.AGENTTALK_PERSISTENT_MCP_URL}`);
-    });
+    // The promise is KEPT and exposed as `server.mcpReady` rather than left dangling. Nothing about
+    // production behaviour changes — the port is still requested here and the env var still set in
+    // the same callback at the same moment. What changes is that a caller can now *await* it.
+    // Why that matters: this `.then()` used to be fire-and-forget, so it could mutate `process.env`
+    // AFTER the test that started the server had already finished — cross-test pollution, surfaced
+    // by the BL-092 investigation. It is deliberately NOT awaited here: doing so would delay
+    // `startServer`'s return and change startup behaviour, which is out of scope for a hygiene fix.
+    mcpReady = mcpServer
+      .start(process.env.AGENTTALK_MCP_PORT ? Number(process.env.AGENTTALK_MCP_PORT) : 0)
+      .then((mcpPort) => {
+        process.env.AGENTTALK_PERSISTENT_MCP_URL = `ws://localhost:${mcpPort}/`;
+        console.log(`[Server] AgentTalk WebSocket MCP server listening on ws://localhost:${mcpPort}/`);
+        console.log(`[Server] AgentTalk MCP server URL set to: ${process.env.AGENTTALK_PERSISTENT_MCP_URL}`);
+        return mcpPort;
+      });
 
     const originalDestroy = registry.destroy.bind(registry);
     registry.destroy = async () => {
@@ -1285,5 +1305,6 @@ export function startServer(
     scenarioScheduler?.destroy();
   });
 
+  server.mcpReady = mcpReady;
   return server;
 }
