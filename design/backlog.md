@@ -3014,12 +3014,13 @@ tags: [infrastructure, harness, operator-seat, bl087, observability]
 
 <!-- @item
 id: BL-090
-status: todo
+status: done
 date: 2026-07-27
 epic: null
 tags: [infrastructure, harness, bl087, fail-quiet, correctness]
 -->
-- [todo · both found by the **O-2 worker** while probing BL-088 option (c); reproduced independently] — **Two
+- [done · **MERGED 2026-07-27** (`aca5a49`) · both found by the **O-2 worker** while probing BL-088 option (c);
+  reproduced independently] — **Two
   ways the invariant harness goes QUIET instead of LOUD — the failure mode a safety harness must not have.**
 
   **(1) An unreadable repo skips every check and does not gate.** `diffRepo` emits `repo-unavailable` at
@@ -3043,14 +3044,47 @@ tags: [infrastructure, harness, bl087, fail-quiet, correctness]
   and `diffRepo` compares `before.path` to `after.path`, treating a mismatch as `critical`. Both touch the
   severity model, so both are **behaviour changes needing the PO**, and neither was made on discovery.
 
+  **CLOSED 2026-07-27 — both suggested shapes adopted, PO-approved before implementation.** Plan:
+  `design/bl090-plan.md`. `repo-unavailable` is now `critical` for **either** side unavailable — the sub-decision
+  that mattered, since a mistyped path is unavailable on *both* sides and a one-sided-only rule would have left
+  the reported defect standing. `diffRepo` compares `before.path` to `after.path` first and emits one
+  `path-mismatch` critical, **replacing** the three fictions rather than adding a fourth finding.
+
+  **The planning finding that shrank the fix:** *the early `return` was never the defect — the severity was.* At
+  `critical` the early return is correct: it gates loudly **and** skips comparisons that are meaningless anyway.
+  No restructuring was needed. Also: `snapshotRepo` had recorded `path` all along (`:166/:170/:180`); the caller
+  simply never read it, matching on the key alone.
+
+  **Verified end-to-end, not only by unit bars** — a mistyped `--repo` path now prints `[CRITICAL]
+  repo-unavailable … nothing was checked for this repo` and exits 1; two snapshots of different directories yield
+  exactly one `path-mismatch` critical with `head-moved`/`branch-changed`/`upstream-diverged` gone.
+
+  **9 new bars, 6 of them proven RED against the unfixed source** before being trusted. The other three are
+  parity/contract guards that pass both sides by design — and one of them, `D3b`, is labelled **in-code** as
+  *not* evidence for this fix, because `exitCodeFor` returns 1 for `warn` too, so it never discriminated. Caught
+  by the red-proof step, kept and relabelled rather than quietly deleted.
+
+  **Adjacent, deliberately NOT touched:** `inspection-unavailable` (ports/processes) is `warn` and is the same
+  *"we could not look"* class. It does not return early, so it is not fail-quiet in the same shape, and BL-090
+  named only `diffRepo`. Flagged for the PO, not folded in.
+
+  **Telemetry (task closure):**
+  - task:        BL-090 (+ [[BL-089]] rider)
+  - wall-clock:  2026-07-27 16:37 → 17:29 (~52 min, including the H-0 rung earlier in the session)
+  - budget:      weekly 19%→21% (Δ ~2%), session 5%→29% (Δ ~24%)
+  - gate:        tsc 0, suite **480/480** (75 files; 471 + 9 new), pollution clean
+  - diff:        2 files, +158/-3; commits `851fe27` (fix) · `aca5a49` (merge)
+  - outcome:     MERGED ✅ and PUSHED (PO said both words)
+
 <!-- @item
 id: BL-089
-status: todo
+status: done
 date: 2026-07-27
 epic: null
 tags: [infrastructure, harness, bl087, parsing, correctness]
 -->
-- [todo · found by the **O-2 worker** as an incidental finding, reported and deliberately not fixed;
+- [done · **MERGED 2026-07-27** (`aca5a49`), as a rider on [[BL-090]] · found by the **O-2 worker** as an
+  incidental finding, reported and deliberately not fixed;
   reproduced independently by the operator before filing] — **`snapshotRepo` corrupts the filename of the first
   `git status --porcelain` entry when that entry is unstaged-only.**
 
@@ -3071,6 +3105,20 @@ tags: [infrastructure, harness, bl087, parsing, correctness]
   staged/unstaged transition there is invisible.
 
   **Fix at the parse site, not in `git()`** — `git()`'s `.trim()` is relied on by every other caller.
+
+  **CLOSED 2026-07-27 — fixed exactly there.** Porcelain is two status chars, a space, then the path, so a first
+  line whose third character is *not* a space is one the trim shortened; the parse restores the space before
+  splitting. Verified live against the very checkout this item cites:
+
+  ```
+  snapshotRepo('/Users/fausto/Software/AgentTalk').porcelain
+    → [{ "code": " M", "path": "com.fausto.agenttalk-orchestrator.plist" }]     ✅ after
+    → [{ "code": "M ", "path": "om.fausto.agenttalk-orchestrator.plist"  }]     ❌ before
+  ```
+
+  Two bars: the unstaged-only first entry keeps its filename and its `" M"` code, **and** a well-formed first
+  entry is left alone — the second guards against over-correcting a staged `"M "` into a shifted parse. Merged
+  with [[BL-090]]; telemetry in that item.
 
 <!-- @item
 id: BL-088
