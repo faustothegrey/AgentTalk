@@ -2733,7 +2733,7 @@ date: 2026-07-13
 epic: null
 tags: [api-agents, driver-lifecycle, conversation, tester-finding, rung5, autonomous-authored]
 -->
-- [done · **MERGED 2026-07-27 (`ee1a0bf`-class merge on master; NOT pushed) — RUNG 5: the first fix authored autonomously by a governed claude worker** · closing block at the end · Tester finding 2026-07-13 (TL-007)] — **API agents are not reusable across conversations — the driver stops
+- [done · **MERGED 2026-07-27 (`68f5a9f`, worker commit `6fc38d2`; NOT pushed) — RUNG 5: the first fix authored autonomously by a governed claude worker** · closing block at the end · Tester finding 2026-07-13 (TL-007)] — **API agents are not reusable across conversations — the driver stops
   at conversation_end** — the `InProcessAgentDriver` calls `this.stop()` on `conversation_end` (the BL-033 lifecycle
   path). For an **MCP-attached** agent that's correct (the client shuts down too). For an **API agent** there is no
   client, so the agent goes `busy → ready` (looks reusable) but its **driver is stopped** — the next conversation's
