@@ -887,13 +887,14 @@ tags: [self-hosting, relay, human-in-the-loop, program]
 
 <!-- @item
 id: BL-083
-status: todo
+status: done
 date: 2026-07-27
 epic: null
 tags: [engine, relay, unbounded-loop, provider-budget, in-process-driver, rung5-finding, reviewer-verified]
 -->
-- [todo · **found by the rung-5 autonomous worker and deliberately NOT fixed (Implementer Rule 2); independently
-  REPRODUCED by the reviewer 2026-07-27** · sibling hazard of [[BL-041]] · surfaced while fixing [[BL-047]]] —
+- [done · **MERGED 2026-07-27 (`bf83811`, fix commit `51a9664`) — closing block at the end** · found by the
+  rung-5 autonomous worker and deliberately NOT fixed (Implementer Rule 2); independently REPRODUCED by the
+  reviewer 2026-07-27 · sibling hazard of [[BL-041]] · surfaced while fixing [[BL-047]]] —
   **Two idle in-process agents relay to each other WITHOUT BOUND when no conversation is active — one message is
   enough, and it exhausts the heap.** The reply cap in `assertRelayDeliverable` is only applied when
   `findActiveConversationByAgents` finds a conversation. With **no** active conversation there is no cap, so an
@@ -927,6 +928,83 @@ tags: [engine, relay, unbounded-loop, provider-budget, in-process-driver, rung5-
   agent outside any conversation; or require an active conversation for agent→agent relay entirely. Each changes
   established relay behaviour on shared engine code → **full planning + Gate 1**, and it interacts with [[BL-078]]
   (driver-path failure propagation) and [[BL-028]] (the dead idle timeout, which would not catch this either).
+
+  **PLANNED 2026-07-27 — `design/bl083-plan.md`.** ⚠️ **The framing
+  above is too narrow, and the plan leads with the correction: no team task creates a conversation at all**
+  (verified — `startConversation` is reachable only from the operator HTTP endpoint and the scenario runner;
+  neither `team-coordinator.ts` nor `arbiter-coordinator.ts` creates one; a `planner-worker` probe reported
+  `conversations = 0`). So the missing cap is **not** an idle-agent edge case — it is the standing condition of
+  the **normal team/baton relay path**. That **eliminates two of the three candidate directions listed above**
+  (drop/park out-of-conversation relays, and require an active conversation) because both would break every team
+  baton. Also load-bearing and unstated above: the reply *counter* is conversation-scoped too
+  (`registry.ts:921-931`), so "apply the cap anyway" needs **new state**, not just a relocated check.
+
+  ---
+
+  **CLOSING BLOCK — MERGED 2026-07-27 (`bf83811`; fix `51a9664`), direction D1, PO-approved and PO-authorized
+  to merge/push.**
+
+  **Lead with what the filing got wrong**, because the next reader inherits the item, not the session: BL-083
+  was filed as an **idle-agent** defect. It is not. **No team task creates a conversation** —
+  `startConversation` is reachable only from the orchestrator HTTP endpoint (`server.ts:1061`) and the scenario
+  runner; neither `team-coordinator.ts` nor `arbiter-coordinator.ts` creates one (verified by grep *and* by a
+  live probe: a `planner-worker` team reported `conversations = 0`). So the uncapped relay was the **standing
+  condition of the normal team/baton path**, not an edge case after a conversation ends. That finding
+  **eliminated two of the three fix directions this item proposed** — "drop/park relays outside a conversation"
+  and "require an active conversation for relay" would each have dropped **every team baton**. A third
+  unstated fact shaped the fix: the reply **counter** is conversation-scoped too
+  (`recordConversationMessage`), so "apply the cap anyway" needed **new state**, not a relocated check.
+
+  **What landed (D1).** A pair-scoped relay budget in the Registry, checked in `assertRelayDeliverable` and
+  incremented in `deliverRelayMessage` — the same two places the conversation-scoped cap and counter live, so
+  conversation-backed relays `return` early and are **byte-for-byte untouched**. Ceiling
+  `maxUncappedRelaysPerPair`, default **50** — deliberately generous: an anti-runaway rail, not a conversation
+  cap. **The reset is a correctness requirement, not a knob:** without it the budget is per-process and a
+  long-lived orchestrator would eventually refuse legitimate relays, converting a runaway into a **silent
+  stall — worse than the defect**. Reset fires on `conversation_start` / `team_task_assign` /
+  `team_work_assign` / `fact_collection_begin`, and **deliberately NOT on `healthcheck`** (a separate list from
+  BL-047's `isNewAssignmentEvent`, so routine liveness traffic cannot top the budget up underneath a runaway,
+  and so a change to BL-047's revival list cannot silently move this ceiling's semantics).
+
+  **Evidence, in the order that makes it unfakeable.** The bar was written **before** the fix existed: **RED at
+  12:19** (26 provider calls — it ran to the harness's hard stop, i.e. never stopped on its own), **GREEN at
+  12:23** (7 calls). Two ceilings named apart on purpose — `RELAY_BUDGET` (the fix's) vs `HARD_TEST_STOP` (the
+  harness's escape hatch, so an unfixed build terminates instead of exhausting the heap; the live repro OOMs in
+  ~34s). The **reset test was mutation-checked**: disabling the reset call fails it. One test failed **for the
+  wrong reason** first — asserting `getConversations()` was empty, when the conversation store legitimately
+  loads persisted history — and the **precondition guard** is what exposed it; that assertion was corrected to
+  be per-pair. A fourth test pins that a conversation-backed pair is still governed by its own cap, with
+  `maxRepliesPerAgent` set **above** the budget so a wrongly-applied budget would bite first and fail.
+
+  **Deviations, disposed of (gate 2).** (1) Touched `registry/config.ts`, not named in plan §6 — **accepted**:
+  required by D1's configurable ceiling, which the plan specifies and the PO approved. (2) Touched
+  `apps/orchestrator/src/__tests__/registry-config.test.ts`, crossing §6's "nothing under `apps/`" fence —
+  **accepted**: two tests assert the resolved config's exact shape with `toEqual`, so *any* new key breaks
+  them; the new key + default were added and `toEqual` was **not** loosened to `toMatchObject`. Both were
+  flagged in the commit message rather than absorbed silently.
+
+  **Deliberately NOT touched** (each a show-stopper had it looked necessary): [[BL-078]] (driver-path failure
+  propagation — an exhausted budget throws, and the in-process driver's catch uses `notifyAgentStatus` per
+  BL-077, so propagation stays off), [[BL-028]] (the dead idle timeout), the `conversation_end` `stop()` brake
+  (load-bearing until now, and still in place), and making team tasks create conversations.
+
+  **Process caveat, recorded because it matters more than the result:** one actor held planner, plan reviewer
+  and implementer (resource-scarcity fallback), and **gates 2 and 3 were exercised by the same actor that wrote
+  the code**. What backs this merge is the RED→GREEN ordering, the mutation check and the full suite on the
+  merged mainline — **not** a re-read of the author's own diff. Also: a mid-run alarm that the fix had vanished
+  from the file was a **false alarm** from an unreliable `grep` in the worktree shell; `git diff` settled it.
+  The BL-059 wrong-coordinates trap in yet another costume — the standing answer is unchanged: verify with
+  `git -C`/`git diff`, never ambient shell state.
+
+  **Telemetry (task closure):**
+  - task:        BL-083
+  - wall-clock:  2026-07-27 ~12:05 → 12:27:52 (~23 min, plan + Gate 1 + fix + merge)
+  - budget:      session start `unavailable` (meter `ok:false` all morning); at close claude **weekly 12%**,
+                 **session 16%**. Per-task delta not derivable — do not read the close figure as this task's cost.
+  - gate:        tsc `-b` 0 · suite **414/414** (72 files; baseline 410/410, 71 — the +4 are this task's) ·
+                 pollution clean (no worktrees, no stray processes)
+  - diff:        4 files, **+296/-0** (src +77/-0, purely additive), commits `51a9664`, `bf83811`
+  - outcome:     **MERGED ✅ and PUSHED**
 
 <!-- @item
 id: BL-082
@@ -2776,7 +2854,8 @@ date: 2026-07-13
 epic: null
 tags: [api-agents, driver-lifecycle, conversation, tester-finding, rung5, autonomous-authored]
 -->
-- [done · **MERGED 2026-07-27 (`68f5a9f`, worker commit `6fc38d2`; NOT pushed) — RUNG 5: the first fix authored autonomously by a governed claude worker** · closing block at the end · Tester finding 2026-07-13 (TL-007)] — **API agents are not reusable across conversations — the driver stops
+- [done · **MERGED 2026-07-27 (`68f5a9f`, worker commit `6fc38d2`; pushed — the earlier "NOT pushed" note was
+  stale, corrected 2026-07-27: both commits verified as ancestors of `origin/master`) — RUNG 5: the first fix authored autonomously by a governed claude worker** · closing block at the end · Tester finding 2026-07-13 (TL-007)] — **API agents are not reusable across conversations — the driver stops
   at conversation_end** — the `InProcessAgentDriver` calls `this.stop()` on `conversation_end` (the BL-033 lifecycle
   path). For an **MCP-attached** agent that's correct (the client shuts down too). For an **API agent** there is no
   client, so the agent goes `busy → ready` (looks reusable) but its **driver is stopped** — the next conversation's
