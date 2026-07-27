@@ -1,6 +1,6 @@
 # BL-087 — the infrastructure invariant harness
 
-**Status:** PLAN — awaiting Gate 1 and the PO's answers to §9.
+**Status:** APPROVED at Gate 1, 2026-07-27, with one required amendment (§4a). PO answered all of §9 — see §9.
 **Planner:** Claude, 2026-07-27. **Item:** [[BL-087]] (PO-directed, "crucial").
 **Serves:** the operator-seat handoff (O-0…O-3) — session launching moves to an external agent (Hermes,
 operator only, no workflow participation). **Prerequisite for O-1 and beyond.**
@@ -92,6 +92,40 @@ Expectation file (small, explicit):
 Exit `0` = nothing above `info`. Exit `1` = findings. Exit `2` = usage/internal error — **kept distinct so a
 crashing harness can never be misread as a clean run.**
 
+## 4a. REQUIRED AMENDMENT (Gate 1, plan reviewer, 2026-07-27)
+
+**The process/port half of §3 must REUSE `scripts/check-orchestrator-ports.mjs`, not reimplement it.**
+
+That script ([[BL-023]]) already inspects listening processes and exports its classifier as pure functions —
+`classifyProcess`, `classifyAll`, `sweepFails`, `parseDeclared`, `isOrchestratorIsh`, `STATUS` — precisely so
+another caller can drive it. As written, §3 described this as fresh work.
+
+**Why this is a defect and not a preference:** that classifier encodes knowledge this plan does not.
+`ppid` **cannot** discriminate — the PO's launchd service runs at ppid 1 and an orphaned leak *also* reparents
+to ppid 1, so "ppid 1 ⇒ managed" hides every leak and "ppid 1 ⇒ leaked" reproduces **IP-15**, where a reviewer
+inferred a leak from ppid + a plausible cwd and filed a defect against a service the PO runs deliberately. A
+second, naive classifier would re-commit exactly that error — which is **§7's risk #1, cried wolf**. So reuse
+*is* the mitigation for the plan's own top risk.
+
+**The two tools have different, both-correct semantics — do not conflate them:**
+
+| | `check-orchestrator-ports.mjs` (BL-023) | this harness (BL-087) |
+|---|---|---|
+| Question | "is anything unaccounted-for listening **right now**?" | "did **this run** change the infrastructure?" |
+| Model | **absolute** | **differential** (vs a baseline) |
+| `UNKNOWN` | **fails, always** — "could not tell" never reads as clean | see mapping below |
+
+**Mapping, which preserves BL-023's fail-closed rule rather than weakening it:**
+
+- a process that classifies `UNKNOWN` and **was already in the baseline** → `warn` (pre-existing; this run did
+  not cause it, and the absolute check still fails on it independently)
+- a process that classifies `UNKNOWN` and **appeared during the run** → `critical` (this run produced an
+  unclassifiable listening process — the operator-burning-infrastructure signal itself)
+- a **new** process classifying `LEGITIMATE` or `DECLARED` → `info` (positive evidence exists)
+
+This also inherits BL-023's escape valve for free: `AGENTTALK_SWEEP_DECLARED` clears a false positive without
+touching the harness. Importing a module is not "touching an existing script's behaviour" — §6's fence holds.
+
 ## 5. Interface
 
 ```bash
@@ -146,14 +180,16 @@ Bar written **before** the code, RED before / GREEN after.
 **Row 7 is the one I would not skip.** A read-only claim is exactly the kind of thing that is asserted and never
 tested, and this tool's entire safety case rests on it.
 
-## 9. Open questions for the PO gate
+## 9. PO gate — ANSWERED 2026-07-27
 
-1. **Does the harness gate O-1 automatically, or advise?** I recommend **gate**: a `critical` finding blocks the
-   next operator run until the PO clears it. Advisory-only harnesses get ignored under time pressure.
-2. **Snapshot location** — I propose outside both repos (`/tmp/att-invariant/`), which keeps the repos clean but
-   makes baselines disposable on reboot. The alternative is a gitignored in-repo dir that survives.
-3. **Is the client repo in scope from day one?** I recommend yes: the launcher lives there, so an operator's
-   residue will land there, and it is the repo with **no governance file** ([[BL-086]]).
-4. **Port range** to watch — proposed `3400-3700` plus `9899`.
-5. **Does Hermes run the harness, or only read its output?** I recommend it may **run** it (it is read-only by
-   construction) but never interpret a `critical` away — that disposition is the PO's.
+All five resolved by the PO, each as recommended. These are decisions, not proposals:
+
+1. **Gate, not advise.** A `critical` finding **blocks** the next operator run until the PO clears it. Advisory
+   harnesses get ignored under time pressure, and this one runs unattended.
+2. **Snapshots live outside both repos**, at `/tmp/att-invariant/`. Baselines are disposable on reboot; that is
+   accepted, because a harness that measures repo cleanliness must not write into the repo it measures.
+3. **Both repos from day one** — AgentTalk *and* `agentalk-mcp-client`. The launcher lives in the client repo, so
+   operator residue lands there, and it is the repo with **no governance file** ([[BL-086]]).
+4. **Ports `3400-3700` plus `9899`.** (Taken as the standing default; a config constant, cheap to revisit.)
+5. **Hermes MAY run the harness** — safe by construction — **but may never interpret a `critical` away.** That
+   disposition is the PO's alone. Hermes's reports are observations, unverified until checked against the artifact.
