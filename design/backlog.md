@@ -838,6 +838,38 @@ tags: [self-hosting, relay, human-in-the-loop, program]
 ### Todo (next first)
 
 <!-- @item
+id: BL-081
+status: todo
+date: 2026-07-27
+epic: null
+tags: [launcher, client, process-lifecycle, ladder, autonomy, spike-finding]
+-->
+- [todo · **found live during the BL-080 claude-worker spike, 2026-07-27** · plan/evidence:
+  `design/spike-claude-worker-plan.md` §8 F1 · **not fixed — out of that spike's scope** (Implementer Rule 2)] —
+  **The Bite-0 launcher leaks an orphaned orchestrator: every run leaves a port-holding zombie.**
+  `stopInstance` (`agentalk-mcp-client:scripts/launcher.mjs`) kills the process it spawned — but when
+  `instance.startCommand` is `npm run backend`, the process it spawned is **npm**, and npm's real child
+  (`node dist/index.js`) **survives the kill and is reparented to init**. SIGTERM-then-SIGKILL-after-500ms reaches
+  the wrapper only.
+
+  **Observed:** after the BL-080 run terminated cleanly (`REPORT … "status":"completed"`, launcher exit 0), port
+  3400 was still LISTENing, held by `node dist/index.js` **pid 69131, PPID 1**. Killed by hand.
+
+  **Why it matters more than a stray process suggests.** The autonomous-development ladder *launches repeatedly*,
+  so this accumulates: a second run against the same port cannot boot, and the failure would surface as a
+  confusing "instance not ready within Nms" three steps from its cause. It also silently pollutes the machine
+  during exactly the unattended runs the ladder is meant to make routine. **Every prior rung run that used a
+  `startCommand` has been leaking this way** — earlier rungs addressed an already-running instance instead, which
+  is why it went unseen until now.
+
+  **Fix directions (evidence of what the filer was thinking — NOT the scope; reproduce at the seam first, per the
+  [[BL-076]]/[[BL-077]] lesson that two of three filed diagnoses were wrong where it counted):** spawn the
+  instance `detached` and kill the **process group**; or have `startCommand` invoke `node dist/index.js`
+  directly so the spawned process *is* the server; or capture the server's own pid from its startup output and
+  kill that. Each has a different blast radius on the D1/D3 contract — the anti-hang cap path also calls
+  `stopInstance`.
+
+<!-- @item
 id: BL-072
 status: deferred
 date: 2026-07-18
