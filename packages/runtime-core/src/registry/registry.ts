@@ -118,6 +118,8 @@ export class Registry extends EventEmitter {
   private outboundMessageSeq = 0;
   private relayApprovalMode: RelayApprovalMode = 'off';
   private pendingRelays = new Map<string, PendingRelay>();
+  /** BL-083 — relays delivered per ordered agent pair while NO conversation was active. */
+  private uncappedRelayCounts = new Map<string, number>();
   private pendingRelaySeq = 0;
 
   constructor(
@@ -645,6 +647,11 @@ export class Registry extends EventEmitter {
       if (agent.transport === 'in-process' && this.isNewAssignmentEvent(evtPayload.type)) {
         this.apiDrivers.get(agent.id)?.resume();
       }
+      // BL-083 — a new conversation or task assignment is a fresh start for this agent's
+      // out-of-conversation relay budget. Every transport, since the budget is registry-side.
+      if (this.isRelayBudgetResetEvent(evtPayload.type)) {
+        this.resetRelayBudgetFrom(agent.id);
+      }
       agent.queueTurn(turnPayload);
       if (evtPayload.type === 'conversation_end' && this.agentUsesExecTurns(agent)) {
         agent.queueExecTurn(turnPayload);
@@ -660,6 +667,21 @@ export class Registry extends EventEmitter {
   private isNewAssignmentEvent(type: EventPayload['type']): boolean {
     return (
       type === 'healthcheck' ||
+      type === 'conversation_start' ||
+      type === 'team_task_assign' ||
+      type === 'team_work_assign' ||
+      type === 'fact_collection_begin'
+    );
+  }
+
+  /**
+   * BL-083 — events that begin a fresh unit of work and therefore reset the relay budget.
+   * `healthcheck` is deliberately EXCLUDED (unlike `isNewAssignmentEvent`): it is routine
+   * liveness traffic, and resetting on it would let a periodic healthcheck top the budget up
+   * underneath a runaway.
+   */
+  private isRelayBudgetResetEvent(type: EventPayload['type']): boolean {
+    return (
       type === 'conversation_start' ||
       type === 'team_task_assign' ||
       type === 'team_work_assign' ||
@@ -870,6 +892,42 @@ export class Registry extends EventEmitter {
         this.conversationCoordinator.markConversationCompleted(conversation, `Reply cap reached by ${fromAgentId}`);
         throw new Error(`Conversation ${conversation.id} reply cap reached for ${fromAgentId}`);
       }
+      return;
+    }
+
+    // BL-083 — with no conversation there was previously NO bound at all: the reply cap above
+    // and its counter (in `recordConversationMessage`) are both conversation-scoped, so two
+    // agents relayed to each other forever, and live every iteration is a billed provider call.
+    // That path is not an edge case — NO team task creates a conversation, so this is also the
+    // normal team/baton relay path. Hence a pair-scoped budget that does not depend on
+    // conversations existing. Conversation-backed relays return above, untouched.
+    const budget = this.config.maxUncappedRelaysPerPair;
+    const used = this.uncappedRelayCounts.get(this.relayPairKey(fromAgentId, targetAgent.id)) ?? 0;
+    if (used >= budget) {
+      throw new Error(
+        `Relay budget exhausted for ${fromAgentId} → ${targetAgent.id}: ${used}/${budget} relays with no active conversation. ` +
+          `Start a conversation or assign new work to reset it (see BL-083).`,
+      );
+    }
+  }
+
+  /** BL-083 — ordered pair: A→B and B→A are budgeted separately. */
+  private relayPairKey(fromAgentId: string, toAgentId: string): string {
+    return `${fromAgentId} ${toAgentId}`;
+  }
+
+  /**
+   * BL-083 — a fresh assignment ends the runaway window, so the sender's budgets are cleared
+   * when it is pulled into new work. Without a reset the budget would be per-process and a
+   * long-lived orchestrator would eventually start refusing legitimate relays — turning a
+   * runaway into a silent stall, which is worse than the defect. Deliberately a SEPARATE list
+   * from `isNewAssignmentEvent` (which includes `healthcheck`): coupling the reset to BL-047's
+   * driver-revival list would let a change there silently move this ceiling's semantics.
+   */
+  private resetRelayBudgetFrom(agentId: string): void {
+    const prefix = `${agentId} `;
+    for (const key of this.uncappedRelayCounts.keys()) {
+      if (key.startsWith(prefix)) this.uncappedRelayCounts.delete(key);
     }
   }
 
@@ -928,7 +986,14 @@ export class Registry extends EventEmitter {
         ...(input.baton ? { baton: input.baton } : {}),
         ...(input.workflowEvent ? { workflowEvent: input.workflowEvent } : {}),
       });
+      return;
     }
+
+    // BL-083 — the conversation-scoped reply counter above is the only one that existed, so an
+    // out-of-conversation relay was never counted anywhere. Count it here, at the same point in
+    // the same method, so the budget checked in `assertRelayDeliverable` has something to read.
+    const key = this.relayPairKey(input.fromAgentId, input.toAgentId);
+    this.uncappedRelayCounts.set(key, (this.uncappedRelayCounts.get(key) ?? 0) + 1);
   }
 
   private clearReadinessTimeout(id: string): void {
