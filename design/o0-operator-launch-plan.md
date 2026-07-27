@@ -193,6 +193,23 @@ to an external agent, and must not later be cited as evidence that it does.
 explicit go. Per §5 risk 1 the wall-clock cap is the only live rail. A budget-caused failure is a **budget
 finding, not a bar failure**, and will be reported as such.
 
+## 6c. RE-RUN reference values — captured and committed BEFORE the baseline (run 2)
+
+The corrected ordering, exercised: reference values recorded and **committed here**, *then* the baseline snapshot,
+*then* the launch. **The bar in §6 is unchanged** — this is a re-run against the same rows, not a tuned bar.
+
+| Row | Reference value (run 2) | Source |
+|---|---|---|
+| 2 — HEAD | `a1bfb0d83bc3034923880b1bd019134d56d032b8` | `git -C /private/tmp/att-op-1 rev-parse HEAD` (branch `task-op-1`) |
+| 3 — suite count | **471 tests, 75 files** | `npx vitest run` in `/private/tmp/att-op-1` |
+
+Pre-flight: tsc 0 · suite 471/471 · ports 3500/3600 free · `claude` 2.1.220 · `CLAUDE.md -> AGENT.md` present.
+Run 1's artifacts are preserved at `/tmp/att-invariant/o1-run1/` (they are evidence for the §6b verdict, and the
+config's `recording` would have overwritten them); run 2 records to `runs/o1-readonly-rerun.ndjson`.
+
+**Also corrected this round:** the monitor filter keys on **launcher events only** — never on strings that occur
+in the prompt template the launcher echoes, which is what produced the false `work_refuse` signal in run 1.
+
 ## 6b. O-1 RESULT — 6 of 7 rows PASS, row 6 FAILED as written (2026-07-27 15:54–15:55)
 
 Launched 15:54:19, outcome `completed` at 15:55:22 — **63 seconds**, launcher exit 0, well inside the 15-minute

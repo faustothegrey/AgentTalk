@@ -3,7 +3,7 @@
 
   "instance": {
     "orchestratorUrl": "http://127.0.0.1:3600",
-    "recording": "runs/o1-readonly.ndjson",
+    "recording": "runs/o1-readonly-rerun.ndjson",
     "readyTimeoutMs": 120000,
     "env": {
       "PORT": "3600"
