@@ -2937,6 +2937,47 @@ tags: [ui, observability, reactivity, web, rung4, bl048-family]
   - outcome:     MERGED ✅ (local; NOT pushed — PO says "merge" and "push" as separate words)
 
 <!-- @item
+id: BL-088
+status: todo
+date: 2026-07-27
+epic: null
+tags: [infrastructure, harness, operator-seat, bl087, needs-decision]
+-->
+- [todo · found by **using** the harness on the O-1 run, not by review] — **The invariant harness answers the
+  *damage* question but not the *teardown* question, and cleanup therefore always reports `critical`.**
+
+  **What happens.** Run `infra-invariant check` **after** the runbook's cleanup and it reports
+  `worktree-removed` + `branch-removed` as **`critical`** — every time, on a perfectly clean run. Observed on
+  O-1: after removing the nested `agentalk-task-*` pair and then `att-op-1`, the check against the pre-flight
+  baseline produced four criticals, two of them pure teardown.
+
+  **Why it is not a bug in [[BL-087]].** The asymmetry is *correct*: **additions can be expected, removals never
+  are**, because an operator doing its job adds while an operator burning infrastructure removes. That is the
+  right rule for *"did the run break anything?"* It is the wrong rule for *"did we get back to baseline?"* —
+  where the operator's own worktree and branch are **supposed** to disappear. **One harness, two questions, and
+  only the first is implemented.**
+
+  **Worked around already, at zero code cost:** `design/launch-and-monitor-runbook.md` §10a now says **check
+  BEFORE cleanup**, which answers the damage question correctly and is the question that actually gates the next
+  operator run. So this item is **not urgent** — it is about whether the second question is worth supporting.
+
+  **Options, for the PO/architect to weigh — deliberately NOT pre-decided:**
+  (a) **Leave it.** Document the ordering and never ask the teardown question. Zero code, zero new severity
+      semantics, and the gate keeps working. *Cheapest, and possibly correct.*
+  (b) **A `--after-teardown` mode** where a removal is demoted to `info` **only if** the removed worktree/branch
+      matches the additions allowlist *and* was absent from an earlier pre-worktree baseline. Answers the real
+      question, but needs a third snapshot to be sound, and every added severity path is a place the signal can
+      quietly rot.
+  (c) **Take the baseline before creating the operator worktree**, so teardown returns to a state the baseline
+      actually describes. No code, but it makes the operator's own worktree a *finding* during the run, which is
+      noise on exactly the path that must stay believable.
+
+  **Fence:** whatever is chosen, **removals must not become allowlistable in the ordinary damage check.** That
+  asymmetry is the whole reason the harness can distinguish an operator doing its job from one burning the
+  infrastructure — weakening it to make teardown quiet would hollow out the tool. This is a **behaviour change**
+  and was deliberately **not** made when found (show-stopper fence).
+
+<!-- @item
 id: BL-087
 status: done
 date: 2026-07-27

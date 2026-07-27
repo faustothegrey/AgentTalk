@@ -226,10 +226,24 @@ The cleanup above is a checklist, and step 3 exists only because a nested worktr
 already. So bracket every run with a machine check instead of trusting the sweep:
 
 ```bash
-node scripts/infra-invariant.mjs snapshot --out /tmp/att-invariant/before.json   # BEFORE launching
-# … the run, then the cleanup above …
-node scripts/infra-invariant.mjs check --before /tmp/att-invariant/before.json   # AFTER
+node scripts/infra-invariant.mjs snapshot --out /tmp/att-invariant/before.json   # LAST thing before launching
+# … the run …
+node scripts/infra-invariant.mjs check --before /tmp/att-invariant/before.json   # BEFORE the cleanup above
+# … then the cleanup …
 ```
+
+> **⚠️ Both orderings above are CORRECTIONS made 2026-07-27 after the O-1 run, which got each of them wrong.**
+>
+> **Snapshot LAST, immediately before launching.** Anything the operator does after taking the baseline —
+> including committing its own notes — is indistinguishable from something the worker did. On O-1 a
+> reference-value commit made after the baseline produced a `head-moved` **critical** the worker had nothing to
+> do with, and failed the run's bar.
+>
+> **Check BEFORE cleanup, not after.** Cleanup legitimately *removes* the worktree and branch the run added, and
+> **removals are always `critical` by design** — the asymmetry is right for the *damage* question ("did the run
+> break anything?") and wrong for the *teardown* question ("did we get back to baseline?"). Checking after
+> cleanup reports `worktree-removed` + `branch-removed` as critical every single time. The teardown question is
+> **not supported today** — see [[BL-088]].
 
 Exit **0** clean · **1** findings · **2** the harness itself failed (kept distinct so a crash can never read as a
 clean run). `--json` gives an operator agent something to gate on without parsing prose.
