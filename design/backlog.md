@@ -886,6 +886,32 @@ tags: [self-hosting, relay, human-in-the-loop, program]
 ### Todo (next first)
 
 <!-- @item
+id: BL-085
+status: done
+date: 2026-07-27
+epic: null
+tags: [tooling, backlog-parser, api, silent-failure, observability, po-directed]
+-->
+- [done · **MERGED 2026-07-27** · found while filing [[BL-084]]; the PO chose the fix over filing a note] —
+  **`GET /api/backlog` derived the WRONG title for any item whose `[status …]` tag contains a `[[wiki-link]]`
+  followed by bold text — silently, with zero warnings.** `deriveTitle` strips the leading status tag so a bold
+  span inside it is not mistaken for the title, but it stripped with `\[[^\]]*\]`, which ends at the **first**
+  `]` — the inner `]` of `[[BL-nnn]]`. Everything after the link stayed in the body, so bold text *inside the
+  tag* won. Observed live: [[BL-084]] rendered as `·` and [[BL-078]] as a mid-sentence fragment, while
+  `backlog:check` reported **0 warnings** throughout — the failure mode that matters here, since the API and the
+  future UI read this field and nothing flags it. Wiki-links in a status tag are *idiomatic* in this file
+  ("sibling of [[BL-041]]"), so the trap was waiting for anyone who added bold after one; BL-083 escaped it by
+  luck, not construction.
+
+  **Fix:** allow whole `[[…]]` groups inside the tag, keeping the lenient original as a fallback for an
+  unbalanced single bracket the strict pattern would decline to match — so the change can only ever *fix* a
+  title, never take one away. **Evidence:** bar written first, RED before the fix (title derived as `'real
+  fix'`); all **84** derived titles diffed before/after across the real backlog — **identical**, no regression;
+  then the two workaround-contorted bullets were **restored to their natural prose** (links and bold back inside
+  the status tags — the exact shape that broke) and the titles stayed correct, which is the real-data proof the
+  unit test alone cannot give. Gate: `tsc -b` 0 · suite **416/416** (72 files). Commits: `<merge>`.
+
+<!-- @item
 id: BL-083
 status: done
 date: 2026-07-27
@@ -2819,9 +2845,10 @@ date: 2026-07-27
 epic: null
 tags: [engine, failure-propagation, m03, typed-reason, lb67, unblocks-bl078, unblocks-bl028, needs-plan]
 -->
-- [todo · filed 2026-07-27 by PO decision, out of the BL-078 decision brief (`design/bl078-decision.md` §5c)
-  · unblocks BL-078 AND BL-028 — both are the same missing primitive seen from two directions] —
-  **Give an agent's non-reply a TYPED REASON, and propagate M03 failure only for the fault-class ones.** Today `error` is **one undifferentiated bucket**: the system cannot tell
+- [todo · **filed 2026-07-27 by PO decision, out of the [[BL-078]] decision brief
+  (`design/bl078-decision.md` §5c)** · **unblocks [[BL-078]] AND [[BL-028]]** — both are the same missing
+  primitive seen from two directions] — **Give an agent's non-reply a TYPED REASON, and propagate M03 failure
+  only for the fault-class ones.** Today `error` is **one undifferentiated bucket**: the system cannot tell
   *"this agent stopped for a normal reason"* from *"this agent is broken."* That single gap is what blocks two
   separate items, and it is why neither can be fixed alone:
   - **[[BL-078]]** — routing driver-path errors through `setAgentStatus` would fire `handleAgentFailure` (which
@@ -2851,10 +2878,10 @@ date: 2026-07-27
 epic: null
 tags: [engine, failure-propagation, api-agents, in-process-driver, m03, question, bl077-family, deferred-on-bl084]
 -->
-- [deferred · PO DECIDED 2026-07-27: option (a) — leave as-is and document the asymmetry. Reopen condition:
-  BL-084 done (the typed reason), which is what makes safe propagation possible. Analysis:
-  `design/bl078-decision.md` · filed from BL-077, 2026-07-27 — a show-stopper flagged and deliberately not
-  decided by the implementer] —
+- [deferred · **PO DECIDED 2026-07-27: option (a) — leave as-is and document the asymmetry.** Reopen condition:
+  **[[BL-084]] done** (the typed reason), which is what makes safe propagation possible. Analysis:
+  `design/bl078-decision.md` · filed from BL-077, 2026-07-27 — a **show-stopper flagged and deliberately not
+  decided** by the implementer] —
   **Should a driver-path agent error propagate failure? Today it silently does not** — M03 failure propagation runs
   off `Registry.setAgentStatus()`, which calls `teamCoordinator.handleAgentFailure()` when an agent enters `error`
   (`registry.ts:224-226`). But **`InProcessAgentDriver` never went through that method** — it set status directly —
