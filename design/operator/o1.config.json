@@ -1,0 +1,40 @@
+{
+  "_comment": "O-1 launch config — produced by O-0 (design/o0-operator-launch-plan.md) and NOT YET LAUNCHED. Validated against validateConfig() in agentalk-mcp-client/lib/bite0-launcher.mjs. Absolute paths are machine-specific by necessity: startCommand.cwd resolves against the CLIENT root when relative, so a relative path here would silently point somewhere else.",
+
+  "instance": {
+    "orchestratorUrl": "http://127.0.0.1:3600",
+    "recording": "runs/o1-readonly.ndjson",
+    "readyTimeoutMs": 120000,
+    "env": {
+      "PORT": "3600"
+    },
+    "startCommand": {
+      "command": "npm",
+      "args": ["run", "backend"],
+      "cwd": "/Users/fausto/Software/AgentTalk"
+    }
+  },
+
+  "agents": [
+    {
+      "id": "op-worker-1",
+      "provider": "claude",
+      "model": "opus",
+      "executionMode": "persistent",
+      "workdir": "/private/tmp/att-op-1",
+      "readyTimeoutMs": 120000
+    }
+  ],
+
+  "goal": "Report this repository's current HEAD commit sha and the total number of tests in the suite, giving for each the exact command you ran and its actual output. Change no files.",
+
+  "cap": {
+    "wallClockMs": 900000,
+    "pollIntervalMs": 10000,
+    "meter": {
+      "url": "http://127.0.0.1:9899",
+      "provider": "claude",
+      "maxPercentDelta": 15
+    }
+  }
+}
