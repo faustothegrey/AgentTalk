@@ -776,6 +776,45 @@ tags: [workflow, scrum-master, retrospective, growth]
 ### Doing
 
 <!-- @item
+id: BL-080
+status: doing
+date: 2026-07-27
+epic: null
+tags: [self-hosting, ladder, spike, claude-worker, governance, agent-md]
+-->
+- [doing · **PO go 2026-07-27 (`[PO]`)** · plan: `design/spike-claude-worker-plan.md` (Gate 1 exercised by the PO
+  directly — sole available agent must not review its own plan) · below rung 5: a derisking spike, not a rung] —
+  **Can a `claude` worker, governed by AGENT.md itself, do autonomous dev work inside an AgentTalk session?**
+  The PO's long-horizon goal (2026-07-27): **run AgentTalk's own development inside an AgentTalk session**, the
+  in-session agent inheriting the configuration built up so far, starting with **one agent that plans, implements
+  and reviews alone**. Rung 4 proved the loop — but with a **goose** worker and a hand-written 3,000-word goal blob
+  as its only governance. The PO's chosen shape changes the provider to **claude** (model: **opus**) and the
+  governance source to **AGENT.md itself**, via the `CLAUDE.md` symlink. **Both changes are unproven**, so this
+  spike answers them before an epic is built on top of them.
+
+  **PO decisions this implements:** provider **claude/opus** · **agent commits and stops, PO merges from the
+  terminal** (no approval channel built) · **PO states a goal, the agent decomposes** (not exercised here — this
+  spike's goal is trivial by design) · **rules yes, primer ritual no**.
+
+  **Five questions, each needing pasted evidence** (full criteria in the plan §2): **Q1** does the worker actually
+  inherit `AGENT.md` in headless `-p` mode (probed with the forbidden-word convention — *"spawn"→"launch"* — a fact
+  present only in AGENT.md and not guessable)? **Q2** does the turn-1 primer gate **halt** it — the real hazard,
+  since both `.claude/settings.json`'s SessionStart hook *and AGENT.md's own text* order a handshake-and-STOP, and
+  `implementer-primer.md` carries a **fresh key** a storeless worker would read as unconsumed? **Q3** does it write
+  files and commit inside its worktree (proven for goose, not claude; checked at **both** paths per
+  [[BL-053]]/[[BL-059]])? **Q4** does the round-trip complete with a readable report (does [[BL-076]] hold for a
+  claude worker)? **Q5** what does it cost, measured serially so attribution holds ([[LB-11]])?
+
+  **Lands no fix and touches no product source** — the deliverable is answers. An honest "this does not work, and
+  here is why" is a complete spike. **Q2 is informative either way:** if suppressing the hook via
+  `AGENTTALK_SKIP_PRIMER` suffices, the PO's "rules yes, ritual no" decision is implemented by one env var; if the
+  worker stops anyway, the cause is localised to **AGENT.md's text**, which shapes the next increment.
+  **Hazard named, not buried:** the run puts a genuinely autonomous claude with `--permission-mode
+  bypassPermissions` and write access into a worktree — contained by cwd, bounded by a trivial goal — and the
+  **10-minute wall-clock cap is the only anti-hang rail**, because the idle timeout is still dead code
+  ([[LB-70]]/[[BL-028]]).
+
+<!-- @item
 id: BL-030
 status: done
 date: 2026-07-11
