@@ -4653,14 +4653,15 @@ autonomy: eligible
 
 <!-- @item
 id: BL-095
-status: todo
+status: done
 date: 2026-07-27
 epic: null
-tags: [build, typecheck, tests, tech-debt, o4-vehicle]
+tags: [build, typecheck, tests, tech-debt, o4-vehicle, agent-authored]
 autonomy: human-only
 -->
-- [todo · carried unfiled in the planner primer for days as "a judgement call"; **filed 2026-07-27** when it was
-  measured · **the vehicle for operator rung O-4**] — **Test files are never typechecked, and 48 real type errors
+- [done 2026-07-27 · merged `e1b5c6f` · **authored by a governed worker under a Hermes-operated launch (O-4)** ·
+  carried unfiled in the planner primer for days as "a judgement call"; filed when it was
+  measured · the vehicle for operator rung O-4] — **Test files are never typechecked, and 48 real type errors
   are hiding behind that.** `apps/orchestrator/tsconfig.json:9` reads `"exclude": ["src/__tests__/**"]`, so
   `npx tsc -b` — the gate every task in this project reports as proof of correctness — **never looks at a single
   test file.** 25 test files, all invisible. **Measured, not estimated** (2026-07-27, exclusion removed, counted,
@@ -4677,6 +4678,45 @@ autonomy: human-only
   **Note on the marking:** rung O-4 hands this to an agent *under human supervision as a deliberate experiment* —
   that is **not** the same as autonomous selection, and the field stays `human-only` so the eligibility signal
   keeps telling the truth. ([[BL-094]] remains the only `eligible` item.)
+
+  **CLOSED 2026-07-27 — merged `e1b5c6f` (PO-gated). Written by a GOVERNED WORKER under a Hermes-operated launch
+  (rung O-4), in 4 incremental commits (`6895ab6` → `7862e0b`), 8 files, +58/-21, ~9 minutes.**
+  **⚠️ THE GATE IS NOW STRICTER FOR EVERYONE.** From this merge, a type error in a test file **fails `tsc -b`**.
+  That is the whole point of the change, and it is worth knowing *before* the next red surprises someone.
+  **Verified by the reviewer by RUNNING, not by reading the operator's report:**
+  - **W1 proven by MUTATION, not by a green light.** A deliberate `const x: number = "string"` injected into a
+    test file was **caught** by `tsc -b` (`TS2322` + `TS6133`), then reverted — run on the branch **and again on
+    the merged mainline**. *"48 → 0 and tsc clean" proves nothing on its own: the gate was green this morning too,
+    precisely BECAUSE it was blind.* This is the check that distinguishes a live gate from a quiet one.
+  - **W2 (mandatory — no test weakened):** every changed assertion is `items[0].x` → `items[0]!.x` — **subject**
+    access, **predicate untouched**. If the value were genuinely undefined the test still throws and still fails.
+  - suite **496/496** across 76 files · no production file touched (7 test files + `tsconfig.json`).
+  - **The `dist/` emit side effect the worker escalated rather than decided:** checked — `dist/backlog.js` is
+    still at its expected path and `npm run backlog:check` still runs. That mattered:
+    `scripts/validate-backlog.mjs` imports from exactly that path, so a shifted output root would have broken the
+    backlog gate silently. **Right instinct: it flagged the consequence it could see and declined to rule on it.**
+  **The worker beat its rows twice, and both are worth imitating.** (1) `scenario-runner.test.ts` had
+  `provider: 'unknown-attach'`, deliberately outside the `AgentProvider` union. Changing it to a *real* provider
+  typechecks, keeps the suite green, and **silently destroys the test**, whose entire point is a provider the
+  engine cannot recognise. It cast with an explanatory comment instead — **the exact [[IP-1]] trap the bar was
+  built around, and it was live.** (2) It found `registry.test.ts` capturing `AGENTTALK_ATTACH_MODE` and never
+  restoring it (an unconditional `delete` in `afterEach`, destroying the value for everything downstream), fixed
+  it in the correct direction, and **declared it** rather than burying it.
+  **Judgement point, not a defect:** 28 identical `removeAgent: vi.fn()` additions are mechanical repetition —
+  if `TeamCoordinatorDeps` grows again, all 28 sites break again. A shared factory is the real fix; out of scope
+  here, noted not charged.
+  **What this run did NOT establish — recorded so it cannot be misread later:** O-4 was built to observe an
+  **abnormal termination**, and the worker finished in ~9 minutes, so **the cap never fired**. The long-run
+  failure class is untested → **[[BL-096]]**. The sizing error was the **reviewer's**: 48 counted *repetition*,
+  not size, and the distribution proving it was printed in this very item.
+  **Telemetry (task closure):**
+  - task:        BL-095 (operator rung O-4)
+  - wall-clock:  2026-07-27 22:47:59 → 22:57:03 run (**9m 04s**, cap 30m — never reached); merge ~23:2x
+  - budget:      claude weekly 30%→32% (Δ ~2%), session 53% at worker close; **no cap fired** (wall-clock or meter)
+  - gate:        tsc 0 **and mutation-checked live**, suite 496/496, backlog 96 items/0 warnings, harness
+    2 INFO / **0 critical**, port 3600 released with no orphaned child, no strays
+  - diff:        8 files, +58/-21; commits `6895ab6` `e0b96c6` `d052b10` `7862e0b` · `e1b5c6f` (merge)
+  - outcome:     **MERGED ✅** — not pushed; push is the PO's.
 
 <!-- @item
 id: BL-096
