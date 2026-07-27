@@ -886,6 +886,49 @@ tags: [self-hosting, relay, human-in-the-loop, program]
 ### Todo (next first)
 
 <!-- @item
+id: BL-083
+status: todo
+date: 2026-07-27
+epic: null
+tags: [engine, relay, unbounded-loop, provider-budget, in-process-driver, rung5-finding, reviewer-verified]
+-->
+- [todo · **found by the rung-5 autonomous worker and deliberately NOT fixed (Implementer Rule 2); independently
+  REPRODUCED by the reviewer 2026-07-27** · sibling hazard of [[BL-041]] · surfaced while fixing [[BL-047]]] —
+  **Two idle in-process agents relay to each other WITHOUT BOUND when no conversation is active — one message is
+  enough, and it exhausts the heap.** The reply cap in `assertRelayDeliverable` is only applied when
+  `findActiveConversationByAgents` finds a conversation. With **no** active conversation there is no cap, so an
+  agent answers, relays to its peer, which answers, relays back — forever.
+
+  **Reviewer's independent reproduction (not the worker's word).** Two `provider: 'api'` agents, activated, **no
+  conversation ever created**, one `message_received` naming a peer, provider call mocked:
+  ```
+  FATAL ERROR: Reached heap limit — Allocation failed (JavaScript heap out of memory)
+  Vitest caught 1 unhandled error … Error: Worker exited unexpectedly
+  Duration 33.75s
+  ```
+  The probe never even reached its measurement line. The rung-5 worker independently measured **38 provider calls
+  in 300ms** before its own run OOM'd. **Reproduced on `master` WITH the BL-047 fix merged**, which confirms the
+  worker's characterisation: the defect is **pre-existing and independent** — BL-047 neither introduced it nor
+  widened it.
+
+  **Why this is more serious than an unbounded loop in a test.** In the probe the provider call is mocked, so it
+  merely spins; **live, every iteration is a real billed API call**, with no conversation, no cap and no operator
+  action required to start it. That is [[BL-041]]'s hazard class (an unbounded loop burning real provider budget)
+  on the **relay** path instead of the planning path. It is reachable **without any conversation having existed**.
+
+  **What made it invisible until now:** `InProcessAgentDriver.stop()` at `conversation_end` was **silently acting
+  as the brake** — nobody had designed it as one. That is exactly why BL-047's option 2 ("never stop the driver")
+  was refuted on evidence rather than adopted: removing the accidental brake exposes this. **So the fix merged for
+  BL-047 is safe *because* it left the brake in place**, and this item is the real defect underneath.
+
+  **The open question is a behaviour decision for the PO, not an implementation detail:** should an idle agent with
+  no active conversation answer-and-relay *at all*? Candidate directions (evidence of thinking, **not** scope —
+  reproduce before designing): apply a reply cap even with no conversation found; drop/park relays addressed to an
+  agent outside any conversation; or require an active conversation for agent→agent relay entirely. Each changes
+  established relay behaviour on shared engine code → **full planning + Gate 1**, and it interacts with [[BL-078]]
+  (driver-path failure propagation) and [[BL-028]] (the dead idle timeout, which would not catch this either).
+
+<!-- @item
 id: BL-082
 status: done
 date: 2026-07-27
