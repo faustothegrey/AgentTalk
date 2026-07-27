@@ -54,6 +54,31 @@ export class InProcessAgentDriver {
     // or just let it hang until destroy.
   }
 
+  /**
+   * BL-047 — bring a stopped loop back for a NEW assignment.
+   *
+   * `conversation_end` stops the loop (see handleTurn). For an attached agent that is the
+   * end of the road: the external client shut down with the conversation. For an in-process
+   * agent there is no client — this loop IS the agent — so the agent went on advertising
+   * `ready` with nothing behind it, and the next conversation's startup healthcheck was
+   * queued and never pulled (TL-007: `did not respond to healthcheck within 30000ms`).
+   *
+   * Reviving here rather than never stopping is the deliberate choice: it keeps the
+   * post-conversation window exactly as it is today. Turns queued while the loop is stopped
+   * are NOT lost — `awaitTurn` drains `pendingTurns` first, so the healthcheck that arrived
+   * just before this call is the first thing the restarted loop picks up.
+   *
+   * No-op when already running, so it is safe to call on every inbound assignment.
+   */
+  resume(): void {
+    if (this.isRunning) return;
+    this.isRunning = true;
+    // The conversation runtime was already reset by `endConversation()`, and the completer
+    // is stateless for the API path — so this is the same idle state `start()` leaves behind,
+    // minus the status transitions (the agent is already `ready`).
+    void this.loop();
+  }
+
   private async loop(): Promise<void> {
     while (this.isRunning) {
       try {
@@ -100,6 +125,10 @@ export class InProcessAgentDriver {
         this.registry.notifyAgentStatus(this.agent, 'ready');
       }
       this.agent.currentTurnId = undefined;
+      // BL-047: the loop still stops here, for EVERY transport — deliberately. Leaving it
+      // running instead lets the ended conversation's in-flight relays keep ping-ponging
+      // (see `resume()` and the note in registry.sendProtocol). An in-process agent is
+      // brought back by `resume()` when it is pulled into NEW work.
       this.stop();
       return;
     }

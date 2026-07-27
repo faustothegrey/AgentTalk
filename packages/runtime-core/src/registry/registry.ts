@@ -629,11 +629,42 @@ export class Registry extends EventEmitter {
         turnPayload.turnId = evtPayload.messageId;
       }
       
+      // BL-047: an in-process agent whose driver stopped at `conversation_end` is still
+      // `ready`, but its loop is gone — so this turn would be queued and never pulled, and
+      // the caller would sit on it until timeout (TL-007 saw this as a second conversation
+      // failing its startup healthcheck). Revive the loop before enqueuing, but ONLY for
+      // events that constitute a NEW assignment. `message_received` is deliberately excluded:
+      // a relay still in flight when the conversation ended must stay ignored, exactly as it
+      // is today. Reviving on it instead lets two idle agents relay to each other without
+      // bound — once no conversation is active, `assertRelayDeliverable` has no reply cap to
+      // apply. That uncapped-relay path is pre-existing and NOT touched here; see the note
+      // filed with BL-047.
+      // `apiDrivers` holds drivers for the attached transport too, so the transport guard is
+      // load-bearing: an attached agent's `conversation_end` stop is correct and final (its
+      // client is gone), and reviving that loop would drive a dead client. In-process only.
+      if (agent.transport === 'in-process' && this.isNewAssignmentEvent(evtPayload.type)) {
+        this.apiDrivers.get(agent.id)?.resume();
+      }
       agent.queueTurn(turnPayload);
       if (evtPayload.type === 'conversation_end' && this.agentUsesExecTurns(agent)) {
         agent.queueExecTurn(turnPayload);
       }
     }
+  }
+
+  /**
+   * BL-047 — events that pull an agent into new work (as opposed to continuing, or trailing
+   * off, an existing conversation). These are the points at which a stopped in-process
+   * driver must be revived.
+   */
+  private isNewAssignmentEvent(type: EventPayload['type']): boolean {
+    return (
+      type === 'healthcheck' ||
+      type === 'conversation_start' ||
+      type === 'team_task_assign' ||
+      type === 'team_work_assign' ||
+      type === 'fact_collection_begin'
+    );
   }
 
   private agentUsesExecTurns(agent: Agent): boolean {

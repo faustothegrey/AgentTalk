@@ -2744,6 +2744,36 @@ tags: [api-agents, driver-lifecycle, conversation, tester-finding]
   terminate the CLI-client path). Low-severity workaround today: create fresh API agents per conversation (cheap). Note:
   the agent `status` (`ready`) is misleading — it does not reflect the stopped driver. Source: TL-007, decision note.
 
+  **Implementation delivered on branch `task-rung5` 2026-07-27 (awaiting review — NOT merged).** Diagnosis confirmed
+  by reproduction, not by reading: a regression test drives the **real** `Registry` through the real conversation path
+  (only the provider HTTP call mocked) and fails pre-fix with the exact TL-007 error string. One sharpening of the
+  item's own diagnosis: the healthcheck is not merely "never processed" — when `stop()` lands while the loop is
+  *mid-turn* (the `conversation_end` case) the loop exits its `while` cleanly, so the next turn simply sits in
+  `pendingTurns` with nobody to drain it.
+  **Fix — option 1 of the two listed above** (`resume()` the driver when the agent is pulled into new work), *not*
+  option 2. Option 2 was implemented first and **rejected on evidence**: leaving the loop running made the full suite
+  **OOM**. Cause, traced with an instrumented run rather than guessed — once a conversation is marked completed,
+  `findActiveConversationByAgents` returns nothing, so `assertRelayDeliverable` has **no reply cap to apply** and the
+  ended conversation's in-flight relays ping-pong between the two now-idle agents without bound (38 provider calls in
+  300ms). `stop()` had been silently acting as the brake on that. Option 1 keeps the post-conversation window
+  byte-for-byte as it is today. Purely **additive** diff (+60 lines, 2 source files): `InProcessAgentDriver.resume()`
+  plus a revive hook in `Registry.sendProtocol`, gated on `transport === 'in-process'` **and** on the event being a
+  *new assignment* (`healthcheck` · `conversation_start` · `team_task_assign` · `team_work_assign` ·
+  `fact_collection_begin`) — `message_received` is deliberately excluded, which is what keeps the storm out.
+  Note the hook also covers the **team-task** path, which never healthchecks at all and had the same dead-driver
+  exposure. Bars: `tsc -b` exit 0; suite **410/410** (baseline **407**, +3 new tests; the "404" in BL-077's telemetry
+  is stale); the new bar is **mutation-checked** (no-op the `resume()` body ⇒ RED with
+  `did not respond to healthcheck within 500ms`).
+
+  **⚠️ Adjacent defect found, deliberately NOT fixed (Implementer Rule 2) — needs its own item.** The uncapped relay
+  above is **pre-existing and independent of BL-047**: any two in-process agents with *no active conversation* will
+  relay to each other unbounded, because the reply cap in `assertRelayDeliverable` only applies when a conversation is
+  found. It is reachable today without any conversation ever having existed (send a direct `message_received` naming a
+  peer), so this is not something the BL-047 fix introduces — the fix is merely careful not to widen it. This is
+  **BL-041's class of hazard** (unbounded loop burning real provider budget) on the relay path rather than the
+  planning path. Whether an idle agent should answer-and-relay at all is a **behaviour question for the PO/reviewer**,
+  which is why it was not touched here. Recommend filing as a new backlog item.
+
 <!-- @item
 id: BL-041
 status: done
