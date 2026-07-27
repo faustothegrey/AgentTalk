@@ -4651,4 +4651,31 @@ autonomy: eligible
   BL-092 itself, which is why this is marked `autonomy: eligible`. **Do NOT take option C** (bind `127.0.0.1`):
   still a Rule-2 show-stopper, `server.ts:967`, the UI is browsed over the LAN.
 
+<!-- @item
+id: BL-095
+status: todo
+date: 2026-07-27
+epic: null
+tags: [build, typecheck, tests, tech-debt, o4-vehicle]
+autonomy: human-only
+-->
+- [todo · carried unfiled in the planner primer for days as "a judgement call"; **filed 2026-07-27** when it was
+  measured · **the vehicle for operator rung O-4**] — **Test files are never typechecked, and 48 real type errors
+  are hiding behind that.** `apps/orchestrator/tsconfig.json:9` reads `"exclude": ["src/__tests__/**"]`, so
+  `npx tsc -b` — the gate every task in this project reports as proof of correctness — **never looks at a single
+  test file.** 25 test files, all invisible. **Measured, not estimated** (2026-07-27, exclusion removed, counted,
+  reverted): **48 errors** — 30 × `TS2345` (argument not assignable), 14 × `TS2532` (object possibly undefined),
+  2 × `TS6133`, 1 × `TS6196`, 1 × `TS2322`. This is why the [[BL-092]] worker had to hand-roll an explicit
+  typecheck to prove it introduced no new errors: the standard gate could not tell it.
+  **Fix:** drop the exclusion, then resolve what surfaces — incrementally, committing each group, with the suite
+  green at every commit.
+  **⛔ The trap that makes this `human-only`:** the lazy fix for `TS2532` is `!` everywhere and the lazy fix for
+  `TS2345` is to loosen the assertion that no longer typechecks — which is [[IP-1]] (*green by subtraction*)
+  wearing a compiler's clothes. **A type error is not licence to weaken a test.** Whoever does this must be able
+  to tell "the test was always wrong about a type" from "the test asserts something inconvenient", and that
+  judgement is the whole job. Runtime behaviour must not change; suite stays **496/496**.
+  **Note on the marking:** rung O-4 hands this to an agent *under human supervision as a deliberate experiment* —
+  that is **not** the same as autonomous selection, and the field stays `human-only` so the eligibility signal
+  keeps telling the truth. ([[BL-094]] remains the only `eligible` item.)
+
 *(add new items above this line)*
