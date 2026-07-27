@@ -739,8 +739,8 @@ describe('startServer', () => {
       expect(response.status).toBe(200);
       const tasks = (await response.json()) as Array<{ teamId: string; description: string }>;
       expect(tasks).toHaveLength(1);
-      expect(tasks[0].description).toBe('count to three');
-      expect(tasks[0].teamId).toBe(teamId);
+      expect(tasks[0]!.description).toBe('count to three');
+      expect(tasks[0]!.teamId).toBe(teamId);
     });
 
     // The row the item exists for: the task must survive the loss of
@@ -759,7 +759,7 @@ describe('startServer', () => {
       expect(response.status).toBe(200);
       const tasks = (await response.json()) as Array<{ description: string }>;
       expect(tasks).toHaveLength(1);
-      expect(tasks[0].description).toBe('count to three');
+      expect(tasks[0]!.description).toBe('count to three');
     });
 
     // BL-056 D3 — the row `ui-team-run-in-main` earned by getting it wrong.
@@ -789,7 +789,7 @@ describe('startServer', () => {
       const response = await fetch(`${baseUrl}/api/teams/${teamB}/tasks`);
       const tasks = (await response.json()) as Array<{ description: string }>;
       expect(tasks).toHaveLength(1);
-      expect(tasks[0].description).toBe('task for B');
+      expect(tasks[0]!.description).toBe('task for B');
     });
   });
 

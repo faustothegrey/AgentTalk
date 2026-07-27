@@ -3,6 +3,7 @@ import { rmSync } from 'fs';
 import { Registry } from '@agenttalk/runtime-core/registry/registry';
 import { ScenarioRunner } from '@agenttalk/runtime-scenarios/scenarios/scenario-runner';
 import type { ScenarioDefinition } from '@agenttalk/runtime-scenarios/scenarios/types';
+import type { AgentProvider } from '@agenttalk/contracts/types';
 
 vi.mock('child_process', () => ({
   default: { execSync: vi.fn() },
@@ -98,7 +99,11 @@ describe('ScenarioRunner', () => {
 
   const attachScenario: ScenarioDefinition = {
     name: 'Attach Scenario',
-    agents: [{ id: 'agent-ext', provider: 'unknown-attach', model: 'test' }],
+    // Deliberately OUTSIDE the AgentProvider union: the point of this test is a
+    // provider the engine does not recognise, so it never becomes ready. The cast
+    // preserves that exact value -- narrowing it to a real provider would test
+    // something else entirely.
+    agents: [{ id: 'agent-ext', provider: 'unknown-attach' as AgentProvider, model: 'test' }],
   };
 
   it('should fail with timeout when an attach agent never becomes ready', async () => {

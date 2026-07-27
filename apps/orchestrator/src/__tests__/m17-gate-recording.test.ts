@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { Registry } from '@agenttalk/runtime-core/registry/registry';
 import { startServer } from '../server.js';
 import type { SessionRecorder } from '@agenttalk/observability/recordings/session-recorder';

@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { TeamCoordinator } from '@agenttalk/runtime-core/registry/team-coordinator';
 import { Agent } from '@agenttalk/runtime-core/agents/agent';
-import type { Team, TeamMember } from '@agenttalk/contracts/types';
+import type { TeamMember } from '@agenttalk/contracts/types';
 
 describe('TeamCoordinator - Agent Shutdown', () => {
   let teamCoordinator: TeamCoordinator;

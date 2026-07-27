@@ -146,7 +146,11 @@ describe('Registry', () => {
     });
 
     afterEach(() => {
-      delete process.env.AGENTTALK_ATTACH_MODE;
+      if (originalAttachMode === undefined) {
+        delete process.env.AGENTTALK_ATTACH_MODE;
+      } else {
+        process.env.AGENTTALK_ATTACH_MODE = originalAttachMode;
+      }
     });
 
     it('should set agent to terminated on clean exit (code 1000)', async () => {

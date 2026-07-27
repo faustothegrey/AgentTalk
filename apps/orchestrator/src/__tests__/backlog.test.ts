@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { activeBacklogItems, parseBacklog, readBacklog } from '../backlog.js';
+import type { BacklogItem } from '../backlog.js';
 
 describe('parseBacklog', () => {
   it('parses a well-formed item with all header fields', () => {
@@ -52,12 +53,12 @@ describe('parseBacklog', () => {
 
     const { items, warnings } = parseBacklog(md);
     expect(warnings).toEqual([]);
-    expect(items[0].title).toBe('Should a driver-path agent error propagate failure?');
+    expect(items[0]!.title).toBe('Should a driver-path agent error propagate failure?');
   });
 
   it('still derives a title when the status tag holds only a wiki-link, and when it holds none', () => {
     const mk = (bullet: string) =>
-      parseBacklog(['<!-- @item', 'id: BL-901', 'status: todo', '-->', bullet].join('\n')).items[0]
+      parseBacklog(['<!-- @item', 'id: BL-901', 'status: todo', '-->', bullet].join('\n')).items[0]!
         .title;
 
     // Wiki-link, no bold inside the tag — worked before only by luck (nothing bold followed it).
@@ -85,10 +86,10 @@ describe('parseBacklog', () => {
     ].join('\n');
 
     const { items } = parseBacklog(md);
-    expect(items[0].promotedTo).toBe('M11');
-    expect(items[0].epic).toBeNull();
-    expect(items[0].date).toBeNull();
-    expect(items[0].tags).toEqual([]);
+    expect(items[0]!.promotedTo).toBe('M11');
+    expect(items[0]!.epic).toBeNull();
+    expect(items[0]!.date).toBeNull();
+    expect(items[0]!.tags).toEqual([]);
   });
 
   it('skips content with no @item header (intro, tables, DONE archives)', () => {
@@ -122,7 +123,7 @@ describe('parseBacklog', () => {
     const md = ['<!-- @item', 'id: BL-010', 'status: deferred', '-->', '- [deferred · parked] — **test**'].join('\n');
     const { items, warnings } = parseBacklog(md);
     expect(items).toHaveLength(1);
-    expect(items[0].status).toBe('deferred');
+    expect(items[0]!.status).toBe('deferred');
     expect(warnings.filter((w) => w.includes('unknown status'))).toEqual([]);
   });
 
@@ -163,8 +164,8 @@ describe('parseBacklog', () => {
     ].join('\n');
     const { items } = parseBacklog(md);
     expect(items).toHaveLength(2);
-    expect(items[0].bodyMarkdown).toContain('continued body line two');
-    expect(items[0].bodyMarkdown).not.toContain('second');
+    expect(items[0]!.bodyMarkdown).toContain('continued body line two');
+    expect(items[0]!.bodyMarkdown).not.toContain('second');
   });
 
   it('warns on an unterminated header', () => {
@@ -186,8 +187,8 @@ describe('readBacklog (real file)', () => {
 });
 
 describe('activeBacklogItems (default dashboard view)', () => {
-  const mk = (id: string, status: string) =>
-    ({ id, status, date: null, epic: null, promotedTo: null, tags: [], title: id, bodyMarkdown: '' });
+  const mk = (id: string, status: string): BacklogItem =>
+    ({ id, status, date: null, epic: null, promotedTo: null, tags: [], blockedBy: [], autonomy: 'human-only', title: id, bodyMarkdown: '' });
 
   it('keeps doing + todo, hides done + dropped + deferred', () => {
     const items = [mk('BL-001', 'done'), mk('BL-002', 'doing'), mk('BL-003', 'todo'), mk('BL-004', 'dropped'), mk('BL-005', 'deferred')];

@@ -38,7 +38,7 @@ const renderWorkerPrompt = async (workAssignPayload: unknown): Promise<string> =
   await new Promise((r) => setTimeout(r, 50));
   driver.stop();
 
-  const body = JSON.parse(fetchFn.mock.calls[0][1].body);
+  const body = JSON.parse(fetchFn.mock.calls[0]![1].body);
   const strings: string[] = [];
   const walk = (v: unknown): void => {
     if (typeof v === 'string') strings.push(v);
@@ -71,6 +71,7 @@ describe('TeamCoordinator', () => {
         throw new Error(`Unknown agent: ${id}`);
       },
       sendProtocol,
+      removeAgent: vi.fn().mockResolvedValue(undefined),
       emitTeam,
       emitTeamTask,
       emitPlanningComplete,
@@ -129,6 +130,7 @@ describe('TeamCoordinator', () => {
         throw new Error(`Unknown agent: ${id}`);
       },
       sendProtocol: vi.fn().mockResolvedValue(undefined),
+      removeAgent: vi.fn().mockResolvedValue(undefined),
       emitTeam: vi.fn(),
       emitTeamTask: vi.fn(),
       emitPlanningComplete,
@@ -166,6 +168,7 @@ describe('TeamCoordinator', () => {
         throw new Error(`Unknown agent: ${id}`);
       },
       sendProtocol,
+      removeAgent: vi.fn().mockResolvedValue(undefined),
       emitTeam: vi.fn(),
       emitTeamTask: vi.fn(),
       emitPlanningComplete: vi.fn(),
@@ -224,6 +227,7 @@ describe('TeamCoordinator', () => {
         throw new Error(`Unknown agent: ${id}`);
       },
       sendProtocol,
+      removeAgent: vi.fn().mockResolvedValue(undefined),
       emitTeam: vi.fn(),
       emitTeamTask: vi.fn(),
       emitPlanningComplete: vi.fn(),
@@ -300,6 +304,7 @@ describe('TeamCoordinator', () => {
             throw new Error(`Unknown agent: ${id}`);
           },
           sendProtocol,
+          removeAgent: vi.fn().mockResolvedValue(undefined),
           emitTeam,
           emitTeamTask,
           emitPlanningComplete: vi.fn(),
@@ -360,6 +365,7 @@ describe('TeamCoordinator', () => {
             throw new Error(`Unknown agent: ${id}`);
           },
           sendProtocol,
+          removeAgent: vi.fn().mockResolvedValue(undefined),
           emitTeam,
           emitTeamTask,
           emitPlanningComplete: vi.fn(),
@@ -457,6 +463,7 @@ describe('TeamCoordinator', () => {
             throw new Error(`Unknown agent: ${id}`);
           },
           sendProtocol,
+          removeAgent: vi.fn().mockResolvedValue(undefined),
           emitTeam,
           emitTeamTask,
           emitPlanningComplete: vi.fn(),
@@ -533,6 +540,7 @@ describe('TeamCoordinator', () => {
             throw new Error(`Unknown agent: ${id}`);
           },
           sendProtocol,
+          removeAgent: vi.fn().mockResolvedValue(undefined),
           emitTeam,
           emitTeamTask,
           emitPlanningComplete: vi.fn(),
@@ -608,6 +616,7 @@ describe('TeamCoordinator', () => {
         throw new Error(`Unknown agent: ${id}`);
       },
       sendProtocol,
+      removeAgent: vi.fn().mockResolvedValue(undefined),
       emitTeam: vi.fn(),
       emitTeamTask: vi.fn(),
       emitPlanningComplete: vi.fn(),
@@ -650,6 +659,7 @@ describe('TeamCoordinator', () => {
         throw new Error(`Unknown agent: ${id}`);
       },
       sendProtocol,
+      removeAgent: vi.fn().mockResolvedValue(undefined),
       emitTeam: vi.fn(),
       emitTeamTask: vi.fn(),
       emitPlanningComplete: vi.fn(),
@@ -744,6 +754,7 @@ describe('TeamCoordinator', () => {
         throw new Error(`Unknown agent: ${id}`);
       },
       sendProtocol,
+      removeAgent: vi.fn().mockResolvedValue(undefined),
       emitTeam: vi.fn(),
       emitTeamTask: vi.fn(),
       emitPlanningComplete: vi.fn(),
@@ -794,6 +805,7 @@ describe('TeamCoordinator', () => {
         throw new Error(`Unknown agent: ${id}`);
       },
       sendProtocol,
+      removeAgent: vi.fn().mockResolvedValue(undefined),
       emitTeam: vi.fn(),
       emitTeamTask: vi.fn(),
       emitPlanningComplete: vi.fn(),
@@ -843,6 +855,7 @@ describe('TeamCoordinator', () => {
         throw new Error(`Unknown agent: ${id}`);
       },
       sendProtocol: vi.fn().mockResolvedValue(undefined),
+      removeAgent: vi.fn().mockResolvedValue(undefined),
       emitTeam: vi.fn(),
       emitTeamTask: vi.fn(),
       emitPlanningComplete: vi.fn(),
@@ -883,6 +896,7 @@ describe('TeamCoordinator', () => {
         throw new Error(`Unknown agent: ${id}`);
       },
       sendProtocol: vi.fn().mockResolvedValue(undefined),
+      removeAgent: vi.fn().mockResolvedValue(undefined),
       emitTeam: vi.fn(),
       emitTeamTask: vi.fn(),
       emitPlanningComplete: vi.fn(),
@@ -931,6 +945,7 @@ describe('TeamCoordinator', () => {
         throw new Error(`Unknown agent: ${id}`);
       },
       sendProtocol,
+      removeAgent: vi.fn().mockResolvedValue(undefined),
       emitTeam: vi.fn(),
       emitTeamTask,
       emitPlanningComplete,
@@ -1024,6 +1039,7 @@ describe('TeamCoordinator', () => {
         throw new Error(`Unknown agent: ${id}`);
       },
       sendProtocol,
+      removeAgent: vi.fn().mockResolvedValue(undefined),
       emitTeam: vi.fn(),
       emitTeamTask,
       emitPlanningComplete: vi.fn(),
@@ -1090,6 +1106,7 @@ describe('TeamCoordinator', () => {
         throw new Error(`Unknown agent: ${id}`);
       },
       sendProtocol,
+      removeAgent: vi.fn().mockResolvedValue(undefined),
       emitTeam: vi.fn(),
       emitTeamTask,
       emitPlanningComplete: vi.fn(),
@@ -1174,6 +1191,7 @@ describe('TeamCoordinator', () => {
         throw new Error(`Unknown agent: ${id}`);
       },
       sendProtocol,
+      removeAgent: vi.fn().mockResolvedValue(undefined),
       emitTeam: vi.fn(),
       emitTeamTask: vi.fn(),
       emitPlanningComplete: vi.fn(),
@@ -1230,6 +1248,7 @@ describe('TeamCoordinator', () => {
         throw new Error(`Unknown agent: ${id}`);
       },
       sendProtocol,
+      removeAgent: vi.fn().mockResolvedValue(undefined),
       emitTeam: vi.fn(),
       emitTeamTask: vi.fn(),
       emitPlanningComplete: vi.fn(),
@@ -1289,6 +1308,7 @@ describe('TeamCoordinator', () => {
         throw new Error(`Unknown agent: ${id}`);
       },
       sendProtocol,
+      removeAgent: vi.fn().mockResolvedValue(undefined),
       emitTeam: vi.fn(),
       emitTeamTask: vi.fn(),
       emitPlanningComplete: vi.fn(),
@@ -1343,6 +1363,7 @@ describe('TeamCoordinator', () => {
         throw new Error(`Unknown agent: ${id}`);
       },
       sendProtocol,
+      removeAgent: vi.fn().mockResolvedValue(undefined),
       emitTeam: vi.fn(),
       emitTeamTask: vi.fn(),
       emitPlanningComplete: vi.fn(),
@@ -1402,6 +1423,7 @@ describe('TeamCoordinator', () => {
         throw new Error(`Unknown agent: ${id}`);
       },
       sendProtocol: vi.fn().mockResolvedValue(undefined),
+      removeAgent: vi.fn().mockResolvedValue(undefined),
       emitTeam: vi.fn(),
       emitTeamTask,
       emitPlanningComplete: vi.fn(),
@@ -1471,6 +1493,7 @@ describe('TeamCoordinator', () => {
         throw new Error(`Unknown agent: ${id}`);
       },
       sendProtocol,
+      removeAgent: vi.fn().mockResolvedValue(undefined),
       emitTeam: vi.fn(),
       emitTeamTask,
       emitPlanningComplete: vi.fn(),
@@ -1537,6 +1560,7 @@ describe('TeamCoordinator', () => {
         throw new Error(`Unknown agent: ${id}`);
       },
       sendProtocol,
+      removeAgent: vi.fn().mockResolvedValue(undefined),
       emitTeam: vi.fn(),
       emitTeamTask,
       emitPlanningComplete: vi.fn(),
@@ -1619,6 +1643,7 @@ describe('TeamCoordinator', () => {
         throw new Error(`Unknown agent: ${id}`);
       },
       sendProtocol: vi.fn().mockResolvedValue(undefined),
+      removeAgent: vi.fn().mockResolvedValue(undefined),
       emitTeam: vi.fn(),
       emitTeamTask: vi.fn(),
       emitPlanningComplete: vi.fn(),
@@ -1662,6 +1687,7 @@ describe('TeamCoordinator', () => {
         throw new Error(`Unknown agent: ${id}`);
       },
       sendProtocol: vi.fn().mockResolvedValue(undefined),
+      removeAgent: vi.fn().mockResolvedValue(undefined),
       emitTeam: vi.fn(),
       emitTeamTask: vi.fn(),
       emitPlanningComplete: vi.fn(),
@@ -1710,6 +1736,7 @@ describe('TeamCoordinator', () => {
             throw new Error(`Unknown agent: ${id}`);
           },
           sendProtocol: vi.fn().mockResolvedValue(undefined),
+          removeAgent: vi.fn().mockResolvedValue(undefined),
           emitTeam,
           emitTeamTask,
           emitPlanningComplete: vi.fn(),
@@ -1765,6 +1792,7 @@ describe('TeamCoordinator', () => {
         throw new Error(`Unknown agent: ${id}`);
       },
       sendProtocol: vi.fn().mockResolvedValue(undefined),
+      removeAgent: vi.fn().mockResolvedValue(undefined),
       emitTeam: vi.fn(),
       emitTeamTask: vi.fn(),
       emitPlanningComplete: vi.fn(),
