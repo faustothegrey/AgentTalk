@@ -65,10 +65,6 @@ describe('BL-084 T1 — typed error reason and fault-class propagation', () => {
   // case rather than a table-driven loop: a failure here must name the row that regressed.
   describe('A. the §4 classification — one case per row', () => {
     describe('fault-class — propagation fires (M03 Shared-Fate, unchanged severity)', () => {
-      it('unknown-mcp-tool: a protocol violation by the agent is a fault', () => {
-        expect(isFaultClass('unknown-mcp-tool')).toBe(true);
-      });
-
       it('conversation-start-failed: the runtime refusing to start is a fault', () => {
         expect(isFaultClass('conversation-start-failed')).toBe(true);
       });
@@ -89,6 +85,12 @@ describe('BL-084 T1 — typed error reason and fault-class propagation', () => {
     });
 
     describe('non-fault — status changes, UI sees it, NO propagation', () => {
+      it('unknown-mcp-tool: a protocol violation harms nobody else, so it is NOT a fault', () => {
+        // PO-ratified 2026-07-27 (plan §9 q1), reversing T1's proposal: one mistyped tool name
+        // must not kill a team. See the rationale in contracts/types.ts.
+        expect(isFaultClass('unknown-mcp-tool')).toBe(false);
+      });
+
       it('conversation-reply-cap: the cap is how a conversation ENDS, not how it breaks', () => {
         expect(isFaultClass('conversation-reply-cap')).toBe(false);
       });
@@ -121,13 +123,13 @@ describe('BL-084 T1 — typed error reason and fault-class propagation', () => {
       // Guards the mutation check itself: if a reason is added to `AgentErrorReason` without
       // a case above, this count trips and forces the decision into the open.
       const fault: AgentErrorReason[] = [
-        'unknown-mcp-tool',
         'conversation-start-failed',
         'mcp-internal-error',
         'reconnect-timeout-inflight-turn',
         'idle-timeout',
       ];
       const nonFault: AgentErrorReason[] = [
+        'unknown-mcp-tool',
         'conversation-reply-cap',
         'relay-budget-exhausted',
         'target-agent-unavailable',

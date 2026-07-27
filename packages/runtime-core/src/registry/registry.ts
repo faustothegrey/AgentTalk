@@ -46,13 +46,13 @@ import { type StructuredMessageType, buildProtocolToolSchema } from '../agents/r
  */
 const FAULT_CLASS_BY_REASON: Record<AgentErrorReason, boolean> = {
   // ── fault-class: the agent broke something; the team dies with it (M03 Shared-Fate) ──
-  'unknown-mcp-tool': true,
   'conversation-start-failed': true,
   'mcp-internal-error': true,
   'reconnect-timeout-inflight-turn': true,
   'idle-timeout': true, // T1 parity only — BL-028 (T3) revisits this row. See types.ts.
 
   // ── non-fault: a normal ending, a rail firing, or a deliberate refusal ──
+  'unknown-mcp-tool': false, // PO-ratified 2026-07-27 (was `true` in T1). See types.ts.
   'conversation-reply-cap': false,
   'relay-budget-exhausted': false,
   'target-agent-unavailable': false,

@@ -78,7 +78,7 @@ each row is a behaviour call, not an implementation detail:**
 | Workflow-gate refusal (`[PO]`/`[SM]` tag, wrong role) | `registry.ts:434/437/440` | **non-fault** — a deliberate security refusal; propagating a *rejected* escalation is a DoS lever |
 | `Planning task is not active for team X` | `registry.ts:471` | **non-fault** — a routing guard |
 | Invalid / stale healthcheck token | `registry.ts:417/421` | **non-fault** — usually a late ack |
-| `Unknown MCP tool call` | `registry.ts:599` | **fault** — a protocol violation by the agent (debatable: it harms nobody else) |
+| `Unknown MCP tool call` | `registry.ts:599` (now `:651`) | **non-fault** — ✅ **PO-RATIFIED 2026-07-27**, reversing the proposal in this row. A mistyped/hallucinated tool name harms nobody else and is the same transient class as the malformed JSON `parseWithRetry` already retries; propagating it lets one typo kill a team and hands anyone able to induce a bad tool name a DoS lever (as with `workflow-gate-refusal`). Landed in `task-bl084r1`. |
 | `Failed to start conversation` | `in-process-driver.ts:117` | **fault** |
 | Provider/exec crash | already fenced to `awaiting_operator` (M08-T3) or swallowed to `null` | unchanged — do not touch |
 | **Attached:** MCP close code 1011 (internal error) | `registry.ts:1123` | **fault** — propagates today, keeps propagating |
@@ -159,8 +159,11 @@ Bar written **before** the code, RED before / GREEN after — that ordering is u
 
 ## 9. Open questions for the PO gate
 
-1. **Ratify §4's table** — especially `Unknown MCP tool call` (fault or not?) and the stale-healthcheck-token
-   row. Everything else I hold with reasonable confidence.
+1. ~~**Ratify §4's table**~~ ✅ **DONE — PO ratified 2026-07-27: `unknown-mcp-tool` is NON-FAULT**, reversing
+   this plan's proposal. Rationale is the asymmetry of being wrong: wrong as non-fault, a confused agent limps and
+   is still bounded by the wall-clock cap, the reply cap and BL-083's relay budget; wrong as fault, a team dies for
+   a typo. **All eleven rows are now ratified.** The flip is behaviour-neutral today — the literal is passed at no
+   `setAgentStatus` call site (verified), so it only takes effect in T2, which is exactly when it must be right.
 2. **Land T1 alone, or T1+T2 together?** I recommend T1 alone, then re-gate.
 3. **Should the reason be surfaced to the UI and the transcript?** It is the honest thing (an operator seeing
    `error` deserves to know it was a reply cap, not a crash) but it widens T1 into the event payload and the
