@@ -998,3 +998,34 @@ here.**
 - **The PO's blunt-honesty preference paid off:** owning "I was wrong, here's the correction" immediately (twice) kept
   the collaboration moving and the PO engaged ("goose-bumps"). Honesty over looking-right is not just principle here —
   it's what made the debugging fast.
+
+### 2026-07-27 — BL-077 + BL-075 + BL-076 (all three rung-4 findings), implementer + all reviewer seats
+- **Two of the three items' own diagnoses were wrong where it counted, and reproducing first is the only reason I
+  caught it.** BL-077 said "the broadcast is missing" (it wasn't — `server.ts` broadcasts every registry status
+  event; the *driver* bypassed the registry). BL-076 said "non-JSON responses lose the report" (they don't — that
+  branch already submits raw text; the loss was in *parsed-but-not-a-verdict*, and the **retry prompt** was
+  converting survivable responses into lost ones). Both times the reproduction **changed the fix**. **A finding
+  filed live, from memory, hours after a run is a hypothesis — treat it as one.** The backlog entry is where to
+  start looking, never what to build against. And when the diagnosis turns out wrong, *lead the closing block with
+  the correction* — the next reader inherits the item, not my session.
+- **Deciding between proposed fix directions is a real decision, not a menu.** BL-076 offered two (a goose prompt
+  recipe; a stdout sidecar). Reproducing showed both were wrong: the prompt one is probabilistic and this project
+  already rejected that trade in BL-061, and the sidecar already exists (BL-064) while leaving the *work result*
+  itself a lie. The right fix was a third thing, two lines, that neither bullet named. **Read the fix directions
+  as evidence of what the filer was thinking, not as the scope.**
+- **I forgot `AGENTTALK_RESPONSE_LOG` on the live run and it cost me a claim.** Without the raw envelope I could
+  not tell which branch BL-076's live run took, so the live proof only supports "end-to-end healthy, no
+  regression" — not "the fixed branch works". I reported that limit rather than blurring it, which was right, but
+  the better move was one env var set up front. **Before a live run, ask what evidence I'll need to make the claim
+  I intend to make — and instrument for it, not after.**
+- **Writing the bar before the fix is strictly better than mutation-checking after.** On BL-076 the repro was RED
+  at 08:07 with no fix in existence and GREEN at 08:08 — that ordering is unfakeable, whereas a post-hoc revert is
+  only as good as my discipline in doing it. Same evidence, less trust required. Do it in that order by default.
+- **Shadowing a binary on `PATH` beats mocking the spawn.** For BL-075 I put a fake `goose` on `PATH` that printed
+  its own `$PWD`, so the test asserts a *genuinely spawned child's* working directory rather than my belief about
+  an option object. Cheap, no mocking framework, and it would survive a refactor of how the spawn is called.
+- **Scope discipline paid twice over.** BL-077's tempting "while I'm here" was routing the driver through
+  `setAgentStatus` — which would have silently switched on M03 failure propagation for in-process agents. Flagging
+  it as BL-078 instead of fixing it kept an engine behaviour change out of an observability diff, and turned a
+  half-thought into a decision the PO can actually make. **The show-stopper fence is a feature of the output, not
+  a restriction on it.**
