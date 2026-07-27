@@ -55,6 +55,9 @@ run. Anything in it that must change for H-1, must change.
   either `/Users/fausto/Software/AgentTalk` or `/Users/fausto/Software/agentalk-mcp-client`. Read freely.
 - **Write your output to `/private/tmp/h0-hermes/`** — outside both repos. Create that directory; put
   Deliverable A and Deliverable B in it as separate files. Nothing you produce goes into a repo.
+- **Also post your full report back in the console**, not only to disk. This is not duplication: the return
+  channel is itself under test, and files read off disk do not exercise it. *(Added 2026-07-27 — the first
+  version of this brief omitted it, which would have left the transport question untested.)*
 - **Do not run the invariant harness for this rung.** You are permitted to run it in general; here a baseline is
   being taken on the other side of this hand-over and a snapshot from you would only add noise.
 

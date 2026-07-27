@@ -19,7 +19,7 @@ observed live. Where something is **not** verified, it says so.
 | # | Check | Command / expectation |
 |---|---|---|
 | 1 | Both repos present and built | `AgentTalk`: `npx tsc -b` → 0. Client: `agentalk-mcp-client` with `node_modules` |
-| 2 | The worker's **workdir is its own git worktree**, never the primary checkout | `node scripts/wt-setup.mjs create <id> --base master` (AgentTalk only; the client has no helper) |
+| 2 | The worker's **workdir is its own git worktree**, never the primary checkout | `node scripts/wt-setup.mjs create <id> --base master` (AgentTalk only; the client has no helper). **⚠️ It prepends `att-`: `create <id>` → `<root>/att-<id>` on branch `task-<id>`, default root `/private/tmp`, override with `--root`** (`wt-setup.mjs:15,22,85`). So the workdir for id `op-h1` is `/private/tmp/att-op-h1` — **passing `att-op-h1` as the id yields `att-att-op-h1`**, which then mismatches the `workdir` in your config |
 | 3 | **Governance inherits into that worktree** — this is the whole thesis | `ls -la <workdir>/CLAUDE.md` must show `CLAUDE.md -> AGENT.md`. Without it the worker has **no rules** |
 | 4 | The orchestrator boots from a **different** checkout than the worker's workdir | Otherwise the worker edits the code running it |
 | 5 | The orchestrator's port is free | `lsof -nP -iTCP:<port>` → empty |
@@ -111,9 +111,21 @@ source of truth, and it makes the run untestable as evidence about inheritance.
 ## 5. Launch
 
 ```bash
-cd /path/to/agentalk-mcp-client
-node scripts/launcher.mjs runs/<name>.config.json
+node /abs/path/to/agentalk-mcp-client/scripts/launcher.mjs /abs/path/to/<name>.config.json
 ```
+
+**Invoke the launcher by absolute path, and pass the config by absolute path — do not `cd` into the client.**
+The OPERATOR charter requires the operator's workdir to stay in AgentTalk (governed ground), because the client
+repo carries no governance file ([[BL-086]]). *(Corrected 2026-07-27: this section previously said to `cd` into
+the client and use a relative config path, which contradicted the charter. H-0 followed the runbook and inherited
+the conflict.)*
+
+**Why that is safe — verified in code, not assumed.** `instance.recording`, its derived `.responses.ndjson`
+sidecar, and `startCommand.cwd` are each resolved against **`clientRoot`** — the launcher's own directory via
+`__dirname` (`launcher.mjs:29`, `:109`, `:116`, `:55`) — **not** against your cwd. So run artifacts still land in
+the client's `runs/` no matter where you invoke from, and absolute-path invocation cannot scatter them into the
+governed repo. **The one exception is the config path itself**: `path.resolve(configPath)` (`:255`) resolves
+against `process.cwd()`, which is exactly why it must be absolute.
 
 Run it **in the background** if the cap is long, and note it exits `0` only when the outcome is `completed`.
 
