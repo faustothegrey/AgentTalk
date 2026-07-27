@@ -2706,7 +2706,10 @@ date: 2026-07-13
 epic: null
 tags: [api-agents, openrouter, product-gap, enabler, rung4, autonomous, goose]
 -->
-- [done · **MERGED 2026-07-19 (`216c664`, not pushed) · rung 4 — first autonomous goose-authored fix** · promoted from BL-044 #2 (2026-07-13); the enabler for `decision-api-agents-for-coordination.md`] —
+- [done · **MERGED 2026-07-19 (`216c664`) · rung 4 — first autonomous goose-authored fix** · the "not pushed" note
+  was **stale, corrected 2026-07-27**: `216c664` verified as an ancestor of `origin/master` · **superseded the
+  orphaned `task-BL-039` branch — see the disposition note at the end** · promoted from BL-044 #2 (2026-07-13); the
+  enabler for `decision-api-agents-for-coordination.md`] —
   **`POST /api/agents` must accept `providerName` (unblock OpenRouter/non-google API agents)** — the create handler
   reads only `{id, provider, model}` (`server.ts:593`) and **drops `providerName`**, so an `api`-provider agent
   always defaults to `google` (`registry.ts:250`, `providerName || 'google'`). This is the **single real blocker** to
@@ -2744,7 +2747,29 @@ tags: [api-agents, openrouter, product-gap, enabler, rung4, autonomous, goose]
   - budget:      telemetry unavailable (meter `claude` ok:false all session — LB-11)
   - gate:        tsc 0, suite 208/208, independent hidden-bar red→green, pollution clean (sandbox + worktrees torn down)
   - diff:        2 files, +29/-2; commits `613cd9a` (goose's fix) · `216c664` (merge)
-  - outcome:     MERGED ✅ (local; NOT pushed — PO says "merge" and "push" as separate words)
+  - outcome:     MERGED ✅ and **PUSHED** (the original "NOT pushed" line was stale; corrected 2026-07-27 —
+                 `216c664` verified as an ancestor of `origin/master`)
+
+  **Disposition of the orphaned `task-BL-039` branch (2026-07-27, PO asked for it to be tackled) — this defect was
+  fixed TWICE, and the autonomous fix is the one that shipped.** The branch holds one commit, `313d089`
+  (2026-07-13), *"fix(BL-039): POST /api/agents accepts + forwards providerName"* — the **human/Claude** fix for
+  **this** defect. It was never merged. Six days later **goose fixed the same defect autonomously as rung 4**
+  (`613cd9a` → merged `216c664`, 2026-07-19), and that is what is on the mainline. Verified on master today: the
+  create handler reads `providerName` (`server.ts:608`), forwards it with a conditional spread (`:634`), and a
+  regression test pins it (`server.test.ts:239`). **So `313d089` is fully superseded — recommend deleting the
+  branch, local and `origin`** (it is pushed, so the commit stays recoverable by hash regardless).
+  - **One residual delta, deliberately NOT adopted:** the branch *also* echoed `providerName` in the create
+    **response** body. Master deliberately does not (its test comment says so explicitly — the defect lived in the
+    registry agent, not the response). Adopting it would be an API-surface change, and it is not instrumental to
+    the current goal.
+  - **⚠️ The branch name never matched its content.** Backlog **[[BL-039]]** is *"Bite 0 launcher: NDJSON
+    run-artifact capture"* — `done`, client repo, an entirely different change. So a branch and a commit both
+    carried a wrong item id for two weeks, and the mislabel is exactly why the branch read as mysterious
+    orphaned work in every session-close sweep since. **This is a concrete, live example for [[BL-068]]** (the id
+    convention is unenforced), which is currently parked — worth attaching to it when it reopens.
+  - **Trap for whoever looks next:** `git diff master..task-BL-039` reads as **-11,580 lines** across 93 files.
+    That is pure divergence — the branch predates two weeks of work — **not** a destructive branch. Judge such a
+    branch by `git show <commit>` against its own parent, never by its diff against a moved master.
 
 <!-- @item
 id: BL-075
