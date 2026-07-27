@@ -41,9 +41,9 @@ export class InProcessAgentDriver {
   start(): void {
     this.isRunning = true;
     if (this.agent.status === 'creating') {
-      this.agent.setStatus('starting');
+      this.registry.notifyAgentStatus(this.agent, 'starting');
     }
-    this.agent.setStatus('ready');
+    this.registry.notifyAgentStatus(this.agent, 'ready');
     // Fire and forget the loop
     void this.loop();
   }
@@ -66,16 +66,18 @@ export class InProcessAgentDriver {
           this.agent.currentTurnId = turn.messageId as string;
         }
         
-        this.agent.setStatus('busy');
+        this.registry.notifyAgentStatus(this.agent, 'busy');
         await this.handleTurn(turn as unknown as ConversationEvent);
         if (this.isRunning && this.agent.status === 'busy') {
-          this.agent.setStatus('ready');
+          this.registry.notifyAgentStatus(this.agent, 'ready');
         }
       } catch (err) {
         console.error(`[InProcessAgentDriver ${this.agent.id}] error:`, err);
         if (this.isRunning) {
           if (this.agent.status !== 'error' && this.agent.status !== 'terminated') {
-            this.agent.setStatus('error');
+            // BL-077: notifyAgentStatus, NOT setAgentStatus — the UI learns about the
+            // error, and failure propagation stays exactly as it was (see registry.ts).
+            this.registry.notifyAgentStatus(this.agent, 'error');
           }
           break; // Stop the loop on error to avoid infinite crash loops
         }
@@ -95,7 +97,7 @@ export class InProcessAgentDriver {
     if (evt.type === 'conversation_end') {
       this.runtime.endConversation();
       if (this.agent.status === 'busy') {
-        this.agent.setStatus('ready');
+        this.registry.notifyAgentStatus(this.agent, 'ready');
       }
       this.agent.currentTurnId = undefined;
       this.stop();
