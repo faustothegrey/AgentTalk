@@ -6,6 +6,23 @@ import type { Registry } from '../registry/registry.js';
 import { McpError } from './completer.js';
 import { type Completer, type ApiProvider, ApiCompleter } from '@agenttalk/llm-client';
 
+export const DEFAULT_WORKER_TURN_TIMEOUT_MS = 600_000;
+
+/**
+ * Per-turn deadline for a worker's exec turn, overridable via
+ * `AGENTTALK_WORKER_TURN_TIMEOUT_MS`. Only a finite positive integer overrides; anything else
+ * (absent, empty, `0`, negative, `NaN`) falls back to the default, so a malformed value can never
+ * remove the deadline — an unbounded worker turn would defeat the only anti-hang rail we have while
+ * [[BL-028]] is dead.
+ */
+export function resolveWorkerTurnTimeoutMs(env: NodeJS.ProcessEnv = process.env): number {
+  const raw = env.AGENTTALK_WORKER_TURN_TIMEOUT_MS;
+  if (raw === undefined) return DEFAULT_WORKER_TURN_TIMEOUT_MS;
+  const parsed = Number(raw);
+  if (!Number.isFinite(parsed) || parsed <= 0) return DEFAULT_WORKER_TURN_TIMEOUT_MS;
+  return Math.floor(parsed);
+}
+
 export interface InProcessDriverOptions {
   provider?: ApiProvider;
   model?: string;
@@ -349,7 +366,13 @@ export class InProcessAgentDriver {
       // it and stayed put. That disagreement is what made the work "vanish" and cost us the false
       // accusation recorded in BL-059.
       execOpts.cwd = `agentalk-task-${taskId}`;
-      execOpts.timeoutMs = 600_000;
+      // The per-turn deadline for a WORKER's exec turn. 600s was fine while autonomous tasks were
+      // single-defect fixes, but rung 5 finished in ~10 minutes — i.e. at the cap — and a larger
+      // task (a refactor threaded through several call sites) would be killed mid-turn and read as
+      // a stalled worker. Configurable so an operator can size the deadline to the task instead of
+      // editing the engine before every run. **Default unchanged at 600s**: absent or unparseable
+      // env ⇒ byte-identical behaviour to before.
+      execOpts.timeoutMs = resolveWorkerTurnTimeoutMs();
     }
 
     // M08-T3 worker effect-fence: a genuine worker-exec crash (McpError, rethrown via
