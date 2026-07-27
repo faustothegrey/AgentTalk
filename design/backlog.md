@@ -2937,14 +2937,129 @@ tags: [ui, observability, reactivity, web, rung4, bl048-family]
   - outcome:     MERGED ✅ (local; NOT pushed — PO says "merge" and "push" as separate words)
 
 <!-- @item
-id: BL-088
+id: BL-091
 status: todo
+date: 2026-07-27
+epic: null
+tags: [infrastructure, harness, operator-seat, bl087, observability]
+-->
+- [todo · found because the **PO noticed two shells still running**, not by any check we own] — **The invariant
+  harness cannot see a process that holds no port, so an operator's stray poll loop is invisible to it.**
+
+  **How it surfaced.** During the O-1 re-run the operator left an `until grep …; do sleep 5; done` loop spinning,
+  waiting on a marker that never arrived (→ [[BL-090]] for why it never arrived). It ran unnoticed for ~10
+  minutes across two subsequent rungs. **The harness reported `exit 0` the whole time**, correctly by its own
+  rules and uselessly in fact.
+
+  **Why it is invisible.** `snapshotGlobal` builds its process list *from listening sockets* — it enumerates
+  `lsof -iTCP -sTCP:LISTEN`, then decorates those pids. A shell loop binds nothing, so it never enters the state
+  vector, and `isWatchedProcess` is never even consulted. **The port is the discovery mechanism, not just the
+  filter.**
+
+  **Why this matters more than it looks.** The operator seat's defining property is that it **launches process
+  trees** — that is the whole reason the implementer's fence was said not to transfer, and the reason BL-087 was
+  built first. A harness that only sees *servers* misses the most likely operator residue: pollers, waiters,
+  watchers, orphaned `sleep`s. **We built the rail for the stated risk and it does not cover the stated risk.**
+
+  **Not urgent, and not free.** The obvious fix — enumerate `ps` for launcher/provider/shell patterns — is
+  exactly where [[IP-15]] lives: guessing from a command line which processes are "ours" is how a reviewer once
+  filed a defect against a service the PO runs deliberately. Any design here must produce **positive evidence**
+  (the BL-023 discipline), not a pattern match. Consider process-group/session ancestry from the launcher's own
+  pid, which the launcher already tracks (`detached: true`, negative pid — [[BL-081]]).
+
+<!-- @item
+id: BL-090
+status: todo
+date: 2026-07-27
+epic: null
+tags: [infrastructure, harness, bl087, fail-quiet, correctness]
+-->
+- [todo · both found by the **O-2 worker** while probing BL-088 option (c); reproduced independently] — **Two
+  ways the invariant harness goes QUIET instead of LOUD — the failure mode a safety harness must not have.**
+
+  **(1) An unreadable repo skips every check and does not gate.** `diffRepo` emits `repo-unavailable` at
+  **`warn`** and **returns early** (`infra-invariant.mjs:325-328`), so no `HEAD` check, no tracked-file check, no
+  worktree or branch check runs — at the exact coordinate the operator works in. Because the PO's gate is on
+  **`critical`** (`bl087-plan.md` §9.1), a mistyped or missing path yields **no gating and no checking**, while
+  the run still looks like it was inspected. The worker's phrasing is the right one: ***"it does not fire loudly,
+  it goes quiet."***
+
+  **(2) `diffRepo` compares by KEY, never by PATH.** Two snapshots whose `agenttalk` key points at *different
+  directories* are silently diffed against each other. Measured: `/Users/fausto/Software/AgentTalk` vs
+  `/private/tmp/att-op-2` → **three false `critical`s** (`head-moved`, `branch-changed`, `upstream-diverged`) on
+  the path that gates the operator. Nothing detects that the two sides describe different repositories.
+
+  **Both are the *opposite* of BL-087's stated top risk.** That risk was cried wolf; these are the inverse —
+  silence — and (2) additionally manufactures wolves. Neither was caught by the 29 bars, because every bar
+  supplies well-formed snapshots of the same repo.
+
+  **Suggested shape (not decided):** `repo-unavailable` becomes `critical` — "we could not look" must never
+  outrank "we looked and it was fine", which is exactly the BL-023 `UNKNOWN` discipline applied one level up —
+  and `diffRepo` compares `before.path` to `after.path`, treating a mismatch as `critical`. Both touch the
+  severity model, so both are **behaviour changes needing the PO**, and neither was made on discovery.
+
+<!-- @item
+id: BL-089
+status: todo
+date: 2026-07-27
+epic: null
+tags: [infrastructure, harness, bl087, parsing, correctness]
+-->
+- [todo · found by the **O-2 worker** as an incidental finding, reported and deliberately not fixed;
+  reproduced independently by the operator before filing] — **`snapshotRepo` corrupts the filename of the first
+  `git status --porcelain` entry when that entry is unstaged-only.**
+
+  `git()` calls `.trim()` on the whole command output (`infra-invariant.mjs:129`), which strips the leading space
+  of the **first line only**. The parser then reads `slice(0,2)` / `slice(3)` against a line one character short.
+  Reproduced against the main checkout, whose porcelain output is exactly ` M com.fausto.agenttalk-orchestrator.plist`:
+
+  ```
+  snapshotRepo('/Users/fausto/Software/AgentTalk').porcelain
+    → [ { "code": "M ", "path": "om.fausto.agenttalk-orchestrator.plist" } ]
+                          ↑ leading "c" lost;  code " M" (unstaged) read as "M " (staged)
+  ```
+
+  **Blast radius, honestly bounded** (the worker's own bounding, verified): first line only, and both sides of a
+  diff corrupt it identically, so it does **not** generally manufacture findings. What it *does* do is (1) print
+  a **wrong filename** inside a `tracked-file-modified` `critical` — on a tool whose output is evidence in a PO
+  decision — and (2) make a staged `M ` and an unstaged ` M` indistinguishable on that first line, so a
+  staged/unstaged transition there is invisible.
+
+  **Fix at the parse site, not in `git()`** — `git()`'s `.trim()` is relied on by every other caller.
+
+<!-- @item
+id: BL-088
+status: done
 date: 2026-07-27
 epic: null
 tags: [infrastructure, harness, operator-seat, bl087, needs-decision]
 -->
-- [todo · found by **using** the harness on the O-1 run, not by review] — **The invariant harness answers the
-  *damage* question but not the *teardown* question, and cleanup therefore always reports `critical`.**
+- [done · **PO DECIDED (a) on 2026-07-27** · found by **using** the harness on the O-1 run, not by review] —
+  **The invariant harness answers the *damage* question but not the *teardown* question, and cleanup therefore
+  always reports `critical`.**
+
+  > **DECISION — option (a): leave the harness alone, keep the documented ordering.** No code change. The
+  > runbook's *check-before-cleanup* rule stands as the answer. Investigated on rung **O-2** by a governed
+  > worker; full reasoning in **`design/bl088-investigation.md`** (merged `b8181e9`).
+  >
+  > **The argument that carried it:** the gate already answers the question it exists to answer — a `critical`
+  > blocks the next operator run, and O-1's re-run proved it on a real run (exit 0, nothing above `info`).
+  > **"Changing a working gate to answer a question that gates nothing is the wrong direction of risk."** And
+  > adding a demotion path to buy quiet is the same move that produced [[IP-15]], in a different costume.
+  >
+  > **Option (c) is STRUCK from the option set on measured evidence**, both readings, so it is not re-proposed:
+  > literal (baseline a worktree before it exists) makes `diffRepo` return early and skip **every** check —
+  > *"it does not fire loudly, it goes quiet"*; charitable (baseline the main tree) silently diffs two different
+  > directories, because `diffRepo` compares **by key, never by path**, yielding **three false `critical`s on
+  > every run** on the path that gates the operator.
+  >
+  > **Option (b) is not wrong — it is not yet worth it.** Revisit when operator runs become routine rather than
+  > ceremonial; `bl088-investigation.md` §6 argues the answer then is cheaper than (b) anyway. §8 records what
+  > would expire this decision.
+  >
+  > **The fence survives unchanged and is the part to defend: removals must not become allowlistable in the
+  > ordinary damage check.** Two bars pin it under a wide-open allowlist
+  > (`infra-invariant.test.mjs:147-184`) — behaviour contracts, so any future change needs the PO.
 
   **What happens.** Run `infra-invariant check` **after** the runbook's cleanup and it reports
   `worktree-removed` + `branch-removed` as **`critical`** — every time, on a perfectly clean run. Observed on
