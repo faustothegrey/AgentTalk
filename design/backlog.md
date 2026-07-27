@@ -4678,4 +4678,33 @@ autonomy: human-only
   that is **not** the same as autonomous selection, and the field stays `human-only` so the eligibility signal
   keeps telling the truth. ([[BL-094]] remains the only `eligible` item.)
 
+<!-- @item
+id: BL-096
+status: todo
+date: 2026-07-27
+epic: null
+tags: [operator, ladder, long-run, lb49, monitoring, o4-followup]
+autonomy: human-only
+-->
+- [todo · **the O-4 rung did not answer its own question** · `design/operator/o4-grading.md`] — **The long-run
+  failure class is still untested, and O-4 must not be cited as evidence about it.** O-4 was built to observe an
+  **abnormal termination** — a 30-minute cap firing mid-work — because in this project's whole history **no run
+  has ever been interrupted**, so nobody knows whether commits survive one, whether the working tree is left
+  coherent, or whether cleanup behaves. The worker finished in **~9 minutes** and the cap never fired. Bar rows
+  M4/M6 were unreachable; ~14 minutes of monitoring was observed against a target of 30, and the wedge that
+  retired the old transport ([[LB-49]]/[[LB-50]]) had hours to develop in.
+  **Root cause is a sizing error by the reviewer, and it is the reusable part:** BL-095 was chosen as "48 errors,
+  almost certainly unfinishable in 30 minutes", but the breakdown *recorded in BL-095's own text* was five error
+  codes — **30 × TS2345, 14 × TS2532, 2 × TS6133, 1 × TS6196, 1 × TS2322** — and 28 of those were literally the
+  same missing property in the same object literal. **The count was a measure of repetition, not of size, and the
+  distribution was printed right there.** *When sizing work for a time-boxed experiment, the histogram is the
+  estimate, not the total.* Measuring carefully and then reading the measurement wrong is worse than not
+  measuring: it manufactures confidence in the prediction.
+  **What a re-run needs:** a task that is **unbounded by nature** rather than merely numerous — open-ended
+  investigation, a search with no fixed endpoint, or a deliberately induced stall — so the cap is reached by
+  construction rather than by hoping the work is big enough. **Alternative worth weighing first:** test the cap
+  directly against a trivially-stalling worker (cheap, seconds of tokens, minutes of wall clock) and test long
+  monitoring separately — O-4 conflated two questions into one run and answered neither cleanly.
+  **Also still unknown:** whether `cap.meter` fires correctly (it never came close — weekly moved 30%→32%).
+
 *(add new items above this line)*
