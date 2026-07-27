@@ -1112,3 +1112,35 @@ here.**
   through the API). **Operating a system is not the same as knowing it — document from the code, always.** Same
   session, same lesson from the other direction: rung 6 left a nested `task-task-*` worktree/branch that was not in
   my cleanup model, found by luck. Which is now [[BL-087]].
+
+### 2026-07-27 (evening) — the operator ladder: O-0/O-1/O-2, and three defects in documents I had just written
+- **As planner/operator: every defect this session came from *using* an artifact, never from re-reading it — and
+  all three were in documents I had written within the previous 24 hours.** O-1's pre-flight ordering bug (baseline
+  taken before the reference-value commit, so the commit moved `HEAD` and manufactured a `critical`), the runbook's
+  §10a ordering bug (check placed *after* cleanup, so teardown's own removals always read `critical`), and the
+  self-referential mainline sha (a hand-copied `HEAD` reference cannot live in mainline — committing the doc that
+  carries it moves the HEAD it names). I had reviewed all three documents. Review found none of them; one 60-second
+  run found two, and pre-flight found the third. **The lesson is not "review harder" — it is that a procedure
+  document is only tested by executing it, so budget the first execution as a test of the document, not of the
+  subject.**
+- **I wrote "unmitigated, accepted" next to a risk and it paid off — the mechanism works.** After rung 6's
+  named-but-unmitigated budget risk, I forced every risk in the O-0 plan to be followed by the mitigation actually
+  configured or an explicit "unmitigated, accepted". Two entries came out honest that would otherwise have been
+  quiet lies: `cap.meter` is *armed but cannot fire* while the session meter is pinned at 100% (so the wall-clock
+  cap is the real rail), and BL-087's `att-op-*` allowlist was a *prediction* about a seat that had never run.
+  The second one then resolved cleanly on evidence, which is only meaningful because I had written down that it was
+  open. **Keep this discipline; it converts a vague worry into a testable claim.**
+- **A governed worker out-reviewed me on my own code, and the fence held under temptation.** O-2 asked the worker
+  to investigate a change it must not make (BL-088 option (b) would have been easy and looked helpful). It didn't
+  touch the file — `hash-object` byte-identical — *and* it found a real parse defect in my harness, refused to fix
+  it citing Rule 2, bounded the blast radius honestly, and recommended filing it separately. It also struck an
+  option on *measured* evidence rather than argument. **I should hold my own reviewing to that standard: it ran the
+  exported functions instead of reasoning about them, which is exactly Reviewer Rule 1, and I had not done that to
+  my own harness.**
+- **I left a stray poll loop spinning for ~10 minutes and the PO caught it, not me — and not my harness.** Worse: I
+  had *already noticed* the missing `LAUNCHER EXIT` marker and written it up as unexplained, without asking what was
+  still waiting on it. **Noticing an anomaly and not following where it leads is its own failure mode**, and it is
+  the one that cost most here. The root cause is mundane (`> log` gives children a shared file offset; a child
+  outliving the launcher clobbers an appended marker), and the harness could never have caught it because its state
+  vector is built *from listening sockets* — a shell loop binds nothing ([[BL-091]]). **When an operator run leaves
+  an unexplained instrumentation gap, treat it as a live process question, not a logging curiosity.**
