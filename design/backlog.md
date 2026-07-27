@@ -40,6 +40,36 @@ show-done/show-dropped toggles ride this param). The response's `total` field al
 
 ---
 
+### Backlog gate — 2026-07-27 (before planning BL-084 · planner+reviewer: Claude, sole-agent fallback · PO directed the pass)
+
+Per §3b, all **16** `todo` items dispositioned before opening [[BL-084]]. **Claims were checked against the code,
+not read off the file** — this backlog has produced phantom items before (LB-47), and this pass found **one
+genuinely stale item, two overstated ones, and three stale line-number citations**. Verification notes are in the
+table; anything I did **not** re-verify says so.
+
+| Item | Disposition for this gate |
+|---|---|
+| [[BL-084]] (typed non-reply reason) | **stay `todo` → the next unit.** PO directed planning; it unblocks BL-078 + BL-028. |
+| [[BL-028]] (idle timeout) | stay `todo`, **blocked on BL-084**. **RE-VERIFIED still dead:** `lastProgressAt` declared (`agents/agent.ts:32`), read twice (`registry.ts:781`, `:785`), **written nowhere**. ⚠️ its cited `registry.ts:663` is **stale** — my BL-083 additions shifted it. Status left `todo` not `deferred` — a **PO call** (it is genuinely blocked). |
+| [[BL-045]] (agy attach healthcheck) | **CLOSED → `done` this pass — the premise is superseded.** LB-93 found the root cause: bare `agy --print` = 9.65s, live worker turn ~14s, **comfortably under the 30s default**, so the feared provider-specific 90s timeout is unnecessary — and **absent from the code** (no `90_000`/`90000` anywhere in `packages/`/`apps/`). Its own residual blocker (*"production remains one env var short → BL-057"*) is **`done`**: BL-057 deleted the flag entirely. What remains is a **verification gap, not the filed defect** — a real `start_pair_chat` was never exercised — recorded as the reopen condition. |
+| [[BL-079]] (client sourcemap noise) | stay `todo` but **the claim is OVERSTATED and corrected in the item**: not "every `lib/*.mjs`" and not "a wall of errors" — **4 of 10** files carry a dangling `sourceMappingURL`, and a real `npm test` emits **4** matching lines (suite 93/93 green). Real, trivial, no longer justified by the "buries a real error" argument. |
+| [[BL-024]] (brain leaks client shape) | stay `todo`, **RE-SCOPED — partly landed already.** The two-axis split exists: `AgentTransport` (`types.ts:44`), `normalizeAgentKind`, and `bl024-transport-vendor.test.ts`. Remaining work is retiring `AgentProvider`/`legacyProvider` from the surfaces that still carry it (`types.ts:65, 75, 145, 205`). ⚠️ cited `types.ts:13` is **stale** (now `AgentStatus`). ⚠️ **its T3b plan is untracked and exists only on the PO's machine** — commit `design/bl024-t3b-plan.md` before anyone works this. |
+| [[BL-070]] (client test flake) | stay `todo`, low priority. Test still present (`agentalk-mcp-client/__tests__/exec-rpc.test.ts:199`); client suite **93/93** green, so still "reproduce-or-park", not reproduced this pass. |
+| [[BL-044]] (API multi-agent consensus non-functional) | stay `todo` — **NOT re-verified this pass.** Its three-stacked-walls claim needs a live run with real keys; I did not do one, so it is neither confirmed nor refuted here. **The largest un-audited claim in the queue.** |
+| [[BL-068]] (id convention unenforced) | **propose `deferred`** — the PO already chose *"file the findings, build nothing"* (2026-07-1x), which is a park, not a queue item. Reopen when the cross-repo contract change becomes PO scope. **PO call; not changed unilaterally.** |
+| [[BL-025]] · [[BL-029]] · [[BL-035]] | stay `todo` — standing method/process items (A/B live-proof baseline · reassignment signal · tester artifacts). None blocks BL-084. |
+| [[BL-034]] · [[BL-038]] · [[BL-042]] · [[BL-043]] · [[BL-050]] | stay `todo` — feature/experiment queue (PTY-tee panel · goose+OpenRouter lane · goose consensus recipe · heterogeneous arbiter · Team-view identity). Untouched, none blocking. |
+
+**Two gate observations for the PO, deliberately NOT filed** (filing is a PO act):
+1. **`agentalk-mcp-client` carries no governance file** — verified: no `AGENT.md`/`AGENTS.md`/`CLAUDE.md`/`GEMINI.md`
+   at its root. A worker launched there inherits **nothing**, which structurally confines every governed
+   autonomous run to the AgentTalk repo (it is why rung 5 had to be an AgentTalk task). Worth a decision.
+2. **`task-BL-039` is still unmerged** and carries a real fix (`313d089`, `providerName` forwarding), across
+   several sessions now. Merge it or fold it into the backlog.
+
+**Closed today, for the record:** [[BL-083]] (merged `bf83811`), [[BL-085]] (merged `f1d5b95`), and [[BL-078]]
+decided → `deferred` on BL-084.
+
 ### Backlog gate — 2026-07-11 (M20 inception · architect: Claude · PO direction in session)
 
 Per §3b, dispositioned before opening **M20 — The brain routes, you approve** (the self-hosting transition's first
@@ -2537,12 +2567,19 @@ tags: [consensus, arbiter, api-agents, tester-finding, product-gap]
 
 <!-- @item
 id: BL-045
-status: todo
+status: done
 date: 2026-07-13
 epic: null
-tags: [healthcheck, gemini, attach-mode, tester-finding, root-cause-found]
+tags: [healthcheck, gemini, attach-mode, tester-finding, root-cause-found, closed-at-gate]
 -->
-- [todo · **UN-PARKED 2026-07-16 (LB-93): root cause found — these are the "further facts" the LB-92 park waited for; that park is superseded, see the ROOT CAUSE FOUND note at the end of this item**; was: PO-PARKED 2026-07-13 (LB-92), agy declared unfit as an MCP attach client, fix deferred; Tester finding 2026-07-13 (TL-006); reopens the TL-002 residual] — **Attach-mode Gemini/agy agents time out
+- [done · **CLOSED AT THE 2026-07-27 BACKLOG GATE — the premise is superseded, not fixed by dedicated work.**
+  agy answers a healthcheck in ~14s (bare `agy --print` 9.65s), comfortably under the **30s default**, so the
+  feared provider-specific 90s timeout is unnecessary and is **absent from the code** (verified: no
+  `90_000`/`90000` in `packages/` or `apps/`). The residual blocker this item named — *"production remains one env
+  var short → BL-057"* — is **`done`**: BL-057 deleted the flag entirely. **Reopen condition:** a real
+  `start_pair_chat` was **never exercised** (the launcher builds a worker-only team), so if attach-mode pair chat
+  ever times out a healthcheck again, reopen here. That is a verification gap, not the filed defect · was:
+  **UN-PARKED 2026-07-16 (LB-93): root cause found — these are the "further facts" the LB-92 park waited for; that park is superseded, see the ROOT CAUSE FOUND note at the end of this item**; was: PO-PARKED 2026-07-13 (LB-92), agy declared unfit as an MCP attach client, fix deferred; Tester finding 2026-07-13 (TL-006); reopens the TL-002 residual] — **Attach-mode Gemini/agy agents time out
   the startup healthcheck (30s)** — re-running TL-001 with real `agy` clients, both agents attached fine but
   `start_pair_chat` failed: `Agent tl006-a did not respond to healthcheck within 30000ms`. **Root cause:** the
   healthcheck reaches an attached agent as a full `exec_rpc` requiring a complete provider-CLI generation (the BL-032
@@ -2919,8 +2956,10 @@ date: 2026-07-27
 epic: null
 tags: [hygiene, tooling, observability, agentalk-mcp-client, low-severity]
 -->
-- [todo · filed from BL-075, 2026-07-27] — **`agentalk-mcp-client`: every `lib/*.mjs` points at a sourcemap that does
-  not exist, so every test run emits a wall of errors** — the `.mjs` files each carry a trailing
+- [todo · filed from BL-075, 2026-07-27 · **claim CORRECTED at the 2026-07-27 gate — see the measured note at the
+  end; it is 4 of 10 files and ~4 lines, not "every file" and not "a wall"**] —
+  **`agentalk-mcp-client`: some `lib/*.mjs` point at a sourcemap that does
+  not exist, so every test run emits stray ENOENT lines** — the affected `.mjs` files each carry a trailing
   `//# sourceMappingURL=<name>.js.map` comment (left over from when they were emitted from TypeScript), but **no
   `.js.map` file is committed and none exists in any checkout**. Vitest/vite therefore prints a multi-line
   `ENOENT … .js.map` + stack for *each* module it loads, on every run. **Purely cosmetic — no test is affected** (BL-075's
@@ -2930,6 +2969,13 @@ tags: [hygiene, tooling, observability, agentalk-mcp-client, low-severity]
   (the `lib/` sources are hand-maintained JS now, not build output), or commit the maps, or silence the loader.
   Pick one — the current state claims a build artifact that the repo does not have. Source: observed during every
   BL-075 test run.
+
+  **MEASURED at the 2026-07-27 gate — the original severity was overstated, and the justification with it.**
+  Actual: **4 of 10** `lib/*.mjs` carry a dangling `sourceMappingURL` (`executor-runtime` · `protocol` ·
+  `provider-runtime` · `request-id`), and a real `npm test` emits **4** matching lines, with the suite **93/93**
+  green — not "every module" and not a multi-line stack per module. So the "noise large enough to bury a real
+  error" argument **no longer holds**; this is now purely cosmetic tidying. Kept `todo` because the repo still
+  claims a build artifact it does not have, but it should not be prioritised on the buries-an-error grounds.
 
 <!-- @item
 id: BL-047
