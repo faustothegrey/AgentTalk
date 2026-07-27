@@ -23,6 +23,16 @@ import { dirname, join } from 'path';
 
 export type BacklogStatus = 'todo' | 'doing' | 'deferred' | 'done' | 'dropped';
 
+/**
+ * Whether an item may be handed to an agent autonomously (BL-093).
+ *
+ * `human-only` is the DEFAULT and the fallback for any unrecognised value — this parser
+ * fails CLOSED. An item that does not say it is eligible is not eligible, so shipping the
+ * field cannot retroactively make the existing backlog autonomously selectable, and a typo
+ * hides an item rather than releasing it.
+ */
+export type Autonomy = 'eligible' | 'human-only' | 'po-decision';
+
 export interface BacklogItem {
   id: string;
   status: string; // one of BacklogStatus when valid; raw value kept even if unknown
@@ -30,6 +40,10 @@ export interface BacklogItem {
   epic: string | null;
   promotedTo: string | null;
   tags: string[];
+  /** Ids that must be done/dropped before this item may start. Default []. */
+  blockedBy: string[];
+  /** Autonomous-selection eligibility. Default 'human-only' (fail closed). */
+  autonomy: Autonomy;
   title: string;
   bodyMarkdown: string;
 }
@@ -40,6 +54,8 @@ export interface BacklogParseResult {
 }
 
 const VALID_STATUS = new Set<string>(['todo', 'doing', 'deferred', 'done', 'dropped']);
+const VALID_AUTONOMY = new Set<string>(['eligible', 'human-only', 'po-decision']);
+const DEFAULT_AUTONOMY: Autonomy = 'human-only';
 
 const ITEM_OPEN = '<!-- @item';
 const HEADER_END = '-->';
@@ -186,6 +202,24 @@ export function parseBacklog(markdown: string): BacklogParseResult {
         );
       }
 
+      // BL-093. Both fields are optional; both fail closed. `blocked_by` shares `tags`'
+      // list syntax, so it reuses the same parser rather than growing a second one.
+      const blockedBy = parseTagList(header.blocked_by ?? '');
+      const rawAutonomy = (header.autonomy ?? '').trim();
+      let autonomy: Autonomy = DEFAULT_AUTONOMY;
+      if (rawAutonomy) {
+        if (VALID_AUTONOMY.has(rawAutonomy)) {
+          autonomy = rawAutonomy as Autonomy;
+        } else {
+          warnings.push(
+            `Item "${id}" has unknown autonomy "${rawAutonomy}" — treated as "${DEFAULT_AUTONOMY}"`,
+          );
+        }
+      }
+      if (blockedBy.includes(id)) {
+        warnings.push(`Item "${id}" lists itself in blocked_by`);
+      }
+
       items.push({
         id,
         status,
@@ -193,6 +227,8 @@ export function parseBacklog(markdown: string): BacklogParseResult {
         epic: nullable(header.epic ?? ''),
         promotedTo: nullable(header.promoted_to ?? ''),
         tags: parseTagList(header.tags ?? ''),
+        blockedBy,
+        autonomy,
         title: header.title?.trim() || deriveTitle(bodyMarkdown),
         bodyMarkdown,
       });
@@ -213,6 +249,36 @@ export function parseBacklog(markdown: string): BacklogParseResult {
  */
 export function activeBacklogItems(items: BacklogItem[]): BacklogItem[] {
   return items.filter((i) => i.status !== 'done' && i.status !== 'dropped' && i.status !== 'deferred');
+}
+
+/** A blocker is RESOLVED once the item it names is `done` or `dropped`. */
+function isResolved(blockerId: string, byId: Map<string, BacklogItem>): boolean {
+  const b = byId.get(blockerId);
+  if (!b) return false; // unknown id → unresolved, so a typo hides rather than releases
+  return b.status === 'done' || b.status === 'dropped';
+}
+
+/**
+ * The items an autonomous selector may PROPOSE (BL-093): `todo`, marked `eligible`,
+ * and with every blocker resolved.
+ *
+ * Deliberately narrower than `activeBacklogItems()` — that one answers "what is live?"
+ * for the dashboard, this one answers "what may be handed to an agent without a human
+ * in the loop?". Every clause fails closed: `doing` is excluded (someone already has it),
+ * a missing `autonomy` is `human-only`, and an unresolvable blocker id keeps the item back.
+ *
+ * NOTE the guard this canNOT enforce: an item whose execution IS "launch a session" must
+ * be marked `human-only` by whoever files it, or the OPERATOR charter's no-recursion rule
+ * is silently breached. No parser can make that judgement — see design/bl093-plan.md §6.
+ */
+export function selectableBacklogItems(items: BacklogItem[]): BacklogItem[] {
+  const byId = new Map(items.map((i) => [i.id, i]));
+  return items.filter(
+    (i) =>
+      i.status === 'todo' &&
+      i.autonomy === 'eligible' &&
+      i.blockedBy.every((b) => isResolved(b, byId)),
+  );
 }
 
 /** Walk up from cwd to locate `design/backlog.md` (CJS/ESM agnostic). */

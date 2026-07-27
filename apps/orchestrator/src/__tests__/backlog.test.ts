@@ -26,6 +26,10 @@ describe('parseBacklog', () => {
       epic: 'M07',
       promotedTo: null,
       tags: ['live-smoke', 'quota-blocked'],
+      // BL-093 added these two. This item declares neither, so it also pins the
+      // fail-closed defaults on the parser's headline "all header fields" case.
+      blockedBy: [],
+      autonomy: 'human-only',
       title: 'Re-run the live smoke',
       bodyMarkdown: '- [todo] 2026-06-20 — **Re-run the live smoke** — the deferred T2.4.',
     });
