@@ -2394,12 +2394,12 @@ tags: [containment, worktree, goose, autonomy, rung4, bl053-family]
 
 <!-- @item
 id: BL-076
-status: todo
+status: done
 date: 2026-07-19
 epic: null
 tags: [goose, worker-protocol, observability, autonomy, rung4, bl042-family]
 -->
-- [todo · filed from the rung-4 run (BL-046), 2026-07-19] — **goose's worker report doesn't survive the worker
+- [done · **MERGED 2026-07-27 (`6849356`, not pushed)** · filed from the rung-4 run (BL-046), 2026-07-19] — **goose's worker report doesn't survive the worker
   protocol — the work happens but the report is lost** — in both rung-4 runs goose DID the code work (edit + test +
   commit), but its responses over the coordination channel were non-JSON meta ("I've reached the maximum number of
   actions I can do without user input. Would you like me to continue?") then a bare
@@ -2410,6 +2410,46 @@ tags: [goose, worker-protocol, observability, autonomy, rung4, bl042-family]
   "completed ≠ done" trap — status is not a work signal). **Fix directions:** a goose worker recipe that wraps its
   final result in the exact `work_accept` envelope; and/or capture goose's raw stdout as a report sidecar so the work
   report is never lost even when the envelope isn't emitted. Source: rung-4 run (BL-046).
+
+  **✅ DONE — MERGED 2026-07-27 (`6849356`, local, NOT pushed). Plan + full record: `design/bl076-plan.md`.**
+  **⚠️ The diagnosis above is WRONG in its load-bearing part, and correcting it is most of the value here.**
+  Reproduced at the seam *before* choosing a fix (the repro is the shipped test). **Non-JSON is NOT the lossy
+  case:** an unparseable response fails to parse, hits the `!structured` branch (`in-process-driver.ts:336`), and
+  **that branch already submits the raw text**. The loss is in the **parsed-but-not-a-verdict** case: a bare
+  `ack_planning_protocol` **validates fine** (`validatePayload` returns `true` for that type), falls through to the
+  final branch, finds no `text`/`plan`/`reason` in its empty payload, and substitutes the literal
+  **`'Task completed.'`** — a placeholder asserting success while carrying **no evidence of it**, with the real
+  report sitting unused in `text` two scopes up. **So the rung-4 sequence was: goose answered with prose →
+  `parseWithRetry` sent the correction prompt → goose returned a bare ack. The RETRY converted a survivable
+  response into a lost one.** Neither fix direction proposed above addressed that.
+  **Same defect one line away (fixed together):** `work_accept` validates with `typeof payload.text === 'string'`,
+  so an **empty** string passes and loses the report on that branch too.
+  **Fix (+9/-2): fall back to the raw response before falling back to a placeholder.** Deliberately **not** a
+  better prompt (probabilistic, provider-specific — and this project already chose deterministic enforcement over
+  LLM-policed invariants; see BL-061's rationale), and **not** only a stdout sidecar (BL-064 already files one, and
+  the *work result itself* would still read `'Task completed.'`; a sidecar someone must know to go read is not a
+  report). The accept/refuse decision, the protocol, the retry, `validatePayload` and the prompt are untouched.
+  **Verified by RUNNING:** the repro was authored and confirmed **RED before the fix existed**, GREEN after, with
+  the `work_accept` regression guard passing in **both** runs — so the change is provably narrow. `tsc -b` 0; suite
+  **407/407** (404 baseline + 3).
+  **LIVE:** a real **goose / claude-sonnet-5** worker via the Bite-0 launcher — the work result broadcast to clients
+  was goose's genuine report: *"Computed 37 × 13 = 481 … committed it with the message 'bl076 probe' (commit
+  `2cc8408`) … Verified"* — and **`2cc8408` is exactly the commit on disk**, so the surviving report is *accurate*,
+  not merely present. **⚠️ HONEST LIMIT — that run does NOT prove the fixed branch.** `AGENTTALK_RESPONSE_LOG` was
+  not set, so goose's raw envelope was never captured, and the report would also have survived via the
+  already-working `!structured` path. The lossy branch depends on the model free-styling, so **it is not reliably
+  reproducible live — which is exactly why the deterministic repro is the evidence for it.** The live run proves
+  end-to-end health and no regression, nothing more.
+  **Bonus — BL-075 independently re-confirmed** by the same run: `answer.txt` landed in `agentalk-task-<id>` with
+  the sandbox main tree untouched, a second live witness a few hours after that fix merged.
+
+  **Telemetry (task closure):**
+  - task:        BL-076
+  - wall-clock:  2026-07-27 ~08:00 → ~08:25 (~25 min incl. one live goose run)
+  - budget:      claude session 27%→34% (Δ ~7%), weekly 3%→4% (Δ ~1%)
+  - gate:        tsc 0, suite 407/407, repro RED→GREEN (bar authored before the fix), live end-to-end verified
+  - diff:        3 files, +198/-2; commits `28b598c` (fix) · `6849356` (merge)
+  - outcome:     MERGED ✅ (local; NOT pushed — PO says "merge" and "push" as separate words)
 
 <!-- @item
 id: BL-077
