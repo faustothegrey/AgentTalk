@@ -886,13 +886,56 @@ tags: [self-hosting, relay, human-in-the-loop, program]
 ### Todo (next first)
 
 <!-- @item
+id: BL-082
+status: done
+date: 2026-07-27
+epic: null
+tags: [launcher, client, governance, agent-md, autonomy, ladder, bl080-followup]
+-->
+- [done · **MERGED 2026-07-27 (`c7a5991`, client repo; NOT pushed)** · closing block below · the untested half of [[BL-080]] Q2 · PO directed the fix 2026-07-27 (`[PO]`), alongside [[BL-081]]] —
+  **A launched worker must never be halted by the turn-1 primer gate — including when its workdir is the primary
+  checkout.** BL-080 proved a claude worker inherits `AGENT.md` and proceeds to work — **but it proved it in a
+  worktree, where `.claude/settings.json` does not exist** (`.claude/` is gitignored, `.gitignore:1`). In the
+  **primary checkout** the `SessionStart` hook DOES exist, and it instructs the session to perform the primer
+  handshake, **report, and STOP** — which for an autonomous worker means doing nothing and looking healthy while
+  it does it. The hook is already guarded by `[ -n "$AGENTTALK_SKIP_PRIMER" ]`, so the mechanism exists; **nothing
+  sets it for a launched agent.** BL-080 set it by hand in the operator's shell, where it was a **no-op** — so the
+  guard has never actually been exercised.
+
+  **Why fix rather than test:** the empirical alternative is to point an autonomous agent with
+  `--permission-mode bypassPermissions` at the **primary checkout**, which is precisely what the PO's worktree
+  mandate forbids. The launcher is the right place — it already injects `AGENTTALK_WORKDIR` and
+  `AGENTTALK_RESPONSE_LOG` into the child env for exactly this class of reason ("this process is a launched
+  worker, not a human session"). **Adjacent, deliberately not pulled in:** this is a narrow instance of the
+  launcher-injected context signal whose general mechanism is **[[BL-072]]** (deferred by PO decision) — one env
+  var, not that feature.
+
+  **✅ CLOSED 2026-07-27 — fixed, not tested empirically, and that choice was deliberate.** `lib/agent-launcher.mjs`
+  now injects **`AGENTTALK_SKIP_PRIMER: '1'`** into every launched harness env, beside the `AGENTTALK_WORKDIR` and
+  `AGENTTALK_RESPONSE_LOG` it already injects for the same class of reason — *this process is a launched worker,
+  not a human session*. **Set for every provider**, because the signal is "launched worker", not "claude".
+  The empirical alternative would have meant pointing an agent running with `--permission-mode bypassPermissions`
+  at the **primary checkout** — precisely what the PO's worktree mandate exists to prevent.
+  **Bar written RED first:** 3 tests (`__tests__/bl082-primer-skip.test.mjs`) — 2 RED before the one-line fix,
+  green after; the third asserts the pre-existing env signals are undisturbed and passes on **both** sides, which
+  is what makes it a regression guard rather than a restatement of the fix.
+
+  **Telemetry (task closure):**
+  - task:        BL-082
+  - wall-clock:  2026-07-27 ~10:05 → ~10:14 (~10 min, shared with [[BL-081]])
+  - budget:      not gated this session (PO: *"let's put aside costs for now"*); meter stale all session
+  - gate:        client **lint 0 · suite 93/93** (17 files; baseline was 89/89 in 15) — re-run on merged master
+  - diff:        2 files, +102/-1; commits `06c4012` (fix) · `c7a5991` (merge) — **`agentalk-mcp-client` repo**
+  - outcome:     **MERGED ✅** (local; NOT pushed — "merge" and "push" are separate words)
+
+<!-- @item
 id: BL-081
-status: todo
+status: done
 date: 2026-07-27
 epic: null
 tags: [launcher, client, process-lifecycle, ladder, autonomy, spike-finding]
 -->
-- [todo · **found live during the BL-080 claude-worker spike, 2026-07-27** · plan/evidence:
+- [done · **MERGED 2026-07-27 (`c7a5991`, client repo; NOT pushed)** · closing block below · found live during the BL-080 claude-worker spike · plan/evidence:
   `design/spike-claude-worker-plan.md` §8 F1 · **not fixed — out of that spike's scope** (Implementer Rule 2)] —
   **The Bite-0 launcher leaks an orphaned orchestrator: every run leaves a port-holding zombie.**
   `stopInstance` (`agentalk-mcp-client:scripts/launcher.mjs`) kills the process it spawned — but when
@@ -916,6 +959,27 @@ tags: [launcher, client, process-lifecycle, ladder, autonomy, spike-finding]
   directly so the spawned process *is* the server; or capture the server's own pid from its startup output and
   kill that. Each has a different blast radius on the D1/D3 contract — the anti-hang cap path also calls
   `stopInstance`.
+
+  **✅ CLOSED 2026-07-27 — reproduced at the seam first; the reproduction confirmed the filed diagnosis.**
+  (Filed diagnoses have been wrong twice recently — [[BL-076]]/[[BL-077]] — so this was checked, not assumed.)
+  **Fix:** spawn the instance **`detached: true`** so the wrapper leads its own process group, and signal the
+  **group** (`process.kill(-pid, sig)`) in `stopInstance`, with a **direct-kill fallback** so teardown can never be
+  *worse* than before if the group is gone or was never created. The **ready-timeout path leaked identically** and
+  is fixed with it — it was the same defect one branch over.
+  **The bar asserts a REAL process tree, not a mocked `kill`:** a wrapper shell launches a genuine grandchild that
+  records its own pid, and the bar is whether that pid is alive after `stopInstance`. A mock would only have proven
+  we called kill on the object we already had — never the thing in doubt. **RED 10:08:01 → GREEN 10:08:32**, fix
+  written in between; that ordering is unfakeable in a way a post-hoc revert is not.
+  **Declared:** `scripts/launcher.mjs` also gained a **main guard + one export** so the module can be imported by a
+  test without self-executing. As a CLI it is unchanged — verified (`usage` + exit 2 with no args).
+
+  **Telemetry (task closure):**
+  - task:        BL-081
+  - wall-clock:  2026-07-27 ~10:05 → ~10:14 (~10 min, shared with [[BL-082]])
+  - budget:      not gated this session (PO: *"let's put aside costs for now"*); meter stale all session
+  - gate:        client **lint 0 · suite 93/93** (17 files) — re-run on merged master, not trusted from the branch
+  - diff:        2 files, +118/-6; commits `a39d09c` (fix) · `c7a5991` (merge) — **`agentalk-mcp-client` repo**
+  - outcome:     **MERGED ✅** (local; NOT pushed)
 
 <!-- @item
 id: BL-072
