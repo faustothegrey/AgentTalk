@@ -220,6 +220,28 @@ Team terminal states are exactly **`completed` | `error` | `interrupted`**. Olde
 3. `runs/` is gitignored; configs there are disposable, but **copy the NDJSON and sidecar somewhere durable if the
    run is evidence for a decision.**
 
+### 10a. Prove it rather than eyeballing it — the invariant harness ([[BL-087]])
+
+The cleanup above is a checklist, and step 3 exists only because a nested worktree **was missed by hand** once
+already. So bracket every run with a machine check instead of trusting the sweep:
+
+```bash
+node scripts/infra-invariant.mjs snapshot --out /tmp/att-invariant/before.json   # BEFORE launching
+# … the run, then the cleanup above …
+node scripts/infra-invariant.mjs check --before /tmp/att-invariant/before.json   # AFTER
+```
+
+Exit **0** clean · **1** findings · **2** the harness itself failed (kept distinct so a crash can never read as a
+clean run). `--json` gives an operator agent something to gate on without parsing prose.
+
+Watches both repos (`--client <path>` or `$AGENTTALK_CLIENT_REPO`), ports 3400-3700 plus 9899. **Additions can be
+expected — removals and `HEAD` moves never are**, so a deleted branch or worktree is `critical` no matter how
+permissive the expectation file. It **reports and never repairs**: run it any time, including mid-run.
+
+A `critical` finding **gates the next operator run** until the PO clears it (PO, 2026-07-27). Hermes may *run* it;
+only the PO may dispose of a `critical`. A pre-existing unaccounted-for process is a `warn` here and is cleared the
+BL-023 way — `AGENTTALK_SWEEP_DECLARED=<pid-or-port>`.
+
 ## 11. Known limits — stated, not hidden
 
 - **Exactly one agent per run.** Multi-agent is not supported by this launcher.

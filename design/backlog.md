@@ -2938,12 +2938,12 @@ tags: [ui, observability, reactivity, web, rung4, bl048-family]
 
 <!-- @item
 id: BL-087
-status: todo
+status: done
 date: 2026-07-27
 epic: null
 tags: [infrastructure, safety, harness, operator-seat, autonomy, instrumental, po-crucial, needs-plan]
 -->
-- [todo · filed 2026-07-27 on PO direction ("crucial") · **the safety rail for handing session-launching to an
+- [done · filed 2026-07-27 on PO direction ("crucial") · **the safety rail for handing session-launching to an
   external agent** · prerequisite for the operator ladder O-0…O-3] — **Nothing asserts that the infrastructure
   came back intact after a run — build a read-only invariant harness that snapshots and diffs it.**
 
@@ -2985,6 +2985,47 @@ tags: [infrastructure, safety, harness, operator-seat, autonomy, instrumental, p
   operator doing its job adds, while an operator burning infrastructure removes or moves. Severity tiers
   (`critical`/`warn`/`info`) keep the cried-wolf failure at bay, and exit `2` is reserved for internal error so a
   **crashing harness can never be misread as a clean run**.
+
+  **DELIVERED 2026-07-27 on `task-BL-087` — `scripts/infra-invariant.mjs` + 29 bars. Gate 1 passed with one
+  required amendment; PO answered all five §9 questions.** All ten DoD rows green; suite **442 → 471** (74 → 75
+  files), which is exactly this task's 29 tests and nothing else moving.
+
+  **The Gate-1 amendment is the part worth remembering** (plan §4a). §3 described process/port inspection as fresh
+  work; it is not — [[BL-023]]'s `check-orchestrator-ports.mjs` already exports its classifier as pure functions,
+  and it encodes a trap a naive reimplementation walks straight into: **`ppid` cannot discriminate**, because the
+  PO's launchd service runs at ppid 1 and an orphaned leak *also* reparents to ppid 1. Guessing either way is a
+  filed defect ([[IP-15]]: a reviewer inferred "leak" and filed against a service the PO runs deliberately). So
+  reuse was not DRY — **it was the mitigation for this plan's own top risk, cried wolf.** The two tools ask
+  different questions and both answers stand: BL-023 is **absolute** ("is anything unaccounted-for listening right
+  now?", `UNKNOWN` always fails); this is **differential** ("did *this run* change anything?"). Hence the mapping:
+  an `UNKNOWN` process **already in the baseline** is a `warn` (this run did not cause it), one that **appeared
+  during the run** is `critical`. The `AGENTTALK_SWEEP_DECLARED` escape valve is inherited for free.
+
+  **PO decisions recorded (§9):** a `critical` **gates** the next operator run until the PO clears it · snapshots
+  live **outside both repos** at `/tmp/att-invariant/` · **both repos in scope from day one** · ports
+  **3400-3700 + 9899** · **Hermes may run it but may never interpret a `critical` away** — that disposition is the
+  PO's alone.
+
+  **Verified live, not just in fixtures:** snapshot + check against the two real repos → *"No differences at all"*,
+  exit 0; then a doctored baseline (only the `/tmp` JSON touched) → `head-moved` + `branch-removed`, both
+  `critical`, exit 1. Both repos byte-identical afterwards. Row 7 is pinned two ways: a fingerprint comparison
+  around repeated snapshots, **and a source scan that fails the suite if the string `worktree prune`,
+  `worktree remove`, `branch -D`, `reset --hard` or `process.kill` ever appears in the harness** — so a future
+  "helpful" addition breaks the build instead of shipping.
+
+  **Known limit, stated:** darwin only (`lsof`/`ps`/`launchctl`); elsewhere those fields record `unavailable` and
+  the run continues rather than failing closed. `unavailable` is deliberately distinct from "collected and empty" —
+  a skipped comparison is reported as a `warn`, never passed off as clean.
+
+  **Telemetry (task closure):**
+  - task:        BL-087
+  - wall-clock:  2026-07-27 15:16 → 15:42 (~26 min)
+  - budget:      weekly 19% → 19% (Δ ~0%); session **unavailable** — pinned at 100% for the whole task, so the
+                 delta is unreadable rather than zero (resets 16:40)
+  - gate:        tsc 0, suite 471/471 (75 files), pollution clean (one worktree `att-BL-087`, one branch
+                 `task-BL-087`, no nested `task-task-*`, ports 3500/3600 free)
+  - diff:        4 files, +1109/-2; branch `task-BL-087`
+  - outcome:     **DELIVERED, awaiting the PO's merge** — the agent commits and stops; merge is the PO's act
 
 <!-- @item
 id: BL-086
