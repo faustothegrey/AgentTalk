@@ -2728,12 +2728,12 @@ tags: [hygiene, tooling, observability, agentalk-mcp-client, low-severity]
 
 <!-- @item
 id: BL-047
-status: todo
+status: done
 date: 2026-07-13
 epic: null
-tags: [api-agents, driver-lifecycle, conversation, tester-finding]
+tags: [api-agents, driver-lifecycle, conversation, tester-finding, rung5, autonomous-authored]
 -->
-- [todo · Tester finding 2026-07-13 (TL-007)] — **API agents are not reusable across conversations — the driver stops
+- [done · **MERGED 2026-07-27 (`ee1a0bf`-class merge on master; NOT pushed) — RUNG 5: the first fix authored autonomously by a governed claude worker** · closing block at the end · Tester finding 2026-07-13 (TL-007)] — **API agents are not reusable across conversations — the driver stops
   at conversation_end** — the `InProcessAgentDriver` calls `this.stop()` on `conversation_end` (the BL-033 lifecycle
   path). For an **MCP-attached** agent that's correct (the client shuts down too). For an **API agent** there is no
   client, so the agent goes `busy → ready` (looks reusable) but its **driver is stopped** — the next conversation's
@@ -2773,6 +2773,43 @@ tags: [api-agents, driver-lifecycle, conversation, tester-finding]
   **BL-041's class of hazard** (unbounded loop burning real provider budget) on the relay path rather than the
   planning path. Whether an idle agent should answer-and-relay at all is a **behaviour question for the PO/reviewer**,
   which is why it was not touched here. Recommend filing as a new backlog item.
+
+  **✅ CLOSED 2026-07-27 — MERGED. Rung 5 of the autonomous-development ladder.** Authored end-to-end by a
+  **claude/opus** worker launched into a worktree over the MCP substrate, from a **one-sentence goal** ("API agents
+  cannot be reused across conversations … find the relevant backlog item, work out what is actually happening, fix
+  it, verify it, commit"). **No file list, no diagnosis, no deliverable spec and no behaviour rules were given** —
+  the discipline came from `AGENT.md`, inherited via the `CLAUDE.md` symlink ([[BL-080]] proved that inheritance;
+  this is the first time it carried real work). Plan: `design/rung5-plan.md`. **Relay count: 0.**
+
+  **Independently verified before merge (not taken on the worker's word):** `tsc -b` exit 0 · suite **410/410** in
+  71 files (baseline 407, +3) · the worker's own bar **mutation-checked by the reviewer** — no-op the `resume()`
+  body and it fails with the exact TL-007 string `did not respond to healthcheck within 500ms`, while its other two
+  tests still pass, so the bar is real and not a tautology. **Purely additive: 236 insertions, ZERO deletions** — no
+  existing line changed, no test weakened.
+
+  **⚠️ The reviewer's own pre-registered grader was WRONG — twice — and that is the honest headline of the run.**
+  Grader v1 asserted "any turn after `conversation_end` is processed", driven by a `message_received` — **the one
+  event the worker deliberately excluded**, because reviving on it re-opens the unbounded relay. The grader demanded
+  the harmful behaviour; it was RED on a correct fix. Grader v2 failed its own precondition. Only the
+  precondition guards built into both stopped a false "rung failed" verdict being reported. **The worker's reasoning
+  was better than the grader's.** Lesson recorded: when an independent bar disagrees with a fix, the bar is a
+  hypothesis too.
+
+  **Reviewer's §6 scope criterion was also too blunt** — it named *any* `registry.ts` change a rung failure, which
+  would have failed the very fix this item sanctions (option 1 IS the registry-side fix). Judged respected: no
+  `team-coordinator` / consensus / protocol / contracts touched; the registry change is an additive hook in
+  `sendProtocol` gated on transport **and** on the event being a new assignment.
+
+  **Not verified by the reviewer:** the OOM account for option 2 (not reproduced — it is the worker's report), and
+  the adjacent uncapped-relay defect (unverified; a behaviour question for the PO).
+
+  **Telemetry (task closure):**
+  - task:        BL-047 (rung 5 — first governed autonomous fix)
+  - wall-clock:  2026-07-27 ~10:20 → 10:30 commit (~10 min of worker time), merged ~10:36
+  - budget:      not gated this session (PO: *"let's put aside costs for now"*); meter stale all session
+  - gate:        tsc 0 · suite **410/410** · backlog 82/0 warnings — all re-run on merged master
+  - diff:        4 files, **+236/-0**; worker commit `6fc38d2` on `task-rung5`, merged --no-ff to master
+  - outcome:     **MERGED ✅** (local; NOT pushed — "merge" and "push" are separate words)
 
 <!-- @item
 id: BL-041
