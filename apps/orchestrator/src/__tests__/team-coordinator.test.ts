@@ -38,7 +38,7 @@ const renderWorkerPrompt = async (workAssignPayload: unknown): Promise<string> =
   await new Promise((r) => setTimeout(r, 50));
   driver.stop();
 
-  const body = JSON.parse(fetchFn.mock.calls[0][1].body);
+  const body = JSON.parse(fetchFn.mock.calls[0]![1].body);
   const strings: string[] = [];
   const walk = (v: unknown): void => {
     if (typeof v === 'string') strings.push(v);
