@@ -260,6 +260,22 @@ node scripts/infra-invariant.mjs check --before /tmp/att-invariant/before.json  
 Exit **0** clean · **1** findings · **2** the harness itself failed (kept distinct so a crash can never read as a
 clean run). `--json` gives an operator agent something to gate on without parsing prose.
 
+**⚠️ The harness cannot see a process that holds no port — run the manual sweep too ([[BL-091]], deferred:
+UNMITIGATED, ACCEPTED by the PO, 2026-07-27).** `snapshotGlobal` builds its process list *from listening
+sockets*, so a shell loop, poller, waiter or orphaned `sleep` never enters the state vector and the harness
+reports `exit 0` while it spins. This is exactly how an O-1 poll loop ran unnoticed for ~10 minutes. So, on every
+operator run, **before cleanup**, alongside the `check` above:
+
+```bash
+ps ax -o pid,etime,command | grep -E "[s]leep [0-9]|[u]ntil |[w]hile |[l]auncher\.mjs|[c]laude -p"
+```
+
+**This is a LIST FOR A HUMAN TO JUDGE, never an automated finding.** That is deliberate, and it is why BL-091
+was not "fixed" by simply adding this to the harness: a machine cannot tell *our* stray loop from a service the
+PO runs on purpose, and guessing is where [[IP-15]] lives — a reviewer once filed a defect against exactly such a
+service. A human reading five lines tells them apart instantly. Hermes may run the sweep and reports the output
+as an **observation**; the PO disposes of what it shows.
+
 Watches both repos (`--client <path>` or `$AGENTTALK_CLIENT_REPO`), ports 3400-3700 plus 9899. **Additions can be
 expected — removals and `HEAD` moves never are**, so a deleted branch or worktree is `critical` no matter how
 permissive the expectation file. It **reports and never repairs**: run it any time, including mid-run.

@@ -2983,12 +2983,14 @@ tags: [testing, flake, websocket, bl048, ephemeral-ports]
 
 <!-- @item
 id: BL-091
-status: todo
+status: deferred
 date: 2026-07-27
 epic: null
-tags: [infrastructure, harness, operator-seat, bl087, observability]
+tags: [infrastructure, harness, operator-seat, bl087, observability, accepted-risk]
 -->
-- [todo · found because the **PO noticed two shells still running**, not by any check we own] — **The invariant
+- [deferred · **PO DECIDED 2026-07-27: UNMITIGATED, ACCEPTED**, with a compensating manual sweep (see the
+  disposition at the end of this item) · found because the **PO noticed two shells still running**, not by any
+  check we own] — **The invariant
   harness cannot see a process that holds no port, so an operator's stray poll loop is invisible to it.**
 
   **How it surfaced.** During the O-1 re-run the operator left an `until grep …; do sleep 5; done` loop spinning,
@@ -3011,6 +3013,71 @@ tags: [infrastructure, harness, operator-seat, bl087, observability]
   filed a defect against a service the PO runs deliberately. Any design here must produce **positive evidence**
   (the BL-023 discipline), not a pattern match. Consider process-group/session ancestry from the launcher's own
   pid, which the launcher already tracks (`detached: true`, negative pid — [[BL-081]]).
+
+  ---
+
+  ## Disposition — UNMITIGATED, ACCEPTED (PO, 2026-07-27)
+
+  **The risk is accepted as stated, and nothing is being built.** Say it in the plainest terms so no later reader
+  mistakes this for a fix: **the invariant harness does not and will not detect a portless stray process, and an
+  operator run can therefore leave a poller, waiter or orphaned `sleep` behind with the harness reporting
+  `exit 0`.** That is the known, accepted state of the rail.
+
+  **Why accepting is defensible.** The blast radius is a wasted process and wasted budget, not damaged
+  infrastructure — the damage classes the harness *does* cover (worktrees, branches, `HEAD`, ports) are the ones
+  that can actually burn the repo. And the honest fix is not cheap: a `ps` pattern match is precisely where
+  [[IP-15]] lives, where a reviewer once filed a defect against a service the PO runs deliberately. Building the
+  positive-evidence version (process-group ancestry from the launcher's own pid) is real design work that would
+  block the operator ladder behind it for no proportionate safety gain.
+
+  **The compensating control — and it is deliberately NOT automated.** After every operator run, **before**
+  cleanup, a listing is produced for a **human to judge**:
+
+  ```bash
+  ps ax -o pid,etime,command | grep -E "[s]leep [0-9]|[u]ntil |[w]hile |[l]auncher\.mjs|[c]laude -p"
+  ```
+
+  **This produces a LIST, never a verdict** — which is the whole point. The reason BL-091 could not simply be
+  "fixed" this way is that a machine cannot tell *our* stray loop from the PO's deliberate service; a human
+  reading five lines can, instantly. Keeping the judgement human is the mitigation, not a shortcut around it.
+  Hermes may run it (read-only, like the harness) and reports the output as an **observation**; disposing of
+  what it shows is the PO's.
+
+  **The control was PROVEN, not assumed — and the gap was demonstrated live at the same moment (2026-07-27).**
+  A procedure nobody has watched work is exactly the trap that produced three defects earlier this same session,
+  so both halves were exercised:
+
+  1. **The pattern discriminates.** Against representative `ps` lines it matched the O-1 poll loop
+     (`until grep …; do sleep 5; done`), a bare `sleep 300`, `launcher.mjs`, and `claude -p` — and did **not**
+     match `node orchestrator/index.js` or the PO's `hermes-live-transcript/server.py`. That negative half is the
+     load-bearing one: those are the deliberately-running services whose misclassification *is* [[IP-15]].
+  2. **The harness is blind and the sweep is not — measured side by side.** A real `sleep 40` (pid 53836) was
+     started after a baseline snapshot and left running. The sweep listed it. `infra-invariant.mjs check` against
+     that same baseline, **with the process still alive**, reported two `critical`s — both of them
+     `tracked-file-modified` about edited docs — and **said nothing whatsoever about the process**:
+
+     ```
+     [CRITICAL] 2
+       · tracked-file-modified: agenttalk: … design/backlog.md
+       · tracked-file-modified: agenttalk: … design/launch-and-monitor-runbook.md
+     ```
+
+     That is this item, reproduced on demand: a process appeared inside the observation window and the rail
+     could not see it. It is also why the sweep is `before cleanup` — the same position as the harness check.
+
+  **It is wired into `design/launch-and-monitor-runbook.md` §10a, not only recorded here.** A compensating
+  control that lives in a deferred backlog item is a note, not a control — nobody reads the backlog at run time.
+
+  **Reopen condition (§3c).** Reopen this item if **any** of the following happens:
+  1. A stray portless process from an operator run is found **after** the sweep was performed — i.e. the manual
+     control demonstrably failed, not merely was skipped;
+  2. Operator runs become unattended (no human reviewing the sweep between runs), which removes the judgement
+     the control depends on;
+  3. A stray process causes real harm rather than waste — holds a lock, corrupts an artifact, or consumes
+     budget beyond a single run's cap.
+
+  **Not a reopen trigger:** finding another stray when the sweep was simply not run. That is the procedure
+  lapsing, not the accepted risk changing.
 
 <!-- @item
 id: BL-090
