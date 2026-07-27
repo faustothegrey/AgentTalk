@@ -4538,13 +4538,14 @@ tags: [ui, observability, spike, self-hosting, bite0]
 
 <!-- @item
 id: BL-093
-status: todo
+status: done
 date: 2026-07-27
 epic: null
 tags: [backlog-schema, autonomy, hermes-selector]
 autonomy: human-only
 -->
-- [todo · **planned**: `design/bl093-plan.md` · unit 1 of "close the cycle" · PO-directed 2026-07-27] —
+- [done 2026-07-27 · merged `4db402d` · plan: `design/bl093-plan.md` · unit 1 of "close the cycle" ·
+  PO-directed and PO-gated] —
   **Make the backlog machine-selectable — add `blocked_by` and `autonomy` to the `@item` header.** The PO's goal
   is for the operator to read the backlog and **recommend** what to work on next (the PO's `yes` stays the launch
   trigger; unattended *deciding* is deliberately deferred and would need a dated charter act). That is impossible
@@ -4564,5 +4565,30 @@ autonomy: human-only
   hole, unmitigated and accepted:** the recursion guard (an item whose execution *is* "launch a session" must be
   `human-only`) rests on filing discipline, not code — no parser can make that judgement. Scope fence: **no
   selector, no Hermes/launcher changes** — that is unit 2. Full plan, DoD and risks: **`design/bl093-plan.md`**.
+  **CLOSED 2026-07-27 — merged `4db402d` (PO-gated). All 8 DoD rows VERIFIED by running.** `tsc -b` clean ·
+  suite **496/496** across 76 files (baseline 481/481 across 75 — the delta is exactly this task's one new file) ·
+  `backlog:check` **93 items, 0 warnings**, re-run on the merged mainline, not just the branch.
+  `selectableBacklogItems()` returns exactly `[BL-092]`, pinned in a test **and** confirmed live
+  (`GET /api/backlog?selectable=true` → 1 of 93, 0 warnings). The gate rules were proven by **four deliberate red
+  runs** — dangling, self-referential and cyclic `blocked_by`, plus `eligible` on a non-`todo` item — each failing
+  with a precise message, tree reverted after each.
+  **Two things worth carrying forward.** (1) **The first cycle detector was wrong and would have cried wolf**: an
+  iterative DFS that never un-marked a settled node reports a *false* cycle whenever an independent item depends
+  on one already walked (`A←B`, then `D←A`). Replaced with a recursive three-colour walk and **proven** — a real
+  3-chain (`BL-093 → BL-028 → BL-084`) yields 0 cycle errors. A validator that cries wolf is worse than none,
+  because the next reader learns to ignore it. (2) **A five-path `git add` silently omitted
+  `scripts/validate-backlog.mjs`**, so the first commit shipped without the validator — caught only by the
+  post-commit `git status`, then amended. That is the *second* session running in which this exact trap fired
+  ([[LB-95]] territory): writing the correction does not inoculate against it, checking the state afterwards does.
+  **Still open, deliberately:** the recursion guard rests on filing discipline, not code, and the selectable set
+  has one member — neither is fixed here, and unit 2 (the selector) should re-examine the first.
+  **Telemetry (task closure):**
+  - task:        BL-093
+  - wall-clock:  2026-07-27 ~18:45 (plan) → ~22:05 (merge) — implementation itself ~21:50 → ~22:00
+  - budget:      weekly 26%→27% (Δ ~1%), session crossed its 21:39 reset mid-task (88%→94%, then fresh window)
+  - gate:        tsc 0, suite 496/496, backlog 93 items/0 warnings, pollution clean (ports 3700/63590 released,
+    no strays, symlinked `node_modules` correctly never staged)
+  - diff:        6 files, +311/-4; commits `a4298d3` (plan) · `908f09f` (impl) · `4db402d` (merge)
+  - outcome:     **MERGED ✅** — not pushed; push is the PO's.
 
 *(add new items above this line)*
