@@ -17,6 +17,60 @@ export interface HostEnvironment {
 }
 
 export type AgentStatus = 'creating' | 'starting' | 'ready' | 'busy' | 'error' | 'reconnecting' | 'terminated';
+
+// BL-084 T1 — the typed reason carried by a transition into `error`.
+//
+// `error` used to be one undifferentiated bucket, so M03 propagation (the team-wide
+// Shared-Fate kill) fired on ANY entry into it. That is why BL-078 could not route
+// driver errors through `setAgentStatus` and why BL-028's idle sweep cannot be switched
+// on: a conversation ending normally, a rail firing correctly, or a refused privilege
+// escalation is indistinguishable from a crash.
+//
+// The vocabulary is split by ONE question — "is this the agent's fault?" — because that
+// is the only question propagation asks. It is deliberately NOT LB-67 Finding 1's
+// non-reply vocabulary, which answers a different question ("why did a peer not reply?")
+// for a different consumer (the sender). See design/bl084-plan.md §0.
+//
+// The classification lives in `isFaultClass` (registry.ts); these are just the names.
+
+/** Reasons that are the agent's fault — M03 propagation fires, exactly as it does today. */
+export type AgentFaultErrorReason =
+  // A protocol violation by the agent: it called a tool that does not exist.
+  | 'unknown-mcp-tool'
+  // The conversation runtime refused to start (in-process driver path).
+  | 'conversation-start-failed'
+  // Attached transport: MCP socket closed with 1011 (internal error).
+  | 'mcp-internal-error'
+  // Attached transport: the reconnect grace period expired with a turn still in flight.
+  | 'reconnect-timeout-inflight-turn'
+  // The idle sweep declared the agent hung.
+  //
+  // NOTE (BL-084 T1): this is fault-class ONLY to preserve today's behaviour byte-for-byte.
+  // The sweep is currently dead code — `lastProgressAt` is never written, so
+  // `hasAgentTimedOut()` always returns false (LB-70 / BL-028) — but were it live it would
+  // propagate, so T1 reproduces that. BL-028 (T3) is the item that revisits this row: a
+  // correctly-paused agent must not be killed, which needs the sender-side non-reply
+  // reason as well. Do NOT flip it here.
+  | 'idle-timeout';
+
+/** Reasons that are NOT the agent's fault — the status changes and the UI sees it, but no propagation. */
+export type AgentNonFaultErrorReason =
+  // The conversation hit its reply cap. This is how a conversation *ends*.
+  | 'conversation-reply-cap'
+  // BL-083's relay budget was exhausted — a rail firing correctly.
+  | 'relay-budget-exhausted'
+  // The target agent was not `ready`/`busy`. Normal in attach mode.
+  | 'target-agent-unavailable'
+  // A workflow-gate refusal (`[PO]`/`[SM]` tag, wrong role). Propagating a *rejected*
+  // privilege escalation would hand anyone who can trip a gate a team-wide DoS lever.
+  | 'workflow-gate-refusal'
+  // Planning messages routed at a team whose planning task is not active — a routing guard.
+  | 'planning-task-inactive'
+  // An invalid or stale healthcheck token — usually just a late ack.
+  | 'healthcheck-token-invalid';
+
+export type AgentErrorReason = AgentFaultErrorReason | AgentNonFaultErrorReason;
+
 // 'persistent' is the canonical name for a long-lived agent process that handles
 // many turns over one session. 'interactive' is a deprecated alias kept for
 // backward compatibility with saved recordings and older clients.
