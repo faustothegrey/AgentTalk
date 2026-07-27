@@ -2339,12 +2339,12 @@ tags: [api-agents, openrouter, product-gap, enabler, rung4, autonomous, goose]
 
 <!-- @item
 id: BL-075
-status: todo
+status: done
 date: 2026-07-19
 epic: null
 tags: [containment, worktree, goose, autonomy, rung4, bl053-family]
 -->
-- [todo · filed from the rung-4 run (BL-046), 2026-07-19] — **goose ignores its assigned task-worktree `cwd` — it
+- [done · **MERGED 2026-07-27 (`agentalk-mcp-client` `de65c30`, not pushed)** · filed from the rung-4 run (BL-046), 2026-07-19] — **goose ignores its assigned task-worktree `cwd` — it
   works in the workdir's MAIN tree, not `agentalk-task-<id>`** — the orchestrator provisions a per-task worktree and
   forwards its name as the exec `cwd` (BL-053: the worker anchors it under its `workdir`). BL-053 established that
   **gemini is the only provider that honours the forwarded cwd**; the rung-4 run **confirmed goose does NOT** — across
@@ -2355,6 +2355,42 @@ tags: [containment, worktree, goose, autonomy, rung4, bl053-family]
   the rung-4 reviewer mis-grade attempt #1 as "no work" by checking the empty worktree (the BL-059 "right coordinates"
   trap). **Fix direction:** make goose's executor honour the forwarded `cwd` like gemini, or assign goose a `workdir`
   that IS the task worktree. Source: rung-4 run (BL-046), `design/rung4-plan.md`.
+
+  **✅ DONE — MERGED 2026-07-27 (`agentalk-mcp-client` `de65c30`, local, NOT pushed). Plan + full record:
+  `design/bl075-plan.md`.** **Note the fix is CLIENT-side** — nothing in the AgentTalk repo changed.
+  **Root cause:** the forwarding chain was intact right up to the last step. The worker provisions the task dir
+  (`llm-agent.mjs:115`) and puts it in the executor's sink as `cwd` (`:123`) — but **`OneShotExecutor.executeTurn`
+  never read `sink.cwd`**, and **`callProvider` destructured only `onStderrChunk`** from its options, so the child
+  inherited `process.cwd()`: the workdir's MAIN tree. **This is exactly the defect BL-053 fixed for the *persistent*
+  path, left unfixed on the *one-shot* path.** Fix = two links, both mirroring the rule gemini/codex already follow:
+  `executeTurn` passes `cwd: sink.cwd || process.cwd()`, and `callProvider` forwards it to `spawnAndCollect` (which
+  already spreads unknown options into `spawn()`). **+12/-1 in source.**
+  **Scope was WIDER than goose** — `OneShotExecutor` also serves any provider explicitly running
+  `executionMode: 'one_shot'`, including claude/codex/gemini. Fixing it at that seam fixes them all; that is why the
+  diff is this small. When no task dir was provisioned (BL-061) the `|| process.cwd()` fallback preserves the
+  pre-BL-075 behaviour byte-for-byte, and a test (D3) pins it.
+  **Verified by RUNNING:** 3 new tests that **do not mock the spawn** — they shadow the real `goose` binary on `PATH`
+  with a stub reporting its own `$PWD`, so the assertion is a genuinely spawned child's working directory.
+  **Mutation-checked:** removing either link turns D1+D2 RED while D3 (the unchanged-fallback guard) correctly stays
+  green. Lint clean; client suite **89/89** (86 baseline + 3).
+  **LIVE PROOF — the exact inversion of the reported symptom.** A real **goose / claude-sonnet-5** worker, launched by
+  the Bite-0 launcher into a throwaway AgentTalk clone: `answer.txt` = **`779`** (a *computed* 41×19, so no stub or
+  hung CLI explains it) **committed `216df15` on branch `task-task-1785128867019-2` INSIDE
+  `agentalk-task-<id>`**, with the sandbox **main tree untouched** at `c2c8e0a`, clean, still on `master`. Checked at
+  **BOTH** paths — per BL-059, an artifact check at one coordinate is what manufactured the original mis-grade.
+  **Doc correction shipped with it:** `AGENT.md`'s agy block still claimed *"gemini is the ONLY provider that honours
+  it; claude and codex hardcode `process.cwd()`"* — **stale**: codex was fixed by BL-053 and the one-shot path by this
+  item. That passage now carries a dated STATE UPDATE: today gemini, codex and every one-shot provider honour the
+  forwarded `cwd`; **claude on the persistent path is the sole remaining exception** and structurally cannot be
+  per-turn (spawned once at `initialize()`, before any turn exists) — a documented limit, not a containment hole.
+
+  **Telemetry (task closure):**
+  - task:        BL-075
+  - wall-clock:  2026-07-27 ~07:00 → ~07:20 (~20 min incl. one live goose run)
+  - budget:      claude session 13%→26% (Δ ~13%, the live goose run dominates), weekly 2%→3% (Δ ~1%)
+  - gate:        lint 0, client suite 89/89, bar mutation-checked red→green, live artifact verified at BOTH paths
+  - diff:        3 files, +101/-1; commits `6835eac` (fix) · `de65c30` (merge) — **`agentalk-mcp-client` repo**
+  - outcome:     MERGED ✅ (local; NOT pushed — PO says "merge" and "push" as separate words)
 
 <!-- @item
 id: BL-076
@@ -2447,6 +2483,25 @@ tags: [engine, failure-propagation, api-agents, in-process-driver, m03, question
   in-process agent currently interrupts a task.** **Decide:** (a) leave as-is and document the asymmetry between the
   attached and in-process paths, or (b) propagate, and work out the blast radius on M03's tests first. Source:
   BL-077 (`design/bl077-plan.md` §3).
+
+<!-- @item
+id: BL-079
+status: todo
+date: 2026-07-27
+epic: null
+tags: [hygiene, tooling, observability, agentalk-mcp-client, low-severity]
+-->
+- [todo · filed from BL-075, 2026-07-27] — **`agentalk-mcp-client`: every `lib/*.mjs` points at a sourcemap that does
+  not exist, so every test run emits a wall of errors** — the `.mjs` files each carry a trailing
+  `//# sourceMappingURL=<name>.js.map` comment (left over from when they were emitted from TypeScript), but **no
+  `.js.map` file is committed and none exists in any checkout**. Vitest/vite therefore prints a multi-line
+  `ENOENT … .js.map` + stack for *each* module it loads, on every run. **Purely cosmetic — no test is affected** (BL-075's
+  suite was 89/89 through the noise). **Why it is worth fixing anyway:** the noise is large enough to bury a real
+  error in the scrollback, which is exactly the failure mode that costs an hour at the wrong moment; and it makes
+  every clean run *look* broken to a newcomer. **Fix directions:** strip the dangling `sourceMappingURL` comments
+  (the `lib/` sources are hand-maintained JS now, not build output), or commit the maps, or silence the loader.
+  Pick one — the current state claims a build artifact that the repo does not have. Source: observed during every
+  BL-075 test run.
 
 <!-- @item
 id: BL-047

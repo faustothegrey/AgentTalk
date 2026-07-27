@@ -152,11 +152,20 @@ one agent holds SM and both quality gates — accepted because merges stay PO-ga
      the work, every time, and we were checking the wrong directory.** Both "accepted-then-skipped" runs are on
      disk, complete: `wt/answer.txt` = **`391`** committed `2e52556`, and `wt057/answer.txt` = **`589`** committed
      `241396a` — under `/tmp/agentalk-task-<id>/`, **not** under the worker's `workdir`.
-     **The mechanism — know this before you judge any agy run (it is [[BL-053]]):** `llm-agent.mjs:107` forwards the
-     `exec_rpc` `cwd`, and **gemini is the ONLY provider that honours it** (`lib/executor-runtime.mjs:567`); claude
-     (`:161`) and codex (`:713`) hardcode `process.cwd()`. **So agy alone works in the orchestrator's task worktree
-     — a worktree of the ORCHESTRATOR's cwd, not of the `workdir` you assigned it.** "The worker works in its
-     `workdir`" (BL-052) is true for claude/codex and **false for agy**. **Look in `/tmp/agentalk-task-<id>/`.**
+     **The mechanism — know this before you judge any agy run (it is [[BL-053]]):** `llm-agent.mjs` forwards the
+     `exec_rpc` `cwd`, and at the time of the runs above **gemini was the ONLY provider that honoured it**; claude and
+     codex spawned in `process.cwd()`. **So agy alone worked in the orchestrator's task worktree — a worktree of the
+     ORCHESTRATOR's cwd, not of the `workdir` you assigned it.** "The worker works in its `workdir`" (BL-052) was true
+     for claude/codex and **false for agy**. **Look in `/tmp/agentalk-task-<id>/`.**
+     **⚠️ STATE UPDATE 2026-07-27 — the per-provider split above is HISTORY; do not act on it.** BL-053 anchored the
+     task worktree **inside the worker's own `workdir`** (so the old "orchestrator's cwd" path is gone: look under
+     `<workdir>/agentalk-task-<id>/`), and BL-053 + **[[BL-075]]** closed the split. **Today: gemini, codex, and every
+     ONE-SHOT provider (goose included) all honour the forwarded `cwd`** — `executor-runtime.mjs`, `OneShotExecutor`
+     and both persistent executors, all `cwd: sink.cwd || process.cwd()`. The one remaining exception is **claude on
+     the persistent path**, whose cwd is **session-level, not per-turn, and structurally cannot be** (the process is
+     spawned once at `initialize()`, before any turn exists) — a documented limit, not a containment hole, since
+     `process.cwd()` is still the assigned workdir. **The durable lesson below is unchanged; only the provider table
+     moved.**
      **Still true, and now sharper:** never read `completed` as "the work was done" — **check the artifact.** But
      **check it where the process actually stood**: an artifact check at the wrong coordinates is *worse* than none,
      because it manufactures false confidence and a paper trail. Twice we ran that check rigorously, at the wrong
