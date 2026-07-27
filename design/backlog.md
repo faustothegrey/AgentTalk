@@ -4518,4 +4518,32 @@ tags: [ui, observability, spike, self-hosting, bite0]
   indicator green over a dead backend. Point 3 (team/task audit) done: rendering is fine, but teams carry the same
   reconnect hole → **BL-049**.
 
+<!-- @item
+id: BL-093
+status: todo
+date: 2026-07-27
+epic: null
+tags: [backlog-schema, autonomy, hermes-selector]
+-->
+- [todo · **planned**: `design/bl093-plan.md` · unit 1 of "close the cycle" · PO-directed 2026-07-27] —
+  **Make the backlog machine-selectable — add `blocked_by` and `autonomy` to the `@item` header.** The PO's goal
+  is for the operator to read the backlog and **recommend** what to work on next (the PO's `yes` stays the launch
+  trigger; unattended *deciding* is deliberately deferred and would need a dated charter act). That is impossible
+  today: the header schema is `id · status · date · epic · promoted_to · tags` — **no dependency field and no
+  eligibility field** — so every fact a selector needs in order to avoid a bad pick exists only as prose.
+  [[BL-028]] is blocked behind [[BL-084]] (prose, in a gate table); [[BL-086]] is a **PO decision** (prose);
+  [[BL-092]]'s option B is a Rule-2 show-stopper (prose, in an investigation doc). A selector hitting
+  `GET /api/backlog` sees `todo` and reads it as *eligible* — it would pick BL-028 or BL-086 and be structurally
+  correct. **Fix:** two optional header fields — `blocked_by: [BL-NNN]` and `autonomy: eligible | human-only |
+  po-decision` — parsed in `apps/orchestrator/src/backlog.ts`, enforced in `scripts/validate-backlog.mjs`
+  (dangling / self / cyclic blockers all fail the gate), exposed via `?selectable=true`, plus a
+  `selectableBacklogItems()` helper. **`autonomy` defaults to `human-only` — fail closed**, so the field ships
+  without making all 92 existing items autonomously selectable, and eligibility becomes an explicit act of
+  judgement. Backfill is only the **4** `todo` items. **Sizing finding, recorded up front:** with those rules a
+  correct selector could pick exactly **one** of them (BL-092) — today's selection is deterministic *by
+  exhaustion, not by judgement*, so a size-1 success must not be read as evidence the selector works. **Known
+  hole, unmitigated and accepted:** the recursion guard (an item whose execution *is* "launch a session" must be
+  `human-only`) rests on filing discipline, not code — no parser can make that judgement. Scope fence: **no
+  selector, no Hermes/launcher changes** — that is unit 2. Full plan, DoD and risks: **`design/bl093-plan.md`**.
+
 *(add new items above this line)*
