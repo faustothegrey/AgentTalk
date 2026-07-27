@@ -35,8 +35,6 @@ export type AgentStatus = 'creating' | 'starting' | 'ready' | 'busy' | 'error' |
 
 /** Reasons that are the agent's fault — M03 propagation fires, exactly as it does today. */
 export type AgentFaultErrorReason =
-  // A protocol violation by the agent: it called a tool that does not exist.
-  | 'unknown-mcp-tool'
   // The conversation runtime refused to start (in-process driver path).
   | 'conversation-start-failed'
   // Attached transport: MCP socket closed with 1011 (internal error).
@@ -55,6 +53,17 @@ export type AgentFaultErrorReason =
 
 /** Reasons that are NOT the agent's fault — the status changes and the UI sees it, but no propagation. */
 export type AgentNonFaultErrorReason =
+  // A protocol violation by the agent: it called a tool that does not exist.
+  //
+  // NON-FAULT by PO ratification 2026-07-27 (plan §9 q1), reversing T1's proposed `fault`.
+  // Rationale, and the asymmetry that decided it: a hallucinated or mistyped tool name harms
+  // nobody else — the orchestrator and every peer are fine — and it is the same transient class
+  // as the malformed JSON that `parseWithRetry` already retries. Propagating it would let one
+  // typo kill a whole team, and would hand anything able to induce a bad tool name a team-wide
+  // DoS lever (the same argument that makes `workflow-gate-refusal` non-fault). Wrong in this
+  // direction, a confused agent limps and is still bounded by the wall-clock cap, the reply cap
+  // and BL-083's relay budget; wrong the other way, a team dies for a typo.
+  | 'unknown-mcp-tool'
   // The conversation hit its reply cap. This is how a conversation *ends*.
   | 'conversation-reply-cap'
   // BL-083's relay budget was exhausted — a rail firing correctly.
