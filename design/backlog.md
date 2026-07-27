@@ -2909,6 +2909,18 @@ tags: [engine, failure-propagation, m03, typed-reason, lb67, unblocks-bl078, unb
   **Do not start this without a plan; it changes established behaviour on `registry.ts` +
   `team-coordinator.ts`.** Source: `design/bl078-decision.md`.
 
+  **PLANNED 2026-07-27 — `design/bl084-plan.md`, awaiting Gate 1 + the PO's ratification of the classification
+  table (§4).** Two findings reshaped it. **(1)** LB-67's seven reasons answer *"why did a peer not reply?"*,
+  **not** *"why did this agent error, and is it its fault?"* — adopting them verbatim as the error taxonomy would
+  model a defect as a delivery outcome. What both items need is **one primitive**: a typed reason on the status
+  transition plus an `isFaultClass` predicate consulted at the single existing propagation `if`
+  (`registry.ts:226-228`). **(2)** **The attached path needs labels, not a semantic change** — both attached
+  `error` sites (MCP close `1011`; reconnect timeout with an in-flight turn) are *genuine* faults and already
+  propagate, and clean closes go to `terminated`, which never did. **So the only behaviour that actually changes
+  is on the in-process path**, i.e. BL-078 itself. Plan phases it: **T1** the primitive, behaviour-preserving
+  (parity is its falsifiable bar); **T2** the BL-078 fix, the only behaviour change, where BL-077's pinning test
+  is deliberately rewritten; **T3** BL-028, separately. **Recommends landing T1 alone, then re-gating.**
+
 <!-- @item
 id: BL-078
 status: deferred
