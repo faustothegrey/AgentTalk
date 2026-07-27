@@ -2937,6 +2937,51 @@ tags: [ui, observability, reactivity, web, rung4, bl048-family]
   - outcome:     MERGED ✅ (local; NOT pushed — PO says "merge" and "push" as separate words)
 
 <!-- @item
+id: BL-092
+status: todo
+date: 2026-07-27
+epic: null
+tags: [testing, flake, websocket, bl048, ephemeral-ports]
+-->
+- [todo · surfaced during BL-090's gate run, in a file that task never touched; **PO directed it be filed
+  separately** rather than chased] — **A latent flake in the BL-048 broadcast test: the WebSocket handshake
+  intermittently gets `403` — from a server that is not ours.**
+
+  **Reproduction profile, measured — not impressions.** `apps/orchestrator/src/__tests__/server.test.ts` >
+  `startServer` > *"should broadcast agent_added when an agent is created through the API (BL-048)"* failed with
+  `Error: Unexpected server response: 403` (`ws/lib/websocket.js:930`) on **1 of 3** full-suite runs in a
+  worktree. Against the same code it passed: the **full suite on master (471/471)**, the file **in isolation in
+  both trees (29/29)**, and the **two subsequent full-suite runs** in the worktree (480/480 each). So it is
+  order-/timing-dependent and appears only under full-suite parallelism.
+
+  **The load-bearing clue: nothing in this repository emits `403`.** A repo-wide search across `apps/` and
+  `packages/` (excluding tests and `node_modules`) finds no `403`, no `Forbidden`, no `verifyClient`, no CORS or
+  origin middleware — and `ws`'s own `websocket-server.js` does not send one either. **A `403` therefore means the
+  upgrade never reached our server at all.** That reframes the bug: it is not a race *inside* the handler, it is
+  the client connecting to the wrong listener.
+
+  **Hypothesis (NOT confirmed — stated as a hypothesis on purpose).** The suite binds **port 0** everywhere:
+  `startServer(registry, 0, …)` per `beforeEach` (`server.test.ts:70`), and `startServer` *additionally* always
+  launches an MCP server on its own ephemeral port, **asynchronously** and outside the test's await
+  (`server.ts:934`, `.then()` — the port is only known later). Every `beforeEach`/`afterEach` cycle therefore
+  releases and re-acquires ephemeral ports while other test files do the same in parallel. If a port is recycled
+  between the moment `baseUrl` is computed and the moment `openSocket()` dials it, the socket reaches a different
+  listener — plausibly one of the MCP servers, which would refuse a handshake carrying no agent identity or
+  contract hash. **What is confirmed:** the failure profile and the absence of any `403` in our code. **What is
+  not:** which listener answered.
+
+  **Why it matters beyond one red row.** The whole suite binds port 0 in this pattern, so this is a *suite-wide*
+  latent flake that happens to have surfaced on one row. It also degrades exactly the signal an autonomous or
+  operator-launched run depends on: a gate that is green 2 times in 3 cannot distinguish a real regression from
+  noise, and the standing rule here is that an honest red beats a scope-creep green — which only holds if a red
+  means something.
+
+  **Suggested shape (not decided):** have `startServer` expose the MCP port as a resolved promise so tests can
+  await it instead of racing it; and/or dial the socket from the live `server.address()` at connect time rather
+  than a `baseUrl` string captured in `beforeEach`. Both touch shared test infrastructure, so neither was done on
+  discovery.
+
+<!-- @item
 id: BL-091
 status: todo
 date: 2026-07-27
