@@ -29,8 +29,21 @@ date: YYYY-MM-DD      # optional
 epic: M08 | null      # optional owning/target epic
 promoted_to: X | null # optional lineage: the epic/spike this item became
 tags: [a, b]          # optional; free labels for UI filtering
+blocked_by: [BL-NNN]  # optional; ids that must be done/dropped first. Default []
+autonomy: eligible    # optional; eligible | human-only | po-decision. DEFAULT human-only
 -->
 ```
+
+**`autonomy` (BL-093) fails CLOSED — an item that does not say it is eligible is not eligible.** The field
+exists so an autonomous selector can tell real agent work from work that is blocked, needs judgement it cannot
+make, or **is a PO call**. Absent or unrecognised → `human-only`, so adding the field could not retroactively
+make the existing backlog selectable and a typo hides an item rather than releasing it. `eligible` = boundable,
+handable to an agent unattended. `human-only` = real work, but it carries a behaviour change to fence, needs
+judgement the item does not encode, **or its execution would itself mean launching a session** (the OPERATOR
+charter's no-recursion rule — a judgement no parser can make, so it rests on whoever files the item and is
+re-checked at each §3b gate). `po-decision` = the item's resolution *is* a PO call, not agent work.
+`blocked_by` is resolved only when every id it names is `done` or `dropped`; a dangling, self- or circular
+reference **fails `backlog:check`**. Selector view: `GET /api/backlog?selectable=true`.
 
 The **header is authoritative for the API**; if it disagrees with the prose `[STATUS]` tag the parser
 emits a drift warning (surfaced at the §3b gate). Validate with `npm run backlog:check` after any edit.
@@ -2088,6 +2101,8 @@ status: todo
 date: 2026-07-10
 epic: null
 tags: [engine, m03, dead-code, false-claim, fault-tolerance]
+blocked_by: [BL-084]
+autonomy: human-only
 -->
 - [todo · **dead mechanism + false feature claim; found while scoping M19, PO-approved to file 2026-07-10**] —
   **The idle timeout has never been able to fire** — `agentIdleTimeoutMs: 180000` is configured
@@ -2942,6 +2957,7 @@ status: todo
 date: 2026-07-27
 epic: null
 tags: [testing, flake, websocket, bl048, ephemeral-ports]
+autonomy: eligible
 -->
 - [todo · surfaced during BL-090's gate run, in a file that task never touched; **PO directed it be filed
   separately** rather than chased] — **A latent flake in the BL-048 broadcast test: the WebSocket handshake
@@ -3380,6 +3396,7 @@ status: todo
 date: 2026-07-27
 epic: null
 tags: [governance, autonomy, agentalk-mcp-client, agent-md, ladder, instrumental, needs-po-decision]
+autonomy: po-decision
 -->
 - [todo · filed 2026-07-27 under the PO's "defer everything not instrumental" directive — this one **IS**
   instrumental · observation first surfaced at the 2026-07-27 gate, then filed when the directive made the
@@ -3411,6 +3428,7 @@ status: todo
 date: 2026-07-27
 epic: null
 tags: [engine, failure-propagation, m03, typed-reason, lb67, unblocks-bl078, unblocks-bl028, needs-plan]
+autonomy: human-only
 -->
 - [todo · **filed 2026-07-27 by PO decision, out of the [[BL-078]] decision brief
   (`design/bl078-decision.md` §5c)** · **unblocks [[BL-078]] AND [[BL-028]]** — both are the same missing
@@ -4524,6 +4542,7 @@ status: todo
 date: 2026-07-27
 epic: null
 tags: [backlog-schema, autonomy, hermes-selector]
+autonomy: human-only
 -->
 - [todo · **planned**: `design/bl093-plan.md` · unit 1 of "close the cycle" · PO-directed 2026-07-27] —
   **Make the backlog machine-selectable — add `blocked_by` and `autonomy` to the `@item` header.** The PO's goal
