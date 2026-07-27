@@ -163,6 +163,27 @@ what was found at each.
 second attempt on a tuned bar — a bar rewritten after seeing the result is not a bar. If row 6 produces
 unexpected `warn`s, that is recorded as a **BL-087 finding** and the harness is tuned before O-2, not O-1 rerun.
 
+## 6a. Reference values — captured at pre-flight, COMMITTED BEFORE THE LAUNCH
+
+Locked 2026-07-27 15:53, before `launcher.mjs` was invoked. Committed in its own commit ahead of the run so
+pre-registration is **provable from git history**, not asserted afterwards.
+
+| Row | Reference value | Source |
+|---|---|---|
+| 2 — HEAD | `d89e8d62842cfb93f2dcfbe67344962962fcd8a7` | `git -C /private/tmp/att-op-1 rev-parse HEAD` (branch `task-op-1`) |
+| 3 — suite count | **471 tests, 75 files** | `npx vitest run` in `/private/tmp/att-op-1` |
+
+Pre-flight results: tsc 0 · suite 471/471 · ports 3500 and 3600 free · `claude` 2.1.220 on `PATH` ·
+`/private/tmp/att-op-1/CLAUDE.md -> AGENT.md` **present** · baseline `/tmp/att-invariant/o1-before.json`.
+
+**Operator note, material to what this run proves:** Hermes is not wired up, so the O-1 procedure is executed by
+Claude as a stand-in. This exercises the config, the bar and the harness. It does **not** test handing the seat
+to an external agent, and must not later be cited as evidence that it does.
+
+**Budget note:** launched with the claude session figure still pinned at 100% (resets ~16:40), on the PO's
+explicit go. Per §5 risk 1 the wall-clock cap is the only live rail. A budget-caused failure is a **budget
+finding, not a bar failure**, and will be reported as such.
+
 ## 7. What O-0 deliberately did NOT do
 
 No launch. No worktree created. No orchestrator started. No port bound. No baseline snapshot taken (it belongs
