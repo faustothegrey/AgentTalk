@@ -204,6 +204,19 @@ Team terminal states are exactly **`completed` | `error` | `interrupted`**. Olde
    pid — [[BL-081]]). Verify anyway: `lsof -nP -iTCP:<port>` empty, no stray `claude -p`.
 2. Remove the worktree when the branch is merged: `node scripts/wt-setup.mjs remove <id> --delete-branch`
    (a safe `-d` that refuses unmerged branches — an exit-1 can still mean the worktree *was* removed).
+3. **Every run leaves a SECOND worktree and branch you did not create.** `llm-agent.mjs` provisions a task
+   worktree at `<workdir>/agentalk-task-<taskId>/` on branch `task-task-<taskId>` (BL-053). For `claude` the
+   worker usually commits in the **parent** workdir and never touches it, so it is left behind empty — and
+   because it is **nested inside** the worker's worktree, `git worktree remove <workdir>` fails until the nested
+   one goes first. Order matters:
+   ```bash
+   git worktree remove --force <workdir>/agentalk-task-<taskId>
+   git branch -D task-task-<taskId>            # merged/empty: nothing is lost
+   node scripts/wt-setup.mjs remove <id> --delete-branch
+   git worktree prune && git worktree list     # verify
+   ```
+   Check `git branch --list` after any run: an accumulating pile of `task-task-*` branches is the signature of
+   skipping this step.
 3. `runs/` is gitignored; configs there are disposable, but **copy the NDJSON and sidecar somewhere durable if the
    run is evidence for a decision.**
 
