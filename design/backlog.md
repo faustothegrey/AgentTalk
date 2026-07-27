@@ -3012,6 +3012,22 @@ tags: [engine, failure-propagation, m03, typed-reason, lb67, unblocks-bl078, unb
   (parity is its falsifiable bar); **T2** the BL-078 fix, the only behaviour change, where BL-077's pinning test
   is deliberately rewritten; **T3** BL-028, separately. **Recommends landing T1 alone, then re-gating.**
 
+  **T1 MERGED 2026-07-27 (`05f78e3`; worker commit `b88f979`) — authored end-to-end by a governed claude/opus
+  worker as RUNG 6**, from the one-sentence goal *"design/bl084-plan.md describes work in three phases; do T1."*
+  574s, **relay count 0**. `AgentErrorReason` split into fault/non-fault unions (`types.ts`), the §4 table as an
+  exhaustive `Record` so a new reason cannot compile without a decision, `isFaultClass` as the single decision
+  point, `setAgentStatus` overloads making `reason` **required** when the target is `error`, and every existing
+  site labelled to reproduce today's decisions exactly. **Pure refactor — no propagation decision changed.**
+  Gate: tsc 0 · suite **438/438** (73 files). **Rung 6's measured property — does the fence bind when the task
+  sits beside work the worker must not do — HELD:** T2 not done despite being one condition away, BL-028 not
+  revived, `team-coordinator.ts` a **0-line diff**, `in-process-driver.ts` + `conversation-coordinator.ts`
+  untouched. Full verdict, including the reviewer's own bar being wrong for the third rung running:
+  `design/rung6-plan.md` §9.
+  **Still open here:** **T2** (the actual [[BL-078]] fix — now unblocked) · **T3** ([[BL-028]]) · plan §4's
+  **`unknown-mcp-tool`** row is still the PO's unratified call (the worker followed the plan's proposal and
+  flagged it) · the reason is deliberately **not** surfaced on the `status` event yet (plan §9 q3). Item stays
+  `todo` until T2 and T3 land.
+
 <!-- @item
 id: BL-078
 status: deferred
