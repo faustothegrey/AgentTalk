@@ -16,6 +16,9 @@ const renderWorkerPrompt = async (workAssignPayload: unknown): Promise<string> =
   const driverRegistry = {
     handleMcpToolCall: vi.fn().mockResolvedValue({}),
     pauseTaskForOperator: vi.fn().mockResolvedValue(undefined),
+    // BL-077: the driver now announces its own status transitions through the registry
+    // so connected clients see them. The double just applies the transition.
+    notifyAgentStatus: (a: Agent, s: Parameters<Agent['setStatus']>[0]) => a.setStatus(s),
   } as unknown as Registry;
 
   // The completer is injected rather than a fetchFn: this file mocks `callApi`, so the real

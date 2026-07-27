@@ -227,6 +227,22 @@ export class Registry extends EventEmitter {
   }
 
   /**
+   * Sets the agent status and emits the status event for the UI, WITHOUT the
+   * failure-propagation side effect of `setAgentStatus` (BL-077).
+   *
+   * For transitions owned by a driver (`InProcessAgentDriver`), which previously
+   * called `agent.setStatus()` directly and were therefore invisible to connected
+   * clients — the UI froze at `starting` for a whole run. This only makes those
+   * transitions visible; their semantics are deliberately unchanged. Routing them
+   * through `setAgentStatus` instead would newly fire `handleAgentFailure()` on a
+   * driver-path error, which is a behaviour change and out of scope here.
+   */
+  notifyAgentStatus(agent: Agent, newStatus: AgentStatus): void {
+    agent.setStatus(newStatus);
+    this.emit('status', { id: agent.id, status: newStatus });
+  }
+
+  /**
    * Activates the agent and waits for an MCP connection.
    */
   async activateAgent(

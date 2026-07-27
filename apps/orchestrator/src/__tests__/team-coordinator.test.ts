@@ -19,6 +19,9 @@ const renderWorkerPrompt = async (workAssignPayload: unknown): Promise<string> =
   const registry = {
     handleMcpToolCall: vi.fn().mockResolvedValue({}),
     pauseTaskForOperator: vi.fn().mockResolvedValue(undefined),
+    // BL-077: the driver now announces its own status transitions through the registry
+    // so connected clients see them. The double just applies the transition.
+    notifyAgentStatus: (a: Agent, s: Parameters<Agent['setStatus']>[0]) => a.setStatus(s),
   } as unknown as Registry;
 
   const fetchFn = vi.fn().mockResolvedValue({
