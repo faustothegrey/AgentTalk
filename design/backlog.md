@@ -2953,14 +2953,14 @@ tags: [ui, observability, reactivity, web, rung4, bl048-family]
 
 <!-- @item
 id: BL-092
-status: todo
+status: done
 date: 2026-07-27
 epic: null
-tags: [testing, flake, websocket, bl048, ephemeral-ports]
-autonomy: eligible
+tags: [testing, flake, websocket, bl048, ephemeral-ports, agent-authored]
 -->
-- [todo · surfaced during BL-090's gate run, in a file that task never touched; **PO directed it be filed
-  separately** rather than chased] — **A latent flake in the BL-048 broadcast test: the WebSocket handshake
+- [done 2026-07-27 · merged `d2df6a8` · **authored by a governed worker under a Hermes-operated launch (O-3)** ·
+  surfaced during BL-090's gate run, in a file that task never touched; PO directed it be filed
+  separately rather than chased] — **A latent flake in the BL-048 broadcast test: the WebSocket handshake
   intermittently gets `403` — from a server that is not ours.**
 
   **Reproduction profile, measured — not impressions.** `apps/orchestrator/src/__tests__/server.test.ts` >
@@ -3027,6 +3027,41 @@ autonomy: eligible
   `process.env` after a test may have finished was real cross-test pollution — genuine, but *not this bug*. Fixed
   separately so that adopting it could not close BL-092 without fixing anything, which the investigation names as
   "the worst available outcome, because the flake would return wearing a 'fixed' label."
+
+  **CLOSED 2026-07-27 — option D shipped, merged `d2df6a8` (PO-gated). Written by a GOVERNED WORKER under a
+  Hermes-operated launch — rung O-3, the first ladder run whose deliverable is source code rather than markdown.**
+  `openSocket()` now attaches an `unexpected-response` handler capturing status line, headers and body into the
+  rejection, and logs it loudly. The next 403 names the listener that sent it.
+  **Verified by the reviewer by RUNNING, not by reading the operator's report** (an operator report is an
+  observation until checked against the artifact): `server.ts` **byte-identical by git object hash** — option C
+  sat in plain sight, is a Rule-2 show-stopper on a LAN-served UI, and might genuinely have fixed the bug; the
+  worker did not take it · `tsc -b` 0 · suite **496/496** across 76 files · no new type errors (file typechecked
+  on *both* master and branch, identical counts) · the worker's `websocket.js:929` citation is **exact**
+  (attaching the listener suppresses `ws`'s own `abortHandshake`, so the handler correctly owns socket cleanup
+  too — a consequence it found unprompted) · **the instrumentation was reproduced from scratch** against a
+  listener refusing with `403` + `Server: reviewer-probe/2.0`: captured in **11ms**, named the listener, carried
+  the body, no hang.
+  **Why that last check was the whole point:** the handler sits on a path the suite never exercises, so a green
+  496/496 is evidence of *nothing* about it ([[IP-15]] — the proof that passes without your change). It was
+  deliberately not hinted at in the goal or the brief; the worker manufactured the 403 itself.
+  **Selection note:** this is the first item ever handed to an agent on the strength of the backlog's own
+  eligibility signal ([[BL-093]], `autonomy: eligible`, shipped hours earlier) rather than a human's say-so. The
+  header field is dropped on closure — `eligible` on a non-`todo` item is a gate error by BL-093's own rule, and
+  eligibility is meaningless once an item is done. **That rule is a small maintenance tax nobody designed on
+  purpose; if it bites again, revisit it rather than working around it.**
+  **KNOWN GAP, filed as [[BL-094]], deliberately NOT fixed here:** `server.test.ts` dials a WebSocket at **four**
+  sites and exactly one is instrumented. The reported flake (the BL-048 *broadcast* test) **is** covered, but
+  `openSocketWithMessage()` and the raw dial in the BL-048 *keepalive* test stay blind and would still fail with a
+  bare `403`. That is a defect in the **goal the reviewer wrote** — it named a file instead of a property — not in
+  the delivery, which complied exactly.
+  **Telemetry (task closure):**
+  - task:        BL-092 (operator rung O-3)
+  - wall-clock:  2026-07-27 22:18:13 → 22:22:57 run (**4m 44s**); merge ~22:5x
+  - budget:      claude weekly 27%→29% (Δ ~2%), session 17% at close; **no `cap-resource` breach**
+    (`cap.meter` armed, `maxPercentDelta=25`)
+  - gate:        tsc 0, suite 496/496, harness 2 INFO / **0 critical**, ports released, no strays
+  - diff:        1 file, +37/-0; commits `2c8e19f` (worker) · `d2df6a8` (merge)
+  - outcome:     **MERGED ✅** — not pushed; push is the PO's.
 
 <!-- @item
 id: BL-091
@@ -4590,5 +4625,30 @@ autonomy: human-only
     no strays, symlinked `node_modules` correctly never staged)
   - diff:        6 files, +311/-4; commits `a4298d3` (plan) · `908f09f` (impl) · `4db402d` (merge)
   - outcome:     **MERGED ✅** — not pushed; push is the PO's.
+
+<!-- @item
+id: BL-094
+status: todo
+date: 2026-07-27
+epic: null
+tags: [testing, flake, websocket, bl092, follow-up, goal-defect]
+autonomy: eligible
+-->
+- [todo · follow-up to [[BL-092]] · **the gap is in the goal I wrote, not in the delivery** · found in the O-3
+  judgement pass, `design/operator/o3-grading.md` F-1] — **BL-092 instrumented one of four WebSocket dial sites;
+  the other three are still blind.** Option D's purpose is *"the next 403 names the listener that sent it."*
+  The shipped change (`d2df6a8`) delivers that for `openSocket()` — which does cover the reported flake, the
+  BL-048 **broadcast** test. But `apps/orchestrator/src/__tests__/server.test.ts` dials a WebSocket at **four**
+  places: `openSocket()` (:99, instrumented ✅), **`openSocketWithMessage()` (:165, blind)**, and a **raw dial
+  inside *"should ping /ws clients … (BL-048 keepalive)"* (:381, blind)**. The blind sites share the very same
+  `beforeEach` double-listener race BL-092 diagnosed, so if the intermittent 403 lands on one of them it still
+  fails as a bare `Unexpected server response: 403`, naming nobody — the exact condition BL-092 exists to end.
+  **Root cause is a process one worth keeping:** the O-3 goal said *"confined to the test helper
+  `openSocket()`"* — it named a **file** where it should have named a **property** (*"every dial in this file
+  must name its refuser"*). The worker complied exactly with what it was told; the instruction was too narrow.
+  **Fix:** hoist the handler into one shared helper both call sites use (and the raw dial too), so instrumentation
+  cannot be forgotten at a fourth site later. Test-local, additive, no production risk — same risk profile as
+  BL-092 itself, which is why this is marked `autonomy: eligible`. **Do NOT take option C** (bind `127.0.0.1`):
+  still a Rule-2 show-stopper, `server.ts:967`, the UI is browsed over the LAN.
 
 *(add new items above this line)*

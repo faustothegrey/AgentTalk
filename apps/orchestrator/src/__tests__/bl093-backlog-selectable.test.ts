@@ -136,13 +136,18 @@ describe('selectableBacklogItems', () => {
 });
 
 describe('the real backlog (design/backlog.md)', () => {
-  // DoD row 3 — the whole unit expressed as one assertion. If this ever returns more than
-  // BL-092, either something was backfilled as `eligible` that should not have been, or a
-  // blocker was resolved; both deserve a human look, so pin it exactly.
-  it('offers exactly [BL-092] as selectable', () => {
+  // DoD row 3 — the whole unit expressed as one assertion. If this ever returns something
+  // unexpected, either an item was marked `eligible` that should not have been, or a blocker
+  // resolved; both deserve a human look, so pin it exactly and let the failure force the look.
+  //
+  // It has already earned its keep once: closing BL-092 and filing BL-094 flipped this red on
+  // the same day it was written, which is exactly the intended behaviour rather than churn to
+  // be engineered away. Updating this line is a deliberate act — do NOT loosen it to make the
+  // red go away. If the new value is not what you expected, that is the finding.
+  it('offers exactly [BL-094] as selectable', () => {
     const { items, warnings } = readBacklog();
     expect(warnings).toEqual([]);
-    expect(selectableBacklogItems(items).map((i) => i.id)).toEqual(['BL-092']);
+    expect(selectableBacklogItems(items).map((i) => i.id)).toEqual(['BL-094']);
   });
 
   it('holds BL-028 back behind BL-084, which is still open', () => {
