@@ -1087,3 +1087,28 @@ here.**
   went **15 → 3**. I had just dispositioned all 15 and kept them all, treating a long queue as a fact of life.
   **This is my 2026-07-01 proportionality blind spot again, in a new form: I audit diligently and then fail to ask
   "should most of this exist right now?"** Next gate, propose the cut before being told.
+
+### 2026-07-27 (late) — rung 6, the runbook, and the operator seat: my bars keep failing the same way
+- **As reviewer: my pre-registered bar was wrong for the THIRD rung running, and always the same way — it
+  over-specified SHAPE instead of BEHAVIOUR.** Rung 6's bar asserted `isFaultClass` was reachable on the Registry
+  instance (it is a module-level export) and that `setAgentStatus.length >= 3` (TS overloads leave runtime arity at
+  2 even when `reason` is genuinely required), and it used reason literals I invented rather than the ones
+  implemented. All three were wrong *about a correct implementation*. The sharper part: I had already written
+  "build the bar before the run" and "put a precondition guard in it" as lessons, **and I did both, and it still
+  failed** — because a guard proves the harness *ran*, not that the specification is *right*. **New rule: a bar may
+  assert only observable behaviour ("a non-fault reason does not propagate"), never an API's shape — no arity, no
+  symbol location, no invented literals.** Note also that the original bar's failure was itself evidence the worker
+  was right: my unknown literal correctly defaulted to fault-class.
+- **I named the run's top risk and then failed to guard it.** The rung-6 plan lists budget as risk #1 — the worker
+  is claude/opus drawing on the same session window as the supervising session. `cap.meter`, the launcher's own
+  resource rail for exactly that, was left unconfigured, and I only discovered it existed while reading the
+  launcher source to write the runbook — *after* launching. The window then hit 100%. **A named-but-unmitigated
+  risk is worse than an unnamed one, because writing it down makes it feel handled. Next to every risk I write,
+  the following line must be the mitigation I actually configured — or an explicit "unmitigated, accepted".**
+- **Reading the source before writing the guide changed the guide.** I have operated this launcher repeatedly, yet
+  writing the runbook from `launcher.mjs` and `bite0-launcher.mjs` corrected two of my own beliefs (the response
+  sidecar is *derived* from `instance.recording`, not set by an env var; `cap.meter` exists at all) and surfaced
+  facts I would have got wrong from memory (terminal team states, the worker's result text being unreachable
+  through the API). **Operating a system is not the same as knowing it — document from the code, always.** Same
+  session, same lesson from the other direction: rung 6 left a nested `task-task-*` worktree/branch that was not in
+  my cleanup model, found by luck. Which is now [[BL-087]].
