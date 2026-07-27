@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import os from 'node:os';
 import { existsSync, rmSync } from 'fs';
 import type { AddressInfo } from 'net';
+import type { ClientRequest, IncomingMessage } from 'node:http';
 import { WebSocket } from 'ws';
 import { Registry } from '@agenttalk/runtime-core/registry/registry';
 import { startServer, type ServerWithMcpReady } from '../server.js';
@@ -100,6 +101,42 @@ describe('startServer', () => {
     await new Promise<void>((resolve, reject) => {
       socket.once('open', resolve);
       socket.once('error', reject);
+      // BL-092 (option D): a handshake refused with an HTTP status arrives as `unexpected-response`,
+      // carrying the response that names the listener which answered. With no listener for it, `ws`
+      // discards that response and rejects with a bare `Unexpected server response: 403` — which is
+      // why the intermittent 403 here is unfalsifiable: we never learn whose 403 it was. Capture the
+      // status line, headers and body into the rejection instead, and log it so CI shows it loudly.
+      // Attaching this handler means `ws` no longer aborts the handshake for us (websocket.js:929),
+      // so this path owns the rejection AND the cleanup.
+      socket.once('unexpected-response', (request: ClientRequest, response: IncomingMessage) => {
+        const chunks: Buffer[] = [];
+        let settled = false;
+
+        const finish = (body: string) => {
+          if (settled) return;
+          settled = true;
+          clearTimeout(bodyTimer);
+          const detail = [
+            `Unexpected server response: ${response.statusCode} ${response.statusMessage ?? ''}`.trim(),
+            `  dialled: ${baseUrl.replace('http', 'ws')}/ws`,
+            `  headers: ${JSON.stringify(response.headers)}`,
+            `  body: ${body || '<empty>'}`,
+          ].join('\n');
+          // Loud on purpose: this event is rare, and the whole point of BL-092 option D is that the
+          // next occurrence identifies the listener rather than vanishing into a one-line message.
+          console.error(`[BL-092] WebSocket handshake refused\n${detail}`);
+          reject(new Error(detail));
+          response.destroy();
+          request.destroy();
+        };
+
+        // Never let an unread/never-ending body turn a fast failure into a suite-timeout hang.
+        const bodyTimer = setTimeout(() => finish('<body not received within 250ms>'), 250);
+
+        response.on('data', (chunk: Buffer) => chunks.push(chunk));
+        response.once('end', () => finish(Buffer.concat(chunks).toString('utf8').slice(0, 1000)));
+        response.once('error', (err: Error) => finish(`<body unreadable: ${err.message}>`));
+      });
     });
     return socket;
   }
