@@ -2809,3 +2809,38 @@ the same `exec_rpc` mechanism just proven. **Production stays broken until BL-05
 **Independence caveat:** sole-agent session — Claude designed the probe and judged it. The `391` artifact is
 deliberately operator-checkable so the claim does not rest on the author's word. Source: BL-045, BL-057, BL-058,
 LB-92, LB-93; logs `/tmp/bl045-run{2,3}.log`, `/tmp/orch.log`, `runs/bl045-agy-live3.ndjson`.
+
+### LB-95 · 2026-07-27 — [operator/governance] the H-ladder: Hermes held the OPERATOR seat and ran two real launches
+- **Trigger:** the PO asked when and how Hermes could enter the process. The answer turned out to be "sooner than
+  the retirement record suggests, and the blocker is ours, not Hermes's."
+- **The retirement was misread, and re-reading it changed the plan.** LB-49 is routinely cited as "Hermes's
+  transport is structurally lossy." **It has a remediation block, applied the same day, verified live** —
+  `agentctl` reads Claude Code's session transcript instead of scraping tmux, capture uses `-S - -J`, the
+  destructive pre-send Escape is gone. What actually retired Hermes (LB-50) was the **agent loop wedging** and a
+  **baton sent with its prerequisite bypassed** — and the OPERATOR charter answers the second structurally, by
+  giving the seat no baton to send. Both facts held at once; nobody had put them together.
+- **The ladder ran on a NEW axis.** O-0…O-3 varied *what the worker may do*, all with Claude standing in. H-0…H-2
+  varied **who holds the chair**, replaying already-cleared rungs so any deviation was attributable to the actor
+  swap alone.
+  - **H-0** (prepare, don't launch) — CLEARED 9/9. Defect found: the operator asserted what `wt-setup create <id>`
+    does without running it, yielding `att-att-op-h1`. **Root cause was OURS** — runbook §1 named the command and
+    never stated its output contract. Fixed in `a34bc58`.
+  - **H-0b/c/d** — correction rounds: a mechanical fix, then a judgement one. Cleared 6/8, 6/6, 4/4.
+  - **H-1** (a goal that cannot write) — CLEARED 8/8, infrastructure **byte-identical** across a real launch.
+  - **H-2** (the worker writes and commits) — CLEARED 9/9. Containment exercised *as* containment: mainline never
+    moved, the branch held the work, the harness rated the operator's own additions `INFO` via BL-087's allowlist.
+- **Pre-registration without concealment — the mechanism worth reusing.** H-0's bar sat beside the brief and the
+  operator read it, voiding the row meant to decide the rung. Concealment on a shared filesystem is not
+  achievable, so from H-0b on the bar lived outside the repo and only its **SHA-256 was committed before
+  hand-over**. At grading the bar is published and the hash verifies no row was added, softened or retuned. All
+  four verified clean. **Pre-registration is the property that matters; hiding was never what delivered it.**
+  Corollary, measured: the tripwire's *forensic* half failed — **atime is not usable on this filesystem** (a file
+  certainly read showed no update), so the fence rests on self-declaration. The **self-declaring** design (a
+  decoy that asks its reader to report it) is what made that acceptable.
+- **The worker refuted the backlog entry that briefed it, and was right.** H-2's deliverable killed BL-092's
+  leading hypothesis on evidence re-verified independently: the MCP server sets no path filter when given a port
+  and rejects only *post*-handshake via close codes, so it cannot emit `403`; and port *recycling* is impossible
+  because the server holds its port for the whole test. It then **declined the tempting fix** — 700 bind trials,
+  0 collisions — on the grounds that it would buy "a green of unknown meaning". See `design/bl092-investigation.md`.
+- **What is NOT established:** nothing has tested a **long** run. H-1 was 50s, H-2 ~5min. LB-49's monitoring
+  concern is re-qualified for short runs only. And every rung so far was PO-relayed by hand.

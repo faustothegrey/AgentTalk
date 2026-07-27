@@ -1144,3 +1144,29 @@ here.**
   outliving the launcher clobbers an appended marker), and the harness could never have caught it because its state
   vector is built *from listening sockets* — a shell loop binds nothing ([[BL-091]]). **When an operator run leaves
   an unexplained instrumentation gap, treat it as a live process question, not a logging curiosity.**
+
+### 2026-07-27 (late) — the H-ladder: four rounds of predicting failure, and being wrong every time
+- **As reviewer: I predicted the operator would fail at five specific points, and it failed at none of them.**
+  C8 (report a *successful* run without grading it), C5–C7 (post-run discipline, when the interesting part is
+  over), R5 (stop cleanup halfway when the previous round rewarded a total sweep), C2 in H-0c. I wrote each
+  prediction down in advance, which is the only reason I can now see the pattern: **I predicted failure at
+  exactly the points where *I* would have been tempted.** That is not calibration, it is projection wearing
+  calibration's clothes. Pre-registering the prediction is what made it falsifiable — keep doing that, and treat
+  a run of wrong pessimism as evidence about me, not as luck.
+- **As reviewer: my bars kept clearing artifacts that had real defects in them.** H-0's bar missed the
+  `att-att-op-h1` path bug; H-0c's missed an over-specified goal; H-1's and H-2's rows could not touch whether a
+  design document was any *good*. Every one of those was caught by reading the artifact **against its purpose**
+  rather than against my rows. A checklist tests structure; judgement is not structural. **Write the rows, then
+  deliberately spend a pass reading the thing as a whole and asking what it is FOR** — and say plainly in the
+  verdict that the rows are a floor, not a quality assessment.
+- **As planner: when a discipline is unachievable, say so and find the property you actually need.** The runbook
+  demands a bar hidden from the subject; on a shared filesystem that is impossible. Pretending would have been
+  theatre. Naming the real requirement — *pre-registration*, not concealment — produced a better mechanism than
+  the original: commit the bar's SHA-256 before hand-over, publish the bar at grading, let the hash prove nothing
+  was retuned. **Reusable well beyond this ladder.** The same honesty exposed the half that did *not* work: I had
+  assumed atime would corroborate the fence, and it does not record reads here at all.
+- **As implementer/reviewer: I made both of the mistakes I had just written corrections for.** I contaminated my
+  own H-0b baseline by committing after taking it — the exact O-1 failure whose fix I authored into the runbook
+  hours earlier — and later a multi-path `git add` silently staged **nothing** because one path did not exist yet,
+  so a brief I believed committed was untracked. The second was caught only by reading `git status` after the
+  commit. **Writing the correction does not inoculate me against the error; checking the state afterwards does.**
