@@ -40,6 +40,41 @@ show-done/show-dropped toggles ride this param). The response's `total` field al
 
 ---
 
+### PO directive — 2026-07-27: park everything not instrumental to "AgentTalk within AgentTalk"
+
+**Directive (PO, in session):** *"defer everything that is not instrumental to reach the goal of AgentTalk within
+AgentTalk."* Applied the same day, immediately after the §3b gate below. **The goal it is measured against** (PO,
+2026-07-27): *run AgentTalk's own development inside an AgentTalk session, the in-session agent inheriting the
+configuration built up so far; a single agent that plans, implements and reviews alone is fine for now; replacing
+the human-in-the-TUI is the point.*
+
+**Result: the live queue went from 15 `todo` to 3.** Everything parked carries a **reopen condition** (§3b requires
+one — a park without a trigger is just rot), written into each item's status tag.
+
+**KEPT — instrumental:**
+
+| Item | Why it survives the cut |
+|---|---|
+| [[BL-084]] (typed error reason) | An unsupervised agent that fails must be **detectable**. Today in-process errors do not propagate at all, so a failing autonomous worker leaves its team silently stuck. Planned: `design/bl084-plan.md`. |
+| [[BL-028]] (dead idle timeout) | **Nothing detects a hung agent** — the wall-clock cap is the only rail. For unsupervised runs a hang burns time and provider budget invisibly. Blocked behind BL-084. |
+| [[BL-086]] (client repo has no governance) | **NEW, filed under this directive.** A worker launched in `agentalk-mcp-client` inherits no rules, yet the launcher/executors/bridge that *run* the ladder live there. Until decided, client-repo tasks are human-only. |
+
+**PARKED — 13 items, each with its trigger:** BL-024 (client-shape leak) · BL-025 (live-proof A/B baseline —
+reopens at the next rung verdict, i.e. **soon**) · BL-029 (agent rating signal — needs >1 agent) · BL-034
+(PTY-tee panel) · BL-035 (Tester artifacts) · BL-038 (goose+OpenRouter lane) · BL-042 (goose consensus recipe) ·
+BL-043 (heterogeneous arbiter) · BL-044 (API multi-agent consensus — reopens when the goal moves past a single
+agent) · BL-050 (Team-view identity) · BL-068 (id convention) · BL-070 (client test flake) · BL-079 (sourcemap
+noise).
+
+**Two judgement calls the PO may want to overturn** — flagged rather than buried:
+1. **BL-025 parked, and it is the closest call.** "A proof that cannot fail is not evidence" is the highest-value
+   lesson of M18, and rung verdicts depend on it. I parked it because the *discipline* is already being applied by
+   hand (bar written before the fix, mutation-checked, precondition-guarded — all three used today), so it does
+   not need an open item to happen. Its trigger fires at rung 6 regardless.
+2. **BL-044 parked** on the strength of *"a single agent is fine for now"*. If multi-agent returns to the plan,
+   this is the item that unparks first — it reports the whole API consensus path as non-functional, and it is
+   **the largest un-audited claim in the backlog** (see the gate below).
+
 ### Backlog gate — 2026-07-27 (before planning BL-084 · planner+reviewer: Claude, sole-agent fallback · PO directed the pass)
 
 Per §3b, all **16** `todo` items dispositioned before opening [[BL-084]]. **Claims were checked against the code,
@@ -1242,12 +1277,12 @@ tags: [agents, environment, observability, platform, capabilities]
 
 <!-- @item
 id: BL-070
-status: todo
+status: deferred
 date: 2026-07-18
 epic: null
 tags: [flake, tests, client, reproduce-or-park]
 -->
-- [todo · **low priority — reproduce-or-park, no urgency** · sibling of [[BL-065]], found during that session · CLIENT repo (`agentalk-mcp-client`)] — **`exec-rpc.test.ts > "propagates the CLI agentId into nested persistent MCP bridge URLs"` can time out under cold + load: a suspected timing flake.** During the BL-065 repro session (2026-07-18), this test (`__tests__/exec-rpc.test.ts:199`) **timed out at 5000ms once**, under the same cold-`.vite` + CPU-load condition that reproduced BL-065. It was **out of BL-065's scope, not chased, and not touched** (Rule 2 — report the fault, don't silently fix it).
+- [deferred · PARKED 2026-07-27 — PO directive: not instrumental to "AgentTalk within AgentTalk". Reopen: the client suite actually goes red on it, or client test reliability blocks an autonomous run · **low priority — reproduce-or-park, no urgency** · sibling of [[BL-065]], found during that session · CLIENT repo (`agentalk-mcp-client`)] — **`exec-rpc.test.ts > "propagates the CLI agentId into nested persistent MCP bridge URLs"` can time out under cold + load: a suspected timing flake.** During the BL-065 repro session (2026-07-18), this test (`__tests__/exec-rpc.test.ts:199`) **timed out at 5000ms once**, under the same cold-`.vite` + CPU-load condition that reproduced BL-065. It was **out of BL-065's scope, not chased, and not touched** (Rule 2 — report the fault, don't silently fix it).
 
   **Why it's a distinct failure class from BL-065.** BL-065 was a **~271ms race** on a *string* (a fixed 250ms sleep lost to an async `'close'` event), and its fix removed the racy wait with the assertion unchanged. This one is the **opposite shape: a genuine slow-test timeout** — the test is a heavy end-to-end bar that spawns a **real `llm-agent.mjs` child** (`--provider gemini --execution-mode persistent`), waits for it to connect to a mock MCP WebSocket server, and drives a full `exec_rpc` MCP round-trip — all inside vitest's **default 5000ms** per-test budget. On a cold/loaded first run the spawn + connect + round-trip can simply exceed 5000ms. So the plausible causes are (a) an honest slow-machine timeout the bar should tolerate, and/or (b) a real latency regression somewhere in the persistent-bridge spin-up — **not yet distinguished.**
 
@@ -1259,12 +1294,12 @@ tags: [flake, tests, client, reproduce-or-park]
 
 <!-- @item
 id: BL-068
-status: todo
+status: deferred
 date: 2026-07-17
 epic: null
 tags: [engine, ids, convention, enforcement, refuted-approach, contracts, cross-repo]
 -->
-- [todo · **the disease behind BL-066/BL-067; the six sites were its symptoms** · the obvious guard is **REFUTED by its own survey** — read that before proposing it again · the cure with teeth is a **cross-repo contract change** = PO scope call · PO chose "file the findings, build nothing" 2026-07-17] — **The id convention is unenforced, and the obvious guard does not work.** `mintId(prefix)` (`registry/ids.ts`) is now the convention. **Nothing makes the next person find it.**
+- [deferred · PARKED 2026-07-27 — PO directive: not instrumental to "AgentTalk within AgentTalk". Reopen: the cross-repo contract change becomes PO scope · **the disease behind BL-066/BL-067; the six sites were its symptoms** · the obvious guard is **REFUTED by its own survey** — read that before proposing it again · the cure with teeth is a **cross-repo contract change** = PO scope call · PO chose "file the findings, build nothing" 2026-07-17] — **The id convention is unenforced, and the obvious guard does not work.** `mintId(prefix)` (`registry/ids.ts`) is now the convention. **Nothing makes the next person find it.**
 
   **The disease (BL-067's closing finding, restated because it outlives both fixes).** `registry.ts:616` (`` `msg-${Date.now()}-${this.outboundMessageSeq}` ``) and `:802` (`` `pending-relay-${Date.now()}-${++this.pendingRelaySeq}` ``) **already appended a counter** before BL-066 existed. Two people hit this defect, solved it locally, and **it never became a convention** — so it was re-introduced six times. **It was never six bugs; it was a missing convention.** `mintId` cures the six sites and cures the class only if the next person finds it.
 
@@ -1891,12 +1926,12 @@ tags: [hygiene, pollution, gates, friction-m18]
 
 <!-- @item
 id: BL-024
-status: todo
+status: deferred
 date: 2026-07-09
 epic: null
 tags: [architecture, brain, types, friction-m18]
 -->
-- [todo · **M18 C7 friction item** — PO asked "is the brain shielded from client shape?"; audit says no.
+- [deferred · PARKED 2026-07-27 — PO directive: not instrumental to "AgentTalk within AgentTalk". Reopen: the brain`s client-shape leak actually blocks a change (adding a provider or transport) · **M18 C7 friction item** — PO asked "is the brain shielded from client shape?"; audit says no.
   **M19 inception candidate**, pairs naturally with BL-014/BL-015-L2] — **The brain leaks client shape: `AgentProvider`
   conflates transport with vendor** — `packages/contracts/src/types.ts:13` is
   `'api' | 'mcp' | 'gemini' | 'claude' | 'codex'` — two shapes and three vendors in one union. It already caused
@@ -1982,12 +2017,12 @@ tags: [architecture, brain, types, friction-m18]
 
 <!-- @item
 id: BL-025
-status: todo
+status: deferred
 date: 2026-07-09
 epic: null
 tags: [live-proof, evidence, gates, friction-m18]
 -->
-- [todo · **M18 C7 friction item** — the highest-value lesson of the epic; a proof that cannot fail is not
+- [deferred · PARKED 2026-07-27 — PO directive: not instrumental to "AgentTalk within AgentTalk". Reopen: a live proof is used as a rung verdict again — which is rung 6, so this reopens naturally and soon · **M18 C7 friction item** — the highest-value lesson of the epic; a proof that cannot fail is not
   evidence] — **Live proofs need a mandatory A/B baseline and a fresh-recorder assertion** — M18-T3 shipped a
   passing live proof that **passed identically on the unfixed code** and survived six gate-2 rounds
   (**IP-15**). Separately, `scripts/m17-live-gate-proof.mjs` asserts against a **committed** NDJSON file rather
@@ -2080,12 +2115,12 @@ tags: [engine, m03, dead-code, false-claim, fault-tolerance]
 
 <!-- @item
 id: BL-029
-status: todo
+status: deferred
 date: 2026-07-11
 epic: null
 tags: [process, governance, reassignment, rating, sm, honesty]
 -->
-- [todo · **earned by a real failure, not pre-written: filed after the SP2 attach breach, PO-approved 2026-07-11**]
+- [deferred · PARKED 2026-07-27 — PO directive: not instrumental to "AgentTalk within AgentTalk". Reopen: more than one agent is in the loop again (the goal states a single agent is fine for now) · **earned by a real failure, not pre-written: filed after the SP2 attach breach, PO-approved 2026-07-11**]
   — **No signal tells the SM *when* to reassign an under-performing agent** — the reassignment *authority* is fully
   specified (SM owns it, LB-34; standing conditional reassignment, LB-38; PO overrides) but the **trigger** is a
   gut call. When the SM judged Gemini "over-matched" on SP2 and proposed swapping in Codex, that call rested on
@@ -2315,12 +2350,12 @@ tags: [ui, relay-approval, ux]
 
 <!-- @item
 id: BL-035
-status: todo
+status: deferred
 date: 2026-07-13
 epic: null
 tags: [tester, observability, artifacts, browser]
 -->
-- [todo · surfaced 2026-07-13 during autonomous Tester instrumentation rehearsal] — **Tester run artifacts:
+- [deferred · PARKED 2026-07-27 — PO directive: not instrumental to "AgentTalk within AgentTalk". Reopen: a human-driven Tester validation run is scheduled · surfaced 2026-07-13 during autonomous Tester instrumentation rehearsal] — **Tester run artifacts:
   durable testlog + passive screen recording** — the Tester role now needs replayable validation records, not only
   chat-local narration. `design/testlog.md` exists as the durable index, but artifact capture is still manual and
   lossy: Browser Use screenshots currently overwrite a temp path, logs are not bundled, and no `.webm` recording is
@@ -2332,12 +2367,12 @@ tags: [tester, observability, artifacts, browser]
 
 <!-- @item
 id: BL-034
-status: todo
+status: deferred
 date: 2026-07-13
 epic: null
 tags: [observability, ui, attach-mode, client-repo]
 -->
-- [todo · surfaced 2026-07-13 (PO + Claude design chat)] — **PTY-tee observability panel — surface each attached
+- [deferred · PARKED 2026-07-27 — PO directive: not instrumental to "AgentTalk within AgentTalk". Reopen: attached-PTY agents return to the critical path · surfaced 2026-07-13 (PO + Claude design chat)] — **PTY-tee observability panel — surface each attached
   agent's real interactive TUI beside the AgentTalk UI** — the attach client (`agentalk-mcp-client`) already runs each
   provider as its **real interactive TUI inside a PTY** (`claude-pty.mjs` / `codex-pty.mjs` / `gemini-pty.mjs`,
   node-pty): it types the prompt in as keystrokes and reads the screen back. That TUI stream already exists but is
@@ -2422,12 +2457,12 @@ tags: [self-hosting, launcher, agents, on-demand]
 
 <!-- @item
 id: BL-038
-status: todo
+status: deferred
 date: 2026-07-15
 epic: null
 tags: [self-hosting, attach, native-loop, goose, openrouter, provider-diversity]
 -->
-- [todo · surfaced 2026-07-15 (PO)] — **Native-loop attach lane via Goose + OpenRouter** — enable MCP-attach agents
+- [deferred · PARKED 2026-07-27 — PO directive: not instrumental to "AgentTalk within AgentTalk". Reopen: claude/opus stops being the in-session provider, or a second lane is actually needed · surfaced 2026-07-15 (PO)] — **Native-loop attach lane via Goose + OpenRouter** — enable MCP-attach agents
   backed by OpenRouter models, driven by **Goose** running the `attach-skill.md` poll loop
   (`await_turn`→work→`submit_*`→`await_turn`). This is the **native-loop/skill lane** (M05 open follow-up), distinct
   from the built PTY-harness lane (claude/codex/gemini via `llm-agent.mjs`). Value: restores **independent agents
@@ -2535,12 +2570,12 @@ ORIGINAL (pre-remap) meaning; resolve it via this table. -->
 
 <!-- @item
 id: BL-044
-status: todo
+status: deferred
 date: 2026-07-13
 epic: null
 tags: [consensus, arbiter, api-agents, tester-finding, product-gap]
 -->
-- [todo · Tester finding 2026-07-13 (TL-005 / LB-91)] — **API-driven multi-agent consensus is non-functional through
+- [deferred · PARKED 2026-07-27 — PO directive: not instrumental to "AgentTalk within AgentTalk". Reopen: the goal moves past a single in-session agent to real multi-agent consensus · Tester finding 2026-07-13 (TL-005 / LB-91)] — **API-driven multi-agent consensus is non-functional through
   the product; the arbiter is orphaned** — three stacked walls found while trying to run a planner-planner-worker
   "agree on a file to refactor" scenario with API agents (real keys present; these are wiring gaps, not credentials):
   **(1) Arbiter unreachable** — `consensusMode` defaults to `'protocol'` and the only product team-creation path
@@ -2877,6 +2912,37 @@ tags: [ui, observability, reactivity, web, rung4, bl048-family]
   - outcome:     MERGED ✅ (local; NOT pushed — PO says "merge" and "push" as separate words)
 
 <!-- @item
+id: BL-086
+status: todo
+date: 2026-07-27
+epic: null
+tags: [governance, autonomy, agentalk-mcp-client, agent-md, ladder, instrumental, needs-po-decision]
+-->
+- [todo · filed 2026-07-27 under the PO's "defer everything not instrumental" directive — this one **IS**
+  instrumental · observation first surfaced at the 2026-07-27 gate, then filed when the directive made the
+  keep/park call explicit] — **A worker launched in `agentalk-mcp-client` inherits NO governance at all, so
+  autonomous work is structurally confined to this repo.** Verified: the client repo has **no**
+  `AGENT.md` / `AGENTS.md` / `CLAUDE.md` / `GEMINI.md` at its root (only a `.claude/` dir and scripts). The whole
+  autonomy thesis rests on **file inheritance** — [[BL-080]] proved a claude/opus worker picks up `AGENT.md`
+  through the `CLAUDE.md` symlink in headless `-p` mode, and that is why the PO chose *"inherit the rules, skip
+  the primer ritual"*. In the client repo that mechanism has nothing to bite on: **no Implementer Rules of
+  Engagement, no show-stopper fence, no scope discipline, no honesty-over-results rule.**
+
+  **Why it is instrumental and not hygiene:** a large share of the ladder's own plumbing lives in the client —
+  the launcher, the executors, the MCP bridge ([[BL-081]], [[BL-082]], [[BL-057]], [[BL-075]] all landed there).
+  So the moment an in-session agent is asked to fix the thing that launches it, it is working **ungoverned**. It
+  is also exactly why rung 5 had to be an AgentTalk-repo task: the choice of task was constrained by this gap,
+  not by what most needed doing.
+
+  **The open question is a PO call, not an implementation detail: what rules apply there?** (a) symlink/copy this
+  repo's `AGENT.md` wholesale — one source, but the client has no epics, no ledger, and half the roles do not
+  apply; (b) a short client-specific `AGENT.md` that inherits the *rules of engagement* by pointer and states its
+  own scope; (c) inject rules through the launcher prompt instead — **note this contradicts the standing
+  file-inheritance decision and reintroduces the prompt-bloat the ladder deliberately moved away from** (rung 5's
+  prompt was one sentence). **(b) is the planner's recommendation; the PO decides.** Reopen/blocking note: until
+  this is decided, treat any client-repo task as **human-implemented**, not a candidate for an autonomous run.
+
+<!-- @item
 id: BL-084
 status: todo
 date: 2026-07-27
@@ -2963,12 +3029,12 @@ tags: [engine, failure-propagation, api-agents, in-process-driver, m03, question
 
 <!-- @item
 id: BL-079
-status: todo
+status: deferred
 date: 2026-07-27
 epic: null
 tags: [hygiene, tooling, observability, agentalk-mcp-client, low-severity]
 -->
-- [todo · filed from BL-075, 2026-07-27 · **claim CORRECTED at the 2026-07-27 gate — see the measured note at the
+- [deferred · PARKED 2026-07-27 — PO directive: not instrumental to "AgentTalk within AgentTalk". Reopen: the noise ever actually masks a real failure · filed from BL-075, 2026-07-27 · **claim CORRECTED at the 2026-07-27 gate — see the measured note at the
   end; it is 4 of 10 files and ~4 lines, not "every file" and not "a wall"**] —
   **`agentalk-mcp-client`: some `lib/*.mjs` point at a sourcemap that does
   not exist, so every test run emits stray ENOENT lines** — the affected `.mjs` files each carry a trailing
@@ -3098,12 +3164,12 @@ tags: [consensus, planning-protocol, robustness, provider-cost, tester-finding]
 
 <!-- @item
 id: BL-042
-status: todo
+status: deferred
 date: 2026-07-13
 epic: null
 tags: [goose, consensus, planning-protocol, coordination-profile, optional]
 -->
-- [todo · optional · Tester finding 2026-07-13 (TL-009/TL-010)] — **(Optional) Full goose consensus recipe — embed the
+- [deferred · PARKED 2026-07-27 — PO directive: not instrumental to "AgentTalk within AgentTalk". Reopen: the goose lane (BL-038) reopens · optional · Tester finding 2026-07-13 (TL-009/TL-010)] — **(Optional) Full goose consensus recipe — embed the
   protocol contract so goose can plan** — goose is verified as a dev + pair-chat agent (spike, TL-008) but **cannot
   complete the strict multi-phase consensus protocol** (TL-009: content good on gpt-4o but stalls opinion→
   agreement_proposal + 60s force-shutdown; TL-010: the `--max-turns 3 --no-profile --system` coordination profile
@@ -3118,12 +3184,12 @@ tags: [goose, consensus, planning-protocol, coordination-profile, optional]
 
 <!-- @item
 id: BL-043
-status: todo
+status: deferred
 date: 2026-07-13
 epic: null
 tags: [arbiter, consensus, heterogeneous-team, claude, goose, experiment, next-session]
 -->
-- [todo · PO idea 2026-07-13 · **next-session experiment**] — **Heterogeneous arbiter: a Claude-backed MCP client as
+- [deferred · PARKED 2026-07-27 — PO directive: not instrumental to "AgentTalk within AgentTalk". Reopen: multi-agent arbiter work resumes · PO idea 2026-07-13 · **next-session experiment**] — **Heterogeneous arbiter: a Claude-backed MCP client as
   the Arbiter/Judge, goose agents for planners + worker** — TL-013 proved arbiter (semantic) consensus works with
   all-goose+deepseek, but the **Judge's convergence bar was lax** (it declared `converged` though the planners
   endorsed different ideas — the Judge is hardcoded to openrouter `gpt-4o-mini` via `callApi` in
@@ -3893,12 +3959,12 @@ tags: [ui, observability, self-hosting, bite0]
 
 <!-- @item
 id: BL-050
-status: todo
+status: deferred
 date: 2026-07-16
 epic: null
 tags: [ui, observability, ux]
 -->
-- [todo · PO observation during the BL-049 live run · **deliberately not acted on**] — **The Team view does not
+- [deferred · PARKED 2026-07-27 — PO directive: not instrumental to "AgentTalk within AgentTalk". Reopen: the PO`s supervision of an autonomous run is actually hindered by team identification · PO observation during the BL-049 live run · **deliberately not acted on**] — **The Team view does not
   make it clear which team you are looking at.** PO, watching a real worker-only team appear: *"si capisce male
   qual è il team sulla UI"* — with the team identified only by a generated `team-<epoch>` id, the panel reads
   ambiguously, and the agent list rendered beside it (all agents, not just members) makes it easy to misread which

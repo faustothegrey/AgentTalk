@@ -1062,3 +1062,28 @@ here.**
 - **Leading a closing block with my own failure rather than the win was the right call.** BL-047's record opens with
   "the reviewer's grader was wrong — twice" before it opens with the success. The next reader inherits the caveat
   at the same moment as the claim, which is the only way a caveat survives.
+
+### 2026-07-27 (afternoon) — my tooling lied, my regression diff was vacuous, and I still don't propose the cut myself
+- **As implementer: a tool returned a wrong answer and I nearly reported it as a disaster.** The shell's `grep`
+  came back with *no matches* — twice — for a string the file demonstrably contained, and I told the PO the merged
+  fix appeared to have vanished from disk. `git diff` settled it in one call: every hunk was there. That is the
+  **BL-059 wrong-coordinates trap in a new costume** — not the wrong directory this time, but the wrong *instrument*.
+  **Rule for next time: when a tool's answer implies something drastic (work vanished, a test disappeared, a file is
+  empty), cross-check with a second, independent tool BEFORE saying it out loud.** `git diff` / `git grep` are
+  authoritative here; the ambient shell's `grep` is not. I also wasted three calls theorising about *why* instead of
+  just looking at the file.
+- **As reviewer: "no differences" can be proof of my own sanitising, not of correctness.** For BL-085 I diffed all
+  84 derived backlog titles before/after the parser fix, got an identical result, and was about to report it as
+  evidence the fix worked. It wasn't — it only showed *no regression*, because I had already hand-contorted the two
+  bullets that would have exposed the bug. The real proof was **restoring the natural prose** (the exact broken
+  shape) and watching the titles stay correct. **Ask what would have to be true in the DATA for this check to fail;
+  if I sanitised the data earlier, the check is vacuous.** Same failure family as the rung-5 grader: a bar that
+  cannot fail isn't a bar — and this time the sanitiser was *me*, one hour earlier.
+- **As planner: verification found a phantom in one pass — and the PO, not I, proposed the real cut.** Dispositioning
+  against the *code* rather than the file exposed BL-045 as superseded (its own residual blocker was already
+  `done`), BL-079 as 4-of-10 not "every file", and three stale line citations — one of which *my own merge that
+  morning* had shifted. That pass is cheap and I should budget it into every gate. But the sharper lesson is the
+  next instruction: the PO said *"defer everything not instrumental to AgentTalk-within-AgentTalk"* and the queue
+  went **15 → 3**. I had just dispositioned all 15 and kept them all, treating a long queue as a fact of life.
+  **This is my 2026-07-01 proportionality blind spot again, in a new form: I audit diligently and then fail to ask
+  "should most of this exist right now?"** Next gate, propose the cut before being told.
