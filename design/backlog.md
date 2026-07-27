@@ -2960,26 +2960,57 @@ tags: [testing, flake, websocket, bl048, ephemeral-ports]
   upgrade never reached our server at all.** That reframes the bug: it is not a race *inside* the handler, it is
   the client connecting to the wrong listener.
 
-  **Hypothesis (NOT confirmed — stated as a hypothesis on purpose).** The suite binds **port 0** everywhere:
-  `startServer(registry, 0, …)` per `beforeEach` (`server.test.ts:70`), and `startServer` *additionally* always
-  launches an MCP server on its own ephemeral port, **asynchronously** and outside the test's await
-  (`server.ts:934`, `.then()` — the port is only known later). Every `beforeEach`/`afterEach` cycle therefore
-  releases and re-acquires ephemeral ports while other test files do the same in parallel. If a port is recycled
-  between the moment `baseUrl` is computed and the moment `openSocket()` dials it, the socket reaches a different
-  listener — plausibly one of the MCP servers, which would refuse a handshake carrying no agent identity or
-  contract hash. **What is confirmed:** the failure profile and the absence of any `403` in our code. **What is
-  not:** which listener answered.
+  **⛔ MY ORIGINAL HYPOTHESIS BELOW IS REFUTED. Read the correction first.** Struck through in substance, kept
+  verbatim as the record of what was guessed and why it was wrong — the investigation
+  (`design/bl092-investigation.md`, merged `cff094d`) killed it on evidence I then re-verified myself.
 
-  **Why it matters beyond one red row.** The whole suite binds port 0 in this pattern, so this is a *suite-wide*
-  latent flake that happens to have surfaced on one row. It also degrades exactly the signal an autonomous or
-  operator-launched run depends on: a gate that is green 2 times in 3 cannot distinguish a real regression from
-  noise, and the standing rule here is that an honest red beats a scope-creep green — which only holds if a red
-  means something.
+  > ~~**Hypothesis (NOT confirmed — stated as a hypothesis on purpose).** The suite binds **port 0** everywhere:
+  > `startServer(registry, 0, …)` per `beforeEach` (`server.test.ts:70`), and `startServer` *additionally* always
+  > launches an MCP server on its own ephemeral port, **asynchronously** and outside the test's await
+  > (`server.ts:934`, `.then()` — the port is only known later). Every `beforeEach`/`afterEach` cycle therefore
+  > releases and re-acquires ephemeral ports while other test files do the same in parallel. If a port is recycled
+  > between the moment `baseUrl` is computed and the moment `openSocket()` dials it, the socket reaches a different
+  > listener — plausibly one of the MCP servers, which would refuse a handshake carrying no agent identity or
+  > contract hash.~~
 
-  **Suggested shape (not decided):** have `startServer` expose the MCP port as a resolved promise so tests can
-  await it instead of racing it; and/or dial the socket from the live `server.address()` at connect time rather
-  than a `baseUrl` string captured in `beforeEach`. Both touch shared test infrastructure, so neither was done on
-  discovery.
+  **CORRECTION 1 — the MCP server cannot have sent the `403`.** Two independent reasons, both verified in code:
+  it sets `path = '/mcp'` **only** when handed a server object, never when handed a *port*
+  (`mcp-server.ts:55-61`) — which is how `server.ts` starts it — so it would have *accepted* an upgrade on
+  `/ws`; and every rejection it makes is a **post-handshake close code** (`4001` `:86`, `4003` `:108`, `1008`
+  `:154`). A close code is only reachable once the socket is open, so a client would have seen `open` followed by
+  a `4xxx` close, **not** `Unexpected server response: 403`. `ws` does not send `403` either — it aborts with
+  `400`/`401`/`503` (`websocket-server.js:278,337,353,385`).
+
+  **CORRECTION 2 — port *recycling* cannot be the mechanism.** `baseUrl` is read from `server.address()` after
+  `'listening'`, and the server holds that port for the whole test. **The OS cannot hand it to anyone else while
+  it is held**, so there is no window to race. This objection is sharper than the hypothesis it replaces.
+
+  **CORRECTION 3 — "the whole suite binds port 0" is overstated.** Exactly **two** files bind a listener:
+  `server.test.ts` and `m17-gate-recording.test.ts`. The blast radius is smaller than filed.
+
+  **What replaces it — demonstrated, not hypothesised.** `server.ts:1274` is `server.listen(port, …)` with **no
+  host argument**, so Node binds the wildcard while the test dials `127.0.0.1`; the kernel resolves by
+  **specificity**. Reproduced live: a foreign process on `127.0.0.1:52670`, our wildcard `listen(52670)`
+  succeeding with **no `EADDRINUSE`**, `server.address().port` reporting `52670` and looking healthy, and a dial
+  to `127.0.0.1:52670` reaching **the foreign server**. Still not confirmed as *this* failure's cause — 700 bind
+  trials produced 0 collisions, so the path is rare.
+
+  **Why it matters beyond one red row.** This degrades exactly the signal an autonomous or operator-launched run
+  depends on: a gate that is green 2 times in 3 cannot distinguish a real regression from noise, and the standing
+  rule that an honest red beats a scope-creep green only holds if a red means something.
+
+  **Recommendation (from the investigation): option D — make the failure name its own culprit.** `openSocket()`
+  rejects on `socket.once('error')` (`server.test.ts:99`) and **discards `ws`'s `unexpected-response` event**,
+  which carries the status line and headers — including `Server:` — that would identify the listener in one line.
+  Both originally-recorded options are refuted: dialling the live `server.address()` re-reads *the same*
+  misrouting port, and awaiting the MCP port targets a suspect Correction 1 eliminates. Binding `127.0.0.1` is
+  held as a **pre-registered conditional fix**, and must never be applied to production as-is — `server.ts:967`
+  records that *"the UI is browsed over the LAN"*, so it is a Rule-2 show-stopper.
+
+  **Hygiene item split out and DONE (2026-07-27):** the unawaited `.then()` at `server.ts:934` mutating
+  `process.env` after a test may have finished was real cross-test pollution — genuine, but *not this bug*. Fixed
+  separately so that adopting it could not close BL-092 without fixing anything, which the investigation names as
+  "the worst available outcome, because the flake would return wearing a 'fixed' label."
 
 <!-- @item
 id: BL-091
