@@ -352,15 +352,22 @@ export class InProcessAgentDriver {
       return;
     }
 
+    // BL-076: the raw response is the last line of defence for the worker's REPORT. A structured
+    // message that parses but carries no text — a bare `ack_planning_protocol`, or a `work_accept`
+    // whose `text` is the empty string that validatePayload permits — used to be answered with the
+    // literal 'Task completed.': a placeholder asserting success while carrying no evidence of it,
+    // with the real report sitting unused in `text`. That is how both rung-4 runs came back
+    // reportless while the commit was on disk, and it is what left `completed` unchallenged
+    // (BL-062). Fall back to what the worker actually said before falling back to a placeholder.
     if (structured.message_type === 'work_accept') {
       await this.registry.handleMcpToolCall(this.agent.id, 'submit_work_response', { accepted: true });
-      await this.registry.handleMcpToolCall(this.agent.id, 'submit_work_result', { result: (structured.message_payload as any).text || 'Task completed.' });
+      await this.registry.handleMcpToolCall(this.agent.id, 'submit_work_result', { result: (structured.message_payload as any).text || text.trim() || 'Task completed.' });
       return;
     }
 
     const payloadText = (structured.message_payload as any).text || (structured.message_payload as any).plan || (structured.message_payload as any).reason || '';
     await this.registry.handleMcpToolCall(this.agent.id, 'submit_work_response', { accepted: true });
-    await this.registry.handleMcpToolCall(this.agent.id, 'submit_work_result', { result: payloadText || 'Task completed.' });
+    await this.registry.handleMcpToolCall(this.agent.id, 'submit_work_result', { result: payloadText || text.trim() || 'Task completed.' });
     } catch (err) {
       if (err instanceof McpError) {
         await this.registry.pauseTaskForOperator(this.agent.id, (err as Error).message);
