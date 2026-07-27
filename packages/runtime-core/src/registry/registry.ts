@@ -11,6 +11,7 @@ import type {
 } from '@agenttalk/contracts/protocol-payloads';
 import { serializeProtocolLine, type OutboundProtocolPacketType } from '../protocol/protocol.js';
 import type {
+  AgentErrorReason,
   AgentExecutionMode,
   AgentProvider,
   AgentStatus,
@@ -34,6 +35,45 @@ import { TeamCoordinator } from './team-coordinator.js';
 import { ArbiterCoordinator } from './arbiter-coordinator.js';
 import { resolveRegistryConfig, type RegistryConfig } from './config.js';
 import { type StructuredMessageType, buildProtocolToolSchema } from '../agents/response-schema.js';
+
+/**
+ * BL-084 T1 — the classification table, and the single decision point for M03 propagation.
+ *
+ * Ratified in `design/bl084-plan.md` §4; each row is a behaviour call, not an implementation
+ * detail, so the table is written out one reason per line rather than derived. Typing it as an
+ * exhaustive `Record` over the union is deliberate: adding a reason to
+ * `AgentErrorReason` without deciding its class is a COMPILE error, not a silent default.
+ */
+const FAULT_CLASS_BY_REASON: Record<AgentErrorReason, boolean> = {
+  // ── fault-class: the agent broke something; the team dies with it (M03 Shared-Fate) ──
+  'unknown-mcp-tool': true,
+  'conversation-start-failed': true,
+  'mcp-internal-error': true,
+  'reconnect-timeout-inflight-turn': true,
+  'idle-timeout': true, // T1 parity only — BL-028 (T3) revisits this row. See types.ts.
+
+  // ── non-fault: a normal ending, a rail firing, or a deliberate refusal ──
+  'conversation-reply-cap': false,
+  'relay-budget-exhausted': false,
+  'target-agent-unavailable': false,
+  'workflow-gate-refusal': false,
+  'planning-task-inactive': false,
+  'healthcheck-token-invalid': false,
+};
+
+/**
+ * Does this error reason warrant killing the rest of the team?
+ *
+ * The default is the SAFE direction: an **unlabelled** error is fault-class, which preserves
+ * today's behaviour for any call site not yet migrated. Migration can therefore only ever
+ * *remove* propagation, never silently add it.
+ */
+export function isFaultClass(reason?: AgentErrorReason): boolean {
+  if (reason === undefined) {
+    return true;
+  }
+  return FAULT_CLASS_BY_REASON[reason] ?? true;
+}
 
 function getExpectedResponseTypes(args: unknown): StructuredMessageType[] | undefined {
   if (!args || typeof args !== 'object') {
@@ -217,13 +257,25 @@ export class Registry extends EventEmitter {
   /**
    * Updates the agent status and logs the transition.
    * Also emits a status event for the UI.
+   *
+   * BL-084 T1 — a transition into `error` MUST carry a typed reason, and M03 propagation
+   * fires only when that reason is fault-class (`isFaultClass`). The overloads below are
+   * what make the reason non-optional at the type level: a new `error` call site cannot
+   * compile without classifying itself, so an unclassified site can never drift in and
+   * silently propagate.
+   *
+   * Behaviour in T1 is unchanged by construction: every existing `error` site is labelled
+   * fault-class, so `handleAgentFailure` fires for exactly the same set of transitions as
+   * before. T2 (BL-078) is what changes behaviour, on the in-process path.
    */
-  private setAgentStatus(agent: Agent, newStatus: AgentStatus): void {
+  private setAgentStatus(agent: Agent, newStatus: 'error', reason: AgentErrorReason): void;
+  private setAgentStatus(agent: Agent, newStatus: Exclude<AgentStatus, 'error'>): void;
+  private setAgentStatus(agent: Agent, newStatus: AgentStatus, reason?: AgentErrorReason): void {
     const oldStatus = agent.status;
     agent.setStatus(newStatus);
     this.emit('status', { id: agent.id, status: newStatus });
 
-    if (newStatus === 'error' && oldStatus !== 'error') {
+    if (newStatus === 'error' && oldStatus !== 'error' && isFaultClass(reason)) {
       void this.teamCoordinator.handleAgentFailure(agent.id);
     }
   }
@@ -790,7 +842,10 @@ export class Registry extends EventEmitter {
       if (this.hasAgentTimedOut(agent)) {
         console.error(`[Registry] Agent ${id} exceeded idle timeout (${this.config.agentIdleTimeoutMs}ms) while ${agent.status}`);
         this.clearReadinessTimeout(id);
-        this.setAgentStatus(agent, 'error');
+        // BL-084 T1: fault-class purely to preserve today's decision. This sweep is dead code
+        // (`lastProgressAt` is never written — LB-70), so the label is unobservable today; it is
+        // BL-028's job to both revive the sweep and reclassify it. Not flipped here.
+        this.setAgentStatus(agent, 'error', 'idle-timeout');
       }
     }
   }
@@ -1120,7 +1175,7 @@ export class Registry extends EventEmitter {
 
         if (code === 1011) {
           console.warn(`[Registry] MCP connection closed with internal error for agent ${agentId} -> error. Reason: ${reason}`);
-          try { this.setAgentStatus(agent, 'error'); } catch {}
+          try { this.setAgentStatus(agent, 'error', 'mcp-internal-error'); } catch {}
           return;
         }
 
@@ -1160,7 +1215,14 @@ export class Registry extends EventEmitter {
           const target = agent.currentTurnId ? 'error' : 'terminated';
           console.warn(`[Registry] Reconnect timeout expired for agent ${agentId} (in-flight turn: ${agent.currentTurnId ?? 'none'}) -> ${target}`);
           try {
-            this.setAgentStatus(agent, target);
+            // BL-084 T1: split from the single `target` call so the `error` branch can carry its
+            // reason (the overload takes a literal, not the `'error' | 'terminated'` union). Same
+            // two outcomes, same log line, same order — only the reason label is new.
+            if (target === 'error') {
+              this.setAgentStatus(agent, 'error', 'reconnect-timeout-inflight-turn');
+            } else {
+              this.setAgentStatus(agent, target);
+            }
           } catch {}
         }, 30000);
         this.reconnectTimeouts.set(agentId, timer);
