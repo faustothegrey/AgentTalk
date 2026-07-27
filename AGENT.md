@@ -217,6 +217,22 @@ in every context (docs, messages, primers, lessons). Violations should be correc
 
 ### Milestone 03 Key Features
 - **Agent Failure Propagation**: Active team tasks are now immediately interrupted if an agent enters an `error` state, eliminating deadlocks. ⚠️ **Corrected 2026-07-10:** this line previously read *"(including idle timeouts)"* — **that was false.** The idle timeout is **dead code**: `lastProgressAt` is declared and read but **never written**, so `hasAgentTimedOut()` always returns false (`registry.ts:663`; see **LB-70** / **BL-028**). A clean disconnect → `terminated` (M05) and an explicit `error` status do propagate; a **hung** agent is **not** detected. Do not rely on the idle timeout, and do not cite this milestone as evidence that it works.
+  ⚠️ **Second correction, 2026-07-27 (PO decided [[BL-078]] option (a) — document, don't fix): propagation is
+  TRANSPORT-ASYMMETRIC, and the opening sentence above is only true for ATTACHED agents.** An **attached**
+  agent's error routes through `Registry.setAgentStatus`, which fires `teamCoordinator.handleAgentFailure`
+  (`registry.ts:226-228`) — that propagates. An **in-process / API** agent's error routes through the
+  side-effect-free `notifyAgentStatus` (`in-process-driver.ts:105`, added by BL-077), so **an in-process agent
+  that errors has NEVER interrupted its team's active task.** A BL-077 test deliberately pins that
+  (`bl077-driver-status-broadcast.test.ts:84-105`).
+  **Why it is left that way, deliberately** — this is the load-bearing part, not an apology for a gap: `error`
+  is one undifferentiated bucket, and **most conditions that reach it on the driver path are not faults** — the
+  conversation **reply cap** (the designed way a conversation *ends*), the BL-083 **relay budget** firing
+  correctly, a peer not `ready`/`busy`, and a **workflow-gate refusal** (propagating a *rejected* privilege
+  escalation would hand anyone who can trip a gate a team-wide DoS lever, since `handleAgentFailure` requests
+  shutdown of every other member). Switching propagation on today would attach a team-wide kill to normal
+  control flow. The fix is a **typed non-reply reason** → **[[BL-084]]**, which also unblocks BL-028.
+  **So: nothing detects a hung agent, and an errored in-process agent does not stop its team. The wall-clock cap
+  is the only anti-hang rail.** Evidence + measured blast radius: `design/bl078-decision.md`.
 - **Refined Planning Protocol**: Protocol briefings are more direct and action-oriented, with explicit initiator/peer instructions and a "Proposal Priority" rule.
 - **Improved Observability**: Added regression tests to verify task interruption on agent failure across all phases.
 

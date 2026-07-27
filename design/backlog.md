@@ -2015,6 +2015,12 @@ tags: [engine, m03, dead-code, false-claim, fault-tolerance]
   non-reply `reason` from LB-67 Finding 1 (`turn-ended · exited · quiet · user-stopped · errored · awaiting-input ·
   receiver-cancelled`). One piece of work, not two.
 
+  **2026-07-27 — that "one piece of work" is now filed as [[BL-084]], and this item depends on it.** The BL-078
+  decision brief (`design/bl078-decision.md`) found the *same* missing primitive from the other direction:
+  `error` is one undifferentiated bucket, so neither the idle timeout (here) nor driver-path propagation
+  (BL-078) can land alone. **Do the typed reason once, in BL-084; then this item and BL-078 both close on top of
+  it.** Status left `todo` rather than `deferred` — a PO call, worth making at the next backlog gate.
+
 <!-- @item
 id: BL-029
 status: todo
@@ -2807,13 +2813,48 @@ tags: [ui, observability, reactivity, web, rung4, bl048-family]
   - outcome:     MERGED ✅ (local; NOT pushed — PO says "merge" and "push" as separate words)
 
 <!-- @item
-id: BL-078
+id: BL-084
 status: todo
 date: 2026-07-27
 epic: null
-tags: [engine, failure-propagation, api-agents, in-process-driver, m03, question, bl077-family]
+tags: [engine, failure-propagation, m03, typed-reason, lb67, unblocks-bl078, unblocks-bl028, needs-plan]
 -->
-- [todo · filed from BL-077, 2026-07-27 — a **show-stopper flagged and deliberately not decided** by the implementer] —
+- [todo · filed 2026-07-27 by PO decision, out of the BL-078 decision brief (`design/bl078-decision.md` §5c)
+  · unblocks BL-078 AND BL-028 — both are the same missing primitive seen from two directions] —
+  **Give an agent's non-reply a TYPED REASON, and propagate M03 failure only for the fault-class ones.** Today `error` is **one undifferentiated bucket**: the system cannot tell
+  *"this agent stopped for a normal reason"* from *"this agent is broken."* That single gap is what blocks two
+  separate items, and it is why neither can be fixed alone:
+  - **[[BL-078]]** — routing driver-path errors through `setAgentStatus` would fire `handleAgentFailure` (which
+    interrupts the task, sets `team.status='error'` and **requests shutdown of every other member**) for
+    conditions that are **not faults**: the conversation **reply cap** (the designed way a conversation *ends*),
+    the [[BL-083]] **relay budget** firing correctly, a peer not `ready`/`busy`, a **workflow-gate refusal** (a
+    *rejected* privilege escalation becoming a team-wide DoS lever), and the planning-routing guard. Measured
+    in the brief §3.
+  - **[[BL-028]]** — the idle timeout cannot land alone because an agent paused `awaiting-input` (blocked on a
+    human) is observationally identical to a dead one, so M03 would kill a team for correct behaviour. Its own
+    entry already names the fix: land it **with** the typed reason.
+
+  **Scope sketch (needs a real plan + Gate 1 — this is engine work on shared paths, NOT a "while we're
+  here"):** adopt LB-67 Finding 1's reason vocabulary (`turn-ended · exited · quiet · user-stopped · errored ·
+  receiver-cancelled · awaiting-input`); classify **every** trigger that currently reaches `error` as fault vs
+  non-fault (the brief's §3 table is the starting inventory, not the answer); then propagate **only**
+  fault-class errors — **on both transports**, which also *removes* the attached-vs-in-process asymmetry rather
+  than papering over it. **First customer once it exists:** BL-083's budget-exhausted throw, which currently
+  reads as `error` (consistent with the reply cap, arguably wrong) — see the note in BL-083's closing block.
+  **Do not start this without a plan; it changes established behaviour on `registry.ts` +
+  `team-coordinator.ts`.** Source: `design/bl078-decision.md`.
+
+<!-- @item
+id: BL-078
+status: deferred
+date: 2026-07-27
+epic: null
+tags: [engine, failure-propagation, api-agents, in-process-driver, m03, question, bl077-family, deferred-on-bl084]
+-->
+- [deferred · PO DECIDED 2026-07-27: option (a) — leave as-is and document the asymmetry. Reopen condition:
+  BL-084 done (the typed reason), which is what makes safe propagation possible. Analysis:
+  `design/bl078-decision.md` · filed from BL-077, 2026-07-27 — a show-stopper flagged and deliberately not
+  decided by the implementer] —
   **Should a driver-path agent error propagate failure? Today it silently does not** — M03 failure propagation runs
   off `Registry.setAgentStatus()`, which calls `teamCoordinator.handleAgentFailure()` when an agent enters `error`
   (`registry.ts:224-226`). But **`InProcessAgentDriver` never went through that method** — it set status directly —
@@ -2828,7 +2869,8 @@ tags: [engine, failure-propagation, api-agents, in-process-driver, m03, question
   attached and in-process paths, or (b) propagate, and work out the blast radius on M03's tests first. Source:
   BL-077 (`design/bl077-plan.md` §3).
 
-  **ANALYSED 2026-07-27 — `design/bl078-decision.md`; awaiting the PO's call, nothing decided or coded.**
+  **DECIDED 2026-07-27 — option (a), per the PO, on `design/bl078-decision.md`. The asymmetry is now documented
+  in `AGENT.md`'s M03 entry; the real fix is filed as [[BL-084]] and this item is DEFERRED on it.**
   The blast radius was measured, and it changes the answer: **(b) as filed is NOT safe.** Any throw out of
   `handleMcpToolCall` (no outer catch) reaches the driver's loop and becomes `error` — and **five of the seven
   such triggers are not agent faults**: the **conversation reply cap** (which is how a conversation *ends* —

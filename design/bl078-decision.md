@@ -1,6 +1,9 @@
 # BL-078 — should a driver-path agent error propagate failure?
 
-**Status:** DECISION BRIEF for the PO — analysis complete, **no code written, nothing decided**.
+**Status:** ✅ **DECIDED 2026-07-27 by the PO — option (a): leave as-is and document the asymmetry.** The
+asymmetry is documented in `AGENT.md`'s Milestone-03 entry; **[[BL-078]] is now `deferred`**, reopen condition
+= **[[BL-084]] done**. The PO also directed §5c to be filed: that is **[[BL-084]]** — the typed non-reply
+reason, which unblocks BL-078 **and** [[BL-028]]. **No engine code was written for this decision.**
 **Author:** Claude (planner), 2026-07-27. **Item:** [[BL-078]], filed from [[BL-077]].
 **Related:** [[BL-028]] (dead idle timeout — shares this brief's blocker) · [[BL-083]] (merged today; adds one
 case to the blast radius) · LB-67 Finding 1 (the typed non-reply `reason`) · M03 Shared-Fate.
