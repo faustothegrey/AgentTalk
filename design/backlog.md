@@ -4970,8 +4970,9 @@ tags: [docs, portability, linux, hygiene, porting]
 autonomy: human-only
 -->
 - [todo · filed 2026-07-28 from the same Linux deployment validation · **each line below was checked against
-  the live install, not inferred**] — **`PORTING.md` is wrong in four checkable ways on the machine it was
-  written for, and the client's committed lockfile disagrees with its own `package.json`.**
+  the live install, not inferred** · **⬛ the `PORTING.md` half is DONE — see the disposition at the end**] —
+  **`PORTING.md` was wrong in four checkable ways on the machine it was written for, and the client's committed
+  lockfile disagrees with its own `package.json`.**
 
   `PORTING.md` was rewritten 2026-07-28 and verified against the **macOS** install; these are the deltas the
   first real Linux run exposed:
@@ -4993,5 +4994,26 @@ autonomy: human-only
   (`os.tmpdir()`) rather than the hardcoded `/private/tmp` (`wt-setup.mjs:22`), which would delete the flag
   from the workflow entirely instead of documenting it twice. That is a code change with a gate and a
   worktree — decide it separately, do not smuggle it into a doc fix.
+
+  ---
+
+  **⬛ PARTIAL DISPOSITION — 2026-07-28, PO-directed ("fix PORTING.md directly"). Commit `1182204`.**
+
+  **Done — the whole `PORTING.md` table above is fixed at source**, and the doc is reframed from a *plan* into
+  a **post-move record** verified on the box: a new **§0b** lists exactly what the first pass got wrong, **§8**
+  carries the live confirmation of [[BL-098]] plus the [[BL-099]] divergence and the fact that
+  `AGENTTALK_SWEEP_DECLARED` cannot rescue the standalone sweep, **§13**'s baseline names its platform and
+  keeps the macOS figure beside it, and a new **§15** records the validation run and the client fast-forward.
+  Also refreshed: repo paths, tool versions, shell, the port table, and the key-store section (the store was
+  carried across intact, so the predicted empty-store artefact never occurred).
+
+  **Still open — this is why the item stays `todo`, and both are OUT of scope for a doc edit:**
+  1. **Client lockfile drift** — `agentalk-mcp-client`'s committed `package-lock.json` still records the
+     `attach-harness` bin against a `package.json` declaring `agent-launcher`. **Untouched**: it is the client
+     repo, which inherits no governance ([[BL-086]]), and it is the PO's to land. Any `npm install` there
+     leaves the tree dirty until it is.
+  2. **`DEFAULT_ROOT` → `os.tmpdir()`** (`wt-setup.mjs:22`) — a **code** change, so it needs a worktree, a
+     gate and a decision. `PORTING.md` §7 now documents the flag correctly for both verbs, which removes the
+     bite; this would remove the flag.
 
 *(add new items above this line)*
