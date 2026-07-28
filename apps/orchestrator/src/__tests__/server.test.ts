@@ -95,10 +95,19 @@ describe('startServer', () => {
     }
   });
 
-  async function openSocket(): Promise<WebSocket> {
-    const socket = new WebSocket(baseUrl.replace('http', 'ws') + '/ws');
-    sockets.push(socket);
-    await new Promise<void>((resolve, reject) => {
+  function wsUrl(): string {
+    return baseUrl.replace('http', 'ws') + '/ws';
+  }
+
+  // ⚠️ EVERY WebSocket dial in this file goes through here — do not call `new WebSocket()` directly.
+  // BL-094: BL-092 instrumented one dial site and left the others blind, so an intermittent 403 on
+  // any of them still failed as a bare `Unexpected server response: 403`, naming nobody. One chokepoint
+  // means a fourth call site cannot silently miss the instrumentation. Returns the socket plus its
+  // `opened` promise (rather than awaiting internally) so a caller can attach message listeners before
+  // the handshake completes.
+  function dial(url: string): { socket: WebSocket; opened: Promise<void> } {
+    const socket = new WebSocket(url);
+    const opened = new Promise<void>((resolve, reject) => {
       socket.once('open', resolve);
       socket.once('error', reject);
       // BL-092 (option D): a handshake refused with an HTTP status arrives as `unexpected-response`,
@@ -118,7 +127,7 @@ describe('startServer', () => {
           clearTimeout(bodyTimer);
           const detail = [
             `Unexpected server response: ${response.statusCode} ${response.statusMessage ?? ''}`.trim(),
-            `  dialled: ${baseUrl.replace('http', 'ws')}/ws`,
+            `  dialled: ${url}`,
             `  headers: ${JSON.stringify(response.headers)}`,
             `  body: ${body || '<empty>'}`,
           ].join('\n');
@@ -138,6 +147,13 @@ describe('startServer', () => {
         response.once('error', (err: Error) => finish(`<body unreadable: ${err.message}>`));
       });
     });
+    return { socket, opened };
+  }
+
+  async function openSocket(): Promise<WebSocket> {
+    const { socket, opened } = dial(wsUrl());
+    sockets.push(socket);
+    await opened;
     return socket;
   }
 
@@ -162,13 +178,14 @@ describe('startServer', () => {
   }
 
   async function openSocketWithMessage(predicate: (message: any) => boolean): Promise<{ socket: WebSocket; message: any }> {
-    const socket = new WebSocket(baseUrl.replace('http', 'ws') + '/ws');
+    const { socket, opened } = dial(wsUrl());
     sockets.push(socket);
     const messagePromise = waitForMessage(socket, predicate);
-    await new Promise<void>((resolve, reject) => {
-      socket.once('open', resolve);
-      socket.once('error', reject);
-    });
+    // If the handshake is refused, `opened` rejects with the instrumented detail and `messagePromise`
+    // is left to reject on its own (error or timeout) with nobody awaiting it. Park that rejection so
+    // an unhandled-rejection does not drown out the message we exist to surface.
+    messagePromise.catch(() => {});
+    await opened;
     const message = await messagePromise;
     return { socket, message };
   }
@@ -378,12 +395,9 @@ describe('startServer', () => {
     await new Promise<void>((resolve) => ownServer.once('listening', resolve));
     const { port } = ownServer.address() as AddressInfo;
 
-    const socket = new WebSocket(`ws://127.0.0.1:${port}/ws`);
+    const { socket, opened } = dial(`ws://127.0.0.1:${port}/ws`);
     try {
-      await new Promise<void>((resolve, reject) => {
-        socket.once('open', resolve);
-        socket.once('error', reject);
-      });
+      await opened;
 
       // Without a server-initiated ping a half-open socket is never detected: no FIN arrives, the
       // browser keeps believing it is connected, and the UI's indicator goes on claiming the backend
@@ -396,7 +410,11 @@ describe('startServer', () => {
       // Close the client BEFORE the server: server.close() waits for open connections to end rather
       // than cutting them, so leaving this socket up hangs the teardown.
       socket.close();
-      await new Promise<void>((resolve) => socket.once('close', () => resolve()));
+      // A refused handshake closes the socket before we get here; waiting for a 'close' that already
+      // fired would hang teardown until the suite timeout and bury the instrumented error above.
+      if (socket.readyState !== WebSocket.CLOSED) {
+        await new Promise<void>((resolve) => socket.once('close', () => resolve()));
+      }
       await ownRegistry.destroy();
       await new Promise<void>((resolve, reject) => ownServer.close((err) => (err ? reject(err) : resolve())));
       vi.unstubAllEnvs();
