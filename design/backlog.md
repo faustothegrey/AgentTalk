@@ -4628,13 +4628,13 @@ autonomy: human-only
 
 <!-- @item
 id: BL-094
-status: todo
+status: done
 date: 2026-07-27
 epic: null
-tags: [testing, flake, websocket, bl092, follow-up, goal-defect]
-autonomy: eligible
+tags: [testing, flake, websocket, bl092, follow-up, goal-defect, agent-delivered]
 -->
-- [todo · follow-up to [[BL-092]] · **the gap is in the goal I wrote, not in the delivery** · found in the O-3
+- [done · **MERGED 2026-07-28** (`ef5be1d`) · **delivered by an autonomous worker in the H-L2 operator run** ·
+  follow-up to [[BL-092]] · **the gap is in the goal I wrote, not in the delivery** · found in the O-3
   judgement pass, `design/operator/o3-grading.md` F-1] — **BL-092 instrumented one of four WebSocket dial sites;
   the other three are still blind.** Option D's purpose is *"the next 403 names the listener that sent it."*
   The shipped change (`d2df6a8`) delivers that for `openSocket()` — which does cover the reported flake, the
@@ -4650,6 +4650,50 @@ autonomy: eligible
   cannot be forgotten at a fourth site later. Test-local, additive, no production risk — same risk profile as
   BL-092 itself, which is why this is marked `autonomy: eligible`. **Do NOT take option C** (bind `127.0.0.1`):
   still a Rule-2 show-stopper, `server.ts:967`, the UI is browsed over the LAN.
+
+  ---
+
+  **✅ CLOSED — MERGED 2026-07-28, `ef5be1d`. The first backlog item on this project delivered end-to-end by an
+  autonomous worker**, in the **H-L2** operator run (Hermes operating, `op-worker-2` working). Graded against a
+  pre-registered bar: `design/operator/hl2-grading.md`, **W 8/8**.
+
+  **The fix took the recommended direction and then went past it.** `dial(url)` is now the file's **only**
+  `new WebSocket()` construction — verified independently: `grep -n "new WebSocket"` returns **one** match, at
+  `:109`, inside the helper — and all three call sites route through it (`:154` `openSocket`, `:181`
+  `openSocketWithMessage`, `:398` the keepalive raw dial). The worker added a guard the item did not ask for:
+  a `⚠️ EVERY WebSocket dial in this file goes through here — do not call new WebSocket() directly` comment,
+  which is what keeps the chokepoint a chokepoint.
+
+  **⚠️ This item's own text says "four places" and then enumerates three. Three is correct** — the worker
+  flagged the discrepancy unprompted rather than "fixing four sites". Corrected here for anyone reading back.
+
+  **Three things beyond the ask, the first of which is a real defect the item never spotted:**
+  1. The BL-092 handler reported `dialled: ${baseUrl}`. **The keepalive test runs its own server on a different
+     port**, so routing it through the shared helper unchanged would have made the instrumentation confidently
+     **name the wrong listener** — worse than the bare 403 it replaces. Now reports the URL actually dialled.
+  2. Two failure-path guards so the new message **survives** the path it describes: the orphaned
+     `messagePromise` rejection is parked (else an unhandled rejection drowns it), and the keepalive teardown
+     skips the `'close'` await when the socket is already `CLOSED` (a refused handshake closes it first; the
+     wait would hang to suite timeout and bury the error).
+  3. **It ran its own mutation check, unprompted** — a throwaway copy with every dial pointed at a listener
+     answering `403` with an `x-refused-by` header, deleted before committing. Result **8 failures: 4 via
+     `openSocketWithMessage`, 3 via `openSocket`, 1 via the keepalive dial** — proving **all three paths**, not
+     merely that something failed. Its words: *"I proved the property, I did not assert it."*
+
+  **Option C was not taken** (`server.ts:967` still binds all interfaces) and no production file was touched.
+
+  **⚠️ Closing this empties the agent-selectable queue.** BL-094 was the **only** `autonomy: eligible` item, so
+  `selectableBacklogItems` now returns `[]` and `bl093-backlog-selectable.test.ts` was updated deliberately to
+  pin the empty set. **Nothing can currently be handed to an agent unattended** — a PO call, surfaced rather
+  than quietly worked around.
+
+  **Telemetry (task closure):**
+  - task:        BL-094 (via operator rung H-L2)
+  - wall-clock:  worker 2026-07-28 08:21:19Z → 08:24:52Z (**3m32s**); merged 10:31
+  - budget:      claude session 74%→86% (Δ ~12%), weekly 41%→42%; `cap.meter` armed at 15 pts, never fired
+  - gate:        tsc 0, suite **519/519** (76 files) on mainline after cherry-pick, pollution clean
+  - diff:        1 file, +34/-16; worker commit `6e369ab` (tag `hl2-worker-6e369ab`) → cherry-picked `ef5be1d`
+  - outcome:     **MERGED ✅** — PO-authorised
 
 <!-- @item
 id: BL-095

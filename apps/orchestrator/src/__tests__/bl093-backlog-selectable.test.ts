@@ -144,10 +144,15 @@ describe('the real backlog (design/backlog.md)', () => {
   // the same day it was written, which is exactly the intended behaviour rather than churn to
   // be engineered away. Updating this line is a deliberate act — do NOT loosen it to make the
   // red go away. If the new value is not what you expected, that is the finding.
-  it('offers exactly [BL-094] as selectable', () => {
+  // 2026-07-28 — updated deliberately, not to silence a red. BL-094 was MERGED (`ef5be1d`, delivered
+  // autonomously in the H-L2 operator run) and closing it dropped its `autonomy: eligible`, so the
+  // selectable set is now EMPTY. Per the note above, the new value being unexpected is the finding —
+  // and here it is: NOTHING can currently be handed to an agent unattended. That is a PO call to make,
+  // and this line is where it becomes visible again the moment an item is marked eligible.
+  it('offers nothing as selectable — BL-094 merged and no item is eligible', () => {
     const { items, warnings } = readBacklog();
     expect(warnings).toEqual([]);
-    expect(selectableBacklogItems(items).map((i) => i.id)).toEqual(['BL-094']);
+    expect(selectableBacklogItems(items).map((i) => i.id)).toEqual([]);
   });
 
   it('holds BL-028 back behind BL-084, which is still open', () => {
