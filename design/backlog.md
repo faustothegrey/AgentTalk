@@ -4870,4 +4870,128 @@ autonomy: human-only
   `AGENTTALK_SWEEP_DECLARED`, and a genuinely stray process still fails. Needs a Linux box to verify — this item
   cannot be closed from macOS, and it should not be closed on reasoning alone.
 
+  **✅ AMENDED 2026-07-28 — RUN ON LINUX FOR THE FIRST TIME. The prediction above is CONFIRMED, verbatim.**
+  Filed "found by reading, not by running"; it has now been run, on the Linux box, against a real orchestrator
+  (`PORT=3500 node apps/orchestrator/dist/index.js`, pid 90205) with a `snapshot`/`check` bracket:
+
+  ```
+  $ node scripts/infra-invariant.mjs check --before before.json ; echo $?
+  [CRITICAL] 1
+    · process-appeared: UNKNOWN: pid 90205 | ports 3500 | no positive evidence: the service
+      registry does not know it, it is not declared, and nothing marks it as leaked
+  1
+  ```
+
+  Plus the predicted `WARNING: could not read the service registry (launchctl list).` So: the harness **works**,
+  it **degrades rather than crashing**, and the orchestrator the operator just launched *is* flagged `UNKNOWN` by
+  the very check that decides whether the operator may run again. Nothing here needs restating — **the item was
+  right.** Its status is unchanged (`todo`), and the fix direction (a Linux branch in `managedPids()`) stands.
+
+  **One thing this item did NOT predict, and could not have — see [[BL-099]].** The prediction holds for
+  `infra-invariant.mjs`, which parses `lsof` **without** filtering on the command name. Its sibling
+  `check-orchestrator-ports.mjs`, run standalone **at the same moment against the same process**, printed
+  *"No orchestrator-ish node processes are listening"* and exited **0**. Two consumers of one `lsof` call,
+  opposite verdicts. **So the escape valve this item leans on is narrower than written:**
+  `AGENTTALK_SWEEP_DECLARED` cannot rescue the standalone sweep, because declaring a port only helps a process
+  that was *seen* — and there, none ever is. Fix BL-099 first, or the "manual declaration on every run"
+  mitigation is silently a no-op for one of the two callers.
+
+<!-- @item
+id: BL-099
+status: todo
+date: 2026-07-28
+epic: null
+tags: [infrastructure, portability, linux, harness, fail-open, bl023, suite-red]
+autonomy: human-only
+-->
+- [todo · filed 2026-07-28 during the PO-directed deployment validation of the new Linux box · **found by
+  running — this one is live evidence, not analysis**] — **`check-orchestrator-ports.mjs` cannot see a single
+  Node process on Linux, and therefore reports CLEAN while an orchestrator is listening.**
+
+  **Root cause, one line.** `listeningNodeProcs()` keeps a row only when the `lsof` output line
+  `startsWith('node')` (`check-orchestrator-ports.mjs:135`). On macOS `lsof`'s COMMAND column is the process
+  name, `node`. **On Linux it is the name of the *thread* that owns the socket** — for Node that is
+  `MainThread`, which `lsof` truncates to **`MainThrea`**. So the filter drops every Node process, `byPid` ends
+  up empty, and the sweep takes its "nothing to classify" path.
+
+  **Observed, with a real orchestrator on :3500 (pid 90205):**
+
+  ```
+  $ lsof -iTCP -sTCP:LISTEN -P -n | grep 3500
+  MainThrea 90205 fausto 22u IPv6 620671 0t0 TCP *:3500 (LISTEN)
+
+  $ node scripts/check-orchestrator-ports.mjs ; echo $?
+  --- Orchestrator process/port sweep (BL-023) ---
+  No orchestrator-ish node processes are listening.
+  0
+  ```
+
+  **Why this is the bad direction of wrong.** Every other failure mode in this module was designed to fail
+  *closed* — the file's own comment calls the "unclassifiable ⇒ report clean" branch the fail-open it exists to
+  remove, and `processCwd()` deliberately returns `''` so an unreadable process lands in `UNKNOWN` rather than
+  passing. This defect walks around all of it: a process that is never **enumerated** is never **classified**,
+  so it cannot be `UNKNOWN`, so it cannot fail. The module keeps its promise for everything it sees, and on
+  Linux it sees nothing.
+
+  **Blast radius — checked, and narrower than it first looks.** `infra-invariant.mjs` is **NOT affected**: its
+  own `listeningEntries()` (`:392-417`) parses the same `lsof` output with **no command-name filter**, and
+  `isOrchestratorIsh()` matches on `ps -o command=` output and cwd (`:70-74`), never on the `lsof` COMMAND
+  column. Verified live at the same moment on the same pid: `infra-invariant check` → **1 CRITICAL, exit 1**;
+  `check-orchestrator-ports` → **exit 0**. **So the operator gate itself still holds** — the earlier draft of
+  this finding claimed the gate "passes vacuously", and that was wrong. What is broken is the standalone BL-023
+  sweep: the leak check a human or script runs directly.
+
+  **It is also the suite's only red on Linux — 512/513.**
+  `scripts/__tests__/check-orchestrator-ports.test.mjs:172` expects `[LEAKED] PID <pid>` from a real launched
+  process and gets "No orchestrator-ish node processes are listening." The unit tests all pass because they
+  drive the pure `classifyAll`/`isOrchestratorIsh` helpers with synthetic records — **the defect lives entirely
+  in the one I/O function the pure tests were designed not to touch**, and the single e2e bar that would catch
+  it is the one that went red. That is the bar working exactly as intended.
+
+  **Fix direction (not prescriptive — the shape needs a decision).** Do **not** simply add `MainThrea` to the
+  match: it is an lsof truncation artifact and other runtimes will differ. The robust options are (a) drop the
+  command-name prefilter entirely and let the existing `isOrchestratorIsh(cmd, cwd)` do the deciding, exactly as
+  `infra-invariant.mjs` already does — which also deletes the divergence between the two callers rather than
+  patching one side of it; or (b) enumerate with `lsof -F` field output, or `ss -ltnp`, and resolve the real
+  command via `ps`. **(a) is the smaller change and makes the two consumers agree**, which is the actual
+  invariant worth having.
+
+  **Bar:** on Linux, with a real orchestrator listening, `check-orchestrator-ports.mjs` names its PID and fails
+  the sweep; `scripts/__tests__/check-orchestrator-ports.test.mjs` goes green; the suite is 513/513; and the
+  macOS path is unchanged. **Mutation check required** (the fix must be shown to fail when reverted) — a
+  fail-open defect is precisely the class where a green that would look identical to a broken run is worthless.
+
+<!-- @item
+id: BL-100
+status: todo
+date: 2026-07-28
+epic: null
+tags: [docs, portability, linux, hygiene, porting]
+autonomy: human-only
+-->
+- [todo · filed 2026-07-28 from the same Linux deployment validation · **each line below was checked against
+  the live install, not inferred**] — **`PORTING.md` is wrong in four checkable ways on the machine it was
+  written for, and the client's committed lockfile disagrees with its own `package.json`.**
+
+  `PORTING.md` was rewritten 2026-07-28 and verified against the **macOS** install; these are the deltas the
+  first real Linux run exposed:
+
+  | § | Says | Ground truth on the Linux box |
+  |---|---|---|
+  | §3 | agent stack is "Claude + Hermes only"; codex/agy absent | **`codex` and `agy` are both installed** and on `PATH`. (Does **not** change their PO-declared unavailability — that is a role call, not an install fact — but the inventory is wrong.) |
+  | §11 | the usage meter is macOS-only, "safe to omit", will not exist | **It exists and works** — `python3` on `:9899`; `node scripts/usage.mjs` returns real figures (claude weekly 37% / session 35%). Primers telling the next agent to write `telemetry: unavailable` are wrong here. |
+  | §7 | remove example is `node scripts/wt-setup.mjs remove <id>` | **`--root` is required on Linux for `remove` too.** Without it the tool resolves the macOS `DEFAULT_ROOT` and dies with an unhandled `execFileSync` stack trace (`wt-setup.mjs:27`). `remove` *does* accept `--root` (`:139`) — this is a doc gap, **not** a code defect; the §7 prose only attaches "pass `--root /tmp`, every time" to `create`. |
+  | §13 | green baseline "513 passed" | **512/513 on Linux** — the one red is [[BL-099]]. The baseline table should say which platform it was taken on. |
+
+  **Secondary, and separate:** in `agentalk-mcp-client`, the committed `package-lock.json` records a bin named
+  `attach-harness` while the committed `package.json` declares `agent-launcher`. Any `npm install` resyncs the
+  lockfile and leaves the tree dirty — which is noise on every future run, and briefly looked like a real
+  change during this validation. One-line correction; **client repo, so it inherits no governance
+  ([[BL-086]])** and is the PO's to land.
+
+  **Also worth folding in while touching §7:** consider making `DEFAULT_ROOT` platform-derived
+  (`os.tmpdir()`) rather than the hardcoded `/private/tmp` (`wt-setup.mjs:22`), which would delete the flag
+  from the workflow entirely instead of documenting it twice. That is a code change with a gate and a
+  worktree — decide it separately, do not smuggle it into a doc fix.
+
 *(add new items above this line)*
