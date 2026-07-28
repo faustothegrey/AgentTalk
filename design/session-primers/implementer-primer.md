@@ -1,7 +1,13 @@
 ---
 role: implementer
-key: 20260727-0852-b3d91e
+key: none
 written: 2026-07-27 by Claude (session close — all three rung-4 findings closed and PUSHED)
+key_retired: 2026-07-28 by Claude, ahead of the machine move. Was `20260727-0852-b3d91e`, consumed on the old
+  machine. The Claude key store is keyed by the repo's ABSOLUTE PATH, so a move to Linux lands in a different
+  project slug with an EMPTY `consumed` — and a spent key in an empty store reads as *fresh*. Without this
+  retirement the new machine would cold-start-stop on two primers at once (this and the planner's) with no way
+  to tell which is the live hand-off. `none` = no fresh cold-start due for the implementer seat; the body below
+  stays as historical context. See PORTING.md §6.
 ---
 
 This is your session primer.

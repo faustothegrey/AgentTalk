@@ -1212,3 +1212,31 @@ here.**
   untouched when taking it might genuinely have fixed the bug. I pre-registered both expectations, which is the
   only reason I can see the pattern. **The traps are still worth building — a fence never tested is not a fence —
   but I should stop narrating them as likely.**
+
+### 2026-07-28 — the charter, its enforcement, and a machine move
+
+- **As plan reviewer: gate 1 caught a hole in my own plan, and it was the hole that mattered.** Reviewing my
+  BL-097 plan adversarially — not as a formality on the way to coding — surfaced that a **merge commit** prints
+  no paths under `git log --name-only`, so it would have satisfied *"every path in the range is allowlisted"*
+  **vacuously**. The one act the operator may never perform was the one shape the fence would have waved
+  through. Nothing about the code would have looked wrong; the bug was in the *predicate*, visible only in
+  prose. **When I hold both seats, the review pass is not redundant — it is the only thing standing in.** Do it
+  on the plan, in writing, before any code exists to get attached to.
+- **As planner: I proposed BL-097 in the morning and it was the wrong size by noon.** I pitched it as "add two
+  checks to the harness". Reading the diff logic showed the charter I had drafted **blocked itself** — the
+  operator's first lawful commit would fire three criticals and gate the next run. I nearly bolted the new
+  allowlist onto a harness that was already about to cry wolf, which is precisely the BL-090 mistake. **The
+  lesson is not "read the code first" (I did). It is that a governance change and the code that enforces it are
+  one change**, and I shipped the prose half four hours before checking whether the machine agreed with it.
+  Next time the amendment and its enforcement get scoped together, even if only one of them ships that day.
+- **As implementer: the mutation check is now reflex, and it paid twice in one task.** Two deliberate breakages
+  (neutered eligibility filter; unconditional `allowed`) each reddened exactly the bars they should have. Ten
+  minutes, and it converts "the suite is green" into "the suite is watching". I no longer regard a new check as
+  delivered until I have watched it fail.
+- **As planner, on the machine move: the environment is a dependency and it rots silently.** `PORTING.md` was
+  two weeks old and wrong in four checkable ways — a deleted env var still advertised, a lifted park still
+  described as a blocker, and Hermes described as retired when it now holds a seat. Nobody had touched the doc
+  because nobody had moved machines. **Docs that only get read at rare events decay unobserved**; the fix was to
+  verify every line against the live install rather than edit around the edges. Two real portability blockers
+  (`/private/tmp` in wt-setup, `launchctl` as the sole source of `LEGITIMATE`) were found by *reading for the
+  new environment*, not by running anything — and neither would have surfaced until the first Linux run failed.

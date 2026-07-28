@@ -4836,4 +4836,38 @@ autonomy: human-only
   - diff:        3 files, +558/-5; commits `6cf2728` (plan) · `954c7b6` (impl) · `6ab9aaf` (merge)
   - outcome:     **MERGED ✅** — PO-authorised, and pushed at PO instruction
 
+<!-- @item
+id: BL-098
+status: todo
+date: 2026-07-28
+epic: null
+tags: [infrastructure, portability, linux, harness, operator-seat, bl087-followup]
+autonomy: human-only
+-->
+- [todo · filed 2026-07-28 while surveying the machine move (`PORTING.md` §8) · **found by reading, not by
+  running — nobody has yet run this harness on Linux**] — **On Linux nothing can ever be classified
+  `LEGITIMATE`, because the only source of that evidence is `launchctl`.**
+
+  `classifyProcess` grants `LEGITIMATE` **only** when the service registry knows the PID
+  (`check-orchestrator-ports.mjs:85-87`), and the registry is `launchctl list`
+  (`infra-invariant.mjs:452`, `check-orchestrator-ports.mjs:176`) — **macOS-only, with no systemd equivalent
+  implemented.** The call degrades rather than crashing (`managedPids()` catches and returns empty), so this is
+  not a crash; it is worse in one specific way: **the harness still reports, and it reports UNKNOWN.**
+
+  **Why that matters more than it looks.** `UNKNOWN` **fails the sweep by design** — the module's own comment
+  calls the "unclassifiable ⇒ report clean" branch the fail-open it exists to remove. And a `critical` from this
+  harness **GATES the next operator run**. So on a Linux box the orchestrator the operator just launched is
+  liable to be flagged as an unknown listening process **by the very check that decides whether the operator may
+  run again.** The escape valve exists (`AGENTTALK_SWEEP_DECLARED`, and declaring is positive evidence too), so
+  this is not a blocker — but it turns a should-be-silent gate into a manual declaration on every run, and a gate
+  that always needs hand-waving is a gate people learn to wave through.
+
+  **Fix:** give `managedPids()` a Linux branch — `systemctl --user show -p MainPID <unit>` (the porting doc's own
+  systemd unit is the natural source), or read the cgroup. Keep the macOS path unchanged and select on platform.
+  **Do not** widen `PASSING` to include `UNKNOWN`; that is the fail-open the module was built to delete.
+
+  **Bar:** on Linux, an orchestrator started by the systemd user unit classifies `LEGITIMATE` **without** any
+  `AGENTTALK_SWEEP_DECLARED`, and a genuinely stray process still fails. Needs a Linux box to verify — this item
+  cannot be closed from macOS, and it should not be closed on reasoning alone.
+
 *(add new items above this line)*
