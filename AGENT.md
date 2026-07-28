@@ -202,6 +202,10 @@ one agent holds SM and both quality gates — accepted because merges stay PO-ga
 - 2026-07-27 — **the OPERATOR seat chartered (PO), holder Hermes.** Deliberately **not** a role and **not** in
   the table above: it launches and monitors sessions and carries **no authority whatsoever**. Charter: the
   section immediately below. Hermes's 2026-07-02 retirement **stands unchanged**.
+- 2026-07-28 — **OPERATOR charter amended (PO): the seat gains full backlog/metrics READ and a fenced WRITE
+  surface** (file items, append observations; never `autonomy: eligible`, `blocked_by`, `status: done`, or a
+  deferred item). Path allowlist `design/backlog.md` + `design/operator/**`. It still holds **no authority**:
+  no baton, no instruction, no verdict, no push. Charter: 🔧 The OPERATOR seat → **Visibility**.
 
 ### 🔧 The OPERATOR seat — Hermes (charter, PO 2026-07-27)
 
@@ -222,21 +226,70 @@ nothing to instruct with. A `[Hermes]` message is still flagged to the PO, never
 #### What it MAY do
 
 - **Launch** a session and **monitor** it (`design/launch-and-monitor-runbook.md` is the contract).
-- **Report observations** — what it saw, what exited, what a log said.
+- **Report observations** — what it saw, what exited, what a log said — and **record them** in the backlog and
+  the operator artifacts, within the write fence in **Visibility** below.
 - **Run the invariant harness** ([[BL-087]], `scripts/infra-invariant.mjs`). Safe by construction: read-only,
   no git writes, no signals. Running it is permitted precisely *because* it cannot change anything.
 
 #### What it may NEVER do
 
-**Grade · issue a verdict · merge · push · decide scope · un-park a deferred item · touch mainline · dispose of
-a `critical` finding.** Not "should not" — *may never*. Each of these is someone else's seat, and most are the
-PO's alone.
+**Grade · issue a verdict · merge · push · decide scope · mark an item agent-eligible · un-park a deferred
+item · touch mainline · dispose of a `critical` finding.** Not "should not" — *may never*. Each of these is
+someone else's seat, and most are the PO's alone.
 
 **Its reports are OBSERVATIONS, not findings, and they are unverified until checked against the artifact.**
 This is the operative sentence of the whole charter. `completed` has never meant "the work was done" here, and
 an operator's report is one layer further from the evidence than a worker's status field. **Grade the artifact,
 at the coordinates where the process actually stood** — the twice-repeated lesson behind [[BL-053]] / [[BL-059]],
 where a rigorous check at the wrong path manufactured false confidence and a defect that never existed.
+
+#### Visibility — the instrument panel (PO amendment, 2026-07-28)
+
+**The operator is the PO's instrument panel, so it gets the whole dashboard: full READ access to the backlog,
+the ledgers, the metrics, the logs, the harness output — everything.** This is not a concession to be
+minimised. An operator that cannot see the development situation cannot report it, and reporting *is* the
+seat's entire product. Prefer **`GET /api/backlog`** over parsing `design/backlog.md`: it serves the same
+parsed items and does not hand the reader a write path it has no need of.
+
+**It also WRITES. The line is between RECORDING and DECIDING — not between reading and writing.**
+
+| The operator MAY write | It may NEVER write |
+|---|---|
+| **new items** — anything it observed, filed as `todo` | **`autonomy: eligible`** on any item |
+| **observations appended** to an existing item's prose | **`blocked_by`** — sequencing is SM/PO |
+| run metrics, timings, exit codes, meter readings | **`status`** → `done` (that is a merge verdict) |
+| its own artifacts under `design/operator/` | anything on a `deferred` item (that is your park) |
+| | a **closing block** or **telemetry block** (they belong to a closure) |
+
+**`autonomy: eligible` is the field that matters, and it is authority in file form.** It is the single bit
+deciding what an agent may be handed *unattended*. Writing it is not describing the process, it is steering
+it — and this seat steers nothing. The rest of the write surface is bookkeeping.
+
+**Why filing is safe by construction — this is the load-bearing part.** [[BL-093]] made `autonomy` **fail
+closed**: an item that does not say it is eligible *is not eligible*. So an item Hermes files defaults to
+`human-only` and reaches no worker until the PO says so. The operator can put anything it likes in front of
+you; it cannot hand any of it to an agent. **And the guard is mechanical, not merely stated:**
+`bl093-backlog-selectable.test.ts:147` pins the real `design/backlog.md`'s selectable set *exactly*, so any
+change to what an agent may be handed goes red and forces a human look. It has already fired once on a real
+change. **Do not loosen it to accommodate the operator** — that test is now this fence's enforcement.
+
+**Where it may write — a path allowlist, the write-side analogue of the `att-op-*` sandbox:**
+`design/backlog.md` and `design/operator/**`. Nothing else. No code, no `AGENT.md`, no ledger verdict rows.
+
+**"It never touches mainline" still holds, and that is not a contradiction — read why.** That rule fences
+**code and merges**: the operator owns no branch that reaches master and performs no merge. Governance and
+docs have always been directly master-editable (see the worktree MANDATE), and a backlog commit inside the
+allowlist is a *commit*, not a merge and not a push. **Push remains the PO's, absolutely and without
+exception.**
+
+**The legitimate version of "steer."** An operator noticing that the eligible queue is empty, that a cap
+never fired, or that a metric moved — and putting that in front of the PO — changes the project's direction
+without ever holding authority. That is informing the steersman, and it is encouraged. What it may not do is
+take the wheel: no instruction, no verdict, no eligibility bit.
+
+**Honest limit:** this fence is **behavioural, not enforced** — `scripts/infra-invariant.mjs` does not yet
+check the path allowlist or diff the eligible set. Like the re-priming gate, it holds because the holder
+observes it. Mechanising it is a follow-up, not a precondition.
 
 #### Containment — the fence, and why the old one does not transfer
 
