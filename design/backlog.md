@@ -4898,13 +4898,13 @@ autonomy: human-only
 
 <!-- @item
 id: BL-099
-status: todo
+status: done
 date: 2026-07-28
 epic: null
 tags: [infrastructure, portability, linux, harness, fail-open, bl023, suite-red]
-autonomy: human-only
 -->
-- [todo · filed 2026-07-28 during the PO-directed deployment validation of the new Linux box · **found by
+- [done · **MERGED 2026-07-28** (`3f94dd8`) · filed 2026-07-28 during the PO-directed deployment validation of
+  the new Linux box · **found by
   running — this one is live evidence, not analysis**] — **`check-orchestrator-ports.mjs` cannot see a single
   Node process on Linux, and therefore reports CLEAN while an orchestrator is listening.**
 
@@ -4960,6 +4960,48 @@ autonomy: human-only
   the sweep; `scripts/__tests__/check-orchestrator-ports.test.mjs` goes green; the suite is 513/513; and the
   macOS path is unchanged. **Mutation check required** (the fix must be shown to fail when reverted) — a
   fail-open defect is precisely the class where a green that would look identical to a broken run is worthless.
+
+  ---
+
+  **✅ CLOSED — MERGED 2026-07-28, `3f94dd8` (impl `e58f212`, branch `task-bl099`). PO-directed, sole-agent
+  fallback: Claude as planner + plan reviewer + implementer + both review seats, each discipline kept
+  separately.**
+
+  **Fix: option (a), as recommended.** The command-name prefilter is **deleted**; `isOrchestratorIsh` (which
+  reads `ps` output and cwd) now decides, exactly as `infra-invariant.mjs` always did. That removes the
+  divergence between the two consumers of one `lsof` call rather than patching one side. **`MainThrea` was
+  explicitly NOT matched** — a truncation artifact would break again on the next runtime.
+
+  **The durable half is where the defect hid.** Every pre-existing bar drives the *pure classifier* with
+  synthetic records, so the single function with no test was the one that broke. Parsing is now a pure exported
+  **`parseListeningLines`** with six bars driven by **verbatim `lsof` output captured on each platform** —
+  Linux (`MainThrea`, one PID on two ports) and macOS (`node`) — plus header/blank-line and
+  IPv4/IPv6/loopback NAME forms. Hand-written fixtures would only re-encode the author's assumption.
+
+  **Verified live on Linux, three ways** (real orchestrator, same box): undeclared → `[UNKNOWN] PID … | ports
+  39259, 3500`, SWEEP FAILED, **exit 1**; `AGENTTALK_SWEEP_DECLARED=3500` → `[DECLARED]`, clean, **exit 0**;
+  nothing listening → clean, exit 0. **The middle case matters beyond this item: [[BL-098]]'s escape valve now
+  genuinely works on Linux**, which it could not while the process was never enumerated.
+
+  **Mutation check (bar satisfied):** reintroducing the exact filter reddens **5 bars** — the four Linux
+  enumeration bars plus the e2e leak test — while the **macOS bar stays green**. The asymmetry is the evidence:
+  the bars discriminate platform behaviour, not merely "something changed". Reverted; all green.
+
+  **Two declared incidentals** (neither consumed by any test or parser): module-private `listeningNodeProcs` →
+  `listeningProcs` (the name had become a lie), and the empty-sweep message no longer says "node processes"
+  while no longer restricting to them.
+
+  **Noted, NOT fixed (pre-existing, out of scope):** the "Declare it" hint prints `p.ports[0]`, which for an
+  orchestrator is the *random* MCP port rather than the HTTP one. Harmless — declaring either port works, as
+  proven above.
+
+  **Telemetry (task closure):**
+  - task:        BL-099
+  - wall-clock:  2026-07-28 09:41 → 09:52 (~11 min from worktree to merge)
+  - budget:      weekly 37%→39% (Δ ~2%), session 35%→51% (Δ ~16%) [per `scripts/usage.mjs`]
+  - gate:        tsc 0, suite **519/519** (76 files; was 512/513 — the red bar passes, six added), pollution clean (3500/3600 free, no stray processes, one worktree at close)
+  - diff:        2 files, +122/-16; commits `e58f212` (impl) · `3f94dd8` (merge)
+  - outcome:     **MERGED ✅**
 
 <!-- @item
 id: BL-100
