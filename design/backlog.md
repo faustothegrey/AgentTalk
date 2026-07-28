@@ -4747,4 +4747,53 @@ autonomy: human-only
   monitoring separately — O-4 conflated two questions into one run and answered neither cleanly.
   **Also still unknown:** whether `cap.meter` fires correctly (it never came close — weekly moved 30%→32%).
 
+<!-- @item
+id: BL-097
+status: todo
+date: 2026-07-28
+epic: null
+tags: [infrastructure, safety, harness, operator-seat, governance, bl087-followup, needs-plan]
+autonomy: human-only
+-->
+- [todo · filed 2026-07-28 · follow-up to [[BL-087]] and to the **OPERATOR charter amendment** (`7948ea4`) ·
+  **found while scoping the amendment's own enforcement**] — **Mechanise the operator write fence — and fix the
+  fact that the amendment currently BLOCKS ITSELF on first use.**
+
+  **The original ask (mine, as planner):** the amendment's path allowlist (`design/backlog.md` +
+  `design/operator/**`) and its ban on writing `autonomy: eligible` are **behavioural, not enforced** — the
+  charter says so in as many words. Extend `scripts/infra-invariant.mjs` to (a) flag operator writes outside the
+  allowlist and (b) diff the agent-selectable set across a run.
+
+  **⚠️ The finding that reshapes it — the harness has no concept of a legitimate operator write, because when it
+  was written the operator had none.** Read the diff logic: `head-moved` is `CRITICAL` and explicitly *"never
+  allowlisted"* (`infra-invariant.mjs:369-372`), `upstream-diverged` is `CRITICAL` (`:378-381`), and
+  `tracked-file-modified` is `CRITICAL` (`:424`). The amendment now permits the operator to **commit** to
+  `design/backlog.md` on master. **So the operator's first lawful write produces three CRITICAL findings — and a
+  `critical` GATES the next operator run until the PO clears it.** The fence and the harness contradict each
+  other today; whichever is right, they cannot both stand as written.
+  **This is BL-090's shape repeating** (there: a path mismatch manufactured *three false criticals* —
+  head-moved, branch-changed, upstream-diverged). The lesson recorded then was that a harness crying wolf is
+  worse than none, because the next reader learns to ignore it. **Do not add check (a) on top of a harness that
+  is already about to fire falsely — fix the false fire first, or the allowlist grades noise.**
+
+  **The fork the PO must settle before (a) can be built** — it decides the implementation, not just the wording:
+  **(i) the operator COMMITS** (charter as written) → the harness needs a declared
+  `expect.allowWritePaths`, and `head-moved` / `upstream-diverged` / `tracked-file-modified` must soften to
+  `info` **only when every path in `before.head..after.head` falls inside the allowlist**, staying `CRITICAL`
+  otherwise; **(ii) the operator writes but never commits** → the charter changes instead, the PO commits what
+  the operator wrote, and only `tracked-file-modified` needs the path-scoped exception. (i) is more faithful to
+  the amendment and strictly more work; (ii) is smaller but puts a human in the loop of every observation.
+
+  **Part (b) is independent of that fork and can be built either way.** Snapshot the **effective selectable
+  set** — `autonomy: eligible` ∧ `status: todo` ∧ every `blocked_by` id `done`/`dropped` — and make ANY change
+  to it `CRITICAL`, never allowlistable. The effective set is the right boundary rather than the raw `autonomy`
+  field, because the set an agent may be handed also moves **indirectly**, by writing `blocked_by` or by
+  flipping a blocker to `done` — both of which the charter equally forbids. Note this duplicates
+  `parseBacklog`/`selectableBacklogItems` logic in a dependency-free `.mjs` (deliberate: the harness must run
+  when the build is broken — it is infrastructure safety). **Kill the duplication risk mechanically:** a test
+  asserting the harness's extractor agrees with `parseBacklog` on the real `design/backlog.md`.
+
+  **Not hygiene, same argument as BL-087:** an unenforced fence around an actor that can write to the backlog is
+  exactly the gap the harness was built to close one layer down.
+
 *(add new items above this line)*
