@@ -4887,6 +4887,17 @@ autonomy: human-only
   the very check that decides whether the operator may run again. Nothing here needs restating — **the item was
   right.** Its status is unchanged (`todo`), and the fix direction (a Linux branch in `managedPids()`) stands.
 
+  **⚠️ SECOND AMENDMENT 2026-07-28 (H-L1 run) — the harness's launchctl failure is SILENT, and its own comment
+  says otherwise.** `infra-invariant.mjs`'s `managedPids()` (`:449-465`) catches the missing `launchctl` with an
+  **empty catch** whose comment reads *"no registry ⇒ no positive evidence ⇒ things land in UNKNOWN. **Loud, not
+  silent.**"* — but nothing is printed. The loud warning exists only in `check-orchestrator-ports.mjs:184-185`,
+  a different file. **Observed:** the H-L1 operator was briefed to expect the warning from the harness, ran
+  `infra-invariant check`, and correctly reported seeing none. **The brief was wrong, not the operator.**
+  Consequence: on Linux the harness silently loses its only source of `LEGITIMATE`, so a reader has no signal
+  that the classification is degraded — the exact "we could not look ⇒ looks fine" shape this family of checks
+  exists to remove. Fold into this item's fix: whatever supplies `managedPids` on Linux should also **say so
+  when it cannot**.
+
   **One thing this item did NOT predict, and could not have — see [[BL-099]].** The prediction holds for
   `infra-invariant.mjs`, which parses `lsof` **without** filtering on the command name. Its sibling
   `check-orchestrator-ports.mjs`, run standalone **at the same moment against the same process**, printed
@@ -5057,5 +5068,58 @@ autonomy: human-only
   2. **`DEFAULT_ROOT` → `os.tmpdir()`** (`wt-setup.mjs:22`) — a **code** change, so it needs a worktree, a
      gate and a decision. `PORTING.md` §7 now documents the flag correctly for both verbs, which removes the
      bite; this would remove the flag.
+
+<!-- @item
+id: BL-101
+status: todo
+date: 2026-07-28
+epic: null
+tags: [contracts, worktree, fail-open, cross-repo, hl1, agent-surfaced]
+autonomy: human-only
+-->
+- [todo · surfaced by the **worker** during the H-L1 operator run, unprompted, while establishing what `npm
+  test` actually counts · **proven both directions before filing**] — **The cross-repo contract-alignment check
+  silently skips in every worktree — so under the worktree MANDATE it never runs during development, and it is
+  precisely the check that would have caught this morning's client mismatch.**
+
+  `verifyClientAlignment` (`packages/contracts/scripts/verify-contract.js:27-43`) resolves the client contract
+  as a **sibling of the checkout** — `path.resolve(__dirname, '../../../../agentalk-mcp-client/wire-contract.json')`.
+  From the primary checkout that is `/home/fausto/Software/agentalk-mcp-client` ✅. From a task worktree at
+  `/tmp/att-<id>` it is `/tmp/agentalk-mcp-client`, **which does not exist** — and the code then takes its
+  **fail-open** branch:
+
+  ```js
+  if (!fs.existsSync(clientContractPath)) {
+    if (process.env.AGENTTALK_MCP_CLIENT_CONTRACT_PATH) { /* FATAL, exit 1 */ }
+    console.warn('Client wire contract not found; skipped sibling contract-alignment check.');
+    return;                                     // ← silent pass
+  }
+  ```
+
+  It fails **closed** only when `AGENTTALK_MCP_CLIENT_CONTRACT_PATH` is explicitly set. Unset — the normal
+  case — a missing client is a `warn` and a pass.
+
+  **Proven, 2026-07-28, both directions:**
+  - worktree `/tmp/att-op-h1` (H-L1 worker, verbatim): `Client wire contract not found; skipped sibling contract-alignment check.`
+  - primary checkout, same commit: `Client contract alignment verified successfully.`
+
+  **Why this matters more than a skipped check normally would.** The PO's 2026-07-16 MANDATE is that **all code
+  development happens in a per-task worktree — never the primary checkout.** So the alignment check is off for
+  effectively every development run and on only where nobody is working. And the failure it guards is not
+  hypothetical: **this morning the client sat 34 commits behind on wire contract v7 against the orchestrator's
+  v8**, which rejects the MCP handshake with `1008 Policy Violation` — silent until the handshake. A green
+  `npm test` in a worktree says nothing about that, and reads as though it does.
+
+  **Fix direction (needs a decision, not prescriptive).** (a) Resolve the client from the **primary checkout**
+  rather than the cwd — `git rev-parse --git-common-dir` gives the real repo root from inside a worktree, so
+  the sibling lookup lands where a human expects; or (b) make the skip **fail closed** unless explicitly opted
+  out, inverting today's default. **(a) is better**: it makes the check *work* in worktrees rather than making
+  it *shout* there, and (b) alone would redden every worktree suite until someone sets an env var — which is
+  how checks get disabled.
+
+  **Bar:** in a fresh worktree, `npm test` performs the alignment check against the real client and **fails**
+  when the client contract is stale; the primary checkout is unchanged. **Mutation check:** point it at a
+  deliberately mismatched contract and confirm it goes red — a fail-open is exactly the class where a green
+  proves nothing.
 
 *(add new items above this line)*
