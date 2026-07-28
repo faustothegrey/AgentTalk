@@ -109,3 +109,43 @@ DoD row 8 pins the two against each other on the real backlog so they cannot dri
 - Worktree: `node scripts/wt-setup.mjs create bl097 --base master` → `/private/tmp/att-bl097`, `task-bl097`.
 - Stage **explicitly**, `git status` **after** committing (the trap that fired two sessions running).
 - Merge is the task-end reviewer's; **push is the PO's**.
+
+---
+
+## 6. Delivery — verdicts (implementer, 2026-07-28)
+
+**Scope correction (declared, not silent):** §2 named the test file
+`apps/orchestrator/src/__tests__/bl097-operator-write-fence.test.ts`. Wrong — the harness's bars live in
+`scripts/__tests__/infra-invariant.test.mjs`, alongside the BL-087/BL-089/BL-090 blocks. The BL-097 bars were
+appended there instead. Files touched: **`scripts/infra-invariant.mjs`** + **`scripts/__tests__/infra-invariant.test.mjs`**, nothing else.
+
+| # | Row | Verdict |
+|---|---|---|
+| 1 | No allowlist ⇒ unchanged | ✅ `allowWritePaths: []` ⇒ `head-moved` still critical |
+| 2 | Allowed write | ✅ backlog-only commit ⇒ `head-moved-declared` info, **zero criticals** |
+| 3 | Foreign write | ✅ backlog + `server.ts` ⇒ critical, and the detail **names the offending path** |
+| 4 | Window overflow | ✅ `head-moved-undetermined`, critical |
+| 5 | Tracked file | ✅ per-path: `design/backlog.md` info, `tracked.txt` critical **in the same run** |
+| 6 | Divergence | ✅ info on allowed + `behind` held; critical when `behind` moved |
+| 7 | Selectable set | ✅ direct grant **and** indirect (closing a blocker) ⇒ exactly one critical |
+| 8 | No drift | ✅ agrees with `parseBacklog`/`selectableBacklogItems` on the real backlog |
+| 9 | Mutation check | ✅ see below — both new checks proven to FIRE |
+| 10 | Gates | ✅ `tsc -b` 0 · suite **513/513** (76 files, was 496) · `backlog:check` exit 0 |
+| 11 | Empty-path commit | ✅ a real `--no-ff` merge ⇒ critical, though every underlying path was allowlisted |
+
+**Mutation check — would this look identical if the change did nothing?** No, and it was proven twice, not
+assumed. (A) Neutering the eligibility filter in `parseSelectableIds` reddened both row-7 grant bars. (B)
+Returning `allowed` unconditionally from `classifyHeadMove` reddened rows 1, 3, 4 and 11. Restored and
+re-confirmed 55/55 after each.
+
+**End-to-end against the real CLI** (a clone of this repo, real commits, `--expect` file) — the item's headline
+claim, demonstrated rather than argued:
+
+| Scenario | Result |
+|---|---|
+| (a) backlog commit, fence declared | 2 × info, **EXIT 0** — the amendment no longer blocks itself |
+| (b) *the same commit*, no fence declared | 2 × **critical**, EXIT 1 — the defect was real, and is unchanged when undeclared |
+| (c) operator marks its own item `autonomy: eligible`, fence declared | **1 × critical** `selectable-set-changed` naming `BL-098`, EXIT 1 — lawful path, unlawful authority, caught |
+
+(c) is the one that matters: the write was to a permitted path and still gated, because *what an agent may be
+handed* is authority, not a write.

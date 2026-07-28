@@ -7,6 +7,8 @@ import { fileURLToPath } from 'url';
 import {
   SEVERITY,
   matchesAny,
+  matchesWritePath,
+  parseSelectableIds,
   diffSnapshots,
   exitCodeFor,
   snapshotRepo,
@@ -553,5 +555,267 @@ describe('BL-089 — the first porcelain entry keeps its filename', () => {
     const entry = snapshotRepo(dir).porcelain[0];
     expect(entry.path).toBe('tracked.txt');
     expect(entry.code).toBe('M ');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// BL-097 — the OPERATOR write fence.
+//
+// The charter amendment (`7948ea4`) lets the operator COMMIT to `design/backlog.md` and
+// `design/operator/**`. Before this, a HEAD move was critical and "never allowlisted", so the
+// seat's first lawful write fired three criticals and gated the next run. These bars pin the
+// softening as NARROW: declared paths only, never on an unreadable range, and never over the
+// one thing that is authority rather than a write — the agent-selectable set.
+// ---------------------------------------------------------------------------
+
+const OPERATOR_EXPECT = {
+  ...DEFAULT_EXPECT,
+  allowWritePaths: ['design/backlog.md', 'design/operator/**'],
+};
+
+const criticalsOf = (findings) => findings.filter((f) => f.severity === SEVERITY.CRITICAL);
+const kindsOf = (findings) => findings.map((f) => f.kind);
+
+/** A repo with a `design/` tree already committed, so the fixture's own setup is not the delta. */
+function makeRepoWithDesign(backlog = '') {
+  const repo = makeRepo();
+  fs.mkdirSync(path.join(repo.dir, 'design', 'operator'), { recursive: true });
+  fs.writeFileSync(path.join(repo.dir, 'design', 'backlog.md'), backlog);
+  fs.writeFileSync(path.join(repo.dir, 'design', 'operator', 'notes.md'), 'base\n');
+  git('add design', repo.dir);
+  git('commit -q -m "design tree"', repo.dir);
+  return repo;
+}
+
+const item = (id, status, autonomy, blockedBy) =>
+  ['<!-- @item', `id: ${id}`, `status: ${status}`]
+    .concat(autonomy ? [`autonomy: ${autonomy}`] : [])
+    .concat(blockedBy ? [`blocked_by: [${blockedBy}]`] : [])
+    .concat(['-->', `- [${status}] ${id} body`, ''])
+    .join('\n');
+
+describe('BL-097 DoD row 1 — with no allowlist declared, NOTHING changes', () => {
+  // The regression guard for the whole feature: `allowWritePaths` fails closed, so every run that
+  // does not declare one is judged exactly as it was before the field existed.
+  it('a HEAD move is still critical when allowWritePaths is empty', () => {
+    const { dir } = makeRepoWithDesign();
+    const before = snapOf(dir);
+    fs.appendFileSync(path.join(dir, 'design', 'backlog.md'), 'x\n');
+    git('add design/backlog.md', dir);
+    git('commit -q -m obs', dir);
+
+    const findings = diffSnapshots(before, snapOf(dir), DEFAULT_EXPECT);
+    expect(kindsOf(criticalsOf(findings))).toContain('head-moved');
+  });
+});
+
+describe('BL-097 DoD row 2 — a lawful operator write produces NO critical', () => {
+  it('a commit touching only design/backlog.md is info, not critical', () => {
+    const { dir } = makeRepoWithDesign();
+    const before = snapOf(dir);
+    fs.appendFileSync(path.join(dir, 'design', 'backlog.md'), 'observed something\n');
+    git('add design/backlog.md', dir);
+    git('commit -q -m "operator: file an observation"', dir);
+
+    const findings = diffSnapshots(before, snapOf(dir), OPERATOR_EXPECT);
+    expect(criticalsOf(findings)).toEqual([]);
+    expect(kindsOf(findings)).toContain('head-moved-declared');
+  });
+
+  it('covers the design/operator/** subtree, including nested paths', () => {
+    const { dir } = makeRepoWithDesign();
+    const before = snapOf(dir);
+    fs.mkdirSync(path.join(dir, 'design', 'operator', 'runs'), { recursive: true });
+    fs.writeFileSync(path.join(dir, 'design', 'operator', 'runs', 'o5.md'), 'run log\n');
+    git('add design/operator', dir);
+    git('commit -q -m "operator: run log"', dir);
+
+    expect(criticalsOf(diffSnapshots(before, snapOf(dir), OPERATOR_EXPECT))).toEqual([]);
+  });
+});
+
+describe('BL-097 DoD row 3 — one foreign path poisons the range', () => {
+  it('a commit touching the backlog AND production code is critical', () => {
+    const { dir } = makeRepoWithDesign();
+    const before = snapOf(dir);
+    fs.mkdirSync(path.join(dir, 'apps', 'orchestrator', 'src'), { recursive: true });
+    fs.writeFileSync(path.join(dir, 'apps', 'orchestrator', 'src', 'server.ts'), 'export const x = 1;\n');
+    fs.appendFileSync(path.join(dir, 'design', 'backlog.md'), 'cover\n');
+    git('add design/backlog.md apps', dir);
+    git('commit -q -m "operator: sneak in a code change"', dir);
+
+    const findings = diffSnapshots(before, snapOf(dir), OPERATOR_EXPECT);
+    const head = findings.find((f) => f.kind === 'head-moved');
+    expect(head?.severity).toBe(SEVERITY.CRITICAL);
+    expect(head?.detail).toContain('apps/orchestrator/src/server.ts');
+    // and it names the offender rather than just saying "HEAD moved"
+    expect(head?.detail).not.toContain('design/backlog.md, apps');
+  });
+
+  it('the fence is anchored at the repo root — a lookalike tail is NOT allowed', () => {
+    expect(matchesWritePath('design/backlog.md', ['design/backlog.md'])).toBe(true);
+    expect(matchesWritePath('apps/vendor/design/backlog.md', ['design/backlog.md'])).toBe(false);
+    expect(matchesWritePath('design/operator/runs/deep/o5.md', ['design/operator/**'])).toBe(true);
+    expect(matchesWritePath('design/bl097-plan.md', ['design/backlog.md'])).toBe(false);
+  });
+});
+
+describe('BL-097 DoD rows 4 + 11 — an unreadable range is CRITICAL, never vacuously allowed', () => {
+  it('a pre-run HEAD outside the captured window gates', () => {
+    const { dir } = makeRepoWithDesign();
+    const before = snapOf(dir);
+    fs.appendFileSync(path.join(dir, 'design', 'backlog.md'), 'x\n');
+    git('add design/backlog.md', dir);
+    git('commit -q -m obs', dir);
+    const after = snapOf(dir);
+    // Simulate the window overflowing: the baseline commit has scrolled off the end.
+    after.repos.main.commits = after.repos.main.commits.slice(0, 1).map((c) => ({ ...c, hash: 'f'.repeat(40) }));
+
+    const findings = diffSnapshots(before, after, OPERATOR_EXPECT);
+    const f = findings.find((x) => x.kind === 'head-moved-undetermined');
+    expect(f?.severity).toBe(SEVERITY.CRITICAL);
+    expect(f?.detail).toContain('not within the last');
+  });
+
+  it('a MERGE commit touches no files and must NOT satisfy "every path matches" vacuously', () => {
+    const { dir } = makeRepoWithDesign();
+    const before = snapOf(dir);
+    git('checkout -q -b side', dir);
+    fs.appendFileSync(path.join(dir, 'design', 'backlog.md'), 'side\n');
+    git('add design/backlog.md', dir);
+    git('commit -q -m side', dir);
+    git('checkout -q master', dir);
+    fs.writeFileSync(path.join(dir, 'design', 'operator', 'notes.md'), 'master\n');
+    git('add design/operator/notes.md', dir);
+    git('commit -q -m master-side', dir);
+    git('merge --no-ff -q -m "merge side" side', dir);
+
+    const findings = diffSnapshots(before, snapOf(dir), OPERATOR_EXPECT);
+    const f = findings.find((x) => x.kind === 'head-moved-undetermined');
+    // Every underlying path here IS allowlisted — only the merge itself is unreadable, and a merge
+    // is exactly what the operator may never do. This is the bar that would have been waved past.
+    expect(f?.severity).toBe(SEVERITY.CRITICAL);
+    expect(f?.detail).toContain('MERGE');
+  });
+});
+
+describe('BL-097 DoD row 5 — uncommitted edits are fenced per-path', () => {
+  it('an edit inside the allowlist is info; one outside it stays critical, in the same run', () => {
+    const { dir } = makeRepoWithDesign();
+    const before = snapOf(dir);
+    fs.appendFileSync(path.join(dir, 'design', 'backlog.md'), 'lawful\n');
+    fs.writeFileSync(path.join(dir, 'tracked.txt'), 'tampered\n');
+
+    const findings = diffSnapshots(before, snapOf(dir), OPERATOR_EXPECT);
+    const byPath = (p) => findings.find((f) => f.kind === 'tracked-file-modified' && f.detail.includes(p));
+    expect(byPath('design/backlog.md')?.severity).toBe(SEVERITY.INFO);
+    expect(byPath('tracked.txt')?.severity).toBe(SEVERITY.CRITICAL);
+  });
+});
+
+describe('BL-097 DoD row 6 — divergence softens only when the write explains it', () => {
+  it('softens on an allowed head move with `behind` unchanged', () => {
+    const { dir } = makeRepoWithDesign();
+    const before = snapOf(dir);
+    fs.appendFileSync(path.join(dir, 'design', 'backlog.md'), 'x\n');
+    git('add design/backlog.md', dir);
+    git('commit -q -m obs', dir);
+
+    const findings = diffSnapshots(before, snapOf(dir), OPERATOR_EXPECT);
+    expect(findings.find((f) => f.kind === 'upstream-diverged')?.severity).toBe(SEVERITY.INFO);
+  });
+
+  it('stays critical when `behind` moved — that is somebody else fetching, not our write', () => {
+    const { dir } = makeRepoWithDesign();
+    const before = snapOf(dir);
+    fs.appendFileSync(path.join(dir, 'design', 'backlog.md'), 'x\n');
+    git('add design/backlog.md', dir);
+    git('commit -q -m obs', dir);
+    const after = snapOf(dir);
+    after.repos.main.upstream = { ahead: after.repos.main.upstream.ahead, behind: 3 };
+
+    const findings = diffSnapshots(before, after, OPERATOR_EXPECT);
+    expect(findings.find((f) => f.kind === 'upstream-diverged')?.severity).toBe(SEVERITY.CRITICAL);
+  });
+});
+
+describe('BL-097 DoD row 7 — the selectable set is NEVER allowlistable', () => {
+  it('granting eligibility gates, even though design/backlog.md is a permitted path', () => {
+    const { dir } = makeRepoWithDesign(item('BL-001', 'todo', 'eligible'));
+    const before = snapOf(dir);
+    fs.writeFileSync(
+      path.join(dir, 'design', 'backlog.md'),
+      item('BL-001', 'todo', 'eligible') + item('BL-002', 'todo', 'eligible'),
+    );
+    git('add design/backlog.md', dir);
+    git('commit -q -m "operator: grant itself a task"', dir);
+
+    const findings = diffSnapshots(before, snapOf(dir), OPERATOR_EXPECT);
+    const crits = criticalsOf(findings);
+    expect(kindsOf(crits)).toEqual(['selectable-set-changed']);
+    expect(crits[0].detail).toContain('BL-002');
+  });
+
+  it('catches the INDIRECT grant too — un-blocking by closing a blocker', () => {
+    const base = item('BL-001', 'todo', 'eligible', 'BL-002') + item('BL-002', 'todo');
+    const { dir } = makeRepoWithDesign(base);
+    const before = snapOf(dir);
+    expect(before.repos.main.selectable).toEqual([]);
+
+    fs.writeFileSync(
+      path.join(dir, 'design', 'backlog.md'),
+      item('BL-001', 'todo', 'eligible', 'BL-002') + item('BL-002', 'done'),
+    );
+    git('add design/backlog.md', dir);
+    git('commit -q -m "operator: close the blocker"', dir);
+
+    const findings = diffSnapshots(before, snapOf(dir), OPERATOR_EXPECT);
+    expect(kindsOf(criticalsOf(findings))).toEqual(['selectable-set-changed']);
+  });
+
+  it('an unchanged set is silent — the check does not cry wolf on ordinary edits', () => {
+    const { dir } = makeRepoWithDesign(item('BL-001', 'todo', 'eligible'));
+    const before = snapOf(dir);
+    fs.appendFileSync(path.join(dir, 'design', 'backlog.md'), '\nprose only, no header change\n');
+    git('add design/backlog.md', dir);
+    git('commit -q -m "operator: append an observation"', dir);
+
+    const findings = diffSnapshots(before, snapOf(dir), OPERATOR_EXPECT);
+    expect(criticalsOf(findings)).toEqual([]);
+  });
+
+  it('a backlog that appears or vanishes mid-run cannot be compared, and gates', () => {
+    const { dir } = makeRepoWithDesign(item('BL-001', 'todo', 'eligible'));
+    const before = snapOf(dir);
+    const after = snapOf(dir);
+    after.repos.main.selectable = 'skipped';
+
+    expect(kindsOf(criticalsOf(diffSnapshots(before, after, OPERATOR_EXPECT)))).toContain(
+      'selectable-set-unreadable',
+    );
+  });
+});
+
+describe('BL-097 DoD row 8 — the duplicated parser may not drift', () => {
+  it('agrees with parseBacklog/selectableBacklogItems on the REAL design/backlog.md', async () => {
+    const { parseBacklog, selectableBacklogItems } = await import(
+      '../../apps/orchestrator/src/backlog.ts'
+    );
+    const real = fs.readFileSync(path.resolve(__dirname, '../../design/backlog.md'), 'utf-8');
+
+    const viaParser = selectableBacklogItems(parseBacklog(real).items).map((i) => i.id).sort();
+    expect(parseSelectableIds(real)).toEqual(viaParser);
+  });
+
+  it('ignores the @item EXAMPLE inside the schema fence — it declares autonomy: eligible', () => {
+    const fenced = ['```', item('BL-NNN', 'todo', 'eligible'), '```', item('BL-001', 'todo', 'eligible')].join('\n');
+    expect(parseSelectableIds(fenced)).toEqual(['BL-001']);
+  });
+
+  it('fails closed exactly as BL-093 does: unknown autonomy and dangling blockers hide an item', () => {
+    expect(parseSelectableIds(item('BL-001', 'todo', 'yes-please'))).toEqual([]);
+    expect(parseSelectableIds(item('BL-001', 'todo'))).toEqual([]);
+    expect(parseSelectableIds(item('BL-001', 'done', 'eligible'))).toEqual([]);
+    expect(parseSelectableIds(item('BL-001', 'todo', 'eligible', 'BL-999'))).toEqual([]);
   });
 });

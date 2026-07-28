@@ -77,7 +77,14 @@ export const DEFAULT_EXPECT = {
   allowNewBranches: ['task-*'],
   allowPorts: [3600],
   allowProcesses: [],
+  // BL-097 — repo-relative paths the OPERATOR seat may lawfully write (charter amendment `7948ea4`:
+  // `design/backlog.md` + `design/operator/**`). Deliberately EMPTY by default, so it fails closed:
+  // with no declaration, every write is judged exactly as it was before this field existed.
+  allowWritePaths: [],
 };
+
+/** How far back `snapshotRepo` records commit paths. Overflow is `critical`, never silence. */
+const COMMIT_WINDOW = 50;
 
 export const DEFAULT_PORT_RANGE = { lo: 3400, hi: 3700 };
 /** The resource meter. Always watched, whatever range is configured. */
@@ -114,6 +121,165 @@ const applyAllowlist = (value, patterns) => (matchesAny(value, patterns) ? SEVER
 
 export function exitCodeFor(findings) {
   return findings.some((f) => f.severity === SEVERITY.CRITICAL || f.severity === SEVERITY.WARN) ? 1 : 0;
+}
+
+/**
+ * BL-097 — path matching for the operator WRITE fence. Deliberately NOT `matchesAny`.
+ *
+ * `matchesAny` also tests the basename and every trailing segment, which is right for naming a
+ * worktree or a branch and wrong for a fence: it would accept `apps/vendor/design/backlog.md` on
+ * the strength of its tail. This one is anchored at the repo root, and `**` crosses separators
+ * while `*` does not — so `design/operator/**` covers the whole subtree, as the charter says.
+ */
+export function matchesWritePath(value, patterns) {
+  if (!patterns || patterns.length === 0) return false;
+  const target = String(value).replace(/^\.\//, '');
+  return patterns.some((pattern) => {
+    const rx = new RegExp(
+      '^' +
+        String(pattern)
+          .split('**')
+          .map((seg) =>
+            seg.split('*').map((s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('[^/]*'),
+          )
+          .join('.*') +
+        '$',
+    );
+    return rx.test(target);
+  });
+}
+
+/**
+ * BL-097 — union the paths of every commit newer than `beforeHead`, walking the window the
+ * snapshot recorded. Pure, so the bars can drive it with synthetic state (see `diffSnapshots`).
+ *
+ * Two ways this reports "I could not see": `overflow` when `beforeHead` is not in the window at
+ * all, and `emptyCommit` when a commit in the range touches NO files — an empty commit or, far
+ * more importantly, a MERGE commit, for which `git log --name-only` prints nothing.
+ */
+export function commitRangePaths(commits, beforeHead) {
+  if (!Array.isArray(commits)) return { status: 'overflow', paths: [], emptyCommit: null };
+  const paths = [];
+  let emptyCommit = null;
+  for (const c of commits) {
+    if (c.hash === beforeHead) return { status: 'ok', paths, emptyCommit };
+    if (!c.paths || c.paths.length === 0) emptyCommit = emptyCommit ?? c.hash;
+    else paths.push(...c.paths);
+  }
+  return { status: 'overflow', paths, emptyCommit };
+}
+
+/**
+ * BL-097 — classify a HEAD move against the declared operator write allowlist.
+ *
+ * Before this existed a HEAD move was `critical` and "never allowlisted", which was correct while
+ * the operator could not commit. The charter amendment lets it commit to the allowlisted paths, so
+ * the *first lawful write* would otherwise fire three criticals and gate the next run.
+ *
+ * The softening is narrow on purpose:
+ *   - no allowlist declared  → `foreign` (today's behaviour, unchanged)
+ *   - range unreadable       → `undetermined` → `critical`. "We could not look" must never outrank
+ *                              "we looked and it was fine" (the BL-023/BL-090 discipline).
+ *   - ANY path outside       → `foreign`. One foreign path poisons the range; no partial credit.
+ *   - every path inside      → `allowed` → `info`
+ */
+export function classifyHeadMove(before, after, allowWritePaths) {
+  if (before.head === after.head) return { kind: 'none', paths: [] };
+  if (!allowWritePaths || allowWritePaths.length === 0) {
+    return { kind: 'foreign', paths: [], reason: 'no operator write allowlist is declared' };
+  }
+  const range = commitRangePaths(after.commits, before.head);
+  if (range.status !== 'ok') {
+    return {
+      kind: 'undetermined',
+      paths: [],
+      reason: `the pre-run HEAD ${String(before.head).slice(0, 8)} is not within the last ${COMMIT_WINDOW} commits`,
+    };
+  }
+  if (range.emptyCommit) {
+    return {
+      kind: 'undetermined',
+      paths: [],
+      reason: `commit ${range.emptyCommit.slice(0, 8)} touches no files — an empty or MERGE commit, whose effect cannot be seen (and a merge is precisely what the operator may never do)`,
+    };
+  }
+  const foreign = Array.from(new Set(range.paths.filter((p) => !matchesWritePath(p, allowWritePaths))));
+  if (foreign.length > 0) return { kind: 'foreign', paths: foreign };
+  return { kind: 'allowed', paths: Array.from(new Set(range.paths)) };
+}
+
+/**
+ * BL-097 — the effective agent-selectable set, re-implemented dependency-free.
+ *
+ * This duplicates `parseBacklog`/`selectableBacklogItems` (`apps/orchestrator/src/backlog.ts`) on
+ * purpose: the harness is infrastructure safety and must run when the build is broken, so it may
+ * not import from `dist`. The duplication is fenced by a test that pins this against the real
+ * parser on the real `design/backlog.md` — if they ever drift, that test goes red.
+ *
+ * Mirrors the parser's semantics exactly, including the ones that look like details:
+ *   - `@item` blocks inside ``` fences are examples, not items (the schema block at the top of the
+ *     backlog declares `autonomy: eligible` and must not be counted)
+ *   - unknown/absent `autonomy` → not eligible (BL-093 fails closed)
+ *   - an unknown `blocked_by` id is UNRESOLVED, so a typo hides an item rather than releasing it
+ */
+export function parseSelectableIds(markdown) {
+  const lines = String(markdown).split('\n');
+  const items = [];
+  let fence = false;
+
+  for (let i = 0; i < lines.length; i++) {
+    if (lines[i].trimStart().startsWith('```')) {
+      fence = !fence;
+      continue;
+    }
+    if (fence || !lines[i].trimStart().startsWith('<!-- @item')) continue;
+
+    const header = {};
+    for (let j = i + 1; j < lines.length; j++) {
+      if (lines[j].trim().includes('-->')) {
+        i = j;
+        break;
+      }
+      const kv = lines[j].match(/^\s*([A-Za-z_]+)\s*:\s*(.*)$/);
+      if (kv) header[kv[1].toLowerCase()] = kv[2];
+    }
+
+    const id = (header.id ?? '').trim();
+    if (!id) continue;
+    items.push({
+      id,
+      status: (header.status ?? '').trim(),
+      autonomy: (header.autonomy ?? '').trim(),
+      blockedBy: String(header.blocked_by ?? '')
+        .replace(/^\s*\[|\]\s*$/g, '')
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean),
+    });
+  }
+
+  const byId = new Map(items.map((it) => [it.id, it]));
+  const resolved = (bid) => {
+    const b = byId.get(bid);
+    return !!b && (b.status === 'done' || b.status === 'dropped');
+  };
+
+  return items
+    .filter((it) => it.status === 'todo' && it.autonomy === 'eligible' && it.blockedBy.every(resolved))
+    .map((it) => it.id)
+    .sort();
+}
+
+/** Parse `git log --format=%H --name-only`: a hash line opens a commit, later lines are its paths. */
+function parseCommitLog(raw) {
+  const out = [];
+  for (const line of String(raw || '').split('\n')) {
+    const t = line.trim();
+    if (!t) continue;
+    if (/^[0-9a-f]{40}$/.test(t)) out.push({ hash: t, paths: [] });
+    else if (out.length > 0) out[out.length - 1].paths.push(t);
+  }
+  return out;
 }
 
 // ---------------------------------------------------------------------------
@@ -199,6 +365,18 @@ export function snapshotRepo(repoPath, env) {
     tags: (tryGit(['tag'], repoPath, env, '') || '').split('\n').filter(Boolean).sort(),
     porcelain,
     stashCount: (tryGit(['stash', 'list'], repoPath, env, '') || '').split('\n').filter(Boolean).length,
+
+    // BL-097 — captured HERE, at snapshot time, because `diffSnapshots` is pure: it may not shell
+    // out to `git diff before..after`, so the *after* snapshot carries a window the diff can walk.
+    commits: parseCommitLog(
+      tryGit(['log', '--format=%H', '--name-only', '-n', String(COMMIT_WINDOW), 'HEAD'], repoPath, env, ''),
+    ),
+
+    // BL-097 — what an agent may be handed unattended. `SKIPPED` (not `[]`) when the repo has no
+    // backlog: collected-but-empty and deliberately-not-collected must never look alike.
+    selectable: fs.existsSync(path.join(repoPath, 'design', 'backlog.md'))
+      ? parseSelectableIds(fs.readFileSync(path.join(repoPath, 'design', 'backlog.md'), 'utf-8'))
+      : SKIPPED,
   };
 }
 
@@ -366,10 +544,32 @@ function diffRepo(name, before, after, expect, findings) {
     return;
   }
 
-  // --- moves: never allowlisted ---
-  if (before.head !== after.head) {
-    at('head-moved', SEVERITY.CRITICAL, `${name}: HEAD moved ${before.head.slice(0, 8)} → ${after.head.slice(0, 8)}`);
+  // --- moves: allowlisted ONLY by an explicit operator write declaration (BL-097) ---
+  // A branch change is still never allowlisted: the operator works on master and owns no branch.
+  const move = classifyHeadMove(before, after, expect.allowWritePaths);
+  const heads = `${String(before.head).slice(0, 8)} → ${String(after.head).slice(0, 8)}`;
+  if (move.kind === 'allowed') {
+    at(
+      'head-moved-declared',
+      SEVERITY.INFO,
+      `${name}: HEAD moved ${heads}, and every path in the range is a declared operator write — ${move.paths.join(', ')}`,
+    );
+  } else if (move.kind === 'undetermined') {
+    at(
+      'head-moved-undetermined',
+      SEVERITY.CRITICAL,
+      `${name}: HEAD moved ${heads} and the range could not be read — ${move.reason}. ` +
+        `"We could not look" never outranks "we looked and it was fine".`,
+    );
+  } else if (move.kind === 'foreign') {
+    at(
+      'head-moved',
+      SEVERITY.CRITICAL,
+      `${name}: HEAD moved ${heads}` +
+        (move.paths.length > 0 ? ` — writes outside the allowlist: ${move.paths.join(', ')}` : ''),
+    );
   }
+
   if (before.branch !== after.branch) {
     at('branch-changed', SEVERITY.CRITICAL, `${name}: current branch changed ${before.branch} → ${after.branch}`);
   }
@@ -377,7 +577,17 @@ function diffRepo(name, before, after, expect, findings) {
   const ua = after.upstream;
   if (JSON.stringify(ub) !== JSON.stringify(ua)) {
     const fmt = (u) => (u ? `+${u.ahead}/-${u.behind}` : 'none');
-    at('upstream-diverged', SEVERITY.CRITICAL, `${name}: divergence vs upstream changed ${fmt(ub)} → ${fmt(ua)}`);
+    // A declared write leaves the repo one commit ahead — that divergence IS the write, already
+    // reported above. It softens only when `behind` held still: a `behind` move is somebody's
+    // fetch or reset, which no write allowlist speaks to.
+    const behindHeld = (ub?.behind ?? null) === (ua?.behind ?? null);
+    const declared = move.kind === 'allowed' && behindHeld;
+    at(
+      'upstream-diverged',
+      declared ? SEVERITY.INFO : SEVERITY.CRITICAL,
+      `${name}: divergence vs upstream changed ${fmt(ub)} → ${fmt(ua)}` +
+        (declared ? ' (accounted for by the declared operator write above)' : ''),
+    );
   }
 
   // --- worktrees ---
@@ -421,7 +631,14 @@ function diffRepo(name, before, after, expect, findings) {
     if (code.includes('?')) {
       at('untracked-file-added', SEVERITY.INFO, `${name}: new untracked file — ${p}`);
     } else {
-      at('tracked-file-modified', SEVERITY.CRITICAL, `${name}: tracked file changed [${code.trim()}] — ${p}`);
+      // BL-097 — an uncommitted edit inside the operator's declared paths is the seat working, not
+      // residue. Per-path: one foreign edit stays critical even in a batch of lawful ones.
+      const declared = matchesWritePath(p, expect.allowWritePaths);
+      at(
+        'tracked-file-modified',
+        declared ? SEVERITY.INFO : SEVERITY.CRITICAL,
+        `${name}: tracked file changed [${code.trim()}] — ${p}` + (declared ? ' (declared operator write)' : ''),
+      );
     }
   }
   for (const p of beforeFiles.keys()) {
@@ -430,6 +647,38 @@ function diffRepo(name, before, after, expect, findings) {
 
   if (before.stashCount !== after.stashCount) {
     at('stash-count-changed', SEVERITY.INFO, `${name}: stash count ${before.stashCount} → ${after.stashCount}`);
+  }
+
+  // --- the agent-selectable set (BL-097): NEVER allowlistable ---
+  // `allowWritePaths` deliberately has no effect here. `design/backlog.md` is a path the operator
+  // may write, but WHAT an agent may be handed unattended is not a write — it is authority, and
+  // the charter reserves it to the PO. So a lawful write to a lawful path still gates if it moved
+  // this set. The set is the *effective* one, because it also moves indirectly: by writing
+  // `blocked_by`, or by flipping a blocker to `done`.
+  const bSel = before.selectable;
+  const aSel = after.selectable;
+  if (Array.isArray(bSel) && Array.isArray(aSel)) {
+    const added = aSel.filter((x) => !bSel.includes(x));
+    const removed = bSel.filter((x) => !aSel.includes(x));
+    if (added.length > 0 || removed.length > 0) {
+      const parts = [];
+      if (added.length > 0) parts.push(`now selectable: ${added.join(', ')}`);
+      if (removed.length > 0) parts.push(`no longer selectable: ${removed.join(', ')}`);
+      at(
+        'selectable-set-changed',
+        SEVERITY.CRITICAL,
+        `${name}: the agent-selectable backlog set changed — ${parts.join('; ')}. ` +
+          `Only the PO may change what an agent may be handed unattended ` +
+          `(AGENT.md → 🔧 The OPERATOR seat → Visibility).`,
+      );
+    }
+  } else if (bSel !== aSel) {
+    at(
+      'selectable-set-unreadable',
+      SEVERITY.CRITICAL,
+      `${name}: the backlog was ${Array.isArray(bSel) ? 'readable' : String(bSel)} before the run and ` +
+        `${Array.isArray(aSel) ? 'readable' : String(aSel)} after — the selectable set could not be compared.`,
+    );
   }
 }
 
