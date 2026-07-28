@@ -4749,13 +4749,13 @@ autonomy: human-only
 
 <!-- @item
 id: BL-097
-status: todo
+status: done
 date: 2026-07-28
 epic: null
 tags: [infrastructure, safety, harness, operator-seat, governance, bl087-followup, needs-plan]
 autonomy: human-only
 -->
-- [todo · filed 2026-07-28 · follow-up to [[BL-087]] and to the **OPERATOR charter amendment** (`7948ea4`) ·
+- [done · filed 2026-07-28 · follow-up to [[BL-087]] and to the **OPERATOR charter amendment** (`7948ea4`) ·
   **found while scoping the amendment's own enforcement**] — **Mechanise the operator write fence — and fix the
   fact that the amendment currently BLOCKS ITSELF on first use.**
 
@@ -4795,5 +4795,45 @@ autonomy: human-only
 
   **Not hygiene, same argument as BL-087:** an unenforced fence around an actor that can write to the backlog is
   exactly the gap the harness was built to close one layer down.
+
+  ---
+
+  **CLOSED 2026-07-28 — merged `6ab9aaf`** (branch `task-bl097`, impl `954c7b6`, plan `6cf2728`). Plan +
+  verdicts: `design/bl097-plan.md`. **11/11 DoD rows VERIFIED.**
+
+  **What shipped.** `expect.allowWritePaths` — declared, and **failing closed**: an undeclared run is judged
+  exactly as it was before the field existed (DoD row 1 pins that, and it is the whole regression guard).
+  Commit paths are captured at **snapshot** time so `diffSnapshots` stays pure; the diff walks the window back
+  to the baseline HEAD. `matchesWritePath` is anchored at the repo root rather than reusing `matchesAny`, whose
+  basename/tail matching would have accepted `apps/vendor/design/backlog.md`. Plus the check **no allowlist can
+  suppress**: the **effective** agent-selectable set — effective because that set also moves *indirectly*, by
+  writing `blocked_by` or flipping a blocker to `done`.
+
+  **Gate 1 earned its seat.** Plan review caught that a **merge commit** prints no paths under
+  `git log --name-only`, so it would have satisfied *"every path matches"* **vacuously** and passed as a lawful
+  write — and a merge is precisely what the operator may never do. Zero paths now classifies `undetermined`;
+  a real `--no-ff` merge is in the bars.
+
+  **Proven, not asserted.** Two mutations, each reverted after confirming red: neutering the eligibility filter
+  reddened both grant bars; returning `allowed` unconditionally from `classifyHeadMove` reddened rows 1/3/4/11.
+  End-to-end on a real clone with the real CLI: **(a)** lawful backlog commit + fence ⇒ 2 info, **exit 0**;
+  **(b)** *the same commit*, no fence ⇒ **2 criticals**, exit 1; **(c)** the operator marking its own item
+  `autonomy: eligible` ⇒ **1 critical** `selectable-set-changed` naming the item, exit 1. **(c) is the one that
+  matters** — a lawful path, an unlawful authority grab, caught.
+
+  **Deviation (declared):** the plan named the test file under `apps/orchestrator/src/__tests__/`; the harness's
+  bars actually live in `scripts/__tests__/infra-invariant.test.mjs` and were appended there.
+
+  **Left open:** the fence is enforced only when a run **declares** it. Nothing yet forces an operator run to
+  pass `--expect`; the runbook should require it, and `design/launch-and-monitor-runbook.md` was **not** touched
+  by this task. Worth a follow-up if the seat is used in anger.
+
+  **Telemetry (task closure):**
+  - task:        BL-097
+  - wall-clock:  2026-07-28 07:21 → 08:34 (~1h13m, same session as the charter amendment)
+  - budget:      weekly 33%→35% (Δ ~2%), session 0%→16% (Δ ~16%)
+  - gate:        tsc 0, suite 513/513 (76 files; was 496), backlog:check exit 0, pollution clean
+  - diff:        3 files, +558/-5; commits `6cf2728` (plan) · `954c7b6` (impl) · `6ab9aaf` (merge)
+  - outcome:     **MERGED ✅** — PO-authorised, and pushed at PO instruction
 
 *(add new items above this line)*
