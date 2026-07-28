@@ -14,6 +14,11 @@
  * on purpose (IP-15). Both directions are real failures, so this check refuses
  * to guess in either.
  *
+ * ⚠️ AND READ `parseListeningLines` BEFORE TOUCHING ENUMERATION (BL-099): filtering
+ * lsof's COMMAND column made this whole check blind on Linux and, because an
+ * un-enumerated process is never classified, it failed OPEN — the one direction
+ * everything below is built to prevent.
+ *
  * WHAT MAKES THIS HARD — read before changing the classifier:
  *   `ppid` CANNOT discriminate. The PO's launchd service runs at ppid 1, and an
  *   ORPHANED LEAK ALSO REPARENTS TO ppid 1. Calling ppid-1 "managed" makes every
@@ -117,11 +122,51 @@ export function sweepFails(classified) {
   return classified.some(p => !PASSING.has(p.status));
 }
 
+/**
+ * Pure: parse `lsof -iTCP -sTCP:LISTEN -P -n` output into one record per PID
+ * (a PID listening on several ports yields ONE record with several ports).
+ *
+ * ⚠️ DO NOT REINTRODUCE A COMMAND-NAME FILTER HERE (BL-099). This function
+ * deliberately keeps EVERY listening process and lets `isOrchestratorIsh` —
+ * which reads `ps` output and cwd — do the deciding downstream.
+ *
+ * The original filtered lines on `startsWith('node')`, which silently made the
+ * entire sweep blind on Linux: lsof's COMMAND column is the name of the THREAD
+ * that owns the socket, and for Node that is `MainThread`, truncated by lsof to
+ * `MainThrea`. Every Node process was dropped, so the sweep reported "nothing is
+ * listening" and exited 0 with a live orchestrator on :3500.
+ *
+ * That is the WORST direction for this module to fail, and it walked around the
+ * fail-closed design above: a process that is never ENUMERATED is never
+ * CLASSIFIED, so it can never be UNKNOWN, so it can never fail. `AGENTTALK_SWEEP_DECLARED`
+ * could not rescue it either — declaring only helps a process that was seen.
+ *
+ * `infra-invariant.mjs` parses the same output with no such filter and was
+ * therefore never affected; keeping both callers filter-free is the invariant
+ * worth having. Matching on `MainThrea` instead would be a platform-specific
+ * patch on a truncation artifact — the next runtime would break it again.
+ */
+export function parseListeningLines(raw) {
+  const byPid = new Map();
+  for (const line of String(raw ?? '').split('\n')) {
+    const parts = line.trim().split(/\s+/);
+    const pid = parts[1];
+    // The NAME column: "*:3500" / "127.0.0.1:3500" / "[::1]:3500". The header row
+    // ("… NODE NAME") and blank lines fall out here, having no trailing :port.
+    const port = (parts[8] ?? '').match(/:(\d+)$/)?.[1];
+    if (!pid || !port) continue;
+    if (!byPid.has(pid)) byPid.set(pid, { pid, ports: new Set() });
+    byPid.get(pid).ports.add(port);
+  }
+
+  return Array.from(byPid.values()).map(p => ({ pid: p.pid, ports: Array.from(p.ports) }));
+}
+
 // ---------------------------------------------------------------------------
 // I/O — everything below talks to the machine; everything above is testable.
 // ---------------------------------------------------------------------------
 
-function listeningNodeProcs() {
+function listeningProcs() {
   let out = '';
   try {
     out = execSync('lsof -iTCP -sTCP:LISTEN -P -n', { encoding: 'utf-8', stdio: 'pipe' });
@@ -130,20 +175,9 @@ function listeningNodeProcs() {
     return [];
   }
 
-  const byPid = new Map();
-  for (const line of out.split('\n')) {
-    if (!line.startsWith('node')) continue;
-    const parts = line.trim().split(/\s+/);
-    const pid = parts[1];
-    const port = (parts[8] ?? '').match(/:(\d+)$/)?.[1];
-    if (!pid || !port) continue;
-    if (!byPid.has(pid)) byPid.set(pid, { pid, ports: new Set() });
-    byPid.get(pid).ports.add(port);
-  }
-
-  return Array.from(byPid.values()).map(p => ({
+  return parseListeningLines(out).map(p => ({
     pid: p.pid,
-    ports: Array.from(p.ports),
+    ports: p.ports,
     cwd: processCwd(p.pid),
     cmd: processCmd(p.pid),
   }));
@@ -189,12 +223,12 @@ function managedPids() {
 
 function main() {
   const declared = parseDeclared(process.env.AGENTTALK_SWEEP_DECLARED);
-  const classified = classifyAll(listeningNodeProcs(), { managedPids: managedPids(), declared });
+  const classified = classifyAll(listeningProcs(), { managedPids: managedPids(), declared });
 
   console.log('--- Orchestrator process/port sweep (BL-023) ---');
 
   if (classified.length === 0) {
-    console.log('No orchestrator-ish node processes are listening.');
+    console.log('No orchestrator-ish processes are listening.');
     process.exit(0);
   }
 

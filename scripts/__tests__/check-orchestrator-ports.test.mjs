@@ -11,6 +11,7 @@ import {
   sweepFails,
   parseDeclared,
   isOrchestratorIsh,
+  parseListeningLines,
   STATUS,
 } from '../check-orchestrator-ports.mjs';
 
@@ -121,6 +122,77 @@ describe('check-orchestrator-ports (BL-023)', () => {
       const vite = proc({ cmd: 'node /x/node_modules/.bin/vite', cwd: '/x' });
       expect(isOrchestratorIsh(vite)).toBe(false);
       expect(classifyAll([vite], {})).toEqual([]);
+    });
+  });
+
+  // BL-099. The defect that made this whole check blind on Linux lived in the ONE
+  // function these bars never touched — the lsof parser — because everything above
+  // drives the pure classifier with synthetic records. So the parser gets its own
+  // pure bars, driven by VERBATIM lsof output captured on each platform. Hand-typed
+  // input would only re-encode whatever the author already believed.
+  describe('lsof parsing (BL-099)', () => {
+    // Captured on Linux (lsof 4.93.2) from a real orchestrator on :3500. Note the
+    // COMMAND column: `MainThrea` — lsof reports the name of the THREAD owning the
+    // socket, and Node's is `MainThread`, truncated to 9 chars. THIS is the line
+    // that `startsWith('node')` silently discarded.
+    const LINUX = [
+      'COMMAND     PID   USER   FD   TYPE DEVICE SIZE/OFF NODE NAME',
+      'MainThrea 95016 fausto   21u  IPv6 650225      0t0  TCP *:38093 (LISTEN)',
+      'MainThrea 95016 fausto   22u  IPv6 650226      0t0  TCP *:3500 (LISTEN)',
+      'python3    1452 fausto    3u  IPv4  34062      0t0  TCP *:9899 (LISTEN)',
+    ].join('\n');
+
+    // macOS reports the process name, `node`. Kept so the fix is pinned as
+    // cross-platform rather than "Linux now works and macOS is assumed to".
+    const MACOS = [
+      'COMMAND   PID   USER   FD   TYPE             DEVICE SIZE/OFF NODE NAME',
+      'node    52178 fausto   22u  IPv6 0x9f3c1d2e4a5b6c7d      0t0  TCP *:3500 (LISTEN)',
+    ].join('\n');
+
+    it('finds a Node listener on LINUX, where COMMAND is the thread name', () => {
+      // The regression bar proper: before the fix this returned [].
+      const rows = parseListeningLines(LINUX);
+      const orch = rows.find(r => r.pid === '95016');
+      expect(orch).toBeDefined();
+      expect(orch.ports.sort()).toEqual(['3500', '38093']);
+    });
+
+    it('finds a Node listener on MACOS, where COMMAND is the process name', () => {
+      expect(parseListeningLines(MACOS)).toEqual([{ pid: '52178', ports: ['3500'] }]);
+    });
+
+    it('groups one PID listening on several ports into a single record', () => {
+      // Guards the byPid grouping the fix inherited: two rows, one process.
+      expect(parseListeningLines(LINUX).filter(r => r.pid === '95016')).toHaveLength(1);
+    });
+
+    it('does NOT filter on the command name — that filter WAS the bug', () => {
+      // Enumeration must stay indiscriminate; `isOrchestratorIsh` decides later,
+      // from `ps` output and cwd. A process dropped here can never be classified,
+      // so it can never be UNKNOWN, so it can never fail the sweep.
+      const pids = parseListeningLines(LINUX).map(r => r.pid);
+      expect(pids).toContain('95016'); // MainThrea
+      expect(pids).toContain('1452'); // python3
+    });
+
+    it('drops the header row and blank lines rather than parsing them as PIDs', () => {
+      expect(parseListeningLines(LINUX).map(r => r.pid)).not.toContain('PID');
+      expect(parseListeningLines('')).toEqual([]);
+      expect(parseListeningLines('\n\n')).toEqual([]);
+      expect(parseListeningLines(null)).toEqual([]);
+    });
+
+    it('reads the port off IPv4, IPv6 and loopback NAME forms alike', () => {
+      const mixed = [
+        'MainThrea 111 u 21u IPv4 1 0t0 TCP 127.0.0.1:3100 (LISTEN)',
+        'MainThrea 222 u 21u IPv6 2 0t0 TCP [::1]:5173 (LISTEN)',
+        'MainThrea 333 u 21u IPv6 3 0t0 TCP *:3600 (LISTEN)',
+      ].join('\n');
+      expect(parseListeningLines(mixed)).toEqual([
+        { pid: '111', ports: ['3100'] },
+        { pid: '222', ports: ['5173'] },
+        { pid: '333', ports: ['3600'] },
+      ]);
     });
   });
 
