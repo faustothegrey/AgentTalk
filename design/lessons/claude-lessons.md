@@ -1240,3 +1240,31 @@ here.**
   verify every line against the live install rather than edit around the edges. Two real portability blockers
   (`/private/tmp` in wt-setup, `launchctl` as the sole source of `LEGITIMATE`) were found by *reading for the
   new environment*, not by running anything — and neither would have surfaced until the first Linux run failed.
+
+### 2026-07-29 — H-L3, and a trap I had just finished warning someone else about
+
+- **As reviewer: I hardcoded a reference sha into the bar, then invalidated it myself by committing the brief.**
+  H-L3's W3 row pinned the worker's expected commit to `ef96804`; committing `hl3-brief.md` made the real base
+  `806b4bd`, so a literal reading of my own row would have **failed a worker for being right**. The brief
+  contains a sentence *I wrote*, one section above the config, warning against precisely this — the O-1
+  "committed after the baseline" trap. I kept the sha out of the brief, understood exactly why, and put it in
+  the bar without re-checking. **Knowing a trap by name is not the same as checking whether I am standing in
+  it.** The control is mechanical and takes seconds: **re-derive every reference value immediately before
+  hand-over**, because the last thing I do before handing over is almost always a commit. This is the same
+  shape as the staging lesson — the check *after* the action is the control; the warning *before* it is
+  decoration.
+- **As planner: the brief and the bar are one artifact in two files, and I never diffed them against each
+  other.** The bar's P4 asked for "mainline sha **and suite count**" as pre-snapshot reference values; the
+  brief only instructed "capture the sha yourself, first thing". Hermes did exactly what the brief said and
+  scored a miss on the bar — half my defect. **Before hand-over, read the bar as though it were the only
+  instruction the operator received, and check the brief actually demands everything the bar will score.**
+- **As reviewer: the rows catch what I predicted; the reading catches what I didn't.** Every bar row passed,
+  and the most valuable output of the grading was something no row asked about — that the worker's commit is
+  authored under the **PO's git identity**, so agent and human work are indistinguishable in git history
+  ([[BL-102]]). It has been true of every autonomous run since O-1 and nobody had looked. **A bar is a floor,
+  not a ceiling: after scoring the rows, spend a few minutes reading the artifact for what the rows never
+  mention.**
+- **As planner: keeping the measuring stick fixed is what made a "boring" rung worth running.** H-L3 reused
+  H-L2's P/R/C blocks byte-for-byte on purpose — the entire value of a regression check is comparability, and a
+  rung that quietly retunes its own rows cannot answer the question it was commissioned to ask. Worth
+  remembering the next time a rung looks too trivial to bother pre-registering.

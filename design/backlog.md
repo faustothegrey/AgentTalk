@@ -5166,4 +5166,46 @@ autonomy: human-only
   deliberately mismatched contract and confirm it goes red — a fail-open is exactly the class where a green
   proves nothing.
 
+<!-- @item
+id: BL-102
+status: todo
+date: 2026-07-29
+epic: null
+tags: [autonomy, auditability, git, operator-seat, containment, hl3]
+autonomy: human-only
+-->
+- [todo · surfaced while grading the H-L3 regression run · `design/operator/hl3-grading.md` · **true of every
+  autonomous run in this project's history, and nobody had noticed**] — **An autonomous worker's commits are
+  authored under the PO's git identity, so in history they are indistinguishable from the human's.**
+
+  H-L3's worker committed `52df7f0` as `Fausto Lelli <fausto@domotz.com>`. Nothing is misconfigured: git
+  resolves identity from the machine's config, the worker is a process on the PO's machine, and no layer
+  between the launcher and `git commit` says otherwise. **The same is true of every worker commit back to
+  O-1.**
+
+  **Why this is more than cosmetic.** The containment model's whole claim is that an agent's work stays
+  legible and separable until a human lands it — its own worktree, its own branch, no merge rights. The git
+  **author** field is the one part of that record which follows the commit after the branch is gone, and it
+  currently says a human wrote it. Today the exposure is small because worker branches are force-deleted at
+  teardown; it stops being small the moment a worker's commit is actually merged, which is the direction the
+  ladder is heading. Then the provenance of merged code is wrong **in the permanent record**, and nothing
+  downstream — `git log`, `blame`, a future audit of "what did the agents actually write" — can reconstruct it.
+
+  **Related and worth deciding together:** the `outcome` event reports `status: completed` with
+  `taskId: null` alongside a real `teamId` (same run), so the recording cannot be joined back to the task it
+  describes. Different mechanism, same theme: the audit trail is thinner than the process assumes.
+
+  **Fix direction (needs a decision, not prescriptive).** (a) Set a per-worker identity on the task worktree at
+  creation — `git -C <wt> config user.name/user.email` in `wt-setup.mjs`, e.g. `AgentTalk worker (claude)
+  <agent+op-worker-3@agenttalk.local>` — so authorship is correct from the first commit and no worker has to
+  cooperate; or (b) leave author alone and add a **trailer** (`Agent: claude/op-worker-3`, run id) via the
+  goal or a commit template. **(a) is better**: it cannot be forgotten by a worker that ignores the
+  instruction, and `--author` on a merge does not preserve what (b) would put in a message body. (b) is a
+  reasonable *addition* to (a), not a substitute.
+
+  **Bar:** a worker commit produced by a launched run is authored under an identity that names the agent, not
+  the human, and the primary checkout's identity is unchanged. **Mutation check:** run the wiring, then
+  deliberately drop it and confirm the commit reverts to the human's identity — this is a defect whose absence
+  looks exactly like its presence unless you have watched it change.
+
 *(add new items above this line)*

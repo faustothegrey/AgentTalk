@@ -1,118 +1,101 @@
 ---
 role: planner
-key: 20260728-0905-e2a94f
-written: 2026-07-28 by Claude — session close on the OLD machine, ahead of the move to Linux. BL-097 shipped; the
-  OPERATOR charter was amended and is now machine-enforced.
+key: 20260729-0845-c4f18a
+written: 2026-07-29 by Claude — session close after the H-L3 regression run. The ladder is idle and the
+  agent-selectable queue is EMPTY; the next move is a scoping decision, which is why this hands to the planner.
 ---
 
 This is your session primer.
 
-**You are very likely reading this on a different machine than the one that wrote it.** Read §"The move" first —
-some of what follows is about your environment, not the code.
-
 **Project.** AgentTalk orchestrates real, heterogeneous LLM agents (claude / codex / gemini-agy / goose) as one
 software team: they attach as MCP clients over WebSocket, pull turns via `await_turn`, and coordinate through a
 planner→implementer→reviewer workflow under a human Product Owner. Current thrust: the **autonomous-development
-ladder** — improving AgentTalk *with* AgentTalk.
+ladder** — improving AgentTalk *with* AgentTalk, one graded rung at a time.
 
 **Roles.** Human = PO (Fausto): scope, direction, **merges**, **pushes**. Bindings live ONLY in `AGENT.md → 📌
 DEFAULT ROLE ASSIGNMENTS` — read it, don't trust this line. Codex and agy remain PO-declared UNAVAILABLE, so you
-are almost certainly sole agent under the **resource-scarcity fallback**: wear every hat, handshake once per
+are almost certainly the sole agent under the **resource-scarcity fallback**: wear every hat, handshake once per
 role, declare all of them, keep each gate's discipline separately. **Standing Conditional Reassignment ACTIVE**
-(you may implement). Merge and push both happened at explicit PO instruction last session — ask, don't assume.
+(you may implement). Hermes holds the **OPERATOR seat** — it launches and monitors, holds no authority, and its
+reports are *observations*, unverified until you check the artifact.
 
-**Workflow / source of truth.** `design/collaboration-workflow.md` + `design/backlog.md` + `AGENT.md`. Plans in
-`design/*-plan.md`; operator briefs, bars and gradings in `design/operator/`. **Closed items carry a closing
-block + telemetry inside the backlog item — read those first.** Resume from the backlog, **NOT from chat**.
+**Workflow / source of truth.** `design/collaboration-workflow.md` + `design/backlog.md` + `AGENT.md`. Operator
+briefs, pre-registered bars and gradings live in `design/operator/`. **Closed items carry a closing block +
+telemetry inside the backlog item — read those first.** Resume from the backlog, **NOT from chat**.
 
-## The move — read this before you trust anything below
+## Where we are
 
-The PO is relocating development to a **Linux** box with **claude and hermes installed** (no codex, no agy, and
-goose only if he chose to add it). **`PORTING.md` was rewritten 2026-07-28 for exactly this** — it is verified
-against ground truth, and §0 lists four things the previous version got wrong. Three sections are load-bearing:
+**Do not trust a sha written here.** Last session's own bar was invalidated by its own closing commit (see
+below), so this primer states none: run `git log --oneline -5` and `git status -sb`, and take what you find.
 
-- **§7 — worktrees.** `scripts/wt-setup.mjs:22` hardcodes `DEFAULT_ROOT = '/private/tmp'`, a macOS path. On
-  Linux **pass `--root /tmp`**, every time. Worktrees are MANDATORY for code, so this bites on your first task.
-- **§8 — the invariant harness.** `launchctl` does not exist on Linux, and it is the *only* source of
-  `LEGITIMATE`. Everything lands in `UNKNOWN`, which fails the sweep by design and gates operator runs. Export
-  `AGENTTALK_SWEEP_DECLARED` or expect a wall of findings. Filed as **[[BL-098]]**.
-- **§6 — your own key store.** It is keyed by the repo's absolute path, so the slug changed and your `consumed`
-  set is empty unless the PO copied it. I retired the implementer primer's key to `none` before leaving so you
-  would not cold-start-stop on two primers at once. If you find a *third* primer reading fresh, that is the
-  empty-store artefact, not a real hand-off — say so rather than acting on it.
+At close: `tsc -b` exit 0 · suite **519/519 across 76 files** · backlog **102 items, 0 warnings** · one
+worktree (master only) · no `/tmp/att-*` · ports 3500/3600 free · client `c7a5991`, in sync.
 
-**Verify the environment before scoping work:** `git fetch` BOTH repos (`AgentTalk`, `agentalk-mcp-client`) and
-compare against `origin/master`. Never trust a primer's hash, including this one.
+**⚠️ Local master is AHEAD of `origin/master` by three commits and none of them is pushed.** `origin/master`
+sits at `ef96804`. **Push is the PO's act — ask, never assume.** If the PO expects a clean push state, that
+gap is the first thing to raise.
 
-## Where we are (2026-07-28 close, on the old machine)
+**Shipped this session — one arc: H-L3, a regression rung.** The PO commissioned a brief operator session to
+confirm nothing broke since H-L2. It passed on all four blocks (P 5/6 · R 6/6 · C 4/4 · W 7/7): launch,
+attach, worker write, containment, harness bracket and teardown all behaved as they did the day before. The
+worker's commit is preserved as tag `hl3-worker-52df7f0` plus `/tmp/hl3/worker.patch`. Brief, bar and grading:
+`design/operator/hl3-{brief,bar-real,grading}.md`.
 
-AgentTalk **`04043a5`**, pushed and in sync. Client `c7a5991`, untouched. Green: `tsc -b` 0 · suite **513/513**
-(76 files) · backlog **98 items, 0 warnings**. One worktree, `master` only, ports 3500/3600 free. The PO's
-modified `com.fausto.agenttalk-orchestrator.plist` is deliberately untouched — leave it.
-
-**Shipped this session — one arc, two commits of consequence:**
-
-1. **The OPERATOR charter was amended** (`7948ea4`). Hermes is now the PO's gateway/monitoring platform: full
-   READ of backlog and metrics, and a **fenced WRITE** — it may file items and append observations, never
-   `autonomy: eligible`, `blocked_by`, `status: done`, or anything on a deferred item. Path allowlist
-   `design/backlog.md` + `design/operator/**`. **It still holds no authority**: no baton, no instruction, no
-   verdict, no push. The retirement of 2026-07-02 stands — that banned *workflow participation*, and operating
-   is not that.
-2. **[[BL-097]]** (`6ab9aaf`) made that fence machine-checked — **because the amendment blocked itself.** The
-   harness treated any HEAD move as `critical` and *"never allowlisted"*, so the operator's first lawful commit
-   would have fired three criticals and gated the next run. `expect.allowWritePaths` fixes it, failing closed.
-   Plus one check no allowlist can suppress: the **effective agent-selectable set**.
+**Read `hl3-grading.md`'s opening section before you write your next bar.** The bar hardcoded a reference sha
+and then the act of committing the brief moved it — so a literal reading of the row would have **failed the
+worker for being correct.** The brief warns against that exact trap one section above its own config. The
+lesson is not "read the runbook"; it is that **reference values must be re-derived immediately before
+hand-over**, because the last thing you do before handing over is usually a commit.
 
 ## Your queue
 
-1. **[[BL-094]] — still the only `autonomy: eligible` item, and the natural next agent task.** BL-092
-   instrumented **one of four** WebSocket dial sites in `server.test.ts`; `openSocketWithMessage()` and the raw
-   dial in the BL-048 keepalive test are still blind. **The root cause was a goal that named a FILE instead of a
-   PROPERTY** — internalise that before you write the next one.
-2. **[[BL-098]] — the Linux harness gap above.** Cannot be closed from macOS and should not be closed on
-   reasoning alone; it needs the new box. If you are *on* the new box, it is cheap and it unblocks clean
-   operator runs.
-3. **[[BL-096]] — the long-run failure class is STILL untested.** No run in this project's history has ever been
-   interrupted. Split the two questions O-4 conflated: test the cap against a trivially-stalling worker (cheap),
-   and test long monitoring separately.
-4. **[[BL-086]]** — a **PO decision**: a worker launched in `agentalk-mcp-client` inherits no governance.
-5. **[[BL-084]] T2** — the real [[BL-078]] fix, unblocked, carries a genuine behaviour change to fence.
-   **[[BL-028]]** is T3, blocked behind it (machine-enforced, not just prose).
-
-**Do NOT cite O-3 or O-4 as evidence that long runs work.** They were 4m44s and 9m04s.
+1. **The agent-selectable set is EMPTY — no item is `autonomy: eligible`.** Nothing can be handed to a worker
+   unattended until the PO marks something. **This is the first scoping decision and it is yours to propose:**
+   which of the open items is boundable, test-local, and safe enough to be worth an autonomous rung? [[BL-093]]
+   made eligibility fail closed, and `bl093-backlog-selectable.test.ts:147` pins the real backlog's selectable
+   set exactly — so changing it goes red and forces a human look. **Do not loosen that test to make room.**
+2. **[[BL-102]] — filed this session, from grading H-L3.** An autonomous worker's commits are authored under
+   the **PO's git identity**, so in history they are indistinguishable from the human's. True of every run back
+   to O-1. Small today because worker branches are force-deleted; it stops being small the moment a worker
+   commit is actually merged — which is where the ladder is heading.
+3. **[[BL-101]]** — the cross-repo contract check **fail-opens in every worktree**, so under the worktree
+   MANDATE it never runs during development. It is the check that would have caught the v7/v8 client mismatch.
+4. **[[BL-098]]** — on Linux nothing can classify `LEGITIMATE` (`launchctl` only). **It did NOT bite H-L3**
+   (nothing was still listening at sweep time), so it is real but less urgent than it reads.
+5. **[[BL-096]]** — the long-run failure class is STILL untested. No run in this project's history has ever
+   been interrupted. **Do NOT cite O-3, O-4 or H-L3 as evidence about it** — 4m44s, 9m04s, and 84s.
+6. **[[BL-100]]** (PORTING half done) · **[[BL-086]]** (a PO decision) · **[[BL-084]] T2** → unblocks
+   **[[BL-028]]**.
 
 ## What to reuse — mechanisms that keep earning their keep
 
-**The mutation check.** Before believing any "it's green now", ask: *would this look identical if the change did
-nothing?* BL-097 shipped only after two deliberate mutations — neutering the eligibility filter, and making
-`classifyHeadMove` return `allowed` unconditionally — each reddened the expected bars and was reverted. Cheap,
-and it is the difference between a bar and a decoration.
+**The mutation check.** Before believing any "it's green now", ask: *would this look identical if the change
+did nothing?* Cheap, and it is the difference between a bar and a decoration.
 
-**Gate 1 is not a formality, even when you are both seats.** Reviewing my own BL-097 plan caught that a **merge
-commit** prints no paths under `git log --name-only` and would have satisfied *"every path matches"* vacuously —
-waving through the one act the operator may never perform. Found by reading the plan as an adversary, before any
-code existed. Wearing both hats does not excuse skipping the pass; it makes the pass the only thing standing in.
+**Pre-register the bar, hash it, publish after.** Write the bar before hand-over, commit its SHA-256 in the
+brief, publish the file only after grading, and **re-verify the hash at publication** — that is what makes
+"no row was retuned after the results" checkable rather than asserted.
 
-**Grade at the coordinates where the process actually stood.** `completed` ≠ done. For `claude` on the
-persistent path, work lands in the **parent workdir**, not the nested `agentalk-task-*`.
+**Predict in writing, then score your own predictions.** Two of six were wrong in H-L3 and are recorded as
+wrong. A prediction list that only ever confirms itself is decoration.
+
+**Grade the artifact, at the coordinates where the process actually stood.** `completed` ≠ done. Re-run the
+load-bearing bars yourself; an operator's report is one layer further from the evidence than a worker's.
 
 ## Op notes
 
-- **Worktrees:** `node scripts/wt-setup.mjs create <id> --base master` (**`--root /tmp` on Linux**). It prepends
-  `att-`. **Stage files EXPLICITLY and run `git status` AFTER committing** — a multi-path `git add` where one
-  path is missing stages that path silently. It has now bitten three sessions running; the check after the
-  action is the control, the rule before it is decoration.
-- **Gates:** `npx tsc -b` + `npx vitest run`; `npm run backlog:check` after ANY backlog edit (update **both** the
-  header `status:` and the prose tag). Closing an item with `autonomy: eligible` **fails the gate** — drop the
-  field on closure.
+- **Worktrees:** `node scripts/wt-setup.mjs create <id> --base master --root /tmp` (**`--root /tmp` on Linux,
+  every time, including `remove`** — `DEFAULT_ROOT` is the macOS `/private/tmp`). It prepends `att-`. **Stage
+  files EXPLICITLY and run `git status` AFTER committing.**
+- **Gates:** `npx tsc -b` + `npx vitest run`; `npm run backlog:check` after ANY backlog edit (update **both**
+  the header `status:` and the prose tag). Closing an item with `autonomy: eligible` **fails the gate**.
+- **The meter WORKS on Linux** — `node scripts/usage.mjs`. Ignore any older primer or `PORTING.md` §11 line
+  saying it won't exist; that was corrected in [[BL-100]]. At close: weekly **44%**, session **14%** (weekly
+  window resets ~09:00 Europe/Rome).
+- **Operator runs:** `design/launch-and-monitor-runbook.md` is the contract. Pass `--expect` with
+  `allowWritePaths` **only if the operator itself commits**; H-L3 needed none. Nothing forces the flag yet.
 - **`git merge -F -` does not read stdin** (unlike `git commit`). Write the message to a file.
-- **Operator runs:** `design/launch-and-monitor-runbook.md` is the contract. **Pass `--expect` with
-  `allowWritePaths`** or the fence is not applied and a lawful operator commit reads as two criticals — nothing
-  forces the flag yet (recorded in BL-097's closing block, and a fair follow-up).
-- **`npm run backend` leaves a child that outlives the npm wrapper.** Confirm with `lsof` that the port is free.
-- **Meter:** `node scripts/usage.mjs` — best-effort, never blocking, and **it will not exist on the new machine**
-  (external service, PORTING.md §11). Write `telemetry: unavailable` and carry on. At close here: weekly **35%**
-  (resets Jul 29 ~09:00), session 16%.
+- **`npm run backend` leaves a child that outlives the npm wrapper.** Confirm the port is actually free.
 
 Verify all of the above against ground truth before acting. Report your understanding, then **STOP** for the
 PO's go.
