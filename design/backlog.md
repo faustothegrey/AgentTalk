@@ -5686,6 +5686,19 @@ blocked_by: [BL-107]
   code ([[BL-028]]) and `cap.wallClockMs` is still the only anti-hang rail ([[BL-096]]). "Stop" over the relay
   works precisely when the session is healthy enough not to need it.
 
+  **✅ STEP 1 DELIVERED AND MERGED 2026-07-30 (`5927762`) — the item stays OPEN; only the read-only slice is done.**
+  `scripts/relay-inbox.mjs` + 18 bars, `design/operator/relay-readonly-recipe.md`. **Proven live over the real
+  channel, three messages:** a `status` request travelled sender → HMP → Hermes → fenced handler → inbox →
+  `Monitor` → session context *without touching the TUI* (the [[LB-49]] defect that retired this idea in July);
+  a deliberate `merge` escalation was **refused at the handler**; and the first message returned `completed` with
+  an empty reply, which both the obvious reading and the Monitor's own timeout blamed on the courier — **wrongly**.
+  Hermes had run the command faithfully; our entry guard silently no-opped ([[BL-111]]). Only the artifact check
+  caught it.
+
+  **Still open, and unchanged by step 1:** the `[PO-RELAY]` authority decision, [[BL-107]], and every write-class
+  verb. The delivered allowlist is frozen at `status` · `report`, and **widening it is a governance act, not a
+  refactor** — the safety argument for running unauthenticated is precisely that every verb is read-only.
+
   **Cheapest honest first step:** read-only verbs (`status`, `report`) only. A forged "report status" costs
   nothing, so it needs no authentication, and it still exercises every leg end to end — the O-1 instinct applied
   to a channel instead of a worker.

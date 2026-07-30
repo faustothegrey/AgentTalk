@@ -252,6 +252,23 @@ point:**
    Fourth path-resolution defect in this project in three days.
 3. **§2a′ above** — the anchored authorization line accepted its own denial.
 
+**Telemetry (T1 closure):**
+```
+- task:        HMP-T1 (the commission fence)
+- wall-clock:  12:19 -> 23:42 (~11h20m elapsed; interleaved with BL-110, not continuous effort)
+- budget:      weekly 7% -> 13% (delta ~6%), session spans a 5h window reset -- delta not meaningful
+- gate:        tsc 0, suite 579/579 across 79 files (0 skipped), pollution clean
+- diff:        14 files, +2380/-1 across the whole session; commits dd24e0c 2bf0525 d8f2eaa 5d5b845, merge 83ef171
+- outcome:     MERGED (PO-instructed). T2 NOT done -- it needs design/operator/hmp1.authorized, which
+               only the PO may write, and an explicit [PO] go.
+```
+
+**Verified live from master after the merge**, by absolute path — the invocation that was silently broken:
+`no-po-authorization (no design/operator/hmp1.authorized committed at 5927762)` and, on a tampered port,
+`charter-mismatch (port 3500 !== 3600)`. The `sha-not-on-master` gate now *passes*, because the merge put the
+brief on master — which is the design working: **the PO's merge is the authorization act**, and the only thing
+still missing is the one file an implementer must not write.
+
 **Deviations from the plan as written, for the record:** the check list grew from 9 to **13** (all narrower and
 fail-closed: `brief-outside-repo`, `sha-not-a-commit`, `sha-not-on-master`, `config-not-committed`); the bar and
 config paths became **conventions** rather than message fields, removing degrees of freedom a forger could vary;
