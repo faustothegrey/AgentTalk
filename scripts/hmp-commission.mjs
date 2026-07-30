@@ -489,7 +489,21 @@ export function main(argv) {
   return 0;
 }
 
-const invokedDirectly = process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+/**
+ * `path.resolve` does not resolve symlinks; `import.meta.url` is already real. On macOS `/tmp` is
+ * a symlink to `/private/tmp`, so invoking this BY ABSOLUTE PATH — which is exactly how a remote
+ * courier must invoke it, and what the runbook mandates — made the two differ, the guard read
+ * false, and `main` never ran: **no output, exit 0.** For a fence, an exit 0 that did nothing is
+ * the worst possible reading. Found live on the sibling relay script (BL-110) and fixed here
+ * before it could ship.
+ */
+const invokedDirectly = (() => {
+  try {
+    return process.argv[1] ? fs.realpathSync(path.resolve(process.argv[1])) === fileURLToPath(import.meta.url) : false;
+  } catch {
+    return false;
+  }
+})();
 if (invokedDirectly) {
   try {
     process.exit(main(process.argv));
