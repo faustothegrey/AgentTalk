@@ -5149,9 +5149,47 @@ autonomy: human-only
      `attach-harness` bin against a `package.json` declaring `agent-launcher`. **Untouched**: it is the client
      repo, which inherits no governance ([[BL-086]]), and it is the PO's to land. Any `npm install` there
      leaves the tree dirty until it is.
-  2. **`DEFAULT_ROOT` → `os.tmpdir()`** (`wt-setup.mjs:22`) — a **code** change, so it needs a worktree, a
-     gate and a decision. `PORTING.md` §7 now documents the flag correctly for both verbs, which removes the
-     bite; this would remove the flag.
+  2. ~~**`DEFAULT_ROOT` → `os.tmpdir()`** (`wt-setup.mjs:22`)~~ — **⬛ DONE 2026-07-30, merged `59d8fa8`**
+     (impl `ec77c10`). See the second disposition below.
+
+  ---
+
+  **⬛ SECOND PARTIAL DISPOSITION — 2026-07-30. `DEFAULT_ROOT` is platform-derived; merged `59d8fa8`.**
+  Plan + Gate 1: `design/bl100-defaultroot-plan.md`.
+
+  `wt-setup.mjs` now derives its default root from **`os.tmpdir()`** instead of the hardcoded macOS
+  `/private/tmp`. **`--root` is no longer needed on Linux for either verb** (it still overrides, unchanged), so
+  the stack-trace-on-`remove` footgun is gone rather than documented. `PORTING.md` corrected in **three**
+  places — §7's example, the §0b "what the first pass got wrong" row, and the validation checklist — because
+  this item's own lesson is that the doc decayed unobserved, and shipping a code fix that falsified it would
+  have repeated the defect inside the item recording it.
+
+  **Disclosed, not a no-op:** on macOS `os.tmpdir()` is `/var/folders/…`, **not** `/private/tmp`, so the
+  default path changes there. PO-accepted — the default is a scratch location with no persistent state and an
+  explicit override.
+  **Environment-derived root (Gate 1 finding G3):** `os.tmpdir()` honours **`$TMPDIR`**. On this box it is
+  unset and resolves to `/tmp`, which is **why the runbooks' literal `/tmp/att-*` hygiene sweep is still
+  correct** — it silently stops being correct if anyone sets `$TMPDIR`. Recorded in the code comment and
+  `PORTING.md`, not mitigated.
+
+  **Incidental observation, filed not fixed:** a **failed `create` leaves its branch behind.** The mutation
+  check ran `create` against a deliberately bogus root; `git worktree add` created `task-mutprobe` and *then*
+  failed on the directory, leaving a stray branch that the closure sweep caught. `wt-setup` has no rollback on
+  a failed create. Harmless individually, accumulates silently. **Not fixed — out of this task's scope and a
+  behaviour change** ([[BL-036]] territory).
+
+  **⚠️ THE ITEM STAYS `todo`.** Half 1 — the client `package-lock.json` drift — is **untouched and still the
+  PO's to land**. Do not read this disposition as closure.
+
+  **Telemetry (partial closure — `DEFAULT_ROOT` half):**
+  - task:        BL-100 (half 2 of 2)
+  - wall-clock:  2026-07-30 08:38 → 08:54 (~16m)
+  - budget:      weekly 1%→1%, session 8%→~14% [per `scripts/usage.mjs`]
+  - gate:        tsc **exit 0**, suite **519/519 (76 files)** — re-derived, and re-run independently on the
+    merged mainline; mutation check **watched red** (bogus `DEFAULT_ROOT` → exit 1); pollution clean (one
+    worktree, no task branches, `/tmp` clear of `att-*`, ports 3500/3600 free)
+  - diff:        2 files, +28/-14; commits `ec77c10` · `59d8fa8` (merge)
+  - outcome:     **MERGED ✅** — not pushed; push is the PO's
 
 <!-- @item
 id: BL-101
