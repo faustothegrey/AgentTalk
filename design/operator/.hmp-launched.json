@@ -1,5 +1,13 @@
 {
-  "launched": [],
+  "launched": [
+    {
+      "run": "hmp1",
+      "repoSha": "39b0efa82c6ece59dc13ae71ea04c4df47204eb3",
+      "sandbox": "att-op-hmp1",
+      "configPath": "/var/folders/n1/j_ypbbz157z8sch3ytfy31y00000gn/T/hmp-hmp1-1785449949942.config.json",
+      "at": "2026-07-30T22:19:09.943Z"
+    }
+  ],
   "failed": [
     {
       "run": "hmp1",
@@ -7,9 +15,9 @@
       "sandbox": "att-op-hmp1",
       "configPath": "/var/folders/n1/j_ypbbz157z8sch3ytfy31y00000gn/T/hmp-hmp1-1785448487518.config.json",
       "at": "2026-07-30T21:54:47.519Z",
-      "outcome": "FAILED AT STARTUP \u2014 launcher exited with \"createLauncherCore requires orchestratorUrl\" before any team was created; the recording holds only run-start and no work occurred.",
+      "outcome": "FAILED AT STARTUP — launcher exited with \"createLauncherCore requires orchestratorUrl\" before any team was created; the recording holds only run-start and no work occurred.",
       "moved_by": "Claude, 2026-07-30, on the PO instruction to run hmp1"
     }
   ],
-  "_comment": "`launched` is the replay guard: `already-launched` refuses any run id listed there. Entries are MOVED to `failed`, never deleted, when a launch demonstrably produced no run \u2014 the audit trail is kept and the guard goes back to counting real launches. Moving an entry is an operator judgement and must name who made it and why."
+  "_comment": "`launched` is the replay guard: `already-launched` refuses any run id listed there. Entries are MOVED to `failed`, never deleted, when a launch demonstrably produced no run — the audit trail is kept and the guard goes back to counting real launches. Moving an entry is an operator judgement and must name who made it and why."
 }
