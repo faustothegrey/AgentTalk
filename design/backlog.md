@@ -5193,13 +5193,13 @@ autonomy: human-only
 
 <!-- @item
 id: BL-101
-status: todo
+status: done
 date: 2026-07-28
 epic: null
 tags: [contracts, worktree, fail-open, cross-repo, hl1, agent-surfaced]
 autonomy: human-only
 -->
-- [todo · surfaced by the **worker** during the H-L1 operator run, unprompted, while establishing what `npm
+- [done · surfaced by the **worker** during the H-L1 operator run, unprompted, while establishing what `npm
   test` actually counts · **proven both directions before filing**] — **The cross-repo contract-alignment check
   silently skips in every worktree — so under the worktree MANDATE it never runs during development, and it is
   precisely the check that would have caught this morning's client mismatch.**
@@ -5243,6 +5243,56 @@ autonomy: human-only
   when the client contract is stale; the primary checkout is unchanged. **Mutation check:** point it at a
   deliberately mismatched contract and confirm it goes red — a fail-open is exactly the class where a green
   proves nothing.
+
+  ---
+
+  **✅ CLOSED 2026-07-30 — merged `a89221f`; impl `15616b2`.** Option **(a)** taken as filed. Plan and Gate 1:
+  `design/bl101-plan.md`. From inside a worktree `npm test` now prints **`Client contract alignment verified
+  successfully`** where it printed `skipped`.
+
+  **The primitive, and the part that is easy to get subtly wrong:**
+  `git rev-parse --path-format=absolute --git-common-dir` names the **shared** `.git` — the primary's — even
+  from a linked worktree. **`--path-format=absolute` is load-bearing:** plain `--git-common-dir` answers a bare
+  relative `.git` in the primary, which resolves against the wrong cwd and reintroduces a path bug of the same
+  family. Falls back to the old directory-relative path, **without throwing**, when git is unavailable — the
+  original code could not crash there and neither may this.
+
+  **The residual fail-open is KEPT, deliberately.** A genuinely absent client still warns and passes; the
+  check's job is to catch *divergence*, not to mandate a second repo. What changed is that the skip is now
+  **rare and true** instead of **routine and false**, and the warning names the path it looked at. Option (b)
+  (invert to fail-closed) stays rejected for the item's own reason: alone it reddens every worktree until
+  someone sets an env var, which is how checks get disabled.
+
+  **⚠️ ACCEPTED CONSEQUENCE — every worktree's `npm test` is now coupled to the sibling repo's state.** A
+  genuinely stale client will **block worktree development**, including an autonomous worker's suite run, for a
+  defect it did not cause and cannot fix (separate repo; merges there are the PO's). That is the intended
+  behaviour — it is the whole point of catching v7/v8 before the handshake does — and it was PO-accepted
+  knowingly rather than discovered later. The existing error names the remedy, which keeps the block actionable.
+
+  **Gate 1's most useful catch: the obvious bar used the wrong command.** Every suite run that day was
+  `npx vitest run`, which **does not execute the contract check at all** — it is a separate workspace script
+  chained ahead of vitest (`package.json:11`). A "suite green" row would have been satisfied **without ever
+  exercising the thing being fixed**. Use `npm test` for anything touching this script.
+
+  **First test coverage this script has ever had**, and deliberately an *integration* test: the defect is about
+  resolution from inside a worktree, so a test that does not run in one proves nothing — the old code passes
+  every unit-level assertion **by not looking**. It creates a real `--detach` worktree (no leaked branch,
+  [[BL-103]]). **Writing it caught the same bug in itself:** the first draft located the client with
+  `rev-parse --show-toplevel`, which answers the **worktree** root — the exact mistake under test — and
+  *skipped* rather than failed, so the core assertion silently never ran.
+
+  **Mirror still open:** the client repo has the identical defect → **[[BL-106]]**, PO-approved as a separate
+  item to keep this one single-repo.
+
+  **Telemetry (task closure):**
+  - task:        BL-101
+  - wall-clock:  2026-07-30 09:40 → 10:24 (~44m, includes the HMP design detour)
+  - budget:      weekly 4%→5% (Δ ~1%); session **unavailable** — the 5h window reset mid-task
+  - gate:        **`npm test`** (not `npx vitest run`) → **523/523 across 77 files** (was 519/519 / 76),
+    `Client contract alignment verified successfully`, re-run independently on the merged mainline. Mutation
+    check **watched red** on the `skipped sibling contract-alignment check` assertion. Pollution clean.
+  - diff:        2 files, +155/-1; commits `15616b2` · `a89221f` (merge)
+  - outcome:     **MERGED ✅** and pushed — PO-authorised
 
 <!-- @item
 id: BL-102
