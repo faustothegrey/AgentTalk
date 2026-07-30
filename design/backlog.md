@@ -5246,14 +5246,15 @@ autonomy: human-only
 
 <!-- @item
 id: BL-102
-status: todo
+status: done
 date: 2026-07-29
 epic: null
 tags: [autonomy, auditability, git, operator-seat, containment, hl3]
 autonomy: human-only
 -->
-- [todo · surfaced while grading the H-L3 regression run · `design/operator/hl3-grading.md` · **true of every
-  autonomous run in this project's history, and nobody had noticed**] — **An autonomous worker's commits are
+- [done · surfaced while grading the H-L3 regression run · `design/operator/hl3-grading.md` · **true of every
+  autonomous run in this project's history, and nobody had noticed** · **CLOSED 2026-07-30, see the closing
+  block**] — **An autonomous worker's commits are
   authored under the PO's git identity, so in history they are indistinguishable from the human's.**
 
   H-L3's worker committed `52df7f0` as `Fausto Lelli <fausto@domotz.com>`. Nothing is misconfigured: git
@@ -5285,5 +5286,145 @@ autonomy: human-only
   the human, and the primary checkout's identity is unchanged. **Mutation check:** run the wiring, then
   deliberately drop it and confirm the commit reverts to the human's identity — this is a defect whose absence
   looks exactly like its presence unless you have watched it change.
+
+  ---
+
+  **✅ CLOSED 2026-07-30 — merged `3eac79e` (client); impl `9c8c8c7`.** Plan, both Gate 1 verdicts and the
+  verification record: `design/bl102-plan.md`. **Neither fix direction in the paragraph above was taken**, and
+  the reason is the durable part of this item.
+
+  **The bar was met on live evidence, not reasoning — two real launches:**
+  ```
+  BEFORE  d6041b9  Fausto Lelli <fausto@domotz.com>
+  AFTER   539f7c2  AgentTalk worker (claude) <agent+t1-worker@agenttalk.local>
+  ```
+  Author **and** committer. Preserved as tags `bl102-t1-before-d6041b9` / `bl102-t1-after-539f7c2`.
+
+  **⛔ Why "(a) set identity on the task worktree" was WRONG, twice over — read this before touching worker
+  provisioning again.**
+  1. **Where a worker commits DEPENDS ON ITS EXECUTION PATH.** claude/persistent has a **session-level** cwd
+     (the assigned `workdir`) and *structurally cannot* take the per-turn task dir — the process is spawned once
+     at `initialize()`, before any turn exists (`executor-runtime.mjs:167-176`). Every other provider commits
+     inside the `provisionTaskDir` worktree. **Confirmed live in the baseline run: the worker committed in the
+     workdir while its provisioned task worktree `agentalk-task-…` sat EMPTY.**
+  2. **`git config` inside a linked worktree is NOT worktree-scoped.** It writes the shared common config, so
+     setting an agent identity there **rewrites the PRIMARY checkout's identity** — the PO's own later commits
+     would author as an agent. Probed before choosing the design.
+
+  **What was done instead:** `GIT_AUTHOR_*` + `GIT_COMMITTER_*` on the worker **process**, from one shared
+  helper `workerGitIdentityEnv()`, applied at **all four** worker-launching sites — `getSpawnEnv` (one-shot +
+  pty), `getPersistentProviderCommand` (claude persistent + its MCP override), the gemini spawn, the codex
+  spawn. **The claude persistent path does not route through `getSpawnEnv`**, so a single-choke-point fix would
+  have gone green while changing nothing that mattered. No git config is written anywhere.
+
+  **Declared shared-logic change:** `getSpawnEnv` now always returns a **copy**; it previously returned
+  `process.env` **by reference** for non-claude providers and a copy only for claude. `ANTHROPIC_API_KEY`
+  stripping unchanged, pinned by test.
+
+  **⚠️ Process lesson — this item failed Gate 1 TWICE, the same way both times.** v1 put the fix in
+  `provisionTaskDir` (which claude never enters); v2 put it in `getSpawnEnv` (which claude bypasses). **Both
+  designs reasoned about "the worker" without naming which execution path they meant, and both misses were
+  claude/persistent** — the one provider on a structurally different path, and currently the only available one.
+  **Any change here that says "the worker does X" must name the path.** Candidate `implementer-pitfalls.md` case.
+
+  **Still open, deliberately out of scope:** the `outcome` event's `taskId: null` beside a real `teamId`, so the
+  recording cannot be joined to the task it describes. Same theme, different mechanism — **[[BL-105]]**.
+
+  **Telemetry (task closure):**
+  - task:        BL-102
+  - wall-clock:  2026-07-30 09:00 → 09:23 (~23m)
+  - budget:      weekly 1%→4% (Δ ~3%), session 14%→38% (Δ ~24%, two live launches) [per `scripts/usage.mjs`]
+  - gate:        client suite **100/100 (18 files**; was 93/93), lint clean, contract hash **v8** verified;
+    re-run independently on the merged mainline. **Mutation checks both watched red:** neutering the identity,
+    and reverting the claude/persistent site alone (caught by the structural spawn-site guard)
+  - diff:        3 files, +142/-7; commits `9c8c8c7` · `3eac79e` (merge)
+  - outcome:     **MERGED ✅** — not pushed; push is the PO's
+
+<!-- @item
+id: BL-103
+status: todo
+date: 2026-07-30
+epic: null
+tags: [launcher, teardown, hygiene, worktree, bl081-followup, agentalk-mcp-client, observed-live]
+autonomy: human-only
+-->
+- [todo · **observed live during BL-102's two T-1 launches**, not by reading] — **Instance teardown removes the
+  worker's provisioned worktree DIRECTORY but leaves its BRANCH behind, so every launched run leaks one branch.**
+
+  Two runs produced `task-task-1785394896895-2` and `task-task-1785395284417-2`, both still present after the
+  launcher's own teardown ([[BL-081]], whole-tree instance teardown) had already removed the directories. Both
+  pointed at the base commit — the worker never committed in them (see [[BL-102]]: on the claude/persistent path
+  the work lands in the `workdir`, and the provisioned task worktree stays empty). They also left **stale
+  worktree registrations** that `git worktree list` reports as `prunable`.
+
+  **Why it is worth fixing rather than sweeping by hand.** It is silent and it is per-run, so it accumulates in
+  proportion to how much the ladder is used — and the branches are indistinguishable at a glance from real task
+  branches, which is exactly the confusion the containment model exists to prevent. It also made BL-102's own
+  closure sweep report pollution that was not the task's doing.
+
+  **Adjacent, same run:** `wt-setup remove` on an already-removed worktree dies with a **raw Node stack**
+  (`fatal: '…' is not a working tree` wrapped in an unhandled `execFileSync` throw) rather than a one-line
+  error. Known and documented in `PORTING.md` §7 as a real rough edge; recorded here because the teardown gap
+  above is what makes anyone hit it. → **[[BL-104]]**.
+
+  **Fix direction (needs a decision, not prescriptive):** teardown deletes the branch it created alongside the
+  directory, and runs `git worktree prune`; **or** the branch is never created (provision detached). **Bar:** a
+  full launch/teardown cycle leaves no new branch and no prunable registration. **Mutation check:** disable the
+  cleanup and confirm the bar goes red — a leak whose absence looks like its presence unless watched.
+
+<!-- @item
+id: BL-104
+status: todo
+date: 2026-07-30
+epic: null
+tags: [wt-setup, dx, error-handling, bl100-followup, worktree]
+autonomy: human-only
+-->
+- [todo · hit for real during [[BL-102]]'s closure sweep; the rough edge itself was documented in
+  `PORTING.md` §7 during [[BL-100]]] — **`wt-setup` surfaces every git failure as an unhandled Node stack
+  trace, so a routine condition reads like a code defect.**
+
+  `git()` wraps `execFileSync` and never catches (`scripts/wt-setup.mjs:24-29`). Running
+  `remove <id>` for a worktree something else already deleted prints `fatal: '…' is not a working tree`
+  followed by a full `Error: Command failed:` stack. That is a **normal** condition now that the launcher tears
+  its own worktrees down ([[BL-103]]), and it cost real time during BL-102 — the failure was truncated to a bare
+  `Node.js v24.15.0` line and had to be re-run to diagnose.
+
+  **Not urgent and explicitly not a blocker** — the tool works; only its failure reporting is poor. **Fix:**
+  catch around the `git()` calls in `remove`/`create` and emit git's own stderr as a one-line
+  `[wt-setup] <message>`, keeping a non-zero exit. **Do not** swallow the failure or make `remove` idempotent by
+  ignoring errors — that would hide a genuinely missing worktree, which is the one case the message is for.
+
+<!-- @item
+id: BL-105
+status: todo
+date: 2026-07-30
+epic: null
+tags: [client, worktree, mandate, dx, node-modules, bl036-followup, agentalk-mcp-client]
+autonomy: human-only
+-->
+- [todo · surfaced while implementing [[BL-102]] in a client worktree] — **The client repo has no worktree
+  helper, so worktree-based development there is broken out of the box — and the worktree MANDATE requires it.**
+
+  `scripts/wt-setup.mjs` exists in **AgentTalk only**; the runbook says so in as many words (§1, precondition 2:
+  *"the client has no helper"*). A `git worktree add` in `agentalk-mcp-client` therefore produces a checkout with
+  **no `node_modules`**, and the first command run there dies with
+  `Cannot find package 'vitest' imported from …/vitest.config.mjs`. The manual fix is a one-line symlink to the
+  primary's `node_modules`, which is exactly the hand-run dance `wt-setup` was written to automate for the other
+  repo.
+
+  **Why this matters now rather than as tidy-up:** the PO's 2026-07-16 MANDATE is that **all code development
+  happens in a per-task worktree**, and since [[BL-086]] closed, client-repo tasks are no longer excluded from
+  autonomous work. So the repo that most needs the helper is the one that lacks it, and the gap now sits directly
+  in front of the ladder rather than behind it.
+
+  **Fix direction:** a client-side equivalent (the AgentTalk one is mostly `node_modules` wiring plus a `tsc -b`
+  the client does not need), **or** teach `wt-setup` a `--repo` argument. Weigh the second carefully — one tool
+  reaching across two repos is how the sibling-path fragility in [[BL-101]] got started.
+
+  **Also worth folding in:** the `outcome` event reports `status: completed` with `taskId: null` beside a real
+  `teamId`, so a recording cannot be joined back to the task it describes. Carried over from [[BL-102]], which
+  scoped it out deliberately. Different mechanism, same theme: the audit trail is thinner than the process
+  assumes.
 
 *(add new items above this line)*

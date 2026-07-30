@@ -19,16 +19,21 @@ observed live. Where something is **not** verified, it says so.
 | # | Check | Command / expectation |
 |---|---|---|
 | 1 | Both repos present and built | `AgentTalk`: `npx tsc -b` → 0. Client: `agentalk-mcp-client` with `node_modules` |
-| 2 | The worker's **workdir is its own git worktree**, never the primary checkout | `node scripts/wt-setup.mjs create <id> --base master` (AgentTalk only; the client has no helper). **⚠️ It prepends `att-`: `create <id>` → `<root>/att-<id>` on branch `task-<id>`, default root `/private/tmp`, override with `--root`** (`wt-setup.mjs:15,22,85`). So the workdir for id `op-h1` is `/private/tmp/att-op-h1` — **passing `att-op-h1` as the id yields `att-att-op-h1`**, which then mismatches the `workdir` in your config |
+| 2 | The worker's **workdir is its own git worktree**, never the primary checkout | `node scripts/wt-setup.mjs create <id> --base master` (AgentTalk only — the client has no helper, [[BL-105]]). **⚠️ It prepends `att-`: `create <id>` → `<root>/att-<id>` on branch `task-<id>`.** Default root is **`os.tmpdir()`** since [[BL-100]] (2026-07-30) — `/tmp` on this box, so **`--root` is no longer needed on Linux**; it still overrides. So id `op-h1` yields `/tmp/att-op-h1` — **passing `att-op-h1` as the id yields `att-att-op-h1`**, which then mismatches the `workdir` in your config |
 | 3 | **Governance inherits into that worktree** — this is the whole thesis | `ls -la <workdir>/CLAUDE.md` must show `CLAUDE.md -> AGENT.md`. Without it the worker has **no rules** |
 | 4 | The orchestrator boots from a **different** checkout than the worker's workdir | Otherwise the worker edits the code running it |
 | 5 | The orchestrator's port is free | `lsof -nP -iTCP:<port>` → empty |
 | 6 | Provider CLI on `PATH` | e.g. `claude --version` |
 
-**⚠️ The client repo has no governance file** (`AGENT.md`/`CLAUDE.md`/`AGENTS.md`/`GEMINI.md` are absent at its
-root — verified). A worker whose workdir is the **client** repo inherits nothing: no Implementer Rules of
-Engagement, no show-stopper fence. Until [[BL-086]] is decided, **do not give a governed worker a client-repo
-task.**
+**✅ The client repo IS governed as of 2026-07-30 ([[BL-086]] closed, `0b770c2`).** `agentalk-mcp-client` now
+carries its own `AGENT.md` plus `AGENTS.md`/`CLAUDE.md` symlinks: Implementer Rules of Engagement, the
+show-stopper fence, scope discipline, honesty-over-results, and the worktree/merge/push rules. **The former ban
+on client-repo tasks is LIFTED** — a worker whose workdir is the client repo now inherits real rules.
+
+> **Two bounds before you rely on that.** The rules are written **inline** in that file, not behind a pointer,
+> precisely so they survive in a worktree — but **inheritance itself is proven for claude only** ([[BL-080]],
+> headless `-p`); codex/gemini is assumed from convention. And the client has **no worktree helper**, so a
+> client workdir needs its `node_modules` wired by hand ([[BL-105]]).
 
 ## 2. The config contract
 
