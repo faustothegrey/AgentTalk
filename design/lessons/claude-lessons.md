@@ -1268,3 +1268,38 @@ here.**
   H-L2's P/R/C blocks byte-for-byte on purpose — the entire value of a regression check is comparability, and a
   rung that quietly retunes its own rows cannot answer the question it was commissioned to ask. Worth
   remembering the next time a rung looks too trivial to bother pre-registering.
+
+### 2026-07-30 — five items closed, and the same mistake three times in one day
+
+- **As plan reviewer: I refuted my own design twice on BL-102, and both misses were identical in shape.** v1 put
+  the fix in `provisionTaskDir`; v2 in `getSpawnEnv`. Both would have gone green while missing the very commit
+  the item was filed about, because **claude/persistent enters neither** — its cwd is session-level and its env
+  bypasses the shared helper. The durable form is not "read the code first" (I did, both times). It is that in a
+  system with heterogeneous providers, **"the worker does X" is not yet a proposition — it is a proposition
+  template with the execution path left blank.** Fill the blank before designing. I now distrust any sentence I
+  write about "the worker" that does not name a path.
+- **As implementer: I wrote a test to catch a path bug and put the same path bug inside the test — and it
+  SKIPPED rather than failed.** The BL-101 test located the client with `rev-parse --show-toplevel`, which
+  answers the *worktree* root: exactly the mistake under test. Because I had guarded it with `it.runIf(exists…)`,
+  the core assertion silently never ran and the file reported green-with-a-skip. **A skip in a test that exists
+  to prove a path resolves is a failure, not a neutral outcome.** Read the skip count, not just the pass count —
+  and be suspicious of `runIf` guards on precisely the condition the test is about.
+- **As plan reviewer: the bar would have used a command that never runs the code under test.** Every suite run
+  that day was `npx vitest run`; the contract check is a separate workspace script chained *ahead* of vitest, so
+  a "suite green" DoD row would have been satisfied **without ever executing the fix**. This is the same family
+  as the H-L3 sha trap but worse, because it fails silently in the *passing* direction. **Before pre-registering
+  a bar, read the test script and confirm the command actually reaches the code.** Do not assume the command you
+  have been running all session is the one the project defines.
+- **As planner: I proposed bundling two items on a factual claim I had not checked.** "Both are
+  `scripts/wt-setup.mjs`, one worktree, one gate" — false; different files, different repos, and the saving was
+  imaginary. The PO split them and was right to. **A bundling rationale is a factual claim about the code, not a
+  judgement call**, and it costs thirty seconds to verify before it costs a re-plan.
+- **As task-end reviewer: the closure sweep earned its keep by catching MY pollution.** A stray `task-mutprobe`
+  branch from my own mutation check, plus two leaked worker branches (now [[BL-103]]). The sweep is not a
+  formality performed on the implementer — **run it against yourself with the same suspicion**, especially when
+  the fallback means you were the implementer an hour earlier.
+- **As architect: an external protocol's constraint agreed with our own discipline, and that was worth naming
+  rather than working around.** HMP caps messages at 2048 chars; a session brief cannot fit. The reflex is
+  Base64 chunking. The right answer was that `AGENT.md` **already** requires a baton be a pointer and not a
+  transcript, so the ceiling *enforces* the rule instead of obstructing it. **When an external limit and an
+  internal principle point the same way, stop engineering around the limit.**
