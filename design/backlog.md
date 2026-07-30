@@ -5690,4 +5690,43 @@ blocked_by: [BL-107]
   nothing, so it needs no authentication, and it still exercises every leg end to end — the O-1 instinct applied
   to a channel instead of a worker.
 
+<!-- @item
+id: BL-111
+status: todo
+date: 2026-07-30
+epic: null
+tags: [infra, harness, infra-invariant, macos, path-resolution, silent-failure, bl087-followup]
+autonomy: human-only
+-->
+- [todo · found live during [[BL-110]]'s first relay run; **reported, not fixed** — existing shared tooling] —
+  **`infra-invariant.mjs` silently does nothing and exits 0 when invoked by an absolute `/tmp/...` path on
+  macOS.**
+
+  The module-level entry guard is `process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)`.
+  **`path.resolve` leaves symlinks intact; `import.meta.url` is already a real path.** On macOS `/tmp` is a
+  symlink to `/private/tmp`, so `node /tmp/att-op-h1/scripts/infra-invariant.mjs check …` compares two different
+  strings, the guard reads false, `main` never runs — **no output, exit 0.**
+
+  **Why this is worse than an ordinary bug:** the harness exists to *gate operator runs*, and a `critical` from it
+  blocks the next launch. An exit 0 with no findings is indistinguishable from "swept clean" to any caller that
+  checks the exit code — which is what a bracketing `snapshot`/`check` does. It fails **silent-but-successful**,
+  the one failure mode `AGENT.md` singles out as worse than a crash (*"a CRASHING harness must never be misread as
+  a clean run"* — the script's own comment, defending the exit-2 path while this hole sits above it).
+
+  **Reachability is not theoretical, and not an edge case:** worktrees live under `os.tmpdir()` since [[BL-100]],
+  the runbook mandates invoking tooling **by absolute path**, and a remote courier ([[BL-110]]) has no other
+  option. So the broken form is the *mandated* form. It does not reproduce on Linux — same platform-shaped trap as
+  [[BL-098]]/[[BL-100]], and the fifth path-resolution defect in this project in four days.
+
+  **Verified live**, on the sibling script that shares the idiom: by realpath it printed; by the symlinked
+  absolute path it printed nothing and exited 0. Fixed in `scripts/relay-inbox.mjs` and
+  `scripts/hmp-commission.mjs` (both new, both on unmerged branches); **`infra-invariant.mjs` deliberately left
+  alone** — it is established shared tooling and the show-stopper rule reserves that change.
+
+  **Fix:** guard `fs.realpathSync(path.resolve(process.argv[1]))` against the module path, with a try/catch
+  falling back to "not invoked directly" so a missing path cannot crash an import. **Sweep for the idiom rather
+  than patching one site** — it is copied wherever this CLI pattern was reused. **Add a bar that spawns the
+  script through a real symlink**: a unit test of exported functions cannot reach a module-level entry guard,
+  which is precisely why this survived a green suite.
+
 *(add new items above this line)*
