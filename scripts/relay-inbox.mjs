@@ -254,7 +254,30 @@ export function main(argv) {
   throw new UsageError(`unknown command: ${opts.cmd ?? '(none)'}`);
 }
 
-const invokedDirectly = process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+/**
+ * Whether this file was run as a script rather than imported.
+ *
+ * `path.resolve` does NOT resolve symlinks, but `import.meta.url` is already a real path. On
+ * macOS `/tmp` is a symlink to `/private/tmp`, so invoking this by absolute path —
+ * `node /tmp/att-relay1/scripts/relay-inbox.mjs …` — made the two sides differ, the guard read
+ * false, and **`main` never ran: no output, exit 0.** A silent no-op that reports success is the
+ * worst failure mode available, and it is the one this had.
+ *
+ * Found live: a relayed message came back `completed` with an empty reply, and the courier turned
+ * out to have executed the command faithfully — the fault was here. Note the invocation style
+ * that triggers it is the one the runbook mandates ("invoke by absolute path") and the only one
+ * a remote courier can use.
+ *
+ * `realpathSync` throws on a missing path, so it is guarded; a failure to resolve must fall back
+ * to "not invoked directly" rather than crash an import.
+ */
+const invokedDirectly = (() => {
+  try {
+    return process.argv[1] ? fs.realpathSync(path.resolve(process.argv[1])) === fileURLToPath(import.meta.url) : false;
+  } catch {
+    return false;
+  }
+})();
 if (invokedDirectly) {
   try {
     process.exit(main(process.argv));

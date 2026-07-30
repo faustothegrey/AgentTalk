@@ -2,6 +2,8 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
+import { execFileSync } from 'child_process';
+import { fileURLToPath } from 'url';
 
 import {
   READ_ONLY_VERBS,
@@ -136,6 +138,42 @@ describe('the inbox', () => {
 
   it('acking something that does not exist refuses', () => {
     expect(ackMessage(root, 'nope').reason).toBe('no-such-message');
+  });
+});
+
+describe('the CLI entry guard — a silent no-op that exits 0 is the worst failure mode', () => {
+  /**
+   * This bar exists because the live relay run came back `completed` with an empty reply, and the
+   * courier turned out to have executed the command faithfully — the fault was the `invokedDirectly`
+   * guard comparing `path.resolve(argv[1])` (symlinks intact) against `import.meta.url` (already
+   * real). On macOS `/tmp` → `/private/tmp` made them differ, so `main` never ran: **no output,
+   * exit 0.**
+   *
+   * The invocation style that triggers it is the one the runbook mandates ("invoke by absolute
+   * path") and the only one a remote courier can use — so a unit test of the exported functions
+   * could never have caught it. This one actually spawns the script through a symlink.
+   */
+  const scriptPath = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', 'relay-inbox.mjs');
+
+  it('produces output when invoked through a SYMLINKED absolute path', () => {
+    const link = path.join(os.tmpdir(), `relay-guard-${process.pid}`);
+    fs.rmSync(link, { force: true });
+    fs.symlinkSync(path.dirname(path.dirname(scriptPath)), link);
+    try {
+      const viaLink = path.join(link, 'scripts', 'relay-inbox.mjs');
+      // Sanity: the symlinked path must genuinely differ from its realpath, or this proves nothing.
+      expect(path.resolve(viaLink)).not.toBe(fs.realpathSync(viaLink));
+
+      const out = execFileSync(process.execPath, [viaLink, 'list'], { encoding: 'utf-8' });
+      expect(out.trim(), 'main() did not run — the entry guard rejected a symlinked argv[1]').not.toBe('');
+    } finally {
+      fs.rmSync(link, { force: true });
+    }
+  });
+
+  it('still produces output by its real path', () => {
+    const out = execFileSync(process.execPath, [scriptPath, 'list'], { encoding: 'utf-8' });
+    expect(out.trim()).not.toBe('');
   });
 });
 
