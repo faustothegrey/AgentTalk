@@ -17,6 +17,11 @@ import {
   sha256,
   verifyCommission,
   realPreflight,
+  launch,
+  recordLaunch,
+  defaultClientRoot,
+  primaryRoot,
+  LAUNCH_LEDGER,
 } from '../hmp-commission.mjs';
 
 /**
@@ -32,6 +37,7 @@ const RUN = 'hmp1';
 let repo;
 let sha;
 let sideSha;
+let sandboxDir;
 
 const git = (args, cwd = repo) =>
   execFileSync('git', args, { cwd, encoding: 'utf-8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
@@ -52,13 +58,18 @@ ${authorizationLineFor(RUN)}
 
 const BAR = '# Bar for hmp1\n\n1. worktree clean and HEAD unmoved\n';
 
-const CONFIG = {
-  agents: [{ id: 'worker-1', provider: 'claude', workdir: `/tmp/att-op-${RUN}` }],
-  caps: { meter: { url: 'http://127.0.0.1:9899/usage', provider: 'claude', maxPercentDelta: 5 } },
-};
+let CONFIG;
 
 beforeAll(() => {
   repo = fs.mkdtempSync(path.join(os.tmpdir(), 'hmp-commission-'));
+  // A real sandbox that exists and carries governance — the happy path now requires both.
+  sandboxDir = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'hmp-sandbox-')), `att-op-${RUN}`);
+  fs.mkdirSync(sandboxDir, { recursive: true });
+  fs.writeFileSync(path.join(sandboxDir, 'CLAUDE.md'), '# governance inherits here\n');
+  CONFIG = {
+    agents: [{ id: 'worker-1', provider: 'claude', workdir: sandboxDir }],
+    caps: { meter: { url: 'http://127.0.0.1:9899/usage', provider: 'claude', maxPercentDelta: 5 } },
+  };
   git(['init', '-b', 'master']);
   git(['config', 'user.email', 'test@example.com']);
   git(['config', 'user.name', 'Test']);
@@ -239,6 +250,86 @@ describe('realPreflight — the mapping that the injected seam hid', () => {
     });
     expect(r.criticals).toBe(1);
     expect(r.detail).toMatch(/could not run/);
+  });
+});
+
+
+describe('the sandbox must exist and be governed', () => {
+  it('refuses when the workdir does not exist', () => {
+    const r = verify(commission(), { existsSync: () => false });
+    expect(r.reason).toBe(REFUSAL.WORKDIR_MISSING);
+  });
+
+  it('THE GOVERNANCE BAR: refuses a sandbox with no CLAUDE.md', () => {
+    // Runbook precondition 3 and the whole thesis of the worktree MANDATE: without it the worker
+    // has no rules. Launching an UNGOVERNED worker is the one thing the sandbox exists to prevent,
+    // so this refuses rather than warns.
+    const r = verify(commission(), { existsSync: (p) => !String(p).endsWith('CLAUDE.md') });
+    expect(r.reason).toBe(REFUSAL.GOVERNANCE_MISSING);
+    expect(r.detail).toMatch(/no rules/);
+  });
+
+  it('accepts when both are present, and reports the workdir', () => {
+    const r = verify(commission());
+    expect(r.ok).toBe(true);
+    expect(r.workdir).toBe(sandboxDir);
+  });
+});
+
+describe('launch — the acknowledgement, not the result', () => {
+  const okResult = () => verify(commission());
+
+  it('records the launch BEFORE spawning — a crash between the two must not permit a replay', () => {
+    const order = [];
+    launch(okResult(), {
+      repoRoot: repo,
+      clientRoot: defaultClientRoot(),
+      record: () => order.push('record'),
+      spawn: () => { order.push('spawn'); return 4242; },
+    });
+    expect(order).toEqual(['record', 'spawn']);
+  });
+
+  it('launches the CLIENT launcher, detached, with a config written from the git blob', () => {
+    let seen;
+    const r = launch(okResult(), {
+      repoRoot: repo,
+      clientRoot: defaultClientRoot(),
+      record: () => {},
+      spawn: (launcher, configPath) => { seen = { launcher, configPath }; return 99; },
+    });
+    expect(seen.launcher).toMatch(/agentalk-mcp-client\/scripts\/launcher\.mjs$/);
+    // The config handed to the launcher is a TEMP file written from the committed blob — never
+    // the on-disk path, so what runs is the reviewed content.
+    expect(seen.configPath).not.toContain(repo);
+    expect(JSON.parse(fs.readFileSync(seen.configPath, 'utf-8')).agents[0].workdir).toBe(sandboxDir);
+    expect(r.pid).toBe(99);
+    fs.rmSync(seen.configPath, { force: true });
+  });
+
+  it('the ledger lives in the PRIMARY checkout — replay protection must survive worktree cleanup', () => {
+    // A ledger under /tmp/att-<id> vanishes with `wt-setup remove`, and `already-launched` then
+    // reads as "never launched". Protection that evaporates on cleanup is not protection.
+    const primary = primaryRoot();
+    expect(primary).toBeTruthy();
+    // These bars run from a linked worktree during development, so this is a real distinction
+    // here rather than an incidentally-true one.
+    expect(primary).not.toMatch(/att-hmp2/);
+    expect(fs.statSync(path.join(primary, '.git')).isDirectory()).toBe(true);
+    expect(fs.existsSync(path.join(primary, 'AGENT.md'))).toBe(true);
+    expect(LAUNCH_LEDGER).toBe('design/operator/.hmp-launched.json');
+  });
+
+  it('the ledger is append-only and refuses to overwrite an unreadable one', () => {
+    const ledgerPath = path.join(repo, LAUNCH_LEDGER);
+    fs.mkdirSync(path.dirname(ledgerPath), { recursive: true });
+    recordLaunch(repo, { run: 'a' });
+    recordLaunch(repo, { run: 'b' });
+    expect(JSON.parse(fs.readFileSync(ledgerPath, 'utf-8')).launched.map((e) => e.run)).toEqual(['a', 'b']);
+    fs.writeFileSync(ledgerPath, 'not json');
+    // Silently resetting would re-open `already-launched` and permit a replay.
+    expect(() => recordLaunch(repo, { run: 'c' })).toThrow(/unreadable/);
+    fs.rmSync(ledgerPath, { force: true });
   });
 });
 

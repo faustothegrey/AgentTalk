@@ -41,7 +41,8 @@
 import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
-import { execFileSync } from 'child_process';
+import os from 'os';
+import { execFileSync, spawn as spawnProcess } from 'child_process';
 import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -68,6 +69,8 @@ export const REFUSAL = {
   MISSING_CAP_METER: 'missing-cap-meter',
   CRITICAL_OUTSTANDING: 'critical-outstanding',
   ALREADY_LAUNCHED: 'already-launched',
+  WORKDIR_MISSING: 'workdir-missing',
+  GOVERNANCE_MISSING: 'governance-missing',
 };
 
 /** The OPERATOR charter's containment parameters, restated so a mismatch can be refused. */
@@ -82,7 +85,13 @@ const RUN_ID = /^[a-z0-9][a-z0-9-]{0,31}$/;
 const SHA40 = /^[0-9a-f]{40}$/;
 const SHA256 = /^[0-9a-f]{64}$/;
 
-/** Where a lawful launch is recorded, so the same run id can never launch twice. */
+/**
+ * Where a lawful launch is recorded, so the same run id can never launch twice.
+ *
+ * Resolved against the PRIMARY checkout by its callers, never the worktree: a ledger written into
+ * `/tmp/att-<id>` disappears when the worktree is removed, and replay protection that evaporates
+ * with a cleanup is not protection. Same family as `defaultClientRoot` and [[BL-101]].
+ */
 export const LAUNCH_LEDGER = 'design/operator/.hmp-launched.json';
 
 class UsageError extends Error {}
@@ -283,7 +292,7 @@ export function realpathish(p) {
  * @param {Function} o.preflight   () => { criticals: number, detail?: string }
  * @param {Function} o.launchedRuns() => string[]  run ids already launched
  */
-export function verifyCommission({ text, repoRoot = REPO_ROOT, io, preflight, launchedRuns }) {
+export function verifyCommission({ text, repoRoot = REPO_ROOT, io, preflight, launchedRuns, existsSync = fs.existsSync }) {
   const parsed = parseCommission(text);
   if (!parsed.ok) return parsed;
   const c = parsed.commission;
@@ -370,6 +379,19 @@ export function verifyCommission({ text, repoRoot = REPO_ROOT, io, preflight, la
     return refuse(REFUSAL.CHARTER_MISMATCH, `config workdir ${workdir} does not end in ${c.sandbox}`);
   }
 
+  // The sandbox must already exist. Provisioning is the operator's pre-flight job (runbook §1),
+  // not the verifier's: creating a worktree is a side effect with cleanup obligations, and a
+  // verifier that provisions is a verifier that can leave litter when it later refuses.
+  if (!existsSync(workdir)) return refuse(REFUSAL.WORKDIR_MISSING, workdir);
+
+  // Governance must inherit into it — runbook precondition 3, and the whole thesis of the
+  // worktree MANDATE: "without it the worker has no rules". A worker launched into a directory
+  // with no CLAUDE.md is an UNGOVERNED worker, which is the one thing the sandbox exists to
+  // prevent. Cheap to check, catastrophic to miss.
+  if (!existsSync(path.join(workdir, 'CLAUDE.md'))) {
+    return refuse(REFUSAL.GOVERNANCE_MISSING, `${workdir} has no CLAUDE.md — the worker would have no rules`);
+  }
+
   // A `critical` gates the next operator run. BL-109 records that "uncleared" has nowhere to
   // live yet, so this is deliberately the fail-closed reading: any critical NOW refuses, even
   // one the PO has already dispositioned out of band.
@@ -380,7 +402,7 @@ export function verifyCommission({ text, repoRoot = REPO_ROOT, io, preflight, la
 
   if (launchedRuns().includes(c.run)) return refuse(REFUSAL.ALREADY_LAUNCHED, c.run);
 
-  return pass({ commission: c, brief, config, barSha256: actualBar, briefRel, barRel, configRel });
+  return pass({ commission: c, brief, config, barSha256: actualBar, briefRel, barRel, configRel, workdir });
 }
 
 // ---------------------------------------------------------------------------
@@ -446,6 +468,90 @@ function defaultSweepRunner() {
   }
 }
 
+/**
+ * Launch the verified commission — DETACHED, and that is a design rule rather than a convenience.
+ *
+ * `design/hmp-session-submission.md` §6: a run takes minutes to tens of minutes while HMP's
+ * practical timeout is 120–300s, so **HMP carries the commission, never the result.** Holding the
+ * connection open for a run would guarantee a timeout and, worse, would make the courier's reply
+ * look like a verdict on the run. It is an acknowledgement: accepted, and where the artifact will
+ * be.
+ *
+ * Order matters here. The launch is recorded BEFORE the process starts, so that a crash between
+ * the two cannot leave a run that happened but is not in the ledger — which would re-open
+ * `already-launched` and permit a replay. Recording something that then failed to start is the
+ * safe direction to be wrong in; the operator sees a ledger entry with no artifact and looks.
+ *
+ * The config is written from the GIT BLOB to a temp file, never taken from disk. What launches is
+ * the reviewed, committed content — the same reason the verifier reads everything at `repo-sha`.
+ */
+export function launch(result, { repoRoot = REPO_ROOT, spawn = defaultSpawn, record = recordLaunch, clientRoot = defaultClientRoot() } = {}) {
+  const { commission: c, config } = result;
+  const launcher = path.join(clientRoot, 'scripts', 'launcher.mjs');
+  if (!fs.existsSync(launcher)) throw new Error(`launcher not found: ${launcher}`);
+
+  const configPath = path.join(os.tmpdir(), `hmp-${c.run}-${Date.now()}.config.json`);
+  fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
+
+  record(repoRoot, { run: c.run, repoSha: c['repo-sha'], sandbox: c.sandbox, configPath });
+
+  const pid = spawn(launcher, configPath, clientRoot);
+  return { pid, recording: config?.instance?.recording ?? '(none configured)', configPath };
+}
+
+/**
+ * Where the client repo lives. Configurable, never hardcoded — the runbook's rule.
+ *
+ * Resolved against the PRIMARY checkout, not `REPO_ROOT`. From a linked worktree `REPO_ROOT` is
+ * `/tmp/att-<id>`, so a sibling lookup lands on `/tmp/agentalk-mcp-client` — which does not
+ * exist, and the launch dies at the last possible moment having already recorded itself in the
+ * ledger. Caught by the bars rather than in production, but it is the *fourth* appearance of this
+ * family: [[BL-101]] and [[BL-106]] were both "resolved a sibling path against the worktree",
+ * and `relay-inbox.mjs` carries the same `--git-common-dir` primitive for the same reason.
+ */
+export const defaultClientRoot = () =>
+  process.env.AGENTTALK_CLIENT_REPO ?? path.resolve(primaryRoot() ?? REPO_ROOT, '..', 'agentalk-mcp-client');
+
+/** The primary checkout, correct from inside a worktree. `--path-format=absolute` is load-bearing. */
+export function primaryRoot(cwd = __dirname) {
+  try {
+    const common = execFileSync('git', ['rev-parse', '--path-format=absolute', '--git-common-dir'], {
+      cwd,
+      encoding: 'utf-8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+    }).trim();
+    return common ? path.dirname(common) : null;
+  } catch {
+    return null;
+  }
+}
+
+function defaultSpawn(launcher, configPath, clientRoot) {
+  const child = spawnProcess(process.execPath, [launcher, configPath], {
+    cwd: clientRoot,
+    detached: true,
+    stdio: ['ignore', 'ignore', 'ignore'],
+  });
+  child.unref();
+  return child.pid;
+}
+
+/** Append-only. A launch that is not recorded is a launch that can be replayed. */
+export function recordLaunch(repoRoot, entry) {
+  const p = path.join(repoRoot, LAUNCH_LEDGER);
+  fs.mkdirSync(path.dirname(p), { recursive: true });
+  let ledger = { launched: [] };
+  if (fs.existsSync(p)) {
+    try {
+      ledger = JSON.parse(fs.readFileSync(p, 'utf-8'));
+    } catch {
+      throw new Error(`launch ledger is unreadable, refusing to overwrite it: ${p}`);
+    }
+  }
+  ledger.launched.push({ ...entry, at: new Date().toISOString() });
+  fs.writeFileSync(p, JSON.stringify(ledger, null, 2));
+}
+
 function parseArgs(argv) {
   const opts = { dryRun: false };
   for (let i = 2; i < argv.length; i++) {
@@ -467,7 +573,7 @@ export function main(argv) {
     text,
     io: makeGitIo(),
     preflight: () => realPreflight(),
-    launchedRuns: () => readLaunchLedger(),
+    launchedRuns: () => readLaunchLedger(primaryRoot() ?? REPO_ROOT),
   });
 
   if (!result.ok) {
@@ -482,10 +588,11 @@ export function main(argv) {
     return 0;
   }
 
-  // Deliberately NOT implemented in this task. T1 is the fence; T2 is the first live launch,
-  // and it needs its own [PO] go. Printing the plan and exiting 0 is the honest state — an
-  // `accepted` that silently did nothing would be exactly the `completed` ≠ done trap.
-  console.log('launch: NOT WIRED — T2 pending an explicit [PO] go (design/hmp-commission-plan.md §3)');
+  const launched = launch(result, { repoRoot: primaryRoot() ?? REPO_ROOT });
+  console.log(`launched: pid ${launched.pid}`);
+  console.log(`artifact: ${launched.recording}`);
+  console.log('NOTE: this is an ACKNOWLEDGEMENT, not a result. The run is detached and takes minutes.');
+  console.log('`completed` over the wire means the message was answered. Grade the artifact.');
   return 0;
 }
 
