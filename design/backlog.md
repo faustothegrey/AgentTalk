@@ -5479,13 +5479,13 @@ autonomy: human-only
 
 <!-- @item
 id: BL-106
-status: todo
+status: done
 date: 2026-07-30
 epic: null
 tags: [contracts, worktree, fail-open, cross-repo, agentalk-mcp-client, bl101-mirror, observed-live]
 autonomy: human-only
 -->
-- [todo · **the mirror of [[BL-101]] in the client repo** · observed live 2026-07-30 during BL-102's closure
+- [done · **the mirror of [[BL-101]] in the client repo** · observed live 2026-07-30 during BL-102's closure
   sweep · **PO-approved as a separate item 2026-07-30**, to keep BL-101 single-repo] — **The client's own
   contract-alignment check fail-opens in a worktree too, by the same mechanism and in the opposite direction.**
 
@@ -5515,5 +5515,34 @@ autonomy: human-only
   contract and **fails** when the two diverge; the primary checkout is unchanged. **Mutation check:** point it
   at a deliberately mismatched contract and confirm it goes red — a fail-open is exactly the class where a green
   proves nothing.
+
+  ---
+
+  **✅ CLOSED 2026-07-30 — merged `e011f0d` (client); impl `acf8682`.** Fixed the same day it was filed, while
+  [[BL-101]]'s pattern was still fresh — which is most of why it was cheap.
+
+  **Mirrors BL-101 deliberately, down to the primitive:** `git rev-parse --path-format=absolute
+  --git-common-dir`, with the same non-throwing fallback and the same kept-on-purpose residual fail-open. The
+  item asked for this explicitly and it was the right call — **the failure mode to avoid was two repos solving
+  one cross-repo lookup two different ways.** `--path-format=absolute` is load-bearing here too.
+
+  **Bar met:** from inside the client worktree the check now prints **`Contract alignment verified successfully
+  against AgentTalk source.`** where this morning it printed `skipped source-alignment check`. The warning now
+  names the path it looked at.
+
+  **Both directions of the cross-repo contract check now run where development actually happens.** Before today
+  neither did: AgentTalk→client fail-opened in every worktree ([[BL-101]]) and client→AgentTalk did the same
+  ([[BL-106]]), so under the worktree MANDATE the alignment guarantee was effectively absent from the whole
+  workflow while appearing green.
+
+  **Telemetry (task closure):**
+  - task:        BL-106
+  - wall-clock:  2026-07-30 10:18 → 10:26 (~8m)
+  - budget:      weekly 5%→5% (Δ <1%); session unavailable (window reset earlier)
+  - gate:        client suite **104/104 (19 files**; was 100/18), lint clean, alignment verified from inside a
+    worktree, re-run independently on the merged mainline. Mutation check **watched red** on the
+    `skipped source-alignment check` assertion. Pollution clean, no leaked branch (`--detach`)
+  - diff:        2 files, +150/-1; commits `acf8682` · `e011f0d` (merge)
+  - outcome:     **MERGED ✅** and pushed — PO-authorised
 
 *(add new items above this line)*
