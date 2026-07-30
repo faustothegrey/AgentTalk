@@ -12,14 +12,20 @@
 //   node scripts/wt-setup.mjs create <id> [--base <ref>] [--baseline] [--root <dir>]
 //   node scripts/wt-setup.mjs remove <id> [--delete-branch] [--root <dir>]
 //
-// The worktree lives at <root>/att-<id> (default root: /private/tmp) on branch task-<id>.
+// The worktree lives at <root>/att-<id> (default root: the platform temp dir) on branch task-<id>.
 
 import { execFileSync } from 'node:child_process';
 import { readdirSync, mkdirSync, symlinkSync, readlinkSync, existsSync } from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 
 const SCOPE = '@agenttalk';
-const DEFAULT_ROOT = '/private/tmp';
+// BL-100: was hardcoded '/private/tmp' (macOS), which made `--root` MANDATORY on Linux for
+// BOTH verbs — and omitting it on `remove` died with an unhandled execFileSync stack trace.
+// NOTE this is not a no-op on macOS: os.tmpdir() there is /var/folders/..., not /private/tmp.
+// Deliberate and PO-disclosed — the default is a scratch location with no persistent state and
+// an explicit --root override. os.tmpdir() honours $TMPDIR, so the root is environment-derived.
+const DEFAULT_ROOT = os.tmpdir();
 
 function git(args, opts = {}) {
   // execFileSync returns null when stdout is inherited (side-effect calls) and a
