@@ -5742,4 +5742,41 @@ autonomy: human-only
   script through a real symlink**: a unit test of exported functions cannot reach a module-level entry guard,
   which is precisely why this survived a green suite.
 
+<!-- @item
+id: BL-112
+status: todo
+date: 2026-07-30
+epic: null
+tags: [hmp, hermes, relay, fidelity, operator, bl110-followup]
+autonomy: human-only
+-->
+- [todo · found grading the first HMP-commissioned run ([[BL-110]]/hmp1)] — **The HMP relay silently excises a
+  specific literal string from replies, deterministically.**
+
+  The commission acknowledgement prints `artifact: <recording path>`. It arrived **empty twice**, while the
+  adjacent `launch-log:` line arrived intact. `launch()` returns the correct value when called directly, so the
+  datum is produced and lost in transit.
+
+  **Characterised by two probes** (my first two hypotheses — "the courier isn't byte-faithful" and "it's my code"
+  — were both wrong, and the probes are the only reason that was caught):
+
+  | sent | relayed |
+  |---|---|
+  | `/tmp/att-op-hmp1-recording.json` | *(empty)* — excised, 3/3 |
+  | `/tmp/plain.txt` | unchanged — **not** a `/tmp` rule |
+  | `/etc/hosts` | unchanged — **not** an "existing file" rule |
+  | `/tmp/att-op-hmp1-recording.json.NOPE` | `.NOPE` — **the substring is cut, the remainder survives** |
+
+  So a specific literal is removed mid-string while every other path passes. **Mechanism unknown and inside the
+  PO's Hermes install** (`~/.hermes/**` is read-only to us), so this is filed rather than chased.
+
+  **Why it matters more than a cosmetic bug:** the acknowledgement is the *only* thing an HMP commission returns,
+  and a channel that silently drops a value is worse than one that errors — the reply looked complete both times.
+  The design already survives it because the artifact path is derivable from the committed config, which is the
+  argument for repo-anchoring restated as evidence: **no datum you need may depend on surviving the courier.**
+
+  **Fix direction:** do not "work around" it by renaming the file. Either find the excision rule in the Hermes
+  install, or make the acknowledgement carry no data that is not independently derivable — and prefer the second
+  regardless, since it holds even if the rule is never found.
+
 *(add new items above this line)*
