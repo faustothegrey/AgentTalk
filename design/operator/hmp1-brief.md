@@ -8,17 +8,21 @@
 
 ## ⚠️ NOT YET AUTHORIZED — and that is deliberate
 
-**This brief carries no authorization line, because authorization is not mine to write.**
+**Authorization is not mine to write, so it is not written.**
 
-The verifier requires exactly one line, anchored, on its own:
+To authorize this run the **PO** creates one file, `design/operator/hmp1.authorized`, whose **entire** content
+is the line `[PO] AUTHORIZED-RUN:` followed by the run id — and commits it to `master`. The verifier refuses any
+`repo-sha` that is not an ancestor of `master`, so **the merge is the authorization act**. Until both happen, a
+commission for `hmp1` refuses with `no-po-authorization`.
 
-```
-[PO] AUTHORIZED-RUN: hmp1
-```
-
-Only the **PO** adds it, and only the PO's merge to `master` makes it count — the verifier refuses any
-`repo-sha` that is not an ancestor of `master`. Until both happen, a commission for `hmp1` refuses with
-`no-po-authorization`.
+> **Why a separate file rather than a line in this brief** — and this is not tidiness, it is a live refutation.
+> The first mechanism looked for the line *in the brief*. It then **accepted this very brief**, whose entire
+> purpose is to say the run is unauthorized, because the paragraph above **quoted** the required line as an
+> example. A line-anchored matcher cannot tell an example from the real thing, and stripping code fences would not
+> have saved it: an indented block or a blockquote quotes the line just as well. Found by running the CLI, two
+> hours after Gate 1 caught the *same* vacuous-pass shape in the same check. A discrete file whose whole content
+> must equal the line is immune to quotation by construction — which is why this document can now safely describe
+> the format in prose without authorizing itself.
 
 **Why the author of the fence did not simply authorize their own run:** the entire design rests on the
 authorization being a thing a message cannot assert and an agent cannot mint. An implementer who writes the `[PO]`

@@ -10,7 +10,8 @@ import {
   CHARTER,
   authorizationLineFor,
   parseCommission,
-  hasAuthorization,
+  isAuthorizationFile,
+  authorizationPathFor,
   findsLaunchInstruction,
   makeGitIo,
   sha256,
@@ -62,10 +63,11 @@ beforeAll(() => {
   git(['config', 'user.email', 'test@example.com']);
   git(['config', 'user.name', 'Test']);
 
+  write('design/operator/hmp1.authorized', `${authorizationLineFor(RUN)}\n`);
   write('design/operator/hmp1-brief.md', BRIEF);
   write('design/operator/hmp1-bar.md', BAR);
   write(`design/operator/${RUN}.config.json`, JSON.stringify(CONFIG, null, 2));
-  git(['add', 'design/operator/hmp1-brief.md', 'design/operator/hmp1-bar.md', `design/operator/${RUN}.config.json`]);
+  git(['add', 'design/operator/hmp1.authorized', 'design/operator/hmp1-brief.md', 'design/operator/hmp1-bar.md', `design/operator/${RUN}.config.json`]);
   git(['commit', '-m', 'commission fixtures']);
   sha = git(['rev-parse', 'HEAD']);
 
@@ -151,25 +153,42 @@ describe('parseCommission', () => {
   });
 });
 
-describe('hasAuthorization — the anchored format', () => {
-  it('accepts the exact line', () => {
-    expect(hasAuthorization(BRIEF, RUN)).toBe(true);
+describe('isAuthorizationFile — a discrete artifact, not a phrase', () => {
+  it('accepts a file whose entire content is the line', () => {
+    expect(isAuthorizationFile(`${authorizationLineFor(RUN)}\n`, RUN)).toBe(true);
+    expect(isAuthorizationFile(`  ${authorizationLineFor(RUN)}  `, RUN)).toBe(true);
   });
 
-  it('tolerates surrounding whitespace but not extra content', () => {
-    expect(hasAuthorization(`   ${authorizationLineFor(RUN)}   `, RUN)).toBe(true);
-    expect(hasAuthorization(`${authorizationLineFor(RUN)} — approved verbally`, RUN)).toBe(false);
+  it('THE QUOTED-EXAMPLE BAR: a document that quotes the line does NOT authorize', () => {
+    // This is the refutation that killed the previous mechanism, and it was found by RUNNING the
+    // CLI, not by reading the code. The hmp1 brief's whole point is that it is NOT authorized —
+    // and it quotes the required line in a fenced block to say what the PO must add. A
+    // line-anchored matcher accepted it. Stripping code fences would not have saved it either:
+    // an indented block or a blockquote quotes the line just as well.
+    const doc = [
+      '# Run hmp1 — NOT YET AUTHORIZED',
+      '',
+      'The PO must add exactly this line:',
+      '',
+      '```',
+      authorizationLineFor(RUN),
+      '```',
+      '',
+      'Until then this run refuses.',
+    ].join('\n');
+    expect(isAuthorizationFile(doc, RUN)).toBe(false);
   });
 
-  it('THE VACUOUS PASS: prose containing [PO] and the run id does NOT authorize', () => {
-    // This is the case Gate 1 caught. A substring check on `[PO]` + the run id would pass on a
-    // brief that says the opposite — waving through the one act the fence exists to stop.
-    const denial = `# Run ${RUN}\n\nNote: this run has no [PO] authorization for ${RUN} yet.\n`;
-    expect(hasAuthorization(denial, RUN)).toBe(false);
+  it('refuses anything else in the file, however innocuous', () => {
+    expect(isAuthorizationFile(`${authorizationLineFor(RUN)}\n# note: approved by phone\n`, RUN)).toBe(false);
   });
 
   it('does not accept authorization for a different run id', () => {
-    expect(hasAuthorization(authorizationLineFor('hmp2'), RUN)).toBe(false);
+    expect(isAuthorizationFile(authorizationLineFor('hmp2'), RUN)).toBe(false);
+  });
+
+  it('names the file by convention, per run', () => {
+    expect(authorizationPathFor(RUN)).toBe('design/operator/hmp1.authorized');
   });
 });
 
@@ -313,8 +332,8 @@ describe('verifyCommission', () => {
     }
   });
 
-  it('refuses when the committed brief lacks the authorization line', () => {
-    // Commit a brief with no [PO] line, on master, and commission against it.
+  it('refuses when no .authorized file is committed', () => {
+    // The brief may say whatever it likes; without the discrete artifact there is no authorization.
     write('design/operator/unauth-brief.md', '# no authorization\n\nGoal: report HEAD.\n');
     write('design/operator/unauth-bar.md', BAR);
     write('design/operator/unauth.config.json', JSON.stringify(CONFIG, null, 2));
@@ -340,9 +359,10 @@ describe('verifyCommission', () => {
 
   it('refuses a recursive brief', () => {
     write('design/operator/rec-brief.md', `# rec\n\nGoal: launch a session on 3600.\n\n${authorizationLineFor('rec')}\n`);
+    write('design/operator/rec.authorized', `${authorizationLineFor('rec')}\n`);
     write('design/operator/rec-bar.md', BAR);
     write('design/operator/rec.config.json', JSON.stringify(CONFIG, null, 2));
-    git(['add', 'design/operator/rec-brief.md', 'design/operator/rec-bar.md', 'design/operator/rec.config.json']);
+    git(['add', 'design/operator/rec.authorized', 'design/operator/rec-brief.md', 'design/operator/rec-bar.md', 'design/operator/rec.config.json']);
     git(['commit', '-m', 'recursive fixture']);
     const s = git(['rev-parse', 'HEAD']);
     const r = verify(
@@ -358,12 +378,13 @@ describe('verifyCommission', () => {
 
   it('refuses a config with no cap.meter — the charter calls it mandatory', () => {
     write('design/operator/nometer-brief.md', `# nometer\n\nGoal: report HEAD.\n\n${authorizationLineFor('nometer')}\n`);
+    write('design/operator/nometer.authorized', `${authorizationLineFor('nometer')}\n`);
     write('design/operator/nometer-bar.md', BAR);
     write(
       'design/operator/nometer.config.json',
       JSON.stringify({ agents: [{ workdir: '/tmp/att-op-nometer' }] }, null, 2),
     );
-    git(['add', 'design/operator/nometer-brief.md', 'design/operator/nometer-bar.md', 'design/operator/nometer.config.json']);
+    git(['add', 'design/operator/nometer.authorized', 'design/operator/nometer-brief.md', 'design/operator/nometer-bar.md', 'design/operator/nometer.config.json']);
     git(['commit', '-m', 'no-meter fixture']);
     const s = git(['rev-parse', 'HEAD']);
     const r = verify(
@@ -379,6 +400,7 @@ describe('verifyCommission', () => {
 
   it('refuses when the committed config launches into a different sandbox than commissioned', () => {
     write('design/operator/drift-brief.md', `# drift\n\nGoal: report HEAD.\n\n${authorizationLineFor('drift')}\n`);
+    write('design/operator/drift.authorized', `${authorizationLineFor('drift')}\n`);
     write('design/operator/drift-bar.md', BAR);
     write(
       'design/operator/drift.config.json',
@@ -388,7 +410,7 @@ describe('verifyCommission', () => {
         2,
       ),
     );
-    git(['add', 'design/operator/drift-brief.md', 'design/operator/drift-bar.md', 'design/operator/drift.config.json']);
+    git(['add', 'design/operator/drift.authorized', 'design/operator/drift-brief.md', 'design/operator/drift-bar.md', 'design/operator/drift.config.json']);
     git(['commit', '-m', 'drift fixture']);
     const s = git(['rev-parse', 'HEAD']);
     const r = verify(

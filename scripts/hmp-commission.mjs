@@ -144,20 +144,31 @@ export function parseCommission(text) {
 // ---------------------------------------------------------------------------
 
 /**
- * Gate 1 refuted the first draft of this, and the refutation is worth keeping in view: a
- * substring search for `[PO]` plus the run id is satisfied by a brief that says
- * "this run has NO [PO] authorization for hmp1". That is the BL-097 merge-commit failure
- * again — a check passing VACUOUSLY on the one act it exists to stop.
+ * Authorization is a DISCRETE FILE, not a phrase inside the brief — and it took two refutations
+ * of the same shape to get here, both worth keeping in view.
  *
- * So: one anchored line, on its own, whitespace-normalised, nothing else on it.
+ * Draft 1 searched the brief for `[PO]` plus the run id. Gate 1 refuted it: a brief saying
+ * "this run has NO [PO] authorization for hmp1" satisfies a substring search. Fixed by anchoring
+ * the whole line.
+ *
+ * Draft 2 was refuted BY RUNNING IT. The anchored check accepted a brief whose entire point was
+ * that it was NOT authorized — because that brief QUOTES the required line in a fenced code
+ * block, to document what the PO must add. A line-anchored matcher cannot distinguish an example
+ * from the real thing, and stripping code fences does not save it: a four-space-indented block,
+ * or a blockquote, quotes the line just as well. The mechanism was wrong, not the regex.
+ *
+ * So authorization lives in `design/operator/<run>.authorized`, whose ENTIRE committed content
+ * must be exactly the line. Quoting it inside any document is then harmless by construction, and
+ * "the PO authorized run X" becomes a discrete, diffable, committed act rather than a sentence
+ * buried in prose — which is what §4 wanted in the first place.
  */
 export const authorizationLineFor = (runId) => `[PO] AUTHORIZED-RUN: ${runId}`;
 
-export function hasAuthorization(briefText, runId) {
-  const wanted = authorizationLineFor(runId);
-  return briefText
-    .split(/\r?\n/)
-    .some((line) => line.trim().replace(/\s+/g, ' ') === wanted);
+export const authorizationPathFor = (runId) => path.posix.join('design/operator', `${runId}.authorized`);
+
+/** Whole-content equality, whitespace-normalised. Anything ELSE in the file refuses. */
+export function isAuthorizationFile(text, runId) {
+  return text.trim().replace(/\s+/g, ' ') === authorizationLineFor(runId);
 }
 
 /**
@@ -307,8 +318,16 @@ export function verifyCommission({ text, repoRoot = REPO_ROOT, io, preflight, la
   if (!briefBuf) return refuse(REFUSAL.BRIEF_NOT_COMMITTED, `${briefRel} @ ${c['repo-sha']}`);
   const brief = briefBuf.toString('utf-8');
 
-  if (!hasAuthorization(brief, c.run)) {
-    return refuse(REFUSAL.NO_PO_AUTHORIZATION, `expected a line: ${authorizationLineFor(c.run)}`);
+  // Authorization: its own committed file, whose whole content is the line. See the note on
+  // `isAuthorizationFile` — checking the BRIEF for the line accepted a brief that said it was
+  // unauthorized, because the brief quoted the line as an example.
+  const authRel = authorizationPathFor(c.run);
+  const authBuf = io.readBlob(c['repo-sha'], authRel);
+  if (!authBuf) {
+    return refuse(REFUSAL.NO_PO_AUTHORIZATION, `no ${authRel} committed at ${c['repo-sha'].slice(0, 8)}`);
+  }
+  if (!isAuthorizationFile(authBuf.toString('utf-8'), c.run)) {
+    return refuse(REFUSAL.NO_PO_AUTHORIZATION, `${authRel} must contain exactly: ${authorizationLineFor(c.run)}`);
   }
 
   const launchPattern = findsLaunchInstruction(brief);
