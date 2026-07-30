@@ -3427,15 +3427,16 @@ tags: [infrastructure, safety, harness, operator-seat, autonomy, instrumental, p
 
 <!-- @item
 id: BL-086
-status: todo
+status: done
 date: 2026-07-27
 epic: null
 tags: [governance, autonomy, agentalk-mcp-client, agent-md, ladder, instrumental, needs-po-decision]
 autonomy: po-decision
 -->
-- [todo · filed 2026-07-27 under the PO's "defer everything not instrumental" directive — this one **IS**
+- [done · filed 2026-07-27 under the PO's "defer everything not instrumental" directive — this one **IS**
   instrumental · observation first surfaced at the 2026-07-27 gate, then filed when the directive made the
-  keep/park call explicit] — **A worker launched in `agentalk-mcp-client` inherits NO governance at all, so
+  keep/park call explicit · **CLOSED 2026-07-30, see the closing block**] — **A worker launched in
+  `agentalk-mcp-client` inherits NO governance at all, so
   autonomous work is structurally confined to this repo.** Verified: the client repo has **no**
   `AGENT.md` / `AGENTS.md` / `CLAUDE.md` / `GEMINI.md` at its root (only a `.claude/` dir and scripts). The whole
   autonomy thesis rests on **file inheritance** — [[BL-080]] proved a claude/opus worker picks up `AGENT.md`
@@ -3456,6 +3457,45 @@ autonomy: po-decision
   file-inheritance decision and reintroduces the prompt-bloat the ladder deliberately moved away from** (rung 5's
   prompt was one sentence). **(b) is the planner's recommendation; the PO decides.** Reopen/blocking note: until
   this is decided, treat any client-repo task as **human-implemented**, not a candidate for an autonomous run.
+
+  ---
+
+  **✅ CLOSED 2026-07-30 — PO took option (b); merged `0b770c2` (client) and pushed.** The client repo now
+  carries `AGENT.md` + `AGENTS.md`/`CLAUDE.md` symlinks: Honesty-over-Results, all seven Implementer Rules
+  verbatim, the show-stopper fence, worktree/merge/push discipline, the BL-100 lockfile carve-out, and the
+  launch-not-spawn convention. **The blocking note above is lifted:** a client-repo task is no longer
+  structurally excluded from autonomous work. Plan, Gate 1 verdict and the verification record:
+  `design/bl086-plan.md`.
+
+  **Two findings reshaped the delivery, and both are reusable:**
+  1. **The item's own wording was the defect.** (b) as filed said *inherit the rules **by pointer***. A pointer
+     resolves from the primary checkout but resolves to a **non-existent** `/tmp/AgentTalk/...` from a task
+     worktree — where the MANDATE puts all development — and is **intermittently correct** depending on where
+     the worktree sits, so testing would not catch it. This is **[[BL-101]]'s fail-open shape mirrored**, found
+     in a doc rather than in code. **The rules are therefore INLINE**; the pointer is context-only and the file
+     states that everything binds whether or not it resolves. PO confirmed the substitution.
+  2. **Inheriting the primer handshake would have broken the capability this exists to enable.** Copying
+     `AGENT.md`'s First Entry Point across would tell every launched worker to handshake and **STOP** —
+     inverting the PO's *"inherit the rules, skip the ritual"* choice and contradicting **[[BL-082]]**, already
+     merged in that very repo (`c7a5991`). The file names the omission **and its reason**, so it is not
+     re-added out of tidiness.
+
+  **Known limit, deliberately not closed here:** inheritance is **proven for claude only** ([[BL-080]],
+  headless `-p`). That codex reads `AGENTS.md` and gemini reads `GEMINI.md` is assumed from convention and
+  **not verified** — and every DoD row checks the file's *content*, never that a launched worker actually picks
+  it up. Named as a follow-up in `bl086-plan.md` §8: launch a trivial worker in the client and have it state
+  unprompted what it may not do. **Do not read this closure as proof that workers are governed — it proves the
+  file exists and is complete on its own.**
+
+  **Telemetry (task closure):**
+  - task:        BL-086
+  - wall-clock:  2026-07-30 07:57 → 08:30 (~33m)
+  - budget:      weekly 0%→1% (Δ ~1%), session 0%→8% (Δ ~8%) [per `scripts/usage.mjs`]
+  - gate:        client suite **93/93 (17 files)**, re-run independently at closure; D5 mutation check passed
+    (file governs alone with no sibling `AgentTalk/`); symlinks confirmed mode `120000`; tree carries only the
+    pre-existing `M package-lock.json` ([[BL-100]])
+  - diff:        3 files, +126/-0; commits `bada6a9` · `0b770c2` (merge, client) · `e21adab` (plan, AgentTalk)
+  - outcome:     **MERGED ✅ and pushed** — PO-authorised
 
 <!-- @item
 id: BL-084
