@@ -5553,4 +5553,89 @@ autonomy: human-only
   - diff:        2 files, +150/-1; commits `acf8682` · `e011f0d` (merge)
   - outcome:     **MERGED ✅** and pushed — PO-authorised
 
+<!-- @item
+id: BL-107
+status: todo
+date: 2026-07-30
+epic: null
+tags: [security, hmp, hermes, operator, infrastructure, po-decision, exposure]
+autonomy: po-decision
+-->
+- [todo · **PO DECISION — the PO's own infrastructure, outside both repos**] — **HMP on this host accepts
+  unauthenticated commands from any LAN peer, into a shell-capable agent.**
+
+  Found 2026-07-30 while resolving `design/hmp-session-submission.md` §1a. `~/.hermes/config.yaml:597-612` sets
+  `host: 0.0.0.0` (every interface, not the plugin's own documented "safe staging default" of localhost),
+  `allow_all_peers: true`, and no `HMP_SHARED_SECRET`. `adapter.py:223` returns `None` — authorized — **before any
+  check runs** when `allow_all_peers` is true. Inbound text goes straight to `handle_message()` (`adapter.py:208`)
+  and Hermes holds `toolsets: [hermes-cli]`, i.e. shell, with `gateway_timeout: 1800` and `max_turns: 90`.
+
+  **This is not hypothetical and not idle.** The gateway DB records **107 messages already executed**, including
+  `DEPLOY capability-reuse v2.2.0 now. Download ZIP from http://192.168.1…` — so the channel is already used to
+  install software on the development machine. §4 of the proposal predicted exactly this threat model
+  (*"trivially forgeable by any host on the LAN"*); it turns out to be the live configuration rather than a risk
+  to design against.
+
+  **Why it is filed rather than fixed, and why that is not timidity:** both obvious levers break a **live
+  three-peer cluster** that sends here — `peer70` (88 messages), `peer84` (12), `peer106` (7). Binding
+  `127.0.0.1` cuts all three off. Setting a shared secret 403s all three until each is updated, and `peer70`
+  (coordinator, `192.168.178.70:8643`) was **unreachable** at the time of writing, so it could not be updated.
+  The blast radius of the fix therefore lands on the PO's infrastructure, and the sequencing is the PO's call.
+
+  **Options:** (a) shared secret, rolled out to all four peers — needs `peer70` reachable; (b) bind `127.0.0.1`
+  and accept that this host stops being a cluster worker; (c) narrow `allow_all_peers` to an explicit peer list —
+  a speed bump, **not** a control, since `from` is self-asserted; (d) accept the posture and rely on
+  `design/hmp-commission-plan.md`'s repo-anchored check for launch-class traffic only. **(d) is what is being
+  built and it is deliberately narrow**: it hardens the launch path and does nothing for the other 107 messages'
+  worth of capability.
+
+<!-- @item
+id: BL-108
+status: todo
+date: 2026-07-30
+epic: null
+tags: [docs, runbook, worktree, macos, platform, bl100-followup]
+autonomy: human-only
+-->
+- [todo · surfaced planning the HMP commission on the Mac] — **The runbook's worktree-root line is stale on
+  macOS, and stale in the direction that hides a worktree from the sweep.**
+
+  `design/launch-and-monitor-runbook.md:22` reads *"Default root is `os.tmpdir()` since [[BL-100]] — `/tmp` on
+  this box, so `--root` is no longer needed on Linux"*. It was written **on the Linux box**, where that is true.
+  On the Mac `os.tmpdir()` honours `$TMPDIR` and resolves to `/var/folders/n1/…/T`, so `wt-setup create` puts the
+  worktree somewhere a `/tmp/att-op-*` eyeball — and the harness's `att-op-*` allowlist — will not look.
+  `scripts/wt-setup.mjs:25` already carries the correct note in code (*"this is not a no-op on macOS"*); only the
+  runbook disagrees with it.
+
+  **Fix:** make the line platform-explicit rather than naming "this box", since which box wrote a doc is not
+  visible to whoever reads it later. Being addressed inline by `design/hmp-commission-plan.md` §5; this item
+  exists so it is not lost if that plan is dropped.
+
+<!-- @item
+id: BL-109
+status: todo
+date: 2026-07-30
+epic: null
+tags: [harness, infra-invariant, operator, charter, disposition, bl087-followup]
+autonomy: human-only
+-->
+- [todo · surfaced at Gate 1 of `design/hmp-commission-plan.md`] — **"Only the PO may dispose of a `critical`
+  finding" has nowhere to record that a disposition happened.**
+
+  The OPERATOR charter says a `critical` **gates the next operator run** until the PO clears it, and that only the
+  PO may dispose of one. But `scripts/infra-invariant.mjs` computes severity **per run** and persists no
+  disposition; the sole escape valve is the `AGENTTALK_SWEEP_DECLARED` **env** var (`:57`). So "uncleared" is a
+  concept the charter uses and the harness cannot represent.
+
+  Caught while drafting a verifier check that read *"refuse if an uncleared `critical` is outstanding"* — which
+  turned out to be **unimplementable as written**. That plan took the fail-closed fallback: refuse on any
+  `critical` in a **fresh** pre-flight. The consequence, stated rather than hidden: **a `critical` the PO has
+  already dispositioned still blocks** until the underlying condition is gone.
+
+  **Fix (sketch, not decided):** a committed `design/operator/cleared-findings.json` keyed by finding
+  fingerprint + the disposing commit, so a disposition is itself an auditable artifact — the same reasoning that
+  makes authorization repo-anchored in `hmp-session-submission.md` §4. **Do not** make it an env var or an
+  operator-writable file: the charter reserves disposition to the PO, and the operator's write fence explicitly
+  bans it.
+
 *(add new items above this line)*
