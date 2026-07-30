@@ -1,6 +1,7 @@
 import fs from 'fs';
 import crypto from 'crypto';
 import path from 'path';
+import { execFileSync } from 'child_process';
 import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -24,7 +25,42 @@ function verifyHash(candidate, label) {
   }
 }
 
+/**
+ * BL-101: the primary checkout, resolved correctly even from inside a task worktree.
+ *
+ * `--git-common-dir` is the worktree-aware pointer to the shared `.git`, i.e. the PRIMARY
+ * checkout's — from a linked worktree it still names the primary. `--path-format=absolute`
+ * is load-bearing: without it git answers a bare relative `.git` when run in the primary,
+ * which would resolve against the wrong cwd and reintroduce a path bug of the same family
+ * this function exists to remove.
+ *
+ * Returns null rather than throwing when git is unavailable or this is not a repository
+ * (exported tarball, odd CI). The caller then falls back to the previous behaviour — the
+ * original code could not crash here, and neither may this.
+ */
+function primaryCheckoutRoot() {
+  try {
+    const gitCommonDir = execFileSync(
+      'git',
+      ['rev-parse', '--path-format=absolute', '--git-common-dir'],
+      { cwd: __dirname, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] },
+    ).trim();
+    return gitCommonDir ? path.dirname(gitCommonDir) : null;
+  } catch {
+    return null;
+  }
+}
+
 function defaultClientContractPath() {
+  // BL-101: this used to resolve the client as a sibling of THIS FILE. That is correct only
+  // in the primary checkout. Under the worktree MANDATE all development happens in a task
+  // worktree, where it resolved to a path that does not exist — and the caller's fail-open
+  // branch then turned "I could not look" into "everything is fine", silently, in exactly the
+  // place where anyone is actually working.
+  const primary = primaryCheckoutRoot();
+  if (primary) {
+    return path.resolve(primary, '../agentalk-mcp-client/wire-contract.json');
+  }
   return path.resolve(__dirname, '../../../../agentalk-mcp-client/wire-contract.json');
 }
 
@@ -38,7 +74,10 @@ function verifyClientAlignment(sourceContract) {
       console.error('FATAL: client wire contract not found at ' + clientContractPath);
       process.exit(1);
     }
-    console.warn('Client wire contract not found; skipped sibling contract-alignment check.');
+    // BL-101: name the path. Before the resolution fix this warning fired on every worktree
+    // run and meant nothing; now it should be rare, so when it does fire it is worth knowing
+    // where we looked.
+    console.warn(`Client wire contract not found at ${clientContractPath}; skipped sibling contract-alignment check.`);
     return;
   }
 
