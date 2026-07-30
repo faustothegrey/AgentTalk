@@ -5427,4 +5427,43 @@ autonomy: human-only
   scoped it out deliberately. Different mechanism, same theme: the audit trail is thinner than the process
   assumes.
 
+<!-- @item
+id: BL-106
+status: todo
+date: 2026-07-30
+epic: null
+tags: [contracts, worktree, fail-open, cross-repo, agentalk-mcp-client, bl101-mirror, observed-live]
+autonomy: human-only
+-->
+- [todo · **the mirror of [[BL-101]] in the client repo** · observed live 2026-07-30 during BL-102's closure
+  sweep · **PO-approved as a separate item 2026-07-30**, to keep BL-101 single-repo] — **The client's own
+  contract-alignment check fail-opens in a worktree too, by the same mechanism and in the opposite direction.**
+
+  `agentalk-mcp-client/scripts/verify-contract.js:33` resolves the AgentTalk contract as
+  `path.resolve(__dirname, '../../AgentTalk/packages/contracts/wire-contract.json')` — a sibling of the script's
+  own directory — then takes the same `existsSync` → `console.warn` → `return` fail-open (`:39-44`) that
+  [[BL-101]] documents. It fails closed only when an explicit env override is set.
+
+  **Observed, not inferred.** From the client worktree `/tmp/att-bl102c` during BL-102's closure sweep:
+  ```
+  Contract hash verified successfully (v8).
+  AgentTalk source wire contract not found; skipped source-alignment check.
+  ```
+
+  **Why it is now worth fixing rather than parking.** Two things changed the same day: [[BL-086]] closed, so
+  client-repo tasks are no longer structurally excluded from autonomous work; and [[BL-105]] records that
+  worktree development in the client is a real (if unhelped) workflow. So the client's suite will increasingly
+  be run from worktrees — exactly where its alignment check silently stops checking.
+
+  **Fix direction:** the same as BL-101's option (a), mirrored — resolve the sibling from the **primary
+  checkout** via `git rev-parse --path-format=absolute --git-common-dir` (verified in BL-101 to return the
+  primary's `.git` from inside a worktree; the `--path-format=absolute` flag is load-bearing), with a
+  non-throwing fallback to today's `__dirname`-relative path when git is unavailable. **Do BL-101 first** and
+  mirror its shape, so the two repos do not drift into two different resolution strategies.
+
+  **Bar:** in a fresh client worktree, `npm test` performs the alignment check against the real AgentTalk
+  contract and **fails** when the two diverge; the primary checkout is unchanged. **Mutation check:** point it
+  at a deliberately mismatched contract and confirm it goes red — a fail-open is exactly the class where a green
+  proves nothing.
+
 *(add new items above this line)*
