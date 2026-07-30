@@ -1,0 +1,35 @@
+{
+  "_comment": "Run hmp1 — read from the git object store at the commissioned repo-sha, never from disk. Editing this file on disk does NOT change what a commission launches; only a committed, master-reachable version counts. Paths are macOS (the PO's box as of 2026-07-30); regenerate them if development moves.",
+  "instance": {
+    "recording": "/tmp/att-op-hmp1-recording.json",
+    "env": {
+      "PORT": "3600",
+      "AGENTTALK_WORKER_TURN_TIMEOUT_MS": "600000"
+    },
+    "startCommand": {
+      "command": "npm",
+      "args": ["run", "backend"],
+      "cwd": "/Users/fausto/Software/AgentTalk"
+    }
+  },
+  "agents": [
+    {
+      "id": "hmp1-worker",
+      "provider": "claude",
+      "model": "opus",
+      "executionMode": "persistent",
+      "workdir": "/tmp/att-op-hmp1",
+      "readyTimeoutMs": 120000
+    }
+  ],
+  "goal": "Report the repository's current HEAD sha and the test suite's pass and skip counts. Change no files.",
+  "cap": {
+    "wallClockMs": 900000,
+    "pollIntervalMs": 10000,
+    "meter": {
+      "url": "http://127.0.0.1:9899",
+      "provider": "claude",
+      "maxPercentDelta": 10
+    }
+  }
+}
