@@ -1,14 +1,18 @@
 {
-  "_comment": "Run hmp1 — read from the git object store at the commissioned repo-sha, never from disk. Editing this file on disk does NOT change what a commission launches; only a committed, master-reachable version counts. Paths are macOS (the PO's box as of 2026-07-30); regenerate them if development moves.",
+  "_comment": "Run hmp1 \u2014 read from the git object store at the commissioned repo-sha, never from disk. instance.orchestratorUrl is REQUIRED even with a startCommand: launcher.mjs:82-83 takes it from THIS config and only parses mcpUrl from the backend's stdout. Omitting it fails with 'createLauncherCore requires orchestratorUrl' after the backend has already started. Paths are macOS (the PO's box as of 2026-07-30).",
   "instance": {
     "recording": "/tmp/att-op-hmp1-recording.json",
+    "orchestratorUrl": "http://localhost:3600",
     "env": {
       "PORT": "3600",
       "AGENTTALK_WORKER_TURN_TIMEOUT_MS": "600000"
     },
     "startCommand": {
       "command": "npm",
-      "args": ["run", "backend"],
+      "args": [
+        "run",
+        "backend"
+      ],
       "cwd": "/Users/fausto/Software/AgentTalk"
     }
   },

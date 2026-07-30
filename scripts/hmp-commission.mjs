@@ -495,8 +495,9 @@ export function launch(result, { repoRoot = REPO_ROOT, spawn = defaultSpawn, rec
 
   record(repoRoot, { run: c.run, repoSha: c['repo-sha'], sandbox: c.sandbox, configPath });
 
-  const pid = spawn(launcher, configPath, clientRoot);
-  return { pid, recording: config?.instance?.recording ?? '(none configured)', configPath };
+  const logPath = path.join(os.tmpdir(), `hmp-${c.run}-launch.log`);
+  const pid = spawn(launcher, configPath, clientRoot, logPath);
+  return { pid, logPath, recording: config?.instance?.recording ?? '(none configured)', configPath };
 }
 
 /**
@@ -526,11 +527,18 @@ export function primaryRoot(cwd = __dirname) {
   }
 }
 
-function defaultSpawn(launcher, configPath, clientRoot) {
+function defaultSpawn(launcher, configPath, clientRoot, logPath) {
+  // Output goes to a LOG FILE, not to /dev/null.
+  //
+  // The first live launch discarded stdout and stderr, so when it died the only evidence was an
+  // absent artifact — the failure had to be reproduced by hand to be seen at all. A detached
+  // process whose output is thrown away is undiagnosable by construction, and "detached" is not a
+  // reason to be blind: it is the reason to keep the log, because nobody is watching the terminal.
+  const fd = fs.openSync(logPath, 'a');
   const child = spawnProcess(process.execPath, [launcher, configPath], {
     cwd: clientRoot,
     detached: true,
-    stdio: ['ignore', 'ignore', 'ignore'],
+    stdio: ['ignore', fd, fd],
   });
   child.unref();
   return child.pid;
@@ -591,6 +599,7 @@ export function main(argv) {
   const launched = launch(result, { repoRoot: primaryRoot() ?? REPO_ROOT });
   console.log(`launched: pid ${launched.pid}`);
   console.log(`artifact: ${launched.recording}`);
+  console.log(`launch-log: ${launched.logPath}`);
   console.log('NOTE: this is an ACKNOWLEDGEMENT, not a result. The run is detached and takes minutes.');
   console.log('`completed` over the wire means the message was answered. Grade the artifact.');
   return 0;
