@@ -1303,3 +1303,29 @@ here.**
   Base64 chunking. The right answer was that `AGENT.md` **already** requires a baton be a pointer and not a
   transcript, so the ceiling *enforces* the rule instead of obstructing it. **When an external limit and an
   internal principle point the same way, stop engineering around the limit.**
+
+### 2026-07-30 (second session) — the fence held against its own author, three times
+
+- **As planner: I went looking for what to build and the thing was already running.** HMP was live on this host
+  — Hermes resident, shell-capable, 107 imperative messages already executed including a deploy. The proposal I
+  was working from had §1a *"unresolved"* and §9 *"deferred: implement a peer here"*, and both were answered by
+  `lsof` and a `curl` in the first two minutes. **A design doc's open questions are claims about the world at
+  writing time.** Probe the running system before planning against a document's uncertainty; my whole plan would
+  have been "build a receiver" and the receiver existed.
+- **As implementer: three defects in my own work, and all three were invisible to a green suite.** A no-op
+  pre-flight (the injected `preflight` seam meant the *stub* was tested and the real function never ran); a
+  symlink path bug that cannot reproduce on Linux; and an authorization check that **accepted the very brief
+  saying the run was unauthorized**, because the brief quoted the required line as an example. The reusable
+  form of the first is the sharpest: **an injected seam moves the untested surface, it does not remove it** —
+  so after wiring a seam, ask what now runs *only* in production. The third generalises too: **a check that
+  reads a human-authored document for a machine-meaningful token is reading a channel that must also carry
+  discussion of that token.** Give the token its own channel.
+- **As plan reviewer: Gate 1 caught the vacuous-pass shape, I "fixed" it, and it came back anyway.** The Gate 1
+  catch (prose satisfying a substring search) was real and the anchored-line fix was wrong — same defect, one
+  layer down. **A refutation tells you the check is broken; it does not tell you the mechanism is salvageable.**
+  Next time a check gets refuted for a vacuous pass, my first question is whether the *channel* is wrong, not
+  whether the *pattern* is.
+- **As implementer: I did not authorize my own run, and that was the single most useful thing I did.** Leaving
+  `hmp1.authorized` uncreated is what surfaced defect three — had I written the `[PO]` line to make the happy
+  path green, the check would have passed for the wrong reason and shipped. **The temptation to complete the
+  artifact you are testing is the temptation to launder the test.**
