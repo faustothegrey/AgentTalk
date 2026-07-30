@@ -1329,3 +1329,25 @@ here.**
   `hmp1.authorized` uncreated is what surfaced defect three — had I written the `[PO]` line to make the happy
   path green, the check would have passed for the wrong reason and shipped. **The temptation to complete the
   artifact you are testing is the temptation to launder the test.**
+
+### 2026-07-30 (third entry) — the live channel found what the suite could not
+
+- **As implementer: I blamed the courier, and my own instrumentation agreed with me — both wrong.** The first
+  relayed message came back `completed` with an empty reply and no artifact, and the Monitor I had written
+  printed *"the courier did not run the command."* Hermes had run it faithfully; our entry guard silently
+  no-opped. **A monitor's failure message is a hypothesis I wrote earlier, not evidence** — and I gave it the
+  authority of a finding because it agreed with my prior. The control that broke the tie was running the command
+  by hand, which took five seconds. **Do that before attributing a failure to the other party**, especially when
+  the other party is easy to blame.
+- **As implementer: the defect was reachable by exactly one caller — the intended one.** `path.resolve(argv[1])`
+  vs `import.meta.url` differ only when invoked by an absolute symlinked path, which is precisely what the
+  runbook mandates and the only form a remote courier can use. Every test and every hand-run I did used a
+  relative path from inside the directory, so the suite was green and the real invocation was broken. **Ask which
+  invocation the actual caller will use, and test that one** — "it works when I run it" is a statement about my
+  habits, not the code.
+- **As reviewer: exit 0 with no output is worse than a crash, and I shipped it twice.** The same guard was in
+  both new scripts, and in `infra-invariant.mjs`, whose own comment defends the exit-2 path — *"a CRASHING
+  harness must never be misread as a clean run"* — while this hole sat above it. **A file that argues for one
+  failure mode is not thereby protected from its opposite.** I reported that one rather than fixing it, which
+  was right, but I should have grepped for the idiom the moment I found it in my own file instead of after the
+  second occurrence.
