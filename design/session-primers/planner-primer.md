@@ -27,11 +27,26 @@ items carry a closing block + telemetry inside the backlog item — read those f
 
 ## Where we are
 
-**Don't trust a sha written here — run `git log --oneline -5` and `git status -sb` and take what you find.**
+**No sha is written here, deliberately.** Run `git log --oneline -5` and `git status -sb` in **both** repos and
+take what you find. *(The first draft of this primer did name shas, and two later commits — including the
+correction below — invalidated them within the hour. Third occurrence of that trap in three days; the fix is to
+not write the value, not to remember harder.)*
 
-At close: **both repos pushed and in sync** (AgentTalk `9dd2cf0`, client `e011f0d`) · `npm test` **523/523
-across 77 files** · client **104/104 across 19** · backlog **106 items, 0 warnings** · one worktree (master
-only) · no `/tmp/att-*` · ports 3500/3600 free · weekly budget **5%**.
+At close: **both repos pushed and in sync with origin** · `npm test` **523/523 across 77 files** (AgentTalk) ·
+**104/104 across 19** (client) · backlog **106 items, 0 warnings** · ports 3500/3600 free · no `/tmp/att-*` ·
+weekly budget **5%**.
+
+**Two pieces of expected "dirt" — neither is yours, do not clean them reflexively:**
+- The **client tree is permanently dirty** with `M package-lock.json`. That is [[BL-100]] half 1, a committed
+  lockfile that disagrees with its own `package.json`; any `npm install` re-dirties it. **It is the PO's to
+  land** — leave it out of every commit and do not resync it.
+- The client repo carries a **stray worktree** at `/home/fausto/Software/wt-count-task` (branch
+  `task-count-1-10000`), left by some earlier run. Flagged to the PO 2026-07-30 and **deliberately not
+  removed** — cleanup is the PO's call. Expect your pollution sweep to see it; it is not from your work.
+
+**Evidence tags, do not delete:** `bl102-t1-before-d6041b9` / `bl102-t1-after-539f7c2` (the two live launches
+proving [[BL-102]]) and `hl3-worker-52df7f0` (the H-L3 worker commit). They exist so a `git gc` cannot take
+unreachable worker commits.
 
 **Closed this session — five items, and the through-line is worth knowing.** Three of them were defects that
 were *invisible because the check that would have caught them was fail-open*:
@@ -55,6 +70,10 @@ reusable form: **"the worker does X" is not a proposition until you name the exe
 not a neutral test outcome.**
 
 ## Your queue
+
+**Expected first assignment: item 2 — [[BL-084]] T2.** The PO said so at session close. Treat that as
+orientation, **not permission**: you still report your understanding and STOP for the PO's go, and the ordering
+below is by standing importance, not by what you will be handed first.
 
 1. **The agent-selectable set is STILL EMPTY — this is the standing open question and it is now a full session
    old.** Every item this session was implemented by the agent itself; the ladder has been idle throughout.
