@@ -102,3 +102,29 @@ read-only.
   message relayed to a closed session waits in the inbox — visible rather than silent, which is why it is a file.
 - **`from` is self-asserted.** It is a label, not an identity ([[BL-107]]). Safe here only because of the fence
   above; it would not be safe for anything else.
+
+---
+
+## Live result — 2026-07-30, three messages over the real channel
+
+**Every leg exercised end to end**, sender → HMP → Hermes → fenced handler → inbox → `Monitor` → session context.
+
+| # | Message | Result |
+|---|---|---|
+| 1 | `verb=status` | **`completed` with an EMPTY reply and no inbox file.** |
+| 2 | `verb=status`, after the fix | **PASS.** Hermes relayed the handler's stdout verbatim (`accepted: status … → design/operator/inbox/…`), the file landed, and the `Monitor` delivered it into the session's context — 7.8s, 2 api_calls, 191 chars. |
+| 3 | `verb=merge` — a deliberate escalation attempt over an unauthenticated channel | **REFUSED**: `refused: verb-not-read-only ('merge' is out of scope for the read-only relay; it needs the [PO-RELAY] decision and BL-107)`. **No inbox file written.** |
+
+**Message 1 is the most instructive of the three, and it went exactly as the design predicted it would.** It
+returned `completed`. The obvious reading — *"the courier ignored the command"* — was **wrong**, and so was the
+Monitor's own timeout message, which said so in as many words. Hermes had executed the command faithfully; the
+handler's entry guard silently no-opped on the symlinked absolute path and exited 0 ([[BL-111]]).
+
+So the channel's first live message demonstrated the law this project and HMP's own guidance both state —
+***Notificato ≠ Allineato***, `completed` has never meant the work was done — and it demonstrated it **against the
+people who wrote the warning**. The only thing that caught it was checking the artifact: an empty inbox directory,
+a 30-character reply, and a control run of the command by hand.
+
+**Message 3 is the safety argument, exercised rather than asserted.** The escalation was refused by the handler,
+not by the courier's good judgement and not by anyone's authentication — which is the whole point of running an
+unauthenticated channel with a read-only allowlist.
