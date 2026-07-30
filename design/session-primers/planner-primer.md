@@ -62,9 +62,15 @@ not a neutral test outcome.**
    forces a human look. **[[BL-103]]** or **[[BL-104]]** are the most boundable candidates. Marking is a **PO
    act** — propose, don't mark.
 2. **[[BL-084]] T2 → T3 (= [[BL-028]])** — the engine arc and the only real behaviour change left, on
-   `registry.ts` + `team-coordinator.ts`. T1 is merged. **Blocked on the PO ratifying the plan's §4
-   classification table and the `unknown-mcp-tool` row.** Plan: `design/bl084-plan.md`. Needs a real Gate 1;
-   this is not "while we're here" work.
+   `registry.ts` + `team-coordinator.ts`. T1 is merged. Plan: `design/bl084-plan.md`. Needs a real Gate 1; this
+   is not "while we're here" work.
+   **§4's classification table is RATIFIED and encoded — do not go looking for a ratification to chase.** The
+   PO ratified it 2026-07-27 (including *reversing* the `unknown-mcp-tool` row to non-fault) and T1 landed it.
+   An earlier version of this primer said otherwise; that was a stale claim copied from the backlog without
+   checking §4, and it is exactly the failure the "distrust the docs, check ground truth" rule exists for.
+   **What actually gates T2** is a re-gate of the T2 step plus the PO's go-ahead on the behaviour change
+   itself — after T2, an in-process agent erroring with a *fault-class* reason will interrupt its team, which
+   it has never done.
 3. **HMP session submission** — `design/hmp-session-submission.md`, a **proposal awaiting five PO decisions**
    (§8). Two are gating: *where the operator process runs* (a Pi can carry a message but cannot run a session),
    and *per-run `[PO]` authorization vs a standing grant*. Its load-bearing idea: **authorization is anchored in

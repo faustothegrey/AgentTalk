@@ -3554,10 +3554,18 @@ autonomy: human-only
   revived, `team-coordinator.ts` a **0-line diff**, `in-process-driver.ts` + `conversation-coordinator.ts`
   untouched. Full verdict, including the reviewer's own bar being wrong for the third rung running:
   `design/rung6-plan.md` §9.
-  **Still open here:** **T2** (the actual [[BL-078]] fix — now unblocked) · **T3** ([[BL-028]]) · plan §4's
-  **`unknown-mcp-tool`** row is still the PO's unratified call (the worker followed the plan's proposal and
-  flagged it) · the reason is deliberately **not** surfaced on the `status` event yet (plan §9 q3). Item stays
-  `todo` until T2 and T3 land.
+  **Still open here:** **T2** (the actual [[BL-078]] fix — now unblocked) · **T3** ([[BL-028]]) · the reason is
+  deliberately **not** surfaced on the `status` event yet (plan §9 q3). Item stays `todo` until T2 and T3 land.
+
+  **⬛ CORRECTION 2026-07-30 — this entry previously said plan §4's `unknown-mcp-tool` row was "still the PO's
+  unratified call". THAT WAS STALE.** The PO ratified it **2026-07-27**, *reversing* the plan's own proposal
+  (fault → **non-fault**), and it landed with T1. Verified in code, not inferred: `unknown-mcp-tool` sits in the
+  `AgentNonFaultErrorReason` union (`packages/contracts/src/types.ts:66`) with the reasoning in-line, and
+  `bl084-error-reason.test.ts:88-91` pins `isFaultClass('unknown-mcp-tool') === false`.
+  **So the whole of §4 is ratified and encoded — there is nothing left to ratify on this item.** What gates T2
+  is a **re-gate of the T2 step itself** (plan §5 recommends landing T1 alone, then re-gating) plus the PO's
+  go-ahead on the behaviour change, not a table decision. The stale line survived because nobody re-read §4
+  after the ratification was written into it.
 
 <!-- @item
 id: BL-078
