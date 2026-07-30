@@ -307,6 +307,22 @@ describe('launch — the acknowledgement, not the result', () => {
     fs.rmSync(seen.configPath, { force: true });
   });
 
+  it('hands the spawner a LOG PATH — a detached launch that discards output is undiagnosable', () => {
+    // The first live launch used stdio ['ignore','ignore','ignore'] and died leaving nothing but an
+    // absent artifact; the cause had to be reproduced by hand to be seen. "Detached" is the reason
+    // to KEEP the log, not to drop it — nobody is watching the terminal.
+    let seenLog;
+    const r = launch(verify(commission()), {
+      repoRoot: repo,
+      clientRoot: defaultClientRoot(),
+      record: () => {},
+      spawn: (_l, _c, _cr, logPath) => { seenLog = logPath; return 7; },
+    });
+    expect(seenLog).toBeTruthy();
+    expect(seenLog).toMatch(/hmp1-launch\.log$/);
+    expect(r.logPath).toBe(seenLog);
+  });
+
   it('the ledger lives in the PRIMARY checkout — replay protection must survive worktree cleanup', () => {
     // A ledger under /tmp/att-<id> vanishes with `wt-setup remove`, and `already-launched` then
     // reads as "never launched". Protection that evaporates on cleanup is not protection.

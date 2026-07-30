@@ -81,8 +81,14 @@ Everything else is optional with defaults:
   worker's raw-response sidecar is *derived* from it as `<recording>.responses.ndjson`. No recording ⇒ no
   sidecar ⇒ you cannot tell afterwards which branch the run took, or read the worker's own report.
   *(You do not set the sidecar path yourself — `launcher.mjs` derives and injects it as `responseLog`.)*
-- **Omitting `startCommand` means "an instance is already running"** — then you must supply both
-  `orchestratorUrl` **and** `mcpUrl`, because nothing will parse the MCP url from stdout for you.
+- **`instance.orchestratorUrl` is ALWAYS required — `startCommand` does not derive it.** The launcher reads
+  it straight from your config (`launcher.mjs:82-83`) and only ever parses **`mcpUrl`** from the backend's
+  stdout. Omit it and the run dies **after** the backend has started, with
+  `FATAL Error: createLauncherCore requires orchestratorUrl` — a late failure that looks like a launch problem
+  and is a config problem. *(This bullet previously implied the pair was needed only when `startCommand` was
+  absent; that reading cost the first live HMP-commissioned run.)*
+- **Omitting `startCommand` means "an instance is already running"** — then you must *also* supply `mcpUrl`,
+  because nothing will parse it from stdout for you.
 - **`AGENTTALK_WORKER_TURN_TIMEOUT_MS` is ORCHESTRATOR-side.** It is read where the worker's exec turn is
   issued (`in-process-driver.ts`), so it must be in the env of the process `startCommand` boots — i.e. the
   orchestrator's checkout must contain that code. Default **600 000 ms (10 min)**; a malformed value falls back
