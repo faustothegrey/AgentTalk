@@ -5582,6 +5582,14 @@ autonomy: po-decision
   (coordinator, `192.168.178.70:8643`) was **unreachable** at the time of writing, so it could not be updated.
   The blast radius of the fix therefore lands on the PO's infrastructure, and the sequencing is the PO's call.
 
+  **⚠️ ESCALATED the same day by [[BL-110]] — read this before deciding the timing.** The paragraph above says
+  the sequencing is the PO's call, which was right while HMP carried only *commissions* (there, `hmp-commission.mjs`
+  §4's repo anchor holds the authority, so an unauthenticated transport cannot forge a launch). It is **not** right
+  if HMP is to carry **instructions**. `[PO]` is this project's apex authority and Origin Tag Protocol Rule 1 makes
+  it binding; an unauthenticated channel that can mint it hands scope, merges, role assignment and
+  `autonomy: eligible` to anyone who can reach the port. **For BL-110 this item is a hard precondition, not a
+  preference.**
+
   **Options:** (a) shared secret, rolled out to all four peers — needs `peer70` reachable; (b) bind `127.0.0.1`
   and accept that this host stops being a cluster worker; (c) narrow `allow_all_peers` to an explicit peer list —
   a speed bump, **not** a control, since `from` is self-asserted; (d) accept the posture and rely on
@@ -5637,5 +5645,49 @@ autonomy: human-only
   makes authorization repo-anchored in `hmp-session-submission.md` §4. **Do not** make it an env var or an
   operator-writable file: the charter reserves disposition to the PO, and the operator's write fence explicitly
   bans it.
+
+<!-- @item
+id: BL-110
+status: todo
+date: 2026-07-30
+epic: null
+tags: [hmp, hermes, operator, governance, origin-tags, relay, po-decision, remote-steering]
+autonomy: po-decision
+blocked_by: [BL-107]
+-->
+- [todo · **PO DECISION — an authority model, not a feature**] — **A bidirectional PO↔session channel over
+  Hermes: feasible now, but it needs a tag that is not `[PO]`.**
+
+  Asked by the PO 2026-07-30: *can I give instructions through Hermes?* Full design:
+  `design/hmp-bidirectional-relay.md`.
+
+  **Feasibility: yes, and materially better than when it last failed.** [[LB-49]] retired exactly this idea on
+  2026-07-02, and all three of its measured defects now have structural replacements rather than workarounds. The
+  fatal one was defect 3 — `agentctl` fired `send-keys Escape` before every message, which in Claude Code
+  **interrupts the in-flight turn**, so a relay racing a generation aborted the reply at its source. The `Monitor`
+  primitive delivers events into a session's context *without injecting anything into the TUI*, so there is nothing
+  left to interrupt. The return channel is the live JSONL transcript that LB-49 itself named as the "lossless
+  alternative, verified to exist, not yet adopted" — re-verified live today. And the inbox path
+  (`design/operator/inbox/`) is **already inside Hermes's write allowlist**, so the relay uses the existing fence
+  rather than widening it.
+
+  **The decision is not about transport.** `[PO]` is apex and binding by Origin Tag Protocol Rule 1. A channel that
+  can mint it hands over scope, merges, role reassignment, `autonomy: eligible` and `critical` disposition — every
+  act the project's other fences exist to route through the PO. So the proposal introduces **`[PO-RELAY]`**:
+  binding within a fenced verb set (status · stop · priority · an answer to a question the session already asked ·
+  a pointer to a committed artifact), and **never** apex. `[PO]` keeps meaning "the human typed it here", which
+  preserves the protocol instead of diluting it.
+
+  **The strongest primitive is also the safest:** a relayed *answer to a question the session already asked* is
+  capability-bounded by construction — a forger can only choose among options the session itself offered, so the
+  blast radius was fixed before the message existed. Much of remote steering is that shape.
+
+  **Not a kill switch, and it must not be sold as one:** a wedged session reads nothing, the idle timeout is dead
+  code ([[BL-028]]) and `cap.wallClockMs` is still the only anti-hang rail ([[BL-096]]). "Stop" over the relay
+  works precisely when the session is healthy enough not to need it.
+
+  **Cheapest honest first step:** read-only verbs (`status`, `report`) only. A forged "report status" costs
+  nothing, so it needs no authentication, and it still exercises every leg end to end — the O-1 instinct applied
+  to a channel instead of a worker.
 
 *(add new items above this line)*
