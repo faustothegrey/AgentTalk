@@ -228,6 +228,35 @@ export function makeGitIo(repoRoot = REPO_ROOT) {
 
 export const sha256 = (buf) => crypto.createHash('sha256').update(buf).digest('hex');
 
+/**
+ * Resolve symlinks without requiring the path to exist.
+ *
+ * Found by running the CLI, not by the unit bars: on macOS `/tmp` is a symlink to `/private/tmp`,
+ * so `REPO_ROOT` (derived from `import.meta.url`, which Node gives as a real path) came back
+ * `/private/tmp/att-hmp1` while the commissioned brief said `/tmp/att-hmp1/…`. `path.relative`
+ * then produced `../../tmp/…` and a brief plainly inside the repo was refused
+ * `brief-outside-repo`. **On Linux it would not reproduce at all** — there is no `/tmp` symlink —
+ * which is the same platform-shaped trap as [[BL-098]] and [[BL-100]].
+ *
+ * The brief usually does NOT exist on disk (it is read from the object store, which is the whole
+ * point), so `fs.realpathSync` cannot be applied to it directly. Walk up to the nearest existing
+ * ancestor, resolve that, and re-attach the remainder.
+ */
+export function realpathish(p) {
+  let cur = path.resolve(p);
+  const tail = [];
+  for (;;) {
+    try {
+      return path.join(fs.realpathSync(cur), ...tail);
+    } catch {
+      const parent = path.dirname(cur);
+      if (parent === cur) return path.resolve(p); // hit the root, nothing resolvable
+      tail.unshift(path.basename(cur));
+      cur = parent;
+    }
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Verification
 // ---------------------------------------------------------------------------
@@ -256,9 +285,11 @@ export function verifyCommission({ text, repoRoot = REPO_ROOT, io, preflight, la
   }
 
   // A brief outside the governed repo cannot be authorized by it — there is no commit to
-  // anchor to. Resolve first, then relativize; a `..` traversal must not escape.
-  const briefAbs = path.resolve(c.brief);
-  const briefRel = path.relative(repoRoot, briefAbs);
+  // anchor to. Resolve SYMLINKS on both sides before relativizing (see `realpathish`: comparing
+  // a symlinked path against a real one refused briefs that were plainly inside the repo), then
+  // relativize; a `..` traversal must not escape.
+  const briefAbs = realpathish(c.brief);
+  const briefRel = path.relative(realpathish(repoRoot), briefAbs);
   if (briefRel.startsWith('..') || path.isAbsolute(briefRel)) {
     return refuse(REFUSAL.BRIEF_OUTSIDE_REPO, briefAbs);
   }
@@ -350,18 +381,49 @@ export function readLaunchLedger(repoRoot = REPO_ROOT) {
   }
 }
 
-function realPreflight() {
+/**
+ * The pre-flight sweep, and a correction worth keeping visible.
+ *
+ * The first version of this ran `infra-invariant.mjs snapshot` and counted the word "critical"
+ * in its output. That was a NO-OP: `snapshot` records state and emits no findings at all, so
+ * the count was always 0 and check 7 could never fire. The unit bars did not catch it because
+ * they inject `preflight` — the seam that makes them clean is exactly what left the real
+ * implementation unexercised. Caught by running the command and reading the output (grep
+ * count: 0), which is the only reason it is not still there.
+ *
+ * `infra-invariant` is diff-based (`check --before <baseline>`) and there is no baseline at
+ * commission time. The current-state question — "is the world dirty right now?" — is what
+ * `check-orchestrator-ports.mjs` answers: exit 0 clean, exit 1 on a LEAKED or UNKNOWN
+ * listener. That is the right instrument for this check.
+ *
+ * The runner is injected so the exit-code mapping itself is testable — one level below the
+ * `preflight` seam, since that seam is what hid the original defect.
+ */
+export function realPreflight({ runner = defaultSweepRunner } = {}) {
   try {
-    const out = execFileSync(
-      process.execPath,
-      [path.join(REPO_ROOT, 'scripts/infra-invariant.mjs'), 'snapshot', '--out', '/dev/null'],
-      { cwd: REPO_ROOT, encoding: 'utf-8', stdio: ['ignore', 'pipe', 'pipe'] },
-    );
-    const criticals = (out.match(/critical/gi) ?? []).length;
-    return { criticals, detail: criticals ? 'infra-invariant snapshot reported critical' : null };
+    const { code, output } = runner();
+    if (code === 0) return { criticals: 0, detail: null };
+    const flagged = (output.match(/\[(LEAKED|UNKNOWN)\]/g) ?? []).length || 1;
+    return { criticals: flagged, detail: `port/process sweep exit ${code}: ${flagged} listener(s) flagged` };
   } catch (e) {
-    // We could not look. Per the harness's own rule, that must never outrank a clean read.
+    // "We could not look" must never outrank a clean read — the harness's own rule (`:181`).
     return { criticals: 1, detail: `pre-flight could not run: ${e.message}` };
+  }
+}
+
+function defaultSweepRunner() {
+  try {
+    const output = execFileSync(process.execPath, [path.join(REPO_ROOT, 'scripts/check-orchestrator-ports.mjs')], {
+      cwd: REPO_ROOT,
+      encoding: 'utf-8',
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    return { code: 0, output };
+  } catch (e) {
+    // A non-zero exit is a FINDING, not a crash — execFileSync throws on both, so they must be
+    // told apart here or a dirty world reads as an unreadable one.
+    if (typeof e.status === 'number') return { code: e.status, output: `${e.stdout ?? ''}${e.stderr ?? ''}` };
+    throw e;
   }
 }
 
@@ -385,7 +447,7 @@ export function main(argv) {
   const result = verifyCommission({
     text,
     io: makeGitIo(),
-    preflight: realPreflight,
+    preflight: () => realPreflight(),
     launchedRuns: () => readLaunchLedger(),
   });
 

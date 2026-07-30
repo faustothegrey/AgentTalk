@@ -15,6 +15,7 @@ import {
   makeGitIo,
   sha256,
   verifyCommission,
+  realPreflight,
 } from '../hmp-commission.mjs';
 
 /**
@@ -184,6 +185,44 @@ describe('findsLaunchInstruction — the recursion fence', () => {
   });
 });
 
+describe('realPreflight — the mapping that the injected seam hid', () => {
+  /**
+   * These exist because the first implementation was a NO-OP and every bar above still passed:
+   * `verifyCommission` takes `preflight` as a parameter, so the stub was tested and the real
+   * function never ran. The lesson generalises past this file — an injected seam moves the
+   * untested surface, it does not remove it. So the runner is injected one level lower and the
+   * exit-code mapping is pinned directly.
+   */
+  it('a clean sweep is zero criticals', () => {
+    expect(realPreflight({ runner: () => ({ code: 0, output: 'Sweep clean' }) })).toEqual({
+      criticals: 0,
+      detail: null,
+    });
+  });
+
+  it('a non-zero sweep is a critical, and counts the flagged listeners', () => {
+    const r = realPreflight({
+      runner: () => ({ code: 1, output: '[LEAKED] PID 1 ...\n[UNKNOWN] PID 2 ...\n' }),
+    });
+    expect(r.criticals).toBe(2);
+    expect(r.detail).toMatch(/sweep exit 1/);
+  });
+
+  it('a non-zero sweep with no parseable tags still counts as one critical, never zero', () => {
+    expect(realPreflight({ runner: () => ({ code: 1, output: 'something went sideways' }) }).criticals).toBe(1);
+  });
+
+  it('FAILS CLOSED when the sweep cannot run at all', () => {
+    const r = realPreflight({
+      runner: () => {
+        throw new Error('ENOENT');
+      },
+    });
+    expect(r.criticals).toBe(1);
+    expect(r.detail).toMatch(/could not run/);
+  });
+});
+
 describe('verifyCommission', () => {
   it('accepts a fully lawful commission', () => {
     const r = verify(commission());
@@ -207,6 +246,31 @@ describe('verifyCommission', () => {
   it('refuses a brief outside the governed repo', () => {
     const r = verify(commission({ brief: '/etc/passwd' }));
     expect(r.reason).toBe(REFUSAL.BRIEF_OUTSIDE_REPO);
+  });
+
+  it('THE SYMLINK BAR: a brief reached through a symlinked repo path is still inside the repo', () => {
+    // The defect this pins was found by running the CLI, never by these bars: on macOS `/tmp` is
+    // a symlink to `/private/tmp`, so the repo root resolved real while the commissioned brief
+    // stayed symlinked, and `path.relative` produced `../../tmp/…` — refusing a brief plainly
+    // inside the repo. It does not reproduce on Linux, so only an explicit symlink can catch it.
+    const link = path.join(os.tmpdir(), `hmp-link-${process.pid}`);
+    fs.rmSync(link, { force: true });
+    fs.symlinkSync(repo, link);
+    try {
+      const viaLink = verify(commission({ brief: path.join(link, 'design/operator/hmp1-brief.md') }));
+      expect(viaLink.reason).toBe(null);
+      expect(viaLink.ok).toBe(true);
+
+      // And the mirror: a real brief path against a symlinked repoRoot.
+      const mirrored = verifyCommission({
+        text: commission(),
+        ...clean(),
+        repoRoot: link,
+      });
+      expect(mirrored.ok).toBe(true);
+    } finally {
+      fs.rmSync(link, { force: true });
+    }
   });
 
   it('refuses a traversal that climbs out of the repo', () => {
