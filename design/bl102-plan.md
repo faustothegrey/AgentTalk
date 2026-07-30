@@ -1,6 +1,6 @@
 # BL-102 — an autonomous worker's commits must not be authored as the human
 
-**Status:** PLANNED (v2, reworked after Gate 1 REFUTED v1's design), awaiting re-gate.
+**Status:** **PLANNED — Gate 1 APPROVED WITH REQUIRED AMENDMENTS (v2 re-gate, §6). Ready to implement.**
 **Planner:** Claude, 2026-07-30. **Gate 1 reviewer:** Claude (resource-scarcity fallback; reviewer discipline
 kept separately — the verdict in §6 is why the seat was worth exercising).
 **Split from BL-100's `DEFAULT_ROOT` half by PO decision, 2026-07-30** — that work is now
@@ -84,16 +84,27 @@ the launched worker process.
 - **No human contamination** — `wt-setup.mjs` stays untouched, so a human's worktrees keep the human's identity.
 - **Author *and* committer** are set, so neither field claims a human.
 
-**Choke point:** `getSpawnEnv(providerName)` in `lib/provider-runtime.mjs:36-43` already exists to shape the
-worker env (it strips `ANTHROPIC_API_KEY`) and is used at `:62` and `:318`. That is the natural single site.
-**But coverage must be verified, not assumed:** `executor-runtime.mjs` has spawn sites passing `env: process.env`
-(`:63`, `:730`) and `{...baseCmd.env, ...process.env}` (`:583-584`) that may bypass it. **Enumerating every
-spawn site and proving each carries the identity is part of the task, and is what T-4 below pins.**
+**⛔ There is NO single choke point — verified at re-gate, see §6/H1.** `getSpawnEnv` (`provider-runtime.mjs:36`)
+looked like one, but the **claude persistent path does not go through it**: `getPersistentProviderCommand`
+returns `env: process.env` directly (`executor-runtime.mjs:63`), and that is the path that produced `52df7f0`.
+Injecting only at `getSpawnEnv` would once again go green while missing the defect's own path.
 
-**Identity string:** minimum bar *unmistakably not a human*, e.g.
-`AgentTalk worker (claude) <agent+worker-1@agenttalk.local>`. The agent id is available via
-`AGENTTALK_AGENT_ID` (`executor-runtime.mjs:302`). **Do not expand scope to plumb the provider name through** if
-it is not already in hand at the chosen site — say so and use the agent id alone.
+**Required shape instead:**
+1. **One shared helper** — `workerGitIdentityEnv()` — that returns the four `GIT_*` variables. Single source of
+   the identity string; no site invents its own.
+2. **Applied at every worker-launching site**, which at minimum includes `getSpawnEnv`
+   (`provider-runtime.mjs:36`, covering `:62` and `:318`) **and** `getPersistentProviderCommand`
+   (`executor-runtime.mjs:44-64`). Sites passing `env: process.env` (`:63`, `:730`) or
+   `{...baseCmd.env, ...process.env}` (`:583-584`) must each be inspected, not assumed covered.
+3. **Every site returns a COPY.** `getSpawnEnv` currently returns `process.env` **by reference** for non-claude
+   providers (`:37-38`) and a copy only for claude (`:40`). Mutating the returned object would behave
+   differently per provider and could pollute the llm-agent's own environment. **Normalising this to always
+   copy is itself a small change to shared logic — declare it in the delivery; do not smuggle it in.**
+
+**Identity string — sub-decision RESOLVED at re-gate, no scope expansion needed.** Both parts are already in
+hand: `providerName` is a parameter of both sites, and the agent id is in the environment
+(`llm-agent.mjs:67` sets `AGENTTALK_AGENT_ID`). Use e.g.
+`AgentTalk worker (claude) <agent+worker-1@agenttalk.local>`.
 
 **Not in scope:** the `taskId: null` / `teamId` join defect in BL-102's "related" paragraph — same theme,
 different mechanism, and it would make a bounded change unbounded. It stays on the item.
@@ -102,8 +113,8 @@ different mechanism, and it would make a bounded change unbounded. It stays on t
 
 | # | Row | Verified by |
 |---|---|---|
-| T-1 | A commit made by a launched **claude/persistent** worker is authored under the agent identity | live run; `git log -1 --format='%an <%ae>'` on the worker's commit |
-| T-2 | The same holds on a **task-worktree** provider path (gemini or a one-shot) | second live run, or a unit test asserting the env reaches that spawn site |
+| T-1 | A commit made by a launched **claude/persistent** worker is authored under the agent identity | **live run required** — this is the only path that can be exercised live (see H4), and the only one that reproduces the filed defect. Needs a PO-authorised operator rung or a manual launch; **name which before starting.** `git log -1 --format='%an <%ae>'` on the worker's commit |
+| T-2 | The same holds on a **task-worktree** provider path | **unit test, definitively — NOT a live run.** gemini and codex are PO-declared UNAVAILABLE and goose is not installed, so no second provider can be launched. Assert the env reaches `provider-runtime.mjs:62`'s spawn |
 | T-3 | **The PO's identity is unchanged** — no `.git/config` anywhere is written | `git config user.email` in the workdir and the primary, before/after, byte-identical |
 | T-4 | **Every** spawn site that launches a worker carries the identity | enumerate the sites; a test that fails if one is added without it |
 | T-5 | Client suite green (was **93/93, 17 files** — re-derive, do not trust this number) | `npm test` |
@@ -118,7 +129,27 @@ watched to fail is not evidence.
 
 ## 6. Gate 1 — plan-reviewer verdict
 
-**v1 REFUTED — design reworked. v2 (this document) awaits re-gate.** Claude, plan-reviewer seat, 2026-07-30.
+### v2 re-gate: **APPROVED WITH REQUIRED AMENDMENTS** — Claude, plan-reviewer seat, 2026-07-30
+
+**The design principle survives and is now settled: attach identity to the process, not to a directory.**
+What failed re-gate is the *site*. Five findings; all folded in above.
+
+| # | Finding | Disposition |
+|---|---|---|
+| H1 | **`getSpawnEnv` is NOT on the claude/persistent path — the path that produced the defect.** v2 called it *"the natural single site"*. Verified: `getPersistentProviderCommand` returns `env: process.env` directly (`executor-runtime.mjs:63`) and never consults it. Injecting only there would go green while `52df7f0`-class commits stayed authored as the human. | **Amended** — §4 now requires a shared helper applied at **both** sites, with the rest enumerated. |
+| H2 | **`getSpawnEnv` returns `process.env` by REFERENCE for non-claude providers** (`:37-38`), and a copy only for claude (`:40`). A mutation-based injection would behave differently per provider and could pollute the llm-agent's own environment. | **Amended** — §4.3 requires a copy at every site, **and requires the normalisation to be declared** as the shared-logic change it is. |
+| H3 | Open sub-decision on the identity string | **RESOLVED, no scope expansion:** `providerName` is a parameter at both sites and `AGENTTALK_AGENT_ID` is set at `llm-agent.mjs:67`, so both parts are already in hand. |
+| H4 | **T-2 offered "a second live run **or** a unit test" — the live option is impossible.** gemini and codex are PO-declared UNAVAILABLE and goose is not installed, so only claude can be launched. A DoD row offering a route that cannot be taken invites a BLOCKED ⛔ that is really a planning error. | **Amended** — T-2 is a unit test, definitively. |
+| H5 | **T-1 requires a live launch but the plan never said under what rung or who runs it.** | **Amended** — T-1 now says name it before starting. |
+
+**⚠️ The durable lesson, and it is now a pattern rather than an incident.** Two consecutive gates on this item
+failed the same way: **a design reasoned about "the worker" without naming which execution path it meant, and
+both times the miss was claude/persistent** — the one provider on a structurally different path
+(`cwd` session-level, env bypassing the shared helper), and currently the *only available* one. **Any change in
+this codebase that says "the worker does X" must name the path.** Worth recording in
+`implementer-pitfalls.md` when this lands.
+
+### v1: **REFUTED** — design reworked (retained for the record)
 
 | # | Finding | Disposition |
 |---|---|---|
