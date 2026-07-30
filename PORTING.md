@@ -35,7 +35,7 @@ prose elsewhere in this file.**
 |---|---|---|
 | agent stack is *"Claude + Hermes only"*; codex and agy *"⬜ no"* | **`codex` and `agy` are both installed and on `PATH`.** This does **not** make them available — availability is a PO role call, and they remain PO-declared UNAVAILABLE — but the *inventory* was wrong. **`goose` is genuinely absent.** | §3 |
 | the usage meter *"will not exist on the new machine"*, write `telemetry: unavailable` | **It exists and works.** A `python3` service is listening on `:9899` and `node scripts/usage.mjs` returns real figures. Do **not** pre-emptively write `telemetry: unavailable`; poll it. | §11 |
-| `--root /tmp` is needed for `wt-setup create` | **`remove` needs it too.** Following §7's example literally kills the tool with an unhandled stack trace. It is a *doc* gap, not a code defect — `remove` accepts `--root` fine. | §7 |
+| `--root /tmp` is needed for `wt-setup create` | **`remove` needed it too**, and following §7's example literally killed the tool with an unhandled stack trace. **⬛ SUPERSEDED 2026-07-30 (BL-100): the flag is no longer needed on either verb** — `DEFAULT_ROOT` is now `os.tmpdir()`. Kept as the record of what the first pass got wrong. | §7 |
 | green baseline *"513 passed"* | **512/513 on Linux.** The single red is a genuine Linux portability defect, [[BL-099]], not flake. | §13 |
 
 **And one thing it could not have known, because nobody had run it here:** §8's harness gap is **confirmed
@@ -195,21 +195,28 @@ retirement was unnecessary, though harmless. **If you do copy the store, you do 
 This is a PO MANDATE and it is also the safety sandbox for autonomous agents. Docs and governance may still be
 edited on master; **code may not.**
 
-**`scripts/wt-setup.mjs:22` hardcodes `DEFAULT_ROOT = '/private/tmp'` — a macOS path that does not exist on
-Linux.** There is an override, and **every invocation needs it — `remove` as much as `create`:**
+**✅ `--root` is NO LONGER REQUIRED on Linux (BL-100, 2026-07-30).** `wt-setup.mjs` now derives its default
+from **`os.tmpdir()`** instead of the hardcoded macOS `/private/tmp`, so both verbs work flag-free here:
 
 ```bash
-node scripts/wt-setup.mjs create <id> --base master --root /tmp   # → /tmp/att-<id>, branch task-<id>
-node scripts/wt-setup.mjs remove <id> --root /tmp [--delete-branch]
+node scripts/wt-setup.mjs create <id> --base master   # → /tmp/att-<id>, branch task-<id>
+node scripts/wt-setup.mjs remove <id> [--delete-branch]
 ```
 
-> **⚠️ The `remove` line is the one that bites, and the first Linux pass got it wrong.** It documented
-> `remove <id>` with no `--root`. Run that here and the tool resolves `/private/tmp/att-<id>`, git says
-> `fatal: '…' is not a working tree`, and `execFileSync` throws an **unhandled stack trace** —
-> which reads like a code defect and is not one. `remove` accepts `--root` perfectly well
-> (`wt-setup.mjs:139`); only the doc was short. **Verified: with `--root /tmp` it removes cleanly.**
+`--root <dir>` still overrides, on both verbs, and is unchanged.
+
+> **Two things to know about the new default.**
+> 1. **`os.tmpdir()` honours `$TMPDIR`**, so the worktree root is *environment-derived*, not fixed. On this box
+>    `$TMPDIR` is unset and it resolves to **`/tmp`** — which is why the `/tmp/att-*` hygiene sweep in the
+>    runbooks is still correct. **If you ever set `$TMPDIR`, those literal sweeps stop finding worktrees.**
+> 2. **On macOS the default now resolves to `/var/folders/…`, not `/private/tmp`** — a deliberate,
+>    PO-disclosed behaviour change, acceptable because the default is a scratch location with no persistent
+>    state and an explicit override.
 >
-> The rough edge that *is* real: the failure surfaces as a raw Node stack rather than a one-line error.
+> **Historical note (what this replaced).** Before the fix, `remove <id>` with no `--root` resolved
+> `/private/tmp/att-<id>`, git said `fatal: '…' is not a working tree`, and `execFileSync` threw an
+> **unhandled stack trace** that read like a code defect and was not one. The rough edge that remains real:
+> a genuine failure still surfaces as a raw Node stack rather than a one-line error.
 
 Making `DEFAULT_ROOT` platform-derived (`os.tmpdir()`) would delete the flag from the workflow entirely instead
 of documenting it in two places. That is a **code** change — worktree and gate like any other. Filed as part of
@@ -440,7 +447,8 @@ will rot. The **pass/fail split** above is a different claim, and it holds until
 - [x] `npm install && npm run build && npm run backlog:check` green in AgentTalk
 - [x] `npx vitest run` — **512/513**, the one red being BL-099 (§13)
 - [x] `npm run build` green in the client — 93/93, contract **v8**, hash matches
-- [x] `--root /tmp` on `wt-setup` **create *and* remove** (§7)
+- [x] ~~`--root /tmp` on `wt-setup` **create *and* remove**~~ — **no longer needed (BL-100, 2026-07-30)**: the
+  default is `os.tmpdir()`. The flag still overrides. (§7)
 - [x] **End-to-end MCP session proven** — a real claude worker attached, worked, and reported (§15)
 - [ ] `mkdir -p ~/.hermes/heartbeat ~/.hermes/logs` — ⚠️ **`logs/` exists, `heartbeat/` does NOT.** Hermes's
       status/metrics endpoints degrade to `idle`/zeroes until this exists (§9)
