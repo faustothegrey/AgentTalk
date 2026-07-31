@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "[ -n \"$AGENTTALK_SKIP_PRIMER\" ] || echo '{\"systemMessage\": \"TURN-1 GATE armed \\u2014 role-keyed primer handshake required on first response.\", \"hookSpecificOutput\": {\"hookEventName\": \"SessionStart\", \"additionalContext\": \"TURN-1 GATE: On your FIRST response this session, before anything else, VISIBLY perform the FIRST ENTRY POINT primer handshake from AGENT.md (CLAUDE.md and AGENTS.md are symlinks to it) and report the result inline to the user \\u2014 do NOT treat this as silent background context. PRIMERS ARE KEYED BY ROLE, NOT BY AGENT: there is no claude-primer.md. Under design/session-primers/ read the key: header of every role-primer you are eligible for per AGENT.md \\u2192 DEFAULT ROLE ASSIGNMENTS \\u2014 planner-primer.md, plan-reviewer-primer.md, implementation-reviewer-primer.md, task-end-reviewer-primer.md, implementer-primer.md, tester-primer.md (reviewer-primer.md is a retired tombstone). Compare each key against your private key store at ~/.claude/projects/<project-slug>/session-primer-key.json, whose ONLY field is consumed. Branches: key NOT in consumed -> that primer is FRESH for you: gather context, verify it against the repo, report your understanding, STOP and wait for the go, and append the key to consumed. Key IN consumed -> benign re-read, proceed normally. A header of key: none, a missing key, or no primer file -> nothing fresh for that role, proceed normally and do NOT stop. Also, best-effort and never blocking: poll node scripts/usage.mjs and skim design/lessons/claude-lessons.md. End the report with an explicit role declaration, e.g. Current role: planner. Show your work.\"}}'",
+            "statusMessage": "Loading role-keyed primer-handshake gate"
+          }
+        ]
+      }
+    ]
+  }
+}

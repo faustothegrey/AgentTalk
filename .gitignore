@@ -1,4 +1,12 @@
-.claude/
+# .claude/ is local config EXCEPT settings.json, which carries the TURN-1 primer gate.
+# That gate is mandatory-every-session governance (AGENT.md → FIRST ENTRY POINT), so it must be
+# versioned: unversioned, it reached no clone and no launched worker, and it had drifted three ways
+# from AGENT.md with nothing to catch it (2026-07-31 — wrong primer filename, a retired `active`
+# schema, and a `none` branch that said STOP where AGENT.md says proceed).
+# NOTE the `/*` — git cannot re-include a file whose parent DIRECTORY is excluded, so `.claude/`
+# plus `!.claude/settings.json` would silently not work.
+.claude/*
+!.claude/settings.json
 transcripts/
 planning_runs/
 node_modules/
