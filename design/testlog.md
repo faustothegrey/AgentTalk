@@ -605,3 +605,47 @@ for project decisions or reviewer ledgers for merge verification.
 - replay notes: arbiter planners want a FREE-FORM profile (no protocol recipe); `--no-profile` + a short debate
   nudge worked. Read the recording / planning-run for ground truth, not just team status. Judge + Synthesizer are
   hardcoded to openrouter `gpt-4o-mini` in `arbiter-coordinator.ts` (`callApi`).
+
+### TL-014 · 2026-07-31 · PO→session relay over the REAL Telegram channel — ✅ PASS on the control run, and the failure run was worth more
+
+- setup: PO (human) drives Telegram; agent instruments only (Tester shape — the agent never touches the UI).
+  Real Hermes gateway (pid 30751, HMP `*:18643`), real Telegram DM `8508115936`, courier model
+  `deepseek/deepseek-v4-flash`. Subject: `scripts/relay-status.mjs emit` ([[BL-110]] step 2), invoked **by
+  absolute path** — the form the runbook mandates and the one [[BL-111]]/[[BL-113]] were filed for.
+- **pre-flight that mattered:** ran the command by hand first, by absolute path, before asking anyone to relay
+  it. Last session's lesson (a failure blamed on the courier that was our own silent no-op) is why. exit 0.
+
+| | run 1 | run 2 (control) |
+|---|---|---|
+| instruction sent | 342 chars | **189 chars** |
+| **arrived at Hermes** | **154 — 55% lost** | **189 — whole** |
+| "reply verbatim" clause delivered? | **no** | **yes** |
+| courier behaviour | rewrote into markdown bullets | **relayed verbatim** |
+| `n/7` numbering | **destroyed** | **preserved** |
+| `verify` verdict | `ALTERED: no-payload` | **`intact`** |
+| round trip | 15.9s, 2 api_calls | 11.8s, 2 api_calls |
+
+- result: **✅ the transport works end to end and the payload survives** — Telegram → Hermes → command → stdout →
+  phone, verified by digest.
+- findings:
+  - **A courier reformats only when NOT told.** One variable changed between the runs. So the `n/7` numbering
+    tell is real and the pointer-payload design stands. Recorded in the recipe as an empirical rule — *keep the
+    message short, lead with VERBATIM* — not as style advice.
+  - **Run 1 is the more valuable half: the design FAILED CLOSED.** The reformatted payload produced
+    `ALTERED: no-payload`, never a false `intact`. A merge approval riding that run would have been refused. This
+    is the property the whole thing exists for, demonstrated on a real courier rather than argued in a comment.
+  - **Without the digest, run 1 would have been believed.** It arrived as seven tidy markdown bullets with every
+    value present and a digest line. It looks *more* readable than the real payload. Only recomputation
+    distinguished them — the "grade the artifact" rule applied to a wire format.
+  - **[[BL-112]] did not trigger in either run**, including the one that mangled everything else, and the
+    multi-byte `…` survived both. Whatever the excision rule is, it is **not** a general fidelity problem with
+    this payload shape. That narrows BL-112; it does not close it.
+  - **Run 1's truncation cause is UNKNOWN and left that way.** 342 → 154, cut exactly at the end of the command
+    line; 189 → 189 next time. Paste, Telegram, or Hermes's inbound batcher cannot be distinguished from here,
+    and guessing is precisely the move that cost a debug cycle last session. The operational rule works around
+    it; the mechanism stays open.
+- replay notes: **ground truth is `~/.hermes/state.db`, not the phone** —
+  `sqlite3 ~/.hermes/state.db "SELECT role, length(content), content FROM messages ORDER BY rowid DESC LIMIT 4"`
+  returns the exact bytes of both the tool output and the reply. Its `length()` counts **characters, not bytes**,
+  so a payload carrying one `…` reads 2 short of its byte count — reconcile that rather than waving it away.
+  The gateway log gives inbound/outbound sizes and timings but **not** message text.
