@@ -83,18 +83,52 @@ the live JSONL transcript LB-49 named as the lossless alternative — now read f
 Same envelope as *Sending one* above; the body of `payload.text`:
 
 ```
-PO-RELAY read-only status request. Please RUN EXACTLY THIS ONE COMMAND, nothing else:
+Reply with this command stdout VERBATIM. No markdown, no bullets, no summary, no commentary. Copy
+the raw lines exactly.
 
 node <repo>/scripts/relay-status.mjs emit
-
-Then reply with the command's stdout, verbatim, and nothing more. Do not summarise it, do not
-reformat it, do not add commentary. Do not run any other command and do not modify any file.
 ```
 
-**"Do not summarise" is load-bearing, and it guards a different hazard than the clause above.** The inbound
-disclaimer exists so a courier does not *act* on a relayed note; this one exists so a courier does not *rewrite*
-a payload whose entire value is that no LLM wrote it. A summarised payload fails its own digest — the correct
-outcome, but it wastes a round trip, so ask plainly.
+**⚠️ KEEP IT SHORT AND PUT "VERBATIM" FIRST. This is an empirical rule, not style advice** — it is the whole
+difference between the two live runs below. The wording above is **189 chars**; the first attempt was **342**
+and only **154 arrived**, losing exactly the paragraph that said "reply verbatim".
+
+**"No markdown, no bullets" is load-bearing, and it guards a different hazard than the inbound disclaimer.**
+That one exists so a courier does not *act* on a relayed note; this one exists so a courier does not *rewrite*
+a payload whose entire value is that no LLM wrote it. **A courier that is not told will reformat** — proven
+below — and reformatting destroys the `n/7` numbering, which is the only tell a phone reader can use.
+
+### Live result — 2026-07-31, two runs over the real channel
+
+The second run is a **control** for the first: same command, same courier, one variable changed.
+
+| | run 1 | run 2 (control) |
+|---|---|---|
+| instruction sent | 342 chars | **189 chars** |
+| **arrived at Hermes** | **154 — 55% lost** | **189 — whole** |
+| "verbatim" clause delivered? | **no** | **yes** |
+| courier behaviour | rewrote into markdown bullets | **relayed verbatim** |
+| `n/7` numbering | **destroyed** | **preserved** |
+| `verify` verdict | `ALTERED: no-payload` | **`intact`** |
+| round trip | 15.9s, 2 api_calls | 11.8s, 2 api_calls |
+
+**What run 2 settles:** an LLM courier does **not** reformat regardless — it reformats when *not told*. The
+payload design therefore stands, and the numbering tell is real. Fidelity was confirmed three independent ways:
+the digest verified, Hermes's own `state.db` recorded a 279-char reply matching the pasted text exactly, and the
+multi-byte `…` survived.
+
+**What run 1 settles, and it is the more useful half:** the design **failed closed**. The reformatted payload
+produced `ALTERED: no-payload`, never a false `intact`. A merge approval riding that run would have been
+refused, correctly.
+
+**[[BL-112]] did not trigger in either run** — including run 1, which mangled everything else. Whatever the
+excision rule is, it is not a general fidelity problem with this payload shape. That narrows BL-112; it does not
+close it.
+
+**Ground truth comes from `~/.hermes/state.db`, not from the phone.** `sqlite3 ~/.hermes/state.db "SELECT role,
+length(content), content FROM messages ORDER BY rowid DESC LIMIT 4"` returns the exact bytes of both the tool
+output and the reply. Note `length()` counts **characters**, not bytes — a payload with one `…` reads 2 short of
+its byte count, which is a difference worth reconciling rather than waving away.
 
 ### What comes back
 
