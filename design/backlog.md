@@ -5485,9 +5485,12 @@ tags: [wt-setup, dx, error-handling, bl100-followup, worktree, agent-delivered, 
   provably safe — but the instruction was to report it. Partly the brief's fault for naming it beside a fix whose
   mechanism naturally sweeps it up.
 
-  **⚠️ Closing this empties the agent-selectable queue again.** BL-104 was the only `autonomy: eligible` item, so
-  `bl093-backlog-selectable.test.ts` goes red **by design** and the pin was updated only after the red was shown
+  **⚠️ Closing this emptied the agent-selectable queue** — BL-104 was the only `autonomy: eligible` item, so
+  `bl093-backlog-selectable.test.ts` went red **by design** and the pin was updated only after the red was shown
   to the PO — that sequence is the ritual, not a formality.
+  **↳ Refilled the same session (2026-07-31):** the PO marked **[[BL-115]]** eligible, and the pin went red a
+  *second* time — proving the blocker chain, since BL-115's `blocked_by: [BL-104]` resolved the moment this item
+  flipped to `done`, with nothing editing the dependency.
 
   **Telemetry (task closure):**
   - task:        BL-104 (run `hmp2`)
@@ -5495,7 +5498,7 @@ tags: [wt-setup, dx, error-handling, bl100-followup, worktree, agent-delivered, 
   - budget:      claude weekly 25%→26% (Δ ~1%), session 7%→18% (Δ ~11%, mostly the grader's own suite runs)
   - gate:        tsc 0, suite 665/665 (82 files), invariant check 0 critical / 3 info, pollution clean
   - diff:        2 files, +155/-10; commits 0ccff42, merge 602db8f
-  - outcome:     MERGED ✅ — awaiting PO push
+  - outcome:     MERGED ✅ — **PUSHED** `20e3f0a` (PO-authorized at session close, 2026-07-31)
 
 <!-- @item
 id: BL-105
@@ -6016,6 +6019,9 @@ autonomy: human-only
   Worktree `/private/tmp/att-cl113` removed and branch `task-bl113` deleted; ports 3500/3600 free.
 
   **⚠️ NOT PUSHED — `agentalk-mcp-client` is `ahead 2` of origin.** Pushing is the PO's, without exception.
+  **↳ CORRECTION 2026-07-31: this has since been PUSHED.** `17520da` is on `origin/master` (`git branch -r
+  --contains` confirms), and the client is `0/0`. Left visible rather than deleted — a stale "not pushed" banner
+  is exactly the kind of claim that gets repeated into a later primer, and this one was.
   The preceding session was cut off between the merge (08:59) and this closure, which is why the item sat
   `todo` against merged work; the gap is the reason a closure sweep is a separate seat.
 
@@ -6026,7 +6032,7 @@ autonomy: human-only
   - budget:      claude unavailable (meter ok:false — LB-11); codex weekly 51% (not this actor)
   - gate:        lint 0, contract v8 both directions, suite 110/110 client + 598/598 AgentTalk, pollution clean
   - diff:        3 files, +172/-1; commits 7b3982e, merge 17520da (agentalk-mcp-client)
-  - outcome:     MERGED — awaiting PO push (client ahead 2)
+  - outcome:     MERGED — **PUSHED** (`17520da` on origin; verified 2026-07-31)
   ```
 
 <!-- @item

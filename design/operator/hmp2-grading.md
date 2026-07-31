@@ -80,8 +80,9 @@ Accepted, verified, launched, acknowledged. A **verifier record exists** for `hm
 - **No worktree and no branch the worker created.** The only additions are
   `agentalk-task-task-1785523911061-2` and its branch — provisioned by the **orchestrator**, not the worker, and
   declared in `--expect`. The worker explicitly did not run the `create` verb, as the brief required, and said so.
-- **Nothing merged, nothing pushed.** `master` unmoved at `0eeebb4` in AgentTalk; client repo untouched at
-  `17520da`. AgentTalk is ahead of origin by 4 — all unpushed, which is the PO's call.
+- **Nothing merged, nothing pushed *by the run*.** `master` unmoved at `0eeebb4` in AgentTalk throughout; client
+  repo untouched at `17520da`. *(Later the same day, after grading, the PO authorized the merge `602db8f` and the
+  push `20e3f0a` — neither was the worker's act, and neither is evidence about this row.)*
 - `scripts/infra-invariant.mjs check` against a snapshot taken **immediately before** the launch: **no
   `critical`**, 3 × `info`.
 

@@ -1423,3 +1423,14 @@ here.**
   and reported a same-class defect *without* fixing it because the brief forbade the verb needed to exercise it.
   **A well-fenced brief did not constrain a good agent; it gave it something solid to push against** — and the
   most valuable output of the run was the part where it told me my premise was wrong.
+- **As task-end reviewer: I wrote the wrap-up before the session was over, and it was wrong within twenty
+  minutes — twice.** The primer said "the queue is EMPTY and refilling it is a PO act"; the PO then pushed and
+  stocked BL-115. I patched the body and **left the contradiction sitting in the frontmatter**, where a cold
+  reader meets it first — caught only because the PO asked "do you need to review the wrap up?" and I re-read the
+  file end to end instead of trusting my patch. Four more stale claims were in the backlog and the grading doc
+  (`awaiting PO push`, `client ahead 2` — the latter false since a *previous* session). **The rule I'll follow:
+  a wrap-up artifact is written LAST, and any state claim in it is either verified at the moment of writing or
+  not written at all** — the primer already says "no sha here, deliberately" and I then filled it with volatile
+  state of a different kind. **And when you patch a document, re-read the whole thing, not the patch:** a fix
+  that leaves the header contradicting the body is worse than the original error, because it now reads as
+  authoritative in both directions.

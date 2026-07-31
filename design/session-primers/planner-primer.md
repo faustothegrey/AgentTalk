@@ -3,8 +3,8 @@ role: planner
 key: 20260731-2118-e4a7c9
 written: 2026-07-31 (late) by Claude — session close after the ladder actually ran. BL-104 was
   commissioned over HMP, delivered by a launched worker, graded PASS, merged and closed in one
-  session. The queue is EMPTY again, and refilling it is a PO act — which is why this hands to
-  the planner rather than to an implementer.
+  session; the PO then pushed and marked BL-115 eligible. So the queue is STOCKED and a rung is
+  waiting — this hands to the planner because BL-115's brief is the hard part, not its selection.
 ---
 
 This is your session primer.
