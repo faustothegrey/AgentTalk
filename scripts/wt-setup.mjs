@@ -14,7 +14,7 @@
 //
 // The worktree lives at <root>/att-<id> (default root: the platform temp dir) on branch task-<id>.
 
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { readdirSync, mkdirSync, symlinkSync, readlinkSync, existsSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -28,11 +28,47 @@ const SCOPE = '@agenttalk';
 // an explicit --root override. os.tmpdir() honours $TMPDIR, so the root is environment-derived.
 const DEFAULT_ROOT = os.tmpdir();
 
+/**
+ * An expected, user-facing failure — reported as one `[wt-setup]` line, never as a
+ * Node stack (BL-104). Anything NOT of this class is a genuine code defect and keeps
+ * its stack, which is the whole point of having a class at all.
+ */
+export class WtSetupError extends Error {
+  constructor(message) {
+    super(message);
+    this.name = 'WtSetupError';
+  }
+}
+
+/** Non-empty stderr lines, each prefixed — git's own words, no wrapper stack. */
+export function formatFailure(err) {
+  const text = String(err?.message ?? err).trim();
+  const lines = text.split('\n').map((l) => l.trim()).filter(Boolean);
+  return (lines.length ? lines : ['failed']).map((l) => `[wt-setup] ${l}`);
+}
+
 function git(args, opts = {}) {
-  // execFileSync returns null when stdout is inherited (side-effect calls) and a
+  // BL-104: stderr is PIPED rather than inherited so a failing git can be reported as
+  // its own one-line message instead of an unhandled execFileSync stack. On SUCCESS the
+  // captured stderr is forwarded verbatim, which is what execFileSync's default did, so
+  // `worktree add`'s progress lines still reach the terminal.
+  const stdio = Array.isArray(opts.stdio) ? [opts.stdio[0], opts.stdio[1], 'pipe'] : opts.stdio;
+  const res = spawnSync('git', args, { encoding: 'utf8', ...opts, stdio });
+
+  // The process never started (git missing, bad cwd) — no exit code to read.
+  if (res.error) throw new WtSetupError(`git ${args[0]}: ${res.error.message}`);
+
+  const stderr = typeof res.stderr === 'string' ? res.stderr : '';
+  if (res.status !== 0) {
+    // Deliberately NOT swallowed and NOT made idempotent: a genuinely missing worktree
+    // must still fail, because that is the one case this message exists for.
+    throw new WtSetupError(stderr.trim() || `git ${args.join(' ')} exited ${res.status}`);
+  }
+  if (stderr) process.stderr.write(stderr);
+
+  // spawnSync returns null for stdout when it is inherited (side-effect calls) and a
   // string when captured; only trim the captured case.
-  const out = execFileSync('git', args, { encoding: 'utf8', ...opts });
-  return typeof out === 'string' ? out.trim() : out;
+  return typeof res.stdout === 'string' ? res.stdout.trim() : res.stdout;
 }
 
 /** The main (primary) checkout, resolved even when invoked from inside a worktree. */
@@ -40,7 +76,7 @@ export function primaryCheckout() {
   // `git worktree list --porcelain` lists the main checkout first.
   const out = git(['worktree', 'list', '--porcelain']);
   const first = out.split('\n').find((l) => l.startsWith('worktree '));
-  if (!first) throw new Error('could not resolve the primary checkout from `git worktree list`');
+  if (!first) throw new WtSetupError('could not resolve the primary checkout from `git worktree list`');
   return first.slice('worktree '.length);
 }
 
@@ -95,7 +131,7 @@ function worktreePath(root, id) {
 function create(id, { base, baseline, root }) {
   const primary = primaryCheckout();
   const wt = worktreePath(root, id);
-  if (existsSync(wt)) throw new Error(`worktree path already exists: ${wt}`);
+  if (existsSync(wt)) throw new WtSetupError(`worktree path already exists: ${wt}`);
 
   // `--no-track`: when <base> is a remote ref (e.g. `origin/master`, the recommended
   // base), git would otherwise set the new branch's upstream to it — and then
@@ -142,7 +178,7 @@ function parseArgs(argv) {
     else if (a === '--delete-branch') opts.deleteBranch = true;
     else if (a === '--base') opts.base = rest[++i];
     else if (a === '--root') opts.root = rest[++i];
-    else throw new Error(`unknown argument: ${a}`);
+    else throw new WtSetupError(`unknown argument: ${a}`);
   }
   return { cmd, id, opts };
 }
@@ -159,5 +195,13 @@ function main() {
 
 // Only run when invoked directly (so the pure helpers can be imported by tests).
 if (isMainModule(import.meta.url)) {
-  main();
+  try {
+    main();
+  } catch (err) {
+    // BL-104: expected failures report as `[wt-setup] <git's own message>` with a NON-ZERO
+    // exit. An unexpected error is a code defect and keeps its stack — rethrown, not hidden.
+    if (!(err instanceof WtSetupError)) throw err;
+    for (const line of formatFailure(err)) console.error(line);
+    process.exit(1);
+  }
 }
