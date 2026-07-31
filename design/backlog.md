@@ -5829,14 +5829,14 @@ autonomy: human-only
 
 <!-- @item
 id: BL-113
-status: todo
+status: done
 date: 2026-07-31
 epic: null
 tags: [client, entry-guard, path-resolution, macos, silent-failure, bl111-mirror, agentalk-mcp-client]
 autonomy: human-only
 -->
-- [todo · mirror of [[BL-111]], filed at its closure] — **The client's `launcher.mjs` has the same silent-no-op
-  entry guard.**
+- [done · mirror of [[BL-111]], filed at its closure; fixed and merged 2026-07-31 `17520da` (client repo)] —
+  **The client's `launcher.mjs` has the same silent-no-op entry guard.**
 
   `agentalk-mcp-client/scripts/launcher.mjs:266` is
   `process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)` — the exact comparison
@@ -5856,5 +5856,46 @@ autonomy: human-only
   **Fix:** port `scripts/lib/is-main.mjs` into the client (its own copy — separate repo, no shared module), and
   bring BL-111's two bars with it: the symlink spawn test *and* the no-raw-idiom fence. Filed separately rather
   than fixed inline for the same reason [[BL-101]]/[[BL-106]] were split.
+
+  **✅ CLOSED 2026-07-31 — merged `17520da` in `agentalk-mcp-client`** (fix `7b3982e`). As filed: a private copy
+  of the helper at `lib/is-main.mjs`, `scripts/launcher.mjs:266` converted to `isMainModule(import.meta.url)`,
+  and both bars ported — 3 files, +172/-1.
+
+  **The duplication is deliberate and is written down where a future reader will hit it.** The two repos share
+  no module graph, and inventing one for eleven lines would couple them harder than the copy costs. What must
+  not drift is the *behaviour*, and only the ported bars can hold that — the helper's header says so, so nobody
+  later "tidies" it into a shared import.
+
+  **Mutation-tested, not asserted.** Reverting `launcher.mjs` to the raw idiom and re-running turned the file
+  red — and *how* it went red is the part worth recording: **BAR A's spawn case did not fail, it disappeared.**
+  `guardedScripts()` discovers subjects by grepping for `isMainModule(import.meta.url)`, so a reverted script
+  drops out of discovery and its symlink case is simply never generated. The two assertions that fired were the
+  **anti-vacuous** one (`length >= 1`) and **BAR B** (the raw idiom is back). That is the interlock BL-111
+  predicted, observed live in the mirror: *A alone would have gone quietly green on an empty subject list.*
+  Clean run 6/6; mutated run 2 failed.
+
+  **BAR A also refuses to be a normal invocation:** before spawning, it asserts
+  `path.resolve(viaLink) !== realpathSync(viaLink)` — if the symlink ever stopped being a symlink (a Linux
+  `/tmp`, a copied fixture), the bar fails loudly instead of proving nothing. It accepts a *usage error* as
+  proof, because silence is the failure mode under test and any output means `main` ran.
+
+  **Closure sweep (task-end reviewer, independent of the merge):** client suite **110/110 across 20 files**,
+  AgentTalk **598/598 across 80** (unaffected, re-run anyway), `eslint` clean, `verify-contract` green in both
+  directions (**v8**, alignment against AgentTalk source — the [[BL-101]]/[[BL-106]] guarantee exercised).
+  Worktree `/private/tmp/att-cl113` removed and branch `task-bl113` deleted; ports 3500/3600 free.
+
+  **⚠️ NOT PUSHED — `agentalk-mcp-client` is `ahead 2` of origin.** Pushing is the PO's, without exception.
+  The preceding session was cut off between the merge (08:59) and this closure, which is why the item sat
+  `todo` against merged work; the gap is the reason a closure sweep is a separate seat.
+
+  **Telemetry (task closure):**
+  ```
+  - task:        BL-113
+  - wall-clock:  2026-07-31 ~08:57 -> 09:20 (~23m, across an interrupted session)
+  - budget:      claude unavailable (meter ok:false — LB-11); codex weekly 51% (not this actor)
+  - gate:        lint 0, contract v8 both directions, suite 110/110 client + 598/598 AgentTalk, pollution clean
+  - diff:        3 files, +172/-1; commits 7b3982e, merge 17520da (agentalk-mcp-client)
+  - outcome:     MERGED — awaiting PO push (client ahead 2)
+  ```
 
 *(add new items above this line)*
