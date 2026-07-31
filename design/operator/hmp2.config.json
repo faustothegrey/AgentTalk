@@ -1,0 +1,39 @@
+{
+  "_comment": "Run hmp2 — the first HMP-commissioned run whose worker must WRITE. Read from the git object store at the commissioned repo-sha, never from disk. instance.orchestratorUrl is REQUIRED even with a startCommand (launcher.mjs:82-83 takes it from THIS config and only parses mcpUrl from the backend's stdout; omitting it fails with 'createLauncherCore requires orchestratorUrl' after the backend has already started — that is what killed hmp1's first attempt). Paths are macOS: os.tmpdir() there is /var/folders/…, so the sandbox is created with `--root /tmp` and the workdir below must match. cap.wallClockMs is 30m against hmp1's 1m43s — longer than any HMP-carried rung so far, and still not a BL-096 long-run test.",
+  "instance": {
+    "recording": "/tmp/att-op-hmp2-recording.json",
+    "orchestratorUrl": "http://localhost:3600",
+    "env": {
+      "PORT": "3600",
+      "AGENTTALK_WORKER_TURN_TIMEOUT_MS": "1200000"
+    },
+    "startCommand": {
+      "command": "npm",
+      "args": [
+        "run",
+        "backend"
+      ],
+      "cwd": "/Users/fausto/Software/AgentTalk"
+    }
+  },
+  "agents": [
+    {
+      "id": "hmp2-worker",
+      "provider": "claude",
+      "model": "opus",
+      "executionMode": "persistent",
+      "workdir": "/tmp/att-op-hmp2",
+      "readyTimeoutMs": 120000
+    }
+  ],
+  "goal": "Implement backlog item BL-104, which is committed in design/backlog.md in this worktree — read it there; it is the authoritative statement of the task, not this sentence. In short: scripts/wt-setup.mjs wraps execFileSync in git() and never catches, so a routine git failure surfaces as an unhandled Node stack trace. Make a routine failure report as one readable [wt-setup] line with a NON-ZERO exit and no Node stack trace, while a genuinely missing worktree still FAILS — do not swallow the error and do not make remove idempotent by ignoring errors, because hiding a genuinely missing worktree is the one case the message exists for. Scope: you may touch scripts/wt-setup.mjs and scripts/__tests__/wt-setup.test.mjs, and nothing else; report anything else you find rather than fixing it. Exercise your change through the FAILURE path only — `remove` against an id that has no worktree reproduces it exactly. Do NOT run the `create` verb: it provisions a real worktree and branch, which would be litter outside your sandbox. Commit your work on the current branch. Do not merge and do not push.",
+  "cap": {
+    "wallClockMs": 1800000,
+    "pollIntervalMs": 10000,
+    "meter": {
+      "url": "http://127.0.0.1:9899",
+      "provider": "claude",
+      "maxPercentDelta": 15
+    }
+  }
+}
