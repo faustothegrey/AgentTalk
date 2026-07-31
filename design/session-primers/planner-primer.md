@@ -1,9 +1,10 @@
 ---
 role: planner
-key: 20260730-1032-9ba4e7
-written: 2026-07-30 by Claude — session close after five items closed (BL-086 · BL-100 half 2 · BL-101 ·
-  BL-102 · BL-106). Both repos pushed and in sync. Hands to the planner because everything left is either a
-  PO decision or an engine arc that needs a real plan.
+key: 20260731-1420-c7e91f
+written: 2026-07-31 by Claude — session close after restarting the ladder. The PO-RELAY arc shipped
+  end to end (outbound relay + token-bound merge/push authorization, proven live over Telegram), and
+  BL-104 is the first agent-selectable item in three sessions. Hands to the planner because the next
+  move is a real ladder run, and that needs planning rather than more solo implementation.
 ---
 
 This is your session primer.
@@ -17,9 +18,9 @@ ladder** — improving AgentTalk *with* AgentTalk, one graded rung at a time.
 Bindings live ONLY in `AGENT.md → 📌 DEFAULT ROLE ASSIGNMENTS` — read it, don't trust this line. Codex and agy
 remain PO-declared UNAVAILABLE, so you are almost certainly the sole agent under the **resource-scarcity
 fallback**: wear every hat, handshake once per role, declare all of them, keep each gate's discipline
-separately. **Standing Conditional Reassignment ACTIVE** (you may implement). Hermes holds the **OPERATOR
-seat** — launches and monitors, holds no authority, and its reports are *observations*, unverified until you
-check the artifact.
+separately. **Standing Conditional Reassignment ACTIVE** (you may implement). Hermes holds the **OPERATOR seat**
+— launches and monitors, holds no authority, and its reports are *observations*, unverified until you check the
+artifact.
 
 **Workflow / source of truth.** `design/collaboration-workflow.md` + `design/backlog.md` + `AGENT.md`. **Closed
 items carry a closing block + telemetry inside the backlog item — read those first.** Resume from the backlog,
@@ -27,110 +28,64 @@ items carry a closing block + telemetry inside the backlog item — read those f
 
 ## Where we are
 
-**No sha is written here, deliberately.** Run `git log --oneline -5` and `git status -sb` in **both** repos and
-take what you find. *(The first draft of this primer did name shas, and two later commits — including the
-correction below — invalidated them within the hour. Third occurrence of that trap in three days; the fix is to
-not write the value, not to remember harder.)*
+**No sha is written here, deliberately** — run `git log --oneline -5` and `git status -sb` in **both** repos and
+take what you find. (Naming shas in this file has invalidated it within the hour, three times.)
 
-At close: **both repos pushed and in sync with origin** · `npm test` **523/523 across 77 files** (AgentTalk) ·
-**104/104 across 19** (client) · backlog **106 items, 0 warnings** · ports 3500/3600 free · no `/tmp/att-*` ·
-weekly budget **5%**.
+At close: **both repos pushed and in sync** · `npm test` **658/658 across 82 files** (AgentTalk) · backlog
+**113 items, 0 warnings** · ports 3500/3600 free · no stray worktrees · weekly budget **23%**.
 
-**Two pieces of expected "dirt" — neither is yours, do not clean them reflexively:**
-- The **client tree is permanently dirty** with `M package-lock.json`. That is [[BL-100]] half 1, a committed
-  lockfile that disagrees with its own `package.json`; any `npm install` re-dirties it. **It is the PO's to
-  land** — leave it out of every commit and do not resync it.
-- The client repo carries a **stray worktree** at `/home/fausto/Software/wt-count-task` (branch
-  `task-count-1-10000`), left by some earlier run. Flagged to the PO 2026-07-30 and **deliberately not
-  removed** — cleanup is the PO's call. Expect your pollution sweep to see it; it is not from your work.
+## ⚠️ The one thing to do first
 
-**Evidence tags, do not delete:** `bl102-t1-before-d6041b9` / `bl102-t1-after-539f7c2` (the two live launches
-proving [[BL-102]]) and `hl3-worker-52df7f0` (the H-L3 worker commit). They exist so a `git gc` cannot take
-unreachable worker commits.
+**BL-104 is `autonomy: eligible` — the first agent-selectable item in three sessions.** The ladder has been idle
+that whole time: every item was implemented by an agent under direct human approval, which is productive and is
+*not* the thing this project is building. **The natural next move is a real ladder run: hand BL-104 to a launched
+worker** (`design/launch-and-monitor-runbook.md` is the contract; the OPERATOR charter in AGENT.md is the fence).
 
-**Closed this session — five items, and the through-line is worth knowing.** Three of them were defects that
-were *invisible because the check that would have caught them was fail-open*:
+It was chosen as a first rung on the O-1 instinct — one uncaught `execFileSync` in `wt-setup.mjs`'s `git()`, an
+obvious bar (clean message, nonzero exit, **no Node stack**), and the item's own words are *"not urgent and
+explicitly not a blocker"*, so a botched attempt is harmless.
 
-- **[[BL-086]]** — the client repo had **no governance at all**; it now carries its own `AGENT.md` (+
-  `AGENTS.md`/`CLAUDE.md` symlinks), rules **inline** rather than behind a cross-repo pointer, and no primer
-  handshake (that would halt every launched worker). Client-repo tasks are no longer excluded from autonomous
-  work.
-- **[[BL-101]]** + **[[BL-106]]** — **neither direction** of the cross-repo contract check ran in a worktree.
-  Under the worktree MANDATE that meant the alignment guarantee was absent from the entire workflow while
-  appearing green. Both now resolve the primary checkout via
-  `git rev-parse --path-format=absolute --git-common-dir`.
-- **[[BL-102]]** — every worker commit back to O-1 was authored as the PO. Now set on the worker **process**
-  (`GIT_AUTHOR_*`/`GIT_COMMITTER_*`) at all four launch sites. Verified by two live launches.
-- **[[BL-100]] half 2** — `wt-setup`'s `DEFAULT_ROOT` is `os.tmpdir()`; **`--root` is no longer needed on
-  Linux**.
+**Before you hand ANY item to a worker, verify the work still exists.** The PO's first pick was BL-108; checking
+the runbook showed it had already been fixed inline days earlier. An eligible no-op would have produced a green
+first autonomous run that proved **nothing** — worse than not running, because it manufactures confidence in an
+untested pipeline. *A stale item is worse than no item.*
 
-**Read `design/lessons/claude-lessons.md`'s 2026-07-30 entry before you plan anything.** Three separate
-path-resolution mistakes landed in one day, the third *inside the test written to catch the second*. The
-reusable form: **"the worker does X" is not a proposition until you name the execution path**, and **a skip is
-not a neutral test outcome.**
+## What shipped 2026-07-31, and the through-line
 
-## Your queue
+The **PO→session relay** went from a **doorbell** to a full loop, proven live over the real Telegram channel:
 
-**Expected first assignment: item 2 — [[BL-084]] T2.** The PO said so at session close. Treat that as
-orientation, **not permission**: you still report your understanding and STOP for the PO's go, and the ordering
-below is by standing importance, not by what you will be handed first.
+- **`relay-status.mjs`** (BL-110 step 2) — seven numbered facts + a digest. No prose the session authored; every
+  value is a number, a path, a timestamp, or *committed* text recoverable by its sha. Shaped entirely by
+  [[BL-112]]'s rule: *no datum you need may depend on surviving the courier.*
+- **`relay-approve.mjs`** (step 3) — the PO can authorise a merge or push from Telegram via a token bound to one
+  action, one branch, one sha; single-use, expiring, void if the branch moved. **First phone-authorised merge in
+  the project's history** is `TL-014` leg C.
+- **`[PO-RELAY]`** entered the Origin Tag Protocol (AGENT.md rule 5). **Read it before using the channel:** every
+  other tag asserts an origin you trust; this one arrives where origin is unverifiable, so **the authority is in
+  the token, not the tag.** A `[PO-RELAY]` with no valid token is not a weaker instruction — it is not an
+  instruction.
+- **The turn-1 primer gate is now versioned** (`.claude/settings.json`, previously gitignored) and its three
+  defects fixed — it named a primer file that never existed, branched on a retired `active` schema, and said
+  STOP where AGENT.md says proceed.
 
-1. **The agent-selectable set is STILL EMPTY — this is the standing open question and it is now a full session
-   old.** Every item this session was implemented by the agent itself; the ladder has been idle throughout.
-   `bl093-backlog-selectable.test.ts` pins the empty set exactly, so marking anything goes red **by design** and
-   forces a human look. **[[BL-103]]** or **[[BL-104]]** are the most boundable candidates. Marking is a **PO
-   act** — propose, don't mark.
-2. **[[BL-084]] T2 → T3 (= [[BL-028]])** — the engine arc and the only real behaviour change left, on
-   `registry.ts` + `team-coordinator.ts`. T1 is merged. Plan: `design/bl084-plan.md`. Needs a real Gate 1; this
-   is not "while we're here" work.
-   **§4's classification table is RATIFIED and encoded — do not go looking for a ratification to chase.** The
-   PO ratified it 2026-07-27 (including *reversing* the `unknown-mcp-tool` row to non-fault) and T1 landed it.
-   An earlier version of this primer said otherwise; that was a stale claim copied from the backlog without
-   checking §4, and it is exactly the failure the "distrust the docs, check ground truth" rule exists for.
-   **What actually gates T2** is a re-gate of the T2 step plus the PO's go-ahead on the behaviour change
-   itself — after T2, an in-process agent erroring with a *fault-class* reason will interrupt its team, which
-   it has never done.
-3. **HMP session submission** — `design/hmp-session-submission.md`, a **proposal awaiting five PO decisions**
-   (§8). Two are gating: *where the operator process runs* (a Pi can carry a message but cannot run a session),
-   and *per-run `[PO]` authorization vs a standing grant*. Its load-bearing idea: **authorization is anchored in
-   the committed repo, not in the message**, because HMP is unauthenticated.
-4. **Filed this session, unstarted:** [[BL-103]] (teardown leaks a branch per run) · [[BL-104]] (`wt-setup`
-   reports git failures as raw Node stacks) · [[BL-105]] (client repo has no worktree helper — and the MANDATE
-   requires one; also carries BL-102's `taskId: null` audit defect).
-5. **[[BL-096]]** — the long-run failure class is **still untested**; consider its own suggestion of a cheap
-   direct cap test first. **[[BL-098]]** — Linux `LEGITIMATE` classification, confirmed live, gates operator
-   runs. **[[BL-100]] half 1** — client lockfile drift, **the PO's to land**.
-
-## What to reuse
-
-**The mutation check, every time.** Four fired this session and two caught real design errors. Ask: *would this
-look identical if the change did nothing?* A row never watched to fail is not evidence.
-
-**Verify the bar's COMMAND, not just its rows.** `npx vitest run` does not run the contract check; `npm test`
-does (`package.json:11` chains a workspace script ahead of vitest). A green from the wrong command is worse than
-a red.
-
-**Grade the artifact, at the coordinates where the process actually stood.** `completed` ≠ done — proven again
-this session: a run reported `completed` while its assigned worktree sat **empty**.
-
-**Re-derive reference values immediately before hand-over.** Suite counts, shas, paths. Three days running, the
-hardcoded-reference trap has cost something.
+**The through-line — five defects in one day, all the same shape: the check that would have caught it was not
+looking.** Merged work left `todo`; a relay where both verbs "worked" and neither answered; a security argument
+that was sound about a handler the message never reaches; a governance gate that was unreviewable; and a feature
+with 27 green tests that broke another tool the first time it was used. **Read the 2026-07-31 entry in
+`design/lessons/claude-lessons.md` before you plan anything.**
 
 ## Op notes
 
-- **Worktrees:** `node scripts/wt-setup.mjs create <id> --base master` — **no `--root` needed any more**
-  ([[BL-100]]). It prepends `att-`. **Stage files EXPLICITLY and run `git status` AFTER committing.** A failed
-  `create` leaks its branch ([[BL-103]]); a failed `remove` prints a raw Node stack ([[BL-104]]).
-- **The client repo has NO worktree helper** ([[BL-105]]): after `git worktree add`, symlink `node_modules` from
-  the primary or nothing runs.
-- **Gates:** `npx tsc -b` · **`npm test`** (not bare vitest, see above) · `npm run backlog:check` after ANY
-  backlog edit (update **both** the header `status:` and the prose tag).
-- **The meter works on Linux** — `node scripts/usage.mjs`. Session window resets every ~5h; weekly resets Aug 5.
-- **`git merge -F -` does not read stdin.** Write the message to a file.
-- **`git config` inside a linked worktree is NOT worktree-scoped** — it writes the shared config and would
-  rewrite the PRIMARY checkout's identity. Probed, and it is why BL-102 went the env route.
-- **Operator runs:** `design/launch-and-monitor-runbook.md` is the contract; it was corrected this session (the
-  `/private/tmp` default and the client-governance warning were both stale).
-
-Verify all of the above against ground truth before acting. Report your understanding, then **STOP** for the
-PO's go.
+- **`relay-status.mjs` reports the PRIMARY checkout**, so work inside a task worktree is invisible to it. Known,
+  documented, deliberately not patched (a new field is a governance change; the seven keys are pinned by a test).
+- **Relay messages: keep them short and lead with VERBATIM.** Empirical, not style — a 342-char message arrived
+  as 154 and the courier reformatted; 189 chars arrived whole and verified `intact`.
+- **Ground truth for relay runs is `~/.hermes/state.db`, not the phone.** Its `length()` counts characters, not
+  bytes.
+- **[[BL-107]] is open and is now load-bearing** — it is the only control against a LAN peer with effective
+  shell, and merge authorization rides the same host. Nothing shipped today reduced it; do not let the token
+  design be cited as if it did.
+- **[[BL-112]] narrowed but not closed** — it did not trigger in either live run, including the one that mangled
+  everything else.
+- `bl093-backlog-selectable.test.ts` pins the selectable set **exactly**. Changing what an agent may be handed
+  turns it red **by design**; show the red to the PO *before* updating the pin. That sequence is the ritual.

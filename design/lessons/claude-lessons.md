@@ -1351,3 +1351,42 @@ here.**
   failure mode is not thereby protected from its opposite.** I reported that one rather than fixing it, which
   was right, but I should have grepped for the idiom the moment I found it in my own file instead of after the
   second occurrence.
+
+### 2026-07-31 — five defects, one shape: the check that wasn't looking
+
+- **As task-end reviewer: I picked up an interrupted session and the first thing I found was work that
+  *looked* finished.** BL-113 was implemented, merged, and sitting at `status: todo` with its worktree still
+  mounted, because the session died between the merge and the closure. The lesson is not "sessions get
+  interrupted" — it is that **the merge is not the closure**, and a separate seat exists precisely because the
+  gap between them is where work silently stops being tracked. When resuming anything, diff what the artifacts
+  *claim* against what git *shows* before believing either.
+- **As planner: I recommended a design on an argument that was false, and the PO decided partly on it.** I said
+  a forged relay message "cannot mint a proposal, so the blast radius is bounded." That holds only if the
+  message reaches a *fenced handler*. It reaches **Hermes — an LLM with a shell** — which can be asked to run
+  `propose` and `approve`, or just `git push`. I caught it while writing the module header, corrected it in the
+  code, the commit, the backlog and to the PO. **The reusable form: a capability-bounding argument is only as
+  strong as the narrowest surface the message can reach. Check what is actually listening on the port before
+  claiming the bound.** I had read BL-107 twice that same session and still reasoned about an idealised handler
+  rather than the real one.
+- **As implementer: 27 passing tests, a clean merge, and the feature broke a different tool the first time it
+  was used.** `relay-approve` wrote its record into the *request* inbox because the session already watched it;
+  `relay-inbox list` parses everything there as a request and died on `.padEnd` of null. The unit tests were
+  green because **no approval had ever been granted**. Two things to carry: (1) *sharing a watcher is not a
+  reason to share a location* — a request is inbound-and-pending, an approval is a consumed decision, and a
+  reader forced to guess which it holds will guess wrong; (2) **unit coverage is not use.** Anything with a
+  live surface should be exercised once for real before it is called done.
+- **As tester: the failing run taught more than the passing one, and I nearly optimised it away.** Relay run 1
+  came back reformatted and `verify` said `ALTERED: no-payload`. The temptation was to treat it as noise and
+  re-run. Instead it became the control: **it proved the design fails CLOSED**, which is the property that
+  matters when the channel carries a merge token, and it is not something the green run could have shown. Keep
+  the failure as evidence; do not tidy it into a retry.
+- **As reviewer: I verified with a tool that answers a different question than I was asking.** `git check-ignore
+  -v` printed the *negation* line and exited 0; I read "matched a pattern" as "is ignored" and reported it wrong
+  before `git add --dry-run` settled it. **A check that reports a match without reporting which direction the
+  match points is not a check** — same family as the entry guard that exited 0 having done nothing, and I hit it
+  within an hour of writing about that one.
+- **As planner: verifying the item before handing it out is what stopped a meaningless first run.** BL-108 was
+  my own recommendation for restarting the idle ladder, and it turned out to have been fixed inline days
+  earlier. An eligible no-op would have produced a green first autonomous run in three sessions that proved
+  **nothing** — a worse outcome than not running, because it manufactures confidence in an untested pipeline.
+  **A stale item is worse than no item.**
