@@ -18,6 +18,7 @@ import { execFileSync } from 'node:child_process';
 import { readdirSync, mkdirSync, symlinkSync, readlinkSync, existsSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { isMainModule } from './lib/is-main.mjs';
 
 const SCOPE = '@agenttalk';
 // BL-100: was hardcoded '/private/tmp' (macOS), which made `--root` MANDATORY on Linux for
@@ -157,6 +158,6 @@ function main() {
 }
 
 // Only run when invoked directly (so the pure helpers can be imported by tests).
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (isMainModule(import.meta.url)) {
   main();
 }

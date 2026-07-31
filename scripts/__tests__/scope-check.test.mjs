@@ -35,6 +35,13 @@ function runScopeCheckWithSibling({ siblingGlob, createSibling }) {
     path.join(repoRoot, 'scripts/scope-check.mjs'),
     path.join(mainRepo, 'scripts/scope-check.mjs')
   );
+  // BL-111: scope-check imports the shared entry guard, so the fixture must carry it too.
+  // No assertion below changes — this is the fixture reflecting the script's real dependencies.
+  fs.mkdirSync(path.join(mainRepo, 'scripts/lib'), { recursive: true });
+  fs.copyFileSync(
+    path.join(repoRoot, 'scripts/lib/is-main.mjs'),
+    path.join(mainRepo, 'scripts/lib/is-main.mjs')
+  );
 
   const manifest = `
 ## \`test-branch\`

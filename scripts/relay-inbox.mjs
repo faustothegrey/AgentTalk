@@ -44,6 +44,7 @@ import fs from 'fs';
 import path from 'path';
 import { execFileSync } from 'child_process';
 import { fileURLToPath } from 'url';
+import { isMainModule } from './lib/is-main.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -271,13 +272,7 @@ export function main(argv) {
  * `realpathSync` throws on a missing path, so it is guarded; a failure to resolve must fall back
  * to "not invoked directly" rather than crash an import.
  */
-const invokedDirectly = (() => {
-  try {
-    return process.argv[1] ? fs.realpathSync(path.resolve(process.argv[1])) === fileURLToPath(import.meta.url) : false;
-  } catch {
-    return false;
-  }
-})();
+const invokedDirectly = isMainModule(import.meta.url);
 if (invokedDirectly) {
   try {
     process.exit(main(process.argv));
