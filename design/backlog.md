@@ -5712,13 +5712,13 @@ blocked_by: [BL-107]
 
 <!-- @item
 id: BL-111
-status: todo
+status: done
 date: 2026-07-30
 epic: null
 tags: [infra, harness, infra-invariant, macos, path-resolution, silent-failure, bl087-followup]
 autonomy: human-only
 -->
-- [todo · found live during [[BL-110]]'s first relay run; **reported, not fixed** — existing shared tooling] —
+- [done · found live during [[BL-110]]'s first relay run; fixed 2026-07-31 on PO instruction, merged `291286c`] —
   **`infra-invariant.mjs` silently does nothing and exits 0 when invoked by an absolute `/tmp/...` path on
   macOS.**
 
@@ -5748,6 +5748,47 @@ autonomy: human-only
   than patching one site** — it is copied wherever this CLI pattern was reused. **Add a bar that spawns the
   script through a real symlink**: a unit test of exported functions cannot reach a module-level entry guard,
   which is precisely why this survived a green suite.
+
+  **✅ CLOSED 2026-07-31 — merged `291286c`.** One shared helper, `scripts/lib/is-main.mjs`, replacing **six**
+  sites across two repos with **four** spellings, three of them wrong in three different ways:
+
+  | site | spelling | verdict |
+  |---|---|---|
+  | `infra-invariant.mjs` | `path.resolve(argv[1]) === fileURLToPath(...)` | **broken** — the filed defect |
+  | `wt-setup.mjs` | `import.meta.url === \`file://${argv[1]}\`` | **broken**, and a naive template |
+  | `scope-check.mjs` | `argv[1] === fileURLToPath(...)` | **broken** |
+  | `check-orchestrator-ports.mjs` | `import.meta.url.endsWith(basename(argv[1]))` | accidentally symlink-safe, but matches any file of the same name |
+  | `hmp-commission.mjs`, `relay-inbox.mjs` | already fixed inline | **converted anyway** — two correct copies drift as surely as two wrong ones |
+
+  **Demonstrated, not argued.** The same command through a symlinked path: master → stdout empty, exit **0**,
+  **no snapshot file**; fixed → snapshot written. A caller checking the exit code sees `0` both ways, so the only
+  tell is the missing artifact — this project's own "grade the artifact, not the status" rule, turned on its own
+  tooling.
+
+  **Two bars, and they cover each other.** BAR A *discovers* every guarded script by grep and spawns each through
+  a real symlink, so a script added tomorrow is covered without anyone remembering to list it — and it asserts it
+  found subjects at all, because an empty subject list passes vacuously. BAR B fails if the raw idiom appears
+  anywhere, since this bug's defining property is that it **spread**. Reverting a script to the raw idiom drops it
+  from A's discovery and B catches exactly that. Mutations confirm both: breaking the helper reddens all six A
+  cases; reintroducing the idiom reddens only B.
+
+  **One regression caught by the suite and worth recording:** adding the import broke
+  `scope-check.test.mjs`, which copies the script into a synthetic repo — the fixture now copies the helper too.
+  **No assertion changed.** A test that copies a file under test is a test with a hidden dependency list.
+
+  **Mirror NOT fixed here → [[BL-113]]:** `agentalk-mcp-client/scripts/launcher.mjs` carries the same broken
+  comparison. Separate repo, separate governance — the same split as [[BL-101]]/[[BL-106]].
+
+  **Telemetry (task closure):**
+  ```
+  - task:        BL-111
+  - wall-clock:  2026-07-31 ~08:45 -> ~08:55 (~10m)
+  - budget:      weekly 14% -> 15% (delta ~1%)
+  - gate:        tsc 0, suite 598/598 across 80 files (0 skipped), pollution clean
+  - diff:        9 files; commits on task-bl111, merge 291286c
+  - outcome:     MERGED (PO-instructed)
+  ```
+
 
 <!-- @item
 id: BL-112
@@ -5785,5 +5826,35 @@ autonomy: human-only
   **Fix direction:** do not "work around" it by renaming the file. Either find the excision rule in the Hermes
   install, or make the acknowledgement carry no data that is not independently derivable — and prefer the second
   regardless, since it holds even if the rule is never found.
+
+<!-- @item
+id: BL-113
+status: todo
+date: 2026-07-31
+epic: null
+tags: [client, entry-guard, path-resolution, macos, silent-failure, bl111-mirror, agentalk-mcp-client]
+autonomy: human-only
+-->
+- [todo · mirror of [[BL-111]], filed at its closure] — **The client's `launcher.mjs` has the same silent-no-op
+  entry guard.**
+
+  `agentalk-mcp-client/scripts/launcher.mjs:266` is
+  `process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)` — the exact comparison
+  BL-111 replaced. `path.resolve` leaves symlinks intact while `import.meta.url` is already real, so an
+  absolute-path invocation under a symlinked directory makes `main` never run: **no output, exit 0.**
+
+  **Not currently reachable, and that is the only reason it is not urgent:** the client lives at
+  `/Users/fausto/Software/agentalk-mcp-client`, which is not symlinked, so `path.resolve` and the realpath agree.
+  It becomes live the moment the client is moved under `/tmp`, checked out in a worktree there ([[BL-105]] would
+  put it in `os.tmpdir()`), or reached through any symlinked path.
+
+  **Why it matters more than the AgentTalk sites did:** this is *the launcher*, and
+  `design/launch-and-monitor-runbook.md` explicitly mandates **invoking it by absolute path**. A silent no-op
+  there means a commissioned run reports success and never starts — which is exactly what the first hmp1 launch
+  looked like from the outside before the cause was found.
+
+  **Fix:** port `scripts/lib/is-main.mjs` into the client (its own copy — separate repo, no shared module), and
+  bring BL-111's two bars with it: the symlink spawn test *and* the no-raw-idiom fence. Filed separately rather
+  than fixed inline for the same reason [[BL-101]]/[[BL-106]] were split.
 
 *(add new items above this line)*
