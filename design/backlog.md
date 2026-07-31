@@ -6112,4 +6112,51 @@ blocked_by: [BL-104]
   **Blocked on [[BL-104]] merging**, which introduces the `WtSetupError` class and the top-level handler this
   would extend. Doing it first means writing that machinery twice.
 
+<!-- @item
+id: BL-116
+status: todo
+date: 2026-07-31
+epic: null
+tags: [infra-invariant, operator, harness, false-positive, bl087-followup, bl097-followup, dx]
+autonomy: human-only
+-->
+- [todo · **two consecutive operator runs produced exactly one `critical` each, and BOTH were the grader's
+  declaration rather than the run** — `hmp1` a loose bracket, `hmp2` a wrong glob] — **An `--expect` allowlist
+  pattern that matches nothing is silently accepted, so a typo reads as "nothing was declared" and the harness
+  fails closed onto an innocent run.**
+
+  `scripts/infra-invariant.mjs` merges the `--expect` file over its defaults and never inspects it.
+  `matchesWritePath` anchors the pattern **end to end** (`'^' + … + '$'`), so `design/operator/` does **not**
+  match `design/operator/.hmp-launched.json` — the correct form is `design/operator/**`. Nothing says so. The
+  run then reports `[CRITICAL] tracked-file-modified` for a write the operator was entitled to make, and a
+  `critical` **gates the next operator run**.
+
+  **Live instance, 2026-07-31 (`hmp2`).** I declared `allowWritePaths: ["design/operator/"]`, got a `critical`
+  on the launch ledger, and had to read the matcher to discover my own typo. Re-run against **the same unchanged
+  snapshot** with `design/operator/**` it reclassifies to `INFO (declared operator write)`. **The harness was
+  right both times; the declaration was wrong both times.** Recorded in `design/operator/hmp2-grading.md` §R5.
+
+  **A mistyped KEY is worse than a mistyped pattern**, and is the same bug one level up: `allowWritePath`
+  (singular), or `allowedWritePaths`, merges cleanly over the defaults, contributes nothing, and produces no
+  complaint — because the default is `[]` and "you declared nothing" is a legitimate state the harness must
+  support. **The failure is indistinguishable from correct fail-closed behaviour**, which is precisely why it
+  cost two sessions rather than two minutes.
+
+  **Fix direction:** on `check`, emit a **`warn`** (never a `critical` — this must not become a new way to gate
+  a clean run) for (a) any `--expect` key not in the defaults object, and (b) any `allowWritePaths` /
+  `allowNewWorktrees` / `allowNewBranches` / `allowProcesses` pattern that matched **zero** candidates in this
+  diff. **(b) has a real false-positive case that must be tolerated**: a legitimately unused allowance — you
+  declared a path the run happened not to write. That is why it is a `warn`, and why the message should say
+  *"declared but never matched"* rather than *"invalid"*.
+
+  **Do NOT "fix" this by loosening the matcher** to treat a trailing `/` as an implicit `/**`. The anchoring is
+  correct and deliberate; a matcher that quietly widens a declaration is a worse defect than one that reports an
+  unused one, because the operator write fence is the thing it would be widening. **Report the mismatch, do not
+  guess the intent.**
+
+  **Why this belongs above cosmetic:** the whole value of [[BL-087]]'s harness is that a `critical` means
+  something. Two for two, it has meant "the grader wrote the expect file wrong" — and the cost of that is not a
+  wasted minute but an **eroded signal**, which ends with someone waving a real `critical` through because the
+  last two were noise. That is the failure mode this item exists to prevent, and it is closer than it looks.
+
 *(add new items above this line)*
