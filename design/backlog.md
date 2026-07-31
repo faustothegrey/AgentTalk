@@ -6028,4 +6028,44 @@ autonomy: human-only
   verified-live provider block, so `cap.wallClockMs` has been the only rail actually proven — which is what
   [[BL-096]] already says about the wall-clock, and now applies to the meter too.
 
+<!-- @item
+id: BL-115
+status: todo
+date: 2026-07-31
+epic: null
+tags: [wt-setup, dx, error-handling, bl104-followup, worktree]
+autonomy: human-only
+blocked_by: [BL-104]
+-->
+- [todo · **found and deliberately NOT fixed by the `hmp2` worker**, which reported it instead of widening
+  scope — the gold-standard response, recorded in `design/operator/hmp2-grading.md`] — **`create`'s build and
+  test calls still surface a raw Node stack, so [[BL-104]] fixed the `git()` half of the defect and left the
+  `npx` half.**
+
+  `execFileSync('npx', ['tsc', '-b'], …)` and `execFileSync('npx', ['vitest', 'run'], …)`
+  (`scripts/wt-setup.mjs:113,117` on master; **`:149,153` once BL-104 lands** — cite by symbol, not line, when
+  this is picked up). A failing `tsc -b` during `create` therefore prints exactly what BL-104 was filed about: a
+  `Error: Command failed:` wrapper and a stack, for a condition that is ordinary.
+
+  **Why it was correctly left alone.** The `hmp2` brief scoped the run to the `git()` calls and **forbade running
+  the `create` verb** — it provisions a real worktree and branch, which would have been litter outside the
+  worker's sandbox. So the fix could not have been exercised, and an unexercised fix to an error path is a guess.
+  The worker said exactly that and stopped.
+
+  **The fix does NOT transfer from BL-104 unchanged — this is the whole difficulty.** BL-104's mechanism pipes
+  stderr so it can be captured and reformatted. **These two calls must keep streaming:** `stdio: 'inherit'` is
+  load-bearing, because a build and a test run's live output *is* the point — buffering `vitest` until it exits
+  would be a worse regression than the stack trace this item is about. So the shape is different: keep the
+  child's output inherited, and convert only the **non-zero exit** into a `WtSetupError` carrying a short
+  synthesised message (`tsc -b failed in <wt>`), since with inherited stdio there is no captured stderr to quote.
+  **Do not** reach for the piped-stderr pattern here just because it worked next door.
+
+  **Testing it requires running `create` against a throwaway repo** — BL-104's own new end-to-end tests already
+  demonstrate the pattern (real script as a child process, temp git repo, cleaned up). Reuse it rather than
+  inventing a second one, and **make the failure real** (a deliberately broken `tsconfig`) rather than stubbing
+  `npx`, or the test proves nothing about the path it claims to cover.
+
+  **Blocked on [[BL-104]] merging**, which introduces the `WtSetupError` class and the top-level handler this
+  would extend. Doing it first means writing that machinery twice.
+
 *(add new items above this line)*
