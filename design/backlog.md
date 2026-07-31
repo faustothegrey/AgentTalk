@@ -5640,6 +5640,13 @@ autonomy: human-only
   `critical` in a **fresh** pre-flight. The consequence, stated rather than hidden: **a `critical` the PO has
   already dispositioned still blocks** until the underlying condition is gone.
 
+  **⚠️ FIRST REAL INSTANCE, 2026-07-31 — this is no longer hypothetical.** The first HMP-commissioned run
+  (`design/operator/hmp1-grading.md`) produced a genuine `critical` (`head-moved-undetermined`, a merge commit
+  whose effect cannot be read), the PO disposed of it — *"it was my session merging"* — and **there was nowhere
+  to put that.** The disposition now lives in a prose section of the grading doc, which means: no check can see
+  it, nothing stops the same finding being re-raised from an old baseline, and a future reader has to be told
+  where to look. Exactly the gap this item predicted, on the first occasion it could have mattered.
+
   **Fix (sketch, not decided):** a committed `design/operator/cleared-findings.json` keyed by finding
   fingerprint + the disposing commit, so a disposition is itself an auditable artifact — the same reasoning that
   makes authorization repo-anchored in `hmp-session-submission.md` §4. **Do not** make it an env var or an

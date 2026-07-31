@@ -104,6 +104,40 @@ firing on real input.
 **Two things follow, and neither is mine to decide:** a `critical` **gates the next operator run** until the PO
 clears it, and **only the PO may dispose of one**. Recorded, not cleared.
 
+### ✅ DISPOSED — PO, 2026-07-31: "it was my session merging"
+
+**Disposition:** cleared. **By:** the PO (the only seat that may). **Recorded by:** Claude, at the PO's
+instruction. **The gate on the next operator run is lifted.**
+
+**Evidence checked before recording, because a disposition on an unverified claim is worse than an open
+finding.** The bracketed range `d75926a..39b0efa8` contains exactly three commits, and **exactly one** reports
+zero files — so the disposition covers the whole window with no second unreadable commit hiding behind the first:
+
+| commit | files reported | what it is |
+|---|---|---|
+| `d221c35` | 4 | the config/runbook/stdio fixes, on `task-hmp3` |
+| `253148b` | **0** | **the merge** — the finding's trigger |
+| `39b0efa` | 1 | moving the failed launch out of the replay guard |
+
+All three are the **supervising session's**, none are Hermes's. The merge's real content is readable against its
+first parent — `design/launch-and-monitor-runbook.md`, `design/operator/hmp1.config.json`,
+`scripts/hmp-commission.mjs`, `scripts/__tests__/hmp-commission.test.mjs` — and contains nothing an operator
+touched. The operator's only write in the window was the ledger append, already reclassified to
+`INFO (declared operator write)`.
+
+**Scope — what this disposition does and does not say.** It says: *this* critical, in *this* bracket, was caused
+by the supervising session merging inside a window it should not have merged inside. It does **not** weaken the
+rule, exempt future merges, or license running an operator bracket loosely. The harness's judgement was
+**correct**; the defect was the bracket.
+
+**Confirmed sound afterwards:** a fresh, properly isolated bracket (snapshot → immediate check) reports *"No
+differences at all. The infrastructure came back byte-identical."*
+
+**Still owed:** the procedural fix — snapshot immediately before the launch, check immediately after, no
+supervising-session commits in between — and [[BL-109]], because this disposition lives only in this prose. There
+is no machine-readable place to record it, so nothing stops a future check re-raising the same finding from an
+old baseline.
+
 **Process correction owed:** an operator bracket must isolate the run — snapshot immediately before the launch,
 check immediately after, with **no supervising-session commits in between**. Mine spanned ~30 minutes of my own.
 
