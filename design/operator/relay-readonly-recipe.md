@@ -216,11 +216,23 @@ acceptable direction for a merge gate riding a courier known to drop characters.
 
 It **records** an authorization; the **session performs the merge**. That keeps the property that made step 1
 safe: **no relay-reachable command performs a git operation** — pinned by a test that asserts no ref moves and no
-tracked file changes. The session re-reads `.approvals/` before acting; the inbox note is only a notification.
+tracked file changes. The session re-reads `.approvals/` before acting; the announcement is only a notification.
 
 **`.approvals/` is deliberately NOT under `design/operator/**`** — that is Hermes's write allowlist, and a courier
 able to write its own pending proposal could mint the very capability the token exists to bound. The store is
-gitignored; the consumed record is announced into the watched inbox.
+gitignored; the consumed record is announced into **`design/operator/approvals/`**.
+
+**⚠️ The announcement goes to `design/operator/approvals/`, NOT the request inbox — arm the watch on
+`design/operator/**`, not on `inbox/` alone.** The first version wrote to `inbox/` because the session already
+watched it, and **the first approval ever granted crashed `relay-inbox.mjs list`** (TL-014 leg C):
+that command parses everything in the inbox as a relayed request, and an approval record has none of a request's
+fields. The crash was the symptom; the error was **putting a record and a request in one directory because they
+shared a watcher.** A request is inbound and pending, an approval is a consumed decision — a reader forced to
+guess which it holds will eventually guess wrong. Widening a watch is cheap; untangling two types is not.
+
+*(The same round also hardened `list` itself: a file with none of the three request fields is skipped, and a
+partially damaged request renders its gaps instead of taking the listing down. Any stray `.md` — a README, an
+editor backup — used to crash it, so this was never really about approvals.)*
 
 ### ⚠️ Limits — what this does NOT do
 

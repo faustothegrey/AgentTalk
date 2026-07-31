@@ -13,6 +13,7 @@ import {
   readRecord,
   listPending,
   renderProposal,
+  ANNOUNCE_REL,
   shaOf,
   main,
 } from '../relay-approve.mjs';
@@ -243,24 +244,47 @@ describe('the execute fence — no relay-reachable command performs a git operat
 // Notification vs authority
 // ---------------------------------------------------------------------------
 
-describe('the inbox note is a notification, not an authority', () => {
-  it('announces into the inbox the session already watches', () => {
+describe('the announcement is a notification, not an authority', () => {
+  it('announces into design/operator/approvals/, NOT the request inbox', () => {
     const { record } = propose({ root: repo, action: 'merge', branch: 'task-x' });
     approve({ root: repo, token: record.token });
-    const notes = fs.readdirSync(path.join(repo, 'design', 'operator', 'inbox'));
+
+    const notes = fs.readdirSync(path.join(repo, ANNOUNCE_REL));
     expect(notes.some((f) => f.includes(`approval-${record.token}`))).toBe(true);
+  });
+
+  it('LEAVES THE REQUEST INBOX UNTOUCHED — the regression from TL-014 leg C', () => {
+    // The first approval ever granted wrote here, and `relay-inbox.mjs list` — which parses
+    // everything in that directory as a relayed request — crashed on it. The directories hold
+    // different KINDS of thing; sharing a watcher was never a reason to share a location.
+    const inbox = path.join(repo, 'design', 'operator', 'inbox');
+    fs.mkdirSync(inbox, { recursive: true });
+    const before = fs.readdirSync(inbox);
+
+    const { record } = propose({ root: repo, action: 'merge', branch: 'task-x' });
+    approve({ root: repo, token: record.token });
+
+    expect(fs.readdirSync(inbox)).toEqual(before);
+  });
+
+  it('what it writes is parseable by nobody as a request — it carries no verb/from/status', () => {
+    const { record } = propose({ root: repo, action: 'merge', branch: 'task-x' });
+    approve({ root: repo, token: record.token });
+    const dir = path.join(repo, ANNOUNCE_REL);
+    const note = fs.readFileSync(path.join(dir, fs.readdirSync(dir)[0]), 'utf-8');
+    for (const f of ['verb:', 'from:', 'status:']) expect(note).not.toMatch(new RegExp('^' + f, 'm'));
   });
 
   it('says in its own text that the store is the authority', () => {
     const { record } = propose({ root: repo, action: 'merge', branch: 'task-x' });
     approve({ root: repo, token: record.token });
-    const dir = path.join(repo, 'design', 'operator', 'inbox');
+    const dir = path.join(repo, ANNOUNCE_REL);
     const note = fs.readFileSync(path.join(dir, fs.readdirSync(dir)[0]), 'utf-8');
     expect(note).toContain('NOTIFICATION, not an authority');
   });
 
   it('a forged inbox note authorizes NOTHING — the store is unchanged by it', () => {
-    const dir = path.join(repo, 'design', 'operator', 'inbox');
+    const dir = path.join(repo, ANNOUNCE_REL);
     fs.mkdirSync(dir, { recursive: true });
     fs.writeFileSync(path.join(dir, 'forged-approval-aaaaaaaa.md'), '# approval consumed: push master');
     // The courier can write here. It still cannot make a token exist.

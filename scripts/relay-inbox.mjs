@@ -174,6 +174,21 @@ export function writeMessage(root, { from, verb, note }, now = new Date()) {
   return { id, file: path.join(INBOX_REL, `${id}.md`) };
 }
 
+/**
+ * Every relayed request in the inbox. **Files that are not relayed requests are skipped.**
+ *
+ * WHY THE SKIP EXISTS (found live 2026-07-31, the first time an approval was ever granted):
+ *   This directory is a shared, writable location — Hermes's allowlist covers `design/operator/**`,
+ *   a human may drop a note in it, and [[BL-110]] step 3 briefly wrote approval records here. Any
+ *   `.md` that is not a request used to parse to a row of `null`s, which the CLI printer then
+ *   crashed on (`.padEnd` of null). A **fail-open parser feeding a fail-hard printer**: the parse
+ *   politely returned nothing while the print insisted on something.
+ *
+ *   A file carrying NONE of the three fields is not a malformed message, it is **not a message** —
+ *   so it is not listed. A file carrying SOME of them IS a message, possibly damaged, and stays in
+ *   the list with its gaps visible: that is diagnostic information, and silently hiding a
+ *   half-written request would be the worse failure.
+ */
 export function listMessages(root) {
   const dir = inboxDir(root);
   if (!fs.existsSync(dir)) return [];
@@ -185,7 +200,22 @@ export function listMessages(root) {
       const text = fs.readFileSync(path.join(dir, f), 'utf-8');
       const field = (k) => (text.match(new RegExp(`^${k}: (.*)$`, 'm')) ?? [])[1] ?? null;
       return { id: f.replace(/\.md$/, ''), file: f, verb: field('verb'), from: field('from'), status: field('status') };
-    });
+    })
+    .filter((m) => m.verb !== null || m.from !== null || m.status !== null);
+}
+
+/**
+ * One `list` row. Exported so the null-guard below is testable directly — the CLI calls THIS
+ * function, so there is no stub standing in for production ([[BL-111]]: an injected seam moves the
+ * untested surface, it does not remove it).
+ *
+ * Defence in depth behind `listMessages`' skip: a request carrying SOME fields still reaches here,
+ * and a damaged one must render its gaps rather than take the whole listing down. `list` is a
+ * diagnostic, and the moment it is most needed is exactly the moment the inbox holds something odd.
+ */
+export function formatRow(m) {
+  const cell = (v, w) => String(v ?? '—').padEnd(w);
+  return `${cell(m.status, 7)} ${cell(m.verb, 7)} ${cell(m.from, 10)} ${m.id}`;
 }
 
 export function ackMessage(root, id) {
@@ -237,7 +267,7 @@ export function main(argv) {
     const msgs = listMessages(root);
     if (opts.json) console.log(JSON.stringify(msgs, null, 2));
     else if (!msgs.length) console.log('inbox empty');
-    else for (const m of msgs) console.log(`${m.status.padEnd(7)} ${m.verb.padEnd(7)} ${m.from.padEnd(10)} ${m.id}`);
+    else for (const m of msgs) console.log(formatRow(m));
     return 0;
   }
 

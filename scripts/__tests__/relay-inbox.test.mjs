@@ -12,6 +12,7 @@ import {
   INBOX_REL,
   validate,
   writeMessage,
+  formatRow,
   listMessages,
   ackMessage,
   inboxDir,
@@ -189,5 +190,59 @@ describe('primaryRoot — one inbox, whichever worktree reads it', () => {
     expect(fs.existsSync(path.join(resolved, '.git'))).toBe(true);
     // The primary's .git is a directory; a linked worktree's is a file.
     expect(fs.statSync(path.join(resolved, '.git')).isDirectory()).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// A foreign file in the inbox must not take `list` down — found live 2026-07-31
+// ---------------------------------------------------------------------------
+
+describe('a file that is not a relayed request', () => {
+  /**
+   * Found by the FIRST approval ever granted (TL-014 leg C): `relay-approve.mjs` wrote its record
+   * into this directory, `listMessages` parsed it to a row of nulls, and the CLI printer crashed on
+   * `.padEnd` of null. A fail-open parser feeding a fail-hard printer.
+   *
+   * The trigger has been moved out of this directory, but the hole was never about approvals — a
+   * README, an editor backup, or a hand-dropped note reproduces it identically. These bars pin the
+   * directory as *shared and writable by others*, which is what it has always been.
+   */
+  let root;
+  beforeEach(() => {
+    root = fs.mkdtempSync(path.join(os.tmpdir(), 'relay-foreign-'));
+    fs.mkdirSync(path.join(root, INBOX_REL), { recursive: true });
+  });
+  afterEach(() => fs.rmSync(root, { recursive: true, force: true }));
+
+  const put = (name, body) => fs.writeFileSync(path.join(root, INBOX_REL, name), body);
+
+  it('is skipped by listMessages — it is not a malformed message, it is not a message', () => {
+    put('README.md', '# just a readme\n\nnothing structured here.\n');
+    expect(listMessages(root)).toEqual([]);
+  });
+
+  it('does not hide real requests sitting beside it', () => {
+    put('README.md', '# readme\n');
+    writeMessage(root, { from: 'peer70', verb: 'status', note: 'hello' });
+    const msgs = listMessages(root);
+    expect(msgs).toHaveLength(1);
+    expect(msgs[0].verb).toBe('status');
+  });
+
+  it('a PARTIALLY damaged request is still listed, gaps and all — that is diagnostic', () => {
+    // Only `from:` survives. This IS a message, so hiding it would be the worse failure.
+    put('2026-07-31T00-00-00-000Z-broken.md', '# damaged\n\nfrom: peer84\n');
+    const msgs = listMessages(root);
+    expect(msgs).toHaveLength(1);
+    expect(msgs[0].from).toBe('peer84');
+    expect(msgs[0].verb).toBeNull();
+  });
+
+  it('the printer renders a damaged request instead of crashing on it', () => {
+    // formatRow is what the CLI calls, so this is the production path, not a stand-in.
+    const row = formatRow({ id: 'broken', verb: null, from: 'peer84', status: null });
+    expect(row).toContain('peer84');
+    expect(row).toContain('\u2014'); // the missing fields render as a dash
+    expect(() => formatRow({ id: 'x', verb: null, from: null, status: null })).not.toThrow();
   });
 });

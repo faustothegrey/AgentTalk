@@ -209,15 +209,31 @@ export function approve({ root, token, now = Date.now() }) {
   return { ok: true, record: used };
 }
 
+/** Where consumed approvals are announced. Deliberately NOT the request inbox — see `announce`. */
+export const ANNOUNCE_REL = path.join('design', 'operator', 'approvals');
+
 /**
- * Tell the session an approval landed, via the inbox its watch already covers (step 1's
- * machinery, reused rather than duplicated). This note is a NOTIFICATION, not an authority: the
- * session must re-read the store before acting. A note in `design/operator/**` is writable by the
- * courier, and the store is not — which is the whole reason they are different places.
+ * Tell the session an approval landed. This note is a NOTIFICATION, not an authority: the session
+ * must re-read the store before acting. A note under `design/operator/**` is courier-writable and
+ * the store is not — which is the whole reason they are different places.
+ *
+ * ⚠️ THIS WRITES TO `design/operator/approvals/`, NOT THE REQUEST INBOX — a fix, not a preference.
+ * The first version reused `design/operator/inbox/`, reasoning that the session already watched it.
+ * The **first approval ever granted** (2026-07-31, TL-014 leg C) then crashed `relay-inbox.mjs
+ * list`, which parses everything in that directory as a relayed request; an approval record carries
+ * none of the fields a request has.
+ *
+ * The crash was the symptom. The design error was **putting a record and a request in one directory
+ * because they happened to share a watcher.** They are different kinds of thing — a request is
+ * inbound and pending, an approval is a consumed decision — and a reader forced to guess which it
+ * holds will eventually guess wrong. A shared watch is not a reason to conflate two types: widening
+ * the watch is the cheap part, untangling the types is not.
+ *
+ * So the session's watch must cover `design/operator/**`, not the inbox alone.
  */
 function announce(root, rec) {
   try {
-    const dir = path.join(root, 'design', 'operator', 'inbox');
+    const dir = path.join(root, ANNOUNCE_REL);
     fs.mkdirSync(dir, { recursive: true });
     const stamp = rec.usedAt.replace(/[:.]/g, '-');
     fs.writeFileSync(
