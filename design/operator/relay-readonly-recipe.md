@@ -71,14 +71,141 @@ node scripts/relay-inbox.mjs ack <id>      # once; a second ack refuses
 The inbox always resolves against the **primary checkout** (`--git-common-dir`, never `--show-toplevel` —
 [[BL-101]]/[[BL-106]] were both that bug), so it is one location whichever worktree reads it.
 
-## Answering back
+## Answering back — the outbound pointer relay
 
-Two paths, neither of them scraping:
+**Implemented 2026-07-31** as `scripts/relay-status.mjs` ([[BL-110]] step 2; plan:
+`design/outbound-pointer-relay-plan.md`). Until then this section listed two *possible* paths and the channel was
+a **doorbell**: a message could reach the session, and nothing came back but a receipt. The substrate is still
+the live JSONL transcript LB-49 named as the lossless alternative — now read for one datum, not scraped.
 
-- **The live JSONL transcript** — `~/.claude/projects/<slug>/<session>.jsonl`, written live, structured, every
-  assistant message machine-readable. LB-49 identified this as the lossless alternative and it was never adopted;
-  it is still there. **Verified 2026-07-30:** 514 lines mid-session, last assistant message read back verbatim.
-- **`PushNotification`** when the session needs to *pull* the PO's attention rather than wait to be asked.
+### Asking for one
+
+Same envelope as *Sending one* above; the body of `payload.text`:
+
+```
+PO-RELAY read-only status request. Please RUN EXACTLY THIS ONE COMMAND, nothing else:
+
+node <repo>/scripts/relay-status.mjs emit
+
+Then reply with the command's stdout, verbatim, and nothing more. Do not summarise it, do not
+reformat it, do not add commentary. Do not run any other command and do not modify any file.
+```
+
+**"Do not summarise" is load-bearing, and it guards a different hazard than the clause above.** The inbound
+disclaimer exists so a courier does not *act* on a relayed note; this one exists so a courier does not *rewrite*
+a payload whose entire value is that no LLM wrote it. A summarised payload fails its own digest — the correct
+outcome, but it wastes a round trip, so ask plainly.
+
+### What comes back
+
+```
+1/7 session: 5a0e75d4
+2/7 branch:  master
+3/7 head:    d11b6c7 plan(BL-110): the outbound pointer relay — the return leg
+4/7 tree:    0 modified, 0 untracked
+5/7 sync:    ahead 1, behind 0
+6/7 spoke:   2026-07-31T07:31:56.967Z (0s ago)
+7/7 inbox:   1 pending
+digest: 9693816e
+```
+
+**Every line is verifiable by the PO from the repo**, except `spoke`, which is verifiable from the transcript the
+PO owns. `head`'s commit subject is prose — but *committed* prose, recoverable from its sha, which is what makes
+it legal here. **No prose the session authored is ever sent**, and that fence has a test behind it
+(`relay-status.test.mjs` row 6: a sentinel planted in a transcript body must appear nowhere in the payload).
+
+**`spoke` is the field to read first.** It answers *"is this session alive or wedged?"* without reading one word
+of content. It is **not a kill switch** — [[BL-028]] (dead idle timeout) and [[BL-096]] are unchanged; it tells
+you something is stuck, it cannot unstick it.
+
+### Checking it arrived whole — [[BL-112]]
+
+The courier **silently excises a specific literal substring** from replies, so the payload carries two tells:
+
+- **the `n/7` numbering** — a whole missing field is visible **by eye, on a phone**, which is the real use case;
+- **`digest:`** — catches excision *within* a line, the shape BL-112 actually exhibits. Verify at a terminal:
+
+  ```bash
+  pbpaste | node <repo>/scripts/relay-status.mjs verify     # → `intact` (0) or `ALTERED: …` (1)
+  ```
+
+**The digest is not a security mechanism** and must not be sold as one: an excising courier could excise the
+digest too. It converts *silent* corruption into *detectable* corruption — precisely what BL-112 says is missing.
+It is computed over lines with trailing whitespace stripped, so benign courier reformatting does not false-alarm.
+
+### Honest limits
+
+- **A PO on a phone cannot run the verifier.** In the moment the numbering is the only tell; the digest earns its
+  keep afterwards, from the artifact.
+- **It reports the PRIMARY checkout**, always — so work in progress inside a task worktree does not appear.
+  `branch: master, 0 modified` can be true while an implementer is mid-task elsewhere. Filed as a finding rather
+  than patched: adding a field is a governance change, and the seven keys are pinned by a test.
+- **Pull-only.** It answers; it does not initiate. **`PushNotification`** remains the path for the session to
+  *pull* the PO's attention unprompted.
+
+## Authorizing a merge or a push — `relay-approve.mjs`
+
+**Added 2026-07-31 on PO instruction** (*"I want to be able to authorize merge and push through the telegram
+channel. It is safe enough for the moment."*). **Read the limits section below before relying on it** — what it
+provides is **integrity, not authentication.**
+
+### The shape: the session proposes, the PO answers
+
+The relay never carries an instruction to merge. It carries an **answer to a question the session already
+asked** — BL-110's own strongest primitive, because the option set is fixed before the message exists.
+
+```
+session → PO                              PO → session (Telegram, or any channel)
+
+1/6 proposal: merge                        approve 4f46b051
+2/6 branch:   task-relay-out
+3/6 sha:      27618cf                      refused if: unknown · already-used
+4/6 gates:    624/624, tsc 0                           · expired · sha-moved
+5/6 expires:  2026-07-31T07:54:51Z                     · bad-token (mangled in transit)
+6/6 reply:    approve 4f46b051
+```
+
+```bash
+# session, after its closure sweep:
+node <repo>/scripts/relay-approve.mjs propose --action merge --branch <b> --gates "624/624, tsc 0"
+
+# courier, relaying the PO's answer — the ONLY command it is given:
+node <repo>/scripts/relay-approve.mjs approve <token>
+```
+
+**The token is bound to `(action, branch, sha)` and is single-use and expiring.** If the branch gains a commit
+between the proposal and the answer, the token is **void** — so a slow human round trip can never authorize work
+the PO did not see. If [[BL-112]] eats part of the token, it is refused as `bad-token`: **fails closed**, the only
+acceptable direction for a merge gate riding a courier known to drop characters.
+
+### `approve` does not merge
+
+It **records** an authorization; the **session performs the merge**. That keeps the property that made step 1
+safe: **no relay-reachable command performs a git operation** — pinned by a test that asserts no ref moves and no
+tracked file changes. The session re-reads `.approvals/` before acting; the inbox note is only a notification.
+
+**`.approvals/` is deliberately NOT under `design/operator/**`** — that is Hermes's write allowlist, and a courier
+able to write its own pending proposal could mint the very capability the token exists to bound. The store is
+gitignored; the consumed record is announced into the watched inbox.
+
+### ⚠️ Limits — what this does NOT do
+
+**It is not a security control on the HMP channel, and must never be cited as one.** An HMP message does not
+arrive at a fenced handler; it arrives at **Hermes, an LLM holding a shell**, which has already executed 107
+messages including one that installed software over plain HTTP. A sender who reaches that port can ask it to run
+`propose` *and* `approve` — or simply to run `git push` and ignore all of this.
+
+**[[BL-107]] is the only control for that, and it is OPEN.** What the token design actually buys:
+
+| ✅ Buys | ❌ Does not buy |
+|---|---|
+| the right sha — a moved branch voids the token | protection from a deliberate LAN attacker |
+| single-use — no replay, no scroll-back re-send | any authentication whatsoever |
+| fail-closed under BL-112 corruption | a reason to consider BL-107 less urgent |
+| no execute path on the relay surface | the PO's judgement — it still needs a human answer |
+
+**Telegram *is* authenticated** (account + `TELEGRAM_ALLOWED_USERS`, one entry) and **HMP is not** — but the
+capability cannot tell them apart, which is exactly why it is built to be safe either way.
 
 ## The fence — what this channel may never carry
 
@@ -86,11 +213,22 @@ Two paths, neither of them scraping:
 with `verb-not-read-only` rather than a generic unknown-verb, so the refusal relayed back to the PO says something
 true.
 
-**`[PO-RELAY]` is not `[PO]`.** It may not authorise a **merge**, a **push**, a **scope or direction change**, a
-**role reassignment**, `autonomy: eligible`, or the **disposition of a `critical`**. Those stay with a human at a
-terminal. Widening `READ_ONLY_VERBS` is a **governance act**, not a refactor — it needs the `[PO-RELAY]` decision
-and [[BL-107]] first, because the safety argument for running unauthenticated is *exactly* that every verb is
-read-only.
+**`[PO-RELAY]` is not `[PO]`.** It may not authorise a **scope or direction change**, a **role reassignment**,
+`autonomy: eligible`, or the **disposition of a `critical`**. Those stay with a human at a terminal. Widening
+`READ_ONLY_VERBS` is a **governance act**, not a refactor — it needs the `[PO-RELAY]` decision and [[BL-107]]
+first, because the safety argument for running unauthenticated is *exactly* that every verb is read-only.
+
+**⚠️ AMENDED 2026-07-31 (PO): merge and push are no longer on that list — but they did NOT become verbs.** The
+PO authorised relayed merge/push authorization (*"safe enough for the moment"*). Crucially, `READ_ONLY_VERBS` was
+**not widened** and `merge`/`push` remain in `WRITE_VERBS`, still refused by `relay-inbox.mjs`. What was added is
+a *different mechanism* — a token bound to one action, one branch and one sha, answering a proposal the session
+had already made (§ *Authorizing a merge or a push*). **The inbound verb allowlist is unchanged and the relay
+still has no execute path.**
+
+**AGENT.md has not been amended and still says pushes are the PO's "absolutely and without exception."** That
+sentence is now narrower than practice — the PO still authorises every push, but may now do so from a phone. The
+wording is the PO's to settle; until they do, **treat AGENT.md as authoritative and this as the newer fact**, and
+say so rather than picking one silently.
 
 ## Limits, so nobody is surprised
 
