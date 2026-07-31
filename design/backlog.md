@@ -5710,6 +5710,66 @@ blocked_by: [BL-107]
   nothing, so it needs no authentication, and it still exercises every leg end to end — the O-1 instinct applied
   to a channel instead of a worker.
 
+  ---
+
+  **✅ STEPS 2 AND 3 DELIVERED AND MERGED 2026-07-31 (`db5d102`, pushed). The item stays OPEN** — the
+  `[PO-RELAY]` authority decision and [[BL-107]] are both untouched.
+
+  **Step 2 — the return leg (`scripts/relay-status.mjs`).** Until this, the channel was a **doorbell**: a message
+  could reach a session and nothing came back but a receipt (`receive` files a note and stops, so `status` and
+  `report` produced identical acknowledgements). `emit` returns seven numbered facts + a digest; `verify` says
+  whether they arrived whole.
+
+  **It was buildable while the rest of this item is blocked, and the reason generalises:** BL-107 and `[PO-RELAY]`
+  gate what a forged **inbound** message can make a session *do*. **An outbound message carries no authority, so
+  there is nothing in that direction to forge.** No field is prose the session authored — every value is a number,
+  a path, a timestamp, or *committed* text recoverable by its sha, which is [[BL-112]]'s own fix direction obeyed
+  rather than worked around. Two tells for a silent drop: `n/7` numbering **a human on a phone can count** (the
+  only tell that works in the moment — a PO away from the desk cannot run a verifier), and a digest catching the
+  **within-line** excision BL-112 actually exhibits.
+
+  **Step 3 — token-bound merge/push authorization (`scripts/relay-approve.mjs`), on PO instruction**
+  (*"I want to be able to authorize merge and push through the telegram channel. It is safe enough for the
+  moment."*). The session **proposes** `(action, branch, sha)`; the relay carries only an **answer**:
+  `approve <token>`, single-use, expiring, void if the branch moved. **`READ_ONLY_VERBS` was NOT widened** —
+  `merge`/`push` remain in `WRITE_VERBS` and are still refused by `relay-inbox.mjs`. This is a different
+  mechanism, not a bigger allowlist, and **`approve` does not merge**: it records, the session acts, so no
+  relay-reachable command performs a git operation (pinned by a test asserting no ref moves and no tracked file
+  changes).
+
+  **A finding this surfaced that the backlog did not have: Telegram and HMP are DIFFERENT CHANNELS with different
+  postures.** Telegram authenticates by account plus `TELEGRAM_ALLOWED_USERS` — **a single entry, the PO's DM**,
+  live and in use. HMP is `0.0.0.0` + `allow_all_peers`. **BL-107's "hard precondition" was written about HMP and
+  does not describe the Telegram path**, which is why the PO's judgement was sounder than this backlog implied.
+
+  **⚠️ AND THE CORRECTION THAT MATTERS MOST — recorded because it was believed, stated to the PO, and acted on
+  before being caught.** The design was recommended on the argument *"a forger cannot mint a proposal, so the
+  worst they can do is approve a merge the session already prepared."* **On this channel that is FALSE.** An HMP
+  message does not reach a fenced handler — it reaches **Hermes, an LLM holding a shell**, which has already
+  executed 107 messages including one that installed software over plain HTTP. A sender who reaches that port can
+  ask it to run `propose` *and* `approve`, or simply `git push`. **So against a deliberate attacker this design
+  buys nothing, and no design in this repo would. [[BL-107]] is the only control and it is OPEN; nothing in step 3
+  may be cited as having reduced that exposure.** What the token actually buys is **integrity, not
+  authentication**: the right sha (a moved branch voids it), no replay, and **fail-closed under BL-112**
+  corruption. The reusable form: *a capability-bounding argument is only as strong as the narrowest surface the
+  message can reach — check what is actually on the other end of the port before claiming the bound.*
+
+  **Open and unchanged:** the `[PO-RELAY]` authority decision, [[BL-107]], [[BL-112]]'s excision mechanism, and
+  every write-class **verb**. **`AGENT.md` still reads "push … the PO's, absolutely and without exception"** —
+  now narrower than practice (the PO still authorises every push, but may do so from a phone). **Deliberately not
+  amended**: governance wording is the PO's. Flagged in the recipe with "treat AGENT.md as authoritative until
+  the PO settles it."
+
+  **Telemetry (task closure):**
+  ```
+  - task:        BL-110 steps 2+3
+  - wall-clock:  2026-07-31 ~09:25 -> 10:16 (~51m)
+  - budget:      claude unavailable (meter ok:false — LB-11)
+  - gate:        tsc 0, suite 652/652 across 82 files (was 624/80 pre-step-3), pollution clean
+  - diff:        6 files, +1492/-11; commits 27618cf, 8008a55, merge db5d102
+  - outcome:     MERGED + PUSHED (PO-instructed)
+  ```
+
 <!-- @item
 id: BL-111
 status: done
