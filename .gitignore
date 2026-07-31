@@ -24,3 +24,6 @@ test-loop-debug.log
 
 # spike / smoke / live-probe run logs (evidence lives in the ledgers, not git)
 m07-*.log
+
+# BL-110 step 3 — pending approval tokens; deliberately NOT under design/operator/**
+.approvals/

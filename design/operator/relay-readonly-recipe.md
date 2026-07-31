@@ -143,17 +143,92 @@ It is computed over lines with trailing whitespace stripped, so benign courier r
 - **Pull-only.** It answers; it does not initiate. **`PushNotification`** remains the path for the session to
   *pull* the PO's attention unprompted.
 
+## Authorizing a merge or a push — `relay-approve.mjs`
+
+**Added 2026-07-31 on PO instruction** (*"I want to be able to authorize merge and push through the telegram
+channel. It is safe enough for the moment."*). **Read the limits section below before relying on it** — what it
+provides is **integrity, not authentication.**
+
+### The shape: the session proposes, the PO answers
+
+The relay never carries an instruction to merge. It carries an **answer to a question the session already
+asked** — BL-110's own strongest primitive, because the option set is fixed before the message exists.
+
+```
+session → PO                              PO → session (Telegram, or any channel)
+
+1/6 proposal: merge                        approve 4f46b051
+2/6 branch:   task-relay-out
+3/6 sha:      27618cf                      refused if: unknown · already-used
+4/6 gates:    624/624, tsc 0                           · expired · sha-moved
+5/6 expires:  2026-07-31T07:54:51Z                     · bad-token (mangled in transit)
+6/6 reply:    approve 4f46b051
+```
+
+```bash
+# session, after its closure sweep:
+node <repo>/scripts/relay-approve.mjs propose --action merge --branch <b> --gates "624/624, tsc 0"
+
+# courier, relaying the PO's answer — the ONLY command it is given:
+node <repo>/scripts/relay-approve.mjs approve <token>
+```
+
+**The token is bound to `(action, branch, sha)` and is single-use and expiring.** If the branch gains a commit
+between the proposal and the answer, the token is **void** — so a slow human round trip can never authorize work
+the PO did not see. If [[BL-112]] eats part of the token, it is refused as `bad-token`: **fails closed**, the only
+acceptable direction for a merge gate riding a courier known to drop characters.
+
+### `approve` does not merge
+
+It **records** an authorization; the **session performs the merge**. That keeps the property that made step 1
+safe: **no relay-reachable command performs a git operation** — pinned by a test that asserts no ref moves and no
+tracked file changes. The session re-reads `.approvals/` before acting; the inbox note is only a notification.
+
+**`.approvals/` is deliberately NOT under `design/operator/**`** — that is Hermes's write allowlist, and a courier
+able to write its own pending proposal could mint the very capability the token exists to bound. The store is
+gitignored; the consumed record is announced into the watched inbox.
+
+### ⚠️ Limits — what this does NOT do
+
+**It is not a security control on the HMP channel, and must never be cited as one.** An HMP message does not
+arrive at a fenced handler; it arrives at **Hermes, an LLM holding a shell**, which has already executed 107
+messages including one that installed software over plain HTTP. A sender who reaches that port can ask it to run
+`propose` *and* `approve` — or simply to run `git push` and ignore all of this.
+
+**[[BL-107]] is the only control for that, and it is OPEN.** What the token design actually buys:
+
+| ✅ Buys | ❌ Does not buy |
+|---|---|
+| the right sha — a moved branch voids the token | protection from a deliberate LAN attacker |
+| single-use — no replay, no scroll-back re-send | any authentication whatsoever |
+| fail-closed under BL-112 corruption | a reason to consider BL-107 less urgent |
+| no execute path on the relay surface | the PO's judgement — it still needs a human answer |
+
+**Telegram *is* authenticated** (account + `TELEGRAM_ALLOWED_USERS`, one entry) and **HMP is not** — but the
+capability cannot tell them apart, which is exactly why it is built to be safe either way.
+
 ## The fence — what this channel may never carry
 
 `status` · `report`. **That is the entire allowlist**, it is frozen at runtime, and a write-class verb is refused
 with `verb-not-read-only` rather than a generic unknown-verb, so the refusal relayed back to the PO says something
 true.
 
-**`[PO-RELAY]` is not `[PO]`.** It may not authorise a **merge**, a **push**, a **scope or direction change**, a
-**role reassignment**, `autonomy: eligible`, or the **disposition of a `critical`**. Those stay with a human at a
-terminal. Widening `READ_ONLY_VERBS` is a **governance act**, not a refactor — it needs the `[PO-RELAY]` decision
-and [[BL-107]] first, because the safety argument for running unauthenticated is *exactly* that every verb is
-read-only.
+**`[PO-RELAY]` is not `[PO]`.** It may not authorise a **scope or direction change**, a **role reassignment**,
+`autonomy: eligible`, or the **disposition of a `critical`**. Those stay with a human at a terminal. Widening
+`READ_ONLY_VERBS` is a **governance act**, not a refactor — it needs the `[PO-RELAY]` decision and [[BL-107]]
+first, because the safety argument for running unauthenticated is *exactly* that every verb is read-only.
+
+**⚠️ AMENDED 2026-07-31 (PO): merge and push are no longer on that list — but they did NOT become verbs.** The
+PO authorised relayed merge/push authorization (*"safe enough for the moment"*). Crucially, `READ_ONLY_VERBS` was
+**not widened** and `merge`/`push` remain in `WRITE_VERBS`, still refused by `relay-inbox.mjs`. What was added is
+a *different mechanism* — a token bound to one action, one branch and one sha, answering a proposal the session
+had already made (§ *Authorizing a merge or a push*). **The inbound verb allowlist is unchanged and the relay
+still has no execute path.**
+
+**AGENT.md has not been amended and still says pushes are the PO's "absolutely and without exception."** That
+sentence is now narrower than practice — the PO still authorises every push, but may now do so from a phone. The
+wording is the PO's to settle; until they do, **treat AGENT.md as authoritative and this as the newer fact**, and
+say so rather than picking one silently.
 
 ## Limits, so nobody is surprised
 
