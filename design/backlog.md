@@ -5985,4 +5985,47 @@ autonomy: human-only
   - outcome:     MERGED — awaiting PO push (client ahead 2)
   ```
 
+<!-- @item
+id: BL-114
+status: todo
+date: 2026-07-31
+epic: null
+tags: [launcher, cap, meter, containment, operator, fails-open, agentalk-mcp-client]
+autonomy: human-only
+-->
+- [todo · found preparing the `hmp2` commission, by checking what `cap.meter` actually buys before claiming it
+  as containment] — **The resource cap fails OPEN and silently: a missing meter figure is coerced to `0`, so the
+  rail never fires while appearing healthy.**
+
+  `readMeterPercent` (`scripts/launcher.mjs:229`, `agentalk-mcp-client`) ends
+  `return typeof pct === 'number' ? pct : 0`. The caller then computes `delta = pct - baseline` and fires only on
+  `delta >= maxPercentDelta` (`lib/bite0-launcher.mjs:104-113`). So when the provider block has no
+  `current_session.used_percent`, the reader returns a **clean, plausible `0`**, the delta goes **negative**, and
+  the cap can never trip. There is a rejection path immediately below it that correctly skips a tick and keeps
+  the wall-clock rail — but this coercion never reaches it, because a coerced `0` is not a rejection.
+
+  **This is live right now, not hypothetical.** `GET /usage` on this box returns `ok: true` for **codex** and
+  **antigravity** with `used_percent: undefined` → both coerce to `0`. `claude` answered `ok: true, used_percent:
+  7` at the time of filing, but `scripts/usage.mjs` had reported it `unavailable — ok:false` twenty minutes
+  earlier, which is the documented [[LB-11]] jitter. **So the rail's status flickers with the meter's, and
+  nothing in the artifact records which state it was in.**
+
+  **Why this is worse than an ordinary bug and belongs on the containment list.** The OPERATOR charter calls
+  `cap.meter` **MANDATORY** — not advice — because "the operator's worker draws on the same provider pool as the
+  supervising session," and a named-but-unmitigated budget risk already took a session window to 100%.
+  `hmp-commission.mjs` refuses `missing-cap-meter` if it is absent. So the fence verifies the meter is
+  *configured* and nothing verifies it is *working*, which is this project's recurring shape — **the check that
+  wasn't looking** — applied to the one rail the charter names as mandatory. Every run graded "containment held,
+  `cap.meter` configured" is a claim about configuration, never about enforcement.
+
+  **Fix direction (not a decision — this is `human-only` and touches a cap):** distinguish "read failed" from
+  "read zero" by rejecting instead of coercing, so the existing skip-a-tick path handles it; and record the
+  meter's reachability in the run artifact so a grader can say `unavailable` rather than `0`. **Do not** make an
+  unreadable meter *fail* the run without a PO call — that converts an observability gap into a new way for runs
+  to die, and [[LB-11]] says the meter is jittery by nature.
+
+  **Do not cite any past run as evidence the rail works.** No run to date has recorded a meter delta against a
+  verified-live provider block, so `cap.wallClockMs` has been the only rail actually proven — which is what
+  [[BL-096]] already says about the wall-clock, and now applies to the meter too.
+
 *(add new items above this line)*
