@@ -5432,13 +5432,13 @@ autonomy: human-only
 
 <!-- @item
 id: BL-104
-status: todo
+status: done
 date: 2026-07-30
 epic: null
-tags: [wt-setup, dx, error-handling, bl100-followup, worktree]
-autonomy: eligible
+tags: [wt-setup, dx, error-handling, bl100-followup, worktree, agent-delivered, hmp-commissioned]
 -->
-- [todo · hit for real during [[BL-102]]'s closure sweep; the rough edge itself was documented in
+- [done · **MERGED 2026-07-31** (`602db8f`) · **delivered by a worker commissioned over HMP — the first task in
+  this project completed end to end by an agent a courier launched** · hit for real during [[BL-102]]'s closure sweep; the rough edge itself was documented in
   `PORTING.md` §7 during [[BL-100]]] — **`wt-setup` surfaces every git failure as an unhandled Node stack
   trace, so a routine condition reads like a code defect.**
 
@@ -5452,6 +5452,50 @@ autonomy: eligible
   catch around the `git()` calls in `remove`/`create` and emit git's own stderr as a one-line
   `[wt-setup] <message>`, keeping a non-zero exit. **Do not** swallow the failure or make `remove` idempotent by
   ignoring errors — that would hide a genuinely missing worktree, which is the one case the message is for.
+
+  ### ✅ CLOSED — merged `602db8f`, 2026-07-31
+
+  **Delivered by a worker commissioned over HMP — the first task in this project completed end to end by an
+  agent a courier launched.** PO authorization `0eeebb4` → Hermes → fence → `att-op-hmp2` → `0ccff42`. Graded
+  **PASS on R1–R5** against the pre-registered bar `053b8a75`
+  (`design/operator/hmp2-grading.md`), and the closure sweep was re-run on the **merge result** rather than the
+  branch: `tsc -b` exit 0, suite **665/665 / 82 files**, and the behaviour verified on master itself —
+  `[wt-setup] fatal: '…' is not a working tree`, exit 1, **0** stack markers.
+
+  **This item's own "Fix:" direction was WRONG, and the worker proved it rather than following it.** The line
+  above says *"catch around the `git()` calls."* **A catch alone would have printed nothing useful:** `remove`
+  passed `stdio: ['ignore','inherit','inherit']`, so git's message went straight to the terminal and the thrown
+  error carried **`stderr: null`** — there was nothing left to report. The fix therefore had to *capture* stderr,
+  not merely catch. `git()` now uses `spawnSync` with stderr piped, throws a typed **`WtSetupError`** carrying
+  git's own words, and a single top-level handler prints `[wt-setup] <message>` and exits 1. Success-path stderr
+  is forwarded verbatim so `worktree add`'s progress still reaches the terminal.
+
+  **The constraint this item insisted on holds, and is pinned by a test:** the error is **not** swallowed and
+  `remove` is **not** idempotent. Only `WtSetupError` is caught — an unexpected error is a code defect and keeps
+  its stack, which is the reason the class exists at all.
+
+  **Two things the worker did unprompted, both worth imitating:** it **mutation-checked its own tests** (5 of the
+  7 go red against the unfixed script; it named the 2 that stay green as regression guards that *should* hold
+  either way), and it found the **same-class defect in `create`'s `npx tsc -b` / `npx vitest run` calls and
+  reported it WITHOUT fixing it**, because the brief forbade running `create` and an unexercised fix to an error
+  path is a guess. → **[[BL-115]]**.
+
+  **One deviation, accepted with the record:** `parseArgs` was declared out of scope in the brief and the worker
+  changed it anyway (bare `Error` → `WtSetupError`). Declared prominently rather than slipped in, trivial, and
+  provably safe — but the instruction was to report it. Partly the brief's fault for naming it beside a fix whose
+  mechanism naturally sweeps it up.
+
+  **⚠️ Closing this empties the agent-selectable queue again.** BL-104 was the only `autonomy: eligible` item, so
+  `bl093-backlog-selectable.test.ts` goes red **by design** and the pin was updated only after the red was shown
+  to the PO — that sequence is the ritual, not a formality.
+
+  **Telemetry (task closure):**
+  - task:        BL-104 (run `hmp2`)
+  - wall-clock:  2026-07-31 18:51:43Z → 18:56:41Z (worker 4m58s); merged 21:06Z
+  - budget:      claude weekly 25%→26% (Δ ~1%), session 7%→18% (Δ ~11%, mostly the grader's own suite runs)
+  - gate:        tsc 0, suite 665/665 (82 files), invariant check 0 critical / 3 info, pollution clean
+  - diff:        2 files, +155/-10; commits 0ccff42, merge 602db8f
+  - outcome:     MERGED ✅ — awaiting PO push
 
 <!-- @item
 id: BL-105
