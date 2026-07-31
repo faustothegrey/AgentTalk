@@ -51,6 +51,7 @@
  */
 
 import { execSync } from 'child_process';
+import { isMainModule } from './lib/is-main.mjs';
 
 export const STATUS = {
   LEGITIMATE: 'LEGITIMATE',
@@ -254,6 +255,6 @@ function main() {
   process.exit(1);
 }
 
-if (process.argv[1] && import.meta.url.endsWith(process.argv[1].split('/').pop())) {
+if (isMainModule(import.meta.url)) {
   main();
 }

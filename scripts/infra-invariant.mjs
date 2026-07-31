@@ -62,6 +62,7 @@ import path from 'path';
 import { execFileSync } from 'child_process';
 import { fileURLToPath } from 'url';
 import { classifyProcess, isOrchestratorIsh, parseDeclared, STATUS } from './check-orchestrator-ports.mjs';
+import { isMainModule } from './lib/is-main.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, '..');
@@ -876,7 +877,7 @@ function main(argv) {
   throw new UsageError(`unknown verb: ${verb}`);
 }
 
-const invokedDirectly = process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+const invokedDirectly = isMainModule(import.meta.url);
 if (invokedDirectly) {
   try {
     process.exit(main(process.argv));

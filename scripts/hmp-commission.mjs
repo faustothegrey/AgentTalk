@@ -44,6 +44,7 @@ import crypto from 'crypto';
 import os from 'os';
 import { execFileSync, spawn as spawnProcess } from 'child_process';
 import { fileURLToPath } from 'url';
+import { isMainModule } from './lib/is-main.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, '..');
@@ -613,13 +614,7 @@ export function main(argv) {
  * the worst possible reading. Found live on the sibling relay script (BL-110) and fixed here
  * before it could ship.
  */
-const invokedDirectly = (() => {
-  try {
-    return process.argv[1] ? fs.realpathSync(path.resolve(process.argv[1])) === fileURLToPath(import.meta.url) : false;
-  } catch {
-    return false;
-  }
-})();
+const invokedDirectly = isMainModule(import.meta.url);
 if (invokedDirectly) {
   try {
     process.exit(main(process.argv));
