@@ -32,26 +32,34 @@ items carry a closing block + telemetry inside the backlog item — read those f
 take what you find. (Naming shas in this file has invalidated it within the hour, three times.)
 
 At close: AgentTalk `npm test` **665/665 across 82 files**, `tsc -b` clean · backlog **116 items, 0 warnings** ·
-ports 3500/3600 free · **no worktrees but the primary, no branches but `master`** · claude weekly **27%**.
-**⚠️ 9 commits UNPUSHED on AgentTalk** (client repo is 2 ahead from an earlier session). Push is the PO's.
+ports 3500/3600 free · **no worktrees but the primary, no branches but `master`** · claude weekly **27%** ·
+**both repos PUSHED and in sync** (the PO authorized the push at close).
 
-## ⚠️ The one thing to know first
+## ⚠️ The one thing to do first
 
-**The ladder is no longer broken — it is unstocked.** BL-104 was marked eligible, commissioned over HMP,
-delivered by a launched worker, graded PASS on R1–R5, merged (`602db8f`) and closed — all in one session. The
-pipeline works end to end. **And closing it emptied the agent-selectable queue: nothing can currently be handed
-to an agent unattended.**
+**[[BL-115]] is `autonomy: eligible` and the ladder is stocked — you have a rung waiting.** BL-104 ran the full
+cycle in one session (eligible → commissioned over HMP → delivered by a launched worker → PASS on R1–R5 →
+merged `602db8f` → closed), and the PO marked BL-115 eligible immediately behind it. **So do not open by asking
+what to do — open by verifying BL-115 is still real, then plan its run.**
 
-**Refilling it is a PO act and only a PO act** ([[BL-093]] fails closed; `bl093-backlog-selectable.test.ts` pins
-the set exactly). So **do not open by looking for something to launch** — there is nothing, by design. Open by
-asking the PO which rung is next, with a recommendation.
+**Verify before you hand it out.** The session before last picked BL-108, and checking showed it had already
+been fixed inline; an eligible no-op produces a green run that proves nothing, which is worse than not running.
+For BL-115 the check is thirty seconds: `grep -n "execFileSync('npx'" scripts/wt-setup.mjs` should still show
+the two calls with `stdio: 'inherit'` and no surrounding try/catch.
 
-**Your strongest recommendation is [[BL-115]]** — `create`'s `npx tsc -b` / `npx vitest run` calls still throw
-raw stacks, the same defect BL-104 fixed for `git()`. It became unblocked the moment BL-104 closed. **Read its
-trap before proposing it:** BL-104's mechanism does **not** transfer — those calls must keep `stdio: 'inherit'`
-because live build/test output is the point, so the fix converts only the non-zero *exit*, with no captured
-stderr to quote. It is also a genuinely harder rung than BL-104: testing it requires running `create`, which
-provisions a real worktree.
+**Two things to get right in its brief, and they are the whole difficulty:**
+
+1. **BL-104's mechanism does NOT transfer.** BL-104 pipes stderr so it can capture and reformat it. These two
+   calls must keep `stdio: 'inherit'` — a build's and a test run's live output *is* the point, and buffering
+   `vitest` until it exits is a worse regression than the stack trace. So the fix converts only the non-zero
+   **exit**, with no captured stderr to quote. **The obvious move is to copy the pattern from next door and it
+   is wrong.**
+2. **Exercising it requires running `create`, which provisions a real worktree — and `primaryCheckout()`
+   resolves the MAIN checkout even from inside a sandbox.** So a careless run registers worktrees against the
+   primary repo, outside its own sandbox, and reads as pollution. **Pin the throwaway-repo pattern** BL-104's
+   own new end-to-end tests established (real script as a child process, temp git repo, cleaned up) and make
+   the failure real (a deliberately broken `tsconfig`) rather than stubbing `npx`. This is why BL-115 is a
+   genuinely harder rung than BL-104, and it is the reason to write the brief carefully rather than to hesitate.
 
 ## How a run actually goes — the parts that are not obvious
 

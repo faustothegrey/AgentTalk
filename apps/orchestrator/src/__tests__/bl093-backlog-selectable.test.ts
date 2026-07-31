@@ -165,20 +165,27 @@ describe('the real backlog (design/backlog.md)', () => {
   // showed it had already been fixed inline. Handing an agent a no-op would have produced a green
   // first run that proved nothing — the worst possible outcome for a pipeline's first exercise.
   // Verify the item is still real before marking it; a stale item is worse than no item.
-  // 2026-07-31 (later the same day) — updated deliberately, not to silence a red. BL-104 was MERGED
-  // (`602db8f`) and closed, so its `autonomy: eligible` is gone and the set is EMPTY again. The red
-  // was shown to the PO before this line moved, which is the ritual rather than a formality.
+  // 2026-07-31 (later the same day) — BL-104 was MERGED (`602db8f`) and closed, emptying the set; the
+  // PO then marked **BL-115** eligible in the same session, so it is non-empty again. Both reds were
+  // shown to the PO before this line moved, which is the ritual rather than a formality.
   //
-  // Per the standing note above, the new value being unexpected is the finding — and here the value
-  // is exactly what was expected, which is its own kind of finding: **one item was handed to an agent,
-  // it was delivered, and the queue emptied in a single session.** BL-104 was delivered end to end by
-  // a worker commissioned over HMP (run `hmp2`, PASS on R1-R5), so the ladder is no longer idle — but
-  // it now has nothing queued behind it. Marking the next rung is a PO act and this line is where it
-  // becomes visible again.
-  it('offers nothing — BL-104 shipped 2026-07-31 and emptied the queue', () => {
+  // Two things this transition demonstrated that are worth more than the value itself:
+  //
+  // 1. **The blocker chain works, and it was verified by the red rather than assumed.** BL-115 carries
+  //    `blocked_by: [BL-104]`. It became selectable the moment BL-104 flipped to `done` — nothing
+  //    edited the dependency, and this assertion is what proved the *effective* set is computed
+  //    rather than read off the `autonomy` flag alone.
+  // 2. **A full cycle fits in one session.** BL-104 went eligible → commissioned over HMP → delivered
+  //    by a launched worker → PASS on R1-R5 → merged → closed, and the queue refilled behind it.
+  //
+  // BL-115 is a HARDER rung than BL-104, deliberately: exercising it requires running `wt-setup
+  // create`, which provisions a real worktree. Its brief must pin the throwaway-repo pattern BL-104's
+  // own tests established, or the run will register worktrees against the PRIMARY checkout and read
+  // as pollution. That is a brief obligation, not a reason to hold the item back.
+  it('offers exactly BL-115 — the PO stocked the next rung 2026-07-31', () => {
     const { items, warnings } = readBacklog();
     expect(warnings).toEqual([]);
-    expect(selectableBacklogItems(items).map((i) => i.id)).toEqual([]);
+    expect(selectableBacklogItems(items).map((i) => i.id)).toEqual(['BL-115']);
   });
 
   it('holds BL-028 back behind BL-084, which is still open', () => {

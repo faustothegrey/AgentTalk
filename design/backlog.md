@@ -6078,7 +6078,7 @@ status: todo
 date: 2026-07-31
 epic: null
 tags: [wt-setup, dx, error-handling, bl104-followup, worktree]
-autonomy: human-only
+autonomy: eligible
 blocked_by: [BL-104]
 -->
 - [todo · **found and deliberately NOT fixed by the `hmp2` worker**, which reported it instead of widening
