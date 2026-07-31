@@ -149,10 +149,26 @@ describe('the real backlog (design/backlog.md)', () => {
   // selectable set is now EMPTY. Per the note above, the new value being unexpected is the finding —
   // and here it is: NOTHING can currently be handed to an agent unattended. That is a PO call to make,
   // and this line is where it becomes visible again the moment an item is marked eligible.
-  it('offers nothing as selectable — BL-094 merged and no item is eligible', () => {
+  //
+  // 2026-07-31 — and here is that moment. The set had been empty for THREE sessions; every item in
+  // them was implemented by an agent working under direct human approval, which is a productive way
+  // to work but is not the autonomous-development ladder this project exists to build. The PO marked
+  // **BL-104** eligible to restart it, and this line went red exactly as designed — the red was shown
+  // to the PO before it was updated, which is the whole ritual, not a formality.
+  //
+  // BL-104 was chosen as a first rung on the O-1 instinct: one function (`wt-setup.mjs` `git()` never
+  // catches), an obvious bar (a clean message and a nonzero exit, no Node stack), and the item's own
+  // words are "not urgent and explicitly not a blocker" — so a botched attempt is harmless. It also
+  // bit this very session, twice, which is how it was verified as still-real rather than assumed.
+  //
+  // NOTE the first candidate was BL-108, and it was REJECTED at this gate: checking the runbook
+  // showed it had already been fixed inline. Handing an agent a no-op would have produced a green
+  // first run that proved nothing — the worst possible outcome for a pipeline's first exercise.
+  // Verify the item is still real before marking it; a stale item is worse than no item.
+  it('offers exactly BL-104 — the PO restarted the ladder 2026-07-31', () => {
     const { items, warnings } = readBacklog();
     expect(warnings).toEqual([]);
-    expect(selectableBacklogItems(items).map((i) => i.id)).toEqual([]);
+    expect(selectableBacklogItems(items).map((i) => i.id)).toEqual(['BL-104']);
   });
 
   it('holds BL-028 back behind BL-084, which is still open', () => {

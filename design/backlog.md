@@ -5436,7 +5436,7 @@ status: todo
 date: 2026-07-30
 epic: null
 tags: [wt-setup, dx, error-handling, bl100-followup, worktree]
-autonomy: human-only
+autonomy: eligible
 -->
 - [todo · hit for real during [[BL-102]]'s closure sweep; the rough edge itself was documented in
   `PORTING.md` §7 during [[BL-100]]] — **`wt-setup` surfaces every git failure as an unhandled Node stack
@@ -5599,13 +5599,13 @@ autonomy: po-decision
 
 <!-- @item
 id: BL-108
-status: todo
+status: done
 date: 2026-07-30
 epic: null
 tags: [docs, runbook, worktree, macos, platform, bl100-followup]
 autonomy: human-only
 -->
-- [todo · surfaced planning the HMP commission on the Mac] — **The runbook's worktree-root line is stale on
+- [done · surfaced planning the HMP commission on the Mac; fixed inline by the `hmp-commission-plan.md` §5 pass, verified and closed 2026-07-31] — **The runbook's worktree-root line was stale on
   macOS, and stale in the direction that hides a worktree from the sweep.**
 
   `design/launch-and-monitor-runbook.md:22` reads *"Default root is `os.tmpdir()` since [[BL-100]] — `/tmp` on
@@ -5618,6 +5618,33 @@ autonomy: human-only
   **Fix:** make the line platform-explicit rather than naming "this box", since which box wrote a doc is not
   visible to whoever reads it later. Being addressed inline by `design/hmp-commission-plan.md` §5; this item
   exists so it is not lost if that plan is dropped.
+
+  **✅ CLOSED 2026-07-31 — fixed inline, exactly as this item anticipated.** No one ever worked the item; the
+  `hmp-commission-plan.md` §5 pass corrected the line and the item's own hedge ("this item exists so it is not
+  lost if that plan is dropped") turned out to be the thing that kept the record honest.
+
+  **Verified against the artifact, not the claim.** `design/launch-and-monitor-runbook.md:22` now reads
+  *"platform-derived — check yours, don't assume the box this was written on ([[BL-108]]): on Linux it is `/tmp`
+  … on macOS `$TMPDIR` makes it `/var/folders/…/T`, which is outside every `/tmp/att-op-*` sweep and the
+  harness's own allowlist — so on macOS pass `--root /tmp`"*. That satisfies the fix direction in full: platform
+  explicit, no "this box", and the containment consequence spelled out rather than left to the reader.
+  Cross-checked live: `os.tmpdir()` here is `/var/folders/n1/…/T`, matching what the line now claims.
+
+  **Why the closure is worth reading.** This item was the PO's first pick to mark `autonomy: eligible` and
+  restart the idle ladder. Checking it before marking is what caught that it was already done — **an eligible
+  no-op would have produced a green first autonomous run that proved nothing**, which is a worse outcome than
+  not running at all. The rung went to [[BL-104]] instead. *A stale item is worse than no item: verify the work
+  still exists before handing it to anyone.*
+
+  **Telemetry (task closure):**
+  ```
+  - task:        BL-108
+  - wall-clock:  filed 2026-07-30 -> closed 2026-07-31 (fixed inline in between; never worked directly)
+  - budget:      negligible — closure was a read and a diff
+  - gate:        artifact re-read at runbook:22, os.tmpdir() cross-checked live
+  - diff:        none in this closure; the fix landed with the hmp-commission-plan §5 pass
+  - outcome:     CLOSED ✅ (verified fixed; not implemented by this item)
+  ```
 
 <!-- @item
 id: BL-109
