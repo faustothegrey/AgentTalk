@@ -1390,3 +1390,36 @@ here.**
   earlier. An eligible no-op would have produced a green first autonomous run in three sessions that proved
   **nothing** — a worse outcome than not running, because it manufactures confidence in an untested pipeline.
   **A stale item is worse than no item.**
+
+### 2026-07-31 (second entry) — the ladder ran, and the fence caught me twice
+
+- **As planner: the capability the PO asked for already existed, and finding that out first changed the whole
+  session.** The ask was "make Hermes launch sessions over HMP." Twenty minutes of reading showed it had been
+  built and exercised once (`hmp1`), so the real question was not *how* but *what to commission next* — which is
+  a scope question, and therefore the PO's. I asked instead of building. **Before planning how to do a thing,
+  check whether it is already done**; here it turned a build into a decision and saved the session.
+- **As planner: the recursion fence refused my own brief, on the first try.** I cited `scripts/launcher.mjs` in
+  a footnote about the meter, and `/launcher\.mjs/i` matched. The right reaction is not "annoying false
+  positive" — it is that a fence which never fires on its author has not been tested. I had written the brief
+  paragraph arguing the fence binds its author *and then been bound by it*, which is the only kind of evidence
+  that counts.
+- **As planner: I checked what `cap.meter` actually bought before writing "containment held", and it bought
+  less than the charter claims.** The reader coerces a missing figure to `0`, so the delta goes negative and the
+  rail never fires while looking healthy (BL-114). I nearly wrote the sentence first and verified after. **The
+  order matters: verify the rail, then describe it** — a containment claim written from the charter rather than
+  the code is how "configured" silently becomes "enforced" in the record.
+- **As implementation reviewer: I was wrong about the meter being down, and said so immediately.** `usage.mjs`
+  reported claude `ok:false`, I inferred the rail was inert, then the raw endpoint returned `ok:true, 7`. The
+  structural defect was real but my framing was not. **Correcting it in one line and moving on cost nothing;
+  letting it stand would have put a false claim in a brief that outlives the session.**
+- **As implementation reviewer: two runs in a row, the only `critical` was MY declaration, not the run.** hmp1's
+  was a loose bracket, hmp2's a glob that anchors end-to-end (`design/operator/` vs `design/operator/**`). Both
+  times the harness was right and I was wrong. I filed it (BL-116) rather than just fixing my file, because the
+  second occurrence is no longer my mistake — it is a missing check. **When you make the same class of error
+  twice, stop correcting yourself and go look at what let you.**
+- **As task-end reviewer: the worker outperformed the item it was given.** BL-104's own "Fix:" line was wrong —
+  a catch alone would have reported nothing, because `stderr` was inherited and the error carried `stderr:
+  null`. The worker found that, refuted the instruction with evidence, mutation-checked its own tests unprompted,
+  and reported a same-class defect *without* fixing it because the brief forbade the verb needed to exercise it.
+  **A well-fenced brief did not constrain a good agent; it gave it something solid to push against** — and the
+  most valuable output of the run was the part where it told me my premise was wrong.
