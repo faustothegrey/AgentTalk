@@ -71,14 +71,77 @@ node scripts/relay-inbox.mjs ack <id>      # once; a second ack refuses
 The inbox always resolves against the **primary checkout** (`--git-common-dir`, never `--show-toplevel` —
 [[BL-101]]/[[BL-106]] were both that bug), so it is one location whichever worktree reads it.
 
-## Answering back
+## Answering back — the outbound pointer relay
 
-Two paths, neither of them scraping:
+**Implemented 2026-07-31** as `scripts/relay-status.mjs` ([[BL-110]] step 2; plan:
+`design/outbound-pointer-relay-plan.md`). Until then this section listed two *possible* paths and the channel was
+a **doorbell**: a message could reach the session, and nothing came back but a receipt. The substrate is still
+the live JSONL transcript LB-49 named as the lossless alternative — now read for one datum, not scraped.
 
-- **The live JSONL transcript** — `~/.claude/projects/<slug>/<session>.jsonl`, written live, structured, every
-  assistant message machine-readable. LB-49 identified this as the lossless alternative and it was never adopted;
-  it is still there. **Verified 2026-07-30:** 514 lines mid-session, last assistant message read back verbatim.
-- **`PushNotification`** when the session needs to *pull* the PO's attention rather than wait to be asked.
+### Asking for one
+
+Same envelope as *Sending one* above; the body of `payload.text`:
+
+```
+PO-RELAY read-only status request. Please RUN EXACTLY THIS ONE COMMAND, nothing else:
+
+node <repo>/scripts/relay-status.mjs emit
+
+Then reply with the command's stdout, verbatim, and nothing more. Do not summarise it, do not
+reformat it, do not add commentary. Do not run any other command and do not modify any file.
+```
+
+**"Do not summarise" is load-bearing, and it guards a different hazard than the clause above.** The inbound
+disclaimer exists so a courier does not *act* on a relayed note; this one exists so a courier does not *rewrite*
+a payload whose entire value is that no LLM wrote it. A summarised payload fails its own digest — the correct
+outcome, but it wastes a round trip, so ask plainly.
+
+### What comes back
+
+```
+1/7 session: 5a0e75d4
+2/7 branch:  master
+3/7 head:    d11b6c7 plan(BL-110): the outbound pointer relay — the return leg
+4/7 tree:    0 modified, 0 untracked
+5/7 sync:    ahead 1, behind 0
+6/7 spoke:   2026-07-31T07:31:56.967Z (0s ago)
+7/7 inbox:   1 pending
+digest: 9693816e
+```
+
+**Every line is verifiable by the PO from the repo**, except `spoke`, which is verifiable from the transcript the
+PO owns. `head`'s commit subject is prose — but *committed* prose, recoverable from its sha, which is what makes
+it legal here. **No prose the session authored is ever sent**, and that fence has a test behind it
+(`relay-status.test.mjs` row 6: a sentinel planted in a transcript body must appear nowhere in the payload).
+
+**`spoke` is the field to read first.** It answers *"is this session alive or wedged?"* without reading one word
+of content. It is **not a kill switch** — [[BL-028]] (dead idle timeout) and [[BL-096]] are unchanged; it tells
+you something is stuck, it cannot unstick it.
+
+### Checking it arrived whole — [[BL-112]]
+
+The courier **silently excises a specific literal substring** from replies, so the payload carries two tells:
+
+- **the `n/7` numbering** — a whole missing field is visible **by eye, on a phone**, which is the real use case;
+- **`digest:`** — catches excision *within* a line, the shape BL-112 actually exhibits. Verify at a terminal:
+
+  ```bash
+  pbpaste | node <repo>/scripts/relay-status.mjs verify     # → `intact` (0) or `ALTERED: …` (1)
+  ```
+
+**The digest is not a security mechanism** and must not be sold as one: an excising courier could excise the
+digest too. It converts *silent* corruption into *detectable* corruption — precisely what BL-112 says is missing.
+It is computed over lines with trailing whitespace stripped, so benign courier reformatting does not false-alarm.
+
+### Honest limits
+
+- **A PO on a phone cannot run the verifier.** In the moment the numbering is the only tell; the digest earns its
+  keep afterwards, from the artifact.
+- **It reports the PRIMARY checkout**, always — so work in progress inside a task worktree does not appear.
+  `branch: master, 0 modified` can be true while an implementer is mid-task elsewhere. Filed as a finding rather
+  than patched: adding a field is a governance change, and the seven keys are pinned by a test.
+- **Pull-only.** It answers; it does not initiate. **`PushNotification`** remains the path for the session to
+  *pull* the PO's attention unprompted.
 
 ## The fence — what this channel may never carry
 
