@@ -1,7 +1,9 @@
 # Draft amendment to `AGENT.md` — relayed merge/push authorization
 
-**Drafted by Claude, 2026-07-31, at PO request. NOT applied — `AGENT.md` is unchanged.** Governance wording is
-the PO's; this is a proposal with exact before/after text for four sites. Apply, edit, or reject.
+**Drafted by Claude, 2026-07-31, at PO request. ✅ APPLIED the same day on PO instruction (*"apply it and
+push"*) — sites 1-3 are now live in `AGENT.md`; site 4 was a deliberate no-change.** This document is retained
+as the **rationale and reopen condition**, which the amendment itself points back to; the before/after blocks
+below are now a record of what changed rather than a proposal.
 
 **Occasioned by:** the PO's instruction *"I want to be able to authorize merge and push through the telegram
 channel. It is safe enough for the moment."* → [[BL-110]] step 3, merged `db5d102`.

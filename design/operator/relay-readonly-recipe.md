@@ -225,10 +225,11 @@ a *different mechanism* — a token bound to one action, one branch and one sha,
 had already made (§ *Authorizing a merge or a push*). **The inbound verb allowlist is unchanged and the relay
 still has no execute path.**
 
-**AGENT.md has not been amended and still says pushes are the PO's "absolutely and without exception."** That
-sentence is now narrower than practice — the PO still authorises every push, but may now do so from a phone. The
-wording is the PO's to settle; until they do, **treat AGENT.md as authoritative and this as the newer fact**, and
-say so rather than picking one silently.
+**✅ AGENT.md WAS amended the same day (PO instruction).** Origin Tag Protocol **rule 5** now defines
+`[PO-RELAY]`, and the sentence *"push remains the PO's, absolutely and without exception"* was **kept and
+defended** rather than weakened: the PO still authorises every push; only the channel changed, and a courier
+relaying an approval has not been granted the approval. Rationale and reopen condition:
+`design/agent-md-relay-authority-amendment.md`.
 
 ## Limits, so nobody is surprised
 
