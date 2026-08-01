@@ -126,10 +126,17 @@ node /abs/path/to/agentalk-mcp-client/scripts/launcher.mjs /abs/path/to/<name>.c
 ```
 
 **Invoke the launcher by absolute path, and pass the config by absolute path — do not `cd` into the client.**
-The OPERATOR charter requires the operator's workdir to stay in AgentTalk (governed ground), because the client
-repo carries no governance file ([[BL-086]]). *(Corrected 2026-07-27: this section previously said to `cd` into
-the client and use a relative config path, which contradicted the charter. H-0 followed the runbook and inherited
-the conflict.)*
+The OPERATOR charter requires the operator's workdir to stay in AgentTalk. *(Corrected 2026-07-27: this section
+previously said to `cd` into the client and use a relative config path, which contradicted the charter. H-0
+followed the runbook and inherited the conflict.)*
+
+**⚠️ Corrected again 2026-08-02 — this paragraph used to justify the rule with "the client repo carries no
+governance file ([[BL-086]])", which had been false since 2026-07-30 and contradicted this very document's own
+precondition note above (see the ✅ at the top).** The client **is** governed; the former ban on client-repo
+tasks is lifted. **The workdir rule itself still stands** — it is a containment rule of the OPERATOR charter, and
+relaxing it is a PO call rather than a consequence of BL-086's closure. What changed is only its *reason*. Note
+also that governance-file **inheritance is verified for claude only** ([[BL-080]]); the file existing and a
+launched worker being governed are different claims.
 
 **Why that is safe — verified in code, not assumed.** `instance.recording`, its derived `.responses.ndjson`
 sidecar, and `startCommand.cwd` are each resolved against **`clientRoot`** — the launcher's own directory via

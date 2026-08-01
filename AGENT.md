@@ -312,8 +312,19 @@ branches. **That fence does not transfer** — which is why the invariant harnes
 - **A pre-flight checklist is printed before launching**, and the run is **bracketed by the harness** —
   `snapshot` before, `check` after. A **`critical` finding GATES the next operator run** until the PO clears it.
   Hermes may run the harness; **only the PO may dispose of what it finds.**
-- **Workdir in AgentTalk (governed), launcher invoked by absolute path.** The client repo has no governance file
-  ([[BL-086]], open), so this keeps the soft rungs inside governed ground without waiting on that decision.
+- **Workdir in AgentTalk, launcher invoked by absolute path — the rule STANDS; its original reason no longer
+  does.** It was written when the client repo carried no governance at all. **[[BL-086]] closed 2026-07-30 (PO
+  took option (b), merged `0b770c2`):** `agentalk-mcp-client` now carries its own `AGENT.md` + `AGENTS.md` /
+  `CLAUDE.md` symlinks, with Honesty-over-Results, all seven Implementer Rules, the show-stopper fence and
+  worktree/merge/push discipline **inline** — a *pointer* was rejected because it resolves to nothing from a task
+  worktree, which is [[BL-101]]'s fail-open shape appearing in a doc. **So a client-repo task is no longer
+  structurally excluded from autonomous work**, and the constraint that forced rung 5 to be an AgentTalk task is
+  lifted.
+  **What that closure did NOT prove — do not read it as proving it:** that a launched worker actually *picks the
+  file up*. Inheritance is verified for **claude only** ([[BL-080]], headless `-p`); codex and gemini are assumed
+  from convention, and **the client has no `GEMINI.md` while this repo does** (verified 2026-08-02), so a gemini
+  worker there inherits nothing by that convention. *The file existing and a worker being governed are different
+  claims.* **Relaxing this workdir rule is a PO call, not a consequence of the closure.**
 
 #### The soft ladder — earn the seat one rung at a time
 
