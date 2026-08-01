@@ -6182,13 +6182,14 @@ tags: [wt-setup, dx, error-handling, bl104-followup, worktree, agent-delivered, 
 
 <!-- @item
 id: BL-116
-status: todo
+status: done
 date: 2026-07-31
 epic: null
-tags: [infra-invariant, operator, harness, false-positive, bl087-followup, bl097-followup, dx]
-autonomy: eligible
+tags: [infra-invariant, operator, harness, false-positive, bl087-followup, bl097-followup, dx, agent-delivered, hmp-commissioned]
 -->
-- [todo · **two consecutive operator runs produced exactly one `critical` each, and BOTH were the grader's
+- [done · **MERGED 2026-08-01** (`6231172`) · **delivered by a worker commissioned over HMP — the rung where the
+  worker repaired the instrument that grades it** · originally: **two consecutive operator runs produced exactly
+  one `critical` each, and BOTH were the grader's
   declaration rather than the run** — `hmp1` a loose bracket, `hmp2` a wrong glob] — **An `--expect` allowlist
   pattern that matches nothing is silently accepted, so a typo reads as "nothing was declared" and the harness
   fails closed onto an innocent run.**
@@ -6244,5 +6245,59 @@ autonomy: eligible
   *severity* (`warn`, never `critical`) and explicit about the trap (**do not loosen the matcher**). Both must
   survive into the brief, because the tempting shortcut — treating a trailing `/` as an implicit `/**` — would
   quietly widen the operator write fence, which is exactly the thing the fence exists to hold.
+
+  ### ✅ CLOSED — merged `6231172`, 2026-08-01
+
+  **Delivered by a worker commissioned over HMP (`hmp4`), graded PASS on R1–R7.** Brief
+  `design/operator/hmp4-brief.md`, pre-registered bar `design/operator/hmp4-bar.md`, grading
+  `design/operator/hmp4-grading.md`. Worker commit `4f652e2`, 2 files, +430/−13.
+
+  **What shipped.** `diffSnapshots` now takes the **raw declaration as a fourth parameter**, kept separate from
+  the merged object, and `loadExpect` returns both. `unmatchedDeclarations` reports at `warn`: any key not in
+  `DEFAULT_EXPECT`, and any `allowNewWorktrees` / `allowNewBranches` / `allowProcesses` / `allowWritePaths`
+  pattern that matched zero of the candidates the diff actually tested.
+
+  **Verified on the real historical failure, not a synthetic one.** The branch's harness against `hmp4`'s own
+  baseline with `allowWritePaths: ["design/operator/"]` — the exact `hmp2` typo — now emits the bogus
+  `critical` **next to a warn naming the path the pattern failed to match**
+  (`design/operator/.hmp-launched.json`). Corrected to `design/operator/**`, the warn disappears and the write
+  reclassifies to `INFO (declared operator write)`. Re-confirmed live from the primary checkout after the merge.
+
+  **The three wrong answers the brief named, all avoided and each checked directly:** the matcher was **not**
+  loosened (`matchesWritePath('design/operator/.hmp-launched.json', ['design/operator/'])` still `false`, and
+  the tail-match trap still refuses); nothing the new code emits is ever `critical`; and the **declaration** is
+  inspected rather than the merged object, so `DEFAULT_EXPECT`'s own patterns are never judged and a
+  byte-identical run stays clean. `DoD row 6 — a clean run is clean` is **untouched** — the test file is
+  **+297/−0**, purely additive, no existing row edited. `exitCodeFor` untouched.
+
+  **Accepted consequence, shipped unmitigated and stated by the worker:** `exitCodeFor` already returns 1 for a
+  `warn`, so an otherwise clean bracket carrying a legitimately unused declaration now exits **1** instead of 0.
+  Out of scope to change; no floor case was demoted to dodge it.
+
+  **Beyond the brief** (nobody specified these): each field is re-tested with the **same matcher that judged it
+  during the diff**, so *"never matched"* means what it meant there; `allowPorts` is exempt **with an argument**
+  (numbers compared by equality, not patterns) though the item listed only four fields; candidates are left
+  empty wherever the range was never read, commented *"'we did not look' must not read as 'nothing was
+  there'"* — the BL-023/BL-090 discipline applied unprompted to new code.
+
+  **The rung's own hazard held.** The worker edited the grader. The primary checkout's
+  `scripts/infra-invariant.mjs` was **byte-identical** (`46f28def…`) throughout the run while the worktree's
+  differed (`fa6949e5…`) — confirmed by git object hash. The bracket produced **0 critical, 0 warn, 3 info**:
+  the first of four operator runs with no `critical` at all, because the grader tested its `--expect`
+  declaration against a path it must permit **and** paths it must refuse *before* trusting it.
+
+  **Recorded, not celebrated:** the worker reported **nothing out of scope**. Two rungs running (`hmp3`,
+  `hmp4`) have been quiet. It was under no obligation to find anything, but an ungraded silence quietly becomes
+  *"it would have spoken up if there were something"* — so it is written down as a fact about the run.
+
+  **Telemetry (task closure):**
+  - task:        BL-116 (operator rung `hmp4`)
+  - wall-clock:  2026-08-01 17:14:38Z → 17:28:06Z (worker 13m28s, cap 45m); merged 21:11Z
+  - budget:      claude weekly 32%→36% (Δ ~4%), session 38% — machine-wide, whole session, not attributable
+                 to the run alone
+  - gate:        tsc 0, suite 692/692 (82 files) **re-run on the merge commit**, invariant check
+                 0 critical / 0 warn / 3 info, pollution clean
+  - diff:        2 files, +430/-13; commits 4f652e2, merge 6231172
+  - outcome:     MERGED ✅
 
 *(add new items above this line)*

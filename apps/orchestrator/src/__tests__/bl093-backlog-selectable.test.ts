@@ -213,10 +213,28 @@ describe('the real backlog (design/backlog.md)', () => {
   // assume it. The item also carries an explicit trap (loosening the matcher to treat a trailing `/`
   // as `/**` would quietly widen the operator write fence), which is the second time in a row the
   // available wrong answer is the tempting one.
-  it('offers exactly BL-116 — the PO stocked the next rung 2026-08-01', () => {
+  // 2026-08-01 (later still) — BL-116 was MERGED (`6231172`) and closed, so the set is EMPTY for the
+  // fifth time. The red was shown to the PO before this line moved. Fourth full cycle in two sessions.
+  //
+  // What the hmp4 rung added, beyond the value: a worker repaired **this project's grading harness**
+  // and the separation held by construction — the primary checkout's `infra-invariant.mjs` was
+  // byte-identical throughout the run (`46f28def…`) while the worktree's differed (`fa6949e5…`),
+  // confirmed by git object hash rather than argued. It also navigated a task with more than one
+  // plausible SHAPE: the declaration/merge split nobody specified, and three named wrong answers of
+  // which two produce a green-looking result. The bracket came back with no `critical` for the first
+  // time in four runs — because the grader tested its own `--expect` against a path it must permit
+  // AND one it must refuse before trusting it, which is the very defect BL-116 fixed.
+  //
+  // So the standing observation holds, unchanged and unsoftened: NOTHING is currently agent-selectable,
+  // and refilling it is a PO act — `autonomy: eligible` is authority in file form ([[BL-093]] made it
+  // fail closed). This line is where that becomes visible again.
+  //
+  // Do NOT loosen this to an emptiness check or a length assertion to stop it moving. Its whole value
+  // is that a change to what an agent may be handed unattended forces a human look.
+  it('offers nothing — BL-116 merged and closed 2026-08-01, the queue is empty again', () => {
     const { items, warnings } = readBacklog();
     expect(warnings).toEqual([]);
-    expect(selectableBacklogItems(items).map((i) => i.id)).toEqual(['BL-116']);
+    expect(selectableBacklogItems(items).map((i) => i.id)).toEqual([]);
   });
 
   it('holds BL-028 back behind BL-084, which is still open', () => {
