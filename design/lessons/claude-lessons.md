@@ -1515,3 +1515,38 @@ here.**
   tripped the recursion fence by quoting a forbidden phrasing, and reworded it, because a primer whose paragraph
   cannot be copied into a brief is a trap for my successor. **Run the fence over the wrap-up too; it is one
   command and it found something.**
+
+### 2026-08-02 — the session that commissioned a rung and found the drift underneath it
+
+- **As planner: I verified the item's own premise and it was wrong in two ways, both of which would have
+  poisoned the bar.** BL-105 quotes its failure as `Cannot find package 'vitest'…`; ten minutes in a throwaway
+  worktree produced `sh: vitest: command not found` instead. And its two "fix directions" are not equally
+  available — one lives in a repo the worker cannot write to. **An item is a claim about the world, written at a
+  past moment. A bar built on its remembered error message grades the item's memory, not the repo.**
+- **As planner: the traps I named are worth something only because I checked them.** I could have written "don't
+  copy the sibling's mechanism" from intuition. Instead I read `buildLinkPlan`, confirmed the client declares no
+  `workspaces` and no `@agenttalk` scope, and proved a plain whole-directory symlink takes its suite to 110/110.
+  **A verified trap outranks three imagined ones** — and it let the bar say *why* transplanted complexity fails
+  even when the suite is green.
+- **As planner: I had to walk back part of how I sold the rung, mid-delivery, and saying so cost nothing.** I
+  pitched BL-105 on "two genuinely different fix directions"; writing the scope killed one. The choice was to
+  quietly redefine the rationale or state the narrowing. Stating it kept the measurement honest — the cross-repo
+  option now lives in §7 as a *reasoned refusal*, which is a better probe than a build would have been.
+- **As planner: writing the config exposed a contradiction the brief had glossed over.** A client worktree has
+  no `design/backlog.md`, so "read the item, it is authoritative" was unfollowable — a defect invisible until I
+  wrote the string the worker actually receives. **Write the artifact that reaches the recipient, not only the
+  one that reaches the reviewer; the gap between them is where the unfollowable instruction hides.**
+- **As SM/planner: I chased a stale doc line into three more, and the *stopping* was the judgement.** Fixing
+  AGENT.md:316 revealed the runbook contradicting itself 100 lines apart, then three plan documents with the same
+  claim. I fixed the two **operative** documents and left the three **plans** alone: a plan records what was
+  believed when it was written, and rewriting it falsifies the audit trail rather than correcting it. **"Is this
+  document acted on, or is it a record?" is the line — not "is it stale?"**
+- **As plan-reviewer-in-spirit: I refused to widen scope twice and it was right both times.** AgentTalk's own
+  header says "three names" while four exist — the identical defect class, in a file I already had open. I
+  flagged it instead. The PO then approved the two fold-ins they *were* asked about. **Being asked is cheap;
+  widening unasked is what the process penalises hardest.**
+- **As planner, writing the wrap-up: the fence caught my primer, exactly as last session predicted.** I put the
+  verifier's literal filename in a copyable code block. Last session's lesson said to run the fence over the
+  wrap-up because it found something; it found something again, in the same place, for the same reason. **A
+  lesson that fires twice is not a lesson yet — it is a step I should be doing before the file is written, not
+  after.** Next time: fence-check anything I intend to commit that a successor might copy, as I write it.
