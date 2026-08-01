@@ -6080,14 +6080,14 @@ autonomy: human-only
 
 <!-- @item
 id: BL-115
-status: todo
+status: done
 date: 2026-07-31
 epic: null
-tags: [wt-setup, dx, error-handling, bl104-followup, worktree]
-autonomy: eligible
-blocked_by: [BL-104]
+tags: [wt-setup, dx, error-handling, bl104-followup, worktree, agent-delivered, hmp-commissioned]
 -->
-- [todo · **found and deliberately NOT fixed by the `hmp2` worker**, which reported it instead of widening
+- [done · **MERGED 2026-08-01** (`0868fd9`) · **delivered by a worker commissioned over HMP — the rung where
+  the pattern from next door was the WRONG answer, and the worker did not take it** · found and deliberately
+  NOT fixed by the `hmp2` worker, which reported it instead of widening
   scope — the gold-standard response, recorded in `design/operator/hmp2-grading.md`] — **`create`'s build and
   test calls still surface a raw Node stack, so [[BL-104]] fixed the `git()` half of the defect and left the
   `npx` half.**
@@ -6117,6 +6117,68 @@ blocked_by: [BL-104]
 
   **Blocked on [[BL-104]] merging**, which introduces the `WtSetupError` class and the top-level handler this
   would extend. Doing it first means writing that machinery twice.
+
+  ### ✅ CLOSED — merged `0868fd9`, 2026-08-01
+
+  **Delivered by a worker commissioned over HMP (run `hmp3`, 6m05s).** PO authorization `db27cdc` → Hermes →
+  fence → `att-op-hmp3` → `56d2ea1`. Graded **PASS on R1–R6** against the pre-registered bar `7530aea0`
+  (`design/operator/hmp3-grading.md`). Closure sweep re-run on the **merge result**, not the branch: `tsc -b`
+  exit 0, suite **671/671 / 82 files**.
+
+  **The point of this rung was that the obvious fix was wrong, and it stayed wrong under pressure to be
+  green.** BL-104 fixed its half by *piping* stderr so git's own words could be reformatted. Copying that here
+  would have satisfied every naive test while regressing the thing that matters: buffering a whole `vitest run`
+  until it exits, so its output arrives in one block after the fact. `runStreaming()` instead keeps
+  `stdio: 'inherit'` at both call sites and converts **only the non-zero exit** into `WtSetupError`, with a
+  message synthesised from label/cwd/status — because with inherited stdio there is nothing captured to quote.
+  **Nothing is captured, so nothing can be buffered: the streaming property is structural, not asserted.**
+
+  **Verified by running, at both ends.** Same fixture through both versions: before, a stack ending
+  `stderr: null` / `Node.js v24.14.1`; after, `error TS2322` from `tsc` itself **followed by**
+  `[wt-setup] tsc -b failed (exit 1) in …`, exit 1, zero stack markers. The diagnostic arriving *first* is only
+  possible if the child owned the terminal — which is the R2 property observed live rather than inferred from
+  the diff.
+
+  **Two things the worker did unprompted:** it handled `res.signal` (`spawnSync` reports `status: null` on a
+  signal kill, so a bare `status !== 0` would have been true with a useless message), and it added the
+  **success path of `create`**, which had no test at all — the case where an error-handling change could
+  regress in silence. Its new tests are red-first: 5 of 6 go red against the unfixed script, and the sixth is
+  the success-path guard that *should* hold either way. **[[BL-104]]'s four end-to-end tests are byte-identical
+  after the change** — no contract weakened to fit.
+
+  **The hazard this item was held back for did not materialise, and was checked where it could only have
+  shown.** Exercising the fix requires `create`, which provisions a real worktree, and `primaryCheckout()`
+  resolves the PRIMARY even from inside a sandbox. `git worktree list` / `git branch` **in the primary** show
+  only `task-op-hmp3` and the orchestrator's own nested worktree — nothing attributable to the worker's
+  `create` runs, because its tests set their cwd inside a throwaway repo, exactly as the brief required.
+
+  **One difference from `hmp2` worth recording, since a silence is easy to misread as an endorsement.** The
+  brief invited out-of-scope reports and named two known conditions; the worker reported none. Nothing obliged
+  it to find something, so this is not a mark against it — but `hmp2`'s most valuable output was a refutation,
+  and **a quiet run is weaker evidence than a talkative one.** Do not cite this closure as showing the worker
+  would have spoken up.
+
+  **A property of the design surfaced by this run: the channel rehearsal and the authorization are mutually
+  exclusive.** `hmp2` could send a real commission for free because `hmp2.authorized` did not yet exist, so
+  refusal was the only outcome available. Once the PO's authorization commit lands, any commission reaching the
+  wire launches. **Every future send is therefore unrehearsed** — not a defect, but not something to discover
+  mid-run either.
+
+  **[[BL-114]] unchanged.** `cap.meter` was configured (`maxPercentDelta: 20`) and remains unverifiable — the
+  reader coerces a missing figure to `0`. **`cap.wallClockMs` is still the only rail this run may honestly
+  claim**, at 13.5% of its 45m cap.
+
+  **⚠️ Closing this empties the agent-selectable queue again** — BL-115 was the only `autonomy: eligible` item,
+  so `bl093-backlog-selectable.test.ts` goes red **by design**, and the pin is updated only after the red has
+  been shown to the PO. That sequence is the ritual, not a formality.
+
+  **Telemetry (task closure):**
+  - task:        BL-115 (run `hmp3`)
+  - wall-clock:  2026-08-01 09:32:39Z → 09:38:44Z (worker 6m05s); merged 10:24Z
+  - budget:      claude weekly 30%→32% (Δ ~2%), session 0%→24% (Δ ~24%, mostly the grader's own suite runs)
+  - gate:        tsc 0, suite 671/671 (82 files), invariant check 0 critical / 3 info, pollution clean
+  - diff:        2 files, +190/-7; commits 56d2ea1, merge 0868fd9
+  - outcome:     MERGED ✅
 
 <!-- @item
 id: BL-116

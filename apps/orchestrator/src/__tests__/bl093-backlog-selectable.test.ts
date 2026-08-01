@@ -182,10 +182,26 @@ describe('the real backlog (design/backlog.md)', () => {
   // create`, which provisions a real worktree. Its brief must pin the throwaway-repo pattern BL-104's
   // own tests established, or the run will register worktrees against the PRIMARY checkout and read
   // as pollution. That is a brief obligation, not a reason to hold the item back.
-  it('offers exactly BL-115 — the PO stocked the next rung 2026-07-31', () => {
+  // 2026-08-01 — BL-115 was MERGED (`0868fd9`) and closed, so the set is EMPTY again. The red was
+  // shown to the PO before this line moved; that is the third time the ritual has run and the second
+  // time it has run twice in two sessions.
+  //
+  // What the hmp3 rung added, beyond the value: BL-115 was chosen *because* the obvious fix was the
+  // wrong one — copying BL-104's piped-stderr mechanism would have passed a naive bar while regressing
+  // a build's live output. A worker commissioned over HMP took the reasoning over the precedent. That
+  // is the first evidence here that a fenced brief can carry a *negative* instruction ("not like that,
+  // and here is why") and have it hold under pressure to be green.
+  //
+  // So the queue is empty for the fourth time, and the standing observation holds: NOTHING is
+  // currently agent-selectable, and refilling it is a PO act — `autonomy: eligible` is authority in
+  // file form ([[BL-093]] made it fail closed). This line is where that becomes visible again.
+  //
+  // Do NOT loosen this to an emptiness check or a length assertion to stop it moving. Its whole value
+  // is that a change to what an agent may be handed unattended forces a human look.
+  it('offers nothing — closing BL-115 emptied the queue 2026-08-01', () => {
     const { items, warnings } = readBacklog();
     expect(warnings).toEqual([]);
-    expect(selectableBacklogItems(items).map((i) => i.id)).toEqual(['BL-115']);
+    expect(selectableBacklogItems(items).map((i) => i.id)).toEqual([]);
   });
 
   it('holds BL-028 back behind BL-084, which is still open', () => {
