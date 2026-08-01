@@ -225,16 +225,34 @@ describe('the real backlog (design/backlog.md)', () => {
   // time in four runs — because the grader tested its own `--expect` against a path it must permit
   // AND one it must refuse before trusting it, which is the very defect BL-116 fixed.
   //
-  // So the standing observation holds, unchanged and unsoftened: NOTHING is currently agent-selectable,
-  // and refilling it is a PO act — `autonomy: eligible` is authority in file form ([[BL-093]] made it
-  // fail closed). This line is where that becomes visible again.
+  // So the standing observation holds, unchanged and unsoftened: refilling the queue is a PO act —
+  // `autonomy: eligible` is authority in file form ([[BL-093]] made it fail closed). This line is where
+  // that becomes visible.
+  //
+  // 2026-08-02 — and here is that moment, the SIXTH time this line has moved. The PO marked **BL-105**
+  // eligible as the fifth rung, and this assertion went red the instant it did. The red was shown to the
+  // PO before this line was touched, which is the whole ritual rather than a formality.
+  //
+  // BL-105 was verified still real BEFORE marking, not assumed: `agentalk-mcp-client` has no `wt-setup`
+  // equivalent, so the gap is exactly as filed. That check is what caught BL-108 as an eligible no-op
+  // once, and a green run that proves nothing is worse than no run.
+  //
+  // Why this rung: every previous one was a two-file task inside a single repo. BL-105 spans BOTH repos,
+  // and its two fix directions are genuinely different engineering — a client-side helper, or teaching
+  // `wt-setup` a `--repo` argument, which the item itself warns is how BL-101's sibling-path fragility
+  // began. It also leaves a scope-adjacent paragraph (`taskId: null`) deliberately unassigned, because
+  // hmp3 and hmp4 both reported nothing out of scope and two silences in a row are worth designing for.
+  //
+  // NOTE this is the first eligible item ever to point a worker OUTSIDE this repo. BL-086 (done
+  // 2026-07-30) is what decided the governance a client-repo worker inherits; AGENT.md:316 still calls
+  // it "open" and is stale on exactly that point.
   //
   // Do NOT loosen this to an emptiness check or a length assertion to stop it moving. Its whole value
   // is that a change to what an agent may be handed unattended forces a human look.
-  it('offers nothing — BL-116 merged and closed 2026-08-01, the queue is empty again', () => {
+  it('offers BL-105 — the PO refilled the queue 2026-08-02, the fifth rung', () => {
     const { items, warnings } = readBacklog();
     expect(warnings).toEqual([]);
-    expect(selectableBacklogItems(items).map((i) => i.id)).toEqual([]);
+    expect(selectableBacklogItems(items).map((i) => i.id)).toEqual(['BL-105']);
   });
 
   it('holds BL-028 back behind BL-084, which is still open', () => {

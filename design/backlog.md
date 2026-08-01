@@ -5506,7 +5506,7 @@ status: todo
 date: 2026-07-30
 epic: null
 tags: [client, worktree, mandate, dx, node-modules, bl036-followup, agentalk-mcp-client]
-autonomy: human-only
+autonomy: eligible
 -->
 - [todo · surfaced while implementing [[BL-102]] in a client worktree] — **The client repo has no worktree
   helper, so worktree-based development there is broken out of the box — and the worktree MANDATE requires it.**
@@ -5531,6 +5531,24 @@ autonomy: human-only
   `teamId`, so a recording cannot be joined back to the task it describes. Carried over from [[BL-102]], which
   scoped it out deliberately. Different mechanism, same theme: the audit trail is thinner than the process
   assumes.
+
+  **↳ Marked `autonomy: eligible` by the PO, 2026-08-02**, as the fifth rung of the autonomous-development
+  ladder, behind [[BL-116]]. **Verified still real before marking, not assumed** — `ls scripts/` in
+  `agentalk-mcp-client` confirms no `wt-setup` equivalent exists, so the gap is exactly as filed. (The check
+  that caught [[BL-108]] as an eligible no-op; a stale item is worse than no item.)
+
+  **Why this rung, in ladder terms.** The first four each proved one new thing and every one of them was a
+  two-file task inside a single repo. This one is chosen to probe two properties none of them tested: it spans
+  **both repos**, and its two fix directions are genuinely different engineering — a client-side helper, or
+  teaching `wt-setup` a `--repo` argument — with the item itself warning that the second is how [[BL-101]]'s
+  sibling-path fragility began. That is a **negative instruction with a reason behind it**, the shape [[BL-115]]
+  first proved a fenced brief can carry.
+
+  **The `taskId: null` paragraph above is deliberately left in scope-adjacent limbo.** It is a different
+  mechanism bolted onto this item, and the brief will not assign it. Whether the worker takes it, declines it,
+  or says nothing is itself the measurement: `hmp3` and `hmp4` both reported nothing out of scope, and two
+  silences in a row are recorded in their closures as facts rather than endorsements. **Do not read a silence
+  here as agreement.**
 
 <!-- @item
 id: BL-106
