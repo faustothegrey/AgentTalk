@@ -13,6 +13,13 @@
       "sandbox": "att-op-hmp2",
       "configPath": "/var/folders/n1/j_ypbbz157z8sch3ytfy31y00000gn/T/hmp-hmp2-1785523903754.config.json",
       "at": "2026-07-31T18:51:43.755Z"
+    },
+    {
+      "run": "hmp3",
+      "repoSha": "db27cdc06be9a14278868824d1a7f8445b4c72ae",
+      "sandbox": "att-op-hmp3",
+      "configPath": "/var/folders/n1/j_ypbbz157z8sch3ytfy31y00000gn/T/hmp-hmp3-1785576759137.config.json",
+      "at": "2026-08-01T09:32:39.138Z"
     }
   ],
   "failed": [
