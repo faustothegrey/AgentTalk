@@ -14,7 +14,7 @@
 //
 // The worktree lives at <root>/att-<id> (default root: the platform temp dir) on branch task-<id>.
 
-import { execFileSync, spawnSync } from 'node:child_process';
+import { spawnSync } from 'node:child_process';
 import { readdirSync, mkdirSync, symlinkSync, readlinkSync, existsSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -69,6 +69,31 @@ function git(args, opts = {}) {
   // spawnSync returns null for stdout when it is inherited (side-effect calls) and a
   // string when captured; only trim the captured case.
   return typeof res.stdout === 'string' ? res.stdout.trim() : res.stdout;
+}
+
+/**
+ * Run a long child (build / test suite) with its output STREAMING, and convert only a
+ * non-zero exit into a `WtSetupError`.
+ *
+ * BL-115: deliberately NOT the BL-104 `git()` shape. There, stderr is piped so the child's
+ * own words can be reformatted; here `stdio: 'inherit'` is load-bearing — a build's and a
+ * test run's live output *is* the point of running them, and buffering a whole `vitest run`
+ * until it exits would be a worse regression than the stack trace this replaces. The price
+ * is that nothing is captured, so there is no child stderr to quote: the message is
+ * synthesised from the label, the cwd and the exit status, and the child's real diagnostics
+ * are already on the terminal above it.
+ */
+export function runStreaming(label, file, args, cwd) {
+  const res = spawnSync(file, args, { cwd, stdio: 'inherit' });
+
+  // The process never started (binary missing, bad cwd) — no exit code to read.
+  if (res.error) throw new WtSetupError(`${label}: ${res.error.message}`);
+
+  // `status` is null when the child was killed by a signal, so this covers both.
+  if (res.status !== 0) {
+    const how = res.signal ? `was killed by ${res.signal}` : `failed (exit ${res.status})`;
+    throw new WtSetupError(`${label} ${how} in ${cwd} — see its output above`);
+  }
 }
 
 /** The main (primary) checkout, resolved even when invoked from inside a worktree. */
@@ -146,11 +171,11 @@ function create(id, { base, baseline, root }) {
   console.log(`[wt-setup] wired node_modules: ${topCount} top-level + ${scopedCount} @agenttalk entries`);
 
   console.log('[wt-setup] building (tsc -b)…');
-  execFileSync('npx', ['tsc', '-b'], { cwd: wt, stdio: 'inherit' });
+  runStreaming('tsc -b', 'npx', ['tsc', '-b'], wt);
 
   if (baseline) {
     console.log('[wt-setup] baseline (vitest run)…');
-    execFileSync('npx', ['vitest', 'run'], { cwd: wt, stdio: 'inherit' });
+    runStreaming('vitest run', 'npx', ['vitest', 'run'], wt);
   }
 
   console.log(`\n[wt-setup] ready: ${wt}  (branch task-${id})`);
