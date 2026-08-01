@@ -6186,7 +6186,7 @@ status: todo
 date: 2026-07-31
 epic: null
 tags: [infra-invariant, operator, harness, false-positive, bl087-followup, bl097-followup, dx]
-autonomy: human-only
+autonomy: eligible
 -->
 - [todo · **two consecutive operator runs produced exactly one `critical` each, and BOTH were the grader's
   declaration rather than the run** — `hmp1` a loose bracket, `hmp2` a wrong glob] — **An `--expect` allowlist
@@ -6226,5 +6226,23 @@ autonomy: human-only
   something. Two for two, it has meant "the grader wrote the expect file wrong" — and the cost of that is not a
   wasted minute but an **eroded signal**, which ends with someone waving a real `critical` through because the
   last two were noise. That is the failure mode this item exists to prevent, and it is closer than it looks.
+
+  **↳ Marked `autonomy: eligible` by the PO, 2026-08-01**, as the next rung behind [[BL-115]]. Verified still
+  real at that moment rather than assumed: `loadExpect` (`scripts/infra-invariant.mjs`) is still
+  `{ ...DEFAULT_EXPECT, ...JSON.parse(…) }` — it merges the declaration over the defaults and never inspects it.
+  It also bit the `hmp3` grading the same day, which is why that run's `--expect` pattern was tested against a
+  path it must permit **and** one it must refuse before the check was trusted.
+
+  **⚠️ The hazard this item's brief must handle — it is sharper than `hmp2`'s and must not be copied from it.**
+  The worker would be **changing the instrument that grades operator runs**. `hmp2`'s worker was fixing the tool
+  that had built its sandbox; here the tool is the *grader itself*, so a brief must state plainly that the run's
+  own bracket is computed by the **primary checkout's** copy, not the worker's — the worker edits its own copy
+  inside its worktree, and the grading harness is unaffected by anything it does until the PO merges. That is
+  what makes the rung safe, and it should be argued rather than assumed.
+
+  **A brief obligation, not a reason to hold it back:** the fix direction above is prescriptive about the
+  *severity* (`warn`, never `critical`) and explicit about the trap (**do not loosen the matcher**). Both must
+  survive into the brief, because the tempting shortcut — treating a trailing `/` as an implicit `/**` — would
+  quietly widen the operator write fence, which is exactly the thing the fence exists to hold.
 
 *(add new items above this line)*

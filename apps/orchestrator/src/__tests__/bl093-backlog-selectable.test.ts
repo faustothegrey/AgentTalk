@@ -198,10 +198,25 @@ describe('the real backlog (design/backlog.md)', () => {
   //
   // Do NOT loosen this to an emptiness check or a length assertion to stop it moving. Its whole value
   // is that a change to what an agent may be handed unattended forces a human look.
-  it('offers nothing — closing BL-115 emptied the queue 2026-08-01', () => {
+  // 2026-08-01 (later the same day) — the PO marked **BL-116** eligible, so the set is non-empty
+  // again after the shortest gap yet: minutes rather than three sessions. The red was shown before
+  // this line moved, as always.
+  //
+  // BL-116 was verified still-real before it was stocked, not assumed: `loadExpect` in
+  // `scripts/infra-invariant.mjs` still merges the `--expect` file over the defaults without
+  // inspecting it. It had bitten the hmp3 grading hours earlier.
+  //
+  // What makes it a harder rung than BL-115, and it is worth stating here because this line is where
+  // someone decides what to hand out next: the worker would be changing **the instrument that grades
+  // operator runs**. That is safe — the run's own bracket is computed by the PRIMARY checkout's copy,
+  // and the worker edits its own inside its worktree — but the brief has to *argue* that rather than
+  // assume it. The item also carries an explicit trap (loosening the matcher to treat a trailing `/`
+  // as `/**` would quietly widen the operator write fence), which is the second time in a row the
+  // available wrong answer is the tempting one.
+  it('offers exactly BL-116 — the PO stocked the next rung 2026-08-01', () => {
     const { items, warnings } = readBacklog();
     expect(warnings).toEqual([]);
-    expect(selectableBacklogItems(items).map((i) => i.id)).toEqual([]);
+    expect(selectableBacklogItems(items).map((i) => i.id)).toEqual(['BL-116']);
   });
 
   it('holds BL-028 back behind BL-084, which is still open', () => {
