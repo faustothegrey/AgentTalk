@@ -151,6 +151,96 @@ export function matchesWritePath(value, patterns) {
 }
 
 /**
+ * BL-116 — which matcher judges each pattern field, and what its candidates ARE.
+ *
+ * A declared pattern is re-tested with the SAME function that judged it during the diff, so
+ * "never matched" here means exactly what it meant there. `allowPorts` is absent on purpose: it
+ * holds numbers compared by equality, not patterns.
+ */
+const PATTERN_FIELDS = {
+  allowNewWorktrees: { match: matchesAny, label: 'new worktree' },
+  allowNewBranches: { match: matchesAny, label: 'new branch' },
+  allowProcesses: { match: matchesAny, label: 'watched process' },
+  allowWritePaths: { match: matchesWritePath, label: 'written path' },
+};
+
+/** The candidate tally a diff fills in: every value that WAS tested against each allowlist. */
+const emptyCandidates = () => ({
+  allowNewWorktrees: [],
+  allowNewBranches: [],
+  allowProcesses: [],
+  allowWritePaths: [],
+});
+
+/**
+ * BL-116 — a declaration that cannot have had any effect must SAY SO.
+ *
+ * `loadExpect` merges `--expect` over the defaults, and nothing ever inspected the result. So a
+ * mistyped key (`allowWritePath`) or a pattern that matches nothing (`design/operator/`, which the
+ * end-to-end anchoring correctly refuses for `design/operator/.hmp-launched.json`) merged cleanly,
+ * contributed nothing, and was indistinguishable from the legitimate "you declared nothing" state
+ * — which fails closed. Two consecutive operator runs each reported one `critical`, and both times
+ * it was the declaration that was wrong, not the run.
+ *
+ * Bounded in three directions, each of which is load-bearing:
+ *   - it inspects the DECLARATION, never the merged object. The defaults ship patterns of their
+ *     own, so inspecting the merge would fire on a byte-identical run where nothing happened —
+ *     the same defect one level up.
+ *   - `warn` is the CEILING. A `critical` gates the next operator run, and this check cannot tell
+ *     a typo from a legitimately unused allowance — you declared a path the run happened not to
+ *     write. That case is real and must be tolerated, which is why the wording is "declared but
+ *     never matched" and never "invalid".
+ *   - it REPORTS the mismatch and never guesses the intent. Reading a trailing `/` as an implicit
+ *     `/**` would quietly widen the operator write fence — a worse defect than an unused one.
+ */
+export function unmatchedDeclarations(declaration, candidates = {}) {
+  if (!declaration || typeof declaration !== 'object' || Array.isArray(declaration)) return [];
+  const known = Object.keys(DEFAULT_EXPECT);
+  const out = [];
+
+  for (const key of Object.keys(declaration)) {
+    if (!known.includes(key)) {
+      out.push(
+        finding(
+          SEVERITY.WARN,
+          'expect-key-unknown',
+          `--expect declares \`${key}\`, which nothing reads — declared but never matched. It ` +
+            `merged over the defaults and contributed nothing, which is indistinguishable from ` +
+            `declaring nothing at all. The keys that exist are: ${known.join(', ')}.`,
+        ),
+      );
+      continue;
+    }
+
+    const field = PATTERN_FIELDS[key];
+    if (!field) continue; // allowPorts — numbers, matched by equality, nothing to report.
+    const patterns = Array.isArray(declaration[key]) ? declaration[key] : [];
+    const seen = Array.from(new Set(candidates?.[key] ?? []));
+
+    for (const pattern of patterns) {
+      if (seen.some((c) => field.match(c, [pattern]))) continue;
+      const sample = seen.slice(0, 5).join(', ') + (seen.length > 5 ? `, … (${seen.length} total)` : '');
+      out.push(
+        finding(
+          SEVERITY.WARN,
+          'expect-pattern-unmatched',
+          `--expect ${key}: \`${pattern}\` was declared but never matched — ` +
+            (seen.length === 0
+              ? `this run produced no ${field.label} at all, so the allowance could not apply.`
+              : `the ${field.label}(s) it was tested against were: ${sample}.`) +
+            ` Either the run never did the thing it allows, or the pattern does not say what it ` +
+            `meant; this check cannot tell which and does not guess.` +
+            (key === 'allowWritePaths'
+              ? ` Write paths are matched end to end, so a whole directory is \`dir/**\`, not \`dir/\`.`
+              : ''),
+        ),
+      );
+    }
+  }
+  return out;
+}
+
+/**
  * BL-097 — union the paths of every commit newer than `beforeHead`, walking the window the
  * snapshot recorded. Pure, so the bars can drive it with synthetic state (see `diffSnapshots`).
  *
@@ -183,17 +273,22 @@ export function commitRangePaths(commits, beforeHead) {
  *                              "we looked and it was fine" (the BL-023/BL-090 discipline).
  *   - ANY path outside       → `foreign`. One foreign path poisons the range; no partial credit.
  *   - every path inside      → `allowed` → `info`
+ *
+ * BL-116 — `candidates` is every path the allowlist was TESTED against, which is not the same as
+ * `paths` (on `foreign` that holds only the offenders). It is empty wherever the range was never
+ * read, because "we did not look" must not read as "nothing was there".
  */
 export function classifyHeadMove(before, after, allowWritePaths) {
-  if (before.head === after.head) return { kind: 'none', paths: [] };
+  if (before.head === after.head) return { kind: 'none', paths: [], candidates: [] };
   if (!allowWritePaths || allowWritePaths.length === 0) {
-    return { kind: 'foreign', paths: [], reason: 'no operator write allowlist is declared' };
+    return { kind: 'foreign', paths: [], candidates: [], reason: 'no operator write allowlist is declared' };
   }
   const range = commitRangePaths(after.commits, before.head);
   if (range.status !== 'ok') {
     return {
       kind: 'undetermined',
       paths: [],
+      candidates: [],
       reason: `the pre-run HEAD ${String(before.head).slice(0, 8)} is not within the last ${COMMIT_WINDOW} commits`,
     };
   }
@@ -201,12 +296,14 @@ export function classifyHeadMove(before, after, allowWritePaths) {
     return {
       kind: 'undetermined',
       paths: [],
+      candidates: [],
       reason: `commit ${range.emptyCommit.slice(0, 8)} touches no files — an empty or MERGE commit, whose effect cannot be seen (and a merge is precisely what the operator may never do)`,
     };
   }
-  const foreign = Array.from(new Set(range.paths.filter((p) => !matchesWritePath(p, allowWritePaths))));
-  if (foreign.length > 0) return { kind: 'foreign', paths: foreign };
-  return { kind: 'allowed', paths: Array.from(new Set(range.paths)) };
+  const seen = Array.from(new Set(range.paths));
+  const foreign = seen.filter((p) => !matchesWritePath(p, allowWritePaths));
+  if (foreign.length > 0) return { kind: 'foreign', paths: foreign, candidates: seen };
+  return { kind: 'allowed', paths: seen, candidates: seen };
 }
 
 /**
@@ -508,7 +605,7 @@ export function takeSnapshot({ repos = {}, includeGlobal = true, portRange = DEF
 // Diff — pure. This is the part the bars drive with synthetic state.
 // ---------------------------------------------------------------------------
 
-function diffRepo(name, before, after, expect, findings) {
+function diffRepo(name, before, after, expect, findings, candidates = emptyCandidates()) {
   const at = (kind, severity, detail) => findings.push(finding(severity, kind, detail, { repo: name }));
 
   // BL-090 Defect B — the two sides must describe the SAME repository. `path` has always been
@@ -548,6 +645,7 @@ function diffRepo(name, before, after, expect, findings) {
   // --- moves: allowlisted ONLY by an explicit operator write declaration (BL-097) ---
   // A branch change is still never allowlisted: the operator works on master and owns no branch.
   const move = classifyHeadMove(before, after, expect.allowWritePaths);
+  candidates.allowWritePaths.push(...move.candidates);
   const heads = `${String(before.head).slice(0, 8)} → ${String(after.head).slice(0, 8)}`;
   if (move.kind === 'allowed') {
     at(
@@ -599,6 +697,7 @@ function diffRepo(name, before, after, expect, findings) {
   }
   for (const p of afterWt.keys()) {
     if (!beforeWt.has(p)) {
+      candidates.allowNewWorktrees.push(p);
       at('worktree-added', applyAllowlist(p, expect.allowNewWorktrees), `${name}: new worktree — ${p}`);
     }
   }
@@ -611,6 +710,7 @@ function diffRepo(name, before, after, expect, findings) {
   }
   for (const b of afterBr) {
     if (!beforeBr.has(b)) {
+      candidates.allowNewBranches.push(b);
       at('branch-added', applyAllowlist(b, expect.allowNewBranches), `${name}: new branch — ${b}`);
     }
   }
@@ -634,6 +734,7 @@ function diffRepo(name, before, after, expect, findings) {
     } else {
       // BL-097 — an uncommitted edit inside the operator's declared paths is the seat working, not
       // residue. Per-path: one foreign edit stays critical even in a batch of lawful ones.
+      candidates.allowWritePaths.push(p);
       const declared = matchesWritePath(p, expect.allowWritePaths);
       at(
         'tracked-file-modified',
@@ -688,7 +789,7 @@ function isWatchedProcess(proc) {
   return isOrchestratorIsh(proc) || /launcher\.mjs|claude\s+-p|\bcodex\b|\bgoose\b|\bagy\b/.test(cmd);
 }
 
-function diffGlobal(before, after, expect, findings) {
+function diffGlobal(before, after, expect, findings, candidates = emptyCandidates()) {
   const pair = (key) => [before[key], after[key]];
 
   // --- ports ---
@@ -726,6 +827,7 @@ function diffGlobal(before, after, expect, findings) {
 
   for (const proc of ra) {
     if (!isWatchedProcess(proc)) continue;
+    candidates.allowProcesses.push(proc.cmd ?? '');
     if (matchesAny(proc.cmd ?? '', expect.allowProcesses ?? [])) continue;
 
     const { status, reason } = classifyProcess(proc, evidence);
@@ -752,8 +854,16 @@ function diffGlobal(before, after, expect, findings) {
   }
 }
 
-export function diffSnapshots(before, after, expect = DEFAULT_EXPECT) {
+/**
+ * `expect` is the MERGED object that judges the run. `declaration` — BL-116 — is the raw `--expect`
+ * as it was written, and it is a separate parameter precisely because the two must never be
+ * confused: the defaults ship patterns of their own, so judging the merge would report a byte-
+ * identical run in which nothing happened. A caller that passes no declaration (every in-process
+ * caller, and `check` without `--expect`) declared nothing, and nothing is reported.
+ */
+export function diffSnapshots(before, after, expect = DEFAULT_EXPECT, declaration = null) {
   const exp = { ...DEFAULT_EXPECT, ...(expect ?? {}) };
+  const candidates = emptyCandidates();
   const findings = [];
 
   const names = new Set([...Object.keys(before.repos ?? {}), ...Object.keys(after.repos ?? {})]);
@@ -768,10 +878,13 @@ export function diffSnapshots(before, after, expect = DEFAULT_EXPECT) {
       findings.push(finding(SEVERITY.INFO, 'repo-added', `${name}: newly watched`, { repo: name }));
       continue;
     }
-    diffRepo(name, b, a, exp, findings);
+    diffRepo(name, b, a, exp, findings, candidates);
   }
 
-  diffGlobal(before, after, exp, findings);
+  diffGlobal(before, after, exp, findings, candidates);
+
+  // Last, so it is judged against everything the whole diff actually tested.
+  findings.push(...unmatchedDeclarations(declaration, candidates));
 
   const rank = { [SEVERITY.CRITICAL]: 0, [SEVERITY.WARN]: 1, [SEVERITY.INFO]: 2 };
   return findings.sort((x, y) => rank[x.severity] - rank[y.severity]);
@@ -817,10 +930,16 @@ function resolveRepos(opts) {
   return { agenttalk: REPO_ROOT, client };
 }
 
+/**
+ * BL-116 — returns BOTH: the merged object that judges the run, and the declaration exactly as it
+ * was written, which is judged itself. The merge alone loses the one fact that matters — which
+ * keys and patterns the author actually asked for.
+ */
 function loadExpect(file) {
-  if (!file) return DEFAULT_EXPECT;
+  if (!file) return { expect: DEFAULT_EXPECT, declaration: null };
   if (!fs.existsSync(file)) throw new UsageError(`expectation file not found: ${file}`);
-  return { ...DEFAULT_EXPECT, ...JSON.parse(fs.readFileSync(file, 'utf-8')) };
+  const declaration = JSON.parse(fs.readFileSync(file, 'utf-8'));
+  return { expect: { ...DEFAULT_EXPECT, ...declaration }, declaration };
 }
 
 function render(findings, before, after) {
@@ -863,7 +982,8 @@ function main(argv) {
     if (!fs.existsSync(opts.before)) throw new UsageError(`baseline snapshot not found: ${opts.before}`);
     const before = JSON.parse(fs.readFileSync(opts.before, 'utf-8'));
     const after = takeSnapshot({ repos, includeGlobal: opts.includeGlobal, portRange: opts.portRange });
-    const findings = diffSnapshots(before, after, loadExpect(opts.expect));
+    const { expect: exp, declaration } = loadExpect(opts.expect);
+    const findings = diffSnapshots(before, after, exp, declaration);
     const code = exitCodeFor(findings);
 
     if (opts.json) {

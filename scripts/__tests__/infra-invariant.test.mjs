@@ -13,6 +13,7 @@ import {
   exitCodeFor,
   snapshotRepo,
   takeSnapshot,
+  unmatchedDeclarations,
   DEFAULT_EXPECT,
 } from '../infra-invariant.mjs';
 
@@ -817,5 +818,301 @@ describe('BL-097 DoD row 8 — the duplicated parser may not drift', () => {
     expect(parseSelectableIds(item('BL-001', 'todo'))).toEqual([]);
     expect(parseSelectableIds(item('BL-001', 'done', 'eligible'))).toEqual([]);
     expect(parseSelectableIds(item('BL-001', 'todo', 'eligible', 'BL-999'))).toEqual([]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// BL-116 — a declaration that cannot have had any effect must SAY SO.
+//
+// `loadExpect` merged `--expect` over the defaults and NOTHING ever inspected the result, so a
+// mistyped key or a pattern matching nothing was accepted in silence — indistinguishable from the
+// legitimate "you declared nothing" state, which fails closed. Two consecutive operator runs then
+// reported a `critical` the run had not caused.
+//
+// These bars pin the fix as NARROW in three directions at once:
+//   - the matcher is NOT loosened (a trailing `/` stays end-to-end anchored);
+//   - only the DECLARATION is inspected, never the merged object (the defaults ship patterns of
+//     their own, so inspecting the merge would fire on a byte-identical run — the same defect one
+//     level up, and DoD row 6 above is its untouched contract);
+//   - `warn` is the ceiling, because a `critical` gates the next operator run.
+// ---------------------------------------------------------------------------
+
+/** How the CLI calls it: the merged object judges the run, the raw declaration is judged itself. */
+const withDeclaration = (before, after, declaration) =>
+  diffSnapshots(before, after, { ...DEFAULT_EXPECT, ...declaration }, declaration);
+
+const unmatchedOf = (findings) =>
+  findings.filter((f) => f.kind === 'expect-key-unknown' || f.kind === 'expect-pattern-unmatched');
+
+describe('BL-116 DoD row 1 — the matcher is NOT loosened', () => {
+  it('a trailing slash is still not an implicit /** — the fence keeps its end-to-end anchoring', () => {
+    // The tempting shortcut, and the one thing this item forbids: guessing the author's intent
+    // here would quietly WIDEN the operator write fence, which is what the fence exists to hold.
+    expect(matchesWritePath('design/operator/.hmp-launched.json', ['design/operator/'])).toBe(false);
+    expect(matchesWritePath('design/operator/.hmp-launched.json', ['design/operator/**'])).toBe(true);
+  });
+});
+
+describe('BL-116 DoD row 2 — the live hmp2 case warns', () => {
+  /** The ledger file exists and is TRACKED before the run, exactly as it was on hmp2. */
+  function repoWithLedger() {
+    const { dir } = makeRepoWithDesign();
+    fs.writeFileSync(path.join(dir, 'design', 'operator', '.hmp-launched.json'), '{"pid":1}\n');
+    git('add design/operator', dir);
+    git('commit -q -m "launch ledger"', dir);
+    return dir;
+  }
+
+  it('allowWritePaths ["design/operator/"] against a write to design/operator/.hmp-launched.json', () => {
+    const dir = repoWithLedger();
+    const before = snapOf(dir);
+    fs.writeFileSync(path.join(dir, 'design', 'operator', '.hmp-launched.json'), '{"pid":2}\n');
+
+    const findings = withDeclaration(before, snapOf(dir), { allowWritePaths: ['design/operator/'] });
+    const f = findings.find((x) => x.kind === 'expect-pattern-unmatched');
+
+    expect(f).toBeDefined();
+    expect(f.severity).toBe(SEVERITY.WARN);
+    expect(f.detail).toContain('declared but never matched');
+    expect(f.detail).toContain('design/operator/');
+    // "declared but never matched", never "invalid": a legitimately unused allowance is a real
+    // case this check cannot tell apart from a typo, and it must not pretend it can.
+    expect(f.detail).not.toMatch(/invalid/i);
+    // It names what it DID see, which is the whole diagnosis hmp2 had to reverse-engineer.
+    expect(f.detail).toContain('.hmp-launched.json');
+  });
+
+  it('explains the run\'s critical rather than replacing or suppressing it', () => {
+    const dir = repoWithLedger();
+    const before = snapOf(dir);
+    fs.writeFileSync(path.join(dir, 'design', 'operator', '.hmp-launched.json'), '{"pid":2}\n');
+
+    const findings = withDeclaration(before, snapOf(dir), { allowWritePaths: ['design/operator/'] });
+    expect(kindsOf(criticalsOf(findings))).toContain('tracked-file-modified');
+  });
+
+  it('and the CORRECTED declaration is silent — no cry-wolf on a declaration that worked', () => {
+    const dir = repoWithLedger();
+    const before = snapOf(dir);
+    fs.writeFileSync(path.join(dir, 'design', 'operator', '.hmp-launched.json'), '{"pid":2}\n');
+
+    const findings = withDeclaration(before, snapOf(dir), { allowWritePaths: ['design/operator/**'] });
+    expect(unmatchedOf(findings)).toEqual([]);
+    expect(criticalsOf(findings)).toEqual([]);
+    expect(exitCodeFor(findings)).toBe(0);
+  });
+});
+
+describe('BL-116 DoD row 3 — a mistyped KEY warns (the same bug one level up)', () => {
+  const clean = () => {
+    const { dir } = makeRepoWithDesign();
+    return [snapOf(dir), snapOf(dir)];
+  };
+
+  for (const key of ['allowWritePath', 'allowedWritePaths', 'allow_write_paths']) {
+    it(`\`${key}\` merges cleanly, contributes nothing, and now says so`, () => {
+      const [before, after] = clean();
+      const findings = withDeclaration(before, after, { [key]: ['design/operator/**'] });
+      const f = findings.find((x) => x.kind === 'expect-key-unknown');
+
+      expect(f).toBeDefined();
+      expect(f.severity).toBe(SEVERITY.WARN);
+      expect(f.detail).toContain(key);
+      expect(f.detail).toContain('declared but never matched');
+      expect(f.detail).not.toMatch(/invalid/i);
+    });
+  }
+
+  it('names the keys that DO exist, so the fix does not need a source read', () => {
+    const [before, after] = clean();
+    const f = withDeclaration(before, after, { allowWritePath: [] }).find(
+      (x) => x.kind === 'expect-key-unknown',
+    );
+    for (const known of Object.keys(DEFAULT_EXPECT)) expect(f.detail).toContain(known);
+  });
+
+  it('a correctly spelled key is never reported as unknown', () => {
+    const [before, after] = clean();
+    const findings = withDeclaration(before, after, { allowPorts: [3600] });
+    expect(findings.some((x) => x.kind === 'expect-key-unknown')).toBe(false);
+  });
+});
+
+describe('BL-116 DoD row 4 — `warn` is the CEILING: this check never gates a run', () => {
+  it('every finding it produces is a warn, even when the whole declaration is wrong', () => {
+    const { dir } = makeRepoWithDesign();
+    const before = snapOf(dir);
+    const findings = withDeclaration(before, snapOf(dir), {
+      allowWritePath: ['design/operator/**'],
+      allowWritePaths: ['design/operator/'],
+      allowNewWorktrees: ['nope-*'],
+      allowNewBranches: ['nope-*'],
+      allowProcesses: ['nope-*'],
+    });
+
+    const mine = unmatchedOf(findings);
+    expect(mine.length).toBeGreaterThan(0);
+    expect(mine.every((f) => f.severity === SEVERITY.WARN)).toBe(true);
+    expect(criticalsOf(findings)).toEqual([]);
+  });
+
+  it('a legitimately UNUSED allowance is tolerated as a warn — the accepted false positive', () => {
+    // You declared a path the run happened not to write. The harness cannot distinguish this from
+    // a typo, which is precisely why it is a warn and why the wording is "never matched".
+    const { dir } = makeRepoWithDesign();
+    const before = snapOf(dir);
+    fs.appendFileSync(path.join(dir, 'design', 'operator', 'notes.md'), 'ran\n');
+
+    const findings = withDeclaration(before, snapOf(dir), {
+      allowWritePaths: ['design/operator/**', 'design/backlog.md'],
+    });
+    const mine = unmatchedOf(findings);
+    expect(mine).toHaveLength(1);
+    expect(mine[0].severity).toBe(SEVERITY.WARN);
+    expect(mine[0].detail).toContain('design/backlog.md');
+    expect(criticalsOf(findings)).toEqual([]);
+  });
+});
+
+describe('BL-116 DoD row 5 — only the DECLARATION is inspected, never the merged defaults', () => {
+  it('a byte-identical run with no declaration stays clean (DoD row 6, from the other side)', () => {
+    const { dir } = makeRepoWithDesign();
+    const findings = diffSnapshots(snapOf(dir), snapOf(dir), DEFAULT_EXPECT);
+
+    expect(unmatchedOf(findings)).toEqual([]);
+    expect(findings.filter((f) => f.severity !== SEVERITY.INFO)).toEqual([]);
+    expect(exitCodeFor(findings)).toBe(0);
+  });
+
+  it('DEFAULT_EXPECT itself carries patterns that match nothing on a clean run — and is exempt', () => {
+    // The trap this bar exists to hold: the defaults are NOT a declaration. Inspecting the merged
+    // object would fire on a run where nothing whatsoever happened.
+    expect(DEFAULT_EXPECT.allowNewWorktrees.length).toBeGreaterThan(0);
+    expect(DEFAULT_EXPECT.allowNewBranches.length).toBeGreaterThan(0);
+
+    const { dir } = makeRepoWithDesign();
+    expect(unmatchedOf(diffSnapshots(snapOf(dir), snapOf(dir), DEFAULT_EXPECT, null))).toEqual([]);
+  });
+
+  it('an empty declaration says nothing — "you declared nothing" is a legitimate state', () => {
+    const { dir } = makeRepoWithDesign();
+    expect(unmatchedOf(withDeclaration(snapOf(dir), snapOf(dir), {}))).toEqual([]);
+  });
+});
+
+describe('BL-116 DoD row 6 — every pattern field is covered, with its own matcher', () => {
+  it('allowNewWorktrees / allowNewBranches: the pattern that matched is silent, the other warns', () => {
+    const { dir, container } = makeRepo();
+    const before = snapOf(dir);
+    git(`worktree add -q -b task-ok "${path.join(container, 'att-op-1')}"`, dir);
+
+    const findings = withDeclaration(before, snapOf(dir), {
+      allowNewWorktrees: ['att-op-*', 'att-typo-*'],
+      allowNewBranches: ['task-*'],
+    });
+    const mine = unmatchedOf(findings);
+
+    expect(mine).toHaveLength(1);
+    expect(mine[0].detail).toContain('att-typo-*');
+    expect(mine[0].severity).toBe(SEVERITY.WARN);
+  });
+
+  it('allowProcesses is judged against the commands this run actually watched', () => {
+    const base = { takenAt: 'T0', repos: {}, ports: [], processes: [] };
+    const after = {
+      ...base,
+      takenAt: 'T1',
+      processes: [{ pid: '999', ports: ['3600'], cwd: '/somewhere', cmd: 'node orchestrator/index.js' }],
+    };
+
+    // The check re-tests each pattern with the SAME matcher the diff used, so the two verdicts
+    // cannot drift: a pattern is "matched" here exactly when it silenced a finding there.
+    const hit = withDeclaration(base, after, { allowProcesses: ['node orchestrator/*'] });
+    expect(unmatchedOf(hit)).toEqual([]);
+    expect(hit.some((x) => x.kind === 'process-appeared')).toBe(false);
+
+    // `*` never crosses a path separator, so this one silences nothing — and now says so.
+    const miss = withDeclaration(base, after, { allowProcesses: ['*orchestrator*'] });
+    expect(unmatchedOf(miss)).toHaveLength(1);
+    expect(unmatchedOf(miss)[0].severity).toBe(SEVERITY.WARN);
+    expect(miss.some((x) => x.kind === 'process-appeared')).toBe(true);
+  });
+
+  it('a commit range is a write candidate too, not just an uncommitted edit', () => {
+    const { dir } = makeRepoWithDesign();
+    const before = snapOf(dir);
+    fs.appendFileSync(path.join(dir, 'design', 'backlog.md'), 'observed\n');
+    git('add design/backlog.md', dir);
+    git('commit -q -m "operator: file an observation"', dir);
+
+    const findings = withDeclaration(before, snapOf(dir), { allowWritePaths: ['design/backlog.md'] });
+    expect(unmatchedOf(findings)).toEqual([]);
+    expect(criticalsOf(findings)).toEqual([]);
+  });
+});
+
+describe('BL-116 DoD row 7 — the checker is pure and degrades quietly', () => {
+  it('says nothing for a missing, null or non-object declaration', () => {
+    expect(unmatchedDeclarations(null, {})).toEqual([]);
+    expect(unmatchedDeclarations(undefined, {})).toEqual([]);
+    expect(unmatchedDeclarations('not-an-object', {})).toEqual([]);
+    expect(unmatchedDeclarations({})).toEqual([]);
+  });
+
+  it('tolerates a non-array pattern value rather than throwing', () => {
+    expect(() => unmatchedDeclarations({ allowWritePaths: 'design/operator/**' }, {})).not.toThrow();
+  });
+});
+
+describe('BL-116 DoD row 8 — end to end through the CLI', () => {
+  const runCheck = (args) => {
+    try {
+      return { code: 0, stdout: execFileSync('node', [scriptPath, ...args], { encoding: 'utf-8', stdio: 'pipe' }) };
+    } catch (e) {
+      return { code: e.status, stdout: e.stdout ?? '', stderr: e.stderr ?? '' };
+    }
+  };
+
+  const expectFile = (declaration) => {
+    const file = path.join(makeContainer(), 'expect.json');
+    fs.writeFileSync(file, JSON.stringify(declaration));
+    return file;
+  };
+
+  it('a mistyped key surfaces in --json as a warn, and exit 1 (exitCodeFor is unchanged)', () => {
+    const { dir } = makeRepoWithDesign();
+    const snap = path.join(makeContainer(), 'snap.json');
+    execFileSync('node', [scriptPath, 'snapshot', '--out', snap, '--repo', `main=${dir}`, '--no-global'], {
+      stdio: 'pipe',
+    });
+
+    const res = runCheck([
+      'check', '--before', snap, '--repo', `main=${dir}`, '--no-global', '--json',
+      '--expect', expectFile({ allowWritePath: ['design/operator/**'] }),
+    ]);
+    const parsed = JSON.parse(res.stdout);
+    const f = parsed.findings.find((x) => x.kind === 'expect-key-unknown');
+
+    expect(f?.severity).toBe(SEVERITY.WARN);
+    expect(f.detail).toContain('declared but never matched');
+    expect(parsed.findings.some((x) => x.severity === SEVERITY.CRITICAL)).toBe(false);
+    // The accepted consequence: `exitCodeFor` already returns 1 for a warn, so an otherwise clean
+    // bracket now exits 1 instead of 0. It is OUT OF SCOPE here and deliberately not softened.
+    expect(res.code).toBe(1);
+    expect(parsed.exitCode).toBe(1);
+  });
+
+  it('a well-formed --expect file on a clean run still exits 0', () => {
+    const { dir } = makeRepoWithDesign();
+    const snap = path.join(makeContainer(), 'snap.json');
+    execFileSync('node', [scriptPath, 'snapshot', '--out', snap, '--repo', `main=${dir}`, '--no-global'], {
+      stdio: 'pipe',
+    });
+
+    const res = runCheck([
+      'check', '--before', snap, '--repo', `main=${dir}`, '--no-global',
+      '--expect', expectFile({ allowPorts: [3600] }),
+    ]);
+    expect(res.code).toBe(0);
   });
 });
