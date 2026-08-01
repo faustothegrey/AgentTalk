@@ -5,6 +5,9 @@ written: 2026-08-01 by Claude — session close after the third HMP-carried rung
   commissioned, delivered, graded PASS on R1–R6, merged and closed in one session. Deliberately
   no claim here about what is queued: read the queue yourself, it is one command and it has
   invalidated this header before.
+amended: 2026-08-01, same session, key unchanged (nobody had consumed it). The first draft claimed
+  the queue was empty at close — stale within ten minutes, and in the paragraph that argues against
+  doing exactly that. Corrected there, and BL-116's brief obligations added.
 ---
 
 This is your session primer.
@@ -36,8 +39,8 @@ npx vitest run apps/orchestrator/src/__tests__/bl093-backlog-selectable.test.ts
 ```
 
 That test pins the *exact* agent-selectable set, so its assertion is the answer, and a red is a finding rather
-than a chore. Naming volatile state in this file has invalidated it within the hour four times now — twice in
-the session that wrote the previous version of it.
+than a chore. Naming volatile state in this file has invalidated it within the hour **five times** now —
+including once in this very file, after the paragraph below was written to prevent it.
 
 At close: `npm test` **671/671 across 82 files**, `tsc -b` clean · backlog **117 items, 0 warnings** · ports
 3500/3600 free · **no worktrees but the primary, no branches but `master`** · claude weekly **32%** · **both
@@ -45,10 +48,12 @@ repos pushed and in sync.**
 
 ## ⚠️ The one thing to do first
 
-**Find out whether there is a rung waiting, and do not assume either answer.** At close, closing BL-115 emptied
-the agent-selectable queue and the pin was updated to `[]` — but the last time a primer stated that as settled,
-the PO stocked the next item within the hour and the header sat there contradicting the body. So: run the
-command above.
+**Find out whether there is a rung waiting, and do not assume either answer.** Run the command above; its
+assertion is the answer. This file will not tell you, and the reason is worth thirty seconds: the previous
+primer asserted the queue was empty, the PO stocked an item within the hour, and the header ended up
+contradicting the body. **The first draft of *this* file made the same mistake in this very paragraph** — it
+recorded "the queue was emptied at close", which was true for about ten minutes. A queue state written into a
+primer has now gone stale five times. Stop reading it out of prose.
 
 - **If the set is non-empty:** you have a rung. **Verify the item is still real before you hand it out** — a
   session picked BL-108 once and it had already been fixed inline; an eligible no-op produces a green run that
@@ -56,6 +61,22 @@ command above.
 - **If the set is empty:** refilling it is a **PO act** — `autonomy: eligible` is authority in file form, and
   [[BL-093]] made it fail closed. **Do not mark anything eligible yourself, and do not treat an empty queue as
   permission to pick something.** Bring the PO candidates with your reasoning and let them choose.
+
+**If the set names [[BL-116]]** — it did when this was written, 2026-08-01, and the item's own closing prose
+records the same — **two things must survive into its brief, and they are the whole difficulty:**
+
+1. **The worker would be changing the instrument that grades operator runs.** This is safe, but the brief must
+   *argue* it rather than assume it: the run's own bracket is computed by the **primary checkout's** copy of
+   `infra-invariant.mjs`, while the worker edits its own copy inside its worktree, so nothing it does reaches
+   the grader until the PO merges. A grading harness that silently graded a run using code that run had just
+   modified would be worthless — "it was fine" is not a finding. Sharper than `hmp2`'s hazard, not the same one.
+2. **The tempting fix is forbidden and the item says so.** Loosening `matchesWritePath` to treat a trailing `/`
+   as an implicit `/**` would make the typo pass — and would quietly widen the **operator write fence**, which
+   is the thing that fence exists to hold. The fix must also emit **`warn`, never `critical`**: a legitimately
+   unused allowance is a real case to tolerate, so it reads *"declared but never matched"*, not *"invalid"*.
+   Otherwise the fix becomes a new way to gate a clean run — the bug one level up.
+
+That is the second rung in a row where a plausible wrong answer exists, which is what makes it worth running.
 
 ## What the last three rungs actually established — read this before writing the next brief
 
@@ -108,10 +129,13 @@ out of scope, and that is recorded in its closure so the silence is not later re
 - **`completed` is not a verdict.** It means the message was answered. Grade the artifact, by running things
   yourself — reproduce the before/after by hand, re-run the suite, and prove the new tests are red at the
   baseline by reverting only the source.
-- **[[BL-116]] is still open and it is about you.** `--expect` patterns anchor end-to-end, so `design/operator/`
-  matches nothing and you need `design/operator/**`. Nothing warns you. **Test the pattern against a path it
-  must permit AND one it must refuse before trusting a `critical`** — that costs seconds and removes the whole
-  class. Two runs' only `critical` was this mistake in the grader's own file.
+- **[[BL-116]] is open, it is about you, and it may now also be your assignment — which does not spare you from
+  it.** `--expect` patterns anchor end-to-end, so `design/operator/` matches nothing and you need
+  `design/operator/**`. Nothing warns you. **Test the pattern against a path it must permit AND one it must
+  refuse before trusting a `critical`** — seconds, and it removes the whole class. Two runs' only `critical` was
+  this mistake in the grader's own file, and it caught the author a third time while grading `hmp3`. **Note the
+  trap in the trap:** if you are grading the run that *fixes* this, you are still using the unfixed harness from
+  the primary checkout, so the footgun is live for exactly that run.
 - **[[BL-114]]: `cap.meter` is configured, never verified.** The reader coerces a missing figure to `0`, so the
   delta goes negative and the rail cannot fire while looking healthy. **`cap.wallClockMs` is the only rail you
   may honestly claim.**
