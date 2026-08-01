@@ -24,7 +24,7 @@ record, unchanged:
 ```
 <!-- @item
 id: BL-NNN            # stable, never reused; next id = max existing + 1
-status: todo          # todo | doing | done | dropped — nothing else
+status: todo          # todo | doing | done | dropped | deferred — nothing else
 date: YYYY-MM-DD      # optional
 epic: M08 | null      # optional owning/target epic
 promoted_to: X | null # optional lineage: the epic/spike this item became
@@ -5602,13 +5602,14 @@ autonomy: human-only
 
 <!-- @item
 id: BL-107
-status: todo
+status: deferred
 date: 2026-07-30
 epic: null
-tags: [security, hmp, hermes, operator, infrastructure, po-decision, exposure]
+tags: [security, hmp, hermes, operator, infrastructure, po-decision, exposure, parked]
 autonomy: po-decision
 -->
-- [todo · **PO DECISION — the PO's own infrastructure, outside both repos**] — **HMP on this host accepts
+- [deferred · **PARKED BY PO DECISION 2026-08-02, reopen condition below** · the PO's own infrastructure,
+  outside both repos] — **HMP on this host accepts
   unauthenticated commands from any LAN peer, into a shell-capable agent.**
 
   Found 2026-07-30 while resolving `design/hmp-session-submission.md` §1a. `~/.hermes/config.yaml:597-612` sets
@@ -5643,6 +5644,25 @@ autonomy: po-decision
   `design/hmp-commission-plan.md`'s repo-anchored check for launch-class traffic only. **(d) is what is being
   built and it is deliberately narrow**: it hardens the launch path and does nothing for the other 107 messages'
   worth of capability.
+
+  ---
+
+  **⬛ PARKED BY PO DECISION, 2026-08-02 — the exposure is ACCEPTED, not resolved.** The PO's call, in their own
+  words: *"Don't worry about attackers right now, this is all internal (as in only me) development. Should I
+  decide to go public one day, I'll have it thoroughly tested."* **Nothing above is retracted** — the
+  configuration is exactly as described, `adapter.py:223` still returns authorized before any check runs, and the
+  107 executed messages are still on the record. What changed is the **threat model**, deliberately: a
+  single-user machine on a private LAN whose peers are the PO's own.
+
+  **Reopen condition — any ONE of these returns this item to `todo` BEFORE the change ships:**
+  1. the host becomes reachable beyond this machine/LAN — public IP, port-forward, tunnel, VPS, cloud runner; **or**
+  2. a second human gains access to the HMP port, or to a peer that sends to it; **or**
+  3. HMP is asked to carry anything apex — scope, role assignment, `autonomy: eligible`, `critical` disposition.
+     (Origin Tag Protocol rule 5 already refuses these; this is the trigger to revisit *why*.)
+
+  **What the park does NOT license:** no claim in this repo may now read *"the channel is secure."* It is
+  **accepted-open** — the same configuration, a different sentence. `AGENT.md` rule 5's honest limit stands
+  verbatim, and anything that cited [[BL-107]] as a future control keeps citing it as an **open** one.
 
 <!-- @item
 id: BL-108
@@ -5734,7 +5754,6 @@ date: 2026-07-30
 epic: null
 tags: [hmp, hermes, operator, governance, origin-tags, relay, po-decision, remote-steering]
 autonomy: po-decision
-blocked_by: [BL-107]
 -->
 - [todo · **PO DECISION — an authority model, not a feature**] — **A bidirectional PO↔session channel over
   Hermes: feasible now, but it needs a tag that is not `[PO]`.**
@@ -5843,6 +5862,28 @@ blocked_by: [BL-107]
   - diff:        6 files, +1492/-11; commits 27618cf, 8008a55, merge db5d102
   - outcome:     MERGED + PUSHED (PO-instructed)
   ```
+
+  ---
+
+  **⬛ BLOCKER RE-CUT, 2026-08-02 (PO-approved) — `blocked_by: [BL-107]` REMOVED. This is not a loosening; read
+  why.** [[BL-107]] was parked the same day (internal-only development; reopen condition on its own entry). Under
+  `isResolved` (`apps/orchestrator/src/backlog.ts:258`) only `done`/`dropped` resolve a blocker, so a parked
+  BL-107 would have frozen this item **permanently** — not because the work became unsafe, but because the
+  blocker could never clear.
+
+  **And the blocker was mis-cut from the start** — by this item's own finding, recorded above: **BL-107 describes
+  the HMP path** (`0.0.0.0` + `allow_all_peers`) **and does not describe the Telegram path**, which authenticates
+  by account against `TELEGRAM_ALLOWED_USERS` — a single entry, the PO's DM. The channel actually carrying
+  approvals was never the one the blocker fenced.
+
+  **What stays blocked is a PATH, not this item.** `blocked_by` is item-level and cannot express "half", so the
+  split is recorded here instead: **write-class verbs over HMP remain fenced** — `READ_ONLY_VERBS` is frozen at
+  `status` · `report`, widening it is a governance act, and `relay-inbox.mjs` still refuses `merge`/`push`.
+  Nothing in that fence is relaxed by this edit.
+
+  **Zero effect on what an agent may be handed.** This item is `autonomy: po-decision`, and
+  `selectableBacklogItems` (`backlog.ts:279`) requires `eligible` — so the selectable set stays `[]` and the
+  [[BL-093]] guard stays green. Verified by running it after this edit, not asserted.
 
 <!-- @item
 id: BL-111
