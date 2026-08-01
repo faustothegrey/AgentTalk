@@ -1469,3 +1469,49 @@ here.**
   time I wrote **no** queue state at all — just the command that answers it, and both branches of the answer.
   **The fix for a claim that keeps going stale is not to update it faster; it is to stop making it and hand the
   reader the instrument.**
+
+### 2026-08-01 (evening) — the rung where I graded the grader
+
+- **As planner: the brief's most valuable section was a list of three wrong answers, not the specification.**
+  BL-116 had exactly one obvious fix (loosen the matcher) and two subtle ones that go green — inspecting the
+  merged object, and raising the severity. I wrote §4 as three named traps with the reasoning for each, and
+  specified no mechanism at all. The worker then produced the declaration/merge split, a structure I had not
+  thought of and which makes the byte-identical-run trap *impossible* rather than merely avoided. **Enumerating
+  the failure modes buys more than describing the solution, because the worker can beat my solution and cannot
+  beat a trap it was warned about.**
+- **As planner: I pinned a property to an existing test rather than to prose, and that is what made it
+  enforceable.** "A clean run must stay clean" is a sentence the worker could have satisfied in spirit while
+  editing the test that proves it. "`DoD row 6` passes untouched; modifying it is a weakened contract, not a
+  repair" is checkable in one `git diff`. It came back **+297/−0**. **Anchor a negative instruction to an
+  artifact that already exists, and it stops being a matter of interpretation.**
+- **As implementation reviewer: my first reproduction ran the harness at the wrong coordinates, and the harness
+  caught me.** I invoked the *worktree's* copy without `--repo`, so it snapshotted the worktree instead of the
+  primary, returned two `path-mismatch` criticals and a zero-candidate warn — and for about ten seconds I read
+  that as a defect in the new check. BL-090's Defect B guard is what stopped me filing it. **The second-order
+  form of this very item's lesson: a check run at the wrong coordinates does not fail loudly, it lies in a
+  confident voice.** I recorded it in the grading rather than quietly re-running.
+- **As implementation reviewer: reproducing the REAL historical failure beat any synthetic test I could have
+  written.** I ran the fixed harness against this run's own baseline with the exact `hmp2` typo, and got the
+  bogus `critical` sitting next to a warn naming the path the pattern missed. No unit test communicates that —
+  it is the actual two-session bug, cured, on real data. **When an item cites a live incident, reproduce the
+  incident, not an abstraction of it.**
+- **As implementation reviewer: I graded a silence for the second run running.** hmp3 and hmp4 both reported
+  nothing out of scope. Neither was obliged to. But two in a row is no longer noise, and I wrote it into the
+  closure as a fact both times — because the alternative is that it silently becomes "the worker would have
+  spoken up." **It is now a design input: the next rung should be chosen partly for whether it can elicit an
+  unprompted refusal.**
+- **As task-end reviewer: the fix's real payoff was verifiable only AFTER the merge, so I checked there.** The
+  point of BL-116 is that the *next* bracket runs the fixed harness — a property of the primary checkout, which
+  did not exist until the merge landed. Re-running the typo case from the primary post-merge took ten seconds
+  and is the only evidence that the thing shipped does what it was for. **"The branch was green" and "the fix is
+  live where it matters" are different claims.**
+- **As task-end reviewer: I let the `bl093` guard fire and showed the PO the red before touching it.** It went
+  red the moment BL-116 closed. Updating the assertion to `[]` is the correct act; loosening it to an emptiness
+  check would have destroyed the mechanism. **The fifth time this ritual has run, and its whole value is that
+  the update is deliberate and visible rather than automatic.**
+- **As planner, writing the wrap-up: the discipline from last session held, and it cost nothing.** I verified
+  every state claim in the primer at the moment of writing (117 items, 0 warnings, ports free, both repos in
+  sync, weekly 38%) and wrote **no** queue state — just the command. I also caught that the primer's own text
+  tripped the recursion fence by quoting a forbidden phrasing, and reworded it, because a primer whose paragraph
+  cannot be copied into a brief is a trap for my successor. **Run the fence over the wrap-up too; it is one
+  command and it found something.**

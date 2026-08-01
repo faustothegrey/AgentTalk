@@ -1,13 +1,9 @@
 ---
 role: planner
-key: 20260801-1231-6bd42f
-written: 2026-08-01 by Claude — session close after the third HMP-carried rung. BL-115 was
-  commissioned, delivered, graded PASS on R1–R6, merged and closed in one session. Deliberately
-  no claim here about what is queued: read the queue yourself, it is one command and it has
-  invalidated this header before.
-amended: 2026-08-01, same session, key unchanged (nobody had consumed it). The first draft claimed
-  the queue was empty at close — stale within ten minutes, and in the paragraph that argues against
-  doing exactly that. Corrected there, and BL-116's brief obligations added.
+key: 20260801-2144-9c4e17
+written: 2026-08-01 by Claude — session close after the fourth HMP-carried rung. BL-116 was
+  commissioned, delivered, graded PASS on R1–R7, merged, closed and PUSHED in one session.
+  No queue state is written here. That is not an omission; read on.
 ---
 
 This is your session primer.
@@ -39,21 +35,16 @@ npx vitest run apps/orchestrator/src/__tests__/bl093-backlog-selectable.test.ts
 ```
 
 That test pins the *exact* agent-selectable set, so its assertion is the answer, and a red is a finding rather
-than a chore. Naming volatile state in this file has invalidated it within the hour **five times** now —
-including once in this very file, after the paragraph below was written to prevent it.
+than a chore. A queue state named in a primer has gone stale **five times** now — including once inside the
+paragraph written to prevent it. The instrument is one command. Use it.
 
-At close: `npm test` **671/671 across 82 files**, `tsc -b` clean · backlog **117 items, 0 warnings** · ports
-3500/3600 free · **no worktrees but the primary, no branches but `master`** · claude weekly **32%** · **both
-repos pushed and in sync.**
+Verified at the moment of writing (2026-08-01 21:44Z), not remembered: `tsc -b` clean · backlog **117 items,
+0 warnings** · ports 3500/3600 free · **no worktrees but the primary, no branches but `master`** · claude weekly
+**38%** · **both repos pushed and in sync.**
 
 ## ⚠️ The one thing to do first
 
-**Find out whether there is a rung waiting, and do not assume either answer.** Run the command above; its
-assertion is the answer. This file will not tell you, and the reason is worth thirty seconds: the previous
-primer asserted the queue was empty, the PO stocked an item within the hour, and the header ended up
-contradicting the body. **The first draft of *this* file made the same mistake in this very paragraph** — it
-recorded "the queue was emptied at close", which was true for about ten minutes. A queue state written into a
-primer has now gone stale five times. Stop reading it out of prose.
+**Find out whether there is a rung waiting, and do not assume either answer.** Run the command above.
 
 - **If the set is non-empty:** you have a rung. **Verify the item is still real before you hand it out** — a
   session picked BL-108 once and it had already been fixed inline; an eligible no-op produces a green run that
@@ -62,94 +53,88 @@ primer has now gone stale five times. Stop reading it out of prose.
   [[BL-093]] made it fail closed. **Do not mark anything eligible yourself, and do not treat an empty queue as
   permission to pick something.** Bring the PO candidates with your reasoning and let them choose.
 
-**If the set names [[BL-116]]** — it did when this was written, 2026-08-01, and the item's own closing prose
-records the same — **two things must survive into its brief, and they are the whole difficulty:**
+## What the four rungs established — read this before writing the next brief
 
-1. **The worker would be changing the instrument that grades operator runs.** This is safe, but the brief must
-   *argue* it rather than assume it: the run's own bracket is computed by the **primary checkout's** copy of
-   `infra-invariant.mjs`, while the worker edits its own copy inside its worktree, so nothing it does reaches
-   the grader until the PO merges. A grading harness that silently graded a run using code that run had just
-   modified would be worthless — "it was fine" is not a finding. Sharper than `hmp2`'s hazard, not the same one.
-2. **The tempting fix is forbidden and the item says so.** Loosening `matchesWritePath` to treat a trailing `/`
-   as an implicit `/**` would make the typo pass — and would quietly widen the **operator write fence**, which
-   is the thing that fence exists to hold. The fix must also emit **`warn`, never `critical`**: a legitimately
-   unused allowance is a real case to tolerate, so it reads *"declared but never matched"*, not *"invalid"*.
-   Otherwise the fix becomes a new way to gate a clean run — the bug one level up.
-
-That is the second rung in a row where a plausible wrong answer exists, which is what makes it worth running.
-
-## What the last three rungs actually established — read this before writing the next brief
-
-Each rung proved one new thing, and they are cumulative:
+Each proved one new thing, and they are cumulative:
 
 - **`hmp1`** — a commissioned worker can *observe*. Its own grading says what it left open: "the one property
   tested was that it didn't write."
 - **`hmp2`** ([[BL-104]]) — it can *write*: change tracked files, commit to its own branch, in scope. Its best
   output was refuting the item's own suggested fix with evidence.
-- **`hmp3`** ([[BL-115]]) — **it can take reasoning over precedent.** The item was picked *because* the obvious
-  fix was wrong: copying the sibling's piped-stderr mechanism would have passed a naive bar while regressing a
-  build's live output. The brief said "not like that, and here is why", and it held. **That is the first
-  evidence a fenced brief can carry a negative instruction.**
+- **`hmp3`** ([[BL-115]]) — **it can take reasoning over precedent.** The obvious fix (copying the sibling's
+  mechanism) would have passed a naive bar while regressing a build's live output. The brief said "not like
+  that, and here is why", and it held. First evidence a fenced brief can carry a *negative* instruction.
+- **`hmp4`** ([[BL-116]]) — **it can repair the instrument that grades it, and choose a SHAPE nobody specified.**
+  The declaration/merge split — threading the raw `--expect` as a fourth parameter so the built-in defaults are
+  never judged — was not in the brief; it is what makes the "fires on a byte-identical run" trap *impossible*
+  rather than merely avoided. Three named wrong answers, two of which go green. It took none of them.
 
-**So the interesting next rung is not "a slightly bigger fix."** The open questions are now about *duration*
-([[BL-096]]; every rung so far is under 7 minutes against caps of 30–45), about a task with **more than one
-plausible shape**, and about whether a worker will speak up unprompted — hmp3 was **quiet**, reported nothing
-out of scope, and that is recorded in its closure so the silence is not later read as an endorsement.
+**So what is still unproven, and where the next rung should aim.** Duration ([[BL-096]]): the longest run so far
+is **13m28s** against caps of 30–45m, so nothing has approached that failure class. **Whether a worker will
+speak up unprompted:** `hmp3` and `hmp4` both reported nothing out of scope, and both silences are recorded in
+their closures as facts rather than endorsements — two in a row is now a pattern worth designing a rung around.
+And **a task whose scope spans more than one file family**, since every rung so far has been two files.
 
 ## How a run actually goes — the parts that are not obvious
 
-- **`design/hmp-session-submission.md` is the design; `scripts/hmp-commission.mjs` is the law.** Read the second
-  one. The verifier is the only lawful entry point and every check fails closed.
+- **`design/hmp-session-submission.md` is the design; the commissioning verifier in `scripts/` is the law.** Read
+  the second one. It is the only lawful entry point and every check fails closed.
 - **Authorization is the PO's commit, not a message.** `design/operator/<run>.authorized`, whose **entire**
   content must equal `[PO] AUTHORIZED-RUN: <run>`, reachable from `master`. **Do not write it yourself** — an
   agent that mints its own authorization has forged exactly what the check protects, and the check stays green.
-- **There is no rehearsal any more, and this is structural.** `hmp2` could send a real commission for free
-  because its authorization did not yet exist, so refusal was the only available outcome. Once the PO's
-  `.authorized` commit lands, **anything reaching the wire launches.** Rehearsal and authorization are mutually
-  exclusive by construction. Get the dry-run right instead: `--dry-run` against the committed sha exercises
-  every check and launches nothing.
+- **There is no rehearsal any more, and this is structural.** Once the PO's `.authorized` commit lands,
+  **anything reaching the wire launches.** Rehearsal and authorization are mutually exclusive by construction.
+  Get the dry-run right instead: `--dry-run` against the committed sha exercises every check and launches
+  nothing.
 - **The order that works:** write brief/bar/config → **dry-run** (expect `no-po-authorization`) → PO commits
   `.authorized` → **dry-run again** (expect `workdir-missing` — that refusal is progress, not a fault) →
   provision (`wt-setup.mjs create op-<run> --base master --root /tmp` on **macOS**) → **dry-run again** (expect
   `accepted`) → snapshot → send → grade. Each refusal names exactly which check is next; that ladder is the
   cheapest debugging in the system.
-- **The recursion fence scans the BRIEF's committed text.** It refuses `launcher.mjs`, `hmp-commission.mjs`, the
-  discriminator, `/hmp/send`, and phrasings like "launch the run". Check with `findsLaunchInstruction` **before**
-  committing. It refused the `hmp2` author on the first try.
-- **Keep the wire message short and put the commission in a FILE.** The working pattern is a ~250-char message
-  carrying one command that reads `/tmp/<run>-commission.txt` locally. A 342-char message once arrived as 154.
-- **Pass a real `message_id`.** The `hmp2` probe sent it as `undefined` and the POST still looked healthy —
-  HMP's replay protection travelled as nothing. Confirm the response **echoes your id back**.
+- **The recursion fence scans the BRIEF's committed text.** It refuses the launcher's and the verifier's
+  filenames, the discriminator, the send endpoint, and any phrasing that reads as instructing the receiver to
+  start a further session. Check with `findsLaunchInstruction` **while writing**, not after being refused — it
+  costs one command. *(This paragraph is deliberately worded around the patterns rather than quoting them: the
+  matcher cannot tell an example from an instruction, so a primer that spelled them out would refuse any brief
+  that copied it — the same lesson that moved authorization out of the brief and into its own file.)*
+- **Keep the wire message short and put the commission in a FILE.** ~220–250 chars carrying one command that
+  reads `/tmp/<run>-commission.txt` locally. A 342-char message once arrived as 154.
+- **Pass a real `message_id` and confirm the response echoes it back.** An early probe sent `undefined` and the
+  POST still looked healthy — replay protection travelled as nothing.
+- **Status reads taken too early lie.** The ledger entry lands ~20s after the POST. A check before then shows
+  "not launched" and is a fact about your timing, not the channel. Wait before concluding.
 
 ## Op notes
 
 - **Grade at both coordinates.** For `claude` persistent the work lands in `<workdir>`; the nested
   `agentalk-task-*` worktree is the orchestrator's and is normally empty. An artifact check at the wrong
   coordinates is worse than none ([[BL-053]] / [[BL-059]]).
-- **`completed` is not a verdict.** It means the message was answered. Grade the artifact, by running things
+- **`completed` is not a verdict.** It means the message was answered. Grade the artifact by running things
   yourself — reproduce the before/after by hand, re-run the suite, and prove the new tests are red at the
-  baseline by reverting only the source.
-- **[[BL-116]] is open, it is about you, and it may now also be your assignment — which does not spare you from
-  it.** `--expect` patterns anchor end-to-end, so `design/operator/` matches nothing and you need
-  `design/operator/**`. Nothing warns you. **Test the pattern against a path it must permit AND one it must
-  refuse before trusting a `critical`** — seconds, and it removes the whole class. Two runs' only `critical` was
-  this mistake in the grader's own file, and it caught the author a third time while grading `hmp3`. **Note the
-  trap in the trap:** if you are grading the run that *fixes* this, you are still using the unfixed harness from
-  the primary checkout, so the footgun is live for exactly that run.
+  baseline by reverting **only** the source.
+- **[[BL-116]] is CLOSED — the `--expect` footgun is now instrumented.** A pattern or key that cannot have
+  applied is reported as a `warn` saying *"declared but never matched"*. **This does not retire the habit:** test
+  your declaration against a path it must permit **and** one it must refuse anyway. Three of four brackets had a
+  `critical` that was the grader's own file. Note the new `warn` also flips an otherwise clean bracket's exit
+  from 0 to 1 — accepted and documented, not a defect.
+- **Run the harness from the PRIMARY checkout, with the repos it should watch.** Running a worktree's copy makes
+  it snapshot the *worktree*; BL-090's path-mismatch check catches it, but only if you read the output rather
+  than the exit code.
 - **[[BL-114]]: `cap.meter` is configured, never verified.** The reader coerces a missing figure to `0`, so the
   delta goes negative and the rail cannot fire while looking healthy. **`cap.wallClockMs` is the only rail you
   may honestly claim.**
 - **[[BL-107]] is open and load-bearing.** HMP is `0.0.0.0` + `allow_all_peers`, confirmed live. Runs are safe
   because the PO's *commit* authorizes them, not because the channel is secure. Nothing shipped has changed this.
 - **Ground truth for relay traffic is `~/.hermes/state.db`** (`messages` table, `timestamp` is unixepoch), not
-  the phone and not the HTTP response — there is no status endpoint; `POST /hmp/send` returns `working` and the
-  reply lands in the db.
+  the phone and not the HTTP response — there is no status endpoint; the send returns `working` and the reply
+  lands in the db.
 
 ## The through-line, if you read only one paragraph
 
-**The rung was worth running because a plausible wrong answer existed.** BL-115 could have been "fixed" by
-copying the pattern that worked next door, and that fix would have gone green on any test that only checked the
-final exit — while buffering a whole test run's output until it exited. The brief's job was not to specify the
-mechanism but to **name the property, name what was out of bounds, and say why**; the worker then chose a shape
-nobody had written down and handled a signal case nobody had asked for. **Write the next brief the same way, and
-pick an item where getting it wrong is possible** — a rung with only one available answer measures nothing.
+**Pick an item where getting it wrong is possible, and write the brief to name the PROPERTY and what is out of
+bounds — never the mechanism.** BL-116 had three plausible wrong answers and two of them go green: loosening the
+matcher (which would have widened the very fence it protects), inspecting the merged object (which would have
+fired on a run where nothing happened), and raising the severity (a new way to gate a clean run). The brief named
+all three and specified none of the fix. The worker then produced a structure nobody had written down. **A brief
+that specifies the mechanism cannot be outperformed; one that specifies the property can be** — and a rung with
+only one available answer measures nothing.
