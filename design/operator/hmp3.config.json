@@ -1,0 +1,39 @@
+{
+  "_comment": "Run hmp3 — BL-115, the rung whose correct fix is deliberately NOT the one that worked on BL-104. Read from the git object store at the commissioned repo-sha, never from disk. instance.orchestratorUrl is REQUIRED even with a startCommand (the client's start script takes it from THIS config and only parses mcpUrl from the backend's stdout; omitting it fails with 'createLauncherCore requires orchestratorUrl' after the backend has already started — that is what killed hmp1's first attempt). Paths are macOS: os.tmpdir() there is /var/folders/…, so the sandbox is created with `--root /tmp` and the workdir below must match. cap.wallClockMs is 45m against hmp2's 30m — this rung must run a real build under a throwaway repo, which is slower than hmp2's pure failure path — and it is still not a BL-096 long-run test.",
+  "instance": {
+    "recording": "/tmp/att-op-hmp3-recording.json",
+    "orchestratorUrl": "http://localhost:3600",
+    "env": {
+      "PORT": "3600",
+      "AGENTTALK_WORKER_TURN_TIMEOUT_MS": "1800000"
+    },
+    "startCommand": {
+      "command": "npm",
+      "args": [
+        "run",
+        "backend"
+      ],
+      "cwd": "/Users/fausto/Software/AgentTalk"
+    }
+  },
+  "agents": [
+    {
+      "id": "hmp3-worker",
+      "provider": "claude",
+      "model": "opus",
+      "executionMode": "persistent",
+      "workdir": "/tmp/att-op-hmp3",
+      "readyTimeoutMs": 120000
+    }
+  ],
+  "goal": "Implement backlog item BL-115, which is committed in design/backlog.md in this worktree — read it there; it is the authoritative statement of the task, not this sentence. In short: in scripts/wt-setup.mjs, the `create` verb runs a build and a baseline test suite as child processes and never handles their exit status, so an ordinary failing build surfaces as an unhandled Node stack trace. Make that failure report as one readable [wt-setup] line with a NON-ZERO exit and no Node stack trace. CRITICAL — the fix that worked for the sibling git() calls does NOT transfer: those two child calls must KEEP their inherited stdio, because a build's and a test run's live output is the point of running them, and buffering a full vitest run until it exits would be a worse regression than the stack trace. So keep the output inherited and convert only the non-zero EXIT into the existing WtSetupError class, with a short synthesised message — there is no captured stderr to quote. Exercising this needs the `create` verb, which provisions a real worktree and branch: primaryCheckout() resolves the PRIMARY checkout even from inside a worktree, so running `create` with your cwd anywhere inside your sandbox would register a worktree and branch against the primary repo, outside your sandbox. Use the existing end-to-end pattern in scripts/__tests__/wt-setup.test.mjs instead — the real script as a child process, cwd inside a throwaway git repo under a temp dir, cleaned up afterwards — and make the failure a genuine failing build rather than a substituted compiler. Do not depend on the network. Also prove the SUCCESS path of `create` still works; it has no test today. Scope: you may touch scripts/wt-setup.mjs and scripts/__tests__/wt-setup.test.mjs, and nothing else; report anything else you find rather than fixing it. Do not modify or weaken the existing BL-104 tests. Commit your work on the current branch. Do not merge and do not push. If you conclude the reasoning above is wrong, say so with evidence and stop — a reasoned refusal is a valid outcome here.",
+  "cap": {
+    "wallClockMs": 2700000,
+    "pollIntervalMs": 10000,
+    "meter": {
+      "url": "http://127.0.0.1:9899",
+      "provider": "claude",
+      "maxPercentDelta": 20
+    }
+  }
+}
