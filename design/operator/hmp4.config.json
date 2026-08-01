@@ -1,0 +1,39 @@
+{
+  "_comment": "Run hmp4 — BL-116, the rung where the worker repairs the harness that grades operator runs. That is safe by separation, not by trust: the bracket is computed by the PRIMARY checkout's copy of scripts/infra-invariant.mjs while the worker edits its own copy inside /tmp/att-op-hmp4, and nothing it writes reaches the grader until the PO merges. Read from the git object store at the commissioned repo-sha, never from disk. instance.orchestratorUrl is REQUIRED even with a startCommand (the client's start script takes it from THIS config and only parses mcpUrl from the backend's stdout; omitting it fails with 'createLauncherCore requires orchestratorUrl' after the backend has already started — that is what killed hmp1's first attempt). Paths are macOS: os.tmpdir() there is /var/folders/…, so the sandbox is created with `--root /tmp` and the workdir below must match. cap.wallClockMs stays at 45m as for hmp3; duration is observed here, never tested, and no result may be cited against BL-096.",
+  "instance": {
+    "recording": "/tmp/att-op-hmp4-recording.json",
+    "orchestratorUrl": "http://localhost:3600",
+    "env": {
+      "PORT": "3600",
+      "AGENTTALK_WORKER_TURN_TIMEOUT_MS": "1800000"
+    },
+    "startCommand": {
+      "command": "npm",
+      "args": [
+        "run",
+        "backend"
+      ],
+      "cwd": "/Users/fausto/Software/AgentTalk"
+    }
+  },
+  "agents": [
+    {
+      "id": "hmp4-worker",
+      "provider": "claude",
+      "model": "opus",
+      "executionMode": "persistent",
+      "workdir": "/tmp/att-op-hmp4",
+      "readyTimeoutMs": 120000
+    }
+  ],
+  "goal": "Implement backlog item BL-116, which is committed in design/backlog.md in this worktree — read it there; it is the authoritative statement of the task, not this sentence. In short: scripts/infra-invariant.mjs merges an --expect declaration over its defaults in loadExpect() and NEVER inspects it, so a mistyped key or a pattern that matches nothing is accepted in silence, contributes nothing, and is indistinguishable from correct fail-closed behaviour. The harness then reports a critical the run did not cause. Make a declaration that cannot have had any effect say so: (a) any --expect key that is not in DEFAULT_EXPECT, and (b) any allowWritePaths / allowNewWorktrees / allowNewBranches / allowProcesses pattern that matched zero candidates in this diff. THREE WRONG ANSWERS, and two of them go green: (1) Do NOT loosen matchesWritePath to treat a trailing '/' as an implicit '/**'. The end-to-end anchoring is correct and deliberate; guessing the author's intent would quietly widen the operator write fence, which is the thing that fence exists to hold. Report the mismatch, do not guess the intent. Verify at the end that matchesWritePath('design/operator/.hmp-launched.json', ['design/operator/']) is still false. (2) DEFAULT_EXPECT is NOT empty — it ships allowNewWorktrees, allowNewBranches and allowPorts — so a check that inspects the MERGED object would fire on a byte-identical run where nothing changed at all. That is a new way to gate a clean run, which is the bug one level up. The test `describe('BL-087 DoD row 6 — a clean run is clean')` in scripts/__tests__/infra-invariant.test.mjs MUST PASS UNTOUCHED; if satisfying this task appears to require editing it, the fix is wrong, not the test, and modifying it is a weakened contract rather than a repair. How you keep it green is yours to decide. (3) Severity ceiling is `warn`, NEVER `critical` — a critical gates the next operator run. The floor: the live hmp2 case (allowWritePaths ['design/operator/'] against a diff writing design/operator/.hmp-launched.json) must warn, and a misspelled key such as allowWritePath or allowedWritePaths must warn. The message must read 'declared but never matched', NOT 'invalid' — a legitimately unused allowance is a real case the harness cannot distinguish from a typo and must not pretend it can. Between that floor and ceiling, if you think a narrower sub-case deserves `info`, you may decide so but you must argue it in your report. ONE CONSEQUENCE, already accepted, do not repair it: exitCodeFor already returns 1 for a warn, so a new warn turns an otherwise clean bracket's exit 0 into exit 1. exitCodeFor is OUT OF SCOPE — changing it would alter established behaviour other checks depend on. Do not touch it, and do not dodge the consequence by demoting a floor case. State the consequence plainly in your report. ALSO NOTE: the test file has a substring scan (DoD row 7) asserting the harness source contains none of 'worktree prune', 'worktree remove', 'branch -D', 'branch -d', 'reset --hard', 'process.kill', 'checkout', 'git add' — anywhere, including inside comments and message strings. A new diagnostic message quoting one of those phrases will fail the suite, correctly. Scope: you may touch scripts/infra-invariant.mjs and scripts/__tests__/infra-invariant.test.mjs, and nothing else; report anything else you find rather than fixing it. Prove your new tests are red at the baseline. Commit your work on the current branch. Do not merge and do not push. If you conclude the reasoning above is wrong — that the two checks cannot be separated cleanly, that the floor cases conflict, or that the exit-code consequence makes the specified fix worse than the defect — say so with evidence and stop. A reasoned refusal is a valid outcome here and is graded on the quality of the evidence.",
+  "cap": {
+    "wallClockMs": 2700000,
+    "pollIntervalMs": 10000,
+    "meter": {
+      "url": "http://127.0.0.1:9899",
+      "provider": "claude",
+      "maxPercentDelta": 20
+    }
+  }
+}
