@@ -1434,3 +1434,38 @@ here.**
   state of a different kind. **And when you patch a document, re-read the whole thing, not the patch:** a fix
   that leaves the header contradicting the body is worse than the original error, because it now reads as
   authoritative in both directions.
+
+### 2026-08-01 — the rung that needed a negative instruction
+
+- **As planner: the brief's hardest job was saying what NOT to do, and that is a different craft from
+  specifying.** BL-115's whole difficulty was that the fix next door was wrong here — copying it would have gone
+  green while regressing a build's live output. I wrote §3 as "name the property, name what is out of bounds,
+  say why" and left the mechanism open; the worker produced a shape I had not written down (`runStreaming`) and
+  handled a signal case I never mentioned. **A brief that specifies the mechanism cannot be outperformed; one
+  that specifies the property can be.**
+- **As planner: I checked the recursion fence before committing and it passed on the first try — because I had
+  been refused by it last time.** The lesson from being refused was not "avoid the words", it was "run the check
+  as part of writing". Cost: one command. That is the shape of every fence in this project — cheap to run, and
+  only useful if running it is part of the habit rather than a reaction to failure.
+- **As implementation reviewer: I nearly graded R4's red-first row on arithmetic.** 17 tests, 12 passed at
+  baseline, 6 new ⇒ exactly one new test passes, and I could name which one from reading the code. That
+  reasoning was correct — and I re-ran it with `--reporter=verbose` anyway to *see* the names, because I had
+  told the PO I would run rather than assert. The confirmation cost 8 seconds. **An inference I am confident in
+  is still not a run**, and the gap between them is exactly where a laundered claim gets onto a mainline.
+- **As implementation reviewer: I reproduced the before/after by hand instead of trusting the worker's test, and
+  it produced the single most convincing line in the grading.** Seeing `error TS2322` print *before* the
+  `[wt-setup]` line proved the streaming property live — something no assertion in the suite actually
+  distinguishes, since a buffered parent would satisfy `stdout.toContain(...)` just as well. **The test proves
+  the output arrives; only the manual run proves it arrives first.**
+- **As implementation reviewer: I recorded a silence.** The worker reported nothing out of scope where hmp2 had
+  refuted its own item. There was no obligation to find anything, so it is not a fault — but an ungraded silence
+  quietly becomes "the worker would have spoken up if there were something." I wrote it into the closure as
+  weaker evidence rather than leaving it out. **Absence of a signal is a fact about the run, not a neutral.**
+- **As task-end reviewer: I re-ran the full sweep on the MERGE COMMIT, which nobody had tested.** The branch was
+  green and the merge was clean, so the temptation to skip it was real. It is a state that had not existed
+  before I created it, and "both sides were green" is not the same claim.
+- **As task-end reviewer: the wrap-up lesson from last session actually changed what I wrote.** The previous
+  primer asserted "the queue is EMPTY and refilling it is a PO act" and was contradicted within the hour. This
+  time I wrote **no** queue state at all — just the command that answers it, and both branches of the answer.
+  **The fix for a claim that keeps going stale is not to update it faster; it is to stop making it and hand the
+  reader the instrument.**
