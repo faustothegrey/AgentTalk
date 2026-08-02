@@ -1550,3 +1550,38 @@ here.**
   wrap-up because it found something; it found something again, in the same place, for the same reason. **A
   lesson that fires twice is not a lesson yet — it is a step I should be doing before the file is written, not
   after.** Next time: fence-check anything I intend to commit that a successor might copy, as I write it.
+
+### 2026-08-02 (afternoon) — the session where every instrument fired, and each one was worth having
+
+- **As planner: I told the PO twice, confidently, that `cap.meter` could not fire — and it fired.** I was
+  repeating [[BL-114]]'s text ("configured, never verified") as though it were a measurement I had taken. It was
+  a *claim about state*, exactly the kind my own Reviewer Rule 5 says to ground before repeating. The correction
+  cost one paragraph; the overconfidence would have cost the run's most important finding, because the fact that
+  it fired is what made **BL-117** visible. **Distrust the docs applies to the docs that flatter my caution too,
+  not only the ones that overclaim.**
+- **As implementation reviewer: my R1 check ran at the wrong coordinates and reported a plausible green.** A
+  failed `git worktree add` meant the `cd` failed, so the suite ran in the client **primary** and printed
+  `110 passed`. What caught it was **incoherence inside the same output** — `wt-setup.mjs` throwing
+  `MODULE_NOT_FOUND` next to a pass — not the exit code, and not a second check. [[BL-053]]/[[BL-059]] is now
+  three sessions old and it still nearly landed. **Read the whole output for self-consistency; a green line that
+  sits next to an impossible line is not a green.**
+- **As task-end reviewer: the `bl093` guard fired on MY defect before it fired on the queue, and I nearly
+  misread which.** Its `warnings` assertion went red first — the item's header said `status: done` while its
+  prose still opened `[todo · …]` — and a failing `toEqual([])` looks identical at a glance whether it is the
+  warnings or the selectable set. I read the assertion line before acting. **When a multi-assertion guard goes
+  red, identify WHICH assertion before concluding what it is telling you.**
+- **As task-end reviewer: I graded NOT PASS on a bar I wrote myself, for a row that was my own oversight.** R6
+  demanded no `critical` and no extra worktree, and a lawful launch produces both. Retuning it would have been
+  trivial and invisible. Leaving it failed is what makes every future pre-registered bar mean something —
+  **a bar that has never failed a run I cared about has not yet been tested.**
+- **As planner: I verified what a number MEANT, not just that it matched.** The backlog read "117 items" as it
+  had last session, despite my adding one. Chasing it took two minutes: the raw grep counts a `BL-NNN` template
+  line the parser correctly excludes. **A figure that agrees with your memory is exactly the one you skip
+  checking — and this one would have gone into a primer as a verified fact.**
+- **As planner: the fence lesson finally held, because I ran it WHILE writing.** Twice before it caught the
+  wrap-up after the fact. Applied during drafting, it cost one command and found nothing — which is the
+  outcome I wanted. **A lesson that fires twice is a step to move earlier, not a warning to remember harder.**
+- **Operationally: `cd` persists across a compound command and it silently pushed the wrong repo.** The second
+  `git push` hit AgentTalk again and reported "Everything up-to-date" — impossible for a repo I knew was ahead 2,
+  which is the only reason I caught it. **Use `git -C <path>` for multi-repo work; a plausible-sounding success
+  message is the dangerous failure.**
