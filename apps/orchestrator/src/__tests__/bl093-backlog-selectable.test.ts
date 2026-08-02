@@ -249,10 +249,27 @@ describe('the real backlog (design/backlog.md)', () => {
   //
   // Do NOT loosen this to an emptiness check or a length assertion to stop it moving. Its whole value
   // is that a change to what an agent may be handed unattended forces a human look.
-  it('offers BL-105 — the PO refilled the queue 2026-08-02, the fifth rung', () => {
+  //
+  // 2026-08-02, later the same day — the SEVENTH move, and the queue is empty again. BL-105 closed
+  // (merged `236b30a` in the client), so the set it named is gone and the assertion returns to `[]`.
+  // Refilling it is the PO's act alone; nothing here may do it.
+  //
+  // TWO THINGS THIS MOVE CAUGHT, both worth more than the line change itself:
+  //
+  // 1. The `warnings` assertion fired FIRST, not the selectable one — and it was a real defect in the
+  //    closing edit, not in the backlog's meaning: the item's header said `status: done` while its prose
+  //    still opened `[todo · …]`, which the parser reports as header/prose drift. It was briefly misread
+  //    as "the queue emptied" because a failing `toEqual([])` looks the same at a glance either way.
+  //    Read WHICH assertion failed before concluding what the guard is telling you.
+  //
+  // 2. This is the first close of an eligible item whose run did NOT end cleanly: hmp5 was killed by
+  //    `cap-resource` 14s after the worker committed complete work (see BL-117). The delivery was still
+  //    graded on the artifact, by running it on the merge commit. A cap kill says nothing about whether
+  //    the work was done — `completed` was never the verdict here, and neither is `failed`.
+  it('offers nothing — the queue emptied when BL-105 closed 2026-08-02', () => {
     const { items, warnings } = readBacklog();
     expect(warnings).toEqual([]);
-    expect(selectableBacklogItems(items).map((i) => i.id)).toEqual(['BL-105']);
+    expect(selectableBacklogItems(items).map((i) => i.id)).toEqual([]);
   });
 
   it('holds BL-028 back behind BL-084, which is still open', () => {

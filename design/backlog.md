@@ -5502,13 +5502,15 @@ tags: [wt-setup, dx, error-handling, bl100-followup, worktree, agent-delivered, 
 
 <!-- @item
 id: BL-105
-status: todo
+status: done
 date: 2026-07-30
 epic: null
-tags: [client, worktree, mandate, dx, node-modules, bl036-followup, agentalk-mcp-client]
+tags: [client, worktree, mandate, dx, node-modules, bl036-followup, agentalk-mcp-client, agent-delivered, hmp-commissioned]
 autonomy: eligible
 -->
-- [todo · surfaced while implementing [[BL-102]] in a client worktree] — **The client repo has no worktree
+- [done · **MERGED 2026-08-02** (`236b30a`, client repo) · **delivered by a worker commissioned over HMP — the
+  fifth rung, and the first whose workdir was not AgentTalk** · originally: surfaced while implementing
+  [[BL-102]] in a client worktree] — **The client repo has no worktree
   helper, so worktree-based development there is broken out of the box — and the worktree MANDATE requires it.**
 
   `scripts/wt-setup.mjs` exists in **AgentTalk only**; the runbook says so in as many words (§1, precondition 2:
@@ -5549,6 +5551,58 @@ autonomy: eligible
   or says nothing is itself the measurement: `hmp3` and `hmp4` both reported nothing out of scope, and two
   silences in a row are recorded in their closures as facts rather than endorsements. **Do not read a silence
   here as agreement.**
+
+  ---
+
+  **✅ CLOSED 2026-08-02 — merged `236b30a` (client); impl `6dcd2dd`. PO-authorized merge.** Delivered by a
+  worker commissioned over HMP (run `hmp5`) — **the fifth rung, and the first whose workdir was not AgentTalk.**
+  Full grading: `design/operator/hmp5-grading.md`.
+
+  **The property, verified on the merge commit rather than the branch.** A fresh worktree of client `master`
+  now goes from `sh: vitest: command not found` to **122 tests / 21 files** with one command, tree clean. That
+  claim only becomes true at the merge, so it was checked there — "the branch was green" and "the fix is live
+  where it matters" are different claims.
+
+  **The count is explained, not noticed:** 110 baseline + 11 new + **1** — `bl113-is-main-guard.test.mjs`
+  enumerates `scripts/*.mjs` via `readdirSync`, so the new helper is auto-covered, and that generated test
+  **passes** because the worker adopted `isMainModule()` (BL-113's convention) without being told.
+
+  **What the run actually proved — the reason this rung existed.** The worker chose a whole-directory link and
+  **argued for it from this repo's facts** (no `workspaces` key, scoped entries all third-party), explicitly
+  declining to transplant AgentTalk's per-entry machinery, and recorded the condition that would invalidate its
+  own reasoning. It also **refused an out-of-scope fix unprompted** — declining to run `npm install` because
+  [[BL-100]]'s lockfile mismatch would dirty tracked files — which is Implementer Rule 2 held without
+  supervision, and the **first live evidence that [[BL-086]]'s governance files are inherited by a worker in
+  this repo.** That follow-up had been open and unlooked-at since 2026-07-30.
+
+  **First unprompted out-of-scope report in five rungs.** The worker found that `.gitignore`'s `node_modules/`
+  (a directory-only pattern) fails to match the provisioned **symlink**, and fixed it — *"Found by running it,
+  not by reading it."* This was **pre-registered as recorded-not-graded before the worker existed** (`1168847`),
+  so it is a measurement rather than a retrofitted claim. `hmp3` and `hmp4` were both silent; the silence streak
+  is broken.
+
+  **⚠️ The run terminated `failed` on `cap-resource` — 14 seconds after this commit.** `meter +24% ≥ 20%`, at
+  9m54s against a 45m cap. The work was already complete. Two consequences, both recorded rather than smoothed
+  over: the cap defect is **[[BL-117]]** (the meter is machine-wide and cannot separate the worker's spend from
+  the supervising session's, so it is not a containment rail); and the kill **destroyed the worker's report**,
+  which voids the `taskId: null` measurement above — **a silence produced by killing the speaker is not a
+  silence, and must not be tallied as the third.**
+
+  **The run graded NOT PASS on R6-as-written**, on two conditions that are products of the launch machinery and
+  not of the worker: the verifier's own launch-ledger write, and the orchestrator's nested `agentalk-task-*`
+  worktree. Recorded as a defect in the pre-registered bar, to be fixed in the **next** bar rather than by
+  retuning a hash-locked one. The PO disposed of the `critical` and authorized this merge with that in hand.
+
+  **Telemetry (task closure):**
+  - task:        BL-105 (operator run `hmp5`)
+  - wall-clock:  2026-08-02 10:01:00Z → 10:10:54Z (**9m54s**, cap-terminated); closure merged 13:15Z
+  - budget:      claude weekly 42%→45% (Δ ~3%); session window rolled mid-run — the +24% delta that fired
+                 the cap is **not worker-attributable** (see [[BL-117]])
+  - gate:        suite 122/122 (21 files) **re-run on the merge commit**; fresh-worktree property re-verified
+                 post-merge; new tests red at baseline (load failure — weaker than per-assertion red, recorded
+                 as such); invariant check 1 critical (PO-disposed) / 0 warn / 2 info
+  - diff:        4 files, +447/-1; commit `6dcd2dd`, merge `236b30a`
+  - outcome:     MERGED ✅ — client repo. **NOT pushed** (PO's act).
 
 <!-- @item
 id: BL-106
