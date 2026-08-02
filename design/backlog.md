@@ -6359,4 +6359,50 @@ tags: [infra-invariant, operator, harness, false-positive, bl087-followup, bl097
   - diff:        2 files, +430/-13; commits 4f652e2, merge 6231172
   - outcome:     MERGED ✅
 
+<!-- @item
+id: BL-117
+status: todo
+date: 2026-08-02
+epic: null
+tags: [operator, cap, meter, containment, charter, bl114-followup, lb11, hmp5]
+-->
+- [todo · surfaced by the `hmp5` cap kill, 2026-08-02] — **`cap.meter` cannot distinguish the worker's spend
+  from the supervising session's, so it must not be described as a containment rail. Today it produced a false
+  kill of good work.**
+
+  **What happened.** `hmp5` was terminated at 9m54s with `cap-breach reason=cap-resource`, `detail="meter +24%
+  ≥ 20%"`. The worker had committed complete, verified work **14 seconds earlier** (`6dcd2dd`, 4 files,
+  +447/−1, suite 122/21 grader-run). Evidence: `design/operator/hmp5-grading.md`,
+  `/tmp/att-op-hmp5-recording.json`.
+
+  **The defect is what the rail measures, not whether it fires.** The meter reports **machine-wide,
+  per-provider** percentages ([[LB-11]]: attribution "breaks under concurrency"). Two `claude` consumers were
+  active in that window — the worker, and the **supervising session that was watching and grading it**. The
+  +24% is real and **cannot be apportioned between them**. So the supervisor's own spend can kill the worker,
+  and on this run it plausibly did.
+
+  **Why this matters beyond one run.** `AGENT.md`'s OPERATOR charter makes `cap.meter` **MANDATORY** and
+  justifies it as the mitigation for exactly this risk — *"the operator's worker draws on the same provider
+  pool as the supervising session"*. **A shared-fate trigger is not a mitigation.** It fires on the sum and
+  attributes to the worker. Any doc describing `cap.meter` as containment is overclaiming and should be
+  corrected when this is fixed.
+
+  **This is NOT a duplicate of [[BL-114]].** BL-114 says the meter cap is *configured but never verified to
+  fire*. `hmp5` **partly answers that** — it fired, on a live reading, with the provider block `ok: true`
+  throughout, so BL-114's coerce-to-zero mode never engaged. This item is the **next** question: it fires, and
+  **what it measures is wrong**. Close neither on the other's evidence.
+
+  **Directions, none chosen — deliberately not pre-judged.** (a) Take a baseline at launch and compare only
+  against a *worker-attributable* figure, if one can be obtained. (b) Drop the meter cap to a **warning** and
+  let `cap.wallClockMs` be the only terminating rail, since it is the only one that measures the worker alone.
+  (c) Keep it terminating but require the supervising session to be idle, which is unenforceable and probably
+  wrong. (d) Per-actor accounting — the real fix, and the largest.
+
+  **Do not read this as "the cap should be removed."** The budget risk the charter names is real: a
+  named-but-unmitigated one already took a session window to 100%. The problem is that this instrument cannot
+  tell whose spend it is watching.
+
+  **↳ Filed by the PO's instruction, 2026-08-02**, after the `hmp5` grading. Left `human-only` by default
+  ([[BL-093]] fail-closed) — marking it agent-eligible is the PO's act alone.
+
 *(add new items above this line)*
