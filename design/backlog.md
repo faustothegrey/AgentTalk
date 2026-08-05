@@ -4890,6 +4890,55 @@ autonomy: human-only
   **A backlog item asserting "X is untested" is a claim about state like any other — ground it before acting on
   it.** It cost nothing here only because the check was run before the build, not after.
 
+  ---
+
+  **✅ TWO OF THIS ITEM'S THREE QUESTIONS ARE NOW ANSWERED — harness MERGED 2026-08-05 (`28bc43b`, client repo;
+  impl `fa21c22`). The item stays `todo`: the third question is untested.**
+  `agentalk-mcp-client/__tests__/bl096-midwork-interruption.test.mjs`, 4 tests.
+
+  A fake provider CLI does **real git work in a real repo** up to a chosen phase, drops a marker, then **blocks
+  forever** — so the cap always fires at a known point and nothing races. Answers, by running it:
+
+  | killed at | what a human comes back to |
+  |---|---|
+  | file written | file **complete**, untracked, no commit, tree coherent |
+  | after `git add` | **index survived** the kill, still no commit |
+  | after commit | **commit intact**, tree clean, blob byte-identical |
+
+  No abandoned `.git/index.lock` at any phase, and no half-written artifact (it is multi-line precisely so
+  truncation is *detectable* rather than merely unobserved). **So "do commits survive" and "is the tree
+  coherent" are both YES, and no longer a matter of hoping.**
+
+  **The `hmp5` split is now pinned as a property, not an anecdote:** the worker's MCP submission never arrives —
+  anything it would have *said* is structurally unavailable — while the **launcher's** own `cap-wallclock` report
+  does survive. A killed run is never silent, but everything it tells you comes from the supervisor, never from
+  the worker. **Grade a killed run's artifact; never its report.**
+
+  **⚠️ STILL UNANSWERED — the third question, and it is not a detail:** *"whether cleanup behaves."* The harness
+  wires `stopInstance` as a **no-op**, so teardown never runs and the [[BL-103]] branch leak is not exercised.
+  **Do not read this closure as evidence about cleanup.**
+
+  **↳ And the harness immediately found something nobody was looking for → [[BL-118]]:** a cap kill terminates
+  `llm-agent` but **orphans the provider CLI**, which keeps running — and therefore keeps drawing on the very
+  provider pool `cap.meter` exists to protect. Reported, not fixed.
+
+  **Evidence discipline worth recording:** every test asserts its phase marker **first**, so a run where the
+  worker never reached its phase fails loudly instead of asserting on a repo nothing touched. That guard is not
+  decorative — **it fired on the first attempt** and is what exposed the provider problem
+  (`GeminiPersistentExecutor` ignores `AGENTTALK_PERSISTENT_COMMAND_JSON`, so the sibling e2e's "fake bridge"
+  claim is untrue for its own provider; noted in-file, not changed). The commit-survives assertion was
+  **mutation-checked red** (`expected 1 to be 2`) before merge.
+
+  **Telemetry (partial closure — harness half):**
+  - task:        BL-096 (mid-work interruption harness)
+  - wall-clock:  2026-08-05 ~21:45 → 22:02 (~17m)
+  - budget:      claude weekly 0%→3% (Δ ~3%), session →22% [per `scripts/usage.mjs`]
+  - gate:        lint **clean**, `verify-contract` **v8 verified**, suite **126/126 (22 files)** re-run **on the
+    merge commit**; count 122→126 fully accounted (exactly this file's 4 tests); worktree removed, branch
+    deleted, 0 prunable, no stray `task-*`, no orphan processes, `/tmp` clear
+  - diff:        1 file, +304/-0; commits `fa21c22` · `28bc43b` (merge)
+  - outcome:     **MERGED ✅** — not pushed; push is the PO's
+
 <!-- @item
 id: BL-097
 status: done
@@ -6568,5 +6617,49 @@ tags: [operator, cap, meter, containment, charter, bl114-followup, lb11, hmp5]
 
   **↳ Filed by the PO's instruction, 2026-08-02**, after the `hmp5` grading. Left `human-only` by default
   ([[BL-093]] fail-closed) — marking it agent-eligible is the PO's act alone.
+
+<!-- @item
+id: BL-118
+status: todo
+date: 2026-08-05
+epic: null
+tags: [launcher, cap, containment, budget, orphan-process, bl096-followup, bl117-adjacent, agentalk-mcp-client]
+autonomy: human-only
+-->
+- [todo · **found by running the [[BL-096]] mid-work harness, not by reading** — the harness was built to ask
+  what survives a cap kill, and this is something that survives which should not] — **A cap kill terminates the
+  worker but ORPHANS the provider CLI, which keeps running.**
+
+  **Observed, then verified in code — in that order.** After the BL-096 suite completed, two
+  `midwork-bridge.cjs` processes (the fake provider CLI) were still alive with their `llm-agent` parent already
+  gone. They exited only because *that harness builds in a 25s self-exit leak guard*. **Production has no such
+  guard.**
+
+  **Mechanism, read out of the source rather than inferred:** `terminateAgent`
+  (`agentalk-mcp-client/lib/agent-launcher.mjs:201`) is `record.child.kill?.('SIGTERM')` — a signal to **the
+  single `llm-agent` pid**. It is not a process-group kill, and the provider CLI is a *grandchild*: spawned by
+  the persistent executor **inside** `llm-agent` (`BasePersistentExecutor.initialize`,
+  `executor-runtime.mjs:171`). Nothing signals it. So the cap terminates the supervisor of the work and leaves
+  the thing actually burning tokens running.
+
+  **Why this is worse than an ordinary leak, and why it belongs beside [[BL-117]].** The `cap.meter` rail exists
+  because *"the operator's worker draws on the same provider pool as the supervising session"*. **An orphaned
+  provider CLI keeps drawing on that pool after the cap has fired** — so the one mechanism meant to stop runaway
+  spend can leave the spender alive, invisibly, and the next run's meter baseline is polluted by a process
+  nobody knows about. That is a plausible contributor to readings this project has already found hard to
+  attribute; it is **not** offered as the explanation for the `hmp5` kill, which has its own recorded cause.
+
+  **Not fixed — reported (Implementer Rule 2).** Termination semantics are shared launcher logic and changing
+  them is a behaviour change with real blast radius (a group kill signals everything in the group, including
+  things a future caller may not expect). **Fix direction, not a decision:** launch the agent detached with its
+  own process group and signal the group; **or** have `llm-agent` handle `SIGTERM` and close its executor —
+  which is narrower, keeps the blast radius inside the agent, and is probably the right first attempt. **Bar:**
+  after a cap kill, no provider-CLI descendant of the terminated agent remains. **Mutation check:** disable the
+  cascade and confirm the bar goes red — this is a leak whose absence looks exactly like its presence unless it
+  is watched for.
+
+  **A caution for whoever takes this:** the BL-096 harness will *not* catch a regression here, because its own
+  leak guard masks the behaviour by design. Any bar for this item must assert on process liveness **before** the
+  guard's window elapses, or it will pass regardless.
 
 *(add new items above this line)*
