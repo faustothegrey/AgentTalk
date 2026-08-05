@@ -322,9 +322,13 @@ branches. **That fence does not transfer** — which is why the invariant harnes
   lifted.
   **What that closure did NOT prove — do not read it as proving it:** that a launched worker actually *picks the
   file up*. Inheritance is verified for **claude only** ([[BL-080]], headless `-p`); codex and gemini are assumed
-  from convention, and **the client has no `GEMINI.md` while this repo does** (verified 2026-08-02), so a gemini
-  worker there inherits nothing by that convention. *The file existing and a worker being governed are different
-  claims.* **Relaxing this workdir rule is a PO call, not a consequence of the closure.**
+  from convention. *The file existing and a worker being governed are different claims.* **Relaxing this workdir
+  rule is a PO call, not a consequence of the closure.**
+  **⬛ CORRECTION 2026-08-05 (backlog gate) — this passage previously read "the client has no `GEMINI.md` while
+  this repo does (verified 2026-08-02)". THAT IS FALSE, and was false within two minutes of being written.**
+  The client has carried `GEMINI.md -> AGENT.md` since **2026-08-02 00:12** (client commit `d43be0f`, *"add the
+  GEMINI.md symlink the closure left out"*); this file was last written at 00:10. Both repos now carry all four
+  names. The caution *around* it is untouched and still stands — a symlink is not evidence a worker reads it.
 
 #### The soft ladder — earn the seat one rung at a time
 

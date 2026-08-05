@@ -5199,6 +5199,24 @@ autonomy: human-only
   - diff:        2 files, +28/-14; commits `ec77c10` · `59d8fa8` (merge)
   - outcome:     **MERGED ✅** — not pushed; push is the PO's
 
+  ---
+
+  **⬛ BACKLOG GATE 2026-08-05 — half 1 is STILL REAL (re-verified by reading both files), but the reason given
+  for leaving it to the PO is STALE.** `package.json` declares bins `llm-agent` + `agent-launcher`; the committed
+  `package-lock.json` records `attach-harness` + `llm-agent`. Unchanged, exactly as filed.
+
+  **What changed is the rationale, not the defect.** This entry justifies the park with *"it is the client repo,
+  which inherits no governance ([[BL-086]]), and it is the PO's to land."* **[[BL-086]] closed 2026-07-30**: the
+  client now carries its own `AGENT.md` with `AGENTS.md` / `CLAUDE.md` / `GEMINI.md` symlinks, and **`hmp5` proved
+  live that a governed worker delivers in that repo.** So "inherits no governance" is no longer true, and the
+  premise the park rested on is gone. Whether the *conclusion* survives the premise is a PO call — the gate does
+  not flip it.
+
+  **Not cosmetic, and there is now evidence:** `hmp5`'s worker declined to run `npm install` **because of this
+  drift** (it would resync the lockfile and dirty tracked files). That refusal was correctly graded as Implementer
+  Rule 2 held without supervision — but the obstacle it navigated around is this item, and it will meet the next
+  worker too. Gate record: `design/backlog-gate-2026-08-05.md` §2.4.
+
 <!-- @item
 id: BL-101
 status: done
@@ -5957,6 +5975,26 @@ autonomy: po-decision
   `selectableBacklogItems` (`backlog.ts:279`) requires `eligible` — so the selectable set stays `[]` and the
   [[BL-093]] guard stays green. Verified by running it after this edit, not asserted.
 
+  ---
+
+  **⬛ BACKLOG GATE 2026-08-05 — the "still open" lists above are STALE in one respect: the `[PO-RELAY]`
+  authority decision was TAKEN, and it is encoded.** Two blocks above say *"Open and unchanged: the `[PO-RELAY]`
+  authority decision"*, and one flags that `AGENT.md` still reads *"push … the PO's, absolutely and without
+  exception"* — **deliberately not amended, because governance wording is the PO's.** The PO then settled both,
+  in `AGENT.md`, dated **2026-07-31**:
+
+  - the **Origin Tag Protocol** now carries a `[PO-RELAY]` row in the tag table plus a full **Rule 5** — binding
+    only as an answer to a proposal the session itself minted, carrying that proposal's valid token, never apex,
+    **cannot initiate**, with the five refusal reasons named and `sha-moved` called out as load-bearing;
+  - the **OPERATOR charter** keeps *"Push remains the PO's, absolutely and without exception"* and follows it
+    with the paragraph reconciling it against relayed authorization — a courier relaying an approval has not been
+    granted it.
+
+  **So what remains open here is narrower than this item's own text claims:** [[BL-107]] (parked 2026-08-02,
+  accepted-open) and **write-class verbs over HMP** (`READ_ONLY_VERBS` still frozen at `status` · `report`;
+  widening is a governance act). **Nothing in the fence is relaxed by this note** — it corrects a status claim,
+  not a control. Gate record: `design/backlog-gate-2026-08-05.md` §2.6.
+
 <!-- @item
 id: BL-111
 status: done
@@ -6190,6 +6228,27 @@ autonomy: human-only
   **Do not cite any past run as evidence the rail works.** No run to date has recorded a meter delta against a
   verified-live provider block, so `cap.wallClockMs` has been the only rail actually proven — which is what
   [[BL-096]] already says about the wall-clock, and now applies to the meter too.
+
+  **⬛ BACKLOG GATE 2026-08-05 — the defect is CONFIRMED still present, and the sentence immediately above is
+  SUPERSEDED.** Re-verified by reading it, not remembered: `readMeterPercent` still ends
+  `return typeof pct === 'number' ? pct : 0` (`agentalk-mcp-client/scripts/launcher.mjs:229`). The fail-open is
+  live.
+
+  **But "no run to date has recorded a meter delta against a verified-live provider block" is no longer true.**
+  `hmp5` did, on 2026-08-02: `meter +24% ≥ 20%` against a live `claude` block, and it **killed the run** —
+  [[BL-117]]. The *prohibition* stands for this item's fail-open half; the *factual claim* under it does not.
+
+  **Recommendation to the PO: SCHEDULE this with [[BL-117]] as one unit of work — with two separate bars.**
+  They are opposite failure modes of the same function: unreadable ⇒ coerced to `0` ⇒ **never fires** (here);
+  readable ⇒ fires on a **machine-wide sum it cannot attribute** between worker and supervising session
+  (BL-117). Fixing either alone leaves the rail wrong.
+
+  **This does NOT contradict BL-117's "this is NOT a duplicate — close neither on the other's evidence."** That
+  sentence is right and stands: they are **distinct defects with distinct bars**, and `hmp5` is evidence about
+  BL-117 only, since the provider block was `ok: true` throughout and this item's coerce-to-zero path never
+  engaged. The recommendation is about **sequencing, not identity** — one visit to `readMeterPercent` and the
+  delta logic, two bars, neither closed on the other's run. Same shape as [[BL-028]]/[[BL-084]]: one primitive,
+  separately-closing consumers. Gate record: `design/backlog-gate-2026-08-05.md` §2.3.
 
 <!-- @item
 id: BL-115
