@@ -42,7 +42,7 @@ Recommendation column: **KEEP** = stays `todo` as written · **PARK** = recommen
 |---|---|---|---|
 | **BL-028** | idle timeout is dead code | blocker still live (BL-084 T3 unlanded) | **KEEP** — see §2.1 |
 | **BL-084** | typed non-reply reason (T2, T3 open) | T1 merged `05f78e3`; §4 fully ratified | **KEEP — chain head**, needs a PO re-gate |
-| **BL-096** | wall-clock cap never tested | still true; hmp5 made it *worse* | **KEEP**, and see §2.3 |
+| **BL-096** | wall-clock cap never tested | ⬛ **the gate got this wrong — see §5** | **KEEP, re-scoped** |
 | **BL-098** | Linux `launchctl` gap | **dormant on macOS** — `bwrap` absent, `launchctl` present | **PARK** — see §2.2 |
 | **BL-100** | client lockfile drift (half 1) | **still real, verified by reading both files** | **KEEP** — rationale stale, see §2.4 |
 | **BL-103** | teardown leaks a branch per run | no leaked branches *right now* | **KEEP** — clean bar, good rung |
@@ -110,8 +110,8 @@ past run as evidence the rail works... **no run to date has recorded a meter del
 provider block**."* **hmp5 did exactly that** — `meter +24% ≥ 20%`, against a live `claude` block. The
 prohibition still stands for the *fail-open* half; the factual claim behind it is superseded by BL-117.
 
-**Sequencing note for BL-096:** it wants the wall-clock cap tested against a deliberately stalling worker. That
-harness is the same harness that would prove either meter fix. Three items, one afternoon's instrument.
+**Sequencing note for BL-096:** ⬛ **superseded — see §5.** The stalling-worker harness this pointed at already
+exists and passes; the meter fixes need their own bars, not that one.
 
 ### 2.4 BL-100's remaining half is still real — but its stated reason for being PO-only is stale
 
@@ -176,7 +176,7 @@ existing and a worker being governed are different claims**, and inheritance is 
 
 | Rail | State |
 |---|---|
-| wall-clock cap (BL-096) | **never fired** in any run |
+| wall-clock cap (BL-096) | ⬛ **proven in test** (real process, real timeout, PID confirmed dead); never fired in a real *run* — §5 |
 | meter cap, unreadable (BL-114) | **fails open**, silently |
 | meter cap, readable (BL-117) | fires on a sum it **cannot attribute** |
 | `critical` disposition (BL-109) | **has no representation**; bitten twice |
@@ -209,3 +209,35 @@ bookkeeping. If the next rung is meant to be less supervised than the last, this
 **Not done, and deliberately:** no `status` flipped, no `blocked_by` re-cut, nothing marked `autonomy: eligible`,
 no deferred item edited, and the todo queue was **not** reordered — sequencing recommendations are in §4 for you
 to ratify rather than applied to the file.
+
+---
+
+## 5. Addendum, same day — the gate itself made the error it was written to catch
+
+The PO picked **BL-096** off §4 and authorised the stalling-worker harness. **It already exists.**
+
+`agentalk-mcp-client/__tests__/bite0-launcher.e2e.test.mjs:146` launches a **real** `llm-agent` process, never
+answers `await_turn` so the worker stalls, sets `wallClockMs: 1500`, and asserts `cap-wallclock` **and that the
+PID is dead**. Unit sibling at `bite0-launcher.test.mjs:94`; meter breach at `:107`. **Ran them: 2 passed,
+2.46s.** Both shipped in `a86733d` on **2026-07-16** — the cap landed with its test, **eleven days before BL-096
+was filed**.
+
+**The error is mine and it is worth naming precisely.** BL-096 says *"no run has ever been interrupted"* — true,
+and about **operator runs**. I read it as "the cap is untested," recommended it as *"the permission slip to walk
+away,"* and carried that recommendation through the gate, §3's table and two messages to the PO **without
+running the suite it was talking about.** §0 of this document opens by insisting the baseline be *run, not
+remembered*; I then took an item's characterisation of the code on trust.
+
+**What saved it was sequence, not diligence:** the scope was declared and checked **before** the build
+(Implementer Rule 6), so the cost was one investigation instead of a duplicate harness and a green that proved
+nothing — the [[BL-108]] failure this backlog already names.
+
+**BL-096 is corrected in place, not closed.** Its original words — *"whether commits survive one, whether the
+working tree is left coherent, or whether cleanup behaves"* — are still unanswered, because the e2e worker
+**hangs before doing any work**. `hmp5` is the one real data point and it split: **commit survived, report
+destroyed.** Under the PO's chosen decoupling (unattended execution, human grading) that is the whole question —
+*when a cap fires, what is left to grade?*
+
+**Correction to §3's framing:** the rails table said "not one is proven." That was too strong. The wall-clock
+rail **is** proven to terminate, in test. What is unproven is what termination *does to work in flight* — a
+narrower and more useful gap. The rest of the table stands.

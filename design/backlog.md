@@ -4839,6 +4839,57 @@ autonomy: human-only
   monitoring separately — O-4 conflated two questions into one run and answered neither cleanly.
   **Also still unknown:** whether `cap.meter` fires correctly (it never came close — weekly moved 30%→32%).
 
+  **⬛ CORRECTED 2026-08-05 (backlog gate follow-up, PO-directed) — THIS ITEM'S OWN RECOMMENDED CHEAP STEP WAS
+  ALREADY BUILT, ELEVEN DAYS BEFORE THE ITEM WAS FILED. Read this before planning any work here.**
+
+  The paragraph above says: *"**Alternative worth weighing first:** test the cap directly against a
+  trivially-stalling worker (cheap, seconds of tokens, minutes of wall clock)."* **That test exists and passes:**
+
+  - `agentalk-mcp-client/__tests__/bite0-launcher.e2e.test.mjs:146` — *"cap breach: real worker hangs (no goal),
+    real wall-clock terminates the real process → FAILED"*. Launches a **real `llm-agent` process** against a
+    real orchestrator, deliberately never answers `await_turn` so the worker stalls, `wallClockMs: 1500`, and
+    asserts **both** `reason: 'cap-wallclock'` **and that the launched PID is actually dead**
+    (`expect(() => process.kill(launchedPid, 0)).toThrow()`).
+  - `__tests__/bite0-launcher.test.mjs:94` — the unit sibling, including `terminateAgent` / `report` /
+    `stopInstance` all called.
+
+  **Verified by running it, not by reading it: `npx vitest run __tests__/bite0-launcher.e2e.test.mjs` → 2 passed,
+  2.46s** (2026-08-05). Both landed in `a86733d` *"deterministic config-driven launcher + machine-enforced cap"*,
+  **2026-07-16** — the cap shipped with its test. This item was filed **2026-07-27**.
+
+  **And the "also still unknown" line above is answered twice over:** `bite0-launcher.test.mjs:107` fires
+  `cap-resource` at unit level, and **`hmp5` fired it for real** on 2026-08-02 (`meter +24% ≥ 20%`). What is wrong
+  with the meter rail is no longer *whether* it fires — it is [[BL-114]] (fails open when unreadable) and
+  [[BL-117]] (fires on a sum it cannot attribute).
+
+  **The item is NOT closed by this — it is RE-SCOPED, and the remaining question is sharper and better aimed.**
+  The e2e worker **hangs before doing anything**. So what is proven is *the timer fires and the process dies*.
+  What is still unproven is this item's actual original words — *"whether commits survive one, whether the working
+  tree is left coherent, or whether cleanup behaves"* — because **nothing has ever been interrupted with real work
+  in flight.**
+
+  **One real data point now exists, and it is a split result nobody predicted:** `hmp5` was killed by
+  `cap-resource` at 9m54s. The **commit survived intact** (`6dcd2dd`, made 14s earlier) — and the **worker's
+  report was destroyed**, which silently voided a bar row grading what the worker *said*. Half the artifact
+  survived, half did not.
+
+  **Why the remaining half matters more than it used to (PO direction, 2026-08-05):** the destination is
+  **unattended execution with grading kept human**. Under that split, *what survives a cap kill is the entire
+  product* — an interrupted run's only value is the artifact a human can come back and grade. So the open
+  question is no longer "does the cap terminate" but **"when a cap fires, what is left to grade?"**
+
+  **Do NOT rebuild the stalling-worker test.** It is green, it is real, and re-delivering it would produce a
+  green that proves nothing — the mistake this backlog already names in the BL-108 case (*"handing an agent a
+  no-op would have produced a green first run that proved nothing"*). **Next work: the mid-work interruption
+  harness** — interrupt a worker that is actively mid-work and assert on what remains (commit present or cleanly
+  absent, never half-written; worktree coherent; teardown run, incl. the branch leak [[BL-103]] predicts; whether
+  any of the report is recoverable).
+
+  **The reusable lesson, and it is about this file:** this item recommended building something that already
+  existed, and stood for nine days across a backlog gate without anyone running the suite it was talking about.
+  **A backlog item asserting "X is untested" is a claim about state like any other — ground it before acting on
+  it.** It cost nothing here only because the check was run before the build, not after.
+
 <!-- @item
 id: BL-097
 status: done
