@@ -1585,3 +1585,38 @@ here.**
   `git push` hit AgentTalk again and reported "Everything up-to-date" — impossible for a repo I knew was ahead 2,
   which is the only reason I caught it. **Use `git -C <path>` for multi-repo work; a plausible-sounding success
   message is the dangerous failure.**
+
+### 2026-08-05/06 — the session where the backlog was wrong three times, and cheap habits caught all three
+
+- **As planner: I recommended work that already existed, and said so before building it.** BL-096's own
+  "cheap first step" — a stalling-worker harness — had shipped **eleven days before the item was filed**, green,
+  with a real process and a PID-confirmed kill. I had carried "the cap is untested" through a backlog gate, a
+  table and two messages to the PO **without running the suite it described**. The item never said "untested";
+  I inferred it from "no run has ever been interrupted" and stopped reading. **What saved it was sequence, not
+  diligence:** Rule 6's scope declaration came *before* the build, so the cost was one investigation instead of
+  a duplicate harness and a green that proved nothing.
+- **The same shape hit twice more, so it is a pattern, not an anecdote.** BL-114's prescribed fix was
+  *incomplete* in a way that would have made things **worse** (coercion in two places; fixing one turns a rail
+  that never fires into one that kills instantly). BL-109's fix sketch **contradicted itself** — it named a path
+  inside the very write-fence it said to stay out of. **A backlog item's "fix direction" is a hypothesis, not a
+  spec.** Both were written by people looking straight at the source. Re-derive from the code every time.
+- **As implementer: `$?` after a pipe lied to me about a gating run.** `node … | tail` reported `EXIT: 0` on a
+  run that had exited **1**. I only noticed because a `critical` was printed right above it — incoherence in the
+  same output, again, which is the third time that specific tell has been the thing that caught me. **Re-run
+  unpiped before believing an exit code.**
+- **As implementer: I took a decision the item said "needs a decision", and the justification was structural,
+  not confidence.** BL-103 offered two fixes; I chose the one where the destructive outcome is **impossible by
+  construction** (`worktree remove` without `--force`, `branch -d` never `-D`), and rejected the tidier-looking
+  one because it trades a visible leak for unreachable commits. **That is the test for acting without the PO: not
+  "am I sure", but "can this be wrong in a way that destroys something".**
+- **As planner: I quoted retracted wording instead of deleting it, three times** (AGENT.md's charter, the
+  runbook, BL-114's superseded claim). A reader who remembers the old behaviour must *meet* the correction, not
+  find a document that reads as though it was always right. Deleting would have been shorter and would have
+  erased the reason the correction exists.
+- **As SM: the record-vs-operative line held under pressure again.** Five files carried the same stale
+  `cap-resource` phrasing; I fixed the two **operative** ones and left the three **pre-registered bars** alone.
+  Same rule that left hmp5's R6 failed rather than retuned. *"Is this document acted on, or is it a record?"* —
+  not *"is it stale?"*
+- **Ran the recursion fence over the primer WHILE writing it, and it was clean.** Third session running for this
+  lesson; second time applying it during drafting rather than after. It cost one command and found nothing,
+  which is the outcome. **Consider this one learned and stop re-writing it.**
