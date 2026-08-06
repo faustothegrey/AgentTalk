@@ -59,6 +59,7 @@
 
 import fs from 'fs';
 import path from 'path';
+import crypto from 'crypto';
 import { execFileSync } from 'child_process';
 import { fileURLToPath } from 'url';
 import { classifyProcess, isOrchestratorIsh, parseDeclared, STATUS } from './check-orchestrator-ports.mjs';
@@ -122,6 +123,125 @@ const applyAllowlist = (value, patterns) => (matchesAny(value, patterns) ? SEVER
 
 export function exitCodeFor(findings) {
   return findings.some((f) => f.severity === SEVERITY.CRITICAL || f.severity === SEVERITY.WARN) ? 1 : 0;
+}
+
+// ---------------------------------------------------------------------------
+// BL-109 — dispositions: giving "the PO cleared that finding" somewhere to live.
+//
+// The charter says a `critical` GATES the next operator run until the PO clears it, and that only
+// the PO may dispose of one. Until now there was nowhere to record that a disposition happened:
+// severity is computed per run and nothing persisted. "Uncleared" was a concept the charter used
+// and the harness could not represent. It bit twice for real — hmp1 (`head-moved-undetermined`,
+// "it was my session merging") and hmp5 — and both dispositions ended up as prose in a grading
+// doc, where no check can see them.
+//
+// ⚠️ THE FILE DOES NOT LIVE WHERE BL-109's SKETCH SAID. The item proposed
+// `design/operator/cleared-findings.json` **and** said "do NOT make it an operator-writable file:
+// the charter reserves disposition to the PO, and the operator's write fence explicitly bans it."
+// Those contradict: `design/operator/**` IS the operator's write allowlist (see matchesWritePath's
+// docstring, and AGENT.md's charter). Putting the PO's exclusive artifact inside the operator's own
+// write fence would let the fenced party clear the findings that gate it. So it sits OUTSIDE, at
+// `design/operator-dispositions.json`.
+// ---------------------------------------------------------------------------
+
+/** Where dispositions live. Deliberately outside `design/operator/**` — see the note above. */
+export const DISPOSITIONS_PATH = 'design/operator-dispositions.json';
+
+/**
+ * Stable identity for a finding — and deliberately NARROW.
+ *
+ * It hashes `detail` verbatim, which means a clearance stops matching as soon as the specifics
+ * change (a different sha, a different pid). That is the point, not a limitation: hmp1's
+ * `head-moved-undetermined` was cleared because *that* merge was the PO's own session. A later
+ * head move with a different range is a DIFFERENT EVENT and must gate again. Fingerprinting on
+ * `kind` alone would have cleared the class forever and turned this mechanism into a blindfold.
+ */
+export function fingerprintFinding(f) {
+  const material = [f?.severity ?? '', f?.kind ?? '', f?.repo ?? '', f?.detail ?? ''].join(' ');
+  return crypto.createHash('sha256').update(material).digest('hex').slice(0, 12);
+}
+
+/**
+ * Read the dispositions as of the CURRENT COMMIT — never from the working tree.
+ *
+ * This is the forgery resistance, and it is the same reasoning that makes hmp authorization
+ * repo-anchored (`hmp-session-submission.md` §4): an uncommitted edit does nothing at all. Anyone
+ * can write a JSON file; committing it is a recorded, attributable act.
+ *
+ * A file that exists on disk but NOT in HEAD is reported as a `warn`, never ignored in silence —
+ * "we could not look ⇒ looks fine" is the shape this whole harness exists to delete.
+ *
+ * ⚠️ KNOWN INTERACTION, found by running this end to end and deliberately NOT special-cased:
+ * committing a disposition MOVES HEAD, and a HEAD move is itself a finding. In the normal flow this
+ * never bites — a run is snapshot→run→check, the PO disposes afterwards, and the next run's
+ * baseline already contains the commit. It shows up only when an OLD baseline is re-checked after
+ * disposing, which is exactly the artificial shape that surfaced it.
+ * It is not exempted on purpose: "changes to the file that clears findings are automatically fine"
+ * is a fail-open, and a commit carrying a disposition *plus something else* would ride in on it. A
+ * run that genuinely needs it can declare the path through the existing `--expect` mechanism.
+ */
+export function loadDispositions(repoPath, env) {
+  const out = { dispositions: [], findings: [] };
+  const committed = tryGit(['show', `HEAD:${DISPOSITIONS_PATH}`], repoPath, env, null);
+  const onDisk = fs.existsSync(path.join(repoPath, DISPOSITIONS_PATH));
+
+  if (committed === null) {
+    if (onDisk) {
+      out.findings.push(finding(
+        SEVERITY.WARN, 'dispositions-uncommitted',
+        `${DISPOSITIONS_PATH} exists in the working tree but is not committed — IGNORED. ` +
+        'Dispositions are read from HEAD so that an uncommitted edit cannot clear a gating finding.',
+      ));
+    }
+    return out;   // absent entirely is the normal case: no dispositions, no noise
+  }
+
+  let parsed;
+  try {
+    parsed = JSON.parse(committed);
+  } catch (e) {
+    // Unparseable must FAIL CLOSED — clear nothing — and say so loudly.
+    out.findings.push(finding(
+      SEVERITY.WARN, 'dispositions-unreadable',
+      `${DISPOSITIONS_PATH} is committed but not valid JSON (${e.message}) — NOTHING was cleared.`,
+    ));
+    return out;
+  }
+
+  const list = Array.isArray(parsed?.dispositions) ? parsed.dispositions : null;
+  if (!list) {
+    out.findings.push(finding(
+      SEVERITY.WARN, 'dispositions-unreadable',
+      `${DISPOSITIONS_PATH} has no \`dispositions\` array — NOTHING was cleared.`,
+    ));
+    return out;
+  }
+  out.dispositions = list.filter((d) => d && typeof d.fingerprint === 'string');
+  return out;
+}
+
+/**
+ * Downgrade findings the PO has disposed of — and KEEP THEM VISIBLE.
+ *
+ * A cleared finding becomes `info` and stays in the output carrying who cleared it and why. It is
+ * never dropped: "the finding is recorded, not suppressed" is how hmp5's own critical was closed,
+ * and a mechanism that made dispositions invisible would be worse than the prose it replaces.
+ */
+export function applyDispositions(findings, dispositions = []) {
+  if (!dispositions.length) return findings.map((f) => ({ ...f, fingerprint: fingerprintFinding(f) }));
+  const byPrint = new Map(dispositions.map((d) => [d.fingerprint, d]));
+  return findings.map((f) => {
+    const fingerprint = fingerprintFinding(f);
+    const d = byPrint.get(fingerprint);
+    if (!d || f.severity === SEVERITY.INFO) return { ...f, fingerprint };
+    return {
+      ...f,
+      fingerprint,
+      severity: SEVERITY.INFO,
+      clearedFrom: f.severity,
+      cleared: { by: d.disposedBy ?? 'PO', date: d.date ?? null, reason: d.reason ?? null, commit: d.commit ?? null },
+    };
+  });
 }
 
 /**
@@ -953,11 +1073,28 @@ function render(findings, before, after) {
     const group = findings.filter((f) => f.severity === sev);
     if (group.length === 0) continue;
     lines.push(`\n[${sev.toUpperCase()}] ${group.length}`);
-    for (const f of group) lines.push(`  · ${f.kind}: ${f.detail}`);
+    for (const f of group) {
+      // BL-109 — a cleared finding stays visible and says who cleared it. Never dropped.
+      if (f.cleared) {
+        const who = f.cleared.by ?? 'PO';
+        const when = f.cleared.date ? ` ${f.cleared.date}` : '';
+        const why = f.cleared.reason ? ` — "${f.cleared.reason}"` : '';
+        lines.push(`  · ${f.kind}: ${f.detail}`);
+        lines.push(`      ↳ CLEARED (was ${f.clearedFrom}) by ${who}${when}${why}  [${f.fingerprint}]`);
+      } else {
+        lines.push(`  · ${f.kind}: ${f.detail}`);
+      }
+    }
   }
   if (findings.some((f) => f.severity === SEVERITY.CRITICAL)) {
     lines.push('\nA `critical` finding GATES the next operator run until the PO clears it (plan §9.1).');
     lines.push('This harness REPORTS ONLY — it has changed nothing, and it will not.');
+    // BL-109 — without this the reader knows they are gated and not how to become ungated.
+    lines.push(`To clear one: add its fingerprint to \`${DISPOSITIONS_PATH}\` and COMMIT it (an`);
+    lines.push('uncommitted edit clears nothing). Only the PO may do this. Fingerprints:');
+    for (const f of findings.filter((x) => x.severity === SEVERITY.CRITICAL)) {
+      lines.push(`  ${f.fingerprint}  ${f.kind}`);
+    }
   }
   return lines.join('\n');
 }
@@ -983,7 +1120,12 @@ function main(argv) {
     const before = JSON.parse(fs.readFileSync(opts.before, 'utf-8'));
     const after = takeSnapshot({ repos, includeGlobal: opts.includeGlobal, portRange: opts.portRange });
     const { expect: exp, declaration } = loadExpect(opts.expect);
-    const findings = diffSnapshots(before, after, exp, declaration);
+    const raw = diffSnapshots(before, after, exp, declaration);
+
+    // BL-109 — apply the PO's recorded dispositions LAST, so a clearance is judged against the
+    // finding the whole diff actually produced. Read from HEAD, never the working tree.
+    const { dispositions, findings: dispositionFindings } = loadDispositions(REPO_ROOT, process.env);
+    const findings = [...applyDispositions(raw, dispositions), ...dispositionFindings];
     const code = exitCodeFor(findings);
 
     if (opts.json) {
