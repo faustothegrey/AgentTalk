@@ -94,20 +94,41 @@ Everything else is optional with defaults:
   orchestrator's checkout must contain that code. Default **600 000 ms (10 min)**; a malformed value falls back
   to the default and can never remove the deadline.
 
-## 3. The two caps — configure BOTH
+## 3. The two caps — configure BOTH, but only ONE of them stops a run
 
-The runner races three things: the worker finishing, the wall clock, and the resource meter
+> **⬛ AMENDED 2026-08-06** (client `e04c576`; [[BL-117]] PO option (b), [[BL-114]], [[BL-118]]). This section
+> previously called `cap.meter` *"the rail that stops a run from eating the window you need to grade it."*
+> **It no longer terminates anything, and that claim is retracted.** The retracted wording is quoted here rather
+> than deleted, so a reader who remembers the old behaviour meets the correction instead of a silent rewrite.
+
+The runner races the worker finishing against the wall clock, and **polls** the resource meter alongside them
 (`raceCapAndOutcome`).
 
-- **`cap.wallClockMs`** — required. **This is currently the only anti-hang rail in the system**: the idle timeout
-  is dead code ([[BL-028]]), so nothing else detects a wedged worker.
-- **`cap.meter`** — optional and **easy to forget, which is a mistake**: `{ url, provider, maxPercentDelta }`
-  terminates the run when the provider's session percentage rises `maxPercentDelta` points above the baseline
-  captured at launch. **If your worker's provider is the same one your own supervising session runs on, this is
-  the rail that stops a run from eating the window you need to grade it.** A failed meter read is best-effort and
-  skipped — it never blocks the run.
-  *(Learned the hard way: the rung-6 run was launched with the budget named as its top risk and **no `cap.meter`
-  configured**. The wall-clock rail was active, the resource rail was not.)*
+- **`cap.wallClockMs`** — required, and **the ONLY terminating rail in the system.** The idle timeout is dead
+  code ([[BL-028]]), so nothing else detects a wedged worker — and since 2026-08-06 nothing else ends a run at
+  all. It is also the only rail ever *proven* to terminate: real process, real timeout, PID confirmed dead
+  ([[BL-096]]). Since [[BL-118]] a termination now **cascades to the provider CLI**, which previously survived as
+  an orphan and kept drawing on the pool after the kill. **Check its value on every config. Nothing else will
+  stop your run.**
+- **`cap.meter`** — still `{ url, provider, maxPercentDelta }`, still **mandatory for operator runs** (charter),
+  still **easy to forget, which is still a mistake** — but it is now a **WARNING, not a rail.** On breach it
+  emits `cap-warning` into the run artifact and **the run continues.**
+  **Why it was demoted, because you will be tempted to re-arm it:** the meter reports **machine-wide,
+  per-provider** percentages. It cannot separate the worker's spend from *your own supervising session's*, so it
+  fires on the **sum** and attributes it to the worker. On `hmp5` it killed complete, verified work **fourteen
+  seconds after the commit**, and destroyed the worker's report along with it. A shared-fate trigger is not a
+  containment rail.
+  A failed meter read is best-effort and skipped — it never blocks the run — and since [[BL-114]] an unreadable
+  meter is **recorded** (`meter-unreadable`, `meter-baseline-unavailable`) instead of silently coerced to a
+  plausible `0`. If the baseline could not be read, the rail arms **late** from the first trustworthy reading
+  rather than comparing against a fabricated zero.
+  *(Still learned the hard way, and still worth configuring: the rung-6 run was launched with the budget named as
+  its top risk and **no `cap.meter`** at all. You now get the observation without the false kill — which is the
+  whole point of the change, not a consolation.)*
+
+**⚠️ So what actually protects the budget now?** The wall clock, plus a human who reads the meter. The budget
+risk is **real, named, and explicitly unmitigated** — see `AGENT.md`'s OPERATOR charter, which was amended in the
+same breath. Do not read the demotion as having solved it.
 
 ## 4. The goal statement
 
@@ -159,9 +180,16 @@ Readiness needs **two** signals from the orchestrator's output, not one — `Rea
 run-start        → the config was accepted; goal recorded verbatim
 agent-launched   → agentId + pid   (the worker process exists)
 goal-delivered   → the team was created and the task posted
-cap-breach       → a rail fired    (wall-clock or resource)
+cap-breach       → the WALL-CLOCK rail fired and ended the run  (see below)
+cap-warning      → the meter passed its threshold; the run CONTINUED  (BL-117)
+meter-unreadable / meter-baseline-unavailable / meter-baseline-established
+                 → the meter's reachability, recorded rather than guessed  (BL-114)
 outcome          → terminal
 ```
+
+**`cap-breach` used to mean "a rail fired (wall-clock or resource)". Since 2026-08-06 only the wall clock can
+produce it** — the meter emits `cap-warning` instead and does not end the run (§3). A `cap-warning` with no
+`cap-breach` is a healthy run that spent more than expected, **not** a capped one.
 
 Seeing `goal-delivered` is the milestone that matters: it means the agent reached `ready`, joined a
 worker-only team, and the task was posted. Before that, failures are *setup* failures.
@@ -189,7 +217,7 @@ Launcher outcome `status`:
 | `completed` | — | the team reached `completed` |
 | `failed` | `worker-error` | the team ended `error` or `interrupted`, or a setup step threw |
 | `failed` | `cap-wallclock` | wall clock exceeded |
-| `failed` | `cap-resource` | meter delta ≥ `maxPercentDelta` |
+| ~~`failed`~~ | ~~`cap-resource`~~ | **NO LONGER REACHABLE** since 2026-08-06 ([[BL-117]]). The meter warns and the run continues; it cannot produce a terminal outcome. Kept struck-through, not deleted: prior run artifacts contain `cap-resource` outcomes (`hmp5`) and a reader meeting one needs to find it here. |
 
 Team terminal states are exactly **`completed` | `error` | `interrupted`**. Older notes claiming `failed` or
 `awaiting_operator` are wrong — both were corrected in-code against `packages/contracts/src/types.ts`.
@@ -306,11 +334,16 @@ BL-023 way — `AGENTTALK_SWEEP_DECLARED=<pid-or-port>`.
 
 - **Exactly one agent per run.** Multi-agent is not supported by this launcher.
 - **The worker's result text never reaches the API** (§6).
-- **No hang detection beyond the caps** — [[BL-028]] is dead code.
+- **No hang detection beyond the wall-clock cap** — [[BL-028]] is dead code, and since [[BL-117]] the meter
+  cannot end a run either.
 - **In-process agent errors do not propagate** to interrupt a team ([[BL-078]], documented in `AGENT.md`'s M03
-  entry), so a failing worker can leave a team quietly stuck. The caps are your only rail.
+  entry), so a failing worker can leave a team quietly stuck. **`cap.wallClockMs` is your only rail** — since
+  [[BL-117]] the meter cap cannot end a run (§3), so "the caps" is now a singular.
 - **Launched workers are exempt from the turn-1 primer gate** ([[BL-082]]) — expected, not a bug.
-- **Cost attribution is unreliable.** The meter is per-provider and machine-wide, and goes stale for hours. Never
-  read a stale meter as a 0% delta; write `unavailable`.
+- **Cost attribution is unreliable — and this is now load-bearing, not a footnote.** The meter is per-provider
+  and **machine-wide**, and goes stale for hours. It cannot tell your spend from the worker's. That is precisely
+  why the meter cap was demoted to a warning ([[BL-117]]) and why **per-actor accounting remains unbuilt**.
+  Never read a stale meter as a 0% delta; write `unavailable` — and since [[BL-114]] the artifact will say so for
+  you (`meter-unreadable`) instead of quietly recording a zero that never happened.
 - **Not verified by this runbook:** `start_pair_chat` / multi-agent flows, and providers other than `claude`
   end-to-end through this launcher (gemini/agy is documented as a fit attach client; goose has its own items).
