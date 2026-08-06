@@ -306,8 +306,26 @@ branches. **That fence does not transfer** — which is why the invariant harnes
 
 - **The operator never reaches mainline.** Nothing it does is a merge, and nothing it does is a push.
 - **Sandbox prefix `att-op-*`** for its worktrees; **its own port 3600**, never the orchestrator's 3500.
-- **`cap.meter` is MANDATORY.** The operator's worker draws on the same provider pool as the supervising
-  session. This is not advice: a named-but-unmitigated budget risk already took a session window to 100%.
+- **`cap.meter` is MANDATORY to *configure* — and it is a WARNING, not a rail.** *(Amended 2026-08-06; it
+  previously read "`cap.meter` is MANDATORY … a named-but-unmitigated budget risk already took a session window
+  to 100%", offered as **the mitigation** for the shared-pool risk. That claim was false and is retracted.)*
+  `hmp-commission.mjs` still refuses `missing-cap-meter`, and the reading, the delta and the meter's
+  reachability are all recorded in the run artifact — observability worth having. **What it may not do is end a
+  run.** It reports **machine-wide, per-provider** percentages, so it cannot separate the worker's spend from
+  the supervising session's: it fires on the **sum** and attributes it to the worker. On `hmp5` it killed
+  complete, verified work **fourteen seconds after the commit**. **A shared-fate trigger is not a mitigation.**
+  ([[BL-117]], PO option (b); [[BL-114]] made the read fail closed — merged `e04c576`.)
+- **`cap.wallClockMs` is the ONLY terminating rail** — and the only one ever proven to terminate: a real
+  process, a real timeout, the PID confirmed dead ([[BL-096]]). Since [[BL-118]] a termination also **cascades
+  to the provider CLI**, which until then survived as an orphan and went on drawing from the pool after the
+  kill. **Check its value on every operator config; nothing else will stop a run.**
+- **⚠️ The budget risk is REAL, NAMED, and now explicitly UNMITIGATED — do not read the amendment above as
+  having solved it.** The old sentence is still true on its own terms: an unmitigated budget risk already took
+  a session window to 100%. What changed is that we stopped claiming an instrument which cannot attribute spend
+  was the answer to it. **Today the mitigation is the wall clock, plus a human who reads the meter.**
+  Per-actor accounting is the real fix and **has not been built** ([[BL-117]] option (d) — deliberately not
+  filed as a follow-up; reopen when the meter cap is proposed as containment again, or a run needs a
+  terminating rail that measures the worker alone).
 - **No recursion.** An operator's goal is *never* "launch a session."
 - **A pre-flight checklist is printed before launching**, and the run is **bracketed by the harness** —
   `snapshot` before, `check` after. A **`critical` finding GATES the next operator run** until the PO clears it.
