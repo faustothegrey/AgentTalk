@@ -6767,4 +6767,58 @@ autonomy: human-only
   meaning worktrees and branches — is still open and still belongs to [[BL-103]]. **Telemetry: see [[BL-117]]**
   (one task, three items).
 
+<!-- @item
+id: BL-119
+status: todo
+date: 2026-08-06
+epic: null
+tags: [operator, charter, governance, write-fence, allowlist, hermes, skill, bl087-followup]
+autonomy: po-decision
+-->
+- [todo · **observed 2026-08-06 while committing `1e469a7`** (versioning the operator-seat skill into the repo,
+  done by the PO together with Hermes) · **PO decision — a charter question, not a bug**] — **The OPERATOR seat
+  now has a verified write path to `design/operator-seat/`, which its charter's allowlist does not list — and
+  what it writes there is its own operating instructions.**
+
+  **The facts, plainly.** The charter's write fence (`AGENT.md:276`) reads: *"Where it may write — a path
+  allowlist … `design/backlog.md` and `design/operator/**`. **Nothing else.**"* As of 2026-08-06 the seat's skill
+  lives at **`design/operator-seat/`** — a *sibling* of `design/operator/`, not a child — and Hermes loads it by
+  symlink with **write verified working** (`skill_manage` patch, confirmed by the PO). So the seat can write to a
+  path the allowlist does not cover.
+
+  **The mitigation is real and must be stated first, because it is what keeps this off the critical path:** the
+  seat **cannot commit and cannot push.** Nothing it writes reaches mainline without the PO. This is a widened
+  **write surface**, not widened **authority**, and the fence that actually protects the repo is intact.
+
+  **Why it is still worth a decision.** Two reasons, and the second is the interesting one:
+  1. **Implicit widening is the shape this project distrusts.** The allowlist says "nothing else" and reality
+     says otherwise; a fence that quietly stopped describing the thing it fences is how [[BL-101]]'s fail-open
+     shape gets into a document.
+  2. **This is the seat editing its *own* instructions**, which is different in kind from filing a backlog item.
+     Filing puts a *proposal* in front of the PO. Patching the skill changes what the seat will *do* on its next
+     run — the change takes effect for the actor the moment it lands in the working tree, whether or not anyone
+     commits it. Still PO-gated at the commit boundary, so this is a **note about kind, not an alarm.**
+
+  **⚠️ And nothing can detect a breach.** The charter already concedes the fence is *"behavioural, not enforced —
+  `scripts/infra-invariant.mjs` does not yet check the path allowlist"* (`AGENT.md:298`). So this gap is invisible
+  to every check we own; it held here only because a human happened to be committing the directory and looked.
+  Contrast [[BL-093]], whose `autonomy` fence **is** mechanically pinned — that asymmetry is the real finding.
+
+  **Options, none chosen (PO's call):**
+  - **(a) Extend the allowlist** to name `design/operator-seat/**` explicitly. Cheapest, and makes the doc true.
+    Concedes that the seat maintains its own instructions — which it already does in practice.
+  - **(b) Keep the skill outside the seat's write path.** Hermes proposes diffs; someone with write authority
+    applies them. Preserves "the seat does not edit its own instructions" as a bright line, at the cost of
+    friction on every skill update and of undoing a mechanism just verified to work.
+  - **(c) Leave it, and say so.** Record that the allowlist is behavioural and that `design/operator-seat/` is a
+    known, accepted exception. Honest, changes nothing, and is only distinguishable from (a) by tone.
+  - **(d) Mechanise the fence** — teach the invariant harness to diff writes against the allowlist. The real fix
+    for the `AGENT.md:298` concession, and much larger than this item. A candidate follow-up to [[BL-087]], not a
+    precondition for any of (a)–(c).
+
+  **Filed by the planner/SM, deliberately NOT routed through the operator** — a fenced seat proposing to widen
+  its own fence is an awkward shape even when the observation is correct. Recorded until now only in commit
+  `1e469a7`'s message, which is not a tracked artifact. `autonomy: po-decision`: a charter amendment is the PO's
+  alone.
+
 *(add new items above this line)*
