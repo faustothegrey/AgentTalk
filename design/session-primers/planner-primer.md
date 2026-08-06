@@ -38,17 +38,23 @@ npx vitest run apps/orchestrator/src/__tests__/bl093-backlog-selectable.test.ts
 
 **Seven todos remain and NOT ONE of them is startable by you alone.** That is the state, not a gap:
 
-| Item | Why it is not yours |
-|---|---|
-| BL-084 | T2 is a real behaviour change on `registry.ts` + `team-coordinator.ts`; its own plan says land T1, then **re-gate**. PO go-ahead. |
-| BL-028 | `blocked_by: [BL-084]`. Genuinely blocked, not parked. |
-| BL-096 | Third question only (*whether cleanup behaves*). BL-103 fixed **task-worktree** teardown; the rest is the operator's own `att-op-*` sweep, which is a human procedure, not code. Needs a scope call on what remains. |
-| BL-098 | Linux-only (`launchctl`). **Dormant on macOS** — cannot be verified here. Gate recommended `deferred`. |
-| BL-110 | `po-decision`. |
-| BL-112 | Excision inside the PO's own Hermes install, read-only to us. Gate recommended `deferred`. |
-| BL-119 | `po-decision` — the charter allowlist gap. |
+| Item | Why it is not yours | Recommendation put to the PO 2026-08-06 (undecided at close) |
+|---|---|---|
+| BL-084 | T2 is a real behaviour change on `registry.ts` + `team-coordinator.ts`; its own plan says land T1, then **re-gate**. PO go-ahead. | **Do it** — the only item that unblocks others (BL-028 **and** BL-078). Rider: keep BL-028 `todo`, it is scheduled work behind a live blocker, not abandoned. |
+| BL-028 | `blocked_by: [BL-084]`. Genuinely blocked, not parked. | — follows BL-084 |
+| BL-096 | Third question only (*whether cleanup behaves*). BL-103 fixed **task-worktree** teardown; the rest is the operator's own `att-op-*` sweep, a human procedure, not code. | **Close it.** If the operator sweep should be automated, that is a new item with a clear shape, not a leftover clause. |
+| BL-098 | Linux-only (`launchctl`). **Dormant on macOS** — cannot be verified here. | **`deferred`**, reopen when work resumes on a Linux box. |
+| BL-110 | `po-decision`. | **Close it.** Its "still open" list is stale — the `[PO-RELAY]` decision *was* taken and encoded in `AGENT.md` 2026-07-31. What remains is write-class HMP verbs (a governance act) + parked BL-107; file that separately rather than leaving it in a closed item's tail. |
+| BL-112 | Excision inside the PO's own Hermes install, read-only to us. | **`deferred`**, reopen if a datum we need starts depending on surviving the courier. |
+| BL-119 | `po-decision` — the charter allowlist gap. | **Option (a)**, extend the allowlist to name `design/operator-seat/**`. Cheapest, makes the doc true. Option (d) — mechanise the fence in the harness — is the real fix and a BL-087-sized follow-up. |
+
+**Two more things were put to the PO and are also undecided:** a charter line pointing at BL-109's new
+dispositions mechanism (governance wording, PO's — offer to draft stands), and **relaying the drafted Hermes
+task** to correct the stale cap passages in `design/operator-seat/SKILL.md` (its runbook half is already done).
 
 **Do not read an empty queue as permission to pick something, and never mark anything `eligible`.** Ask.
+**And do not treat the recommendations above as decisions** — they are one agent's opinion, recorded so the PO
+does not have to re-elicit them, and every one of them is still the PO's to take or reject.
 
 ## What closed, and the one thing worth carrying forward
 
