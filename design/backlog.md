@@ -6288,13 +6288,13 @@ autonomy: human-only
 
 <!-- @item
 id: BL-114
-status: todo
+status: done
 date: 2026-07-31
 epic: null
 tags: [launcher, cap, meter, containment, operator, fails-open, agentalk-mcp-client]
 autonomy: human-only
 -->
-- [todo · found preparing the `hmp2` commission, by checking what `cap.meter` actually buys before claiming it
+- [done · **MERGED 2026-08-06** (`e04c576`, client repo) · originally: found preparing the `hmp2` commission, by checking what `cap.meter` actually buys before claiming it
   as containment] — **The resource cap fails OPEN and silently: a missing meter figure is coerced to `0`, so the
   rail never fires while appearing healthy.**
 
@@ -6349,6 +6349,40 @@ autonomy: human-only
   engaged. The recommendation is about **sequencing, not identity** — one visit to `readMeterPercent` and the
   delta logic, two bars, neither closed on the other's run. Same shape as [[BL-028]]/[[BL-084]]: one primitive,
   separately-closing consumers. Gate record: `design/backlog-gate-2026-08-05.md` §2.3.
+
+  ---
+
+  **✅ CLOSED — MERGED 2026-08-06 (`e04c576`, client repo; impl `66a0af1`). Plan:
+  `design/meter-cap-cluster-plan.md`.** `readMeterPercent` no longer coerces: an absent `used_percent` now
+  throws, routing into the caller's existing skip-a-tick path — so an unreadable meter still never fails a run
+  ([[LB-11]]: it is jittery by nature), it just stops pretending to be a zero.
+
+  **⚠️ AND THE PART THIS ITEM DID NOT KNOW ABOUT ITSELF — the fix it prescribed would have been worse than the
+  bug.** This entry says *"reject instead of coercing, so the existing skip-a-tick path handles it."* **The
+  coercion existed in TWO places and this item named one.** The poll path is `launcher.mjs:229`; the **baseline
+  capture** carried the same coercion — `catch { config.__meterBaseline = 0 }` (`bite0-launcher.mjs:146-147`) —
+  and the comparison is `pct - baseline`.
+
+  So rejecting on the poll path *alone* gives: meter unreadable at launch ⇒ baseline **0** ⇒ meter returns, say,
+  40% ten seconds later ⇒ `delta = 40` ⇒ **immediate breach on a worker that had spent nothing.** Today's bug
+  never fires; that fix fires instantly and wrongly — on the path [[LB-11]] calls *normal*, not exotic.
+
+  **What shipped instead: the baseline is tri-state** — a number, or `null` meaning UNKNOWN, never a fabricated
+  `0` — and **an unknown baseline does not arm the rail.** The first trustworthy reading *establishes* the
+  baseline and compares nothing, so the rail arms **late rather than wrongly**. Unreachability is recorded
+  (`meter-baseline-unavailable` / `meter-unreadable`) so a grader writes `unavailable` instead of silently
+  reading a zero that never happened.
+
+  **Mutation-checked, watched red:** restoring the baseline coercion to `0` fails the regression pin with
+  `expected undefined to match object { percent: 40, late: true }`.
+
+  **NOT done, deliberately:** an unreadable meter still does **not** fail the run — this item forbade that
+  without a PO call and nothing here changes it. **Telemetry: see [[BL-117]]** (one task, three items).
+
+  **The reusable lesson:** *a backlog item's "fix direction" is a hypothesis, not a spec.* This one was written
+  carefully by someone who had read the code, and was still incomplete in a way that would have converted a
+  dormant defect into an active one. **Re-derive the fix from the code at implementation time, even when the item
+  hands you one.**
 
 <!-- @item
 id: BL-115
@@ -6574,12 +6608,12 @@ tags: [infra-invariant, operator, harness, false-positive, bl087-followup, bl097
 
 <!-- @item
 id: BL-117
-status: todo
+status: done
 date: 2026-08-02
 epic: null
 tags: [operator, cap, meter, containment, charter, bl114-followup, lb11, hmp5]
 -->
-- [todo · surfaced by the `hmp5` cap kill, 2026-08-02] — **`cap.meter` cannot distinguish the worker's spend
+- [done · **MERGED 2026-08-06** (`e04c576`) — PO chose option (b), the rail now WARNS · originally: surfaced by the `hmp5` cap kill, 2026-08-02] — **`cap.meter` cannot distinguish the worker's spend
   from the supervising session's, so it must not be described as a containment rail. Today it produced a false
   kill of good work.**
 
@@ -6618,15 +6652,55 @@ tags: [operator, cap, meter, containment, charter, bl114-followup, lb11, hmp5]
   **↳ Filed by the PO's instruction, 2026-08-02**, after the `hmp5` grading. Left `human-only` by default
   ([[BL-093]] fail-closed) — marking it agent-eligible is the PO's act alone.
 
+  ---
+
+  **✅ CLOSED — the PO chose option (b): DEMOTE TO A WARNING. Merged 2026-08-06 (`e04c576`, client repo; impl
+  `66a0af1`). Plan + ratification: `design/meter-cap-cluster-plan.md` §4.**
+
+  The rail now **warns and the run continues**. The reading, the delta and the artifact record all stay; only the
+  **authority to kill** is removed. `cap.wallClockMs` is now the only terminating rail — and it is the one
+  actually proven to terminate ([[BL-096]]: real process, PID confirmed dead). The warning fires **once per run**
+  (it polls every few seconds and would otherwise spam) and carries its own caveat in the artifact:
+  *"machine-wide per provider; NOT worker-attributable."*
+
+  **What this closure does NOT claim, and the distinction is the whole point.** The meter is **still** machine-wide
+  and **still** cannot separate the worker's spend from the supervising session's. **Nothing became measurable.**
+  What changed is that we **stopped acting** on a number that could never support the action. Option (d) —
+  per-actor accounting, the real fix — was **not** taken and is deliberately **not filed as a follow-up item**: an
+  item nobody intends to pick up is noise, and this closure is a better record of the decision than a stale
+  `todo` would be. **Reopen condition:** the meter cap is ever proposed as *containment* again, or a run needs a
+  terminating rail that measures the worker alone.
+
+  **Contract change, declared:** `bite0-launcher.test.mjs`'s *"meter breach → FAILED (cap-resource) + terminate"*
+  asserted exactly the authority this removes. It was **rewritten to pin the new behaviour, not weakened** — the
+  PO's ratification is what authorised changing a behaviour contract, per the M06 rule.
+
+  **⛔ OWED, AND IT IS THE PO'S — `AGENT.md` is now FALSE in one place.** The OPERATOR charter still reads
+  *"`cap.meter` is MANDATORY"* and justifies it as *the mitigation* for *"the operator's worker draws on the same
+  provider pool as the supervising session."* **As of this merge the rail cannot terminate, so it mitigates
+  nothing.** This item's own text predicted exactly this: *"any doc describing `cap.meter` as containment is
+  overclaiming and should be corrected when this is fixed."* **Governance wording is the PO's** — flagged, not
+  drafted.
+
+  **Telemetry (task closure — cluster: [[BL-118]] + [[BL-114]] + BL-117):**
+  - task:        meter-cap cluster (3 items, one delivery, separate bars)
+  - wall-clock:  2026-08-05 ~22:15 → 2026-08-06 ~08:05 (~1h40m active; session spans midnight)
+  - budget:      claude weekly 3%→4%, session 22%→~38% [per `scripts/usage.mjs`]
+  - gate:        lint **clean**, `verify-contract` **v8**, suite **130/130 (23 files)** re-run **on the merge
+    commit**; 126→130 accounted (+4 new cap tests, −1 replaced contract test, +1 new file/1 test); both halves
+    **mutation-checked red**; worktree removed, branch deleted, no orphan processes, `/tmp` clear
+  - diff:        5 files, +285/-16; commits `66a0af1` · `e04c576` (merge)
+  - outcome:     **MERGED ✅** — not pushed; push is the PO's
+
 <!-- @item
 id: BL-118
-status: todo
+status: done
 date: 2026-08-05
 epic: null
 tags: [launcher, cap, containment, budget, orphan-process, bl096-followup, bl117-adjacent, agentalk-mcp-client]
 autonomy: human-only
 -->
-- [todo · **found by running the [[BL-096]] mid-work harness, not by reading** — the harness was built to ask
+- [done · **MERGED 2026-08-06** (`e04c576`) · **found by running the [[BL-096]] mid-work harness, not by reading** — the harness was built to ask
   what survives a cap kill, and this is something that survives which should not] — **A cap kill terminates the
   worker but ORPHANS the provider CLI, which keeps running.**
 
@@ -6661,5 +6735,36 @@ autonomy: human-only
   **A caution for whoever takes this:** the BL-096 harness will *not* catch a regression here, because its own
   leak guard masks the behaviour by design. Any bar for this item must assert on process liveness **before** the
   guard's window elapses, or it will pass regardless.
+
+  ---
+
+  **✅ CLOSED — MERGED 2026-08-06 (`e04c576`, client repo; impl `66a0af1`). Plan:
+  `design/meter-cap-cluster-plan.md` §5/T1.**
+
+  **The diagnosis above was right, and one thing it did not say made the fix easy:** `llm-agent.mjs` installed
+  **no signal handlers at all** — verified, not assumed — so `SIGTERM` took node's default disposition and the
+  process died without running any cleanup. Meanwhile `BasePersistentExecutor.close()` **already existed and
+  already killed its child**. The machinery was there; only the wiring was missing.
+
+  **What shipped:** `llm-agent` handles `SIGTERM`/`SIGINT`, awaits the executor's `close()`, then exits
+  (143 / 130 by convention). **Deliberately NOT a process-group kill** — that would signal everything sharing the
+  group, including things a future caller has not thought about, and keeping the blast radius inside the agent
+  was the point.
+
+  **The 3-second deadline is mandatory, not defensive, and this is the part worth remembering:** if `close()`
+  hung and we simply waited, `SIGTERM` would become **effectively ignorable** — turning a leaked process into an
+  **unkillable worker**, which is strictly worse than the bug being fixed. A cleanup that can block a shutdown is
+  not a cleanup. So the handler always exits, on time, either way.
+
+  **Bar + mutation, both watched:** `__tests__/bl118-signal-cascade.test.mjs` asserts no provider-CLI descendant
+  survives, in a **2s window** against a stand-in that would otherwise live **60s**; removing the handler leaves
+  it alive for the full window (`timed out after 2000ms waiting for: the provider CLI to die with its agent`).
+
+  **The caution above was honoured rather than merely noted:** this bar is a **separate file** precisely because
+  the [[BL-096]] harness's 25s self-exit would have masked the behaviour and passed either way.
+
+  **Scope honesty:** this fixes *process* teardown only. [[BL-096]]'s third question — *whether cleanup behaves*,
+  meaning worktrees and branches — is still open and still belongs to [[BL-103]]. **Telemetry: see [[BL-117]]**
+  (one task, three items).
 
 *(add new items above this line)*
