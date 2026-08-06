@@ -5208,13 +5208,13 @@ tags: [infrastructure, portability, linux, harness, fail-open, bl023, suite-red]
 
 <!-- @item
 id: BL-100
-status: todo
+status: done
 date: 2026-07-28
 epic: null
 tags: [docs, portability, linux, hygiene, porting]
 autonomy: human-only
 -->
-- [todo · filed 2026-07-28 from the same Linux deployment validation · **each line below was checked against
+- [done · **CLOSED 2026-08-06** — both halves landed (`8d05294` client, `59d8fa8` AgentTalk) · originally: filed 2026-07-28 from the same Linux deployment validation · **each line below was checked against
   the live install, not inferred** · **⬛ the `PORTING.md` half is DONE — see the disposition at the end**] —
   **`PORTING.md` was wrong in four checkable ways on the machine it was written for, and the client's committed
   lockfile disagrees with its own `package.json`.**
@@ -5316,6 +5316,33 @@ autonomy: human-only
   drift** (it would resync the lockfile and dirty tracked files). That refusal was correctly graded as Implementer
   Rule 2 held without supervision — but the obstacle it navigated around is this item, and it will meet the next
   worker too. Gate record: `design/backlog-gate-2026-08-05.md` §2.4.
+
+  ---
+
+  **✅ ITEM CLOSED 2026-08-06 — half 1 merged `8d05294` (client; impl `7a074c7`).** Both halves are now in:
+  `PORTING.md` was fixed at source 2026-07-28 (`1182204`), `DEFAULT_ROOT` → `os.tmpdir()` merged 2026-07-30
+  (`59d8fa8`), and the lockfile drift is gone.
+
+  Regenerated with `npm install --package-lock-only` — no `node_modules` writes, which matters because a task
+  worktree's `node_modules` is a **symlink to the primary's** and a full `npm install` would have written
+  through it. **Exactly one line changed**, and a second run produced no further drift, so `package.json` and
+  the lockfile now agree rather than merely differing less.
+
+  **Worth recording, because it makes the fix unambiguous:** `attach-harness.mjs` **does not exist**. The
+  lockfile named a bin pointing at a **deleted file**, and nothing anywhere references the name. There was no
+  judgement call about which side was right.
+
+  **The gate-2026-08-05 finding that unblocked this stands:** the item's stated reason for leaving it to the PO
+  ("the client repo inherits no governance") died with [[BL-086]] on 2026-07-30.
+
+  **Telemetry (task closure — half 1):**
+  - task:        BL-100 (half 1 of 2)
+  - wall-clock:  2026-08-06 ~15:10 → ~15:20 (~10m)
+  - budget:      claude weekly ~10%, session ~35% [per `scripts/usage.mjs`]
+  - gate:        lint **clean**, `verify-contract` **v8**, suite **130/130 (23 files)** re-run **on the merge
+    commit**; worktree removed, branch deleted
+  - diff:        1 file, +1/-1; commits `7a074c7` · `8d05294` (merge)
+  - outcome:     **MERGED ✅ + PUSHED** (pre-authorized for this session)
 
 <!-- @item
 id: BL-101
