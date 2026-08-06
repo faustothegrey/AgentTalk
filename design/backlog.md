@@ -5545,13 +5545,13 @@ autonomy: human-only
 
 <!-- @item
 id: BL-103
-status: todo
+status: done
 date: 2026-07-30
 epic: null
 tags: [launcher, teardown, hygiene, worktree, bl081-followup, agentalk-mcp-client, observed-live]
 autonomy: human-only
 -->
-- [todo · **observed live during BL-102's two T-1 launches**, not by reading] — **Instance teardown removes the
+- [done · **MERGED 2026-08-06** (`9599642`, client repo) · **observed live during BL-102's two T-1 launches**, not by reading] — **Instance teardown removes the
   worker's provisioned worktree DIRECTORY but leaves its BRANCH behind, so every launched run leaks one branch.**
 
   Two runs produced `task-task-1785394896895-2` and `task-task-1785395284417-2`, both still present after the
@@ -5574,6 +5574,50 @@ autonomy: human-only
   directory, and runs `git worktree prune`; **or** the branch is never created (provision detached). **Bar:** a
   full launch/teardown cycle leaves no new branch and no prunable registration. **Mutation check:** disable the
   cleanup and confirm the bar goes red — a leak whose absence looks like its presence unless watched.
+
+  ---
+
+  **✅ CLOSED — MERGED 2026-08-06 (`9599642`, client repo; impl `12795f4`).** `releaseTaskDirs()` in
+  `lib/task-worktree.mjs`, wired through `bite0-launcher` + `scripts/launcher.mjs`, 9 tests.
+
+  **The decision: option (a), and option (b) REJECTED for a reason worth keeping.** "Never create the branch,
+  provision detached" looks cleaner and is worse: a detached commit becomes **unreachable** the moment the
+  worktree is removed, and is then one GC from gone. That trades a *visible* leak for **silent data loss** — and
+  a provider that honours the forwarded cwd (gemini, every one-shot) really does commit in the task dir, so the
+  loss would be real work, not a hypothetical.
+
+  **⛔ The safety property is the whole design — and it is what made this decision safe to take without the PO:**
+  `releaseTaskDirs` **cannot destroy work.**
+  - `git worktree remove` **without `--force`** → refuses a dirty tree.
+  - `git branch -d`, **never `-D`** → refuses unmerged commits.
+
+  Both refusals are **reported, not swallowed**, and leave the thing in place. The normal case (an empty nested
+  worktree — what `claude` produces, since its work lands in the parent workdir) is cleaned up completely; the
+  case that matters keeps its branch and therefore its commits. **The directory may go; the history never does.**
+
+  **Mutation-checked, watched red:** switching `-d` to `-D` destroys the branch holding the worker's commit and
+  the safety bar fails.
+
+  **Wired as an OPTIONAL dep**, so every pre-existing caller is unchanged, and called inside `finally` **before**
+  `stopInstance` — a capped or errored run is precisely the run nobody is watching, and it must be cleaned up
+  too. A throwing release never breaks the run; it is recorded like the meter.
+
+  **Bar met verbatim:** a full cycle leaves no new branch and no prunable registration.
+
+  **Not closed by this:** the **adjacent** note above — `wt-setup remove` on an already-removed worktree dying
+  with a raw Node stack — was [[BL-104]] and is long done. And this does **not** answer [[BL-096]]'s third
+  question (*whether cleanup behaves*) in general: it fixes **task-worktree** teardown, not the operator's own
+  `att-op-*` parent worktree, which is still swept by hand per the runbook.
+
+  **Telemetry (task closure):**
+  - task:        BL-103
+  - wall-clock:  2026-08-06 ~15:25 → ~15:55 (~30m)
+  - budget:      claude weekly ~9%→10%, session ~32%→~42% [per `scripts/usage.mjs`]
+  - gate:        lint **clean**, `verify-contract` **v8**, suite **139/139 (24 files)** re-run **on the merge
+    commit**; 130→139 is exactly this file's 9 tests; **mutation-checked red**; worktree removed, branch
+    deleted, no stray `task-*`
+  - diff:        4 files, +277/-1; commits `12795f4` · `9599642` (merge)
+  - outcome:     **MERGED ✅ + PUSHED** (pre-authorized for this session)
 
 <!-- @item
 id: BL-104
