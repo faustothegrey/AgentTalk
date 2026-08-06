@@ -5905,13 +5905,13 @@ autonomy: human-only
 
 <!-- @item
 id: BL-109
-status: todo
+status: done
 date: 2026-07-30
 epic: null
 tags: [harness, infra-invariant, operator, charter, disposition, bl087-followup]
 autonomy: human-only
 -->
-- [todo · surfaced at Gate 1 of `design/hmp-commission-plan.md`] — **"Only the PO may dispose of a `critical`
+- [done · **MERGED 2026-08-06** (`05fac03`) · originally: surfaced at Gate 1 of `design/hmp-commission-plan.md`] — **"Only the PO may dispose of a `critical`
   finding" has nowhere to record that a disposition happened.**
 
   The OPERATOR charter says a `critical` **gates the next operator run** until the PO clears it, and that only the
@@ -5936,6 +5936,55 @@ autonomy: human-only
   makes authorization repo-anchored in `hmp-session-submission.md` §4. **Do not** make it an env var or an
   operator-writable file: the charter reserves disposition to the PO, and the operator's write fence explicitly
   bans it.
+
+  ---
+
+  **✅ CLOSED — MERGED 2026-08-06 (`05fac03`; impl `f48000c`).** `design/operator-dispositions.json`,
+  `scripts/infra-invariant.mjs`, 11 tests.
+
+  **⚠️ THE SKETCH ABOVE CONTRADICTED ITSELF, and the path had to move.** It names
+  `design/operator/cleared-findings.json` **and** forbids an "operator-writable file" — but
+  **`design/operator/**` IS the operator's write allowlist** (`matchesWritePath`'s own docstring; `AGENT.md`'s
+  charter). That placement would let the fenced party clear the findings that gate it. Shipped **outside** the
+  fence, at **`design/operator-dispositions.json`**.
+
+  **Three decisions, each pinned by a test:**
+  1. **Read from `HEAD`, never the working tree.** Anyone can write a JSON file; committing it is a recorded,
+     attributable act — the sketch's own repo-anchoring reasoning, taken literally. An uncommitted file clears
+     nothing **and warns that it was ignored**. *Mutation-checked: reading from disk makes that bar fail.*
+  2. **Fingerprints are NARROW on purpose** — `severity|kind|repo|detail`, detail verbatim — so a clearance
+     stops matching the moment the specifics change. hmp1's head move was cleared because *that* merge was the
+     PO's own; a later one over a different range is a different event and **must gate again**. Hashing `kind`
+     alone would have cleared the class forever and made this a blindfold.
+  3. **Cleared findings stay VISIBLE** — downgraded to `info`, carrying who cleared them, when and why. *"The
+     finding is recorded, not suppressed"* is how hmp5's own critical was closed.
+
+  Malformed/unparseable input **fails closed** and warns; absent is the normal case and is silent. The renderer
+  prints gating fingerprints with instructions, because otherwise a reader learns they are gated without
+  learning how to become ungated.
+
+  **Proven end to end by running it:** manufactured a real `critical` (exit **1**), committed a disposition for
+  its fingerprint, re-ran, watched `↳ CLEARED (was critical) by PO`.
+
+  **⚠️ KNOWN INTERACTION, found that way and deliberately NOT special-cased:** committing a disposition **moves
+  HEAD**, and a HEAD move is itself a finding. Harmless in the normal flow — a run is snapshot→run→check and the
+  PO disposes *afterwards*, so the next baseline already contains the commit — it appears only when an **old**
+  baseline is re-checked after disposing. Not exempted, because *"changes to the file that clears findings are
+  automatically fine"* is a fail-open, and a commit carrying a disposition **plus something else** would ride in
+  on it. `--expect` already covers the rare case.
+
+  **Still owed, and the PO's:** `AGENT.md`'s charter says *"only the PO may dispose of what it finds"* and now
+  has a mechanism to point at. Governance wording is the PO's — flagged, not drafted.
+
+  **Telemetry (task closure):**
+  - task:        BL-109
+  - wall-clock:  2026-08-06 ~14:30 → ~15:05 (~35m)
+  - budget:      claude weekly ~9%→10%, session ~24%→~33% [per `scripts/usage.mjs`]
+  - gate:        tsc **0**, suite **703/703 (83 files)** re-run **on the merge commit**; 692→703 is exactly this
+    item's 11 tests; **mutation-checked red**; worktree removed, branch deleted, staged explicitly (the wt-setup
+    `node_modules` symlink correctly left untracked)
+  - diff:        2 files, +312/-2; commits `f48000c` · `05fac03` (merge)
+  - outcome:     **MERGED ✅**
 
 <!-- @item
 id: BL-110
