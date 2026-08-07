@@ -973,12 +973,16 @@ autonomy: eligible
 -->
 - [todo · **filed 2026-08-07 while implementing [[BL-028]] T3a; PO-directed as the next operator rung**] —
   **`setAgentBusyState(agent, true)` is unreachable, so an attached agent's status never says `busy`.** The
-  method (`registry.ts:807-818`) has exactly **one** call site — `registry.ts:533`, the `send_to_agent`
+  method (`registry.ts:822-833`) has exactly **one** call site — `registry.ts:548`, the `send_to_agent`
   `to === 'user'` branch — and it passes **`false`**. So the `true` branch, and with it
   `updateAgentSessionStatus(agent, 'busy')`, cannot execute. An attached agent pulls its turn through
   `await_turn`, which sets `currentTurnId` and leaves the status alone: it is `ready` for the entire time it
-  works. The only route to `busy` on that transport is the reconnect restore (`registry.ts:1287`), i.e. only
+  works. The only route to `busy` on that transport is the reconnect restore (`registry.ts:1367`), i.e. only
   after a disconnect.
+  **⚠️ Line numbers corrected 2026-08-07 (`:533`→`:548`, `:807-818`→`:822-833`, `:1287`→`:1367`) — they were
+  stale on filing.** They were read *before* BL-028 T3a landed and written *after* it, so they were ~15 lines
+  short from the moment this item existed. Caught by the operator at hmp6 pre-flight, verifying the premise in
+  the code instead of quoting the item. **Verify the symbols, not the line numbers** — this file drifts.
   **Consequences, both real but neither urgent:** the UI cannot show an attached agent as working (it reads
   `status`/`sessionStatus`), and the pre-T3a idle sweep gated on `status === 'busy'`, which is why it could
   never have seen an attached agent — the finding that reshaped [[BL-028]]'s fix.
