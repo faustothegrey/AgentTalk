@@ -2,7 +2,8 @@
 role: planner
 key: 20260806-1600-4d9a2e
 written: 2026-08-06 by Claude — session close. A backlog gate, then six items closed: BL-096 re-scoped,
-  BL-114/117/118 (the meter cap), BL-109, BL-100, BL-103. Seven todos remain and EVERY ONE needs the PO.
+  BL-114/117/118 (the meter cap), BL-109, BL-100, BL-103; BL-098 + BL-112 then PARKED by the PO. FIVE todos
+  remain and EVERY ONE needs the PO.
   Three times this session an item's description of the code did not survive contact with the code.
 ---
 
@@ -36,17 +37,21 @@ Ask the instruments rather than trusting that paragraph — it will rot:
 npx vitest run apps/orchestrator/src/__tests__/bl093-backlog-selectable.test.ts
 ```
 
-**Seven todos remain and NOT ONE of them is startable by you alone.** That is the state, not a gap:
+**Five todos remain and NOT ONE of them is startable by you alone.** That is the state, not a gap:
 
 | Item | Why it is not yours | Recommendation put to the PO 2026-08-06 (undecided at close) |
 |---|---|---|
 | BL-084 | T2 is a real behaviour change on `registry.ts` + `team-coordinator.ts`; its own plan says land T1, then **re-gate**. PO go-ahead. | **Do it** — the only item that unblocks others (BL-028 **and** BL-078). Rider: keep BL-028 `todo`, it is scheduled work behind a live blocker, not abandoned. |
 | BL-028 | `blocked_by: [BL-084]`. Genuinely blocked, not parked. | — follows BL-084 |
 | BL-096 | Third question only (*whether cleanup behaves*). BL-103 fixed **task-worktree** teardown; the rest is the operator's own `att-op-*` sweep, a human procedure, not code. | **Close it.** If the operator sweep should be automated, that is a new item with a clear shape, not a leftover clause. |
-| BL-098 | Linux-only (`launchctl`). **Dormant on macOS** — cannot be verified here. | **`deferred`**, reopen when work resumes on a Linux box. |
 | BL-110 | `po-decision`. | **Close it.** Its "still open" list is stale — the `[PO-RELAY]` decision *was* taken and encoded in `AGENT.md` 2026-07-31. What remains is write-class HMP verbs (a governance act) + parked BL-107; file that separately rather than leaving it in a closed item's tail. |
-| BL-112 | Excision inside the PO's own Hermes install, read-only to us. | **`deferred`**, reopen if a datum we need starts depending on surviving the courier. |
 | BL-119 | `po-decision` — the charter allowlist gap. | **Option (a)**, extend the allowlist to name `design/operator-seat/**`. Cheapest, makes the doc true. Option (d) — mechanise the fence in the harness — is the real fix and a BL-087-sized follow-up. |
+
+**✅ Two of the seven were DECIDED on 2026-08-07: the PO parked BL-098 (Linux `launchctl` — dormant on macOS,
+reopen on a Linux box) and BL-112 (relay excision — unchaseable, inside the PO's own Hermes install; reopen if
+a needed datum starts depending on surviving the courier). Read their park blocks before touching either:
+each records what the park does NOT license, and for BL-112 that rule is operative — never build a bar row, a
+grading step or a decision on a value that exists only in a relayed acknowledgement.**
 
 **Two more things were put to the PO and are also undecided:** a charter line pointing at BL-109's new
 dispositions mechanism (governance wording, PO's — offer to draft stands), and **relaying the drafted Hermes
