@@ -3557,6 +3557,28 @@ autonomy: human-only
   **Still open here:** **T2** (the actual [[BL-078]] fix — now unblocked) · **T3** ([[BL-028]]) · the reason is
   deliberately **not** surfaced on the `status` event yet (plan §9 q3). Item stays `todo` until T2 and T3 land.
 
+  **✅ T2 MERGED 2026-08-07 (`92282c2`; impl `a8f237e`) — [[BL-078]] is CLOSED by it.** Plan:
+  `design/bl084-t2-plan.md`, PO Gate-1 approved. In-process faults propagate; `Registry.reportAgentError` is the
+  new classified entry point (`setAgentStatus` is private, and `notifyAgentStatus`'s side-effect-free contract
+  was left alone — a door, not a moved wall). Two pinning tests rewritten under that approval, including the one
+  T1 had marked *"THIS is the assertion T2 deliberately rewrites."* Both mutations watched red;
+  `team-coordinator.ts` a **0-line diff**, as T1 achieved. Suite 703 → 711.
+
+  **The finding worth carrying:** the in-process error site is a **catch-all**, so no per-condition reason exists
+  where classification must happen — the reason has to travel with the throw. That forced the task's real
+  decision, and it is recorded in code: an unlabelled throw is **explicitly** `driver-error-unclassified`
+  (non-fault), so **`isFaultClass(undefined)` is `true` while `driver-error-unclassified` is `false`** — two
+  "unknowns" pointing opposite ways on purpose, both pinned by tests. Both say the same thing: *a surprise never
+  changes what happens.*
+
+  **⚠️ STRUCTURAL NOTE FOR THE PO — T3 and [[BL-028]] are the SAME WORK, and that makes the current statuses
+  circular.** This item stays `todo` because T3 is unlanded; BL-028 carries `blocked_by: [BL-084]`. So BL-028
+  can never unblock while BL-084 waits on the work that *is* BL-028. **Two clean ways out, and it is the PO's
+  call which:** (a) close BL-084 now — T1 and T2 are its own deliverables, T3 was always BL-028 — and let
+  BL-028 stand on its own; or (b) keep them coupled and drop BL-028's `blocked_by`. **Deliberately not re-cut
+  here:** re-cutting a blocker is a sequencing act with a live consequence, and the gate discipline this
+  session has used is to surface it rather than quietly fix it.
+
   **⬛ CORRECTION 2026-07-30 — this entry previously said plan §4's `unknown-mcp-tool` row was "still the PO's
   unratified call". THAT WAS STALE.** The PO ratified it **2026-07-27**, *reversing* the plan's own proposal
   (fault → **non-fault**), and it landed with T1. Verified in code, not inferred: `unknown-mcp-tool` sits in the
@@ -3569,12 +3591,12 @@ autonomy: human-only
 
 <!-- @item
 id: BL-078
-status: deferred
+status: done
 date: 2026-07-27
 epic: null
 tags: [engine, failure-propagation, api-agents, in-process-driver, m03, question, bl077-family, deferred-on-bl084]
 -->
-- [deferred · **PO DECIDED 2026-07-27: option (a) — leave as-is and document the asymmetry.** Reopen condition:
+- [done · **FIXED 2026-08-07 by BL-084 T2** (`92282c2`) — the reopen condition was met and acted on · originally: **PO DECIDED 2026-07-27: option (a) — leave as-is and document the asymmetry.** Reopen condition:
   **[[BL-084]] done** (the typed reason), which is what makes safe propagation possible. Analysis:
   `design/bl078-decision.md` · filed from BL-077, 2026-07-27 — a **show-stopper flagged and deliberately not
   decided** by the implementer] —
@@ -3606,6 +3628,29 @@ tags: [engine, failure-propagation, api-agents, in-process-driver, m03, question
   broken" (LB-67 Finding 1).** Brief recommends **(a) document the asymmetry now**, file the typed-reason work
   as its own item with BL-078 + BL-028 depending on it, and flags a follow-up wart: BL-083's budget-exhausted
   throw reads as `error`, consistent with the reply cap but arguably wrong — deliberately NOT touched.
+
+  ---
+
+  **✅ FIXED AND CLOSED 2026-08-07 — [[BL-084]] **T2** did it (`92282c2`; impl `a8f237e`).** This item's reopen
+  condition was *"BL-084 done (the typed reason), which is what makes safe propagation possible"* — met, and
+  acted on rather than merely noted. Plan: `design/bl084-t2-plan.md`, PO Gate-1 approved.
+
+  **An in-process agent that errors now DOES interrupt its team — for a fault, and only for a fault.** The
+  asymmetry this item documented is gone; the reason it was left in place is not, it is *encoded*. Every
+  condition the analysis above listed as **not a fault** — reply cap, relay budget, target unavailable,
+  workflow-gate refusal, planning-routing guard — still does **not** propagate, now by classification instead of
+  by the whole path being switched off.
+
+  **The narrowness is the design, not a shortfall.** Exactly one condition changed behaviour:
+  `conversation-start-failed` (the runtime refusing to start), which had been classified-but-never-set since T1
+  and whose throw site T2 finally wired. **An error carrying no reason is classified explicitly as
+  `driver-error-unclassified` — NON-fault** — so propagation switches on only where a fault was *positively
+  identified*. Defaulting the other way would have turned every unanticipated throw on a path that previously
+  propagated nothing into a team-wide kill: precisely the DoS-lever this item warned about.
+
+  **BL-083's wart is still untouched**, as this brief asked: `relay-budget-exhausted` is non-fault, so the
+  budget throw no longer *propagates*, but whether it should read as `error` at all remains open and is
+  deliberately out of T2's scope.
 
 <!-- @item
 id: BL-079
