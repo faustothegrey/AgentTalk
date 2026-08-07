@@ -4812,13 +4812,13 @@ autonomy: human-only
 
 <!-- @item
 id: BL-096
-status: todo
+status: done
 date: 2026-07-27
 epic: null
 tags: [operator, ladder, long-run, lb49, monitoring, o4-followup]
 autonomy: human-only
 -->
-- [todo · **the O-4 rung did not answer its own question** · `design/operator/o4-grading.md`] — **The long-run
+- [done · **CLOSED by the PO 2026-08-07** — two of three questions answered, the third reassigned · **the O-4 rung did not answer its own question** · `design/operator/o4-grading.md`] — **The long-run
   failure class is still untested, and O-4 must not be cited as evidence about it.** O-4 was built to observe an
   **abnormal termination** — a 30-minute cap firing mid-work — because in this project's whole history **no run
   has ever been interrupted**, so nobody knows whether commits survive one, whether the working tree is left
@@ -4889,6 +4889,40 @@ autonomy: human-only
   existed, and stood for nine days across a backlog gate without anyone running the suite it was talking about.
   **A backlog item asserting "X is untested" is a claim about state like any other — ground it before acting on
   it.** It cost nothing here only because the check was run before the build, not after.
+
+  ---
+
+  **✅ CLOSED by the PO, 2026-08-07 — two of the three questions answered, the third reassigned rather than
+  abandoned.**
+
+  | This item's original question | Answer |
+  |---|---|
+  | do **commits survive** an interruption? | **YES** — intact, tree clean, blob byte-identical |
+  | is the **working tree left coherent**? | **YES** at every phase — index survives, no abandoned `index.lock`, no half-written artifact |
+  | does **cleanup behave**? | **reassigned** — see below |
+
+  The first two were settled by the mid-work interruption harness (merged `28bc43b`, partial-closure block
+  above), which also pinned the `hmp5` split as a property: **the worker's own report is structurally lost while
+  the launcher's survives.** *Grade a killed run's artifact, never its report.*
+
+  **The third question was not dropped — it was split and its larger half is DONE.** *Cleanup* meant two
+  different things:
+  - **task-worktree teardown** — the per-run branch and stale registration leak. **Fixed and merged as
+    [[BL-103]]** (`9599642`), with the destructive path excluded by construction (`worktree remove` without
+    `--force`, `branch -d` never `-D`).
+  - **the operator's own `att-op-*` parent worktree** — still swept **by hand**, per
+    `design/launch-and-monitor-runbook.md` §8's TOTAL/PARTIAL distinction. That is a **human procedure**, not
+    code, and it has never misbehaved; there is nothing here to test.
+
+  **↩ Reopen condition — as a NEW item, not this one:** the operator's parent-worktree sweep should be
+  automated, or a hand-swept run leaves pollution that the invariant harness catches. That work has a clear
+  shape of its own and deserves its own bar; carrying it as a leftover clause on an item whose two headline
+  questions are answered would misdescribe both.
+
+  **The duration question this item opened with is also settled, and negatively:** wall-clock is now the **only**
+  terminating rail ([[BL-117]] demoted the meter), it is the only one ever *proven* to terminate, and since
+  [[BL-118]] it cascades to the provider CLI. Long-run *monitoring* — the other half O-4 conflated — was never
+  this item's to answer and remains untested.
 
   ---
 
@@ -6079,13 +6113,13 @@ autonomy: human-only
 
 <!-- @item
 id: BL-110
-status: todo
+status: done
 date: 2026-07-30
 epic: null
 tags: [hmp, hermes, operator, governance, origin-tags, relay, po-decision, remote-steering]
 autonomy: po-decision
 -->
-- [todo · **PO DECISION — an authority model, not a feature**] — **A bidirectional PO↔session channel over
+- [done · **CLOSED by the PO 2026-08-07** — steps 1–3 delivered, the `[PO-RELAY]` decision taken and encoded · **PO DECISION — an authority model, not a feature**] — **A bidirectional PO↔session channel over
   Hermes: feasible now, but it needs a tag that is not `[PO]`.**
 
   Asked by the PO 2026-07-30: *can I give instructions through Hermes?* Full design:
@@ -6214,6 +6248,37 @@ autonomy: po-decision
   **Zero effect on what an agent may be handed.** This item is `autonomy: po-decision`, and
   `selectableBacklogItems` (`backlog.ts:279`) requires `eligible` — so the selectable set stays `[]` and the
   [[BL-093]] guard stays green. Verified by running it after this edit, not asserted.
+
+  ---
+
+  **✅ CLOSED by the PO, 2026-08-07 — and the reason is that THIS ITEM WAS OVERSTATING WHAT REMAINED.**
+
+  Its own blocks above say *"Open and unchanged: the `[PO-RELAY]` authority decision"*, and flag that `AGENT.md`
+  still read *"push … the PO's, absolutely and without exception"*, **deliberately not amended** because
+  governance wording is the PO's. **Both were settled and encoded, in `AGENT.md`, dated 2026-07-31** — the same
+  day, shortly after those lines were written, and nobody came back to them:
+  - the **Origin Tag Protocol** now carries a `[PO-RELAY]` row **and a full Rule 5** — binding only as an answer
+    to a proposal the session itself minted, carrying that proposal's valid token, **never apex, cannot
+    initiate**, with the five refusal reasons named and `sha-moved` called out as load-bearing;
+  - the **OPERATOR charter** keeps *"Push remains the PO's, absolutely and without exception"* and follows it
+    with the paragraph reconciling it against relayed authorization.
+
+  So all three steps are delivered (`scripts/relay-inbox.mjs`, `relay-status.mjs`, `relay-approve.mjs`) and the
+  authority model is decided. There is nothing left in this item that is *this item's*.
+
+  **⛔ WHAT CLOSING IT DOES NOT MEAN — read this before citing it.** **The channel is not safe, and closing this
+  item changes that not at all.** An HMP message reaches **Hermes, an LLM holding a shell**; a sender who can
+  reach that port can run `propose` *and* `approve`, or simply `git push`. The token buys **integrity, not
+  authentication**: the right sha, no replay, fail-closed under [[BL-112]] corruption. **[[BL-107]] is the only
+  control against a deliberate attacker and it is PARKED, not fixed** (PO 2026-08-02: accepted-open,
+  internal-only, single-user). **No claim anywhere may read "the channel is secure."**
+
+  **Still fenced, and NOT loosened by this closure:** `READ_ONLY_VERBS` remains frozen at `status` · `report`;
+  `relay-inbox.mjs` still refuses `merge`/`push`. **Widening it is a governance act, not a refactor** — the
+  entire safety argument for running unauthenticated is that every relay-reachable verb is read-only.
+  **Deliberately NOT filed as a follow-up item** (same reasoning as [[BL-117]] and [[BL-119]] option (d): an
+  item nobody intends to pick up is noise). **↩ Reopen condition:** a write-class verb over HMP is actually
+  wanted — at which point it needs its own item, its own gate, and [[BL-107]] reconsidered first.
 
   ---
 
