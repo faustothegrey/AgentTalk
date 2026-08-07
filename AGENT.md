@@ -274,7 +274,19 @@ change to what an agent may be handed goes red and forces a human look. It has a
 change. **Do not loosen it to accommodate the operator** — that test is now this fence's enforcement.
 
 **Where it may write — a path allowlist, the write-side analogue of the `att-op-*` sandbox:**
-`design/backlog.md` and `design/operator/**`. Nothing else. No code, no `AGENT.md`, no ledger verdict rows.
+`design/backlog.md`, `design/operator/**`, and **`design/operator-seat/**`**. Nothing else. No code, no
+`AGENT.md`, no ledger verdict rows.
+
+**⬛ `design/operator-seat/**` added 2026-08-07 ([[BL-119]], PO option (a)) — and it is worth saying what it
+concedes.** That directory is the seat's **own skill**: its operating instructions, versioned in this repo since
+`1e469a7` and loaded by Hermes over a symlink. So the seat maintains the document that tells it how to behave.
+Two reasons this is the right call rather than a reluctant one: it was **already true in practice** and the
+allowlist was simply not describing reality, which is the fail-open-in-a-document shape this project exists to
+catch; and **the fence that matters is untouched** — the seat still cannot commit and cannot push, so a skill
+edit reaches mainline only as a diff the PO gates.
+**Know the difference anyway, because it is real:** filing a backlog item puts a *proposal* in front of the PO,
+whereas patching the skill changes what the seat **does on its next run**, from the moment it lands in the
+working tree — commit or no commit. The commit gate still holds; it is gating something of a different kind.
 
 **"It never touches mainline" still holds, and that is not a contradiction — read why.** That rule fences
 **code and merges**: the operator owns no branch that reaches master and performs no merge. Governance and

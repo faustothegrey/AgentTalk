@@ -6932,13 +6932,13 @@ autonomy: human-only
 
 <!-- @item
 id: BL-119
-status: todo
+status: done
 date: 2026-08-06
 epic: null
 tags: [operator, charter, governance, write-fence, allowlist, hermes, skill, bl087-followup]
 autonomy: po-decision
 -->
-- [todo · **observed 2026-08-06 while committing `1e469a7`** (versioning the operator-seat skill into the repo,
+- [done · **PO took option (a) 2026-08-07 — allowlist extended** · **observed 2026-08-06 while committing `1e469a7`** (versioning the operator-seat skill into the repo,
   done by the PO together with Hermes) · **PO decision — a charter question, not a bug**] — **The OPERATOR seat
   now has a verified write path to `design/operator-seat/`, which its charter's allowlist does not list — and
   what it writes there is its own operating instructions.**
@@ -6983,5 +6983,39 @@ autonomy: po-decision
   its own fence is an awkward shape even when the observation is correct. Recorded until now only in commit
   `1e469a7`'s message, which is not a tracked artifact. `autonomy: po-decision`: a charter amendment is the PO's
   alone.
+
+  ---
+
+  **✅ CLOSED — the PO took option (a) on 2026-08-07: `design/operator-seat/**` added to the allowlist.**
+  `AGENT.md`'s OPERATOR charter now names all three paths, and the amendment states what it concedes rather than
+  slipping it in: **the seat maintains the document that tells it how to behave.**
+
+  **Why (a) and not (b).** The write was **already happening** — the allowlist was simply not describing
+  reality, which is this project's recurring fail-open-in-a-document shape. And the fence that matters is
+  untouched: the seat still **cannot commit and cannot push**, so a skill edit reaches mainline only as a diff
+  the PO gates. Option (b) would have undone a mechanism just proven to work, for a bright line that the commit
+  gate already draws.
+
+  **The distinction is preserved in the charter rather than waved away:** filing an item puts a *proposal* in
+  front of the PO; patching the skill changes what the seat **does on its next run**, the moment it lands in the
+  working tree — commit or no commit. Same gate, different kind of thing being gated.
+
+  **Also corrected:** `scripts/infra-invariant.mjs`'s `DEFAULT_EXPECT` comment enumerated the old two-path list.
+  It now names all three **and** says plainly what that field does not do — it judges what a run *declared*
+  against what changed inside a snapshot/check bracket; it does **not** enforce the charter's allowlist.
+
+  **⚠️ WHAT THIS CLOSURE DOES NOT FIX — the residue, and it is the more interesting half.** Nothing enforces the
+  path allowlist, and nothing sees a write made **outside** a bracketed run — which is exactly how the seat
+  patches its own skill. `AGENT.md` already concedes this (*"behavioural, not enforced … it holds because the
+  holder observes it"*). So the charter still has **two fences of unequal strength**: `autonomy: eligible` is
+  pinned mechanically by `bl093-backlog-selectable.test.ts` and has gone red on real changes repeatedly; the
+  path allowlist is prose, and this gap surfaced only because a human happened to be committing the directory
+  and looked.
+
+  **Option (d) — teach the harness to diff writes against the allowlist — was NOT taken and is deliberately NOT
+  filed as a separate item**, on the same reasoning as [[BL-117]]'s option (d): an item nobody intends to pick
+  up is noise, and this closing block is a better record of the decision than a stale `todo`. **↩ Reopen
+  condition:** the operator's write fence is ever relied on as a *control* rather than a convention — or a write
+  outside the allowlist is discovered that nobody noticed at the time.
 
 *(add new items above this line)*

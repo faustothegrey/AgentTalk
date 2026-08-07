@@ -79,9 +79,16 @@ export const DEFAULT_EXPECT = {
   allowNewBranches: ['task-*'],
   allowPorts: [3600],
   allowProcesses: [],
-  // BL-097 — repo-relative paths the OPERATOR seat may lawfully write (charter amendment `7948ea4`:
-  // `design/backlog.md` + `design/operator/**`). Deliberately EMPTY by default, so it fails closed:
+  // BL-097 — repo-relative paths the OPERATOR seat may lawfully write. The charter's list is
+  // `design/backlog.md` + `design/operator/**` + `design/operator-seat/**` (the last added 2026-08-07,
+  // BL-119 option (a) — the seat's own skill). Deliberately EMPTY by default, so it fails closed:
   // with no declaration, every write is judged exactly as it was before this field existed.
+  //
+  // NOTE, so nobody reads more into this field than it does: it judges what a run DECLARED against
+  // what actually changed, inside a snapshot/check bracket. It does NOT enforce the charter's
+  // allowlist, and nothing does — see AGENT.md's own "behavioural, not enforced" concession. A write
+  // made outside a bracketed run is seen by nothing at all. That gap is BL-119's residue, recorded
+  // in its closing block as option (d) and deliberately not filed as a separate item.
   allowWritePaths: [],
 };
 
