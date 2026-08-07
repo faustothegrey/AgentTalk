@@ -246,7 +246,10 @@ describe('BL-084 T1 — typed error reason and fault-class propagation', () => {
       expect(handleAgentFailure).not.toHaveBeenCalled();
     });
 
-    it('in-process: a driver-path error still does NOT propagate in T1 (BL-077 semantics held)', async () => {
+    // ⬛ REWRITTEN BY T2, deliberately and with PO Gate-1 approval. This assertion existed to pin
+    // today's semantics "until that moment" (its own words, T1). This is that moment: a driver-path
+    // error whose cause is a positively-identified FAULT now propagates, which is the BL-078 fix.
+    it('in-process: a FAULT-class driver error now DOES propagate (BL-078 fixed by T2)', async () => {
       vi.mocked(apiClient.callApi).mockResolvedValue({
         text: 'unused',
         usage: { prompt_tokens: 1, completion_tokens: 1 },
@@ -266,9 +269,9 @@ describe('BL-084 T1 — typed error reason and fault-class propagation', () => {
       await vi.waitFor(() => expect(seen).toContain('error'), { timeout: 2000 });
 
       expect(agent.status).toBe('error');
-      // T1 leaves `notifyAgentStatus` alone (plan §3, property 3). THIS is the assertion T2
-      // deliberately rewrites — it exists to pin today's semantics until that moment.
-      expect(handleAgentFailure).not.toHaveBeenCalled();
+      // The runtime refusing to start is `conversation-start-failed` — fault-class since T1, and
+      // wired to its throw site by T2. Before T2 this path propagated NOTHING, for any cause.
+      expect(handleAgentFailure).toHaveBeenCalled();
     });
 
     it('a repeated error transition does not double-fire propagation (oldStatus guard intact)', async () => {

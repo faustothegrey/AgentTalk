@@ -59,6 +59,17 @@ const FAULT_CLASS_BY_REASON: Record<AgentErrorReason, boolean> = {
   'workflow-gate-refusal': false,
   'planning-task-inactive': false,
   'healthcheck-token-invalid': false,
+  // BL-084 T2 — an error reached the in-process catch-all carrying no reason of its own.
+  //
+  // ⚠️ NOTE THE TWO DIFFERENT "UNKNOWNS", because they point opposite ways ON PURPOSE:
+  //   · `isFaultClass(undefined)` is TRUE  — the guard below, protecting call sites not yet
+  //     migrated to a typed reason. Migration can only ever REMOVE propagation, never add it.
+  //   · `driver-error-unclassified`  is FALSE — the in-process driver passes this EXPLICITLY.
+  // That path propagated nothing before T2, so defaulting its surprises to fault would newly kill
+  // teams for unanticipated throws. Unlabelled by omission ⇒ keep today's behaviour; unlabelled
+  // BY NAME at a site we deliberately migrated ⇒ keep THAT site's today-behaviour, which is
+  // non-propagating. Both rules say the same thing: a surprise never changes what happens.
+  'driver-error-unclassified': false,
 };
 
 /**
@@ -294,6 +305,26 @@ export class Registry extends EventEmitter {
   notifyAgentStatus(agent: Agent, newStatus: AgentStatus): void {
     agent.setStatus(newStatus);
     this.emit('status', { id: agent.id, status: newStatus });
+  }
+
+  /**
+   * BL-084 T2 — the error-transition sibling of `notifyAgentStatus`, and the fix for [[BL-078]].
+   *
+   * A driver reporting an error goes through here rather than `notifyAgentStatus`, so the
+   * transition is judged by `isFaultClass` at the SAME single decision point every other error
+   * uses (`setAgentStatus`). Before this, an in-process agent that errored never interrupted its
+   * team — for ANY cause, including a genuine fault.
+   *
+   * Why a new method instead of widening `notifyAgentStatus`: that method's side-effect-free
+   * contract is exactly right for `starting`/`ready`/`busy`, which must never propagate, and
+   * those are most of its call sites. This adds a door; it does not move a wall.
+   *
+   * The reason is REQUIRED — the caller must have classified. The in-process catch-all cannot know
+   * its cause, so it passes `driver-error-unclassified` explicitly (non-fault). See the note in
+   * FAULT_CLASS_BY_REASON on why that default points the opposite way to `isFaultClass(undefined)`.
+   */
+  reportAgentError(agent: Agent, reason: AgentErrorReason): void {
+    this.setAgentStatus(agent, 'error', reason);
   }
 
   /**
