@@ -164,7 +164,7 @@ export const DISPOSITIONS_PATH = 'design/operator-dispositions.json';
  * `kind` alone would have cleared the class forever and turned this mechanism into a blindfold.
  */
 export function fingerprintFinding(f) {
-  const material = [f?.severity ?? '', f?.kind ?? '', f?.repo ?? '', f?.detail ?? ''].join(' ');
+  const material = [f?.severity ?? '', f?.kind ?? '', f?.repo ?? '', f?.detail ?? ''].join('\0');
   return crypto.createHash('sha256').update(material).digest('hex').slice(0, 12);
 }
 

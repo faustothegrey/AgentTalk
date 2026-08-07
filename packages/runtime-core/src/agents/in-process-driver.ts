@@ -108,7 +108,13 @@ export class InProcessAgentDriver {
         } else if (turn.messageId) {
           this.agent.currentTurnId = turn.messageId as string;
         }
-        
+
+        // BL-028 T3a — the obligation clock starts when the turn is DELIVERED. The attached path
+        // stamps this at its own `await_turn`; this is the in-process sibling. Subsequent progress
+        // is stamped for both transports at the `handleMcpToolCall` chokepoint, which this driver
+        // also calls for its own actions.
+        this.agent.lastProgressAt = Date.now();
+
         this.registry.notifyAgentStatus(this.agent, 'busy');
         await this.handleTurn(turn as unknown as ConversationEvent);
         if (this.isRunning && this.agent.status === 'busy') {

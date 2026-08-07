@@ -115,6 +115,59 @@ export function reasonOf(err: unknown): AgentErrorReason {
   return err instanceof AgentReasonedError ? err.reason : 'driver-error-unclassified';
 }
 
+// BL-028 T3a — why a peer did not reply.
+//
+// A SIBLING of `AgentErrorReason`, deliberately NOT merged into it. That union answers "is this
+// the agent's fault?", which is the only question M03 propagation asks. This one answers "why did
+// a peer not reply?", whose consumer is the sender. They overlap (`errored`, `exited`) and diverge
+// (`receiver-cancelled` is not an error cause; a workflow-gate refusal is not a non-reply), and
+// `design/bl084-plan.md` §0 rejected conflating them once already. Vocabulary: LB-67 Finding 1.
+//
+// ⚠️ T3a EMITS EXACTLY ONE OF THESE — `quiet` — AND IT IS ADVISORY. Nothing branches on it and
+// nothing dies of it. The other six are NAMED here and UNWIRED, in the same way T1 named
+// `conversation-start-failed` with nothing setting it until T2. **A name in this union is not a
+// claim that the condition is detected.** T3b is what wires the rest; T3c is the only unit that
+// may ever escalate one into an `AgentErrorReason`, and it is separately gated.
+//
+// `quiet` is advisory BY DEFINITION, not by our timidity: it means "we have heard nothing", which
+// is exactly what a working agent mid-turn also looks like. LB-67 records that our own prior art
+// demoted this signal for that reason and replaced it with transport presence. Treating silence as
+// authority is the mistake this vocabulary exists to make un-writable.
+export type AgentNonReplyReason =
+  // The receiver's turn ended without a reply — the primary, accurate signal.
+  | 'turn-ended'
+  // The receiver's process died. Definitive for this run.
+  | 'exited'
+  // Long silence, and nothing more. ADVISORY — the receiver may still be mid-turn.
+  | 'quiet'
+  // A human stopped the turn. The thread stays open.
+  | 'user-stopped'
+  // The receiver hit a rate limit or API error.
+  | 'errored'
+  // The receiver is blocked on a human. NOT A FAILURE — killing a team for this is the
+  // specific accident BL-028 exists to avoid.
+  | 'awaiting-input'
+  // The message was dropped undelivered and the thread closed. Re-sending it is a bug.
+  | 'receiver-cancelled';
+
+/**
+ * BL-028 T3a — the advisory the idle sweep emits.
+ *
+ * Carried on the Registry's EventEmitter surface (`agent_non_reply`), NOT as a protocol packet:
+ * `verify-contract.js` hashes `{mcpTools, packetTypes, protocolPrefix}` and `mcp-server.ts`
+ * rejects a mismatch on binary hash equality (LB-66), so a new EVT would break every attached
+ * client until both repos shipped in lockstep. A type-only add here does not move that hash.
+ */
+export interface AgentNonReplyNotice {
+  agentId: string;
+  reason: AgentNonReplyReason;
+  /** How long the agent had been silent when observed. The measurement T3c's threshold needs. */
+  silentForMs: number;
+  /** The outstanding obligation — the turn somebody is waiting on. */
+  turnId: string;
+  observedAt: string;
+}
+
 // 'persistent' is the canonical name for a long-lived agent process that handles
 // many turns over one session. 'interactive' is a deprecated alias kept for
 // backward compatibility with saved recordings and older clients.
