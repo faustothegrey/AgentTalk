@@ -1,10 +1,9 @@
 ---
 role: planner
-key: 20260806-1600-4d9a2e
-written: 2026-08-06 by Claude — session close. A backlog gate, then six items closed: BL-096 re-scoped,
-  BL-114/117/118 (the meter cap), BL-109, BL-100, BL-103; BL-098 + BL-112 PARKED; BL-119, BL-110, BL-096 CLOSED by the PO. TWO todos
-  remain and EVERY ONE needs the PO.
-  Three times this session an item's description of the code did not survive contact with the code.
+key: 20260807-0930-8f1c73
+written: 2026-08-07 by Claude — session close. A backlog gate, then TEN items closed and two parked. The
+  engine changed: an in-process agent that errors now interrupts its team (BL-084 T2 / BL-078). ONE todo
+  remains — BL-028 — unblocked, actionable, and needing a plan before anyone touches it.
 ---
 
 This is your session primer.
@@ -22,87 +21,104 @@ Conditional Reassignment ACTIVE** (you may implement). Hermes holds the **OPERAT
 monitors, no authority, and its reports are *observations*, unverified until you check the artifact.
 
 **Workflow / source of truth.** `design/collaboration-workflow.md` + `design/backlog.md` + `AGENT.md`. **Closed
-items carry a closing block + telemetry inside the backlog item — read those first.** Resume from the backlog,
-**NOT from chat**.
+items carry a closing block + telemetry — read those first.** Resume from the backlog, **NOT from chat**.
 
-## Where we are — the queue is empty AND every open item is PO-gated
+## Where we are
 
-**Verified at the moment of writing, not remembered:** both repos **pushed and in sync** · clean · **no
-worktrees but the two primaries, `master` only in both** · AgentTalk `tsc -b` clean, suite **703/703 (83
-files)** · client lint clean, contract v8, suite **139/139 (24 files)** · **agent-selectable set: EMPTY**.
+**Verified at the moment of writing:** both repos **pushed and in sync** · **no worktrees but the two primaries,
+`master` only in both** · AgentTalk `tsc -b` **0**, suite **711/711 (84 files)** · client lint clean, contract
+**v8**, suite **139/139 (24 files)** · **agent-selectable set: EMPTY**.
 
-Ask the instruments rather than trusting that paragraph — it will rot:
+Ask the instruments rather than trusting that paragraph:
 
 ```
 npx vitest run apps/orchestrator/src/__tests__/bl093-backlog-selectable.test.ts
 ```
 
-**Two todos remain — BL-084 and BL-028 behind it — and NEITHER is startable by you alone.** That is the state, not a gap:
+**Backlog: ONE todo, 26 deferred, 91 done.**
 
-| Item | Why it is not yours | Recommendation put to the PO 2026-08-06 (undecided at close) |
-|---|---|---|
-| BL-084 | T2 is a real behaviour change on `registry.ts` + `team-coordinator.ts`; its own plan says land T1, then **re-gate**. PO go-ahead. | **Do it** — the only item that unblocks others (BL-028 **and** BL-078). Rider: keep BL-028 `todo`, it is scheduled work behind a live blocker, not abandoned. |
-| BL-028 | `blocked_by: [BL-084]`. Genuinely blocked, not parked. | — follows BL-084 |
+**⚠️ ONE UNCOMMITTED CHANGE IS WAITING, and it is not yours to commit.** `design/operator-seat/SKILL.md` carries
+a one-line edit **written by Hermes** through the write path [[BL-119]] legitimised on 2026-08-07 — a pointer
+correction (`symlinked-skills` → `skill-repo-hosting`). It behaved exactly as the charter designs: written only
+inside its allowlist, **not committed**, left as a diff for the PO to gate. **Leave it for the PO.** A dirty
+tree at handover is deliberate here, not an oversight.
 
-**✅ FIVE of the seven were DECIDED on 2026-08-07. BL-110 and BL-096 CLOSED — read BL-110's closing block before citing it anywhere: closing it does NOT mean the relay channel is safe, [[BL-107]] is parked not fixed, and `READ_ONLY_VERBS` stays frozen at `status`/`report`. BL-096's third question was reassigned, not dropped: task-worktree teardown is BL-103 (done), the operator's own `att-op-*` sweep stays a human procedure and would be a NEW item. BL-119 CLOSED (PO took option (a): `design/operator-seat/**` is now in the charter's write allowlist; the residue — nothing *enforces* that allowlist, and nothing sees a write outside a bracketed run — is recorded in its closing block as an un-filed option (d) with a reopen condition). And two parked: the PO parked BL-098 (Linux `launchctl` — dormant on macOS,
-reopen on a Linux box) and BL-112 (relay excision — unchaseable, inside the PO's own Hermes install; reopen if
-a needed datum starts depending on surviving the courier). Read their park blocks before touching either:
-each records what the park does NOT license, and for BL-112 that rule is operative — never build a bar row, a
-grading step or a decision on a value that exists only in a relayed acknowledgement.**
+## The one open item — BL-028, and do NOT just implement it
 
-**Two more things were put to the PO and are also undecided:** a charter line pointing at BL-109's new
-dispositions mechanism (governance wording, PO's — offer to draft stands), and **relaying the drafted Hermes
-task** to correct the stale cap passages in `design/operator-seat/SKILL.md` (its runbook half is already done).
+**BL-028 is unblocked and actionable** (BL-084 closed 2026-08-07, PO option (a); `isResolved` released it with
+no edit to BL-028 itself). It is `human-only`, so it is **not** agent-selectable — that is its *autonomy*, not a
+blocker. Don't confuse the two.
 
-**Do not read an empty queue as permission to pick something, and never mark anything `eligible`.** Ask.
-**And do not treat the recommendations above as decisions** — they are one agent's opinion, recorded so the PO
-does not have to re-elicit them, and every one of them is still the PO's to take or reject.
+**It is the T3 the BL-084 arc always pointed at, and it is a BIGGER behaviour change than T2 was.** It makes the
+idle sweep **live** — code that has never executed. `lastProgressAt` is declared and read but **never written**,
+so `hasAgentTimedOut()` always returns false.
 
-## What closed, and the one thing worth carrying forward
+**The trap is already written into the taxonomy:** an agent paused `awaiting-input` (blocked on a human) is
+**observationally identical to a dead one**. Land the sweep alone and M03 kills a team for behaving correctly.
+`contracts/src/types.ts` says of the `idle-timeout` row, in terms: **"Do NOT flip it here"** — it is fault-class
+*only* to preserve today's behaviour, and BL-028 is the item that revisits it.
 
-Six items: **BL-096** (re-scoped, then its harness half delivered), **BL-114 / BL-117 / BL-118** (the meter-cap
-cluster), **BL-109**, **BL-100**, **BL-103**. Details are in their closing blocks; don't re-derive them here.
+**What it needs that does not exist yet:** the **sender-side non-reply reason** (LB-67 Finding 1 —
+`turn-ended · exited · quiet · user-stopped · errored · receiver-cancelled · awaiting-input`). That vocabulary
+answers *"why did a peer not reply?"*, a **different question** from the fault taxonomy T1 built (*"is this the
+agent's fault?"*) — `design/bl084-plan.md` §0 records why conflating them was rejected once already.
+**Plan it, take Gate 1, then implement.** `design/bl084-t2-plan.md` is the shape to copy.
 
-**The pattern that repeated three times, and it is the thing to internalise:**
+## What changed in the engine — read before touching failure paths
 
-1. **BL-096** recommended building a stalling-worker harness. It already existed and was green — shipped
-   **eleven days before the item was filed**. Caught only because scope was declared *before* building.
-2. **BL-114**'s prescribed fix ("reject instead of coercing") was **incomplete**, and applying it alone would
-   have been **worse than the bug**: the coercion lived in two places, and fixing one turns a rail that never
-   fires into one that kills instantly on the first real reading.
-3. **BL-109**'s fix sketch **contradicted itself** — it named a path inside the very write-fence it said to stay
-   out of.
+**An in-process agent that errors now interrupts its team.** For a fault, and only for a fault. Before
+2026-08-07 that path propagated **nothing**, for any cause.
+
+- Single decision point: `isFaultClass`, consulted in `setAgentStatus` (`registry.ts`).
+- Drivers report errors via **`Registry.reportAgentError(agent, reason)`** — new in T2. `notifyAgentStatus` is
+  unchanged and stays side-effect-free for `starting`/`ready`/`busy`.
+- **Two "unknowns" point OPPOSITE ways, on purpose, both pinned by tests:** `isFaultClass(undefined)` is
+  **true** (guards call sites not yet migrated); `'driver-error-unclassified'` is **false** (a migrated site
+  that cannot know its cause). Both say: **a surprise never changes what happens.**
+- Exactly one condition changed behaviour: `conversation-start-failed`.
+
+## The pattern this session kept hitting
+
+**Four times the backlog was wrong about the code**, in four different ways:
+
+1. **BL-096** recommended building a harness that already existed, green, shipped **eleven days before the item
+   was filed**.
+2. **BL-114**'s prescribed fix was **incomplete in a way that would have been worse than the bug** — the
+   coercion lived in two places, and fixing one turns a rail that never fires into one that kills instantly.
+3. **BL-109**'s fix sketch **contradicted itself** — it named a path inside the write-fence it said to avoid.
+4. **BL-110** listed as open a decision taken and encoded **the same day** those lines were written.
 
 **A backlog item's "fix direction" is a hypothesis, not a spec. Re-derive it from the code at implementation
-time, even when — especially when — the item hands you one.** All three cost minutes instead of a wasted
-delivery, and in each case the reason was the same: the check ran *before* the build, not after.
+time — especially when the item hands you one.** None cost more than minutes, always for the same reason: the
+check ran **before** the build.
 
 ## Op notes
 
-- **`cap.meter` no longer terminates anything** (PO chose BL-117 option (b)). `cap.wallClockMs` is the **only**
-  terminating rail, and since BL-118 it cascades to the provider CLI. `AGENT.md`'s charter and the runbook are
-  both amended; `design/operator/*-brief.md` and `*-bar-*.md` still say the old thing **and must stay that way**
-  — they are records of what was believed, and rewriting a pre-registered bar falsifies the audit trail. The
-  test is *"is this document acted on, or is it a record?"*, not *"is it stale?"*
-- **The budget risk is real, named, and now explicitly UNMITIGATED.** The demotion removed a bad instrument; it
-  did not solve the problem the instrument was pointed at. Do not let any doc imply otherwise.
-- **`design/operator-dispositions.json` is new** (BL-109): a PO disposition of a `critical` now has somewhere a
-  check can read. Read from **HEAD**, never the working tree — an uncommitted edit clears nothing.
-- **Stage explicitly in a worktree. Never `git add -A`** — `wt-setup` symlinks `node_modules` and it slips past
-  `.gitignore`. The tool prints this reminder; heed it.
-- **`$?` after a pipe is the LAST command's status.** An `EXIT: 0` from `node … | tail` told me a gating run had
-  passed when it had exited 1. Re-run unpiped before believing an exit code.
-- **Use `git -C <path>` for multi-repo work.** A persisted `cd` once pushed the wrong repo and reported
+- **`cap.meter` no longer terminates anything** (BL-117 option (b)). `cap.wallClockMs` is the **only**
+  terminating rail; since BL-118 it cascades to the provider CLI. Charter + runbook amended.
+  `design/operator/*-brief.md` and `*-bar-*.md` still say the old thing **and must stay that way** — records,
+  not operative docs. The test is *"is this acted on, or is it a record?"*, never *"is it stale?"*
+- **The budget risk is real, named, and explicitly UNMITIGATED.** The demotion removed a bad instrument; it did
+  not solve the problem. Let no doc imply otherwise.
+- **`design/operator-dispositions.json`** (BL-109): a PO disposition of a `critical` is read from **HEAD**,
+  never the working tree — an uncommitted edit clears nothing.
+- **Stage explicitly in a worktree. Never `git add -A`** — `wt-setup` symlinks `node_modules` past `.gitignore`.
+- **`$?` after a pipe is the LAST command's status.** An `EXIT: 0` from `node … | tail` hid a real exit 1.
+- **Never put backticks inside a double-quoted `git commit -m`** — the shell runs them. Use `-F -` + heredoc.
+- **`grep` returned silently empty on two large files** (`infra-invariant.mjs`, `registry.ts`) while `sed`/node
+  read them fine. If a search comes back empty on a file you expect to match, **verify with a second tool.**
+- **Use `git -C <path>` for multi-repo work.** A persisted `cd` once pushed the wrong repo and said
   "Everything up-to-date".
-- **Hermes has a drafted task waiting on the PO's relay** — correct the stale cap passages in
-  `design/operator-seat/SKILL.md` (its own write path). Its runbook half is already done.
-- **Budget at close:** claude weekly **9%**, session 32%. Six items, a gate, a charter amendment and a runbook
-  fix cost roughly **6% weekly** across the session.
+- **Still waiting on the PO:** a charter line pointing at BL-109's dispositions mechanism (offer to draft
+  stands); **relaying the drafted Hermes task** (its `SKILL.md` still teaches `cap-resource` as a live rail,
+  which is false — the runbook half is done); and Hermes's uncommitted one-liner above.
+- **Budget at close:** claude weekly **14%**, session 6%. The whole session — a gate, ten closures, an engine
+  change, two charter amendments — cost roughly **11% weekly**.
 
-## The through-line, if you read only one paragraph
+## The through-line
 
-**Ground every claim about the code in the code, including the claims written by people who had read it.** The
-backlog is this project's memory and it was wrong three times today in three different ways — stale, incomplete,
-self-contradictory. None of those were careless entries; two were written by someone looking straight at the
-source. What caught all three was the same cheap habit: state the scope, check it against reality, *then*
-build. The instruments are worth more than the notes about them.
+**Build the instrument so it can fail, then believe it when it does.** The `bl093` guard went red four times
+this session; every one was a real finding, none was loosened to make the session look tidy — and the last
+became a *stronger* assertion than the one it replaced. Pre-registered bars caught two mutations that would
+otherwise have shipped silently. And the backlog, this project's memory, was wrong four times in four different
+ways, each caught by the same cheap habit: **check before building, never after.**
