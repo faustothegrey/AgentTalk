@@ -13,6 +13,7 @@ import { serializeProtocolLine, type OutboundProtocolPacketType } from '../proto
 import type {
   AgentErrorReason,
   AgentExecutionMode,
+  AgentNonReplyNotice,
   AgentProvider,
   AgentStatus,
   AgentTransport,
@@ -171,6 +172,8 @@ export class Registry extends EventEmitter {
   private pendingRelays = new Map<string, PendingRelay>();
   /** BL-083 — relays delivered per ordered agent pair while NO conversation was active. */
   private uncappedRelayCounts = new Map<string, number>();
+  /** BL-028 T3a — agentId → the turn already reported `quiet`, so the 30s sweep says it once. */
+  private quietReported = new Map<string, string>();
   private pendingRelaySeq = 0;
 
   constructor(
@@ -473,6 +476,13 @@ export class Registry extends EventEmitter {
     this.emit('mcp_tool_call', { agentId, name, args });
     const agent = this.getAgent(agentId);
 
+    // BL-028 T3a — the single liveness chokepoint. Any tool call is evidence the agent is alive,
+    // and EVERY agent action arrives here on BOTH transports: attached clients over the socket,
+    // and the in-process driver, which calls this method for its own actions too
+    // (`in-process-driver.ts` submit_work_result / consensus_respond / send_to_agent). One write,
+    // total coverage — which is why the sweep does not need a per-transport notion of progress.
+    agent.lastProgressAt = Date.now();
+
     switch (name) {
       case 'list_agents': {
         const agentList = this.getAgents().map(a => ({
@@ -491,6 +501,11 @@ export class Registry extends EventEmitter {
         } else if (turn.messageId) {
           agent.currentTurnId = turn.messageId as string;
         }
+        // BL-028 T3a — re-stamp AFTER the await resolves. This call blocks until a turn exists,
+        // so the stamp taken at entry is the moment the agent STARTED WAITING, which can be
+        // arbitrarily long before the obligation was created. Without this line an agent handed a
+        // turn after four idle minutes would be reported quiet the instant it began working.
+        agent.lastProgressAt = Date.now();
         return { content: [{ type: 'text', text: JSON.stringify(turn) }] };
       }
 
@@ -844,40 +859,105 @@ export class Registry extends EventEmitter {
     return ack;
   }
 
-  private hasAgentTimedOut(agent: Agent): boolean {
-    if (agent.status !== 'busy') {
-      return false;
+  /**
+   * BL-028 T3a — how long this agent has been silent while somebody is waiting on it, or
+   * `undefined` if it is not a candidate at all.
+   *
+   * Renamed from `hasAgentTimedOut`, because the old name asserted the thing this change
+   * disproves: nothing here times out, and nothing here kills. It measures silence and says how
+   * much. The judgement of what silence MEANS is deliberately not made in this method.
+   */
+  private quietForMs(agent: Agent): number | undefined {
+    // ── The obligation gate (replaces `status === 'busy'`) ────────────────────────────────────
+    // `currentTurnId` is set when an assignment is DELIVERED — attached at `await_turn`,
+    // in-process in the driver loop — and cleared when the terminal action completes. So it means
+    // "somebody is waiting for this agent", which is the only condition under which silence is
+    // even interesting (LB-67 Finding 2: you are told a peer went quiet only if you were waiting).
+    //
+    // The old `status === 'busy'` gate was not merely narrow, it was UNREACHABLE on the attached
+    // transport: `setAgentBusyState`'s sole call site passes `false`, so an attached agent reaches
+    // `busy` only via the reconnect restore. The sweep could therefore never have seen the very
+    // transport whose hangs motivated BL-028, even after `lastProgressAt` started being written.
+    if (!agent.currentTurnId) {
+      return undefined;
+    }
+
+    // A terminal agent is not quiet, it is finished. Load-bearing rather than defensive: the clean
+    // -close (code 1000/1001/1005) and 1011 paths both return WITHOUT clearing `currentTurnId`, so
+    // without this a terminated agent would be reported silent forever.
+    if (agent.status === 'error' || agent.status === 'terminated') {
+      return undefined;
     }
 
     // Disable idle timeout while fact checking
     if (this.teamCoordinator.isAgentFactCollecting(agent.id)) {
-      return false;
+      return undefined;
     }
 
     // M08-T3: disable idle timeout for a worker whose task is paused awaiting the
     // operator (effect-fence). A paused-but-alive worker must not be flagged as
     // errored — that would trip the M03 kill, the opposite of "kill nobody".
+    //
+    // BL-028 T3a: both exemptions above are the `awaiting-input` case in all but name — an agent
+    // blocked on a human, which LB-67 Finding 1 records as "not a failure at all". T3b is what
+    // gives them that name; here they keep working exactly as they do today.
     if (this.teamCoordinator.isTaskAwaitingOperator(agent.id)) {
-      return false;
+      return undefined;
     }
 
     if (!agent.lastProgressAt) {
-      return false;
+      return undefined;
     }
 
-    return Date.now() - agent.lastProgressAt > this.config.agentIdleTimeoutMs;
+    const silentForMs = Date.now() - agent.lastProgressAt;
+    return silentForMs > this.config.agentIdleTimeoutMs ? silentForMs : undefined;
   }
 
+  /**
+   * BL-028 T3a — the sweep, live for the first time, and ADVISORY.
+   *
+   * It emits `agent_non_reply` and does nothing else. It does not set status, does not touch the
+   * readiness timeouts, and cannot reach `handleAgentFailure` — there is no path from here to
+   * `setAgentStatus` at all. That is the whole design: `quiet` means "we have heard nothing",
+   * which is also what a working agent mid-turn looks like, and a real coding CLI routinely
+   * exceeds the 180s default on one honest turn. Escalation needs a POSITIVE test (an
+   * unanswered healthcheck) and is T3c, gated separately.
+   *
+   * `idle-timeout` survives in the fault taxonomy with no caller — exactly as
+   * `conversation-start-failed` did between T1 and T2. T3c is what gives it one.
+   *
+   * Reported ONCE per obligation: the sweep runs every 30s, and re-emitting for the same silent
+   * turn would bury the signal in its own repetition. A fresh turn, or any progress, re-arms it.
+   */
   private checkIdleAgents(): void {
     for (const [id, agent] of this.agents) {
-      if (this.hasAgentTimedOut(agent)) {
-        console.error(`[Registry] Agent ${id} exceeded idle timeout (${this.config.agentIdleTimeoutMs}ms) while ${agent.status}`);
-        this.clearReadinessTimeout(id);
-        // BL-084 T1: fault-class purely to preserve today's decision. This sweep is dead code
-        // (`lastProgressAt` is never written — LB-70), so the label is unobservable today; it is
-        // BL-028's job to both revive the sweep and reclassify it. Not flipped here.
-        this.setAgentStatus(agent, 'error', 'idle-timeout');
+      const silentForMs = this.quietForMs(agent);
+
+      if (silentForMs === undefined) {
+        this.quietReported.delete(id);
+        continue;
       }
+
+      // `has` before comparing, deliberately. `get` returns `undefined` for an absent key, so a
+      // bare `get(id) === turnId` ALSO swallows the notice whenever `turnId` is itself undefined —
+      // and it silently suppressed the whole emission when the obligation gate above was mutated
+      // away. A dedup that hides the bug in the check it depends on is IP-15's shape, which is the
+      // defect this very item exists to retire. Caught by running the mutation, not by reading it.
+      const turnId = agent.currentTurnId!;
+      if (this.quietReported.has(id) && this.quietReported.get(id) === turnId) {
+        continue;
+      }
+      this.quietReported.set(id, turnId);
+
+      const notice: AgentNonReplyNotice = {
+        agentId: id,
+        reason: 'quiet',
+        silentForMs,
+        turnId,
+        observedAt: new Date().toISOString(),
+      };
+      console.warn(`[Registry] Agent ${id} has been silent for ${silentForMs}ms on turn ${turnId} (advisory; nothing is interrupted)`);
+      this.emit('agent_non_reply', notice);
     }
   }
 
