@@ -76,9 +76,44 @@ export type AgentNonFaultErrorReason =
   // Planning messages routed at a team whose planning task is not active — a routing guard.
   | 'planning-task-inactive'
   // An invalid or stale healthcheck token — usually just a late ack.
-  | 'healthcheck-token-invalid';
+  | 'healthcheck-token-invalid'
+  // BL-084 T2 — an error reached the in-process driver's catch-all carrying no reason of its own.
+  //
+  // This exists because that call site (`in-process-driver.ts`) catches EVERYTHING thrown by the
+  // turn loop, so it cannot know the cause. The safe default is the whole point: before T2 the
+  // in-process path propagated NOTHING, so defaulting an unlabelled throw to `fault` would have
+  // turned every unanticipated error into a team-wide kill — the largest blast radius available,
+  // and the same DoS-lever shape that makes `workflow-gate-refusal` and `unknown-mcp-tool`
+  // non-fault. Wrong in this direction a broken agent behaves exactly as it does today, which is
+  // a known and shipped state; wrong the other way a team dies for a surprise.
+  //
+  // It is NOT a hole in T1's type guarantee: the catch site passes this reason EXPLICITLY, so
+  // nothing is unclassified by omission — it is unclassified BY NAME, which is greppable, and
+  // counting it is how we learn which causes still deserve a reason of their own.
+  | 'driver-error-unclassified';
 
 export type AgentErrorReason = AgentFaultErrorReason | AgentNonFaultErrorReason;
+
+/**
+ * BL-084 T2 — an Error that carries its own `AgentErrorReason`.
+ *
+ * The in-process driver's error site is a catch-all, so the reason cannot be determined there; it
+ * has to travel with the throw. The alternative — matching on `err.message` — was rejected in the
+ * plan (§2): propagation must never depend on prose.
+ */
+export class AgentReasonedError extends Error {
+  readonly reason: AgentErrorReason;
+  constructor(reason: AgentErrorReason, message: string) {
+    super(message);
+    this.name = 'AgentReasonedError';
+    this.reason = reason;
+  }
+}
+
+/** The reason an error carries, or the explicit "we could not tell" default. */
+export function reasonOf(err: unknown): AgentErrorReason {
+  return err instanceof AgentReasonedError ? err.reason : 'driver-error-unclassified';
+}
 
 // 'persistent' is the canonical name for a long-lived agent process that handles
 // many turns over one session. 'interactive' is a deprecated alias kept for

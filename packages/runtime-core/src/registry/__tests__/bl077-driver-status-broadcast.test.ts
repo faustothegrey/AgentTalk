@@ -72,7 +72,7 @@ describe('BL-077 driver status transitions are broadcast', () => {
     expect(seen.indexOf('busy')).toBeLessThan(seen.lastIndexOf('ready'));
   });
 
-  it('D3: a driver-path error is announced but does NOT trigger failure propagation', async () => {
+  it('D3: a driver-path error is announced, and since T2 a fault-class cause also propagates', async () => {
     vi.mocked(apiClient.callApi).mockResolvedValue({
       text: 'unused',
       usage: { prompt_tokens: 1, completion_tokens: 1 },
@@ -80,9 +80,10 @@ describe('BL-077 driver status transitions are broadcast', () => {
 
     const agent = await createActiveAgent('bl077-b');
 
-    // M03 failure propagation must stay exactly as it was before BL-077. Routing the
-    // driver through `setAgentStatus` (rather than `notifyAgentStatus`) would have newly
-    // fired this — a behaviour change, deliberately NOT made.
+    // ⬛ AMENDED BY BL-084 T2 (PO Gate-1 approved). BL-077 deliberately did NOT make this
+    // behaviour change — it only made driver transitions visible to the UI. T2 makes it, but
+    // ONLY for a cause positively identified as a fault; the classification is what BL-077
+    // lacked and could not safely invent.
     const handleAgentFailure = vi.spyOn(
       (registry as unknown as { teamCoordinator: { handleAgentFailure: (id: string) => Promise<void> } })
         .teamCoordinator,
@@ -99,9 +100,10 @@ describe('BL-077 driver status transitions are broadcast', () => {
     agent.queueTurn({ type: 'conversation_start' });
     await vi.waitFor(() => expect(seen).toContain('error'), { timeout: 2000 });
 
-    // The UI is told about the error...
+    // The UI is told about the error (BL-077's contribution, unchanged)...
     expect(agent.status).toBe('error');
-    // ...but the engine's failure path is untouched.
-    expect(handleAgentFailure).not.toHaveBeenCalled();
+    // ...and since T2 a FAULT-class cause also reaches the engine. This one is
+    // `conversation-start-failed`; a non-fault cause still would not.
+    expect(handleAgentFailure).toHaveBeenCalled();
   });
 });

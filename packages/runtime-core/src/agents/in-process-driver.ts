@@ -4,6 +4,7 @@ import { WORKER_RESPONSE_INSTRUCTIONS, WORKTREE_CONTEXT, buildProtocolToolSchema
 import { createConversationRuntime, type ConversationEvent } from '../conversations/runtime.js';
 import type { Registry } from '../registry/registry.js';
 import { McpError } from './completer.js';
+import { AgentReasonedError, reasonOf } from '@agenttalk/contracts/types';
 import { type Completer, type ApiProvider, ApiCompleter } from '@agenttalk/llm-client';
 
 export const DEFAULT_WORKER_TURN_TIMEOUT_MS = 600_000;
@@ -117,9 +118,13 @@ export class InProcessAgentDriver {
         console.error(`[InProcessAgentDriver ${this.agent.id}] error:`, err);
         if (this.isRunning) {
           if (this.agent.status !== 'error' && this.agent.status !== 'terminated') {
-            // BL-077: notifyAgentStatus, NOT setAgentStatus — the UI learns about the
-            // error, and failure propagation stays exactly as it was (see registry.ts).
-            this.registry.notifyAgentStatus(this.agent, 'error');
+            // BL-084 T2 (was BL-077: notifyAgentStatus, deliberately non-propagating).
+            // The transition is now CLASSIFIED and judged by isFaultClass at the single
+            // decision point. This site is a catch-all and cannot know its cause, so
+            // `reasonOf` yields `driver-error-unclassified` (NON-fault) unless the throw
+            // carried a reason of its own — which makes T2 strictly additive: propagation
+            // switches on only where a fault was positively identified.
+            this.registry.reportAgentError(this.agent, reasonOf(err));
           }
           break; // Stop the loop on error to avoid infinite crash loops
         }
@@ -131,7 +136,12 @@ export class InProcessAgentDriver {
     if (evt.type === 'conversation_start') {
       const res = this.runtime.startConversation(evt, (msg) => this.agent.queueTurn(msg as Record<string, unknown>, true));
       if (!res.ok) {
-        throw new Error(`Failed to start conversation: ${res.error}`);
+        // BL-084 T2: the one fault this path can positively identify. The name has been in the
+        // taxonomy since T1 (contracts/types.ts) with nothing setting it — this is that site.
+        throw new AgentReasonedError(
+          "conversation-start-failed",
+          `Failed to start conversation: ${res.error}`,
+        );
       }
       return;
     }
