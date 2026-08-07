@@ -999,7 +999,7 @@ export class Registry extends EventEmitter {
 
   /** BL-083 — ordered pair: A→B and B→A are budgeted separately. */
   private relayPairKey(fromAgentId: string, toAgentId: string): string {
-    return `${fromAgentId} ${toAgentId}`;
+    return `${fromAgentId}\0${toAgentId}`;
   }
 
   /**
@@ -1011,7 +1011,7 @@ export class Registry extends EventEmitter {
    * driver-revival list would let a change there silently move this ceiling's semantics.
    */
   private resetRelayBudgetFrom(agentId: string): void {
-    const prefix = `${agentId} `;
+    const prefix = `${agentId}\0`;
     for (const key of this.uncappedRelayCounts.keys()) {
       if (key.startsWith(prefix)) this.uncappedRelayCounts.delete(key);
     }
