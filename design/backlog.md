@@ -965,13 +965,13 @@ tags: [self-hosting, relay, human-in-the-loop, program]
 
 <!-- @item
 id: BL-120
-status: todo
+status: done
 date: 2026-08-07
 epic: null
-tags: [engine, dead-code, registry, status, bl028-followup, investigation, operator-rung]
-autonomy: eligible
+tags: [engine, dead-code, registry, status, bl028-followup, investigation, operator-rung, agent-delivered, hmp-commissioned]
 -->
-- [todo · **filed 2026-08-07 while implementing [[BL-028]] T3a; PO-directed as the next operator rung**] —
+- [done · **MERGED 2026-08-07 (`fcbc5a1`) — delivered autonomously on operator run `hmp6`; closing block at the
+  end** · filed 2026-08-07 while implementing [[BL-028]] T3a; PO-directed as the operator-loop rung] —
   **`setAgentBusyState(agent, true)` is unreachable, so an attached agent's status never says `busy`.** The
   method (`registry.ts:822-833`) has exactly **one** call site — `registry.ts:548`, the `send_to_agent`
   `to === 'user'` branch — and it passes **`false`**. So the `true` branch, and with it
@@ -983,9 +983,13 @@ autonomy: eligible
   stale on filing.** They were read *before* BL-028 T3a landed and written *after* it, so they were ~15 lines
   short from the moment this item existed. Caught by the operator at hmp6 pre-flight, verifying the premise in
   the code instead of quoting the item. **Verify the symbols, not the line numbers** — this file drifts.
-  **Consequences, both real but neither urgent:** the UI cannot show an attached agent as working (it reads
-  `status`/`sessionStatus`), and the pre-T3a idle sweep gated on `status === 'busy'`, which is why it could
-  never have seen an attached agent — the finding that reshaped [[BL-028]]'s fix.
+  **⛔ BOTH "consequences" ORIGINALLY LISTED HERE WERE REFUTED BY THE RUN THIS ITEM COMMISSIONED.** They read:
+  *"the UI cannot show an attached agent as working"* and *"the pre-T3a idle sweep … could never have seen an
+  attached agent."* **Neither is true.** The UI already renders `BUSY` (`AgentsView.tsx:139` — it reads
+  `status`, not `sessionStatus`), and an attached agent does reach `status === 'busy'`, because
+  `activateAgent` starts an `InProcessAgentDriver` for **both** transports. The premise that survives is
+  narrower and more interesting: **`sessionStatus` is a vestigial field — written at exactly two sites, read
+  by no component in either repo, with `'busy'`, `'restarting'` and `'error'` ALL unreachable.**
   **Why this is an INVESTIGATION and not a fix:** wiring the `true` branch is a behaviour change on shared
   status logic. `busy` is read by the conversation coordinator (`conversation-coordinator.ts:41`), the team
   coordinator (`team-coordinator.ts:233`), `ALLOWED_TRANSITIONS` (`agents/agent.ts:17-25`) and the reconnect
@@ -998,6 +1002,32 @@ autonomy: eligible
   reader inventory does not meet it.
   **Harmless if botched**, which is why it is the rung: it changes nothing, and a wrong recommendation is
   caught by the gate that reads it. Origin: `design/bl028-plan.md` §9 q4.
+
+  **✅ DONE — MERGED 2026-08-07 (`fcbc5a1`; worker commit `0f7eb6a`) — delivered by a worker commissioned over
+  HMP on run `hmp6`, the sixth rung and the first where the operator listed the queue itself.** Deliverable:
+  `design/bl120-attached-busy-investigation.md` (280 lines). **Graded PASS** against the pre-registered bar
+  (`design/operator/hmp6-bar.md`, sha256 `8d8e98d1…48476`, unedited): R1 deliverable ✅ · **R2 reader inventory
+  — 21 `agent.status` readers + 9 `sessionStatus`, per reader, with the sweep method published so the
+  exhaustiveness claim is checkable, and four items honestly recorded as undetermined** ✅ · R3 recommendation
+  consistent ✅ · R4 scope held, one file, no code ✅. Rows B3/B4/A1/A9/A17 were re-verified by the grader
+  rather than accepted.
+  **Recommendation: O2 — delete the unreachable branch and correct the record; do NOT wire it.** Wiring
+  changes nothing observable (the net effect is one WebSocket frame the UI drops and one REST field nothing
+  reads) while placing a second `busy` producer next to `ArbiterCoordinator`'s strict `=== 'ready'` gate and a
+  transition table that **throws** — with precedent: an escaped `Invalid transition: terminated -> busy` once
+  killed the orchestrator process (M17 G3-4, [[BL-020]]). **O2 is not done here** and needs its own gate.
+  **The run's real product was a refutation of the item that commissioned it** — see the ⛔ block above. Also
+  flagged, not fixed: `apps/web/src/api/types.ts:46` types `sessionStatus` with `'reconnecting'` where the
+  contract says `'restarting'`.
+  **Telemetry (hmp6):**
+  - task:        BL-120 (operator run `hmp6`)
+  - wall-clock:  12:05:10Z → 12:14:44Z (**9m34s**) against a 60-min `cap.wallClockMs`; neither rail fired
+  - budget:      claude weekly 20%→21% (Δ ~1%). *Session read 65%→13% is the 5h window rolling over at 13:49
+                 local between the two samples, not an instrument fault — resolved, not left open.*
+  - gate:        tsc 0, suite 722/722 (86 files), bar hash unedited, harness `check` 1 critical (the
+                 verifier's OWN launch-ledger write — operator-side, PO to dispose)
+  - diff:        1 file, +280; worker `0f7eb6a`, merge `fcbc5a1`
+  - outcome:     MERGED ✅ · PASS
 
 <!-- @item
 id: BL-085
@@ -2166,13 +2196,19 @@ autonomy: human-only
 
   **⚠️ 2026-08-07 — T3a MERGED (`f6c7655`), and the "doubly dead" diagnosis above is INCOMPLETE — read this
   before planning T3b/T3c.** Plan: `design/bl028-plan.md` (PO ratified the three-phase shape; T3c still open).
-  **There was a THIRD deadness, and it inverts this item's fix sketch:** on the **attached** transport an agent
-  essentially never reaches `status === 'busy'` — `setAgentBusyState`'s sole call site (`registry.ts:533`)
-  passes `false`, so its `true` branch is unreachable, and `await_turn` sets `currentTurnId` while leaving the
-  status alone. **So writing `lastProgressAt` — the headline fix above — would have revived the sweep for
-  in-process agents ONLY, missing the wedged-CLI case this item is actually about.** The gate is now
-  `currentTurnId` ("somebody is waiting on this agent"), which is transport-neutral. *The fix direction written
-  above was a hypothesis; the code disagreed.*
+  **⛔ THE PARAGRAPH THAT STOOD HERE IS RETRACTED (2026-08-07, same day) — it claimed a "THIRD deadness":
+  that on the attached transport an agent essentially never reaches `status === 'busy'`, so writing
+  `lastProgressAt` would have revived the sweep for in-process agents only. THAT WAS FALSE.**
+  `activateAgent` (`registry.ts:377`) starts an `InProcessAgentDriver` for **both** transports — only the
+  `Completer` differs — and that driver sets `busy` on every turn it pulls (`in-process-driver.ts:118`). An
+  attached agent goes `ready → busy` with **no disconnect**; reproduced by live probe twice. The error was
+  reading a **file name** as a statement of scope. **This item's original "doubly dead" diagnosis was correct;
+  my correction to it was the mistake.** Refuted by the hmp6 run investigating [[BL-120]] — an item that
+  paragraph produced. Evidence: `design/bl120-attached-busy-investigation.md` §2.2; retraction in
+  `design/bl028-plan.md` §2.
+  **What still stands:** the gate T3a shipped is `currentTurnId` ("an obligation is outstanding"), which is a
+  sharper question than "is this agent busy" and is the one the sweep asks. It was **argued from a false
+  premise, not built on one** — no behaviour is affected, and no assertion changed.
   **What T3a does NOT do — do not read the merge as closing the item.** The sweep is **advisory**: it emits
   `agent_non_reply` (`reason: 'quiet'`) and has **no path to `setAgentStatus` at all**. `idle-timeout` keeps its
   fault-class row **with no caller**, exactly as `conversation-start-failed` did between BL-084 T1 and T2.

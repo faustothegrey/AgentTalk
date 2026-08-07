@@ -28,7 +28,35 @@
 Verified with `node` line-scans, not `grep` — `grep` under-reported on `registry.ts` twice during this session
 (the standing op-note; it silently missed `setAgentBusyState` at `:533`/`:807`).
 
-## 2. ⛔ The finding that changes the fix — the sweep is **triply** dead, and the third deadness inverts the item
+## 2. ⛔⛔ RETRACTED 2026-08-07 — THIS SECTION'S CENTRAL CLAIM IS FALSE
+
+> **Read this before §2, and do not cite §2 as evidence for anything.** The "third deadness" below —
+> *"on the attached transport, `Agent.status` essentially never becomes `'busy'`"* — **is wrong.**
+>
+> `activateAgent` (`registry.ts:377`) starts an `InProcessAgentDriver` for **both** transports; only the
+> `Completer` differs (`ApiCompleter` vs `McpCompleter`). That driver calls `notifyAgentStatus(agent, 'busy')`
+> on every turn it pulls (`in-process-driver.ts:118`). **An attached agent goes `ready → busy` with no
+> disconnect involved** — reproduced by live probe twice, independently. The proof table below lists
+> `in-process-driver.ts:112` as *"in-process only"*, and that row is the error: **I read a FILE NAME as a
+> statement of scope instead of reading the call site.** `registry.ts:742` says the opposite in plain words —
+> *"`apiDrivers` holds drivers for the attached transport too."*
+>
+> **What survives, and it is narrower:** `setAgentBusyState`'s `true` branch really is unreachable, so
+> **`sessionStatus`** never becomes `'busy'` — along with `'restarting'` and `'error'`, all three unreachable.
+> The real defect is a vestigial field written twice and read by nobody.
+>
+> **What this does NOT retract:** the `currentTurnId` gate T3a shipped. *"An obligation is outstanding"* is a
+> sharper question than *"is this agent busy"* and is the one the sweep asks. It was **argued from a false
+> premise, not built on one** — the behaviour is right for a reason this section failed to state.
+>
+> **Also false, in the same breath:** *"writing `lastProgressAt` alone would have revived the sweep for
+> in-process agents ONLY"*. It would have covered attached agents too. **The item's original "doubly dead"
+> diagnosis was correct and my correction to it was the error.**
+>
+> Refuted by the worker on run **hmp6**, commissioned to investigate [[BL-120]] — an item this very section
+> produced. Full evidence: `design/bl120-attached-busy-investigation.md` §2.2.
+
+## 2. ~~The finding that changes the fix — the sweep is **triply** dead, and the third deadness inverts the item~~ *(RETRACTED — see above; kept as the record of the mistake)*
 
 The item calls the mechanism "doubly dead": `lastProgressAt` never written, and only `busy` agents swept. There
 is a **third**, and it is the one that matters:
