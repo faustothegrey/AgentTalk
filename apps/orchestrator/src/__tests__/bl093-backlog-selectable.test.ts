@@ -266,10 +266,23 @@ describe('the real backlog (design/backlog.md)', () => {
   //    `cap-resource` 14s after the worker committed complete work (see BL-117). The delivery was still
   //    graded on the artifact, by running it on the merge commit. A cap kill says nothing about whether
   //    the work was done — `completed` was never the verdict here, and neither is `failed`.
-  it('offers nothing — the queue emptied when BL-105 closed 2026-08-02', () => {
+  // 2026-08-07 — REFILLED, and the red was shown to the PO before this line moved. The PO marked
+  // **BL-120** eligible to reach a specific goal: the operator listing open work, the PO authorizing
+  // one item, and a session launched and reported back — the loop end to end, with a real subject.
+  //
+  // BL-120 was chosen on the same O-1 instinct that picked BL-104: one function
+  // (`setAgentBusyState`'s `true` branch is unreachable), an obvious bar (a reader inventory, per
+  // reader, or an honest "could not determine"), and it is scoped as an INVESTIGATION that changes
+  // no code — so a botched attempt is harmless by construction, not by hope. It is also on the
+  // critical path rather than makework: BL-028 T3b cannot name `awaiting-input` against a status
+  // nobody has established the readers of.
+  //
+  // Exactly ONE item is selectable, and that is deliberate. A queue of one cannot be mis-picked,
+  // and the point of this rung is the loop, not throughput.
+  it('offers exactly BL-120 — the PO refilled the queue for the operator-loop rung', () => {
     const { items, warnings } = readBacklog();
     expect(warnings).toEqual([]);
-    expect(selectableBacklogItems(items).map((i) => i.id)).toEqual([]);
+    expect(selectableBacklogItems(items).map((i) => i.id)).toEqual(['BL-120']);
   });
 
   // 2026-08-07 — deliberately updated, and the red was shown to the PO first. BL-084 CLOSED (PO
@@ -289,7 +302,9 @@ describe('the real backlog (design/backlog.md)', () => {
     expect(byId.get('BL-028')!.blockedBy).toEqual(['BL-084']);   // dependency unchanged
     expect(byId.get('BL-084')!.status).toBe('done');              // …and now resolved
     expect(byId.get('BL-028')!.autonomy).toBe('human-only');      // what still holds it back
-    expect(selectableBacklogItems(items).map((i) => i.id)).toEqual([]);
+    // BL-120's arrival does not change BL-028's standing — that is the point of asserting the
+    // whole set here rather than just "BL-028 is absent from it".
+    expect(selectableBacklogItems(items).map((i) => i.id)).toEqual(['BL-120']);
   });
 
   it('marks BL-086 as the PO decision it is', () => {

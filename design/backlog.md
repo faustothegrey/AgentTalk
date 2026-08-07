@@ -964,6 +964,38 @@ tags: [self-hosting, relay, human-in-the-loop, program]
 ### Todo (next first)
 
 <!-- @item
+id: BL-120
+status: todo
+date: 2026-08-07
+epic: null
+tags: [engine, dead-code, registry, status, bl028-followup, investigation, operator-rung]
+autonomy: eligible
+-->
+- [todo · **filed 2026-08-07 while implementing [[BL-028]] T3a; PO-directed as the next operator rung**] —
+  **`setAgentBusyState(agent, true)` is unreachable, so an attached agent's status never says `busy`.** The
+  method (`registry.ts:807-818`) has exactly **one** call site — `registry.ts:533`, the `send_to_agent`
+  `to === 'user'` branch — and it passes **`false`**. So the `true` branch, and with it
+  `updateAgentSessionStatus(agent, 'busy')`, cannot execute. An attached agent pulls its turn through
+  `await_turn`, which sets `currentTurnId` and leaves the status alone: it is `ready` for the entire time it
+  works. The only route to `busy` on that transport is the reconnect restore (`registry.ts:1287`), i.e. only
+  after a disconnect.
+  **Consequences, both real but neither urgent:** the UI cannot show an attached agent as working (it reads
+  `status`/`sessionStatus`), and the pre-T3a idle sweep gated on `status === 'busy'`, which is why it could
+  never have seen an attached agent — the finding that reshaped [[BL-028]]'s fix.
+  **Why this is an INVESTIGATION and not a fix:** wiring the `true` branch is a behaviour change on shared
+  status logic. `busy` is read by the conversation coordinator (`conversation-coordinator.ts:41`), the team
+  coordinator (`team-coordinator.ts:233`), `ALLOWED_TRANSITIONS` (`agents/agent.ts:17-25`) and the reconnect
+  restore, and `setAgentStatus` transitions are what M03 propagation hangs off. **Nobody has established what
+  else would move.** Deliver a design document weighing the options and recommending one, with reasons;
+  **change no code.** T3b needs this answered before it can name `awaiting-input` against a real status.
+  **Deliverable:** `design/bl120-attached-busy-investigation.md`, committed to the task branch.
+  **Bar:** the document identifies every production reader of `busy`/`sessionStatus` and says, per reader, what
+  changes if the branch is wired — or states plainly which it could not determine. A recommendation with no
+  reader inventory does not meet it.
+  **Harmless if botched**, which is why it is the rung: it changes nothing, and a wrong recommendation is
+  caught by the gate that reads it. Origin: `design/bl028-plan.md` §9 q4.
+
+<!-- @item
 id: BL-085
 status: done
 date: 2026-07-27
