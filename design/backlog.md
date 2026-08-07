@@ -3499,13 +3499,13 @@ autonomy: po-decision
 
 <!-- @item
 id: BL-084
-status: todo
+status: done
 date: 2026-07-27
 epic: null
 tags: [engine, failure-propagation, m03, typed-reason, lb67, unblocks-bl078, unblocks-bl028, needs-plan]
 autonomy: human-only
 -->
-- [todo · **filed 2026-07-27 by PO decision, out of the [[BL-078]] decision brief
+- [done · **CLOSED 2026-08-07 — PO took option (a): T1 + T2 were this item's deliverables; T3 was always [[BL-028]]** · originally: **filed 2026-07-27 by PO decision, out of the [[BL-078]] decision brief
   (`design/bl078-decision.md` §5c)** · **unblocks [[BL-078]] AND [[BL-028]]** — both are the same missing
   primitive seen from two directions] — **Give an agent's non-reply a TYPED REASON, and propagate M03 failure
   only for the fault-class ones.** Today `error` is **one undifferentiated bucket**: the system cannot tell
@@ -3571,13 +3571,18 @@ autonomy: human-only
   "unknowns" pointing opposite ways on purpose, both pinned by tests. Both say the same thing: *a surprise never
   changes what happens.*
 
-  **⚠️ STRUCTURAL NOTE FOR THE PO — T3 and [[BL-028]] are the SAME WORK, and that makes the current statuses
-  circular.** This item stays `todo` because T3 is unlanded; BL-028 carries `blocked_by: [BL-084]`. So BL-028
-  can never unblock while BL-084 waits on the work that *is* BL-028. **Two clean ways out, and it is the PO's
-  call which:** (a) close BL-084 now — T1 and T2 are its own deliverables, T3 was always BL-028 — and let
-  BL-028 stand on its own; or (b) keep them coupled and drop BL-028's `blocked_by`. **Deliberately not re-cut
-  here:** re-cutting a blocker is a sequencing act with a live consequence, and the gate discipline this
-  session has used is to surface it rather than quietly fix it.
+  **⬛ RESOLVED — the PO took option (a) on 2026-08-07, and this item is CLOSED.** T3 and [[BL-028]] were the
+  same work, which made the statuses circular: this item stayed `todo` for T3 while BL-028 was `blocked_by`
+  this item, so BL-028 could never unblock. **T1 and T2 were this item's deliverables and both landed; T3 was
+  always BL-028's own work.**
+
+  **Nothing was re-cut to achieve it, which is the neat part.** `isResolved` (`apps/orchestrator/src/backlog.ts`)
+  counts only `done`/`dropped` as resolving a blocker — so closing this item **releases BL-028's `blocked_by`
+  by itself**, with no edit to BL-028 at all. The dependency was always expressed correctly; it was the
+  *status* that was wrong.
+
+  **BL-028 does NOT become agent-selectable** — it is `autonomy: human-only`, so the [[BL-093]] guard is
+  unmoved. Verified by running it, not asserted.
 
   **⬛ CORRECTION 2026-07-30 — this entry previously said plan §4's `unknown-mcp-tool` row was "still the PO's
   unratified call". THAT WAS STALE.** The PO ratified it **2026-07-27**, *reversing* the plan's own proposal

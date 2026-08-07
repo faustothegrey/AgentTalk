@@ -272,11 +272,24 @@ describe('the real backlog (design/backlog.md)', () => {
     expect(selectableBacklogItems(items).map((i) => i.id)).toEqual([]);
   });
 
-  it('holds BL-028 back behind BL-084, which is still open', () => {
+  // 2026-08-07 — deliberately updated, and the red was shown to the PO first. BL-084 CLOSED (PO
+  // took option (a): T1 + T2 were its deliverables, T3 was always BL-028), so the assertion that
+  // it is `todo` is false by decision, not by drift.
+  //
+  // The dependency itself was never wrong and is unchanged. What this now pins is the RELEASE
+  // mechanism: closing a blocker resolves it with no edit to the blocked item, because isResolved
+  // counts only done/dropped. That is a stronger bar than the one it replaces.
+  //
+  // And the distinction that matters: BL-028 is now UNBLOCKED but still NOT selectable — because
+  // it is `human-only`, not because anything holds it. Those are different reasons and a future
+  // reader must not confuse them.
+  it('releases BL-028 now that BL-084 is closed — unblocked, but still not agent-selectable', () => {
     const { items } = readBacklog();
     const byId = new Map(items.map((i) => [i.id, i]));
-    expect(byId.get('BL-028')!.blockedBy).toEqual(['BL-084']);
-    expect(byId.get('BL-084')!.status).toBe('todo');
+    expect(byId.get('BL-028')!.blockedBy).toEqual(['BL-084']);   // dependency unchanged
+    expect(byId.get('BL-084')!.status).toBe('done');              // …and now resolved
+    expect(byId.get('BL-028')!.autonomy).toBe('human-only');      // what still holds it back
+    expect(selectableBacklogItems(items).map((i) => i.id)).toEqual([]);
   });
 
   it('marks BL-086 as the PO decision it is', () => {
