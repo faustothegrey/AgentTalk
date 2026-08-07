@@ -9,11 +9,20 @@ import type { AgentNonReplyNotice } from '@agenttalk/contracts/types';
  * written nowhere (LB-70), so `hasAgentTimedOut()` always returned false. The item called that
  * "doubly dead" — the second deadness being that only `busy` agents were swept.
  *
- * There was a THIRD, and it is the one these tests are built around: on the ATTACHED transport an
- * agent essentially never reaches `status === 'busy'`, because `setAgentBusyState`'s only call
- * site passes `false`. So writing `lastProgressAt` — the item's headline fix — would have revived
- * the sweep for in-process agents ONLY, missing the very transport whose hangs motivated the item.
- * `attached agent, ready throughout` below is that finding as an executable claim.
+ * ⛔ CORRECTION 2026-08-07 ([[BL-120]], hmp6). This header claimed a THIRD deadness — that an
+ * attached agent "essentially never reaches `status === 'busy'`", so the item's headline fix would
+ * have revived the sweep for in-process agents ONLY. **THAT WAS FALSE.** `activateAgent` starts an
+ * `InProcessAgentDriver` for BOTH transports (only the `Completer` differs), and that driver sets
+ * `busy` on every turn it pulls: an attached agent goes `ready → busy` with no disconnect. It came
+ * from reading a FILE NAME as a statement of scope. What is true is narrower:
+ * `setAgentBusyState`'s `true` branch is unreachable, so `sessionStatus` never becomes `'busy'`.
+ *
+ * **The tests below are unaffected, and it is worth being precise about why.** They pin the
+ * `currentTurnId` gate, which is right for its own reason — "an obligation is outstanding" is the
+ * question the sweep asks, and it is sharper than "is this agent busy". What changes is only the
+ * ARGUMENT for it, not the behaviour under it. B1 still holds: an agent sitting at `ready` with an
+ * outstanding turn must be reported, and the old gate would miss it — that window is real on both
+ * transports, it is simply not the whole transport.
  *
  * The other half is what the sweep is allowed to DO. `quiet` means "we have heard nothing", which
  * is also what a working agent mid-turn looks like — a real coding CLI routinely spends longer
@@ -78,8 +87,12 @@ describe('BL-028 T3a — the idle sweep is live and advisory', () => {
     vi.advanceTimersByTime(IDLE_MS + SWEEP_MS);
   }
 
-  // ── B1 — the §2 finding, as a bar. Fails on the pre-T3a code. ──────────────────────────────
-  it('B1 · reports an ATTACHED agent that never became `busy` (mutation: restore the busy gate)', async () => {
+  // ── B1 — an agent at `ready` with an outstanding turn. Fails on the pre-T3a code. ───────────
+  // Renamed 2026-08-07: was "reports an ATTACHED agent that never became `busy`", which asserted
+  // the claim BL-120 refuted. The BAR is unchanged and still real — an agent can hold an
+  // outstanding turn while its status reads `ready`, and the old gate could not see that window.
+  // What was wrong was calling the window a whole transport.
+  it('B1 · reports an agent at `ready` holding an outstanding turn (mutation: restore the busy gate)', async () => {
     const agent = await agentWithOutstandingTurn('attached-1');
     expect(agent.status).toBe('ready'); // the state the old gate could not see
 

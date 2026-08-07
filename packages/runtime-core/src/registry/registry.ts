@@ -874,10 +874,23 @@ export class Registry extends EventEmitter {
     // "somebody is waiting for this agent", which is the only condition under which silence is
     // even interesting (LB-67 Finding 2: you are told a peer went quiet only if you were waiting).
     //
-    // The old `status === 'busy'` gate was not merely narrow, it was UNREACHABLE on the attached
-    // transport: `setAgentBusyState`'s sole call site passes `false`, so an attached agent reaches
-    // `busy` only via the reconnect restore. The sweep could therefore never have seen the very
-    // transport whose hangs motivated BL-028, even after `lastProgressAt` started being written.
+    // ⛔ CORRECTION 2026-08-07 ([[BL-120]], delivered by the hmp6 run). This comment previously
+    // claimed the old `status === 'busy'` gate was "UNREACHABLE on the attached transport", so the
+    // sweep "could never have seen the very transport whose hangs motivated BL-028".
+    // **THAT WAS FALSE.** `activateAgent` (`:377`) starts an `InProcessAgentDriver` for BOTH
+    // transports — only the `Completer` differs — and that driver calls
+    // `notifyAgentStatus(agent, 'busy')` on every turn it pulls (`in-process-driver.ts:118`). An
+    // attached agent goes `ready → busy` with no disconnect involved; reproduced by live probe,
+    // independently, twice. The error came from reading a FILE NAME (`in-process-driver.ts`) as a
+    // statement of scope instead of reading the call site — which `:742` describes correctly:
+    // "apiDrivers holds drivers for the attached transport too".
+    //
+    // What IS true, and all that ever was: `setAgentBusyState`'s `true` branch is unreachable, so
+    // `sessionStatus` never becomes `'busy'`. See `design/bl120-attached-busy-investigation.md`.
+    //
+    // The gate below is UNAFFECTED and stands on its own merit: `currentTurnId` means "an
+    // obligation is outstanding", a sharper question than "is this agent busy" and the one the
+    // sweep actually asks. It was simply argued from a false premise.
     if (!agent.currentTurnId) {
       return undefined;
     }
