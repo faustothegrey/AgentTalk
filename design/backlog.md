@@ -5030,13 +5030,13 @@ autonomy: human-only
 
 <!-- @item
 id: BL-098
-status: todo
+status: deferred
 date: 2026-07-28
 epic: null
 tags: [infrastructure, portability, linux, harness, operator-seat, bl087-followup]
 autonomy: human-only
 -->
-- [todo · filed 2026-07-28 while surveying the machine move (`PORTING.md` §8) · **found by reading, not by
+- [deferred · **PARKED by the PO 2026-08-07 — reopen: work resumes on a Linux box** · filed 2026-07-28 while surveying the machine move (`PORTING.md` §8) · **found by reading, not by
   running — nobody has yet run this harness on Linux**] — **On Linux nothing can ever be classified
   `LEGITIMATE`, because the only source of that evidence is `launchctl`.**
 
@@ -5098,6 +5098,26 @@ autonomy: human-only
   `AGENTTALK_SWEEP_DECLARED` cannot rescue the standalone sweep, because declaring a port only helps a process
   that was *seen* — and there, none ever is. Fix BL-099 first, or the "manual declaration on every run"
   mitigation is silently a no-op for one of the two callers.
+
+  ---
+
+  **⬛ PARKED BY THE PO, 2026-08-07. Nothing above is retracted — the defect is real, confirmed by running, and
+  unchanged.** It is parked because it **cannot be worked from the machine we are on.**
+
+  The dev box moved back to **macOS** on 2026-07-30, where `launchctl` is present. So on this machine the defect
+  **cannot fire, cannot be reproduced, and cannot be verified** — and this item's own text already ruled out the
+  alternative: *"Needs a Linux box to verify — this item cannot be closed from macOS, and it should not be closed
+  on reasoning alone."* An item that can neither progress nor be tested is parked, not open.
+
+  **↩ REOPEN CONDITION: work resumes on a Linux box** — or the operator is ever run anywhere but this Mac.
+
+  **⚠️ Read this before assuming the park is cheap.** The moment it reopens it is not cosmetic: it turns a
+  should-be-silent gate into a **manual declaration on every single run**, and a gate that always needs
+  hand-waving is a gate people learn to wave through. The Linux evidence recorded above is the **only** real run
+  this harness has ever had off macOS; do not let the park make it look like a hypothesis again.
+  **Still true and not fixed by parking:** the `launchctl` failure is **silent** (`managedPids()`'s empty catch
+  claims "Loud, not silent" and prints nothing), and [[BL-099]] means `AGENTTALK_SWEEP_DECLARED` is a no-op for
+  one of the two callers.
 
 <!-- @item
 id: BL-099
@@ -6297,13 +6317,13 @@ autonomy: human-only
 
 <!-- @item
 id: BL-112
-status: todo
+status: deferred
 date: 2026-07-30
 epic: null
 tags: [hmp, hermes, relay, fidelity, operator, bl110-followup]
 autonomy: human-only
 -->
-- [todo · found grading the first HMP-commissioned run ([[BL-110]]/hmp1)] — **The HMP relay silently excises a
+- [deferred · **PARKED by the PO 2026-08-07 — reopen: a datum we need starts depending on surviving the courier** · found grading the first HMP-commissioned run ([[BL-110]]/hmp1)] — **The HMP relay silently excises a
   specific literal string from replies, deterministically.**
 
   The commission acknowledgement prints `artifact: <recording path>`. It arrived **empty twice**, while the
@@ -6331,6 +6351,29 @@ autonomy: human-only
   **Fix direction:** do not "work around" it by renaming the file. Either find the excision rule in the Hermes
   install, or make the acknowledgement carry no data that is not independently derivable — and prefer the second
   regardless, since it holds even if the rule is never found.
+
+  ---
+
+  **⬛ PARKED BY THE PO, 2026-08-07. The characterisation above stands in full** — four probes, deterministic,
+  mid-string excision of one specific literal while every other path passes intact. **Parked for two reasons,
+  and the second is the stronger one:**
+
+  1. **It is unchaseable from here.** The mechanism is inside the PO's own Hermes install (`~/.hermes/**`,
+     read-only to us). There is no experiment left that this side of the wall can run.
+  2. **Its own preferred fix is already the practice.** The item says to prefer *"make the acknowledgement carry
+     no data that is not independently derivable … regardless, since it holds even if the rule is never
+     found"* — and that is how commissions already work: the artifact path is derived from the **committed
+     config**, not from anything that has to survive the courier. So the design already tolerates the defect.
+
+  **↩ REOPEN CONDITION: a datum we actually need starts depending on surviving the courier.**
+
+  **What the park does NOT license.** The defect is still live, and the reason it was worth filing is unchanged:
+  **a channel that silently drops a value is worse than one that errors** — the reply looked complete both
+  times, and only checking the artifact caught it. So: **never build a bar row, a grading step, or a decision on
+  a value that only exists in a relayed acknowledgement.** That rule is the mitigation; the park assumes it is
+  being followed.
+  Worth keeping for whoever reopens this: the first two hypotheses — *"the courier isn't byte-faithful"* and
+  *"it's my code"* — were **both wrong**, and the probe table is the only reason that was caught.
 
 <!-- @item
 id: BL-113
