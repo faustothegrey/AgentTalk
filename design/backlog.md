@@ -2128,6 +2128,33 @@ autonomy: human-only
   (BL-078) can land alone. **Do the typed reason once, in BL-084; then this item and BL-078 both close on top of
   it.** Status left `todo` rather than `deferred` — a PO call, worth making at the next backlog gate.
 
+  **⚠️ 2026-08-07 — T3a MERGED (`f6c7655`), and the "doubly dead" diagnosis above is INCOMPLETE — read this
+  before planning T3b/T3c.** Plan: `design/bl028-plan.md` (PO ratified the three-phase shape; T3c still open).
+  **There was a THIRD deadness, and it inverts this item's fix sketch:** on the **attached** transport an agent
+  essentially never reaches `status === 'busy'` — `setAgentBusyState`'s sole call site (`registry.ts:533`)
+  passes `false`, so its `true` branch is unreachable, and `await_turn` sets `currentTurnId` while leaving the
+  status alone. **So writing `lastProgressAt` — the headline fix above — would have revived the sweep for
+  in-process agents ONLY, missing the wedged-CLI case this item is actually about.** The gate is now
+  `currentTurnId` ("somebody is waiting on this agent"), which is transport-neutral. *The fix direction written
+  above was a hypothesis; the code disagreed.*
+  **What T3a does NOT do — do not read the merge as closing the item.** The sweep is **advisory**: it emits
+  `agent_non_reply` (`reason: 'quiet'`) and has **no path to `setAgentStatus` at all**. `idle-timeout` keeps its
+  fault-class row **with no caller**, exactly as `conversation-start-failed` did between BL-084 T1 and T2.
+  **Nothing detects a hung agent yet** — T3a makes silence *visible*, deliberately not fatal, because `quiet` is
+  also what a working agent mid-turn looks like and a real CLI routinely exceeds the 180s default on one honest
+  turn (LB-67 Finding 1: our own prior art demoted this exact signal to advisory). **Remaining: T3b** — the
+  non-reply vocabulary, whose seven names now exist in `contracts/types.ts` but are **unwired**; a name there is
+  *not* a claim the condition is detected — **and T3c**, escalation via an unanswered healthcheck (a *positive*
+  test, separately gated). **PO decision §9 q2 is still open: should the sweep ever kill at all?**
+  **Telemetry (T3a delivery):**
+  - task:        BL-028 T3a
+  - wall-clock:  2026-08-07 10:12 → 11:07 (~55m, including the plan)
+  - budget:      weekly 16%→17% (Δ ~1%), session 24%→41% (Δ ~17%)
+  - gate:        tsc 0, suite 722/722 (86 files; baseline 711/711 / 84 recorded before any edit), wire contract
+                 v8 verified + client alignment, pollution clean, `team-coordinator.ts` 0-line diff
+  - diff:        6 files, +419/-18; commits `67ca156` `a935c53`, merge `f6c7655`
+  - outcome:     MERGED ✅ — item stays `todo` (1 of 3 phases)
+
 <!-- @item
 id: BL-029
 status: deferred
