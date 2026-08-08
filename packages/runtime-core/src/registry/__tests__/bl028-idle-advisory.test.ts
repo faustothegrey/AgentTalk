@@ -16,6 +16,9 @@ import type { AgentNonReplyNotice } from '@agenttalk/contracts/types';
  * `busy` on every turn it pulls: an attached agent goes `ready → busy` with no disconnect. It came
  * from reading a FILE NAME as a statement of scope. What is true is narrower:
  * `setAgentBusyState`'s `true` branch is unreachable, so `sessionStatus` never becomes `'busy'`.
+ * (BL-121 has since DELETED that branch and renamed the helper `markAgentIdle`, proving the
+ * deletion unobservable at the event level — `bl121-idle-helper-parity.test.ts`. The sentence above
+ * is left standing as the record of the correction; it describes code that no longer exists.)
  *
  * **The tests below are unaffected, and it is worth being precise about why.** They pin the
  * `currentTurnId` gate, which is right for its own reason — "an obligation is outstanding" is the

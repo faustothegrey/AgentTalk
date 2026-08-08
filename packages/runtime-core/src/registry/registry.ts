@@ -545,7 +545,7 @@ export class Registry extends EventEmitter {
         }
 
         if (to === 'user') {
-          this.setAgentBusyState(agent, false);
+          this.markAgentIdle(agent);
           this.emit('user_message', { from: agent.id, payload });
           this.markTerminalActionComplete(agent);
           return { content: [{ type: 'text', text: 'Message sent to user successfully' }] };
@@ -819,15 +819,34 @@ export class Registry extends EventEmitter {
     return `msg-${Date.now()}-${this.outboundMessageSeq}`;
   }
 
-  private setAgentBusyState(agent: Agent, busy: boolean): void {
-    this.updateAgentSessionStatus(agent, busy ? 'busy' : 'ready');
+  /**
+   * BL-121 — the agent has finished its turn and reported back to the user.
+   *
+   * Renamed from `setAgentBusyState(agent, busy: boolean)`, whose `busy === true` branch was
+   * UNREACHABLE: the method had exactly one call site (`send_to_agent`, `to === 'user'`) and it
+   * passed `false`. Deleting that branch is observably a no-op — there was no input that reached
+   * it — and the parity bar in `bl121-idle-helper-parity.test.ts` proves it at the event level
+   * rather than by inspection, on both a `busy` and a `ready` agent.
+   *
+   * ⛔ DO NOT re-add the `busy` half as a "missing symmetry". This helper deliberately does not
+   * produce `busy`, and nothing is missing. `busy` has exactly two real producers, both elsewhere:
+   * the driver, on every turn it pulls (`in-process-driver.ts` — `notifyAgentStatus(agent, 'busy')`,
+   * for BOTH transports), and the reconnect restore below. Adding a third here would put a `busy`
+   * producer next to `ArbiterCoordinator`'s strict `=== 'ready'` convergence gate and a transition
+   * table that THROWS — an escaped `Invalid transition: terminated -> busy` once killed the
+   * orchestrator process (M17 G3-4, [[BL-020]]). It would buy nothing in return: `sessionStatus`
+   * is read by no component in either repo. Reasoning: `design/bl120-attached-busy-investigation.md`.
+   *
+   * The name matters more than it looks, and `markAgentIdle` is chosen to be unmisreadable:
+   * marking idle is all this does. `setAgentBusyState` announced a capability this code does
+   * not have, and that name is what led a reviewer to assume a `busy` producer lived here and
+   * reason outward from it — producing a false claim that reached a plan, a code comment, two test
+   * sites and two backlog items before anyone checked it against a running system.
+   */
+  private markAgentIdle(agent: Agent): void {
+    this.updateAgentSessionStatus(agent, 'ready');
 
-    if (busy && agent.status === 'ready') {
-      this.setAgentStatus(agent, 'busy');
-      return;
-    }
-
-    if (!busy && agent.status === 'busy') {
+    if (agent.status === 'busy') {
       this.setAgentStatus(agent, 'ready');
     }
   }
@@ -885,8 +904,10 @@ export class Registry extends EventEmitter {
     // statement of scope instead of reading the call site — which `:742` describes correctly:
     // "apiDrivers holds drivers for the attached transport too".
     //
-    // What IS true, and all that ever was: `setAgentBusyState`'s `true` branch is unreachable, so
+    // What IS true, and all that ever was: `setAgentBusyState`'s `true` branch was unreachable, so
     // `sessionStatus` never becomes `'busy'`. See `design/bl120-attached-busy-investigation.md`.
+    // That branch is now GONE (BL-121) and the helper is `markAgentIdle`; the sentence above is
+    // kept in the past tense because it is the correction's own history, not a live claim.
     //
     // The gate below is UNAFFECTED and stands on its own merit: `currentTurnId` means "an
     // obligation is outstanding", a sharper question than "is this agent busy" and the one the
