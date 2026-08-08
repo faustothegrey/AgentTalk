@@ -177,6 +177,17 @@ which is itself an argument for shipping it and looking, rather than reasoning a
 4. **`exited`/`errored` as T3b-2** — want it filed now, or left until the vocabulary has a reader and we can see
    whether the notices are worth more producers?
 
+## 8b. PO answers — 2026-08-08 `[PO]`
+
+1. **D2 → (i) name-and-report. APPROVED.** B5's behaviour contract may change: the two exemptions emit
+   `agent_non_reply` with `reason: 'awaiting-input'`, and still propagate nothing.
+2. **D3 → D3b. APPROVED** — `recorder.record` + `broadcast` in `server.ts`, plus one `case` arm in `App.tsx`.
+   The deviation from §5's literal text is accepted; bar **C8** is in scope.
+3. q3 (is T3b the last phase?) and q4 (`exited`/`errored` as T3b-2) — **left open**, not blocking. Revisit at
+   T3b's close, when the notices have a reader and we can see whether more producers earn their keep.
+
+**Gate 1 is now fully cleared. Implementation may start.**
+
 ## 9. Gate 1 — plan review (Claude as plan reviewer, 2026-08-08)
 
 Reviewed under the resource-scarcity fallback: I planned it and I reviewed it, which is **not** the independence
