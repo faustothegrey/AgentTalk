@@ -34,6 +34,20 @@
       "sandbox": "att-op-hmp5",
       "configPath": "/var/folders/n1/j_ypbbz157z8sch3ytfy31y00000gn/T/hmp-hmp5-1785664860634.config.json",
       "at": "2026-08-02T10:01:00.635Z"
+    },
+    {
+      "run": "hmp6",
+      "repoSha": "2946e6f4936a11f9bad3f5f22b5303665581ebe1",
+      "sandbox": "att-op-hmp6",
+      "configPath": "/var/folders/n1/j_ypbbz157z8sch3ytfy31y00000gn/T/hmp-hmp6-1786104310508.config.json",
+      "at": "2026-08-07T12:05:10.509Z"
+    },
+    {
+      "run": "hmp7",
+      "repoSha": "c792a18f32ff3e230c42457d72034be5efde1906",
+      "sandbox": "att-op-hmp7",
+      "configPath": "/var/folders/n1/j_ypbbz157z8sch3ytfy31y00000gn/T/hmp-hmp7-1786172426575.config.json",
+      "at": "2026-08-08T07:00:26.577Z"
     }
   ],
   "failed": [
