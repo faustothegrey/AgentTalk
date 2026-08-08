@@ -965,14 +965,14 @@ tags: [self-hosting, relay, human-in-the-loop, program]
 
 <!-- @item
 id: BL-121
-status: todo
+status: done
 date: 2026-08-08
 epic: null
-tags: [engine, registry, dead-code, rename, bl120-followup, operator-rung, zero-behaviour-change]
-autonomy: eligible
+tags: [engine, registry, dead-code, rename, bl120-followup, operator-rung, zero-behaviour-change, agent-delivered, hmp-commissioned]
 -->
-- [todo · **PO-approved at Gate 1 2026-08-08 · plan: `design/bl121-o2-plan.md` · this is option O2 from
-  [[BL-120]]'s investigation, which was itself delivered autonomously on run `hmp6`**] —
+- [done · **MERGED 2026-08-08 — delivered autonomously on operator run `hmp7`, THE FIRST RUNG WHERE AN AGENT
+  CHANGED ENGINE CODE; closing block at the end** · PO-approved at Gate 1 2026-08-08 · plan:
+  `design/bl121-o2-plan.md` · option O2 from [[BL-120]]'s investigation, itself delivered on run `hmp6`] —
   **Delete the unreachable `busy` branch in `Registry`, and rename the helper to say what it actually does.**
   `setAgentBusyState(agent, busy: boolean)` has exactly **one** call site and it passes **`false`**, so the
   `busy === true` branch — and with it `updateAgentSessionStatus(agent, 'busy')` — can never execute.
@@ -1010,6 +1010,32 @@ autonomy: eligible
   `ArbiterCoordinator`'s strict `=== 'ready'` convergence gate and a transition table that **throws** — an
   escaped `Invalid transition: terminated -> busy` once killed the orchestrator process (M17 G3-4, [[BL-020]]).
   Full reasoning: `design/bl120-attached-busy-investigation.md` §5-6.
+
+  **✅ DONE — MERGED 2026-08-08 (worker commit `b2a3b67`) — run `hmp7`. Grading:
+  `design/operator/hmp7-grading.md`. PASS**, with **R4 disposed by the PO as a defective bar row**. 13m26s
+  against a 90-min cap; no rail fired; harness `check` byte-identical.
+  **R2 was re-derived by the grader, not accepted:** `registry.ts` reverted to the launch baseline and the
+  worker's **unmodified** parity file run against the pre-change code → **6 parity rows GREEN, 5 source rows
+  RED**; 11/11 green post-change. *The parity rows being green on the OLD tree is the proof the deletion is
+  unobservable* — red there would have meant the branch was reachable after all.
+  **R4 could not be met by any delivery:** it demanded the suite stay at 722/722 while R2 demanded a new test
+  file. Delta is exactly that file (733/733, 87); all 722 pre-existing tests pass, none removed or weakened.
+  **⚠️ Bar-writing correction for future rungs: never pin a fixed suite total on a rung that also requires a
+  new test. Write it as "no pre-existing test removed, skipped, or weakened; new tests permitted."**
+  **What the worker did beyond the bar:** flagged the R4 contradiction *itself* rather than passing quietly;
+  found a second one the grader had missed (B2's "no `'busy'` literal" vs the item's "only if it was `busy`" —
+  the read guard needs it); and left two stale references to the old symbol untouched as out of scope — right
+  on both counts, since both are records of past events, not live claims.
+  **Telemetry (hmp7):**
+  - task:        BL-121 (operator run `hmp7`)
+  - wall-clock:  07:00:26Z → 07:13:52Z (**13m26s**) against 90-min `cap.wallClockMs`
+  - budget:      claude weekly 24%→26% (Δ ~2%), session 12%→35%. **`cap-warning` fired at 07:12:32Z —
+                 80 SECONDS BEFORE COMPLETION.** Pre-[[BL-117]] that would have killed a complete, verified
+                 delivery, the hmp5 pattern exactly; the jump was not worker-attributable (the grader was on
+                 the same machine). **The demotion was correct and this run is the evidence.**
+  - gate:        tsc 0, suite 733/733 (87 files), bar hash unedited, harness check byte-identical
+  - diff:        3 files, +285/−10; worker `b2a3b67`
+  - outcome:     MERGED ✅ · PASS (R4 PO-disposed)
 
 <!-- @item
 id: BL-120
