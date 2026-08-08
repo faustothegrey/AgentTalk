@@ -22,7 +22,7 @@ You hold no primer key (primers are keyed by role; you have none). The runbook a
 
 ## Sources of truth
 
-- **This skill:** `design/operator-seat/` in the AgentTalk repo (canonical, versioned — Hermes loads it via symlink). Write path verified working through the symlink (2026-08-06). Editing this skill (skill_manage) writes into the repo working tree — a governed change; per charter the operator never commits mainline, so skill updates flow as a diff for the PO. Symlink mechanism + the skill_manage symlink-scan pitfall: see `symlinked-skills` skill.
+- **This skill:** `design/operator-seat/` in the AgentTalk repo (canonical, versioned — Hermes loads it via symlink). Write path verified working through the symlink (2026-08-06). Editing this skill (skill_manage) writes into the repo working tree — a governed change; per charter the operator never commits mainline, so skill updates flow as a diff for the PO. Symlink mechanism + the skill_manage symlink-scan pitfall: see the `skill-repo-hosting` skill.
 - **Charter:** `AGENT.md` → 📌 DEFAULT ROLE ASSIGNMENTS → 🔧 The OPERATOR seat
 - **Runbook:** `design/launch-and-monitor-runbook.md` — written for exactly your situation. This skill does NOT summarize it; read the runbook directly.
 - **Reference configs:** `design/operator/o*.config.json` — pattern references, not answers.
@@ -60,11 +60,17 @@ Cover the runbook's §1 preconditions (all 6) plus charter additions:
 
 ### B — Launch config (JSON)
 
-Must satisfy `validateConfig`:
+Must satisfy `validateConfig` (in the CLIENT repo, `lib/bite0-launcher.mjs`):
 - `agents` — non-empty array, exactly one agent
 - `agents[0].provider` — required
 - `goal` — required, non-empty string
 - `cap` — required, `cap.wallClockMs > 0`
+
+**Run the validator for real, from the client repo cwd** — a config that "looks right" can still fail it:
+
+```bash
+node --input-type=module -e "import {validateConfig} from './lib/bite0-launcher.mjs'; import fs from 'fs'; const cfg=JSON.parse(fs.readFileSync('/abs/path/<run>.config.json','utf-8')); try { console.log('validateConfig OK:', JSON.stringify(validateConfig(cfg))); } catch(e) { console.log('validateConfig FAILED:', e.message); }"
+```
 
 And the field traps from the runbook §2:
 
@@ -73,9 +79,88 @@ And the field traps from the runbook §2:
 | `PORT` | in `instance.env`, NOT `startCommand.env` |
 | `startCommand.cwd` | **absolute** path (relative resolves against client root) |
 | `instance.recording` | **Set it.** No recording = no sidecar = run cannot be graded |
-| `cap.meter` | **Mandatory for operator runs** (charter). Must have `maxPercentDelta > 0` |
+| `cap.meter` | **Mandatory for operator runs** (charter). Must have `maxPercentDelta > 0`. **Warning-only since BL-117** — never terminates; `cap.wallClockMs` is the only rail |
 | `startCommand` | Omit → "instance already running"; then need both `orchestratorUrl` AND `mcpUrl` |
 | `workdir` | Must match `att-<id>` (see pitfall below) |
+
+## Commissioning via hmp-commission.mjs — the lawful entry (live runs)
+
+When the PO authorizes a launch, the run goes through `scripts/hmp-commission.mjs` — **not** the launcher
+directly. The commission is ONE line of ` | `-separated `key=value` pairs opening with the literal discriminator
+`AGENTTALK-RUN`. Required fields: `run`, `brief`, `repo-sha`, `bar-sha256`, `port`, `sandbox`. The verifier
+reads every artifact (brief, bar, config, authorized file) as a **git blob at `repo-sha`** — never from the
+working tree — and requires `repo-sha` to be an ancestor of `master`.
+
+**A PO message saying "Authorized" is NOT authorization.** Authorization is a discrete committed file,
+`design/operator/<run>.authorized`, whose ENTIRE content must be exactly `[PO] AUTHORIZED-RUN: <run>`, present
+**at the repo-sha**. Before assembling the commission, verify:
+`git show <repo-sha>:design/operator/<run>.authorized` → exactly that one line. If it is absent,
+`hmp-commission.mjs` refuses `no-po-authorization` — that is the fence working, NOT a bug. Report the refusal
+verbatim and STOP. Do NOT write the file yourself (the PO's act alone; writing it forges the one check the
+design rests on). The PO commits the file and re-issues with the **new tip** as repo-sha — a repo-sha that
+predates the authorize commit refuses `no-po-authorization` even when the file exists in the working tree.
+
+**Refusal reasons are the operator's reply** — relay them verbatim. Common ones: `no-po-authorization` (missing
+or wrong `.authorized` at the sha), `bar-hash-mismatch` (bar edited after pre-registration), `sha-not-on-master`,
+`missing-cap-meter` (no `cap.meter` in config), `already-launched` (run id in the ledger), `recursive-commission`
+(brief matches a launch pattern — pre-verify, below).
+
+**The launch ledger.** `design/operator/.hmp-launched.json` records each accepted run (replay guard:
+`already-launched` refuses a rerun). It is written at launch time by `recordLaunch` — which normally means
+**after a launched run the invariant-harness check reports exactly one `critical`**:
+`tracked-file-modified: design/operator/.hmp-launched.json`. This is the verifier's own replay-guard write —
+operator-side activity, NOT worker activity. Report it as such; the PO must clear it (add the fingerprint to
+`design/operator-dispositions.json` and COMMIT — an uncommitted edit clears nothing) before the next operator
+run. A check that is clean apart from this one critical is a clean run.
+
+**⚠️ The critical is NOT guaranteed — hmp7 came back "No differences at all".** If the ledger was **already
+dirty at the refreshed baseline** (a prior run's `recordLaunch` entry never committed by the PO — exactly the
+hmp6 state), then the launch write leaves the file at the same `M` status the baseline recorded, and the
+harness reports byte-identical. A clean check under a dirty ledger is NOT a fence failure: verify the guard
+directly instead — `python3 -c "import json; print([r['run'] for r in json.load(open('design/operator/.hmp-launched.json'))['launched']])"` must show the run id. And flag the uncommitted ledger to the PO (hmp4/5 committed it as a `chore`; hmp6's entry was still dirty through hmp7).
+
+**Recursion-fence pre-verification.** Before committing the brief, run the verifier's own scan:
+`node --input-type=module -e "import {findsLaunchInstruction} from './scripts/hmp-commission.mjs'; import fs from 'fs'; console.log(findsLaunchInstruction(fs.readFileSync('design/operator/<run>-brief.md','utf-8')) ?? 'NONE (pass)')"`
+Expected `NONE (pass)`. **Scan the goal string inside the config too** — the launcher delivers `config.goal`
+to the worker, and a launch-phrase in it refuses `recursive-commission` at commission time even if the brief
+is clean (hmp7 pattern: both scans run, both must pass).
+
+**Bar sha256 from the COMMITTED blob, not the working tree.** The verifier hashes
+`git cat-file blob <repo-sha>:design/operator/<run>-bar.md`; your pinned value must match that. Compute it
+AFTER committing, with the verifier's own `sha256()`:
+
+```bash
+node --input-type=module -e "import {sha256} from './scripts/hmp-commission.mjs'; import {execFileSync} from 'child_process'; console.log(sha256(execFileSync('git',['cat-file','blob','master:design/operator/<run>-bar.md'])))"
+```
+
+**`validateConfig` for real.** The skill says the config "must satisfy validateConfig" but never says where it
+lives or how to invoke it. It is exported from the client's `lib/bite0-launcher.mjs`. Run it from the client
+repo cwd before committing (hmp7: returned `OK: true`):
+
+```bash
+cd /Users/fausto/Software/agentalk-mcp-client && node --input-type=module -e "
+import { validateConfig } from './lib/bite0-launcher.mjs';
+import fs from 'fs';
+try { console.log('validateConfig OK:', JSON.stringify(validateConfig(JSON.parse(fs.readFileSync('/Users/fausto/Software/AgentTalk/design/operator/<run>.config.json','utf-8'))))); }
+catch(e) { console.log('validateConfig FAILED:', e.message); }
+"
+```
+
+**Who commits the three artifacts?** The charter says the operator never touches mainline — but the PO's
+commissioning instruction may explicitly direct "produce three artifacts, **committed and reachable from
+master**" (hmp7 did). That explicit PO direction authorizes the commit; when it is present, stage **only** the
+three files (`git add design/operator/<run>-brief.md design/operator/<run>-bar.md design/operator/<run>.config.json`),
+never `git add -A` (pre-existing dirty files — SKILL.md, the launch ledger, untracked run-log references —
+must stay out), and commit with a `plan(hmpN):` message. Master then moves; note the new tip in your report
+and that you did NOT push (pushing remains the PO's act).
+taken from the file on disk can drift if the file was edited between write and commit:
+
+```bash
+node --input-type=module -e "import {sha256} from './scripts/hmp-commission.mjs'; import {execFileSync} from 'child_process'; const b=execFileSync('git',['cat-file','blob','master:design/operator/<run>-bar.md']); console.log(sha256(b))"
+```
+
+Run it AFTER committing the artifacts, so `master:` resolves to the blob the verifier will read. Full hmp6
+walkthrough: `references/hmp6-run-log.md`. hmp7 (first engine-code rung) preparation: `references/hmp7-run-log.md`.
 
 ## Subject selection for investigation rungs (H-2/O-2 shape)
 
@@ -88,6 +173,58 @@ When the task asks you to choose the investigation subject:
 5. The deliverable (`design/<item-id>-investigation.md`) must be genuinely useful to the PO
 
 The goal statement should be 1–2 sentences. Name the backlog item and the deliverable path. Do NOT restate rules — the repo supplies those via the CLAUDE.md symlink.
+
+## Engine-code write rungs (hmp7 shape) — the show-stopper's RED path is graded SUCCESS
+
+When the backlog item is the **first engine-code change** on the ladder (prior rungs read-only/investigation),
+the bar must not just test the green path — it must make the **show-stopper's red path load-bearing and
+graded as a pass**. The item usually carries the fence itself (hmp7/BL-121: "if the parity bar shows ANY
+event-sequence difference, STOP and report — reporting that is a *success*, not a failure"). Encode it as a
+dedicated bar row (hmp7's R2c):
+
+- **R2 = the deciding row** — observable-event parity: identical **ordered** sequence of the relevant emitted
+  events before vs after the change, tested from both states the item names (busy AND ready), asserted against
+  **emitted events** (what a consumer observes), never internal fields; the new test proven **red at the
+  baseline**.
+- **R2c = the show-stopper, graded SUCCESS** — ANY event-sequence difference → worker STOPS and reports → that
+  is a PASSED rung, graded on the quality of the evidence. **Silence fails the row**: a run that completes
+  without stating whether parity held, in either direction, fails for want of evidence.
+- Fence row graded (not just recorded): the forbidden direction (hmp7: wiring rather than deleting — a second
+  `busy` producer next to `ArbiterCoordinator`'s strict `=== 'ready'` gate + throwing transition table, M17
+  G3-4 / [[BL-020]]) fails regardless of merit.
+- The item may contain internally-conflicting requirements (hmp7: "suite unchanged at 722/722" vs "a new
+  parity test exists"; "no `'busy'` literal" vs "only if it was `busy`"). The bar should name the conflict and
+  pin what the row is FOR, so the worker resolves it explicitly rather than silently relaxing. Expect the
+  worker to flag these — that is honest evidence, not a defect.
+
+Full hmp7 walkthrough: `references/hmp7-run-log.md`. Full hmp6 walkthrough: `references/hmp6-run-log.md`.
+
+## Engine-code rungs with a parity bar (hmp7 shape — the first code-changing rung)
+
+When the rung's worker **changes engine code** for the first time (hmp1–hmp6 were read-only, client-repo, or
+investigation), the shape inverts. The whole justification for the change is that a branch is unreachable; the
+rung exists to **test that justification, not to assume it**. The bar must carry this, not just the green path:
+
+- **The deciding row is observable-event parity** (the item's own B1): the exact same ordered event sequence
+  before and after the change, from BOTH relevant agent states (e.g. `busy` and `ready`), asserted against
+  **emitted events** — what a consumer observes — never internal fields.
+- **The show-stopper is graded as SUCCESS.** An explicit bar row (hmp7's R2c) must say: *any* event-sequence
+  difference → the worker STOPS and reports → that is a **PASSED rung** (the item's own language: "reporting
+  that is a success, not a failure"). **Silence fails the row** — a run that completes without stating whether
+  the parity held, in either direction, is unevidenced.
+- **The forbidden direction is inverted vs investigation rungs:** wiring instead of deleting. The bar grades
+  "deleted, not wired" and records-not-grades whether the worker mentioned the fence (hmp7's R8 pattern,
+  quoting why: a second producer next to a strict convergence gate + a transition table that throws — M17
+  G3-4 / [[BL-020]]).
+- **Verify the premise by SYMBOL, not by line number** — the item itself insists (coordinates drift; BL-120
+  was filed ~15 lines stale). Grep for the symbol, and also grep for the *producers* the change must NOT
+  disturb, so the bar can pin them (hmp7: `in-process-driver.ts:118` + reconnect restore `registry.ts:1380`).
+- The goal in the config follows the same rules as investigation rungs: 1–2 sentences, name the item + the
+  bar's deciding row, no restated analysis. Run the recursion-fence scan on the **goal string inside the
+  config too**, not just the brief.
+- Cap reasoning: engine-code + parity test + red-at-baseline proof + full suite + `tsc -b` is heavier than a
+  read-only rung — hmp7 set `wallClockMs 5400000` (90 min) deliberately vs hmp6's 60 min investigation.
+  Full preparation detail: `references/hmp7-run-log.md`.
 
 ## Pitfalls from live runs (corrected after H-0)
 
@@ -107,6 +244,15 @@ The goal statement should be 1–2 sentences. Name the backlog item and the deli
 - ❌ `create att-op-h2 --base master` → `/private/tmp/att-att-op-h2` (doubled prefix, path doesn't exist)
 
 The workdir in your config must be `/private/tmp/att-<id>` where id starts with `op-`, mapping the full id the user gives. Fix the id AND the path together — changing one without the other reproduces H-0's original defect.
+
+### `?? apps/web/node_modules` in a fresh worktree is expected wiring, not contamination
+
+After `wt-setup create`, `git status` in the worktree shows an untracked `apps/web/node_modules`. It is a
+**symlink back to the primary checkout's web node_modules** (`ls -la apps/web/` shows `node_modules ->
+/Users/fausto/Software/AgentTalk/apps/web/node_modules`) — workspace wiring done by wt-setup, and the reason its
+REMINDER says "never `git add -A`" (a symlinked node_modules slips past `.gitignore`). It does NOT fail the
+harness (which watches the primary, not the worktree) and must NOT be "cleaned up". Report it as expected; the
+worker must stage files explicitly.
 
 ### Absolute path for launcher and config
 
@@ -153,7 +299,7 @@ Deliverables go on disk AND the full report goes in the console. Files on disk d
 
 ### Live meter check (do not skip)
 
-A `cap.meter` block pointing at a dead daemon is a silently disarmed rail — the config looks correct and the resource cap cannot fire. Charter makes the meter mandatory precisely because an unmitigated budget risk once took a session window to 100%.
+A `cap.meter` block pointing at a dead daemon is a silent gap in the **observation** — since [[BL-117]] (2026-08-06) the meter **no longer terminates anything**: on breach it emits `cap-warning` and the run continues. It remains **MANDATORY to configure** (the commission refuses a missing `cap.meter`), and a live check is still worth doing so the warning actually fires when spend is high — but **`cap.wallClockMs` is the ONLY rail that will stop a run.** Set it deliberately on every config; never copy a prior run's value.
 
 **Always run the live curl** — it is read-only with zero side effects:
 
@@ -189,6 +335,12 @@ Record `git hash-object scripts/infra-invariant.mjs` BEFORE running the invarian
 ### Invariant harness ordering
 
 - **Snapshot** as the LAST thing before launching — any operator action after the baseline looks like worker activity
+- **Re-snapshot if `master` moved since your last baseline.** The PO's authorize commit (and any other PO commit
+  between pre-flight and launch) advances `master` AFTER your pre-flight snapshot. Checking against the stale
+  baseline then manufactures a `head-moved` / `tracked-file-modified` critical the worker had nothing to do with
+  (hmp6: pre-flight snapshot at `c9e5a7c`, PO then committed authorize `2946e6f`; re-snapshot immediately before
+  running the commission). Reference values (worktree HEAD, mainline HEAD, harness blob hash) are captured at the
+  same refreshed moment.
 - **Check** BEFORE cleanup — cleanup legitimately removes worktrees and branches, causing false `critical` findings
 
 ```bash
@@ -202,6 +354,25 @@ node scripts/infra-invariant.mjs check --before /tmp/att-invariant/before.json  
 
 - Operator port: **3600**, never 3500 (charter)
 - Verify free with `lsof -nP -iTCP:3600` before every launch
+
+### Item coordinates drift — verify at the actual sha, and say so
+
+Backlog items cite line numbers that go stale when earlier work shifts the file. BL-120 cited
+`registry.ts:533` / `:807-818` / `:1287`; at the launch sha the same mechanisms were `:548` / `:822-833` /
+`:1367` (BL-028 T3a had moved the file). Verify the *mechanism* at the actual sha, not the quoted numbers, and
+say so in the brief's premise section. On hmp6 the PO then fixed the item itself (`0cd4c9c`) — and, because the
+worker's workdir is an AgentTalk worktree that reads `design/backlog.md`, the PO advanced the worktree so the
+worker saw the corrected coordinates. Check `git -C <workdir> rev-parse HEAD` at reference-value time: it may
+differ from the branch you created if the PO updated it before launch.
+
+### The `.authorized` file is the only authorization — a PO message is not
+
+When the PO says "Authorized" in a message but `design/operator/<run>.authorized` is not committed at the
+repo-sha, `hmp-commission.mjs` refuses `no-po-authorization` — and that refusal is the fence working, not a
+bug. Do not write the file yourself, do not bypass the verifier, do not "helpfully" commit it. Report the
+refusal verbatim and tell the PO exactly what to commit (file, exact content, that the new tip becomes the
+repo-sha). On hmp6 the first launch attempt was refused for exactly this; the PO's next message carried the
+authorize commit (`2946e6f`) and the launch then passed every check.
 
 ## Goal statement rules (runbook §4)
 
@@ -294,7 +465,7 @@ Read the NDJSON recording for key events:
 | `run-start` | Config accepted, goal recorded verbatim, cap configuration logged |
 | `agent-launched` | Worker process exists (PID shown) |
 | `goal-delivered` | Worker reached `ready`, joined a worker-only team, task posted — **the milestone that matters** |
-| `cap-breach` | A rail fired (wall-clock or resource) |
+| `cap-breach` | The WALL-CLOCK rail fired and ended the run (since BL-117 the meter cannot produce it — it emits `cap-warning` instead and the run continues) |
 | `outcome` | Terminal: `completed`, `failed` (with `reason`: `worker-error`, `cap-wallclock`, `cap-resource`) |
 
 ### Key timeline for the monitoring pattern: For a read-only goal (HEAD + suite count), the worker typically completes in a single turn (~50 seconds). If `goal-delivered` is seen and then silence extends toward the cap, check for failure signatures: `cap-breach`, `did not respond`, `timed out`, `ended in 'error'`, `EADDRINUSE`.
@@ -309,6 +480,12 @@ When the wall-clock cap is 30 minutes or more, periodic liveness is the most imp
   - `ps ax -o pid,etime,command | grep -E "[l]auncher|[c]laude"` — worker etime
   - `lsof -nP -iTCP:<port>` — orchestrator still listening
 - **Report each check with a timestamp** so the reviewer can verify there were no silent gaps.
+- **Bounded poll loops beat long `sleep`s (hmp7).** The foreground terminal in this environment capped a
+  `sleep 170` at 60s — a silent truncated observation. For multi-minute waits, use `execute_code` with a
+  ~240s-budget loop that re-reads the NDJSON every ~20s, prints new events as they land (so the trace is
+  timestamped), breaks on `outcome`, and reports elapsed time + sidecar byte count at the end. Stay inside the
+  5-min execute_code budget; repeat the loop for longer runs. This keeps every observation on record instead of
+  one big gap.
 - **A hung worker (BL-028) cannot be detected** — the idle timeout is dead code (`lastProgressAt` is read but never written). The wall-clock cap is the only rail. Say this honestly if the run goes silent near the cap.
 - **A worker that completes before the cap fires** is not a failure. On O-4 the worker fixed all 48 type errors in ~9 minutes despite a 30-minute cap — the errors were "four mechanical clusters" and tractable. Report the actual outcome as observed.
 - **If the cap fires, that is the run succeeding** — a capped run with partial work on a branch is precisely the artifact the rung exists to produce. Do not re-launch, do not extend the cap.
@@ -438,7 +615,7 @@ Observations, in this order:
 
 ### Budget awareness for launch rounds
 
-The session meter was pinned at 100% during every earlier preparation rung, so `cap.meter` was armed but could never fire. On a launch round with live budget, the cap is genuinely live. If `cap-resource` fires, that is **the rail working** — report it and stop. Do not re-launch to get a cleaner result.
+The session meter was pinned at 100% during every earlier preparation rung, so `cap.meter` was armed but could never fire. On a launch round with live budget, the meter is genuinely live — but since [[BL-117]] it can only **warn** (`cap-warning`), never end a run. A `cap-warning` with the run continuing is the observation working, not a rail firing. **`cap.wallClockMs` is the only terminating rail** — report its value and your reasoning for it on every config.
 
 The supervising session (you) and the worker draw on the **same provider pool**. Every turn the worker takes competes with your grading window. This is why the charter makes `cap.meter` mandatory.
 
