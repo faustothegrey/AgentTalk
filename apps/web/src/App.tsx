@@ -238,6 +238,23 @@ function App() {
         pushSidebarEvent('in', `Gate:${gate}`, `[${displayResult}] ${agentId} (${role}) action: ${action}`);
         break;
       }
+      // BL-028 T3b — an agent is not replying, and the reason says whether that is a problem.
+      //
+      // `quiet` is ADVISORY by definition: it means "we have heard nothing", which is also what a
+      // working agent mid-turn looks like. `awaiting-input` is not a fault at all — a human is
+      // being waited on. Neither interrupts anything; the engine has no path from this notice to a
+      // status change. The wording below must not imply otherwise.
+      //
+      // This arm is why the server broadcast is worth sending: the switch has no `default`, so
+      // without a matching `case` the message would have been silently dropped and the operator
+      // would have seen exactly nothing.
+      case 'agent_non_reply': {
+        const { agentId, reason, silentForMs } = message;
+        const seconds = Math.round((silentForMs ?? 0) / 1000);
+        const gloss = reason === 'awaiting-input' ? 'blocked on a human, not a fault' : 'advisory — may still be working';
+        pushSidebarEvent('in', `Silent:${reason}`, `${agentId} — no reply for ${seconds}s (${gloss})`);
+        break;
+      }
       case 'relay_approval_state':
         setRelayApprovalMode(message.mode || 'off');
         setPendingRelays(Array.isArray(message.pendingRelays) ? message.pendingRelays : []);

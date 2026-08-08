@@ -1285,6 +1285,25 @@ export function startServer(
     console.log(`[Server] Workflow gate attempt by ${eventData.agentId} (${eventData.result}) → ${sent} client(s)`);
   });
 
+  // BL-028 T3b — the advisory finally has a reader.
+  //
+  // T3a emitted `agent_non_reply` and nothing in either repo listened: the only consumer was its
+  // own test, so the measurement T3c's threshold is supposed to be derived from ("how long do real
+  // turns actually go quiet") was being written to stdout and discarded. The recorder is what
+  // makes it a distribution rather than a log line.
+  //
+  // Shaped deliberately as an exact copy of the `workflow_gate_attempt` handler above — the
+  // established precedent for an observability event. This is NOT a protocol packet:
+  // `wire-contract.json` hashes only `{mcpTools, packetTypes, protocolPrefix}` (verified at the
+  // artifact, v8), so a registry event plus a web-UI broadcast cannot move the contract hash and
+  // no attached client needs to ship in lockstep. That reasoning is also recorded at the
+  // `AgentNonReplyNotice` declaration in `contracts/types.ts`.
+  registry.on('agent_non_reply', (notice) => {
+    recorder?.record('runtime', 'agent_non_reply', notice);
+    const sent = broadcast({ type: 'agent_non_reply', ...notice });
+    console.log(`[Server] Agent ${notice.agentId} not replying (${notice.reason}, ${notice.silentForMs}ms) → ${sent} client(s)`);
+  });
+
   registry.on('relay_approval_mode', ({ mode }) => {
     recorder?.record('runtime', 'relay_approval_mode', { mode });
     const sent = broadcast({ type: 'relay_approval_mode', mode });

@@ -14,6 +14,7 @@ import type {
   AgentErrorReason,
   AgentExecutionMode,
   AgentNonReplyNotice,
+  AgentNonReplyReason,
   AgentProvider,
   AgentStatus,
   AgentTransport,
@@ -172,8 +173,12 @@ export class Registry extends EventEmitter {
   private pendingRelays = new Map<string, PendingRelay>();
   /** BL-083 — relays delivered per ordered agent pair while NO conversation was active. */
   private uncappedRelayCounts = new Map<string, number>();
-  /** BL-028 T3a — agentId → the turn already reported `quiet`, so the 30s sweep says it once. */
-  private quietReported = new Map<string, string>();
+  /**
+   * BL-028 T3b — agentId → `<turnId>::<reason>` already reported, so the 30s sweep says it once.
+   * Keyed on the reason as well as the turn (T3a keyed on the turn alone): a turn whose reason
+   * changes is new information, and deduping on the turn would keep the first reason and drop it.
+   */
+  private nonReplyReported = new Map<string, string>();
   private pendingRelaySeq = 0;
 
   constructor(
@@ -879,14 +884,23 @@ export class Registry extends EventEmitter {
   }
 
   /**
-   * BL-028 T3a — how long this agent has been silent while somebody is waiting on it, or
-   * `undefined` if it is not a candidate at all.
+   * BL-028 T3b — WHY this agent is not replying, and for how long. `undefined` if it is not a
+   * candidate at all.
    *
-   * Renamed from `hasAgentTimedOut`, because the old name asserted the thing this change
-   * disproves: nothing here times out, and nothing here kills. It measures silence and says how
-   * much. The judgement of what silence MEANS is deliberately not made in this method.
+   * Renamed twice, and both renames carry the change. `hasAgentTimedOut` asserted the thing T3a
+   * disproved: nothing here times out and nothing here kills. `quietForMs` then measured silence
+   * honestly but could only ever call it `quiet` — a `number | undefined` return conflates three
+   * different facts behind one `undefined`: **not a candidate** (nobody is waiting), **exempt**
+   * (a human is in the loop), and **silent but under threshold**. You cannot name `awaiting-input`
+   * through a channel that has already erased the distinction, which is why T3b starts here and
+   * not at the emit site.
+   *
+   * This is also the seam T3c needs — the single place that will later ask "does THIS reason
+   * escalate?". The exemptions are RETURNED rather than swallowed precisely so that question
+   * cannot be pre-empted by an `if` that already returned: an exemption which never reaches the
+   * classifier's result is a decision T3c is structurally unable to make.
    */
-  private quietForMs(agent: Agent): number | undefined {
+  private classifySilence(agent: Agent): { reason: AgentNonReplyReason; silentForMs: number } | undefined {
     // ── The obligation gate (replaces `status === 'busy'`) ────────────────────────────────────
     // `currentTurnId` is set when an assignment is DELIVERED — attached at `await_turn`,
     // in-process in the driver loop — and cleared when the terminal action completes. So it means
@@ -923,28 +937,43 @@ export class Registry extends EventEmitter {
       return undefined;
     }
 
-    // Disable idle timeout while fact checking
-    if (this.teamCoordinator.isAgentFactCollecting(agent.id)) {
-      return undefined;
-    }
-
-    // M08-T3: disable idle timeout for a worker whose task is paused awaiting the
-    // operator (effect-fence). A paused-but-alive worker must not be flagged as
-    // errored — that would trip the M03 kill, the opposite of "kill nobody".
-    //
-    // BL-028 T3a: both exemptions above are the `awaiting-input` case in all but name — an agent
-    // blocked on a human, which LB-67 Finding 1 records as "not a failure at all". T3b is what
-    // gives them that name; here they keep working exactly as they do today.
-    if (this.teamCoordinator.isTaskAwaitingOperator(agent.id)) {
-      return undefined;
-    }
-
     if (!agent.lastProgressAt) {
       return undefined;
     }
 
     const silentForMs = Date.now() - agent.lastProgressAt;
-    return silentForMs > this.config.agentIdleTimeoutMs ? silentForMs : undefined;
+    if (silentForMs <= this.config.agentIdleTimeoutMs) {
+      return undefined;
+    }
+
+    // ── The human-in-the-loop cases, NAMED (BL-028 T3b) ───────────────────────────────────────
+    // Both predicates were `return undefined` before T3b — fact-collection ("disable idle timeout
+    // while fact checking") and M08-T3's worker effect-fence, a task frozen at `awaiting_operator`
+    // so a paused-but-alive worker is never flagged errored (D3 "kill nobody", LB-16 Finding 3.3).
+    //
+    // They are the SAME condition under two names: an agent blocked on a human, which LB-67
+    // Finding 1 records as "not a failure at all" — and which, under an idle timeout, is
+    // observationally identical to a dead one. That collision is the specific accident BL-028
+    // exists to prevent, so the fix is to say which one this is, not to stay silent about it.
+    //
+    // ⚠️ The ORDER above is load-bearing and changed in T3b: these checks now run AFTER the
+    // threshold, because naming a case requires a `silentForMs` to name it with. The observable
+    // consequence is exactly one thing — an exempt agent past the threshold is now REPORTED
+    // (`awaiting-input`) instead of ignored. Under the threshold, or with no `lastProgressAt`, it
+    // still returns `undefined` exactly as before. PO-approved 2026-08-08: this changes B5's
+    // behaviour contract ("still suppress" → "reported, and still propagates nothing").
+    //
+    // What has NOT changed, and must not: neither branch can kill. `awaiting-input` is a reason on
+    // a notice, never an input to `setAgentStatus`. T3c inherits the obligation to keep it that
+    // way — this reason is the one it must never escalate.
+    if (
+      this.teamCoordinator.isAgentFactCollecting(agent.id) ||
+      this.teamCoordinator.isTaskAwaitingOperator(agent.id)
+    ) {
+      return { reason: 'awaiting-input', silentForMs };
+    }
+
+    return { reason: 'quiet', silentForMs };
   }
 
   /**
@@ -962,35 +991,41 @@ export class Registry extends EventEmitter {
    *
    * Reported ONCE per obligation: the sweep runs every 30s, and re-emitting for the same silent
    * turn would bury the signal in its own repetition. A fresh turn, or any progress, re-arms it.
+   *
+   * BL-028 T3b: "once per obligation" now means once per **obligation AND reason**. A turn whose
+   * reason CHANGES — a quiet agent whose task then pauses at `awaiting_operator` — is new
+   * information about the same turn, and deduping it away would report the least useful of the
+   * two. The classification lives in `classifySilence`; this loop only relays it.
    */
   private checkIdleAgents(): void {
     for (const [id, agent] of this.agents) {
-      const silentForMs = this.quietForMs(agent);
+      const silence = this.classifySilence(agent);
 
-      if (silentForMs === undefined) {
-        this.quietReported.delete(id);
+      if (silence === undefined) {
+        this.nonReplyReported.delete(id);
         continue;
       }
 
       // `has` before comparing, deliberately. `get` returns `undefined` for an absent key, so a
-      // bare `get(id) === turnId` ALSO swallows the notice whenever `turnId` is itself undefined —
+      // bare `get(id) === key` ALSO swallows the notice whenever the key is itself undefined —
       // and it silently suppressed the whole emission when the obligation gate above was mutated
       // away. A dedup that hides the bug in the check it depends on is IP-15's shape, which is the
       // defect this very item exists to retire. Caught by running the mutation, not by reading it.
       const turnId = agent.currentTurnId!;
-      if (this.quietReported.has(id) && this.quietReported.get(id) === turnId) {
+      const key = `${turnId}::${silence.reason}`;
+      if (this.nonReplyReported.has(id) && this.nonReplyReported.get(id) === key) {
         continue;
       }
-      this.quietReported.set(id, turnId);
+      this.nonReplyReported.set(id, key);
 
       const notice: AgentNonReplyNotice = {
         agentId: id,
-        reason: 'quiet',
-        silentForMs,
+        reason: silence.reason,
+        silentForMs: silence.silentForMs,
         turnId,
         observedAt: new Date().toISOString(),
       };
-      console.warn(`[Registry] Agent ${id} has been silent for ${silentForMs}ms on turn ${turnId} (advisory; nothing is interrupted)`);
+      console.warn(`[Registry] Agent ${id} has not replied for ${silence.silentForMs}ms on turn ${turnId} (${silence.reason}; advisory, nothing is interrupted)`);
       this.emit('agent_non_reply', notice);
     }
   }
