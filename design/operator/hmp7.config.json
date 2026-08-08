@@ -1,0 +1,39 @@
+{
+  "_comment": "Run hmp7 — BL-121, the FIRST ENGINE-CODE rung on this ladder (hmp1–hmp6 were read-only, client-repo, or investigation). The worker deletes the unreachable `busy` branch in `Registry` and renames setAgentBusyState(agent, busy) → markAgentIdle(agent) — no boolean parameter, no dead branch — keeping exactly its reachable behaviour, plus a new parity test proven red at the baseline. The item's show-stopper is load-bearing: if the parity bar shows ANY event-sequence difference the worker STOPS and reports, and reporting that is a SUCCESS (bar R2c). The worker sits in an AgentTalk worktree at /tmp/att-op-hmp7 (branch task-op-hmp7), so design/backlog.md IS in the workdir — no external read needed. CAP CORRECTION (BL-117, 2026-08-06): cap.meter NO LONGER TERMINATES ANYTHING — demoted to a warning after it killed complete, verified work on hmp5 fourteen seconds after the worker committed. It stays MANDATORY to configure (the commission refuses missing-cap-meter), but cap.wallClockMs is the ONLY rail that stops a run. Set deliberately, NOT copied from hmp6 (3600000 ms read-only investigation): 5400000 ms (90 min) for a first engine-code change — rename + new parity test + red-at-baseline proof + full suite (722 tests) + tsc -b. instance.orchestratorUrl is REQUIRED even with a startCommand (the client's start script takes it from THIS config and only parses mcpUrl from the backend's stdout; omitting it fails with 'createLauncherCore requires orchestratorUrl' — that is what killed hmp1's first attempt). The orchestrator is AgentTalk's backend, hence startCommand.cwd; the WORKER's workdir is the AgentTalk worktree. Paths are macOS: os.tmpdir() there is /var/folders/…, so the sandbox was created with an explicit root of /tmp and the workdir below must match. Recording path is distinct from every prior run (hmp1-6 used /tmp/att-op-hmpN-recording.json).",
+  "instance": {
+    "recording": "/tmp/att-op-hmp7-recording.json",
+    "orchestratorUrl": "http://localhost:3600",
+    "env": {
+      "PORT": "3600",
+      "AGENTTALK_WORKER_TURN_TIMEOUT_MS": "1800000"
+    },
+    "startCommand": {
+      "command": "npm",
+      "args": [
+        "run",
+        "backend"
+      ],
+      "cwd": "/Users/fausto/Software/AgentTalk"
+    }
+  },
+  "agents": [
+    {
+      "id": "hmp7-worker",
+      "provider": "claude",
+      "model": "opus",
+      "executionMode": "persistent",
+      "workdir": "/tmp/att-op-hmp7",
+      "readyTimeoutMs": 120000
+    }
+  ],
+  "goal": "Implement backlog item BL-121 — delete the unreachable `busy` branch in `Registry` and rename the helper to say what it actually does, satisfying the item's own bar whose deciding row is OBSERVABLE-EVENT PARITY on the `send_to_agent → user` path, with your new test proven red at the baseline. Commit on your branch; change nothing outside the item's scope.",
+  "cap": {
+    "wallClockMs": 5400000,
+    "pollIntervalMs": 10000,
+    "meter": {
+      "url": "http://127.0.0.1:9899",
+      "provider": "claude",
+      "maxPercentDelta": 20
+    }
+  }
+}
