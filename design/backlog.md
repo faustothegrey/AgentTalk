@@ -964,6 +964,54 @@ tags: [self-hosting, relay, human-in-the-loop, program]
 ### Todo (next first)
 
 <!-- @item
+id: BL-121
+status: todo
+date: 2026-08-08
+epic: null
+tags: [engine, registry, dead-code, rename, bl120-followup, operator-rung, zero-behaviour-change]
+autonomy: eligible
+-->
+- [todo · **PO-approved at Gate 1 2026-08-08 · plan: `design/bl121-o2-plan.md` · this is option O2 from
+  [[BL-120]]'s investigation, which was itself delivered autonomously on run `hmp6`**] —
+  **Delete the unreachable `busy` branch in `Registry`, and rename the helper to say what it actually does.**
+  `setAgentBusyState(agent, busy: boolean)` has exactly **one** call site and it passes **`false`**, so the
+  `busy === true` branch — and with it `updateAgentSessionStatus(agent, 'busy')` — can never execute.
+  **⚠️ Verify by SYMBOL, not by line number.** This file drifts, and [[BL-120]] was filed with numbers that
+  were already ~15 lines stale. As of `958b621` the sites are `registry.ts:822` (declaration), `:548` (the sole
+  caller, in `send_to_agent` where `to === 'user'`), `:823` (the unreachable update) — but grep for the symbol
+  and trust what you find.
+  **The change:** `setAgentBusyState(agent, busy)` becomes `markAgentIdle(agent)` — no boolean parameter, no
+  dead branch — keeping exactly its reachable behaviour: set `sessionStatus` to `'ready'`, and move `status`
+  from `busy` to `ready` **only if it was `busy`**. Update the one call site. Add a comment recording that
+  `busy` is produced by the driver and the reconnect restore, and that this helper deliberately does not
+  produce it, so the next reader does not re-add the symmetry as a "fix".
+  **The rename is the point, not decoration.** `setAgentBusyState` names a capability the method does not have,
+  and that name is what led a previous reviewer to assume a `busy` producer lived there and reason outward from
+  it — producing a false claim that reached a plan, a code comment, two test sites and two backlog items before
+  anyone checked it against a running system.
+  **BAR — B1 is the one that decides it: OBSERVABLE-EVENT PARITY.** Driving the `send_to_agent → user` path
+  must emit the **identical ordered sequence** of `status` and `session_status` events before and after, tested
+  from an agent that is `busy` **and** one that is `ready`. Write it against the **emitted events**, not
+  internal fields — events are what a consumer observes. Also: the helper must have no boolean parameter and no
+  `'busy'` literal (B2); the `busy` producers stay pinned to the driver and the reconnect restore (B3);
+  `tsc -b` 0 and the suite unchanged at **722/722, 86 files** (B4).
+  **Prove your new test is red at the baseline.** Commit on your branch. Do not merge, do not push.
+  **⛔ SHOW-STOPPER:** if B1 shows **any** event-sequence difference, **STOP and report.** That would mean the
+  branch was not unreachable after all and the entire justification collapses — reporting that is a *success*,
+  not a failure.
+  **OUT OF SCOPE — do not fix these even though you will see them:** narrowing the `AgentSessionStatus` union
+  to drop the unreachable `'busy'`/`'restarting'`/`'error'` (it feeds `isAgentSessionStatus` in the wire
+  contract, and `mcp-server.ts` rejects a mismatch on binary hash equality — LB-66 — so it risks a lockstep
+  break across both repos for a type nobody reads); deleting `sessionStatus` itself (deliberately kept, so a
+  session-level axis can later be designed *with* a consumer); the `apps/web/src/api/types.ts:46` drift
+  (`'reconnecting'` where the contract says `'restarting'`); and `updateAgentSessionStatus`, `setAgentStatus`,
+  `notifyAgentStatus`, `ALLOWED_TRANSITIONS`, `arbiter-coordinator.ts`, anything under `apps/`.
+  **Why the fence is tight:** wiring rather than deleting would put a second `busy` producer next to
+  `ArbiterCoordinator`'s strict `=== 'ready'` convergence gate and a transition table that **throws** — an
+  escaped `Invalid transition: terminated -> busy` once killed the orchestrator process (M17 G3-4, [[BL-020]]).
+  Full reasoning: `design/bl120-attached-busy-investigation.md` §5-6.
+
+<!-- @item
 id: BL-120
 status: done
 date: 2026-08-07

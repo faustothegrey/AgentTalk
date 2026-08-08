@@ -291,10 +291,21 @@ describe('the real backlog (design/backlog.md)', () => {
   // has generated: the worker REFUTED the finding of the item that commissioned it, with a live
   // probe, and the refutation held on independent reproduction. An autonomous rung correcting the
   // supervising agent's own error is the outcome this ladder exists to reach.
-  it('offers nothing — the queue emptied when BL-120 closed on the hmp6 delivery', () => {
+  // 2026-08-08 — refilled with **BL-121**, PO-approved at Gate 1, and the red was shown first.
+  // This one is a step up rather than a repeat: hmp6 was a read-only investigation, and BL-121
+  // is the first rung where an agent CHANGES ENGINE CODE. The containment is unchanged (its own
+  // worktree, its own branch, no merge rights, PO-gated), and what makes it a safe first of its
+  // kind is the bar rather than the size: B1 is observable-event parity on the one path the
+  // helper serves, so a botched edit fails loudly instead of silently.
+  //
+  // Chosen deliberately for that property. The change itself is provably zero-behaviour — the
+  // branch being deleted is unreachable, and unreachable code cannot be observed disappearing —
+  // so if B1 ever shows a difference, the finding is that the premise was wrong, which the item
+  // names as a show-stopper worth reporting rather than a failure to avoid.
+  it('offers exactly BL-121 — the O2 rung, first agent change to engine code', () => {
     const { items, warnings } = readBacklog();
     expect(warnings).toEqual([]);
-    expect(selectableBacklogItems(items).map((i) => i.id)).toEqual([]);
+    expect(selectableBacklogItems(items).map((i) => i.id)).toEqual(['BL-121']);
   });
 
   // 2026-08-07 — deliberately updated, and the red was shown to the PO first. BL-084 CLOSED (PO
@@ -314,9 +325,9 @@ describe('the real backlog (design/backlog.md)', () => {
     expect(byId.get('BL-028')!.blockedBy).toEqual(['BL-084']);   // dependency unchanged
     expect(byId.get('BL-084')!.status).toBe('done');              // …and now resolved
     expect(byId.get('BL-028')!.autonomy).toBe('human-only');      // what still holds it back
-    // Neither BL-120's arrival nor its close changed BL-028's standing — which is the point of
+    // No item's arrival or close has ever changed BL-028's standing — which is the point of
     // asserting the whole set here rather than just "BL-028 is absent from it".
-    expect(selectableBacklogItems(items).map((i) => i.id)).toEqual([]);
+    expect(selectableBacklogItems(items).map((i) => i.id)).toEqual(['BL-121']);
   });
 
   it('marks BL-086 as the PO decision it is', () => {
