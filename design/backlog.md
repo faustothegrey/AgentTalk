@@ -964,6 +964,36 @@ tags: [self-hosting, relay, human-in-the-loop, program]
 ### Todo (next first)
 
 <!-- @item
+id: BL-122
+status: todo
+date: 2026-08-08
+epic: null
+tags: [test-infra, web, ui, coverage-gap, bl028-t3b-followup]
+autonomy: human-only
+-->
+- [todo · **surfaced by [[BL-028]] T3b, filed at the PO's direction 2026-08-08** — the T3b bar **C8** could not
+  be satisfied and was accepted `not-checked` rather than worked around] — **`apps/web` has ZERO tests and is
+  explicitly excluded from the suite.** `vitest.config.ts:29` carries `exclude: ['**/dist/**', 'apps/web/**']`,
+  and `apps/web/package.json` has no `test` script and no test dependency — no vitest, no jsdom, no
+  testing-library. So **no assertion about the UI is possible today**, in a project where the web UI is the
+  human's only window onto a running team.
+
+  **The concrete miss that produced this item.** BL-028 T3b added one `case 'agent_non_reply'` arm to
+  `App.tsx`'s WebSocket switch. Its *input* is proven — a real connected client receives the broadcast with
+  `reason` and `silentForMs` intact (`bl028-t3b-nonreply-reader.test.ts`) — but nothing proves the arm renders
+  it. **The switch has no `default` branch**, so a missing or mistyped `case` drops the message silently: the
+  exact failure this gap cannot catch is also the one that produces no error anywhere.
+
+  **Fix direction (deliberately not decided here):** add `jsdom` + a React testing library to `apps/web`, drop
+  `apps/web/**` from the root `exclude`, and give the app an `environment: 'jsdom'` include glob — **or** decide
+  the UI is thin enough to stay verified by eye and record *that* as the standing position. Both are defensible;
+  what is not defensible is the current state, where the exclusion is a config line nobody chose deliberately.
+
+  **Not urgent, and worth saying why:** one six-line display arm does not justify standing up a test harness, and
+  a harness stood up hastily to satisfy one bar tends to encode whatever was convenient that afternoon. Pick this
+  up when a second UI assertion wants it — or when the PO wants the standing position on record.
+
+<!-- @item
 id: BL-121
 status: done
 date: 2026-08-08
@@ -2300,6 +2330,61 @@ autonomy: human-only
                  v8 verified + client alignment, pollution clean, `team-coordinator.ts` 0-line diff
   - diff:        6 files, +419/-18; commits `67ca156` `a935c53`, merge `f6c7655`
   - outcome:     MERGED ✅ — item stays `todo` (1 of 3 phases)
+
+  **✅ 2026-08-08 — T3b DELIVERED. 2 of 3 phases done; the item stays `todo` for T3c.**
+  Plan: `design/bl028-t3b-plan.md` (Gate 1 approved with two PO decisions recorded in §8b).
+
+  **What T3b changed.** `quietForMs` became `classifySilence` and now returns
+  `{reason, silentForMs} | undefined`: the old `number | undefined` conflated **three** facts behind one
+  `undefined` — nobody is waiting, a human is in the loop, and silent-but-under-threshold — and you cannot name
+  `awaiting-input` through a channel that has already erased the distinction. The two human-in-the-loop pauses
+  (fact-collection, `awaiting_operator`) are now **reported as `awaiting-input`** instead of silently returning.
+  They are returned rather than swallowed deliberately: **a suppressed exemption is a decision T3c would be
+  structurally unable to make.** The dedup key gained the reason (`<turnId>::<reason>`), so a turn whose reason
+  *changes* speaks again.
+  **Nothing gained a path to `setAgentStatus`** — bar C4 pins that for **both** reasons, with the mutation run.
+
+  **The advisory also had no READER, which is what the plan found and the phasing note had not.** A repo-wide
+  search across **both** repos returned exactly one consumer of `agent_non_reply`: T3a's own test. So the
+  distribution T3c's threshold is supposed to be derived from was going to stdout and nowhere else. `server.ts`
+  now records it (`recorder.record('runtime', …)`) and broadcasts it, following the `workflow_gate_attempt`
+  precedent, and `App.tsx` has the matching `case` arm — **without which the broadcast would have been dropped
+  silently, since that switch has no `default`.** Contract-safe: `wire-contract.json`'s hashed `data` is exactly
+  `{mcpTools, packetTypes, protocolPrefix}` (verified at the artifact, v8), so no attached client is affected.
+
+  **B5's behaviour contract CHANGED, with explicit PO approval** — from *"fact-collection and awaiting_operator
+  still suppress"* to *"…are reported as `awaiting-input`, and still kill nobody"*. Put to the PO as a
+  contract change rather than folded in (CLAUDE.md's tests-are-contracts rule). The property the bar protects is
+  unchanged; T3a bought it with silence, T3b buys it with a name.
+
+  **⚠️ Bar C8 is NOT delivered — accepted `not-checked` by the PO, not worked around.** C8 was "the UI arm
+  renders the reason". `vitest.config.ts:29` **excludes `apps/web/**`** and the package carries no test
+  dependency, so no UI assertion is possible; satisfying it meant standing up web test infrastructure and editing
+  shared test config, outside the task's fence. The arm's *input* is proven (C7: a real connected WebSocket
+  client receives the notice intact); its *rendering* is not. **To be verified by eye on the next live run.**
+  Filed as its own item → [[BL-122]].
+
+  **Bars: C1–C6 + C9 (runtime-core), C7 (orchestrator). All NINE mutations were RUN and each turned its own bar
+  red** — not asserted, executed; the summary is in the plan's delivery record. **C9 was not pre-registered**:
+  writing the classifier surfaced a consequence the plan had missed (naming a case needs a duration, so the
+  exemption checks had to move *below* the threshold test), and without a bar that reorder could have turned
+  every human-paused agent into a notice on the first sweep with no planned bar failing. Declared as an addition.
+
+  **Still open after T3b — unchanged and deliberate:** **nothing detects a hung agent.** T3c (escalation via an
+  *unanswered healthcheck* — a positive test, not silence) is separately gated, and **PO question §9 q2 is still
+  open: should the sweep ever kill at all?** A detector that only reports is a legitimate end state. T3b's new
+  recorder is what makes that question answerable with measured numbers instead of a guess.
+
+  **Telemetry (T3b delivery):**
+  - task:        BL-028 T3b
+  - wall-clock:  2026-08-08 17:23 → 23:0x (~5h40m elapsed, including the plan, Gate 1 and the mutation runs)
+  - budget:      claude weekly 27%→31% (Δ ~4%), session 0%→0% (window reset mid-task, so the session figure is
+                 not meaningful for this task — the weekly delta is the honest number)
+  - gate:        tsc **0**, suite **743/743 (89 files)** — baseline recorded before any edit was 733/733 (87);
+                 +10 = exactly the two new bar files. Pollution: one task worktree, no stray processes.
+  - diff:        6 files (4 modified, 2 new), +123/-35 in the modified set; commit `64cdfea` on
+                 `task-BL-028-T3b`
+  - outcome:     **DELIVERED, awaiting Gate 3 + PO-gated merge** — item stays `todo` (2 of 3 phases)
 
 <!-- @item
 id: BL-029

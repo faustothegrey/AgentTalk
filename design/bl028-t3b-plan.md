@@ -205,3 +205,62 @@ of eyes here, so the questions in §8 matter more than they normally would.
 **Gate 1 verdict: APPROVED-PENDING-PO.** The scope fence, the bars and their mutations are sound and no bar
 depends on the unanswered questions except through which reading of D2/D3 gets built. Implementation may not
 start until q1 and q2 are answered.
+
+## 10. Delivery record — 2026-08-08
+
+Implemented by Claude as temporary implementer (Standing Conditional Reassignment, ACTIVE — the default
+Implementer is PO-declared unavailable). Branch `task-BL-028-T3b`, commit `64cdfea`. Worktree
+`att-BL-028-T3b`, created with `--baseline`: **tsc 0, suite 733/733 (87 files) recorded BEFORE any edit.**
+
+**After: tsc 0 (exit 0, no output), suite 743/743 (89 files).** +10 tests = exactly the two new bar files.
+
+### Bars and their mutations — every one executed
+
+| Bar | Result | Mutation run | Mutation outcome |
+|---|---|---|---|
+| C1 fact-collection → `awaiting-input` | ✅ | restore the bare `return undefined` in that branch | **RED** ✅ |
+| C2 `awaiting_operator` → `awaiting-input` | ✅ | same, other branch | **RED** ✅ |
+| C3 neither is reported `quiet` | ✅ | exemptions fall through to `quiet` | **RED** ✅ |
+| C4 no status change, no propagation, both reasons | ✅ | point the classifier result at `setAgentStatus` | **RED** ✅ |
+| C5 ordinary silence still `quiet` | ✅ | return `awaiting-input` unconditionally | **RED** ✅ |
+| C6 once per obligation **and** reason | ✅ | key the dedup on the turn alone | **RED** ✅ |
+| C7 recorded **and** broadcast to a real client | ✅ | drop `recorder.record`; drop `broadcast` (two runs) | **RED** ✅ ×2 |
+| **C8 the UI arm renders it** | **not-checked ⛔** | — | **see below** |
+| C9 *(added during implementation)* paused-under-threshold stays silent | ✅ | exemptions evaluated before the threshold | **RED** ✅ |
+
+Mutation harness: `scratchpad/mutate.py` — each patch asserts its anchor matched **exactly once** before
+running, so a silently non-applying patch can never be reported as a passing mutation. Green is not evidence
+until the mutation is red; that is the lesson this item exists to institutionalise (IP-15).
+
+**C9 was not pre-registered, and that is worth recording rather than smoothing over.** Writing the classifier
+surfaced a consequence §2's design had not: naming a case requires a `silentForMs` to name it with, so the
+exemption checks had to move BELOW the threshold test. Without a bar, that reorder could have turned every
+human-paused agent into a notice on the first sweep and **no planned bar would have failed.** The plan found the
+decision; the implementation found the consequence of it.
+
+### C8 — not delivered, and why it was not worked around
+
+`vitest.config.ts:29` reads `exclude: ['**/dist/**', 'apps/web/**']`, and `apps/web/package.json` declares no
+test script and no test dependency (no vitest, jsdom or testing-library). **No assertion about the UI is
+possible today.** Satisfying C8 meant adding web test infrastructure and editing shared test config — outside
+§4's fence and a larger decision than one display arm should force (Rule 3: persist within the box, never make
+the box bigger).
+
+Reported to the PO with three options; the PO chose **accept it `not-checked`, verify by eye on the next live
+run, and file the gap separately** → **[[BL-122]]**. The arm's input is proven by C7 (a real connected
+WebSocket client receives the notice with `reason` and `silentForMs` intact); only its rendering is unproven.
+
+### Deviations and notes for the reviewer
+
+1. **C9 added** (above) — declared, not folded in.
+2. **`quietReported` → `nonReplyReported`**, keyed `<turnId>::<reason>`. A rename plus a semantic change to a
+   private field; in scope (`checkIdleAgents` is named in §4) but worth an explicit look.
+3. **The exemption branches were merged into one `if`.** T3a had two adjacent `if`s returning the same thing;
+   they now return the same reason, so they are one condition. The mutation harness splits them apart again to
+   prove each half independently (M1, M2).
+4. **Gate 3 independence is DEGRADED and I am flagging it rather than letting it pass.** The default is
+   task-end reviewer ≠ implementer. I am the implementer. Under the resource-scarcity fallback one actor may
+   hold both, but the fresh-eyes property the seat exists for is not obtained by declaring it. **The PO is the
+   real independent check on this merge.** The two places I would look hardest: **B5's contract change** (did
+   naming the pause weaken what that bar protected?) and **C4** (is "no path to `setAgentStatus`" true, or
+   merely asserted?). Both were mutation-tested — which is a reason to trust the method, not the author.
