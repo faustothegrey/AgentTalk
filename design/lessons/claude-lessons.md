@@ -1653,3 +1653,33 @@ here.**
   BL-119 had just legitimised. It was one safe line and I had push authorization — but authorization for *my*
   work is not authority over *its* change. **The charter's design is that skill updates flow as a diff for the
   PO; committing it "helpfully" would have quietly removed the gate.**
+
+### 2026-08-07/08 — the operator loop closed, and it corrected me
+
+- **As planner: I asserted a load-bearing fact from a FILE NAME and it was false.** I claimed attached agents
+  never reach `busy` because the only `busy` writer I found lived in `in-process-driver.ts` — and I read the
+  filename as a statement of scope without opening `activateAgent`, which starts that driver for *both*
+  transports. The claim reached a plan, a code comment, a test docstring, a test title and two backlog items
+  before an autonomous rung refuted it with a live probe. **The tell was available in 30 seconds** (`:742` says
+  "apiDrivers holds drivers for the attached transport too"). *A symbol's location is not its scope. Open the
+  call site.*
+- **As reviewer: running the mutation found a bug that reading the code could not.** My own dedup compared
+  `Map.get(id)` to an undefined `turnId`; `undefined === undefined` swallowed the notice and made a bar pass
+  while the gate it guarded was mutated away — IP-15's exact shape, in code I had written twenty minutes
+  earlier, inside the item that exists to retire that defect. **Green is not evidence until the mutation is red.**
+- **As grader: I re-derived the delivery's central claim instead of accepting it, and that is what made the
+  grade worth anything.** Reverted `registry.ts` to the launch baseline and ran the worker's *unmodified* parity
+  file against the old code. The nuance I'd have missed by reasoning: on a parity bar the parity rows should be
+  **green** at baseline — that is the proof — and only the structural rows go red. The worker understood that
+  and the item hadn't spelled it out.
+- **As SM: a superstition had been sitting in my op-notes for two sessions.** "grep is unreliable on large
+  files, use a second tool" happened to produce correct behaviour and was completely wrong about why: a literal
+  NUL byte made two files read as *binary*. Deterministic, one-character fix, now guarded. **A workaround that
+  works is not an explanation — when a tool misbehaves twice, find the cause before writing the folklore.**
+- **As task-end reviewer: I recorded a bar row as FAILED rather than retuning it, and the PO disposed of it.**
+  hmp7's R4 demanded an unchanged suite count while another row demanded a new test file — unsatisfiable by any
+  delivery. Calling that "PASS with notes" would have quietly taught the bar to bend. *Report the defect in the
+  instrument; let the human clear it.*
+- **What the ladder is actually for, which I understand better than I did.** Not that agents do the work — the
+  work here was small. It is that **an independent actor executes the claim you were about to believe.** Both
+  rungs found something I had wrong, and neither would have surfaced from more careful reading by me.

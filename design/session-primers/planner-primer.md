@@ -1,9 +1,9 @@
 ---
 role: planner
-key: 20260807-0930-8f1c73
-written: 2026-08-07 by Claude — session close. A backlog gate, then TEN items closed and two parked. The
-  engine changed: an in-process agent that errors now interrupts its team (BL-084 T2 / BL-078). ONE todo
-  remains — BL-028 — unblocked, actionable, and needing a plan before anyone touches it.
+key: 20260808-1042-4c7b19
+written: 2026-08-08 by Claude — session close. The operator loop ran end to end, twice, and the second
+  rung was the first time an agent changed engine code. It also refuted a load-bearing claim I had
+  written into five places. ONE todo remains — BL-028 — and the agent-selectable queue is EMPTY.
 ---
 
 This is your session primer.
@@ -13,21 +13,20 @@ software team: they attach as MCP clients over WebSocket, pull turns via `await_
 planner→implementer→reviewer workflow under a human Product Owner. Current thrust: the **autonomous-development
 ladder** — improving AgentTalk *with* AgentTalk, one graded rung at a time.
 
-**Roles.** Human = PO (Fausto): scope, direction, `autonomy: eligible`, charter wording. Bindings live ONLY in
-`AGENT.md → 📌 DEFAULT ROLE ASSIGNMENTS` — read it, don't trust this line. Codex and agy remain PO-declared
-UNAVAILABLE, so you are almost certainly the sole agent under the **resource-scarcity fallback**: wear every
-hat, handshake once per role, declare all of them, keep each gate's discipline separately. **Standing
-Conditional Reassignment ACTIVE** (you may implement). Hermes holds the **OPERATOR seat** — launches and
-monitors, no authority, and its reports are *observations*, unverified until you check the artifact.
+**Roles.** Human = PO (Fausto): scope, direction, `autonomy: eligible`, merges, pushes, authorizations. Bindings
+live ONLY in `AGENT.md → 📌 DEFAULT ROLE ASSIGNMENTS` — read it, don't trust this line. Codex and agy remain
+PO-declared UNAVAILABLE, so you are almost certainly the sole agent under the **resource-scarcity fallback**:
+wear every hat, handshake once per role, declare all of them, keep each gate's discipline separately. **Standing
+Conditional Reassignment ACTIVE** (you may implement). Hermes holds the **OPERATOR seat** — it launches and
+monitors, holds no authority, and its reports are *observations*, unverified until you check the artifact.
 
 **Workflow / source of truth.** `design/collaboration-workflow.md` + `design/backlog.md` + `AGENT.md`. **Closed
 items carry a closing block + telemetry — read those first.** Resume from the backlog, **NOT from chat**.
 
 ## Where we are
 
-**Verified at the moment of writing:** both repos **pushed and in sync** · **no worktrees but the two primaries,
-`master` only in both** · AgentTalk `tsc -b` **0**, suite **711/711 (84 files)** · client lint clean, contract
-**v8**, suite **139/139 (24 files)** · **agent-selectable set: EMPTY**.
+**Verified at close:** repo clean, master == origin at `0114a67`, **one worktree**, `tsc -b` **0**, suite
+**733/733 (87 files)**. Backlog: **1 todo · 92 done · 25 deferred · 3 dropped**. **Agent-selectable set: EMPTY.**
 
 Ask the instruments rather than trusting that paragraph:
 
@@ -35,90 +34,80 @@ Ask the instruments rather than trusting that paragraph:
 npx vitest run apps/orchestrator/src/__tests__/bl093-backlog-selectable.test.ts
 ```
 
-**Backlog: ONE todo, 26 deferred, 91 done.**
+## The headline: the operator loop is proven, and it corrected me
 
-**⚠️ ONE UNCOMMITTED CHANGE IS WAITING, and it is not yours to commit.** `design/operator-seat/SKILL.md` carries
-a one-line edit **written by Hermes** through the write path [[BL-119]] legitimised on 2026-08-07 — a pointer
-correction (`symlinked-skills` → `skill-repo-hosting`). It behaved exactly as the charter designs: written only
-inside its allowlist, **not committed**, left as a diff for the PO to gate. **Leave it for the PO.** A dirty
-tree at handover is deliberate here, not an oversight.
+**The loop the PO wanted now runs end to end:** Hermes lists the selectable queue → the PO authorizes by
+committing `design/operator/<run>.authorized` → Hermes commissions and launches → it reports → you grade against
+a pre-registered bar. **Two rungs in two days.** `design/operator/hmp6-grading.md` and `hmp7-grading.md` are the
+records; read them before preparing another.
 
-## The one open item — BL-028, and do NOT just implement it
+- **hmp6** — a read-only investigation of [[BL-120]]. **Its worker refuted the finding of the item that
+  commissioned it**, with a live probe, and the refutation held on independent reproduction.
+- **hmp7** — [[BL-121]], the **first rung where an agent changed engine code.** Deleted an unreachable branch
+  and proved the deletion unobservable at the event level. Graded PASS.
 
-**BL-028 is unblocked and actionable** (BL-084 closed 2026-08-07, PO option (a); `isResolved` released it with
-no edit to BL-028 itself). It is `human-only`, so it is **not** agent-selectable — that is its *autonomy*, not a
-blocker. Don't confuse the two.
+**What I got wrong, because you will meet it in the comments.** I claimed attached agents never reach
+`status === 'busy'` and made it the load-bearing finding of BL-028 T3a. **It is false.** `activateAgent`
+(`registry.ts:377`) starts an `InProcessAgentDriver` for **both** transports — only the `Completer` differs — and
+that driver sets `busy` on every turn it pulls. **I read a FILE NAME (`in-process-driver.ts`) as a statement of
+scope instead of reading the call site.** It reached a plan, a code comment, a test docstring, a test title and
+two backlog items before an autonomous rung checked it against a running system. All five are corrected;
+`design/bl028-plan.md` §2 is retracted in place rather than deleted.
 
-**It is the T3 the BL-084 arc always pointed at, and it is a BIGGER behaviour change than T2 was.** It makes the
-idle sweep **live** — code that has never executed. `lastProgressAt` is declared and read but **never written**,
-so `hasAgentTimedOut()` always returns false.
+**The gate T3a shipped is unaffected** — `currentTurnId` ("an obligation is outstanding") is sharper than
+"is this agent busy". It was argued from a false premise, not built on one.
 
-**The trap is already written into the taxonomy:** an agent paused `awaiting-input` (blocked on a human) is
-**observationally identical to a dead one**. Land the sweep alone and M03 kills a team for behaving correctly.
-`contracts/src/types.ts` says of the `idle-timeout` row, in terms: **"Do NOT flip it here"** — it is fault-class
-*only* to preserve today's behaviour, and BL-028 is the item that revisits it.
+## The one open item — BL-028, and it is 1 of 3 done
 
-**What it needs that does not exist yet:** the **sender-side non-reply reason** (LB-67 Finding 1 —
-`turn-ended · exited · quiet · user-stopped · errored · receiver-cancelled · awaiting-input`). That vocabulary
-answers *"why did a peer not reply?"*, a **different question** from the fault taxonomy T1 built (*"is this the
-agent's fault?"*) — `design/bl084-plan.md` §0 records why conflating them was rejected once already.
-**Plan it, take Gate 1, then implement.** `design/bl084-t2-plan.md` is the shape to copy.
+**T3a is MERGED**: the idle sweep is live and **advisory** — it emits `agent_non_reply` (`reason: 'quiet'`) and
+has **no path to `setAgentStatus` at all**. `idle-timeout` keeps its fault-class row with **no caller**.
 
-## What changed in the engine — read before touching failure paths
+**Nothing detects a hung agent yet.** That is deliberate, not an omission: `quiet` is also what a working agent
+mid-turn looks like, and a real CLI routinely exceeds the 180s default on one honest turn.
 
-**An in-process agent that errors now interrupts its team.** For a fault, and only for a fault. Before
-2026-08-07 that path propagated **nothing**, for any cause.
+- **T3b** — wire the non-reply vocabulary. The seven names exist in `contracts/src/types.ts` and are **unwired**;
+  a name there is not a claim the condition is detected. The two human-in-the-loop pauses (fact-collection,
+  `awaiting_operator`) become the named `awaiting-input` case.
+- **T3c** — escalation via an **unanswered healthcheck** (a *positive* test, not silence). **Gate it separately.**
+- **⚠️ Open PO question, unanswered: should the sweep ever kill at all?** A detector that only reports is a
+  legitimate end state. Note the honest gap if you drop T3c — the wall-clock cap people cite as the anti-hang
+  rail is the *operator seat's*, and it does not cover an ordinary orchestrator team.
 
-- Single decision point: `isFaultClass`, consulted in `setAgentStatus` (`registry.ts`).
-- Drivers report errors via **`Registry.reportAgentError(agent, reason)`** — new in T2. `notifyAgentStatus` is
-  unchanged and stays side-effect-free for `starting`/`ready`/`busy`.
-- **Two "unknowns" point OPPOSITE ways, on purpose, both pinned by tests:** `isFaultClass(undefined)` is
-  **true** (guards call sites not yet migrated); `'driver-error-unclassified'` is **false** (a migrated site
-  that cannot know its cause). Both say: **a surprise never changes what happens.**
-- Exactly one condition changed behaviour: `conversation-start-failed`.
+## Op notes — the ones that cost real time
 
-## The pattern this session kept hitting
+- **`grep` and `rg` were silently blind to `registry.ts` and `infra-invariant.mjs`.** Root cause found and
+  **fixed**: a literal NUL byte made both files read as binary. Deterministic, not flaky — the old op-note
+  ("grep is unreliable on large files") was a superstition. A repo-wide guard now fails if one returns:
+  `scripts/__tests__/source-searchability.test.mjs`.
+- **Verify by SYMBOL, never by line number.** `registry.ts` drifted ~15 lines mid-session and I filed BL-120
+  with stale coordinates that the operator caught at pre-flight.
+- **When `bl093-backlog-selectable` goes red, read WHICH assertion failed.** A `warnings` failure (header/prose
+  drift on a closing edit) and a selectable-set failure look identical at a glance. Its own comment says so, and
+  it caught me anyway.
+- **Never pin a fixed suite total in a bar that also requires a new test.** hmp7's R4 was unsatisfiable by any
+  delivery and needed a PO disposition. Now recorded in the operator skill.
+- **`cap.meter` warns and never terminates ([[BL-117]]); `cap.wallClockMs` is the only rail.** Vindicated live:
+  on hmp7 the warning fired **80 seconds before a successful completion**. Pre-BL-117 that would have killed a
+  verified delivery, exactly as it did on hmp5. The budget risk it leaves is real, named, and unmitigated.
+- **The `.authorized` file is the only authorization** — a PO message saying "authorized" is not. The first
+  hmp6 launch was refused for exactly this, correctly.
+- **Stage explicitly in a worktree. Never `git add -A`.** Docs/governance are master-editable; **code is not** —
+  use a per-task worktree.
+- **Budget at close:** claude weekly **27%**, session 0% (window just reset). The two days — a plan, two operator
+  rungs, an engine change, five corrections and 39 commits — cost roughly **13% weekly.**
 
-**Four times the backlog was wrong about the code**, in four different ways:
+## What is waiting for the PO
 
-1. **BL-096** recommended building a harness that already existed, green, shipped **eleven days before the item
-   was filed**.
-2. **BL-114**'s prescribed fix was **incomplete in a way that would have been worse than the bug** — the
-   coercion lived in two places, and fixing one turns a rail that never fires into one that kills instantly.
-3. **BL-109**'s fix sketch **contradicted itself** — it named a path inside the write-fence it said to avoid.
-4. **BL-110** listed as open a decision taken and encoded **the same day** those lines were written.
-
-**A backlog item's "fix direction" is a hypothesis, not a spec. Re-derive it from the code at implementation
-time — especially when the item hands you one.** None cost more than minutes, always for the same reason: the
-check ran **before** the build.
-
-## Op notes
-
-- **`cap.meter` no longer terminates anything** (BL-117 option (b)). `cap.wallClockMs` is the **only**
-  terminating rail; since BL-118 it cascades to the provider CLI. Charter + runbook amended.
-  `design/operator/*-brief.md` and `*-bar-*.md` still say the old thing **and must stay that way** — records,
-  not operative docs. The test is *"is this acted on, or is it a record?"*, never *"is it stale?"*
-- **The budget risk is real, named, and explicitly UNMITIGATED.** The demotion removed a bad instrument; it did
-  not solve the problem. Let no doc imply otherwise.
-- **`design/operator-dispositions.json`** (BL-109): a PO disposition of a `critical` is read from **HEAD**,
-  never the working tree — an uncommitted edit clears nothing.
-- **Stage explicitly in a worktree. Never `git add -A`** — `wt-setup` symlinks `node_modules` past `.gitignore`.
-- **`$?` after a pipe is the LAST command's status.** An `EXIT: 0` from `node … | tail` hid a real exit 1.
-- **Never put backticks inside a double-quoted `git commit -m`** — the shell runs them. Use `-F -` + heredoc.
-- **`grep` returned silently empty on two large files** (`infra-invariant.mjs`, `registry.ts`) while `sed`/node
-  read them fine. If a search comes back empty on a file you expect to match, **verify with a second tool.**
-- **Use `git -C <path>` for multi-repo work.** A persisted `cd` once pushed the wrong repo and said
-  "Everything up-to-date".
-- **Still waiting on the PO:** a charter line pointing at BL-109's dispositions mechanism (offer to draft
-  stands); **relaying the drafted Hermes task** (its `SKILL.md` still teaches `cap-resource` as a live rail,
-  which is false — the runbook half is done); and Hermes's uncommitted one-liner above.
-- **Budget at close:** claude weekly **14%**, session 6%. The whole session — a gate, ten closures, an engine
-  change, two charter amendments — cost roughly **11% weekly**.
+**The selectable queue is empty, and refilling it is a PO act.** Nothing reaches an agent unattended until an
+item is marked `autonomy: eligible` — [[BL-093]] makes that fail closed, and
+`bl093-backlog-selectable.test.ts` pins the set exactly so any change forces a human look. It has now gone red
+five times and been right five times.
 
 ## The through-line
 
-**Build the instrument so it can fail, then believe it when it does.** The `bl093` guard went red four times
-this session; every one was a real finding, none was loosened to make the session look tidy — and the last
-became a *stronger* assertion than the one it replaced. Pre-registered bars caught two mutations that would
-otherwise have shipped silently. And the backlog, this project's memory, was wrong four times in four different
-ways, each caught by the same cheap habit: **check before building, never after.**
+**Check the claim against the running system, or it is not checked.** Every real finding of these two days came
+from executing something: a live probe that refuted my reading of the engine, a mutation run that exposed a
+dedup swallowing its own bug, a parity file run against the *old* tree, a `file` command that explained two
+sessions of "flaky" greps. Every error came from inferring instead — from a file name, from a symbol I had read
+fifteen lines ago, from a bar row I had written and not re-read. **The ladder's value is not that agents do the
+work; it is that an independent actor executes the claim you were about to believe.**
