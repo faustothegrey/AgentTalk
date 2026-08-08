@@ -8,15 +8,6 @@
       "by": "[PO]",
       "date": "2026-08-07",
       "run": "hmp6"
-    },
-    {
-      "fingerprint": "b0ddf98192bd",
-      "finding": "tracked-file-modified: design/operator/.hmp-launched.json",
-      "disposition": "accepted",
-      "reason": "The verifier's own launch-ledger write (recordLaunch) — operator-side by design, not worker activity. The replay guard must persist.",
-      "by": "[PO]",
-      "date": "2026-08-07",
-      "run": "hmp6"
     }
   ]
 }
