@@ -126,8 +126,9 @@ to the worker, and a launch-phrase in it refuses `recursive-commission` at commi
 is clean (hmp7 pattern: both scans run, both must pass).
 
 **Bar sha256 from the COMMITTED blob, not the working tree.** The verifier hashes
-`git cat-file blob <repo-sha>:design/operator/<run>-bar.md`; your pinned value must match that. Compute it
-AFTER committing, with the verifier's own `sha256()`:
+`git cat-file blob <repo-sha>:design/operator/<run>-bar.md`; your pinned value must match that. A hash taken
+from the file on disk can drift if the file is edited between write and commit. Compute it **after** committing,
+with the verifier's own `sha256()`, so `master:` resolves to the blob the verifier will actually read:
 
 ```bash
 node --input-type=module -e "import {sha256} from './scripts/hmp-commission.mjs'; import {execFileSync} from 'child_process'; console.log(sha256(execFileSync('git',['cat-file','blob','master:design/operator/<run>-bar.md'])))"
@@ -153,14 +154,9 @@ three files (`git add design/operator/<run>-brief.md design/operator/<run>-bar.m
 never `git add -A` (pre-existing dirty files — SKILL.md, the launch ledger, untracked run-log references —
 must stay out), and commit with a `plan(hmpN):` message. Master then moves; note the new tip in your report
 and that you did NOT push (pushing remains the PO's act).
-taken from the file on disk can drift if the file was edited between write and commit:
 
-```bash
-node --input-type=module -e "import {sha256} from './scripts/hmp-commission.mjs'; import {execFileSync} from 'child_process'; const b=execFileSync('git',['cat-file','blob','master:design/operator/<run>-bar.md']); console.log(sha256(b))"
-```
-
-Run it AFTER committing the artifacts, so `master:` resolves to the blob the verifier will read. Full hmp6
-walkthrough: `references/hmp6-run-log.md`. hmp7 (first engine-code rung) preparation: `references/hmp7-run-log.md`.
+Full walkthroughs: `references/hmp6-run-log.md` (investigation rung) · `references/hmp7-run-log.md` (first
+engine-code rung).
 
 ## Subject selection for investigation rungs (H-2/O-2 shape)
 
@@ -174,57 +170,48 @@ When the task asks you to choose the investigation subject:
 
 The goal statement should be 1–2 sentences. Name the backlog item and the deliverable path. Do NOT restate rules — the repo supplies those via the CLAUDE.md symlink.
 
-## Engine-code write rungs (hmp7 shape) — the show-stopper's RED path is graded SUCCESS
-
-When the backlog item is the **first engine-code change** on the ladder (prior rungs read-only/investigation),
-the bar must not just test the green path — it must make the **show-stopper's red path load-bearing and
-graded as a pass**. The item usually carries the fence itself (hmp7/BL-121: "if the parity bar shows ANY
-event-sequence difference, STOP and report — reporting that is a *success*, not a failure"). Encode it as a
-dedicated bar row (hmp7's R2c):
-
-- **R2 = the deciding row** — observable-event parity: identical **ordered** sequence of the relevant emitted
-  events before vs after the change, tested from both states the item names (busy AND ready), asserted against
-  **emitted events** (what a consumer observes), never internal fields; the new test proven **red at the
-  baseline**.
-- **R2c = the show-stopper, graded SUCCESS** — ANY event-sequence difference → worker STOPS and reports → that
-  is a PASSED rung, graded on the quality of the evidence. **Silence fails the row**: a run that completes
-  without stating whether parity held, in either direction, fails for want of evidence.
-- Fence row graded (not just recorded): the forbidden direction (hmp7: wiring rather than deleting — a second
-  `busy` producer next to `ArbiterCoordinator`'s strict `=== 'ready'` gate + throwing transition table, M17
-  G3-4 / [[BL-020]]) fails regardless of merit.
-- The item may contain internally-conflicting requirements (hmp7: "suite unchanged at 722/722" vs "a new
-  parity test exists"; "no `'busy'` literal" vs "only if it was `busy`"). The bar should name the conflict and
-  pin what the row is FOR, so the worker resolves it explicitly rather than silently relaxing. Expect the
-  worker to flag these — that is honest evidence, not a defect.
-
-Full hmp7 walkthrough: `references/hmp7-run-log.md`. Full hmp6 walkthrough: `references/hmp6-run-log.md`.
-
-## Engine-code rungs with a parity bar (hmp7 shape — the first code-changing rung)
+## Engine-code rungs (hmp7 shape) — the show-stopper's RED path is graded SUCCESS
 
 When the rung's worker **changes engine code** for the first time (hmp1–hmp6 were read-only, client-repo, or
-investigation), the shape inverts. The whole justification for the change is that a branch is unreachable; the
-rung exists to **test that justification, not to assume it**. The bar must carry this, not just the green path:
+investigation), the shape inverts. The whole justification for the change is usually that some code is
+unreachable — and **the rung exists to TEST that justification, not to assume it.** So the bar must not merely
+test the green path; it must make the **show-stopper's red path load-bearing, and graded as a pass.** The item
+usually carries the fence itself (hmp7/BL-121: *"if the parity bar shows ANY event-sequence difference, STOP and
+report — reporting that is a success, not a failure"*).
 
-- **The deciding row is observable-event parity** (the item's own B1): the exact same ordered event sequence
-  before and after the change, from BOTH relevant agent states (e.g. `busy` and `ready`), asserted against
-  **emitted events** — what a consumer observes — never internal fields.
-- **The show-stopper is graded as SUCCESS.** An explicit bar row (hmp7's R2c) must say: *any* event-sequence
-  difference → the worker STOPS and reports → that is a **PASSED rung** (the item's own language: "reporting
-  that is a success, not a failure"). **Silence fails the row** — a run that completes without stating whether
-  the parity held, in either direction, is unevidenced.
-- **The forbidden direction is inverted vs investigation rungs:** wiring instead of deleting. The bar grades
-  "deleted, not wired" and records-not-grades whether the worker mentioned the fence (hmp7's R8 pattern,
-  quoting why: a second producer next to a strict convergence gate + a transition table that throws — M17
-  G3-4 / [[BL-020]]).
-- **Verify the premise by SYMBOL, not by line number** — the item itself insists (coordinates drift; BL-120
-  was filed ~15 lines stale). Grep for the symbol, and also grep for the *producers* the change must NOT
-  disturb, so the bar can pin them (hmp7: `in-process-driver.ts:118` + reconnect restore `registry.ts:1380`).
-- The goal in the config follows the same rules as investigation rungs: 1–2 sentences, name the item + the
-  bar's deciding row, no restated analysis. Run the recursion-fence scan on the **goal string inside the
-  config too**, not just the brief.
-- Cap reasoning: engine-code + parity test + red-at-baseline proof + full suite + `tsc -b` is heavier than a
-  read-only rung — hmp7 set `wallClockMs 5400000` (90 min) deliberately vs hmp6's 60 min investigation.
-  Full preparation detail: `references/hmp7-run-log.md`.
+- **The deciding row is observable-event parity** (the item's own B1): the identical **ordered** sequence of the
+  relevant emitted events before vs after the change, from **both** states the item names (e.g. `busy` AND
+  `ready`), asserted against **emitted events** — what a consumer observes — never internal fields. The new
+  test must be proven **red at the baseline**.
+  *Nuance worth stating, because hmp7's worker got it right and the item did not spell it out:* on a parity
+  test, "red at baseline" applies to the **structural** rows, not the parity rows. The parity rows should be
+  **green on the old tree too** — that is precisely what proves the change unobservable. Parity rows red at
+  baseline would mean the premise was wrong.
+- **R2c — the show-stopper, graded SUCCESS.** ANY event-sequence difference → the worker STOPS and reports →
+  that is a **PASSED rung**, graded on the quality of the evidence. **Silence fails the row:** a run that
+  completes without stating whether parity held, in either direction, fails for want of evidence.
+- **The forbidden direction is inverted vs investigation rungs:** wiring instead of deleting. Grade "deleted,
+  not wired" as a row that fails regardless of merit, and records-not-grades whether the worker mentioned the
+  fence (hmp7's R8 pattern, quoting why: a second `busy` producer next to `ArbiterCoordinator`'s strict
+  `=== 'ready'` gate and a transition table that THROWS — M17 G3-4 / [[BL-020]]).
+- **Verify the premise by SYMBOL, not by line number** — the item itself insists (coordinates drift; BL-120 was
+  filed ~15 lines stale). Grep for the symbol, and also grep for the *producers* the change must NOT disturb,
+  so the bar can pin them (hmp7: `in-process-driver.ts:118` + reconnect restore `registry.ts:1380`).
+- **The item may contain internally-conflicting requirements.** hmp7 carried two: *"suite unchanged at
+  722/722"* vs *"a new parity test exists"*, and *"no `'busy'` literal"* vs *"only if it was `busy`"*. Name the
+  conflict in the bar and pin what the row is FOR, so the worker resolves it explicitly rather than silently
+  relaxing it. **Expect the worker to flag these — that is honest evidence, not a defect.**
+  **⚠️ And do not create the first one: NEVER pin a fixed suite total on a rung that also requires a new test.**
+  Write the suite row as *"no pre-existing test removed, skipped, or weakened; new tests permitted and
+  expected."* hmp7's R4 was unsatisfiable by any delivery and had to be PO-disposed
+  (`design/operator/hmp7-grading.md`).
+- **The goal in the config** follows the same rules as investigation rungs: 1–2 sentences, name the item and the
+  bar's deciding row, no restated analysis. Run the recursion-fence scan on the **goal string inside the config
+  too**, not just the brief.
+- **Cap reasoning:** engine-code + parity test + red-at-baseline proof + full suite + `tsc -b` is heavier than a
+  read-only rung — hmp7 set `wallClockMs 5400000` (90 min) deliberately, vs hmp6's 60 min investigation.
+
+Full walkthroughs: `references/hmp7-run-log.md` (this shape) · `references/hmp6-run-log.md` (investigation).
 
 ## Pitfalls from live runs (corrected after H-0)
 
