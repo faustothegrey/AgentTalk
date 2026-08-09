@@ -32,9 +32,27 @@ Everything below is designed around that. **If the meta-brief has to be substant
 experiment has failed and should be abandoned rather than tuned.** That is a pre-registered refutation condition,
 not a hedge.
 
-**Measurement (pre-registered):** after the worker produces `<run>-brief.md` and `<run>-bar.md`, the PO/planner edits
-them to committable quality. Record **lines changed / lines produced**. Success = **≤ 30%**. Between 30% and 60% is
-inconclusive — run it once more before deciding. **> 60% = refuted**, abandon.
+**Measurement (pre-registered).** *Formula corrected at gate 1 — the original read "lines changed / lines produced",
+which is not computable: under `git diff --numstat` a rewritten line counts as one added AND one deleted, so a full
+rewrite of a 150-line brief scores 200%. A pre-registered threshold that cannot be computed is worse than none,
+because it looks rigorous.*
+
+Let **W** be the worker's commit of `design/operator/<run>-brief.md`, and **P** the PO/planner-edited commit **on top
+of W** (this only works if the edit is made *on* W's file, not written fresh alongside it — state that in the run's
+own procedure):
+
+```
+D    = deleted-line count from:  git diff --numstat W..P -- design/operator/<run>-brief.md
+base = line count of the brief at W:  git show W:design/operator/<run>-brief.md | wc -l
+DISCARD RATE = D / base          ← the metric. Bounded [0,1]. "How much of what the worker
+                                   wrote did we throw away."
+A    = added-line count, recorded ALONGSIDE, never folded in — it measures what the PO had to
+       supply that the worker missed, which is a different failure from writing the wrong thing.
+```
+
+Success = **discard rate ≤ 30%**. **30–60% inconclusive** — run once more before deciding. **> 60% = refuted, abandon
+rather than tune.** Record `A` in every case: a brief with a 10% discard rate and 200 added lines was not a success,
+and the single ratio would have hidden that.
 
 ## 3. The three collisions this design has to survive
 
@@ -102,8 +120,18 @@ saw the item:
 6. **Every bar row is individually falsifiable AND the rows are mutually satisfiable.** ← this row exists **because
    of hmp7 R4**, and it is the one with real teeth.
 7. Contains no launch-mechanism reference (§3a) — checkable by running `findsLaunchInstruction` over it.
+8. **(added at gate 1, for shape (ii) — §7a.)** Presents **both** of BL-122's forks, argues each fairly, and
+   **names the decision as the PO's** without picking one. A brief that silently resolves the fork fails this row
+   even if its choice is the one the PO would have made — the failure is usurping the call, not getting it wrong.
 
-Rows 6 and 7 are *mechanically* checkable. The rest are read-and-judge, which is honest to say out loud.
+Rows 6 and 7 are *mechanically* checkable. **Rows 1–5 and 8 are read-and-judge**, which is honest to say out loud —
+and row 8 is the one the whole rung turns on, which is exactly why §7a's private-answer device matters (below).
+
+**Grading — who, since the plan named nobody.** *(Gate-1 gap.)* **Hermes may not grade** — the charter forbids it
+outright, and its reports are observations, unverified until checked against the artifact. Grading is a **reviewer
+seat**, applying Reviewer Rule 1: rows 6–7 by *running* the checks, rows 1–5 and 8 by reading. Under the sole-agent
+fallback that is the same actor who wrote the meta-brief, so the fresh-eyes property is unavailable here too — the
+same caveat as gate 1, recorded and not waived (§9).
 
 ## 4. Scope
 
@@ -155,7 +183,8 @@ Rows 6 and 7 are *mechanically* checkable. The rest are read-and-judge, which is
 BL-122's own text says the fix direction is **"deliberately not decided here"** and names two defensible ends:
 
 - **(A)** add `jsdom` + a React testing library to `apps/web`, drop `apps/web/**` from the root `exclude`
-  (`vitest.config.ts:29`), add an `environment: 'jsdom'` include glob; **or**
+  (`vitest.config.ts` **line 20** — the item said `:29`, which was stale; corrected on the branch at gate 1), add
+  an `environment: 'jsdom'` include glob; **or**
 - **(B)** decide the UI is thin enough to stay verified **by eye**, and record *that* as the standing position.
 
 The item is explicit that *"what is not defensible is the current state, where the exclusion is a config line
@@ -187,6 +216,31 @@ delegated brief, and it was not the reason the item was picked, but it counts in
 - The produced brief is structurally complete (§3c all green) but the resulting rung is *vacuous* — a brief can
   satisfy every checkable property and still aim at nothing worth doing. **This is the failure mode the bar cannot
   see**, and the reason §3b option (a) keeps a human on the bar.
+
+## 8a. Gate 1 — plan review, held 2026-08-09
+
+**Reviewer: Claude (plan-reviewer seat, sole-agent fallback — ≠ fresh eyes; see §9).** Verdict:
+**APPROVED WITH CHANGES** — the design survives, four defects fixed before any artifact was written.
+
+| # | Finding | Method | Disposition |
+|---|---|---|---|
+| G1 | **`vitest.config.ts:29` is stale — the exclusion is at line 20.** Inherited from BL-122's own text (filed 2026-08-08) and copied into this plan unverified. | `grep -n exclude vitest.config.ts` | **Fixed** on `task-bl122-eligible` (`0f5c859`) and in §7a. Corrected rather than left as a trap — degrading the record to manufacture a test is not defensible. |
+| G2 | **§2's threshold was not computable.** "lines changed / lines produced" exceeds 100% under `numstat` on any rewrite. | read the formula against what `git diff --numstat` actually returns | **Fixed** — §2 now specifies `DISCARD RATE = D/base`, bounded [0,1], with added-lines `A` recorded separately. |
+| G3 | **No grader named**, and Hermes may not grade. | charter | **Fixed** — §3c now assigns grading to a reviewer seat. |
+| G4 | **§3c predated shape (ii)**: no row required presenting both forks. The rung's whole point was ungraded. | read §3c against §7a | **Fixed** — row 8 added. |
+
+**Verified and upheld** (Rule 1 — by running, not by re-reading): `GET /api/backlog` exists at
+`server.ts` (`app.get('/api/backlog'`); `findsLaunchInstruction` is exported and trips on 4 of 5 candidate
+wordings; `apps/web/package.json` has no `test` script and no vitest/jsdom/testing-library dependency; hmp7's R4
+contradiction is as §3b describes.
+
+**What the reviewer seat did NOT do:** re-derive whether delegating brief-authoring is worth doing at all. That is a
+PO judgement, already made.
+
+**Reviewer's own note on G1:** this is the third consecutive session in which a stale line number reached an
+artifact, and the second in which the reviewer hat caught the planner hat. The lesson is written down and is
+demonstrably not being *applied* by reading it. §3c row 2 exists for exactly this reason — it makes
+verify-by-symbol a graded property of the worker's output, which is the only version of the lesson that has teeth.
 
 ## 9. Honest limits
 
