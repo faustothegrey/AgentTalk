@@ -2384,7 +2384,13 @@ autonomy: human-only
                  +10 = exactly the two new bar files. Pollution: one task worktree, no stray processes.
   - diff:        6 files (4 modified, 2 new), +123/-35 in the modified set; commit `64cdfea` on
                  `task-BL-028-T3b`
-  - outcome:     **DELIVERED, awaiting Gate 3 + PO-gated merge** — item stays `todo` (2 of 3 phases)
+  - outcome:     **MERGED ✅ `9ba8197` — PUSHED** (PO-authorized 2026-08-09) — item stays `todo` (2 of 3
+                 phases; T3c remains, and §9 q2 is still open)
+  - ⚠️ note:     gate 3's fresh-eyes property was **NOT obtained** — one actor held planner, plan reviewer,
+                 implementer and task-end reviewer under the resource-scarcity fallback. The primer had left
+                 this merge for a cold session for exactly that reason; the **PO overrode that and authorized
+                 the merge directly**, which is the PO's call. Recorded rather than glossed. Post-merge gate
+                 re-run on the merge result: tsc **0**, suite **743/743 (89 files)**.
 
 <!-- @item
 id: BL-029
