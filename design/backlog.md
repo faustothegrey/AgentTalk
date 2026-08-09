@@ -969,7 +969,7 @@ status: todo
 date: 2026-08-08
 epic: null
 tags: [test-infra, web, ui, coverage-gap, bl028-t3b-followup]
-autonomy: human-only
+autonomy: eligible
 -->
 - [todo · **surfaced by [[BL-028]] T3b, filed at the PO's direction 2026-08-08** — the T3b bar **C8** could not
   be satisfied and was accepted `not-checked` rather than worked around] — **`apps/web` has ZERO tests and is
