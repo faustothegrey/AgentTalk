@@ -1683,3 +1683,39 @@ here.**
 - **What the ladder is actually for, which I understand better than I did.** Not that agents do the work — the
   work here was small. It is that **an independent actor executes the claim you were about to believe.** Both
   rungs found something I had wrong, and neither would have surfaced from more careful reading by me.
+
+### 2026-08-08/09 — BL-028 T3b: four hats, and the reviewer hat caught the planner hat
+
+- **As planner: I violated my own op-note within the hour of reading it.** "Verify by SYMBOL, never by line
+  number" is *in my own lessons file*, written last session after filing BL-120 with stale coordinates. I read
+  it at startup, then cited `registry.ts:944`/`:951` in the T3b plan from a reading a few edits old. The real
+  lines were `:927`/`:938`. **It was caught only because I put the reviewer hat on and actually re-checked the
+  refs instead of trusting the plan I had written twenty minutes earlier.** Reading a lesson is not applying it;
+  the mechanism that saved me was the *seat*, not the memory. Keep the seats separate even when one actor wears
+  them all — that separation is doing real work, not ceremony.
+- **As plan reviewer: my best finding refuted my own plan's value claim, not its correctness.** I had written
+  "the UI is a passive display; I add no component" AND listed "does the UI tolerate an unknown broadcast type?"
+  as a risk to check later. Thirty seconds of grep: `App.tsx`'s switch has **no `default` arm**, so an unknown
+  type is inert — the risk was discharged *and* the value was overstated. Broadcasting without a matching `case`
+  would have handed the recorder a measurement and left the UI as blind as before, while the plan read as though
+  visibility had shipped. **A plan can be entirely correct and still promise something it does not deliver.
+  Review the value claim, not just the design.**
+- **As implementer: the bar I added during implementation was the one no plan could have written.** Writing
+  `classifySilence` surfaced a consequence the design had not: naming a case needs a duration to name it with,
+  so the exemption checks had to move BELOW the threshold test. Without a bar, that reorder could have turned
+  every human-paused agent into a notice on the first sweep and **no pre-registered bar would have failed.**
+  Declared it as an addition rather than folding it in. *Plans find the decision; implementations find the
+  consequence of it — and the consequence deserves its own bar.*
+- **As implementer: I stopped at the fence instead of stepping over it, and it cost nothing.** Bar C8 needed a
+  UI assertion; `apps/web` has zero tests and is excluded from the suite. Standing up jsdom + a testing library
+  + editing the shared vitest config to satisfy one six-line display arm is exactly "make the box bigger". I
+  reported it with three options and the PO chose. **The honest red took one paragraph; the scope-creep green
+  would have quietly committed the project to a test-harness decision made at 11pm to close a bar.**
+- **As task-end reviewer: the most useful thing I did was declare that I should not be trusted here.** I held
+  all four seats, so gate 3's fresh-eyes property was unobtainable no matter how carefully I swept. Rather than
+  merge and note the caveat, I left the merge for a cold session and wrote *where to look* into the primer.
+  **When the process's guarantee is structurally unavailable, say so and hand the check to someone who can give
+  it — that is cheaper than any amount of extra diligence from the wrong pair of eyes.**
+- **Operationally: `$?` after a pipe is the last command's status, and it nearly produced a false claim again.**
+  `npx tsc -b | tail` printed `TSC_EXIT=0` over eleven real type errors. Same family as last session's `EXIT 0`
+  on a run that exited 1. **Redirect to a file and read the real exit code whenever the exit code is the claim.**
