@@ -149,19 +149,36 @@ describe('BL-028 T3a — the idle sweep is live and advisory', () => {
     expect(agent.lastProgressAt).toBeGreaterThan(0);
   });
 
-  // ── B5 — the two human-in-the-loop pauses (the `awaiting-input` case, pre-naming) ────────────
-  it('B5 · fact-collection and awaiting_operator still suppress (mutation: remove either exemption)', async () => {
+  // ── B5 — the two human-in-the-loop pauses (the `awaiting-input` case) ────────────────────────
+  //
+  // ⚠️ CONTRACT CHANGED 2026-08-08 (BL-028 T3b, PO-approved). This bar read
+  // "…still SUPPRESS" and asserted `notices).toEqual([])` for both exemptions. T3b names them
+  // instead: they are reported as `awaiting-input`. The change was put to the PO explicitly as a
+  // behaviour-contract change rather than folded in, per CLAUDE.md's tests-are-contracts rule.
+  //
+  // The property this bar exists to protect is UNCHANGED and is the second half below: an agent
+  // paused on a human must never be treated as a fault. T3a bought that with silence; T3b buys it
+  // with a name, which is strictly stronger — a suppressed exemption is a decision T3c would never
+  // get to make, whereas a named one is a reason it must explicitly refuse to escalate.
+  it('B5 · fact-collection and awaiting_operator are reported as `awaiting-input`, and still kill nobody (mutation: return the bare `undefined` in either branch)', async () => {
     await agentWithOutstandingTurn('paused-1');
     const coordinator = (registry as any).teamCoordinator;
 
     const factSpy = vi.spyOn(coordinator, 'isAgentFactCollecting').mockReturnValue(true as never);
     sweepAfterSilence();
-    expect(notices).toEqual([]);
+    expect(notices).toHaveLength(1);
+    expect(notices[0]!.reason).toBe('awaiting-input');
     factSpy.mockReturnValue(false as never);
 
+    // A fresh obligation, so the per-turn dedup cannot mask the second branch.
+    const paused2 = await agentWithOutstandingTurn('paused-2');
+    expect(paused2.id).toBe('paused-2');
     vi.spyOn(coordinator, 'isTaskAwaitingOperator').mockReturnValue(true as never);
     sweepAfterSilence();
-    expect(notices).toEqual([]);
+    expect(notices.filter(n => n.agentId === 'paused-2')).toHaveLength(1);
+    expect(notices.find(n => n.agentId === 'paused-2')!.reason).toBe('awaiting-input');
+
+    // The half that has not moved and must not: naming a pause never escalates it.
     expect(failureSpy).not.toHaveBeenCalled();
   });
 
