@@ -18,7 +18,7 @@ not it. If you are reading this as a worker, someone has already done that step 
 | **Subject item** | **BL-122** — `apps/web` has zero tests and is excluded from the suite |
 | **Item's status** | `todo`, `autonomy: eligible` as of 2026-08-09 |
 | **Where it lives** | `design/backlog.md`, under `### Todo (next first)` |
-| **Your output** | `design/operator/<run>-brief.md` for BL-122 — **the brief only. Not a bar.** |
+| **Your output** | exactly one new file: **`design/operator/bl122-brief.md`** — **the brief only. Not a bar.** |
 | **Exemplars to model** | `design/operator/hmp3-brief.md` and `design/operator/hmp7-brief.md` |
 | **Known open fork** | BL-122's fix direction is **undecided**. See §5. |
 
@@ -71,7 +71,10 @@ Your output is graded on these. They are not a style guide; they are the bar.
 
 ## 4. Scope
 
-**In:** creating `design/operator/<run>-brief.md`. Nothing else.
+**In:** creating **`design/operator/bl122-brief.md`**. Nothing else.
+
+*(Named for the item, not for the later run, because the later run does not exist yet and you cannot know what it
+will be called. Whoever prepares that run renames the file then. Do not invent a run identifier.)*
 
 **Out — do not touch, and each is fenced for a reason:**
 
