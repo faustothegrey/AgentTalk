@@ -48,6 +48,13 @@
       "sandbox": "att-op-hmp7",
       "configPath": "/var/folders/n1/j_ypbbz157z8sch3ytfy31y00000gn/T/hmp-hmp7-1786172426575.config.json",
       "at": "2026-08-08T07:00:26.577Z"
+    },
+    {
+      "run": "hmp8",
+      "repoSha": "fdf5f37fc605470ac0eac39c7229846bdd17b16e",
+      "sandbox": "att-op-hmp8",
+      "configPath": "/var/folders/n1/j_ypbbz157z8sch3ytfy31y00000gn/T/hmp-hmp8-1786376159848.config.json",
+      "at": "2026-08-10T15:35:59.849Z"
     }
   ],
   "failed": [
