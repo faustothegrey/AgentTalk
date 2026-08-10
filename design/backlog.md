@@ -969,11 +969,14 @@ status: todo
 date: 2026-08-08
 epic: null
 tags: [test-infra, web, ui, coverage-gap, bl028-t3b-followup]
-autonomy: human-only
+autonomy: eligible
 -->
 - [todo · **surfaced by [[BL-028]] T3b, filed at the PO's direction 2026-08-08** — the T3b bar **C8** could not
   be satisfied and was accepted `not-checked` rather than worked around] — **`apps/web` has ZERO tests and is
-  explicitly excluded from the suite.** `vitest.config.ts:29` carries `exclude: ['**/dist/**', 'apps/web/**']`,
+  explicitly excluded from the suite.** `vitest.config.ts` carries `exclude: ['**/dist/**', 'apps/web/**']`
+  (**line 20** — this read `:29` when filed 2026-08-08 and was stale; corrected 2026-08-09 at gate 1, by
+  grepping the symbol rather than trusting the number. Both substantive premises re-verified the same way:
+  `apps/web/package.json` has **no `test` script** and no vitest/jsdom/testing-library dependency),
   and `apps/web/package.json` has no `test` script and no test dependency — no vitest, no jsdom, no
   testing-library. So **no assertion about the UI is possible today**, in a project where the web UI is the
   human's only window onto a running team.

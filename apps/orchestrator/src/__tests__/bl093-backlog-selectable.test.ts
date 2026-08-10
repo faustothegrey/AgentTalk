@@ -315,10 +315,24 @@ describe('the real backlog (design/backlog.md)', () => {
   // One row, R4, could not be met by ANY delivery: it pinned the suite at 722/722 while another row
   // required a new test file. PO-disposed as a bar defect. The lesson is in the grading doc and is
   // worth carrying here too: never pin a fixed suite total on a rung that also demands a new test.
-  it('offers nothing — the queue emptied when BL-121 closed on the hmp7 delivery', () => {
+  // 2026-08-09 — the PO marked **BL-122** eligible, so the set is non-empty for the sixth time. The
+  // red was shown to the PO before this line moved, as always, and the observed value was exactly
+  // the expected one (`["BL-122"]`) — so per the standing note above there is no finding here.
+  //
+  // What makes this refill different from the five before it: BL-122 is NOT stocked to be
+  // implemented next. It is the subject of a brief-authoring rung (`design/brief-authoring-rung-plan.md`),
+  // where the worker writes the operator brief FOR this item and does not do the item's work. The
+  // eligibility bit is needed for the later rung that implements it, not for the authoring one.
+  //
+  // Read that as a caution rather than a detail: eligibility says an item MAY be handed to an agent
+  // unattended, and BL-122's own fix direction is still undecided (jsdom harness vs. record the
+  // verified-by-eye position as the standing one). Handing it out is still gated by a committed
+  // brief, a committed bar and a PO-signed authorization, so the undecided fork cannot reach a
+  // worker by accident — but the bit is set earlier here than in any prior refill.
+  it('offers BL-122 — the queue refilled for the brief-authoring rung', () => {
     const { items, warnings } = readBacklog();
     expect(warnings).toEqual([]);
-    expect(selectableBacklogItems(items).map((i) => i.id)).toEqual([]);
+    expect(selectableBacklogItems(items).map((i) => i.id)).toEqual(['BL-122']);
   });
 
   // 2026-08-07 — deliberately updated, and the red was shown to the PO first. BL-084 CLOSED (PO
@@ -338,9 +352,16 @@ describe('the real backlog (design/backlog.md)', () => {
     expect(byId.get('BL-028')!.blockedBy).toEqual(['BL-084']);   // dependency unchanged
     expect(byId.get('BL-084')!.status).toBe('done');              // …and now resolved
     expect(byId.get('BL-028')!.autonomy).toBe('human-only');      // what still holds it back
-    // No item's arrival or close has ever changed BL-028's standing — which is the point of
-    // asserting the whole set here rather than just "BL-028 is absent from it".
-    expect(selectableBacklogItems(items).map((i) => i.id)).toEqual([]);
+    // 2026-08-09 — this comment previously read "No item's arrival or close has ever changed
+    // BL-028's standing", and BL-122 going eligible falsified its LETTER: an item's arrival has
+    // now changed the set. Corrected rather than merely revalued, because a confidently wrong
+    // comment is how the next reader gets misled.
+    //
+    // The INTENT is untouched and is why the whole set is still asserted here: BL-028's own
+    // standing has never moved, and pinning the entire set is what proves that — a weaker
+    // "BL-028 is absent from it" would keep passing even if BL-028's own bit flipped and
+    // something else masked it. Do not weaken it to an absence check when this next goes red.
+    expect(selectableBacklogItems(items).map((i) => i.id)).toEqual(['BL-122']);
   });
 
   it('marks BL-086 as the PO decision it is', () => {
