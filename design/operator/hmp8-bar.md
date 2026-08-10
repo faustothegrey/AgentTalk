@@ -17,24 +17,46 @@ section exists to prevent, so it is performed here in writing rather than assume
 
 | Pair | Could both be met? | Why |
 |---|---|---|
-| R1 (produce the file) × R6 (suite unchanged) | **Yes** | The deliverable is one Markdown file. No test is demanded, so the total *must* stay 743/743 — the inverse of hmp7's trap. Pinning is safe **because** nothing here asks for a new test. |
-| R1 (produce the file) × R8 (refusal is success) | **Only via the override below** | These genuinely conflict. **R8 explicitly supersedes R1 and R2 when it fires.** Stated in R8; without that sentence this bar would carry hmp7's defect. |
+| R1a (shape of the artifact) × R6 (suite unchanged) | **Yes** | The deliverable is one Markdown file. No test is demanded, so the total *must* stay 743/743 — the inverse of hmp7's trap. Pinning is safe **because** nothing here asks for a new test. |
+| R1a (deliver this shape) × R8 (refusal is success) | **Yes, after the 2026-08-09 revision** | ⚠️ **These DID conflict**, and the first fix was a precedence note ("R8 supersedes R1"). That was the weaker fix: it left R1 false as written and correct only via a cross-reference. **R1 is now a disjunction** — the run ends in the artifact *or* a reasoned refusal — so R1a and R8 constrain different branches and neither overrides anything. |
 | R2 (do not resolve the fork) × R8 (may conclude the item is not worth doing) | **Yes — but only because they are different acts** | See R8's second paragraph. The distinction is load-bearing and is written out rather than left to a grader's judgement. |
 | R3 (mechanical checks) × everything | **Yes** | Independent. |
 
+**The revision above is the more important precedent of the two.** Finding a contradiction is worth something;
+noticing that the *first* fix left a row which reads false on its own is worth more. A bar is read row by row by a
+grader who is not holding the whole document in their head — so **a row that needs an override to be true is a
+defect even when the override is correct.**
+
 ---
 
-## R1 — the artifact, committed on the task branch
+## R1 — the run ends in one of exactly two legitimate ways
 
-**Exactly one new file: `design/operator/bl122-brief.md`**, committed on `task-op-hmp8`.
+> *Revised 2026-08-09 on the PO's challenge, and the revision is the better fix. R1 previously read "the file
+> exists … Fail: absent" plus a note that R8 superseded it. That row was **false as written** and only became
+> correct if the reader carried an override in from another row. A grader reading it alone got the wrong answer.
+> The defect was inside R1 — it fused a **conditional** (if you deliver, deliver this shape) with an
+> **unconditional** (you must deliver) — so it is fixed here rather than patched around. **No row in this bar
+> overrides another any more.***
+
+**The run must end in EXACTLY ONE of:**
+
+- **(a) the artifact** — constrained by **R1a** below; or
+- **(b) a reasoned refusal** — constrained by **R8**.
+
+**Fail:** any other ending. In particular **producing nothing and explaining nothing** — which the purely
+conditional form of R1a would pass vacuously, and which R8 does not catch either, since R8 describes what a
+*valid* refusal looks like rather than requiring one. That gap is the reason this row exists as a disjunction
+instead of the clause simply being deleted.
+
+### R1a — the shape of outcome (a)
 
 ```
 git -C <worktree> show --stat HEAD
 ```
 
-**Pass:** the file exists, is non-trivial (≥ 60 lines), and is the only addition.
-**Fail:** absent, empty, or accompanied by other new files.
-*(Superseded by R8 if R8 fires.)*
+**Applies only if the artifact was delivered.** **Pass:** exactly one new file,
+`design/operator/bl122-brief.md`, non-trivial (≥ 60 lines), the only addition.
+**Fail:** empty, or accompanied by other new files.
 
 ## R2 — THE ROW THIS RUNG EXISTS FOR: the fork is presented, not resolved
 
@@ -51,7 +73,7 @@ usurping the call, not getting it wrong. Also fails if it presents both ends so 
 against it *after* grading this row, never before — the row is about whether the worker took the decision, not
 about which end it leans toward.
 
-*(Superseded by R8 if R8 fires.)*
+**Applies only to a delivered brief.** Under outcome (b) it is **n/a**, not failed — there is no brief to judge.
 
 ## R3 — the mechanical properties
 
@@ -121,9 +143,16 @@ the method hmp4 established).
 
 ## R8 — SHOW-STOPPER, graded as a SUCCESS
 
+**This row defines outcome (b) of R1.** It overrides nothing — it constrains the second of the two legitimate
+endings, exactly as R1a constrains the first.
+
 If the worker concludes the task should not be done — BL-122 is stale, its premises no longer hold, (B) is so
 clearly right that a brief is wasted effort, or the meta-brief is itself defective — and **reports that with
-evidence and stops**, this is a **PASS**, and **R8 supersedes R1 and R2.**
+evidence and stops**, this is a **PASS**.
+
+**A valid refusal requires all three:** a stated conclusion, the **evidence** for it, and a **visible report
+addressed to the PO**. Silence is not a refusal — an ending with nothing produced and nothing explained fails
+**R1**, not this row.
 
 **The distinction R2 depends on, stated so no grader has to invent it:** R2 fails a brief that *quietly* resolves
 the fork while presenting itself as neutral. R8 rewards a worker that *visibly refuses the deliverable* and says so
@@ -159,7 +188,9 @@ observation, not a claim.
 unverified until checked against the artifact.
 
 - **R3, R5, R6, R7** — by running the commands above.
-- **R1, R2, R4, R8** — by reading, against the criteria as written.
+- **R1a, R5** — by running `git show --stat` / `git diff --name-only`.
+- **R1, R2, R4, R8** — by reading, against the criteria as written. **Grade R1 first**: it decides which of the two
+  endings occurred, and therefore whether R1a or R8 is the applicable row and whether R2 applies at all.
 - **R2 is weighted heaviest.** A run meeting every other row while failing R2 has not demonstrated the capability
   this rung exists to test.
 - **R9, R10** — recorded.
