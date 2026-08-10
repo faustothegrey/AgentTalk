@@ -973,13 +973,12 @@ autonomy: eligible
 -->
 - [todo · **surfaced by [[BL-028]] T3b, filed at the PO's direction 2026-08-08** — the T3b bar **C8** could not
   be satisfied and was accepted `not-checked` rather than worked around] — **`apps/web` has ZERO tests and is
-  explicitly excluded from the suite.** `vitest.config.ts` carries `exclude: ['**/dist/**', 'apps/web/**']`
-  (**line 20** — this read `:29` when filed 2026-08-08 and was stale; corrected 2026-08-09 at gate 1, by
-  grepping the symbol rather than trusting the number. Both substantive premises re-verified the same way:
-  `apps/web/package.json` has **no `test` script** and no vitest/jsdom/testing-library dependency),
-  and `apps/web/package.json` has no `test` script and no test dependency — no vitest, no jsdom, no
+  explicitly excluded from the suite.** `vitest.config.ts:20` carries `exclude: ['**/dist/**', 'apps/web/**']`,
+  and `apps/web/package.json` has **no `test` script** and no test dependency — no vitest, no jsdom, no
   testing-library. So **no assertion about the UI is possible today**, in a project where the web UI is the
-  human's only window onto a running team.
+  human's only window onto a running team. *(The line read `:29` when filed 2026-08-08 and was stale; corrected
+  2026-08-09 at gate 1 by grepping the symbol rather than trusting the number. Both premises re-verified the same
+  way then, and again by run `hmp8` on 2026-08-10.)*
 
   **The concrete miss that produced this item.** BL-028 T3b added one `case 'agent_non_reply'` arm to
   `App.tsx`'s WebSocket switch. Its *input* is proven — a real connected client receives the broadcast with
@@ -987,10 +986,32 @@ autonomy: eligible
   it. **The switch has no `default` branch**, so a missing or mistyped `case` drops the message silently: the
   exact failure this gap cannot catch is also the one that produces no error anywhere.
 
-  **Fix direction (deliberately not decided here):** add `jsdom` + a React testing library to `apps/web`, drop
-  `apps/web/**` from the root `exclude`, and give the app an `environment: 'jsdom'` include glob — **or** decide
-  the UI is thin enough to stay verified by eye and record *that* as the standing position. Both are defensible;
-  what is not defensible is the current state, where the exclusion is a config line nobody chose deliberately.
+  **⚠️ CORRECTED 2026-08-10 — this item's own stated fix was a NO-OP, and it took a run to notice.** The version
+  below said to *"drop `apps/web/**` from the root `exclude`"*. **That change enables nothing.** `include`
+  (`vitest.config.ts:19`) is an **allowlist of six globs, none of them under `apps/web`**; vitest collects
+  `include` minus `exclude`, so a path the include never matches cannot be un-excluded. **The exclusion on line 20
+  is redundant with line 19**, and the *operative* gate — the one that would have to change — is the include
+  allowlist.
+
+  **Proven by execution, not by reading**, while grading run `hmp8` (`design/operator/hmp8-grading.md`): with a
+  real throwaway test file placed under `apps/web/src`, collection was **0 files under `apps/web` with the
+  exclusion present, and 0 with it deleted** — 89 total either way. Found by the worker that authored
+  `design/operator/bl122-brief.md` §3.1, which flagged it as a reading it could not execute and named the
+  experiment that would settle it.
+
+  **Why this matters more than a wording fix:** a worker handed the old text would have produced a one-line diff,
+  a green suite, and nothing enabled — the item's literal instruction was the tempting wrong answer. It is now
+  written up as such (that brief's **6a**, with bar row **A2** built to catch it).
+
+  **Fix direction (deliberately not decided here):** **(A)** bring `apps/web` into the suite — which requires
+  **adding an include glob** for it (scoped to `apps/web/src/**`, not `apps/web/**`: the root config supplies its
+  own `exclude` and therefore **replaces** vitest's `defaultExclude`, where `**/node_modules/**` lives, and
+  `apps/web/node_modules` exists on disk), plus `jsdom` + a React testing library and an `environment: 'jsdom'`
+  setting; removing the redundant line 20 is optional tidying, not the enabling change. A second shape exists and
+  is recorded in that brief's §3.3: `apps/web` carries its **own** config and `test` script chained from the root,
+  as `packages/contracts` already does. **(B)** decide the UI is thin enough to stay verified by eye and record
+  *that* as the standing position. Both are defensible; what is not defensible is the current state — and note it
+  is **doubly** undecided: neither line 19 nor line 20 records a decision about `apps/web`.
 
   **Not urgent, and worth saying why:** one six-line display arm does not justify standing up a test harness, and
   a harness stood up hastily to satisfy one bar tends to encode whatever was convenient that afternoon. Pick this
