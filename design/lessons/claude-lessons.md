@@ -1719,3 +1719,32 @@ here.**
 - **Operationally: `$?` after a pipe is the last command's status, and it nearly produced a false claim again.**
   `npx tsc -b | tail` printed `TSC_EXIT=0` over eleven real type errors. Same family as last session's `EXIT 0`
   on a run that exited 1. **Redirect to a file and read the real exit code whenever the exit code is the claim.**
+
+### 2026-08-10 — hmp8: the loop closed, and a worker caught what three of my artifacts got wrong
+
+- **As planner: I propagated a wrong instruction through three artifacts without once checking it.** BL-122 said
+  the fix was to drop `apps/web/**` from the vitest `exclude`. My plan repeated it, my meta-brief passed it to the
+  worker. It is a **no-op** — `include` is an allowlist and is the operative gate. The worker found it, said it
+  could not execute the proof, and **named the experiment that would settle it**; I ran that experiment in four
+  minutes and confirmed it. **A claim that arrives with its own falsification test attached is worth several that
+  arrive with confidence.** That is the property to design briefs around — and the one I now want in my own
+  writing, because the cheapest thing I did all day was check someone else's flagged uncertainty.
+- **As plan reviewer: my four findings were all "the artifact is not true as written", none were about design.**
+  A threshold that could not be computed (`>100%` under numstat), a row with no owner, a property list that
+  predated the shape it was meant to grade, and a stale line number. **Gate 1's value here was proofreading against
+  reality, not architecture** — which is worth knowing when deciding how much a gate-1 with no fresh eyes is
+  actually buying.
+- **The PO out-reviewed me on the R1/R8 contradiction, and the correction generalises.** I found the conflict
+  mechanically (a pairwise table) and fixed it with a precedence note. He asked "isn't R1 just plain wrong?" — and
+  it was: it fused a conditional with an unconditional. **A row that needs an override to be true is a defect even
+  when the override is correct**, because a bar is read row by row by someone not holding the document in their
+  head. Fixing the row also exposed a gap the override had hidden (silent non-delivery passing vacuously).
+  **When the first fix is a patch on top of a bad statement, delete the bad statement instead.**
+- **Verify by symbol — FOUR sessions running, and this time it bit me as the REVIEWER.** I judged the worker's
+  `SidebarEvents.tsx:41/:50` citation unresolvable because I had invented a `components/` path. The brief was
+  right. I have now written this lesson three times and violated it three times; reading it does nothing. What
+  actually worked was making verify-by-symbol **a graded row of the artifact** — the check exists outside me.
+- **Five asserted things were wrong today and every one was caught by executing something** — never by reading
+  harder. The backlog parser caught a sixth (my `[**done` prose marker) sixty seconds after I typed it. **Build
+  the check; do not resolve to be more careful.** That sentence is the whole ladder in miniature: its value is not
+  that agents do the work, it is that an independent actor executes the claim you were about to believe.
