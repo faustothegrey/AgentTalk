@@ -1,15 +1,8 @@
-# The meta-brief — a reusable brief for producing an operator brief
+# Run `hmp8` — operator brief: authoring the brief for BL-122
 
-**Reusable template.** Instantiate by copying to `design/operator/<run>-brief.md` and changing **exactly two
-zones**: this header block (title + provenance) and **§0**. **Everything from §1 onward is the reusable
-substance and must survive untouched** — if a run ever needs it edited, that is the signal this template has
-failed its purpose. Record it; do not quietly patch it. Rationale: `design/brief-authoring-rung-plan.md`.
-
-> *Corrected 2026-08-09 at first instantiation. This originally read "filling §0 only", which was wrong on its
-> first contact with reality: a copy obviously needs its own title, and a template that announces itself as a
-> template has no business doing so in the brief a worker actually reads. The rule is now two named zones, which
-> is both true and still strict enough to detect the failure it was written to detect — substance drifting per
-> run. A rule that is violated the first time it is applied teaches people to ignore rules.*
+**Instantiated from `design/operator/meta-brief.md` on 2026-08-09.** Two zones differ from the template: this
+header, and §0. Everything from §1 onward is the template's reusable substance, byte-identical — if you find a
+difference there, the template drifted and that is a finding worth reporting.
 
 ## ⚠️ NOT YET AUTHORIZED
 

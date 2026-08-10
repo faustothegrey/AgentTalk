@@ -1,6 +1,6 @@
 # Bar for run `hmp8` — pre-registered
 
-**Run:** `hmp8` · **Brief:** `design/operator/meta-brief.md` (instantiated) · **Subject item:** BL-122
+**Run:** `hmp8` · **Brief:** `design/operator/hmp8-brief.md` · **Subject item:** BL-122
 **Written:** 2026-08-09, before the run exists. **Author:** planner seat (bar authorship is NOT delegated — PO
 decision Q1, `design/brief-authoring-rung-plan.md` §3b).
 
