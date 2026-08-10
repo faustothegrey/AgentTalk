@@ -6066,7 +6066,6 @@ status: done
 date: 2026-07-30
 epic: null
 tags: [client, worktree, mandate, dx, node-modules, bl036-followup, agentalk-mcp-client, agent-delivered, hmp-commissioned]
-autonomy: eligible
 -->
 - [done · **MERGED 2026-08-02** (`236b30a`, client repo) · **delivered by a worker commissioned over HMP — the
   fifth rung, and the first whose workdir was not AgentTalk** · originally: surfaced while implementing
