@@ -965,13 +965,15 @@ tags: [self-hosting, relay, human-in-the-loop, program]
 
 <!-- @item
 id: BL-122
-status: todo
+status: done
 date: 2026-08-08
 epic: null
-tags: [test-infra, web, ui, coverage-gap, bl028-t3b-followup]
-autonomy: eligible
+tags: [test-infra, web, ui, coverage-gap, bl028-t3b-followup, standing-position, po-decision]
 -->
-- [todo · **surfaced by [[BL-028]] T3b, filed at the PO's direction 2026-08-08** — the T3b bar **C8** could not
+- [done · **CLOSED 2026-08-10 by PO DECISION: end (B) — `apps/web` stays verified BY EYE, and that is now the
+  recorded standing position.** The item's complaint was never "there are no tests"; it was that nobody had
+  decided. A decision closes it. Rationale given: **simplicity** — see the standing position below] —
+  originally: **surfaced by [[BL-028]] T3b, filed at the PO's direction 2026-08-08** — the T3b bar **C8** could not
   be satisfied and was accepted `not-checked` rather than worked around] — **`apps/web` has ZERO tests and is
   explicitly excluded from the suite.** `vitest.config.ts:20` carries `exclude: ['**/dist/**', 'apps/web/**']`,
   and `apps/web/package.json` has **no `test` script** and no test dependency — no vitest, no jsdom, no
@@ -1016,6 +1018,52 @@ autonomy: eligible
   **Not urgent, and worth saying why:** one six-line display arm does not justify standing up a test harness, and
   a harness stood up hastily to satisfy one bar tends to encode whatever was convenient that afternoon. Pick this
   up when a second UI assertion wants it — or when the PO wants the standing position on record.
+
+  ---
+
+  ## 📌 THE STANDING POSITION — `apps/web` is verified BY EYE (PO, 2026-08-10)
+
+  **This is the artifact BL-122 asked for.** It is deliberately here, in the item, rather than in a new design
+  doc: this is where someone asking *"why is `apps/web` untested?"* will land, and a fresh document for one
+  decision is the opposite of the simplicity that motivated the choice. `vitest.config.ts:18-33` points here.
+
+  **The decision.** The web UI is thin enough that eyeball verification during a live session is proportionate to
+  its risk. `apps/web` is therefore **not collected by the test suite, on purpose.** The exclusion is no longer a
+  config line nobody chose — it is this line, chosen, by the Product Owner, for stated reasons.
+
+  **What is KNOWINGLY NOT VERIFIED — stated precisely, because a position that hides its cost is not a position:**
+
+  1. **That the `agent_non_reply` arm actually renders its notice.** Its *input* is proven
+     (`bl028-t3b-nonreply-reader.test.ts` — a connected client receives the broadcast with `reason` and
+     `silentForMs` intact). Nothing proves the arm displays anything. This is BL-028 T3b's bar row **C8**,
+     accepted `not-checked`, and it stays not-checked.
+  2. **Every other UI behaviour**, without exception. There are zero assertions over `apps/web`.
+  3. **The specific hazard this leaves open**, which is the honest cost of (B): `App.tsx`'s WebSocket switch has
+     **no `default` branch**, so a missing or mistyped `case` drops a message **silently**. The failure mode this
+     gap cannot catch is precisely the one that produces no error anywhere. That was true before this decision
+     and remains true after it.
+  4. **A wrinkle for anyone doing the eyeball check** (found by run `hmp8`): the notice lands in the *Agent
+     Events* sidebar panel, which initialises **collapsed** (`App.tsx:167`, `useState(true)`; the entry list is
+     gated at `SidebarEvents.tsx:41` and `:50`). **Verifying by eye means knowing to expand that panel first.**
+     A check that mounts the UI and looks at the default screen will see nothing and conclude wrongly.
+
+  **REOPEN CONDITION — the one thing to watch for.** Reopen when **a second UI assertion wants a harness.** One
+  six-line display arm does not justify the infrastructure; a second customer changes the arithmetic, because
+  infrastructure with one customer gets fitted to that customer and has to be rebuilt for the next. Reopening is
+  a normal act, not a reversal of a mistake — this position is calibrated to today's UI, and it expires when the
+  UI stops being thin.
+
+  **Also reopen if** the hazard in (3) ever actually fires — a UI message silently dropped in a real session is
+  evidence that eyeball verification is not sufficient, and it should be treated as such rather than as a one-off.
+
+  **If you reopen: the enabling change is ADDING an include glob, not deleting the exclusion.** See the corrected
+  fix direction above and `vitest.config.ts:18-33`. Deleting the exclusion alone collects zero new files — proven
+  by execution, and it is the tempting wrong answer.
+
+  **Provenance.** The fork was framed by `design/operator/bl122-brief.md` §4 — an operator brief written by a
+  commissioned worker in run `hmp8`, which presented both ends and explicitly refused to choose because the
+  choice is product scope. Grading: `design/operator/hmp8-grading.md` (PASS). The no-op finding that corrected
+  this item came from that brief's §3.1 and was confirmed by execution at grading.
 
 <!-- @item
 id: BL-121
