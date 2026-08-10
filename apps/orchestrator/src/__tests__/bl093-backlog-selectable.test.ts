@@ -329,10 +329,25 @@ describe('the real backlog (design/backlog.md)', () => {
   // verified-by-eye position as the standing one). Handing it out is still gated by a committed
   // brief, a committed bar and a PO-signed authorization, so the undecided fork cannot reach a
   // worker by accident — but the bit is set earlier here than in any prior refill.
-  it('offers BL-122 — the queue refilled for the brief-authoring rung', () => {
+  // 2026-08-10 — EMPTY for the seventh time. BL-122 closed on a PO DECISION rather than on a
+  // delivery, which is the first time this line has moved for that reason: the item asked for a
+  // choice between standing up a UI test harness and recording "verified by eye" as the standing
+  // position, and the PO chose the latter. Nothing was built; the defect the item named — that
+  // nobody had decided — is gone because someone decided.
+  //
+  // The full cycle behind it: BL-122 was the SUBJECT of run `hmp8`, the first brief-authoring rung,
+  // where a commissioned worker wrote the operator brief for the item and refused to resolve the
+  // fork because the choice is product scope. That refusal was the row the rung was graded on, and
+  // the decision it routed to the PO is what closes the item here.
+  //
+  // Worth carrying: hmp8 also proved BY EXECUTION that the item's own stated fix was a no-op —
+  // deleting `apps/web/**` from the vitest `exclude` collects zero new files, because the `include`
+  // allowlist is the operative gate. The standing position and that finding live in BL-122's
+  // closing block; `vitest.config.ts` points there.
+  it('offers nothing — the queue emptied when BL-122 closed on the PO decision', () => {
     const { items, warnings } = readBacklog();
     expect(warnings).toEqual([]);
-    expect(selectableBacklogItems(items).map((i) => i.id)).toEqual(['BL-122']);
+    expect(selectableBacklogItems(items).map((i) => i.id)).toEqual([]);
   });
 
   // 2026-08-07 — deliberately updated, and the red was shown to the PO first. BL-084 CLOSED (PO
@@ -361,7 +376,11 @@ describe('the real backlog (design/backlog.md)', () => {
     // standing has never moved, and pinning the entire set is what proves that — a weaker
     // "BL-028 is absent from it" would keep passing even if BL-028's own bit flipped and
     // something else masked it. Do not weaken it to an absence check when this next goes red.
-    expect(selectableBacklogItems(items).map((i) => i.id)).toEqual(['BL-122']);
+    //
+    // 2026-08-10 — and it went red exactly there, on BL-122's close. Revalued to `[]`, and the
+    // instruction above held: still the whole set, still not an absence check. BL-028's standing
+    // is untouched for the second time in two days, which is the point of asserting it this way.
+    expect(selectableBacklogItems(items).map((i) => i.id)).toEqual([]);
   });
 
   it('marks BL-086 as the PO decision it is', () => {
