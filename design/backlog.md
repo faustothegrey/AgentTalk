@@ -964,6 +964,44 @@ tags: [self-hosting, relay, human-in-the-loop, program]
 ### Todo (next first)
 
 <!-- @item
+id: BL-123
+status: todo
+date: 2026-08-11
+epic: null
+tags: [governance, agent-md, operator-seat, authority, contradiction, fail-open]
+autonomy: po-decision
+-->
+- [todo · **filed 2026-08-11, mid-session; surfaced when Hermes had patched its own `SKILL.md` at the PO's
+  direction and the question "may it commit this?" turned out to have two opposite answers**] —
+  **`AGENT.md` contradicts itself, nine lines apart, on whether the OPERATOR seat may COMMIT** — and it does
+  so *inside* the fence the passage exists to describe.
+  - **`AGENT.md:285`** offers the prohibition as the load-bearing reason the [[BL-119]] concession is safe:
+    *"the fence that matters is untouched — **the seat still cannot commit and cannot push**, so a skill edit
+    reaches mainline only as a diff the PO gates."*
+  - **`AGENT.md:294`** grants the opposite for the same surface: *"a backlog commit inside the allowlist is a
+    **commit**, not a merge and not a push."*
+  Both were written in the same amendment cycle, and **`design/operator-seat/**` is inside that allowlist** —
+  BL-119 put it there. So the sentence granting the commit and the sentence denying it are describing the same
+  directory.
+  **Why this is not cosmetic.** The seat resolves it by reading whichever line it hits first, which means the
+  answer depends on scroll position rather than on a decision — the *fail-open-in-a-document* shape `:284`
+  itself names as "the shape this project exists to catch". It is also load-bearing twice over: `:285` uses
+  "cannot commit" as the **safety argument** for the concession, so if `:294` is the real rule, the concession
+  was justified by a premise that is not true; and the working-tree caveat at `:288` (*"patching the skill
+  changes what the seat does on its next run … commit or no commit"*) means a **dirty tree already changes
+  behaviour**, so the commit gate may be guarding less than the prohibition implies either way.
+  **The decision needed (PO):** (a) the seat MAY commit inside the allowlist → correct `:285`, which also means
+  restating why BL-119 is safe on some ground other than the commit gate; (b) the seat may NOT commit at all →
+  correct `:294`, and the PO commits every operator-authored file; (c) split the surface — `design/backlog.md`
+  commits allowed, `design/operator-seat/**` hand-off only, on the `:288` reasoning that a skill edit is a
+  different kind of change from a filed item.
+  **Honest limit, unchanged by any option:** the allowlist is **behavioural, not enforced** —
+  `scripts/infra-invariant.mjs` checks neither the path allowlist nor commit authorship (AGENT.md's own
+  "Honest limit" note). Whichever way this is decided, nothing mechanises it; mechanising is a separate item.
+  **Evidence trail:** the live case is the `SKILL.md` v1.3.0 → v1.4.0 edit of 2026-08-11 (backlog-listing
+  section + port 3741 corrections), authored by Hermes, left uncommitted for exactly this reason.
+
+<!-- @item
 id: BL-122
 status: done
 date: 2026-08-08
