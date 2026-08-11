@@ -1748,3 +1748,34 @@ here.**
   harder. The backlog parser caught a sixth (my `[**done` prose marker) sixty seconds after I typed it. **Build
   the check; do not resolve to be more careful.** That sentence is the whole ladder in miniature: its value is not
   that agents do the work, it is that an independent actor executes the claim you were about to believe.
+
+### 2026-08-11 — the operator's own skill was the defective artifact, and it out-checked me once
+
+- **As planner: a check that asserts a DERIVED NUMBER is weaker than one asserting a STATE OF THE FILE, and
+  Hermes proved it on me.** My final hand-back said *"grep should still return four hits, with only the first
+  one changed"* — but the replacement text I had just supplied removes `BL-092` from that line, so three is what
+  the fix requires. The operator caught the contradiction, reasoned it out, and **refused to preserve a mention
+  that would have undone the generalisation** rather than satisfy my check literally. My next check was
+  *"grep should return one hit, line 56, the sentence saying the word does not exist"* — that one cannot be
+  wrong in the same way. **Write checks that assert what the file IS, not counts you derived in your head.**
+- **As reviewer: I found `wontfix` as a newly-introduced error and never grepped the file for its family.** One
+  pre-existing instance survived at `SKILL.md:328` — **four lines above the hunk I then pointed the operator
+  at** — leaving the file self-contradictory (line 56 said "there is no wontfix"; line 328 used it). I had spent
+  a paragraph the round before telling Hermes to read the lines around a fix before moving on. **When you find
+  an error, grep the whole file for its family before writing the instruction.**
+- **A relayed `git status` is not a `git status`.** Six operator reports all ended with the tree showing only
+  the modified `SKILL.md`. At close, my own run found an **untracked 2.8KB file Hermes had authored and never
+  mentioned** (`references/backlog-semantics.md`) — and `--porcelain` prints untracked files as `??`. Writing it
+  was permitted (it is inside the charter's allowlist) and its content is accurate (I checked every claim against
+  `backlog.ts`). But per `AGENT.md:288` a file in that directory **is live from the moment it lands in the
+  working tree**, so an unreviewed reference had been in effect for hours. It happened to be correct. **That is
+  luck, not process — when you ask "did you change anything else", run the tree check yourself.**
+- **Calibration on the seat, worth carrying forward.** Hermes executed every instruction accurately, flagged an
+  honest deviation, caught the one defect in my instructions, and wrote itself a genuinely good semantics
+  reference nobody asked for. It found **none** of the seven defects in its own skill unprompted — including the
+  two it introduced while fixing the others. **It is a good executor and a good checker of instructions; it is
+  not yet an auditor of its own artifacts.** Scope what you hand it accordingly.
+- **The diagnosis that mattered was three layers deep and only the first was guessable.** "The skill didn't
+  load" was true, but the skill also had no listing procedure at all, and its one backlog recipe pointed at a
+  port that is dead by construction at pre-flight (3600 is a *run's* sandbox; the live orchestrator is 3741).
+  **Stopping at the first true explanation would have shipped a fix that left two defects standing.**
