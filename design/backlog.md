@@ -965,14 +965,16 @@ tags: [self-hosting, relay, human-in-the-loop, program]
 
 <!-- @item
 id: BL-123
-status: todo
+status: done
 date: 2026-08-11
 epic: null
 tags: [governance, agent-md, operator-seat, authority, contradiction, fail-open]
 autonomy: po-decision
 -->
-- [todo · **filed 2026-08-11, mid-session; surfaced when Hermes had patched its own `SKILL.md` at the PO's
-  direction and the question "may it commit this?" turned out to have two opposite answers**] —
+- [done · **CLOSED 2026-08-11 by PO DECISION: option (a) — the OPERATOR seat MAY COMMIT inside its write
+  allowlist. See the closing block at the end of this item.** Filed and decided the same day; originally filed
+  mid-session, when Hermes had patched its own `SKILL.md` at the PO's direction and the question "may it commit
+  this?" turned out to have two opposite answers] —
   **`AGENT.md` contradicts itself, nine lines apart, on whether the OPERATOR seat may COMMIT** — and it does
   so *inside* the fence the passage exists to describe.
   - **`AGENT.md:285`** offers the prohibition as the load-bearing reason the [[BL-119]] concession is safe:
@@ -1000,6 +1002,55 @@ autonomy: po-decision
   "Honest limit" note). Whichever way this is decided, nothing mechanises it; mechanising is a separate item.
   **Evidence trail:** the live case is the `SKILL.md` v1.3.0 → v1.4.0 edit of 2026-08-11 (backlog-listing
   section + port 3741 corrections), authored by Hermes, left uncommitted for exactly this reason.
+
+  ---
+
+  **CLOSING BLOCK — PO DECISION 2026-08-11: option (a). The seat MAY commit inside its write allowlist.**
+
+  **The reasoning turns on a fact, not a principle: the commit gate does not bind.** Hermes loads its skill over
+  a symlink **from the working tree**, so an edit is live the moment it lands — commit or no commit. `:288` had
+  already conceded exactly this, one line below the sentence claiming the opposite; nobody had noticed the two
+  could not both be true. The prohibition was never what stood between an edit and its effect.
+
+  **And it was demonstrated, not merely argued.** On the day this item was filed, the seat authored
+  `design/operator-seat/references/backlog-semantics.md`, left it **untracked**, did not mention it across
+  **six** reports — each of which ended with a `git status --porcelain` that prints untracked files as `??` —
+  and it was live for hours before anyone read it. Its content turned out to be accurate (verified against
+  `apps/orchestrator/src/backlog.ts`), which is **luck, not process**. The prohibition at `:285` was in force
+  the entire time and stopped nothing.
+
+  **So committing is the SAFER arrangement, not the riskier one** — the counterintuitive core of the decision.
+  A commit grants no new power (the seat could already change its own behaviour by writing the file); it adds
+  **visibility, attribution, a diff, and a revert.** Option (b) sounds safest and delivers least: it prevents
+  no behaviour change and leaves an accumulating dirty tree nobody reviews, in which untracked files *hide*.
+  Option (c) rests on a real distinction — a filing is a proposal, a skill edit is a behaviour change — but
+  fences the **wrong event**, since that change lands at *write* time; (c) would be right only if the skill
+  were loaded from a committed state, and it is not.
+
+  **What the decision obliged, and what was done:**
+  - `AGENT.md:285` **corrected** — the "cannot commit" clause is gone, replaced with the true safety argument:
+    **push remains the PO's** (no other checkout, history or machine), and **the seat gains no authority from
+    its own skill** (a skill telling it to grade or merge still would not let it — those fences live in
+    `AGENT.md` and `hmp-commission.mjs`). The correction is stamped in place, per this project's habit of
+    keeping a retracted claim visible rather than silently deleting it.
+  - `AGENT.md:294` **stands as written** — it was the correct rule all along.
+  - `design/operator-seat/SKILL.md:25` **corrected** (v1.4.0 → v1.4.1) — it read *"per charter the operator
+    never commits mainline"*, collateral falsehood created by this decision. It now states the allowlist, the
+    absolute push prohibition, the reason to prefer committing over a dirty tree, and an explicit instruction
+    to **report every path touched, including untracked ones**.
+  - The two hostage files were **committed**: `SKILL.md` v1.4.1 and `references/backlog-semantics.md`.
+
+  **Unchanged, and stated plainly: PUSH REMAINS THE PO'S, absolutely and without exception.** This decision
+  moves the commit boundary only.
+
+  **Reopen condition:** if the skill ever loads from a **committed** state rather than the working tree, the
+  commit gate becomes meaningful and this decision is worth revisiting on its original terms.
+
+  **Deliberately NOT folded in:** mechanising the allowlist — `scripts/infra-invariant.mjs` still checks
+  neither the path allowlist nor commit authorship, so the fence remains **behavioural, not enforced**, exactly
+  as before. Deciding a rule and building its enforcement are different work; bundling them would have hidden
+  the second inside the first. Not filed as a follow-up either — file it when someone needs the enforcement,
+  not because the decision felt incomplete without it.
 
 <!-- @item
 id: BL-122

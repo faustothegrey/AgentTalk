@@ -282,11 +282,28 @@ concedes.** That directory is the seat's **own skill**: its operating instructio
 `1e469a7` and loaded by Hermes over a symlink. So the seat maintains the document that tells it how to behave.
 Two reasons this is the right call rather than a reluctant one: it was **already true in practice** and the
 allowlist was simply not describing reality, which is the fail-open-in-a-document shape this project exists to
-catch; and **the fence that matters is untouched** — the seat still cannot commit and cannot push, so a skill
-edit reaches mainline only as a diff the PO gates.
+catch; and **the fence that matters is untouched** — **push remains the PO's**, so a skill edit reaches no other
+checkout, no history anyone else reads, and no other machine without the PO. **The seat also gains no authority
+from its own skill:** one telling it to grade or merge still would not let it, because those fences live here
+and in `hmp-commission.mjs`, not in the skill it writes.
+
+**⬛ CORRECTED 2026-08-11 ([[BL-123]], PO option (a)) — this passage previously read *"the seat still cannot
+commit and cannot push, so a skill edit reaches mainline only as a diff the PO gates"*, offered as the reason
+the concession is safe. THAT WAS FALSE TWICE OVER.** It contradicted the allowlist paragraph nine lines below,
+which grants exactly that commit; and it claimed a gate that **does not bind**. Hermes loads the skill over a
+symlink **from the working tree**, so the commit was never what stood between an edit and its effect — as the
+next paragraph had already conceded, without anyone noticing the two sentences could not both be true.
+**Committing is therefore the SAFER arrangement, not the riskier one:** it makes the change visible,
+attributable, diffable and revertible, where an uncommitted edit is invisible and an untracked file hides from
+a casual `git status` read entirely. **Not hypothetical** — on 2026-08-11 the seat authored
+`design/operator-seat/references/backlog-semantics.md`, left it untracked, did not report it across six
+reports, and it was live for hours before anyone read it. The prohibition was in force the whole time and
+stopped nothing.
+
 **Know the difference anyway, because it is real:** filing a backlog item puts a *proposal* in front of the PO,
 whereas patching the skill changes what the seat **does on its next run**, from the moment it lands in the
-working tree — commit or no commit. The commit gate still holds; it is gating something of a different kind.
+working tree — commit or no commit. But that difference lands at **write** time, not at commit time. It is a
+reason to **review skill edits promptly**, not a reason to withhold the commit.
 
 **"It never touches mainline" still holds, and that is not a contradiction — read why.** That rule fences
 **code and merges**: the operator owns no branch that reaches master and performs no merge. Governance and
