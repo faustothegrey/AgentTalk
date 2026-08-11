@@ -1,8 +1,8 @@
 ---
 name: agenttalk-operator-seat
 title: AgentTalk OPERATOR seat — launch-artifact production, launch execution & governed-worker supervision
-description: "Produce pre-flight checklists and launch configs for governed AgentTalk worker runs, then execute the full launch lifecycle: pre-flight checks, reference-value capture, invariant-harness bracketing, launch, monitoring through NDJSON and sidecar, process sweep (BL-091 compensating control), and cleanup (nested worktree ordering). Covers the OPERATOR charter (no authority, observations not findings, never grade/merge/decide), the runbook procedure (preconditions, config contract, caps, monitoring, cleanup), and the H-ladder discipline (no write to mainline, no improvised recovery, invariant-harness bracketing). Designed for session-0 agents with no prior AgentTalk context."
-version: 1.3.0
+description: "Produce pre-flight checklists and launch configs for governed AgentTalk worker runs, then execute the full launch lifecycle: pre-flight checks, reference-value capture, invariant-harness bracketing, launch, monitoring through NDJSON and sidecar, process sweep (BL-091 compensating control), and cleanup (nested worktree ordering). Also reads and reports the AgentTalk backlog on request — a bare 'list the AgentTalk backlog' triggers this skill (live orchestrator on port 3741, design/backlog.md fallback). Covers the OPERATOR charter (no authority, observations not findings, never grade/merge/decide), the runbook procedure (preconditions, config contract, caps, monitoring, cleanup), and the H-ladder discipline (no write to mainline, no improvised recovery, invariant-harness bracketing). Designed for session-0 agents with no prior AgentTalk context."
+version: 1.4.1
 created: 2026-07-27
 author: Hermes (operator seat)
 source: H-0 through H-2 rungs, plus O-3 (worker writes code), O-4 (long-run monitoring, assertion-line-count verification, port cleanup note)
@@ -22,13 +22,54 @@ You hold no primer key (primers are keyed by role; you have none). The runbook a
 
 ## Sources of truth
 
-- **This skill:** `design/operator-seat/` in the AgentTalk repo (canonical, versioned — Hermes loads it via symlink). Write path verified working through the symlink (2026-08-06). Editing this skill (skill_manage) writes into the repo working tree — a governed change; per charter the operator never commits mainline, so skill updates flow as a diff for the PO. Symlink mechanism + the skill_manage symlink-scan pitfall: see the `skill-repo-hosting` skill.
+- **This skill:** `design/operator-seat/` in the AgentTalk repo (canonical, versioned — Hermes loads it via symlink). Write path verified working through the symlink (2026-08-06). Editing this skill (skill_manage) writes into the repo working tree — a governed change. **You MAY commit inside the write allowlist** (`design/backlog.md`, `design/operator/**`, `design/operator-seat/**`) — BL-123, PO option (a), 2026-08-11. **You may never PUSH**; that is the PO's, absolutely. Commit rather than leaving the tree dirty: your edit is live from the moment it lands in the working tree either way, so a commit is what makes it visible, attributable and revertible — an untracked file hides from a casual `git status` read. **Report every path you touched, including untracked ones** (`git status --porcelain` prints them as `??`). Symlink mechanism + the skill_manage symlink-scan pitfall: see the `skill-repo-hosting` skill.
 - **Charter:** `AGENT.md` → 📌 DEFAULT ROLE ASSIGNMENTS → 🔧 The OPERATOR seat
 - **Runbook:** `design/launch-and-monitor-runbook.md` — written for exactly your situation. This skill does NOT summarize it; read the runbook directly.
 - **Reference configs:** `design/operator/o*.config.json` — pattern references, not answers.
 - **Reference plans:** `design/o*-plan.md` — operational context for each rung.
 
 If the runbook leaves you guessing, **say where** in your report. That is the most valuable output of any operator rung.
+
+### Editing this skill for the PO — the diff protocol
+
+When the PO asks you to edit `SKILL.md` (or any governed file), the deliverable is a **checkable artifact, not a description**: the actual edit, uncommitted, reported as a diff. The PO's protocol, learned 2026-08-11:
+
+- **Never commit.** The tree stays dirty (`git status --porcelain` shows ` M design/operator-seat/SKILL.md`); the PO reviews the diff and lands it.
+- **Report exactly three things**: `git status --porcelain`, `git diff --stat`, and the full diff of every changed hunk. State explicitly what was NOT touched.
+- **Respect literal scope.** "Change ONLY that curl" means one line, not a search-and-replace — do not touch the same port/string anywhere it has a different meaning (e.g. 3600 as the sandbox port stays 3600; only the pre-flight API curl moves to 3741).
+- **Version bumps are explicit PO calls.** Leave `version:` alone unless told; when told, bump and report.
+- **Two line-level disciplines the PO enforces** (his words, 2026-08-11): (1) *"When you fix a line, read the two lines either side before you move on — that is where this class of defect lives"* — stale comments and counts sit adjacent to the line you were pointed at; (2) replace statements that can go stale with **dated, self-verifying** ones ("0 of 122 as of 2026-08-11" beats "1 of 93").
+- **Do not generalise historical worked examples.** Real past goals (BL-092 in the goal-trimming section) stay verbatim — their value is being real. Only a *live procedural instruction* gets generalised when its subject closes.
+- **When the PO approves a generalisation, merge, don't stack** — a replacement that repeats the line above it recreates the redundancy it was meant to remove (net −1 line).
+
+## Listing the backlog for the PO
+
+A bare request — *"list the AgentTalk backlog"* — triggers this skill. It is a read-and-report task, no launch involved. Report what you see; do not grade, do not filter by judgement.
+
+**The live orchestrator answers on PORT 3741 (launchd) — not 3600.** 3600 is the CHARTER containment port of a run's sandbox; at pre-flight no run exists and nothing listens there.
+
+```bash
+# The open queue — the NORMAL answer. Default /api/backlog (no params) = open, undecided items.
+curl -s http://127.0.0.1:3741/api/backlog
+
+# EVERYTHING — every item including done and dropped. Only when the PO
+# asks for the full list.
+curl -s 'http://127.0.0.1:3741/api/backlog?all=true'
+
+# Eligibility signal — which items are currently selectable for a run. SEPARATE question
+# from the open queue; do not conflate the two.
+curl -s 'http://127.0.0.1:3741/api/backlog?selectable=true'
+```
+
+- **Default `/api/backlog` (no params)** → the open queue. That is the normal answer to "list the backlog".
+- **`?all=true`** → every item, done and dropped included (122 of 122 today, against 1 in the default view). Use only when the PO asks for the full list — and say that you did.
+- **`?selectable=true`** → a separate eligibility signal, not a substitute for the open queue.
+
+Statuses are exactly five: todo · doing · deferred · done · dropped. There is no wontfix and no parked — "parked" is informal for deferred.
+
+**`blockedBy` is a RAW header field, not a computed state.** The API echoes the stored `blocked_by` list verbatim; whether the block is actually live is computed by `isResolved()` (a blocker is resolved once it is `done` or `dropped`). So an item can show `blockedBy: ['BL-084']` while BL-084 is `done` — the item is unblocked. **Never report "blocked by X" without checking X's status** (BL-028 lists BL-084 and was released automatically when BL-084 closed 2026-08-07). Full semantics — statuses, autonomy levels, selectability predicate, live counts: `references/backlog-semantics.md`.
+
+**Fallback to `design/backlog.md` ONLY if 3741 does not answer** (connection refused / timeout / non-200). Grep `status:` per item. **Always say in your report which source you used** — API (and which variant) or the file.
 
 ## The two deliverables
 
@@ -298,16 +339,16 @@ If the meter is unreachable, **mark it as a risk** — the resource cap cannot f
 
 ### Goal-staleness guard
 
-Preparation and launch are separated in time, and mainline moves. A backlog item can be `todo` when you write the config and decided (`deferred`, `done`, `wontfix`) by the time you launch.
+Preparation and launch are separated in time, and mainline moves. A backlog item can be `todo` when you write the config and decided (`deferred`, `done`, `dropped`) by the time you launch.
 
 **Always re-verify the subject's status immediately before launching — TWO ways, try API first if the orchestrator is already running:**
 
 ```bash
-# WAY 1 — backlog API (preferred, if the orchestrator is already up on port 3600)
-curl -s 'http://127.0.0.1:3600/api/backlog?selectable=true'
-# Returns: 1 of 93, 0 warnings  (or empty/non-200 if the item is not selectable)
-# BL-092 must come back as selectable. If it does not — if it is `doing`, `done`,
-# or no longer `eligible` — stop and report; do not launch.
+# WAY 1 — backlog API (preferred). The launchd orchestrator answers on 3741.
+curl -s 'http://127.0.0.1:3741/api/backlog?selectable=true'
+# Returns the currently selectable set (0 of 122 as of 2026-08-11). The item
+# you are about to launch MUST appear here. If it does not — if it is `doing`,
+# `done`, or no longer `eligible` — stop and report; do not launch.
 
 # WAY 2 — fallback via backlog.md (when orchestrator is not yet running)
 grep -A10 '^id: BL-XXX' /Users/fausto/Software/AgentTalk/design/backlog.md | grep 'status:'
