@@ -966,14 +966,14 @@ tags: [self-hosting, relay, human-in-the-loop, program]
 <!-- @item
 id: BL-124
 status: todo
-date: 2026-08-11
+date: 2026-08-12
 epic: null
 tags: [bl-028, observability, measurement, dead-instrument, live-config, fail-silent]
 autonomy: human-only
 -->
-- [todo · **filed 2026-08-11 by the planner, on a PO decision taken the same session: "measurement spike
-  first"**. Found while grounding [[BL-028]] T3c's precondition against the running system, not against its
-  plan] —
+- [todo · **filed 2026-08-12 by the planner, on a PO decision taken the same session: "measurement spike
+  first"**; evidence gathered 2026-08-11, the session spanned the date boundary. Found while grounding
+  [[BL-028]] T3c's precondition against the running system, not against its plan] —
   **[[BL-028]] T3a shipped an instrument whose output nothing durably records on the live orchestrator, so the
   measured silence distribution T3c is required to be entered with does not exist.**
 

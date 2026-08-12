@@ -1779,3 +1779,29 @@ here.**
   load" was true, but the skill also had no listing procedure at all, and its one backlog recipe pointed at a
   port that is dead by construction at pre-flight (3600 is a *run's* sandbox; the live orchestrator is 3741).
   **Stopping at the first true explanation would have shipped a fix that left two defects standing.**
+
+### 2026-08-12 — the instrument shipped; the measurement never reached disk
+
+- **As planner: `recorder?.record(...)` is a fail-silent by construction, and it hid a dead measurement for
+  three days.** T3a's entire argument for shipping alone was "we measure, for the first time, how long real
+  turns go quiet." The emit was fine; the *recording* was an optional chain over a recorder that only exists
+  under an env var the live launchd unit does not set. **An optional chain on an observability sink cannot
+  complain — a no-op emits nothing, including no complaint.** When an artifact justifies itself by promising a
+  number, go find the number before planning anything downstream of it. The plan, the merge and the tests were
+  all correct and the promise still went unkept.
+- **The status line is the least reliable line in any artifact.** `bl028-plan.md` said *"awaiting Gate 1"*;
+  git history said T3a and T3b had both merged, and three of its five "open" questions were already answered
+  by events. I found that in one `git log --grep`. **Check an artifact's claim about its own state against
+  history before reading its body as current** — the body was still largely accurate, which is exactly what
+  makes a stale header dangerous.
+- **The API-verify of a filed item paid for itself again, at ~20 seconds.** Carried straight from yesterday's
+  lesson: the validator said "124 items, 0 warnings" and I still queried `GET /api/backlog` for BL-124's
+  parsed title and autonomy. A habit only counts once it survives the day you are busy.
+- **I could not separate the two worlds and said so rather than picking one.** Zero notices is equally
+  consistent with "nothing was quiet" and "the sweep does not fire", and the launchd logs carry no timestamps
+  to date activity against the merge. Naming both, and building the spike so an **empty sink is a RESULT**,
+  is better than a plan that quietly assumes the flattering one. **Write the fork into the plan; an
+  ambiguity left in prose gets resolved by whoever is most optimistic.**
+- **The date rolled over mid-session and I dated three artifacts to the day the evidence was gathered, not
+  the day they were filed.** Caught it at close by reading the commit timestamp. Trivial, but it is the same
+  family as everything above: I asserted a fact I had not looked up, from a date I was carrying in my head.

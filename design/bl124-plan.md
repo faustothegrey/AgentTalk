@@ -1,7 +1,8 @@
 # Plan — BL-124: give the idle advisory a channel that cannot be switched off, then measure
 
-**Author:** Claude (planner). **Date:** 2026-08-11. **Status:** awaiting **Gate 1**.
-**Item:** [[BL-124]] (filed 2026-08-11, on the PO's same-session decision "measurement spike first").
+**Author:** Claude (planner). **Date:** 2026-08-12. **Status:** awaiting **Gate 1**.
+**Item:** [[BL-124]] (filed 2026-08-12, on the PO's same-session decision "measurement spike first";
+the §1 evidence was gathered 2026-08-11 — the session spanned the date boundary).
 **Parents:** `design/bl028-plan.md` §5 (the phasing this discharges) · `design/bl028-t3b-plan.md`.
 **Scope class:** observability only — one new sink, no change to what is classified. `human-only`.
 
