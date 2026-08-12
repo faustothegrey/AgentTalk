@@ -1,6 +1,14 @@
 # Plan — BL-028: the idle sweep, and what should actually be authoritative about a silent agent
 
-**Author:** Claude (planner). **Date:** 2026-08-07. **Status:** awaiting **Gate 1**.
+**Author:** Claude (planner). **Date:** 2026-08-07.
+**Status (corrected 2026-08-11 — this line read "awaiting Gate 1" for three days after the work shipped):**
+**T3a MERGED** (`f6c7655`) · **T3b MERGED** (`9ba8197`, plan: `design/bl028-t3b-plan.md`) · **T3c
+OUTSTANDING** — the only unit that can kill, gated separately, and now **preceded by [[BL-124]]**
+(`design/bl124-plan.md`): T3a's promised silence distribution was never durably recorded on the live
+orchestrator, so T3c's stated precondition is unmet. Of §9's questions, **q1 and q3 were ratified and
+shipped**, **q4 is closed** (the dead `setAgentBusyState` branch was filed and removed by [[BL-121]]), **q5**
+was settled by T3b's naming. **q2 — does the sweep ever kill at all? — remains open and is still the live PO
+call**, deliberately deferred until BL-124 produces numbers.
 **Item:** [[BL-028]] (filed 2026-07-10, unblocked 2026-08-07 when [[BL-084]] closed).
 **Parents:** `design/bl084-plan.md` (the taxonomy, §0 for the two-axis distinction) · `design/bl084-t2-plan.md`
 (the shape this copies) · **evidence:** LB-70, LB-67 Finding 1, `design/bl078-decision.md`.

@@ -964,6 +964,64 @@ tags: [self-hosting, relay, human-in-the-loop, program]
 ### Todo (next first)
 
 <!-- @item
+id: BL-124
+status: todo
+date: 2026-08-11
+epic: null
+tags: [bl-028, observability, measurement, dead-instrument, live-config, fail-silent]
+autonomy: human-only
+-->
+- [todo · **filed 2026-08-11 by the planner, on a PO decision taken the same session: "measurement spike
+  first"**. Found while grounding [[BL-028]] T3c's precondition against the running system, not against its
+  plan] —
+  **[[BL-028]] T3a shipped an instrument whose output nothing durably records on the live orchestrator, so the
+  measured silence distribution T3c is required to be entered with does not exist.**
+
+  T3a's case for shipping alone was measurement, stated in its own plan (`design/bl028-plan.md` §5): *"we
+  measure, for the first time, how long real turns actually go quiet. That number is the input to T3c's
+  threshold, which today we would be guessing."* The sweep is live and correct — that is not in question here.
+  **What is missing is the recording.** The advisory has exactly two durable channels and neither has produced
+  a distribution:
+  - **The recorder channel is OFF on the live instance.** `server.ts:1302` is `recorder?.record('runtime',
+    'agent_non_reply', notice)`, and `recorder` is constructed only when `AGENTTALK_RECORDING_PATH` is set
+    (`apps/orchestrator/src/index.ts:22`). The launchd unit that runs the live orchestrator
+    (`~/Library/LaunchAgents/com.fausto.agenttalk-orchestrator.plist`) sets `PORT=3741`,
+    `AGENTTALK_MCP_PORT=54321` and `PATH` — **and nothing else.** So the optional-chain evaluates to
+    `undefined` and the call is a silent no-op, on the one instance that sees real runs.
+  - **The console channel is ON and empty.** `registry.ts:1028` warns, and launchd captures stderr to
+    `~/.hermes/logs/agenttalk-orchestrator.err.log`. **Zero `"has not replied"` lines** across 2.1 MB of that
+    log and 131 KB of stdout (checked 2026-08-11).
+
+  **The running build is not the confound** — `packages/runtime-core/dist/registry/registry.js` carries both
+  the T3a warn string and four `awaiting-input` occurrences, built after the T3b source commit
+  (2026-08-08), and the process has been up since 09:18 on 2026-08-11. Threshold is the
+  `agentIdleTimeoutMs: 180000` default (`registry/config.ts:19`).
+
+  **The ambiguity this item exists to resolve, stated honestly:** zero hits is equally consistent with *"no
+  team ran a turn quiet for >180 s since T3a merged"* and with *"the sweep does not fire in practice."* Those
+  have opposite consequences for T3c and the evidence on hand cannot separate them — the launchd logs carry no
+  timestamps to date activity against the merge. **Do not resolve this by reading the code harder.** The whole
+  point of T3a was to produce an observation, and the observation is absent.
+
+  **What done looks like:** (1) the advisory's output is durably recorded wherever real runs happen — either by
+  giving the live unit an `AGENTTALK_RECORDING_PATH`, or by a dedicated append-only log the notice always
+  reaches regardless of recorder configuration (**the design choice is part of the task, and the second option
+  is the one that cannot be switched off by a deployment**); (2) enough real multi-agent turns are driven to
+  yield a **distribution** of `silentForMs` at emission, broken down by `reason` (`quiet` vs `awaiting-input`);
+  (3) that distribution is written into a durable artifact so T3c's threshold is chosen from it. **A run that
+  produces zero notices is a RESULT, not a failure** — it refutes "the sweep fires routinely" and is exactly
+  the finding T3c needs before anyone picks a number.
+
+  **Fence:** this item adds recording and gathers numbers. It **does not** change what the sweep classifies,
+  does not touch `classifySilence`, and **must not** introduce any path from the sweep to `setAgentStatus` —
+  that remains T3c's alone, gated separately. Changing the live launchd unit is a **deployment change on the
+  PO's machine** and needs the PO's hand or explicit say-so.
+
+  **Relationship to BL-028:** this is T3c's precondition. BL-028's own `blocked_by` is deliberately left
+  untouched — it names `BL-084` as a retained test fixture (`bl093-backlog-selectable.test.ts:367` pins it) and
+  tidying it would go red for the wrong reason. The dependency is recorded here in prose instead.
+
+<!-- @item
 id: BL-123
 status: done
 date: 2026-08-11
