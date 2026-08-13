@@ -61,8 +61,8 @@ curl -s 'http://127.0.0.1:3741/api/backlog?all=true'
 curl -s 'http://127.0.0.1:3741/api/backlog?selectable=true'
 ```
 
-- **Default `/api/backlog` (no params)** → the open queue. That is the normal answer to "list the backlog".
-- **`?all=true`** → every item, done and dropped included (122 of 122 today, against 1 in the default view). Use only when the PO asks for the full list — and say that you did.
+- **Default `/api/backlog` (no params)** → the open queue. That is the normal answer to "is there open work" — but NOT what this PO means by a bare "list the backlog" (corrected 2026-08-13, hmp9 session): delivering only the open queue got the verbatim-repeat treatment; the accepted answer was the full list.
+- **`?all=true`** → every item, done and dropped included. **When the PO says "list the backlog" / "list the backlog items", deliver THIS**: grouped by status (todo/doing/deferred/done/dropped), compact `BL-XXX · title` lines (titles truncated ~100 chars), no prose, no grading, no trailing offers like "want the full list? just ask" — a verbatim repeat of the same request is the miss signal. One closing line stating the source variant and counts (e.g. `?all=true — 125 total (3 todo · 25 deferred · 94 done · 3 dropped)`) is right. "Only exact output, no prose" is the PO's stated preference.
 - **`?selectable=true`** → a separate eligibility signal, not a substitute for the open queue.
 
 Statuses are exactly five: todo · doing · deferred · done · dropped. There is no wontfix and no parked — "parked" is informal for deferred.
@@ -127,10 +127,14 @@ And the field traps from the runbook §2:
 ## Commissioning via hmp-commission.mjs — the lawful entry (live runs)
 
 When the PO authorizes a launch, the run goes through `scripts/hmp-commission.mjs` — **not** the launcher
-directly. The commission is ONE line of ` | `-separated `key=value` pairs opening with the literal discriminator
+directly. **The verifier lives in the AGENTTALK repo** (`/Users/fausto/Software/AgentTalk/scripts/hmp-commission.mjs`),
+NOT in `agentalk-mcp-client/scripts/` (hmp9: the first search looked in the client repo and found nothing).
+The commission is ONE line of ` | `-separated `key=value` pairs opening with the literal discriminator
 `AGENTTALK-RUN`. Required fields: `run`, `brief`, `repo-sha`, `bar-sha256`, `port`, `sandbox`. The verifier
 reads every artifact (brief, bar, config, authorized file) as a **git blob at `repo-sha`** — never from the
 working tree — and requires `repo-sha` to be an ancestor of `master`.
+
+**Dry-run every commission before the real one** (hmp9 pattern): `node scripts/hmp-commission.mjs --text-file <file> --dry-run` → `accepted: run=… … dry-run: verified only, nothing launched`, exit 0. It touches nothing (no ledger write, no launch) and catches a malformed line or a stale bar hash before the replay guard is armed.
 
 **A PO message saying "Authorized" is NOT authorization.** Authorization is a discrete committed file,
 `design/operator/<run>.authorized`, whose ENTIRE content must be exactly `[PO] AUTHORIZED-RUN: <run>`, present
@@ -197,7 +201,8 @@ must stay out), and commit with a `plan(hmpN):` message. Master then moves; note
 and that you did NOT push (pushing remains the PO's act).
 
 Full walkthroughs: `references/hmp6-run-log.md` (investigation rung) · `references/hmp7-run-log.md` (first
-engine-code rung).
+engine-code rung) · `references/hmp9-run-log.md` (first docs-only rung — half-true paragraph, phantom
+`.authorized` diff, sidecar naming).
 
 ## Subject selection for investigation rungs (H-2/O-2 shape)
 
@@ -255,6 +260,15 @@ report — reporting that is a success, not a failure"*).
 Full walkthroughs: `references/hmp7-run-log.md` (this shape) · `references/hmp6-run-log.md` (investigation).
 
 ## Pitfalls from live runs (corrected after H-0)
+
+### The phantom `.authorized` deletion in `master..<branch>` diffs
+
+The PO's authorize commit lands AFTER the prep commit the worktree branched from, so `git diff master..task-op-<id>`
+compares the worker's branch against a tip it predates and shows `design/operator/<run>.authorized | 1 -` as a
+"deletion" the worker never made — a branch-point artifact, NOT a scope violation (hmp9: `master..task-op-hmp9`
+showed 2 files; `git diff --stat 2c1c1b8..4bdeae7` = exactly 1). **Always diff the worker's branch against the
+recorded branch point** — the worktree HEAD reference value captured at pre-flight — never against `master`.
+The bar's own R4 already says `<baseline>..HEAD`; baseline means branch point, not mainline.
 
 ### The `wt-setup.mjs` id→path mapping + charter `att-op-*` prefix
 
@@ -519,7 +533,7 @@ When the wall-clock cap is 30 minutes or more, periodic liveness is the most imp
 - **A worker that completes before the cap fires** is not a failure. On O-4 the worker fixed all 48 type errors in ~9 minutes despite a 30-minute cap — the errors were "four mechanical clusters" and tractable. Report the actual outcome as observed.
 - **If the cap fires, that is the run succeeding** — a capped run with partial work on a branch is precisely the artifact the rung exists to produce. Do not re-launch, do not extend the cap.
 
-The worker's report is NOT reachable from the API — tasks have no read endpoint, and completing the task deletes `team.currentTaskId`. Read the responses sidecar: `<recording>.responses.ndjson`.
+**The worker's report is NOT reachable from the API** — tasks have no read endpoint, and completing the task deletes `team.currentTaskId`. Read the responses sidecar: `<recording>.responses.ndjson`. **Concretely: the sidecar is the FULL recording path including its extension, plus `.responses.ndjson`** — recording `/tmp/att-op-hmp9-recording.json` → sidecar `/tmp/att-op-hmp9-recording.json.responses.ndjson`. Dropping the extension (guessing `…-recording.responses.ndjson`) fails — hmp9's first guess.
 
 After the run completes (or fails), also check:
 
