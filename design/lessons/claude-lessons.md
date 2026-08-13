@@ -1805,3 +1805,35 @@ here.**
 - **The date rolled over mid-session and I dated three artifacts to the day the evidence was gathered, not
   the day they were filed.** Caught it at close by reading the commit timestamp. Trivial, but it is the same
   family as everything above: I asserted a fact I had not looked up, from a date I was carrying in my head.
+
+### 2026-08-13 — I gate-reviewed my own plan, and the two defects that mattered were both wrong coordinates
+
+- **As plan reviewer on my own plan: the finding I was worst placed to see was the one I had written.** §3's
+  specimen line asserted `transport` and `teamId` as if they were free, while §6 forbade the emit-site change
+  that would supply them — a plan requiring an output it prohibited the means of producing. I wrote that
+  contradiction without checking `AgentNonReplyNotice`, and I only caught it by reading the type. **A field in
+  an example line is a claim about a type. Check it.** Self-review found five defects and that is not evidence
+  self-review is sufficient; it is evidence the plan was weak enough that even the author could see it.
+- **F2 is the lesson of the year, twice in two days: I verified a TRUE claim against a file that refutes it.**
+  §1 checked "the running build contains T3a+T3b" against `dist/registry/registry.js` — a stale April artifact
+  where the grep returns 0. The live code is `packages/runtime-core/dist/...`, reached by symlink. Yesterday's
+  lesson was "go find the number the artifact promised"; today's is **go find it where the process actually
+  stands**. Same family as [[BL-053]]/[[BL-059]]. It recurred *while I was writing the correction* — I cited
+  `registry.ts:1249` for a throw that is on `:1251`.
+- **The same class again, at the end, and this time it was load-bearing for the PO's next action.** Writing the
+  S2 runbook, `launchctl print` said the loaded plist is the **repo copy**, not `~/Library/LaunchAgents/`. It
+  turned out to be a symlink, so my earlier reads were right — but I had been one `ls -la` away from writing a
+  deploy runbook pointing at the wrong file. **Before writing an instruction that names a path, ask the system
+  which path it is actually using.**
+- **As implementer: the plan said `flags: 'a'` and nine bars went red on the first run.** A `WriteStream`'s
+  bytes are not on disk when `write()` returns, and it reports EACCES *asynchronously* — outside the `try` that
+  was the whole point. `appendFileSync` was correct on both counts. **I would not have found this by reading;
+  the plan's own author had specified the wrong primitive and only execution said so.**
+- **Mutation testing was the only genuinely independent reviewer available, and it earned its cost.** Five
+  seats on one task, all mine — but a mutation does not care who wrote the code. Running all six mutations took
+  minutes and converted "the bars pass" into "the bars fail when they should". **When independence is
+  structurally unavailable, buy back what you can with adversarial mechanism, and say plainly in the record
+  that it is not the same thing.**
+- **A test that models a restart by reusing one Registry is not modelling a restart.** B7 failed on a duplicate
+  because the first server's listener stayed attached — an artifact no real restart could produce. The fix was
+  to test the sink directly. **When a bar fails, ask whether the scenario is real before adjusting the code.**

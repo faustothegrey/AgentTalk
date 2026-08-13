@@ -334,7 +334,9 @@ no merge rights. An **operator** launches process trees, binds ports, and create
 branches. **That fence does not transfer** — which is why the invariant harness was built first. Standing rules:
 
 - **The operator never reaches mainline.** Nothing it does is a merge, and nothing it does is a push.
-- **Sandbox prefix `att-op-*`** for its worktrees; **its own port 3600**, never the orchestrator's 3500.
+- **Sandbox prefix `att-op-*`** for its worktrees; **its own port 3600**, never the orchestrator's. *(Corrected
+  2026-08-13: this said "the orchestrator's 3500", a port nothing uses. The **live** orchestrator is **3741**
+  (launchd `PORT`); the **code default** is **3100** (`index.ts`). 3600 remains the operator's.)*
 - **`cap.meter` is MANDATORY to *configure* — and it is a WARNING, not a rail.** *(Amended 2026-08-06; it
   previously read "`cap.meter` is MANDATORY … a named-but-unmitigated budget risk already took a session window
   to 100%", offered as **the mitigation** for the shared-pool risk. That claim was false and is retracted.)*

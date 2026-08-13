@@ -380,7 +380,8 @@ node scripts/infra-invariant.mjs check --before /tmp/att-invariant/before.json  
 
 ### Port discipline
 
-- Operator port: **3600**, never 3500 (charter)
+- Operator port: **3600**, never the orchestrator's — **3741** live (launchd), **3100** code default (charter).
+  *(Corrected 2026-08-13: this said "never 3500", a port nothing on this machine uses.)*
 - Verify free with `lsof -nP -iTCP:3600` before every launch
 
 ### Item coordinates drift — verify at the actual sha, and say so
