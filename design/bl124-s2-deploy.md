@@ -132,9 +132,21 @@ tail -f ~/.agenttalk/agent-non-reply.jsonl
 grep -c '"kind":"notice"' ~/.agenttalk/agent-non-reply.jsonl
 ```
 
-**A restart mid-run splits the measurement.** Each boot writes a `{"kind":"boot"}` line for exactly this
-reason — the sweep's state (`lastProgressAt`, `currentTurnId`, the dedup map) is rebuilt per process, so
-silence must accumulate inside one boot. Never reduce across a boot line without saying so.
+**A restart mid-run splits the measurement.** A `{"kind":"boot"}` line marks that split — but it is written
+**on the first notice of a boot, not at startup**. The marker is emitted inside the sink's single guarded
+write path, behind `bootPending` (grep `non-reply-sink.ts`), and nothing reaches that path until a notice is
+recorded; construction opens nothing, deliberately — the wiring comment above `new NonReplySink` in
+`server.ts` says so in as many words: *"Nothing is opened until a notice actually arrives."*
+
+**So a boot that records zero notices leaves no boot line at all** — and until the first notice is ever
+recorded, no file and no `~/.agenttalk/` directory either. **An absent `~/.agenttalk/` after a restart is the
+expected state, not a failed deploy.** Do not read it as one, and do not "fix" a sink that is behaving as
+specified; the lazy open is intended and bar-covered.
+
+**The reduction rule is unchanged by any of that**, and it is the reason the marker exists: the sweep's state
+(`lastProgressAt`, `currentTurnId`, the dedup map) is rebuilt per process, so silence must accumulate inside
+one boot. Never reduce across a boot line without saying so — and note that a boot which produced no notices
+leaves no line to reduce across, so a restart can split the measurement **without** leaving a visible marker.
 
 ## 6. ⛔ Stop conditions — report, do not fix
 
