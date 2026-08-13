@@ -1067,6 +1067,65 @@ autonomy: human-only
     testing**, which is adversarial by construction and does not care who wrote the code.
 
 <!-- @item
+id: BL-125
+status: todo
+date: 2026-08-13
+epic: null
+tags: [bl-124, docs, runbook, observability, false-claim, wrong-coordinates]
+autonomy: human-only
+-->
+- [todo · **filed 2026-08-13 by the planner on PO instruction, during the S2 deploy itself**; found while
+  verifying the restart, by reading the code instead of trusting the runbook. Queued for an operator-launched
+  run] —
+  **`design/bl124-s2-deploy.md` §5 claims the sink writes a `boot` line at every boot. It does not — the boot
+  line is written lazily, on the first notice of that boot — so a correct deploy looks like a failed one.**
+
+  **The wrong sentence**, at `design/bl124-s2-deploy.md:135`:
+
+  > **A restart mid-run splits the measurement.** Each boot writes a `{"kind":"boot"}` line for exactly this
+  > reason — the sweep's state (`lastProgressAt`, `currentTurnId`, the dedup map) is rebuilt per process, so
+  > silence must accumulate inside one boot. Never reduce across a boot line without saying so.
+
+  **What the code actually does.** The boot marker is emitted inside `write()`, guarded by `bootPending`, and
+  `write()` is only ever reached by a notice — `packages/observability/src/recordings/non-reply-sink.ts:157-160`.
+  Nothing is opened at construction, deliberately and by design: `apps/orchestrator/src/server.ts:79-82` says so
+  in as many words — *"Nothing is opened until a notice actually arrives."* **A boot that records zero notices
+  therefore leaves no boot line at all**, and the very first such boot leaves no file and no `~/.agenttalk/`
+  directory either.
+
+  **Confirmed live, which is how it was found.** The S2 deploy ran 2026-08-13 21:07 (pid 672 → **89437**,
+  `launchctl kickstart -k`; HTTP 3741 and ws 54321 both back up, clean SIGTERM, zero `[NonReplySink] DEGRADED`
+  lines in either log). `~/.agenttalk/` **still does not exist** — which the runbook's own §5 predicts should be
+  impossible after a boot. The deploy is fine; the sentence is wrong.
+
+  **Why this is worth an item rather than a silent edit.** A reader following §4→§5 verifies the deploy, finds
+  no boot line, and concludes the deploy failed — or, worse, "fixes" a sink that is behaving exactly as
+  specified. That is this project's recurring **wrong-coordinates** failure ([[BL-053]] / [[BL-059]]): a
+  rigorous check aimed at the wrong evidence, answering confidently and wrongly.
+
+  **⚠️ Half of that paragraph is CORRECT and must survive the fix.** The reduction rule — *never reduce across a
+  boot line without saying so*, because the sweep's state is rebuilt per process and silence must accumulate
+  inside one boot — is **true and load-bearing for S3**. Only the "each boot writes" claim is false. A fix that
+  deletes the paragraph wholesale trades one defect for a worse one.
+
+  **DoD.**
+  1. §5 states that the boot line is written on the **first notice** of a boot, not at startup.
+  2. It states the consequence plainly: **a boot with zero notices leaves no boot line, and an absent
+     `~/.agenttalk/` after a restart is the expected state, not a failed deploy.**
+  3. The per-boot reduction guidance is **preserved**, not deleted.
+  4. §4 ("Verify the deploy BEFORE driving any traffic") is checked for the same implication and does not
+     acquire it. It currently says the deploy check does not prove the sink writes — that sentence stays.
+  5. `git diff --stat` shows **exactly one file changed**: `design/bl124-s2-deploy.md`.
+
+  **Scope — MAY touch `design/bl124-s2-deploy.md` and nothing else.** Explicitly **MUST NOT** touch
+  `non-reply-sink.ts`, `server.ts`, `design/bl124-plan.md`, any test, or BL-124's own entry above. **The lazy
+  open is correct, intended and bar-covered behaviour — it is not a bug to be fixed.** If the worker concludes
+  the *code* is wrong, that is a **show-stopper**: stop and report it, do not change it (⛔ Implementer Rule 2).
+
+  **Docs-only, one file, no behaviour change, no test change.** Sized deliberately small: it is a real defect in
+  a live runbook, and it is a safe shape for an operator-launched run.
+
+<!-- @item
 id: BL-123
 status: done
 date: 2026-08-11
