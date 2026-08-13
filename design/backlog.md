@@ -1021,6 +1021,51 @@ autonomy: human-only
   untouched — it names `BL-084` as a retained test fixture (`bl093-backlog-selectable.test.ts:367` pins it) and
   tidying it would go red for the wrong reason. The dependency is recorded here in prose instead.
 
+  **⬛ S1 DELIVERED and MERGED 2026-08-13 (`96ab154`), PO-authorized. The item stays `todo`: S1 is one unit of
+  three, and the measurement this item exists to obtain does not exist yet.** Gate 1 passed the same day on
+  `design/bl124-plan.md` with five findings corrected (`a702b7c`) — one of which, F1, had the plan mandating a
+  `transport` field the notice does not carry while forbidding the emit-site change that would supply it.
+  - **What landed:** `packages/observability/src/recordings/non-reply-sink.ts` — an always-on append-only JSONL
+    sink, wired at `server.ts`'s `agent_non_reply` handler. No flag disables it; the env knob only *redirects*
+    the path. Bars B1–B7, **each seen RED under its own mutation** before being trusted. Suite **754/754 (90
+    files)**, up from 743/743 (89) by exactly the 11 bars added; `tsc -b` clean; `classifySilence` and the emit
+    site have a **0-line diff**, as the plan required.
+  - **Two design points that came from running it, not from reading it.** `appendFileSync`, **not**
+    `createWriteStream` — the plan said `flags: 'a'` and nine bars failed on the first run, because a stream's
+    bytes are not on disk when `write()` returns (a notice observed just before a crash — precisely what this
+    sink exists to capture — dies in the buffer) and a stream reports `EACCES` *asynchronously*, outside the
+    `try` meant to contain it. And the guard sits at the **handler**, not only in the sink: that listener runs
+    synchronously inside `emit()` → `checkIdleAgents()` → an unguarded `setInterval`, so an escaping throw does
+    not lose a line, it **kills the orchestrator** — after the dedup has already suppressed the retry.
+  - **Deviation, raised by the implementer and ACCEPTED at gate 2:** `bl028-t3b-nonreply-reader.test.ts` was
+    edited though it sits outside the plan's literal "may touch" list. It emits real notices, so an always-on
+    sink meant **the test suite would have appended test data into the live measurement**. Redirected to a temp
+    path, not disabled; the diff touches only imports, setup and teardown, with **zero assertion lines
+    changed**. Verified: `~/.agenttalk/` does not exist after a full suite run.
+  - **NOT yet true, and the reason the item stays open:** S1 is merged but **not deployed** — the live
+    orchestrator still runs the pre-S1 build, so **zero notices have been recorded to this day**. **S2 is the
+    PO's hand** (edit the plist, restart the live unit, drive real multi-agent traffic; the deploy is itself a
+    restart, which is what B7 exists for). **S3** then reduces the sink to a distribution by `reason` ×
+    `transport` and says which of W1/W2 it resolves. Per plan §5, **an empty sink is a RESULT** — it would
+    refute W1 and mean a shipped detector cannot fire, a larger finding than the threshold it was meant to
+    inform.
+  - **Still open for the PO:** plan §8 q4 — does the sink outlive the spike? S1 was built under the stated
+    assumption that it **stays** (a supported artifact, since one built as scaffolding cannot be promoted while
+    the reverse is easy). Say otherwise and it can be scaled back.
+
+  **Telemetry (S1 closure):**
+  - task:        BL-124 S1
+  - wall-clock:  2026-08-13 17:18 → 18:05 (~47 min, one session)
+  - budget:      claude weekly 2%→2%, session 0%→~6% (per `scripts/usage.mjs`)
+  - gate:        tsc 0, suite 754/754 (90 files), pollution clean (`~/.agenttalk/` absent; no stray worktrees)
+  - diff:        4 files, +473/-2; commits `a702b7c` (plan/Gate 1), `96ab154` (S1)
+  - outcome:     **MERGED ✅** — S1 only; BL-124 remains `todo` pending S2/S3
+  - seats:       planner · plan reviewer · implementer · implementation reviewer · task-end reviewer, **all held
+    by Claude** under the resource-scarcity fallback. Every gate was exercised, none waived — but the
+    independence defaults (`Plan Reviewer ≠ Planner`, `Task-end Reviewer ≠ Implementer`) were **not** satisfied,
+    and that is recorded here rather than glossed. The strongest independent check in this task was **mutation
+    testing**, which is adversarial by construction and does not care who wrote the code.
+
 <!-- @item
 id: BL-123
 status: done
