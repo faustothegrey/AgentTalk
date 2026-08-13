@@ -344,10 +344,24 @@ describe('the real backlog (design/backlog.md)', () => {
   // deleting `apps/web/**` from the vitest `exclude` collects zero new files, because the `include`
   // allowlist is the operative gate. The standing position and that finding live in BL-122's
   // closing block; `vitest.config.ts` points there.
-  it('offers nothing — the queue emptied when BL-122 closed on the PO decision', () => {
+  // 2026-08-13 — REFILLED, and the red was shown to the PO before this line moved. The PO marked
+  // **BL-125** eligible; the assertion returned exactly `["BL-125"]` and nothing else, so per the
+  // standing note above the new value was the expected one and there is no finding in it.
+  //
+  // BL-125 is a docs-only fix to `design/bl124-s2-deploy.md` §5, and it was chosen on the same O-1
+  // instinct as BL-104: one file, an unambiguous bar, and a botched attempt is harmless because
+  // nothing executable depends on the prose. It is fenced hard in its own entry — the sink's lazy
+  // open is intended, bar-covered behaviour, so a worker concluding the CODE is wrong must stop and
+  // report rather than change it.
+  //
+  // The caution worth carrying, in the same spirit as BL-122's refill note: half the paragraph
+  // BL-125 targets is CORRECT (the per-boot reduction rule, load-bearing for S3), so this item can
+  // be delivered wrongly by over-deleting rather than by under-delivering. That is a real failure
+  // mode for an unattended run, it is named in the item's DoD, and it is the thing to grade.
+  it('offers BL-125 — the queue refilled when the PO marked the S2 runbook fix eligible', () => {
     const { items, warnings } = readBacklog();
     expect(warnings).toEqual([]);
-    expect(selectableBacklogItems(items).map((i) => i.id)).toEqual([]);
+    expect(selectableBacklogItems(items).map((i) => i.id)).toEqual(['BL-125']);
   });
 
   // 2026-08-07 — deliberately updated, and the red was shown to the PO first. BL-084 CLOSED (PO
@@ -380,7 +394,13 @@ describe('the real backlog (design/backlog.md)', () => {
     // 2026-08-10 — and it went red exactly there, on BL-122's close. Revalued to `[]`, and the
     // instruction above held: still the whole set, still not an absence check. BL-028's standing
     // is untouched for the second time in two days, which is the point of asserting it this way.
-    expect(selectableBacklogItems(items).map((i) => i.id)).toEqual([]);
+    //
+    // 2026-08-13 — red again, this time on an ARRIVAL rather than a close: the PO marked BL-125
+    // eligible. Revalued to `["BL-125"]`, and the instruction holds for the third time — still the
+    // whole set, still not an absence check. BL-028 is untouched once more, and note WHY that is
+    // worth re-proving here: a refill is exactly the situation where a weaker "BL-028 is absent"
+    // check would keep passing while a new item masked a flip of BL-028's own bit.
+    expect(selectableBacklogItems(items).map((i) => i.id)).toEqual(['BL-125']);
   });
 
   it('marks BL-086 as the PO decision it is', () => {

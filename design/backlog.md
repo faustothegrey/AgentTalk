@@ -1072,7 +1072,7 @@ status: todo
 date: 2026-08-13
 epic: null
 tags: [bl-124, docs, runbook, observability, false-claim, wrong-coordinates]
-autonomy: human-only
+autonomy: eligible
 -->
 - [todo · **filed 2026-08-13 by the planner on PO instruction, during the S2 deploy itself**; found while
   verifying the restart, by reading the code instead of trusting the runbook. Queued for an operator-launched
