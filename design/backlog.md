@@ -1068,13 +1068,14 @@ autonomy: human-only
 
 <!-- @item
 id: BL-125
-status: todo
+status: done
 date: 2026-08-13
 epic: null
 tags: [bl-124, docs, runbook, observability, false-claim, wrong-coordinates]
-autonomy: eligible
+autonomy: human-only
 -->
-- [todo · **filed 2026-08-13 by the planner on PO instruction, during the S2 deploy itself**; found while
+- [done · **DONE 2026-08-13 — delivered autonomously as run `hmp9`, merged `f037ab8`** · filed 2026-08-13 by
+  the planner on PO instruction, during the S2 deploy itself; found while
   verifying the restart, by reading the code instead of trusting the runbook. Queued for an operator-launched
   run] —
   **`design/bl124-s2-deploy.md` §5 claims the sink writes a `boot` line at every boot. It does not — the boot
@@ -1124,6 +1125,64 @@ autonomy: eligible
 
   **Docs-only, one file, no behaviour change, no test change.** Sized deliberately small: it is a real defect in
   a live runbook, and it is a safe shape for an operator-launched run.
+
+  **⬛ DONE 2026-08-13 — delivered autonomously as run `hmp9`, graded PASS, merged `f037ab8`.** Filed, marked
+  eligible, briefed, barred, delivered and closed inside one session; the worker's commit is `4bdeae7`
+  (`design/bl124-s2-deploy.md`, +15/−3, 2m44s against a 40-minute rail that never fired). Grading, with the
+  commands I ran rather than the operator's report: `design/operator/hmp9-grading.md`.
+
+  **The deciding row held.** R2 required the *true* half of the paragraph — the per-boot reduction rule, which
+  S3's analysis depends on — to survive the fix. It did, in place, and the tidy-and-wrong diff this item was
+  fenced against did not appear.
+
+  **The delivery beat its own bar, and this is the part worth carrying.** The worker added a corollary neither
+  the brief nor the bar had seen: *a boot which produced no notices leaves no line to reduce across, so a
+  restart can split the measurement **without** leaving a visible marker.* That is a live hazard for S3's
+  reduction, and **the false claim was hiding it** — while you believed every boot wrote a marker, you believed
+  every split was visible. Correcting the sentence exposed a defect in the analysis method the sentence was
+  written to protect.
+
+  **It also declined a fix it was one line from making.** §5's `tail -f ~/.agenttalk/agent-non-reply.jsonl`
+  fails on a fresh machine *for exactly the reason the worker had just documented* — in the file it already had
+  open. It reported it instead of fixing it (Rule 2 under real temptation) and it is now **[[BL-126]]**.
+
+  **Telemetry (task closure):**
+  - task:        BL-125
+  - wall-clock:  2026-08-13 21:15 (filed) → 22:1x (closed), delivery itself 2m44s
+  - budget:      claude weekly 5%→7%, session ~8%→~21% (machine-wide per-provider; the run's own spend is not
+    separable from the supervising session's — [[BL-117]])
+  - gate:        tsc 0, suite 754/754 (90 files), harness exit 0 (2 INFO, 0 warn, 0 critical)
+  - diff:        1 file, +15/−3; commits `4bdeae7`, merged `f037ab8`
+  - outcome:     **MERGED ✅**
+  - seats:       filed + briefed + barred + graded + merged by Claude; **implemented by a commissioned worker**,
+    which is the one genuinely independent pair of eyes in the chain. The bar was pre-registered before the run
+    existed and its deciding row was checked for mutual satisfiability in writing — that, not the seat count, is
+    what made the grade mean something.
+
+<!-- @item
+id: BL-126
+status: todo
+date: 2026-08-13
+epic: null
+tags: [bl-124, docs, runbook, observability, fresh-machine]
+autonomy: human-only
+-->
+- [todo · **found by the hmp9 worker while fixing [[BL-125]], reported and deliberately NOT fixed** — it was one
+  line away, in the file it already had open, and it left it alone] —
+  **`design/bl124-s2-deploy.md` §5 tells the reader to `tail -f ~/.agenttalk/agent-non-reply.jsonl`, which
+  fails with *No such file or directory* on a machine where no notice has ever been recorded.**
+
+  The snippet is wrong for **precisely the reason the same section now explains**: the sink opens nothing until
+  a notice arrives, so on a fresh deploy neither the file nor `~/.agenttalk/` exists. A reader following §5
+  verbatim after a clean restart gets an error from the very command meant to show them the measurement — and
+  the section immediately above now tells them that absence is expected. The two halves disagree.
+
+  **Suggested direction (not a decision):** `tail -F` follows a path that does not exist yet and picks it up on
+  creation, where `tail -f` fails outright. Whether to use `-F`, to precede it with an explicit "this errors
+  until the first notice — that is expected" line, or both, is a judgement call for whoever takes it.
+
+  **Not urgent and explicitly not a blocker:** it costs a reader one confusing error message, not a wrong
+  conclusion, now that the surrounding text explains the absence. Filed so a real finding is not lost.
 
 <!-- @item
 id: BL-123

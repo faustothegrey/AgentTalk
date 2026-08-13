@@ -358,10 +358,22 @@ describe('the real backlog (design/backlog.md)', () => {
   // BL-125 targets is CORRECT (the per-boot reduction rule, load-bearing for S3), so this item can
   // be delivered wrongly by over-deleting rather than by under-delivering. That is a real failure
   // mode for an unattended run, it is named in the item's DoD, and it is the thing to grade.
-  it('offers BL-125 — the queue refilled when the PO marked the S2 runbook fix eligible', () => {
+  // 2026-08-13 (later the same day) — EMPTY for the eighth time, and this one emptied the way the mechanism
+  // is supposed to work: BL-125 was filed, marked eligible, briefed, barred, DELIVERED by a commissioned
+  // worker (run hmp9, graded PASS, merged `f037ab8`) and closed — all inside one session. The set is empty
+  // because the work is done, not because nobody chose anything.
+  //
+  // Dropping `autonomy: eligible` at close is the part that needed doing deliberately: an item left `eligible`
+  // after its delivery merges stays agent-selectable while pointing at finished work, and THIS GUARD WOULD NOT
+  // HAVE CAUGHT IT — the assertion `['BL-125']` was still true. That exact miss has happened here before:
+  // `1706500 fix(BL-105): drop the stale eligible flag left behind at close`.
+  //
+  // Worth recording next to the row it protects: the guard pins WHAT is selectable, never WHETHER the thing is
+  // still worth selecting. A green here is not evidence the queue is sane.
+  it('offers nothing — the queue emptied when BL-125 was delivered and closed', () => {
     const { items, warnings } = readBacklog();
     expect(warnings).toEqual([]);
-    expect(selectableBacklogItems(items).map((i) => i.id)).toEqual(['BL-125']);
+    expect(selectableBacklogItems(items).map((i) => i.id)).toEqual([]);
   });
 
   // 2026-08-07 — deliberately updated, and the red was shown to the PO first. BL-084 CLOSED (PO
@@ -400,7 +412,12 @@ describe('the real backlog (design/backlog.md)', () => {
     // whole set, still not an absence check. BL-028 is untouched once more, and note WHY that is
     // worth re-proving here: a refill is exactly the situation where a weaker "BL-028 is absent"
     // check would keep passing while a new item masked a flip of BL-028's own bit.
-    expect(selectableBacklogItems(items).map((i) => i.id)).toEqual(['BL-125']);
+    //
+    // 2026-08-13 (later) — and back to `[]` within the same session, on BL-125's close after run
+    // hmp9 delivered it. Two revaluations in one day is not churn to engineer away: it is the
+    // full arrival→delivery→close cycle finally running end to end, and this line moved once for
+    // each transition, exactly as intended. BL-028's standing is untouched for the fourth time.
+    expect(selectableBacklogItems(items).map((i) => i.id)).toEqual([]);
   });
 
   it('marks BL-086 as the PO decision it is', () => {
