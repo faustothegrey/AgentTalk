@@ -48,10 +48,23 @@ grep -c NonReplySink apps/orchestrator/dist/server.js        # expect >= 1  (cur
 ls -la packages/observability/dist/recordings/non-reply-sink.js
 ```
 
-> **I deliberately did NOT run this build.** Rebuilding `dist/` changes what the live unit would load on its
-> next restart — and with `KeepAlive: true` a crash or reboot restarts it at any time. That would be a deploy
-> by side effect, without the PO. So `dist/` is still pre-S1 as you read this, and the `grep -c` above returns
-> `0` until you build.
+> **⬛ CORRECTION 2026-08-13, same session — this paragraph said "I deliberately did NOT run this build … so
+> `dist/` is still pre-S1 as you read this, and the `grep -c` above returns `0` until you build." THAT IS NO
+> LONGER TRUE, AND I AM THE ONE WHO MADE IT UNTRUE.** My end-of-session verification sweep ran `npx tsc -b`
+> from the repo root as a *gate check*, which rebuilds `apps/orchestrator/dist` as a side effect. **The build
+> in step 1 is therefore already done:** `grep -c NonReplySink apps/orchestrator/dist/server.js` now returns
+> **3**, not 0.
+>
+> **What this changes for you.** Step 1 is satisfied — verify it rather than repeat it (repeating is harmless).
+> **What it also means, and this is the part worth knowing:** `KeepAlive` is `true`, so **the next time the
+> orchestrator restarts for any reason — crash, reboot, your hand — it will load S1**, with or without step 2.
+> That is the intended end state and it is safe (the sink defaults to `~/.agenttalk/`, writes only when a
+> notice fires, and cannot propagate anything), but it is now a thing that can happen **without a deliberate
+> deploy**, which is precisely what I claimed to be preventing.
+>
+> **Why the original caution was right anyway:** a build is a deployment step, and I performed it while
+> believing I was only checking a gate. `tsc -b` is not a read. The running process (pid 672) still holds the
+> old code in memory, so nothing changed *yet* — but the artifact on disk is no longer the one I described.
 
 ## 2. Edit the plist — add the recording path
 
