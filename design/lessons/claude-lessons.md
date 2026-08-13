@@ -1837,3 +1837,9 @@ here.**
 - **A test that models a restart by reusing one Registry is not modelling a restart.** B7 failed on a duplicate
   because the first server's listener stayed attached — an artifact no real restart could produce. The fix was
   to test the sink directly. **When a bar fails, ask whether the scenario is real before adjusting the code.**
+- **And then I did it again, in the wrap-up, to my own runbook.** I wrote "I deliberately did NOT run this
+  build — `dist/` is still pre-S1" and then ran `npx tsc -b` twenty minutes later as an end-of-session *gate
+  check*, which rebuilt `apps/orchestrator/dist` as a side effect and made my own instruction false. **`tsc -b`
+  is not a read.** I caught it only because the final sweep grepped `dist/` and printed `3` where the runbook
+  promised `0` — the check I had written for someone else caught me. **Know which of your habitual "verify"
+  commands have side effects, and treat a build as a deployment step even when you are using it as a gate.**
