@@ -1,9 +1,13 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { WebSocket } from 'ws';
+import { mkdtempSync, rmSync } from 'fs';
+import os from 'os';
+import path from 'path';
 import type { AddressInfo } from 'net';
 import { Registry } from '@agenttalk/runtime-core/registry/registry';
 import { startServer } from '../server.js';
 import type { SessionRecorder } from '@agenttalk/observability/recordings/session-recorder';
+import { NonReplySink } from '@agenttalk/observability/recordings/non-reply-sink';
 import type { AgentNonReplyNotice } from '@agenttalk/contracts/types';
 
 /**
@@ -29,6 +33,11 @@ describe('BL-028 T3b — C7 · the non-reply advisory is recorded and broadcast'
   let server: any;
   let recorded: any[];
   let sockets: WebSocket[];
+  // BL-124 S1: the sink added there is ALWAYS ON, so this suite — which emits real notices —
+  // would otherwise append test data to the live measurement at ~/.agenttalk/. Redirected to a
+  // temp path; the sink is not disabled here, only pointed elsewhere.
+  let sinkDir: string;
+  let nonReplySink: NonReplySink;
 
   const notice: AgentNonReplyNotice = {
     agentId: 'silent-1',
@@ -47,7 +56,10 @@ describe('BL-028 T3b — C7 · the non-reply advisory is recorded and broadcast'
       close: async () => {},
     } as any as SessionRecorder;
 
-    server = startServer(registry, 0, { recorder });
+    sinkDir = mkdtempSync(path.join(os.tmpdir(), 'bl028-t3b-sink-'));
+    nonReplySink = new NonReplySink(path.join(sinkDir, 'agent-non-reply.jsonl'));
+
+    server = startServer(registry, 0, { recorder, nonReplySink });
     // See server.test.ts: await the MCP bind so its env write cannot land after this test finishes.
     await server.mcpReady;
   });
@@ -58,6 +70,8 @@ describe('BL-028 T3b — C7 · the non-reply advisory is recorded and broadcast'
     }
     await new Promise(resolve => server.close(resolve));
     await registry.destroy();
+    nonReplySink.close();
+    rmSync(sinkDir, { recursive: true, force: true });
   });
 
   async function connectedClient(): Promise<WebSocket> {

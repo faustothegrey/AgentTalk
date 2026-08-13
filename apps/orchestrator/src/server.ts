@@ -17,6 +17,7 @@ import type { AgentProvider, RelayApprovalMode } from '@agenttalk/contracts/type
 import type { ScenarioDefinition } from '@agenttalk/runtime-scenarios/scenarios/types';
 import type { GoogleDriveIntegration } from '@agenttalk/integration-google-drive/google-drive/types';
 import type { SessionRecorder } from '@agenttalk/observability/recordings/session-recorder';
+import { NonReplySink } from '@agenttalk/observability/recordings/non-reply-sink';
 import { ScenarioRunner } from '@agenttalk/runtime-scenarios/scenarios/scenario-runner';
 import { SchedulerService } from '@agenttalk/runtime-scenarios/scheduler/scheduler';
 import { ScenarioScheduler } from '@agenttalk/runtime-scenarios/scheduler/scenario-scheduler';
@@ -66,7 +67,7 @@ export function startServer(
 
   registry: Registry,
   port: number = 3000,
-  options: { recorder?: SessionRecorder; googleDrive?: GoogleDriveIntegration } = {},
+  options: { recorder?: SessionRecorder; googleDrive?: GoogleDriveIntegration; nonReplySink?: NonReplySink } = {},
 ) {
   const app = express();
   app.use(express.json());
@@ -75,6 +76,11 @@ export function startServer(
   const orchestratorEnvironment = captureHostEnvironment();
   const recorder = options.recorder;
   const googleDrive = options.googleDrive;
+  // BL-124 S1 — always on, and deliberately NOT `options.nonReplySink ? … : undefined`. The `?.`
+  // that made the recorder a silent no-op is the defect this item exists to retire; an injectable
+  // instance exists only so tests do not write into the real measurement. Nothing is opened until
+  // a notice actually arrives (see NonReplySink's constructor comment).
+  const nonReplySink = options.nonReplySink ?? new NonReplySink();
   const usageHistoryStore = new UsageHistoryStore(usageHistoryStorePath);
   const scheduler = new SchedulerService({
     onRun: async (job) => {
@@ -1300,9 +1306,35 @@ export function startServer(
   // `AgentNonReplyNotice` declaration in `contracts/types.ts`.
   registry.on('agent_non_reply', (notice) => {
     recorder?.record('runtime', 'agent_non_reply', notice);
+    // BL-124 S1 — the unconditional channel, and the ENTIRE handler is guarded.
+    //
+    // This listener runs SYNCHRONOUSLY inside `emit()`, inside `checkIdleAgents()`, inside an
+    // unguarded `setInterval` in the registry. Nothing above catches. So a throw here does not lose
+    // a notice — it kills the orchestrator, and it does so AFTER the sweep's dedup has recorded the
+    // notice as reported, suppressing the retry as well. The guard therefore sits here rather than
+    // only inside the sink, because the `transport` lookup below happens OUTSIDE the sink.
+    //
+    // `getAgent` THROWS on a miss (it is not an `undefined` return), and `transport` is optional
+    // even on a hit — so `null` is a real outcome and is recorded as its own bucket rather than
+    // being defaulted into a transport nobody observed.
+    try {
+      nonReplySink.record(notice, resolveTransport(notice.agentId));
+    } catch (error) {
+      console.error(`[Server] non-reply sink failed for ${notice?.agentId}: ${error instanceof Error ? error.message : String(error)}`);
+    }
     const sent = broadcast({ type: 'agent_non_reply', ...notice });
     console.log(`[Server] Agent ${notice.agentId} not replying (${notice.reason}, ${notice.silentForMs}ms) → ${sent} client(s)`);
   });
+
+  function resolveTransport(agentId: string) {
+    try {
+      return registry.getAgent(agentId).transport ?? null;
+    } catch {
+      // The agent was removed between the sweep observing it and this handler running. A notice
+      // about an agent that no longer exists is still a notice; it simply has no transport.
+      return null;
+    }
+  }
 
   registry.on('relay_approval_mode', ({ mode }) => {
     recorder?.record('runtime', 'relay_approval_mode', { mode });
