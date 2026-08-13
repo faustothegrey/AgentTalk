@@ -1843,3 +1843,38 @@ here.**
   is not a read.** I caught it only because the final sweep grepped `dist/` and printed `3` where the runbook
   promised `0` — the check I had written for someone else caught me. **Know which of your habitual "verify"
   commands have side effects, and treat a build as a deployment step even when you are using it as a gate.**
+
+### 2026-08-13 (evening) — the deploy exposed a document, and the worker beat my bar
+
+- **The one thing I got right all session was refusing to assume, once.** `~/.agenttalk/` was absent after a
+  clean restart and the runbook said that was impossible. The cheap move was "the deploy failed"; the second
+  cheapest was "the runbook is fine, something is odd". I read `non-reply-sink.ts` instead, found the
+  `bootPending` guard, and the deploy was correct while the *document* was wrong. **Every good thing this
+  session — BL-125, hmp9, BL-126 — descends from spending ninety seconds on one unexpected observation.**
+  That is the whole of yesterday's lesson (*go find it where the process actually stands*) finally applied
+  before writing rather than after being caught.
+- **As bar author: I was beaten by the worker, on the row I thought I understood best.** R2 asked that the true
+  half of the paragraph survive. The worker preserved it *and* found the corollary the false claim was hiding —
+  a zero-notice boot leaves no line to reduce across, so a restart can split the measurement invisibly. I wrote
+  the brief, the bar and the item and did not see it. **A pre-registered bar sets a floor, and a floor is not a
+  ceiling; do not confuse "met my bar" with "found everything".** The mutation-testing lesson from this morning
+  generalises: the value came from a mechanism that did not care what I expected.
+- **The mutual-satisfiability pass earned its keep in writing, not in theory.** R2 (keep the true half) × R3
+  (fix the false half) is exactly the pair a careless author phrases as "rewrite §5" × "don't change §5" —
+  unsatisfiable, and it reads perfectly reasonable. hmp7 shipped that defect once. **Writing the check down
+  forced me to notice the paragraph had two separable claims, which is also what made the item gradeable.**
+- **I declined to write the `.authorized` file when asked to "do all of that", and that was correct.** I had
+  authored the brief and the bar; writing the authorization too would have forged the single check the whole
+  design rests on, and every downstream verification would have been green. **The fence I am willing to step
+  over on request is not a fence** — and the refusal cost one command in the PO's hand.
+- **I graded the operator's report instead of relaying it, and found an undercount.** Hermes said the harness
+  showed "one expected INFO"; my own run showed two, the second being its own untracked run log, plus an
+  unreported `M SKILL.md`. Both were permitted — the defect was a report describing the output as clean while
+  omitting its own writes. **This is BL-123's pattern recurring, and it only surfaced because I ran the check
+  myself.** I recorded it in my grading rather than editing the seat's own account of itself.
+- **The guard I trust most would not have caught the stale eligible flag.** `['BL-125']` stayed a *true*
+  assertion while pointing at delivered work. **A pin tells you WHAT is selectable, never WHETHER it is still
+  worth selecting** — and `fix(BL-105)` says this repo has made that exact mistake before. Green is not sanity.
+- **The validator caught me on header/prose drift** (`status: done` over a bullet still reading `[todo`).
+  Small, but it is the same family as everything above: I changed one representation of a fact and not the
+  other, and a machine noticed before a human did.
