@@ -1209,13 +1209,14 @@ autonomy: human-only
 
 <!-- @item
 id: BL-126
-status: todo
+status: done
 date: 2026-08-13
 epic: null
 tags: [bl-124, docs, runbook, observability, fresh-machine]
 autonomy: human-only
 -->
-- [todo · **found by the hmp9 worker while fixing [[BL-125]], reported and deliberately NOT fixed** — it was one
+- [done · **FIXED 2026-08-14 — see the closing block at the end of this item** · found by the hmp9 worker while
+  fixing [[BL-125]], reported and deliberately NOT fixed — it was one
   line away, in the file it already had open, and it left it alone] —
   **`design/bl124-s2-deploy.md` §5 tells the reader to `tail -f ~/.agenttalk/agent-non-reply.jsonl`, which
   fails with *No such file or directory* on a machine where no notice has ever been recorded.**
@@ -1231,6 +1232,17 @@ autonomy: human-only
 
   **Not urgent and explicitly not a blocker:** it costs a reader one confusing error message, not a wrong
   conclusion, now that the surrounding text explains the absence. Filed so a real finding is not lost.
+
+  **✅ CLOSED 2026-08-14 — took "both", as the filing suggested.** §5 now uses **`tail -F`** (which waits for a
+  path that does not exist yet and picks it up on creation) **and** carries an explicit line saying the absence
+  is expected on a fresh deploy, cross-referenced to §0's coordinate table where the same fact is already
+  recorded. The `grep -c` on the following line had the identical defect — it errors on the same missing file —
+  and got `2>/dev/null || echo 0`, so the count reads **0** instead of failing. **That second line was not named
+  in the filing**; it is the same one-line-away defect in the same snippet, and fixing one while leaving the
+  other would have reproduced the exact contradiction this item is about.
+  **Delivered with [[BL-130]]** on branch `task-BL-130` — both are stale-documentation fixes in the same
+  subsystem, and holding them apart would have meant two PO merges for four comment blocks. No behaviour, no
+  executable code, no test touched.
 
 <!-- @item
 id: BL-127
@@ -1333,14 +1345,15 @@ autonomy: human-only
 
 <!-- @item
 id: BL-130
-status: todo
+status: done
 date: 2026-08-14
 epic: null
 tags: [docs, stale-claim, comments, bl-028, bl-124, fail-silent]
 autonomy: human-only
 -->
-- [todo · **found during [[BL-124]] S3 — two of the three sites were found independently by a planner agent
-  during run 1 and verified by me before filing**] —
+- [done · **FIXED 2026-08-14, all three sites — see the closing block at the end of this item** · found during
+  [[BL-124]] S3 — two of the three sites were found independently by a planner agent
+  during run 1 and verified by me before filing] —
   **Three code/doc sites make claims about the non-reply machinery that the code refutes, and all three point a
   reader toward the wrong conclusion about this exact subsystem.**
 
@@ -1362,6 +1375,27 @@ autonomy: human-only
 
   Run 1's planner-a proposed the right rule in passing, worth adopting: *"a citation points at the CODE that
   makes the claim true, and where we quote a comment we say it is a comment."*
+
+  **✅ CLOSED 2026-08-14 — all three sites corrected, and the rule above is adopted in the `AGENT.md` fix.**
+  Every claim was re-verified against the code before being rewritten, not taken from this item's own filing:
+  1. **`contracts/types.ts`** — the stale note is replaced by a correction that names both false halves and then
+     says what is *actually* true: **the sweep is not dead code, it runs and still emits nothing**, for the two
+     reasons in [[BL-127]] / [[BL-128]]. Verified: `grep -rn "hasAgentTimedOut"` returns **no definition
+     anywhere** in either repo — only comments referring to it — and `lastProgressAt =` returns the three
+     writes the item claims (`registry.ts:489`, `registry.ts:513`, `in-process-driver.ts:116`).
+  2. **`AGENT.md` → M03** — same correction, as a third dated ⬛ layer on that bullet rather than an in-place
+     rewrite, matching how the two prior corrections there are recorded. **The bullet's conclusion is left
+     standing** — a hung agent still is not detected — because it is *true*; only its reason was wrong. That
+     distinction is the point: the old text sent a reader to fix a field that is already written.
+  3. **`server.ts:1309`** — "the ENTIRE handler is guarded" → "the SINK CALL below is guarded", with the
+     correction naming the two unguarded calls (`recorder?.record` above, `broadcast` below) and re-affirming
+     that **S1's bar B5 is still met**. No `try`/`catch` was moved: widening the guard would be a behaviour
+     change under Rule 2, and the item asked for an accurate sentence, not a different guard. **Whether the
+     guard *should* widen is a separate question and is deliberately NOT decided here.**
+
+  **Fence held:** comments and prose only — **zero executable lines changed**, no test touched, no behaviour.
+  Delivered on `task-BL-130` together with [[BL-126]]; the [[BL-028]] T3c premise note was written in the same
+  pass, since it is the same stale-framing defect one level up.
 
 <!-- @item
 id: BL-123
@@ -2952,6 +2986,26 @@ autonomy: human-only
                  this merge for a cold session for exactly that reason; the **PO overrode that and authorized
                  the merge directly**, which is the PO's call. Recorded rather than glossed. Post-merge gate
                  re-run on the merge result: tsc **0**, suite **743/743 (89 files)**.
+
+  **⛔ 2026-08-14 — T3c's PREMISE IS GONE. Do not let it proceed on the old framing.** ([[BL-124]] S3; filed
+  with [[BL-130]].) T3c was scoped as *"derive the escalation threshold from the measured distribution"*, and
+  T3b's closing note above says the new recorder *"is what makes that question answerable with measured numbers
+  instead of a guess."* **There is no distribution, and there was never going to be one.** S3 drove real traffic
+  at the live instance and the sink stayed empty — not because the system is healthy, but because **the detector
+  cannot fire on any turn class as deployed**: an `exec_rpc` turn carries no obligation id, so `classifySilence`'s
+  `currentTurnId` gate returns `undefined` forever ([[BL-127]]), and where an id *does* exist the 120s
+  `DEFAULT_EXEC_TIMEOUT_MS` tears the turn down before the 180s threshold matures ([[BL-128]]). A worker held an
+  obligation in unbroken silence for **233 s** and produced no notice **and no `console.warn`** — and
+  `registry.ts:1028` warns unconditionally immediately before the emit, so the failure is upstream of the sink.
+  **T3b's recorder and sink are fine; they have simply never been exercised.** Artifact:
+  `design/bl124-s3-distribution.md`.
+  **What this changes for T3c:** the number was never the blocker. **Its real precondition is now "a sweep that
+  can observe an exec turn"** — i.e. BL-127 and BL-128, which are coupled (fixing either alone leaves the
+  detector dead) and are a **PO scope call**, both being shared engine code under the show-stopper fence.
+  **§9 q2 ("should the sweep ever kill at all?") is untouched by this** and remains open — but it cannot be
+  answered from measurement until something can be measured.
+  *(`blocked_by` deliberately left as `[BL-084]` — adding BL-127/BL-128 is a sequencing act, which is the
+  SM/PO's, not this note's.)*
 
 <!-- @item
 id: BL-029

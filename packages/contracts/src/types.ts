@@ -44,11 +44,24 @@ export type AgentFaultErrorReason =
   // The idle sweep declared the agent hung.
   //
   // NOTE (BL-084 T1): this is fault-class ONLY to preserve today's behaviour byte-for-byte.
-  // The sweep is currently dead code — `lastProgressAt` is never written, so
-  // `hasAgentTimedOut()` always returns false (LB-70 / BL-028) — but were it live it would
-  // propagate, so T1 reproduces that. BL-028 (T3) is the item that revisits this row: a
-  // correctly-paused agent must not be killed, which needs the sender-side non-reply
-  // reason as well. Do NOT flip it here.
+  // No agent has ever reached this reason, so T1 reproduces a propagation nothing has observed.
+  // BL-028 (T3) is the item that revisits this row: a correctly-paused agent must not be killed,
+  // which needs the sender-side non-reply reason as well. Do NOT flip it here.
+  //
+  // CORRECTED (BL-130, 2026-08-14) — this note previously read *"the sweep is currently dead code
+  // — `lastProgressAt` is never written, so `hasAgentTimedOut()` always returns false"*. BOTH
+  // halves are false, and have been since BL-028 T3a. `lastProgressAt` IS written, at
+  // `registry.ts:489`, `registry.ts:513` and `in-process-driver.ts:116`; and `hasAgentTimedOut()`
+  // no longer exists at all — it was renamed to `quietForMs` and then to `classifySilence`
+  // (`registry.ts:890` records both renames and why each was made).
+  //
+  // The sweep is NOT dead code. It runs, and it still emits nothing — for two entirely different
+  // reasons, neither of which has anything to do with `lastProgressAt`: an `exec_rpc` turn carries
+  // no obligation id, so `classifySilence`'s `currentTurnId` gate (`registry.ts:929`) returns
+  // `undefined` forever ([[BL-127]]); and where an id DOES exist, `DEFAULT_EXEC_TIMEOUT_MS`
+  // (`completer.ts:10`, 120s) tears the turn down before a 180s threshold can mature ([[BL-128]]).
+  // Believing the stale version leads a reader to the right conclusion for the wrong reason, and
+  // then to the wrong fix.
   | 'idle-timeout';
 
 /** Reasons that are NOT the agent's fault — the status changes and the UI sees it, but no propagation. */
