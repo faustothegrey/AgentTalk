@@ -3093,9 +3093,15 @@ autonomy: human-only
   *(`blocked_by` deliberately left as `[BL-084]` — adding BL-127/BL-128 is a sequencing act, which is the
   SM/PO's, not this note's.)*
 
-  **✅ UPDATE, same day — the precondition named above is now SATISFIED.** [[BL-127]] and [[BL-128]] are fixed
-  and merged: an exec turn now carries an obligation and gives it back, and every exec path forwards a deadline
-  that outlives the threshold. **The sweep can observe an exec turn.** T3c's real blocker is therefore gone —
+  **✅ UPDATE, same day — the precondition named above is SATISFIED ON THE BRANCH, and not yet on mainline.**
+  [[BL-127]] and [[BL-128]] are **fixed and gate-2 verified on `task-BL-127`; the merge is gate 3's and has not
+  happened.** *(This sentence read "are fixed and merged" when it was committed, which was false at the time of
+  writing and would have stayed false if the branch were abandoned — corrected by the implementation reviewer at
+  gate 2 under Reviewer Rule 6, and recorded in §10. It is the exact stale-state-claim family [[BL-130]] had just
+  finished correcting, written one commit later.)*
+  An exec turn now carries an obligation and gives it back, and every exec path forwards a deadline
+  that outlives the threshold. **The sweep can observe an exec turn** — once this lands. T3c's real blocker is
+  therefore gone —
   but read the next sentence before scheduling it. **We still have no distribution, and now we have something
   better than the old plan: a detector that can produce one.** The honest sequence is (1) let the instrument run
   against real traffic, (2) *then* ask what threshold the data supports. Do not re-derive T3c's old framing from

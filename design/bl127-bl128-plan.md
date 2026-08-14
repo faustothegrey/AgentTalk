@@ -227,3 +227,101 @@ should hold the gate.*
 single lifecycle chokepoint that also closes the pre-existing clean-close leak the terminal guard's comment
 concedes? The chokepoint is cleaner and strictly larger; it touches shared lifecycle code and would be
 **out of scope under Rule 2 without your explicit say-so.**
+
+---
+
+## 10. Gate 2 — implementation review
+
+**Reviewer:** Claude, 2026-08-14, on `task-BL-127` at `9479f25`. **⚠️ Independence NOT obtained, again, and by
+the same mechanism as gate 1.** The default is **Implementation Reviewer ≠ Implementer**. Both branch commits
+are authored under the PO's git identity (the machine default, so authorship proves nothing), but the closing
+blocks are written in first-person agent voice and this plan is mine — so on the balance of evidence I am
+reviewing my own implementation. Under the resource-scarcity fallback that is permitted; **it is still worth
+less than an independent pass, and the strongest findings below are the ones I could check by running something
+rather than by reading.** Recorded rather than glossed, as §9 recorded the same gap.
+
+**Steelman first.** The delivery does the thing this plan was written to force: it treats the *clear* path as
+the load-bearing half rather than the mint, and the bars drive the **real** exec path — `McpCompleter.complete`
+queues, `await_turn` stamps — instead of hand-setting `currentTurnId`. A test that stamped the field itself
+would pass against the very bug, and this one does not. The B5 assertion is the right shape too: the defect was
+a *relationship* between two constants in modules that cannot see each other, and it now fails closed at
+construction.
+
+### Verdict rows — every one earned by running, not by reading the diff
+
+| Bar | Verdict | Evidence (commands run by me, at `9479f25`) |
+|---|---|---|
+| **B1** — exec turn sets `currentTurnId` on delivery | **VERIFIED ✅** | Green at baseline. **Mutation executed:** deleted `turnId,` from the turn literal → **4 red, B1 among them** |
+| **B2a** — `submit_exec_result` clears | **VERIFIED ✅** | **Mutation executed:** removed the `cleanup()` clear → B2a red |
+| **B2b** — the guard firing clears | **VERIFIED ✅** | same mutation → B2b red |
+| **B2c** — terminal mid-exec clears | **VERIFIED ✅** | same mutation → B2c red |
+| **B3** — a finished-then-idle agent produces **no** notice | **VERIFIED ✅** | same mutation → **B3 red**. This is the row that matters: B3 asserts an *absence* and would pass trivially against a dead detector. **It went red on the mutation, so it is load-bearing, not decorative** — the implementer's claim on this point reproduced exactly |
+| **B4** — a silent exec turn produces **exactly one** notice | **VERIFIED ✅** | Green; asserts `turnId` match, `silentForMs > IDLE_MS`, and `status !== 'error'` — the advisory contract holds |
+| **B5** — the guard strictly outlives the threshold | **VERIFIED ✅** *(with a scope limit — F2)* | **Mutation executed:** `<=` → `<` → the boundary bar red. Production's own value checked: `config.ts:19` is `agentIdleTimeoutMs: 180000`, so B5's `assertExecGuardOutlivesIdleThreshold(180_000)` tests the real number |
+| **B6** — a planner exec turn is no longer killed at 120 s | **VERIFIED ✅** | **Mutation executed:** re-gated the default on `maintainsSession` → **2 red**. Asserts the *resolved* deadline, per D3 — no wall clock burned |
+| **B7** — suite green at baseline; sink + `classifySilence` zero diff | **VERIFIED ✅** | master **754 / 90 files** → branch **766 / 92 files** = **+12, exactly the two new bar files (9 + 3)**. So no existing test was added to, removed, or weakened. `non-reply-sink.ts` diff **empty**; `classifySilence` **not touched**; changed files are exactly §5's allowlist; `npm run test -w @agenttalk/contracts` → **hash v8 verified, client alignment verified** |
+
+`tsc -b` exit **0**. Full suite **766 passed / 0 failed**. `validate-backlog.mjs` → **130 items, 0 warnings**.
+`bl093-backlog-selectable.test.ts` → **15 passed** (the eligible set is unchanged by this delivery).
+
+### The interaction I went looking for, because it was the one that could bite
+
+The chokepoint clears `currentTurnId` on terminal status — and `registry.ts:1422` **reads that same field** to
+decide whether a dead agent is `error` or `terminated` (`agent.currentTurnId ? 'error' : 'terminated'`). If the
+clear beat the read, an agent that died holding an obligation would be misclassified, silently, and the closing
+block's own retraction would have been wrong in the opposite direction.
+
+**It holds, for two independent reasons.** `onStatus` reacts *only* to `error`/`terminated`, and the reconnect
+grace sets `reconnecting` (`registry.ts:1418`) — which does not trigger cleanup, so the obligation survives the
+window. And at the timeout, `target` is computed **before** any `setAgentStatus` call. **Checked by reading both
+paths, then corroborated by the 766-green suite.**
+
+**The retraction in BL-127's closing block is CORRECT and I reproduced it independently:** the `conversation_end`
+path *does* clear (`registry.ts:1393`), and the abnormal-drop path retains deliberately, feeding line 1422.
+Gate 1's D1 claim that "the codebase already leaks obligations" was wrong, and the PO chose the chokepoint partly
+on its strength. **Retracting a finding that had already influenced a PO decision is the right behaviour and I
+want it on the record as such** — the fix that shipped is narrower than the claim that motivated it, which is the
+outcome the show-stopper fence exists to produce.
+
+### Findings — disposed, per Rule 7
+
+**F1 — a false state claim, committed to the backlog. FIXED by me under Rule 6 (declared).** BL-028's update
+block read *"[[BL-127]] and [[BL-128]] are fixed **and merged**"*. **They were not merged** — they are not merged
+now; master carries neither commit. False when written, and it would have stayed false forever if this branch
+were abandoned. Corrected in place to "fixed and gate-2 verified on the branch; the merge is gate 3's", with the
+original wording preserved in a parenthetical so the record shows the correction rather than hiding it.
+**Zero-risk (prose, no code) — but I want the shape named: this is [[BL-130]]'s exact family, written ONE COMMIT
+after BL-130 finished correcting three of them.** The lesson that keeps not sticking is that a claim about state
+written in advance of the state is a lie with a delivery date.
+
+**F2 — the B5 invariant does not cover the healthcheck path, while its comment says it covers everything.
+Recorded, NOT fixed — it needs a scope decision.** `assertExecGuardOutlivesIdleThreshold` checks only the
+*default* guard (`resolveWorkerTurnTimeoutMs() + GRACE` = 605 s). The healthcheck passes an explicit short
+deadline with `timeoutBackstopGraceMs: 0` (`in-process-driver.ts:199-201`), so its exec turns run a **~30 s
+guard against the 180 s threshold — the very inversion this assertion exists to prevent, still present on that
+path.** *Benign in effect:* the turn is torn down and the chokepoint clears the obligation, so no false notice,
+and nobody wants a liveness ping watched by a non-reply sweep. *Not benign in the comment:* the doc block states
+the invariant universally — *"a turn must be allowed to outlive the threshold"* — and a future reader will take
+the assertion as covering every exec path. It does not. **Under B5′ as revised at gate 1 (a startup assertion +
+a rejection test) the bar is MET, so this is not a refutation** — it is a gap between what the code checks and
+what its comment claims, which is the family this whole task descends from. **Recommend a backlog item; filing is
+the SM/PO's call, not mine.**
+
+**F3 — `AGENTTALK_WORKER_TURN_TIMEOUT_MS` now moves planner turns; the env var's name is narrower than its
+effect. ACCEPTED as declared.** The implementer surfaced this in the closing block and left the rename out of
+scope as a gratuitous break of a documented operator knob. **That is the correct call** and the correct way to
+report it — the deviation is disclosed, bounded, and reversible.
+
+**F4 — worktree hygiene, for gate 3.** `apps/web/node_modules` is untracked-and-unignored in the worktree. It is
+**not** in either commit (`git diff --name-only master..HEAD` is six files), so it cannot reach mainline — but the
+closure sweep should account for it, and `.gitignore` arguably should.
+
+### Verdict
+
+**VERIFIED ✅ — all nine bars, each with a mutation or a diff-level check I executed myself. F1 fixed in place
+and declared; F2 recorded as a scope question; F3 accepted; F4 handed to gate 3.**
+
+**This does NOT close the task.** Gate 3 is a separate seat and by default a *different actor* — fresh eyes at
+close — and the merge is the PO's. What I am handing over is: the bars are real, the mutations are real, the
+suite delta is exactly the new bars and nothing else, and the one substantive defect I found was a false claim
+about merge state rather than a fault in the code.
