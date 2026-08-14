@@ -8179,14 +8179,15 @@ autonomy: human-only
 
 <!-- @item
 id: BL-132
-status: todo
+status: dropped
 date: 2026-08-14
 epic: null
 tags: [containment, sandbox, worktree, bl-036, observation]
 autonomy: human-only
 -->
-- [todo · **observed during [[BL-127]]/[[BL-128]] gate-3 hygiene sweep; an observation, NOT a live finding —
-  nothing wrote through it and no agent ran autonomously in that worktree**] —
+- [dropped · **⛔ RETRACTED 2026-08-14, hours after I filed it, by reading the script that creates the thing I
+  called undocumented. Kept, not deleted, as the record of the mistake — see the closing block.** · originally
+  filed from the [[BL-127]]/[[BL-128]] gate-3 hygiene sweep**] —
   **A per-task worktree's `apps/web/node_modules` is a SYMLINK into the primary checkout, so the declared
   safety sandbox has a seam pointing at the real repo.**
 
@@ -8205,5 +8206,44 @@ autonomy: human-only
   Related sequencing detail belongs with **[[BL-036]]** (worktree discipline: naming, cleanup, isolation).
   **Not urgent. Needs someone to decide whether worktree provisioning should install its own deps, accept the
   symlink and document it, or fence the path.**
+
+  ---
+
+  **⛔ RETRACTED — the premise is false. `scripts/wt-setup.mjs` creates that symlink DELIBERATELY, it is
+  [[BL-036]]'s own tool, and it already documents the exact consequence I filed as a discovery.**
+
+  Three checks, none of which I ran before filing:
+  1. **The symlink is intentional.** `wt-setup.mjs:147` — `if (existsSync(webNm)) symlinkSync(webNm, …)` —
+     under a header that states the purpose: wire a worktree's `node_modules` without a reinstall.
+  2. **The isolation concern I raised is the one thing the tool explicitly handles.** It SKIPS `@agenttalk`
+     and re-creates each scoped link with a **relative** target *"so they resolve into the worktree's own
+     packages, not the primary"* (`:4-8`). The project's own source packages — the only ones where
+     cross-worktree resolution could corrupt a task — are precisely what it isolates. What points at the
+     primary is third-party deps and `apps/web`.
+  3. **The `.gitignore` interaction was known before I "found" it.** `wt-setup.mjs:182` prints, on every
+     create: *"REMINDER: stage files EXPLICITLY — never `git add -A` (a symlinked node_modules slips past
+     .gitignore)."* I wrote that up as an explanation nobody had. It was a warning already on screen.
+
+  **Nothing ever leaked:** `git log --all --diff-filter=A --name-only | grep node_modules` → **empty**, and
+  `git ls-files | grep -c node_modules` → **0**. The mechanism has held for its whole life.
+
+  **What is left after the retraction is small and honest:** `apps/web/node_modules` does resolve into the
+  primary checkout, so a write *through* it reaches the primary. That is a real topology fact, it applies to
+  third-party deps only, and the tool's author evidently weighed it. **It is not a hole in the containment
+  mandate, and this item should never have said it was.**
+
+  **⬛ The pattern, because it is the third instance today and I am the common factor.** I asserted a property
+  of code I had not read — same as [[BL-130]]'s `server.ts` site, same as this task's own gate-1 D1 claim
+  (retracted mid-flight), same as calling a `.gitignore` gap what was actually a trailing-slash-vs-symlink
+  rule. **Every one was ~60 seconds of reading away.** The rule adopted at [[BL-130]] — *a citation points at
+  the CODE that makes the claim true* — is exactly the discipline that would have stopped all four, and
+  filing a backlog item is evidently not a context where I apply it. **A filed item is a claim.** It gets a
+  citation or it does not get filed.
+
+  **Second, smaller lesson, recorded because it caused the retraction to be needed:** I built the [[BL-131]]
+  worktree by hand (`git worktree add` + `npm install`) and hit a corrupted npm cache entry for my trouble.
+  **`wt-setup.mjs` existed the whole time, does exactly this, and its header advertises that it automates
+  "the hand-run dance (and its footguns)".** Had I used it, I would have read it, and this item would never
+  have been filed. Use the repo's tools before hand-rolling their job.
 
 *(add new items above this line)*
