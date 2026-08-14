@@ -965,14 +965,16 @@ tags: [self-hosting, relay, human-in-the-loop, program]
 
 <!-- @item
 id: BL-124
-status: todo
+status: done
 date: 2026-08-12
 epic: null
 tags: [bl-028, observability, measurement, dead-instrument, live-config, fail-silent]
 autonomy: human-only
 -->
-- [todo · **filed 2026-08-12 by the planner, on a PO decision taken the same session: "measurement spike
-  first"**; evidence gathered 2026-08-11, the session spanned the date boundary. Found while grounding
+- [done · **CLOSED 2026-08-14 — S3 executed; the answer is W2. See the closing block at the end of this item
+  and `design/bl124-s3-distribution.md`.** Filed 2026-08-12 by the planner, on a PO decision taken the same
+  session: "measurement spike
+  first"; evidence gathered 2026-08-11, the session spanned the date boundary. Found while grounding
   [[BL-028]] T3c's precondition against the running system, not against its plan] —
   **[[BL-028]] T3a shipped an instrument whose output nothing durably records on the live orchestrator, so the
   measured silence distribution T3c is required to be entered with does not exist.**
@@ -1065,6 +1067,52 @@ autonomy: human-only
     independence defaults (`Plan Reviewer ≠ Planner`, `Task-end Reviewer ≠ Implementer`) were **not** satisfied,
     and that is recorded here rather than glossed. The strongest independent check in this task was **mutation
     testing**, which is adversarial by construction and does not care who wrote the code.
+
+  ---
+
+  **⬛ CLOSED 2026-08-14 — S2 + S3 executed. The spike answered its question, and the answer is W2.**
+
+  **The artifact is `design/bl124-s3-distribution.md`.** There is no distribution: the sink is empty after real
+  traffic, and reduction by `reason × transport` is vacuous — not "0 in every bucket", which would imply the
+  buckets were reachable and merely unvisited. **They are not reachable.**
+
+  - **S2 (deploy):** already satisfied on arrival — the live orchestrator (pid 89437, port 3741) has run S1
+    since 2026-08-13 21:07:52, against `dist` built 18:12:04. Verified by timestamp before any traffic.
+  - **S3 (traffic + reduction):** a smoke plus **two** real runs against the live instance, claude/opus. **Two,
+    against a three-run stopping rule** — stated as a shortfall, not dressed up. Runs 2–3 of the original design
+    were dropped once the mechanism was established, because they would sample a distribution that provably
+    cannot exist; the finding is structural, not statistical.
+  - **The load-bearing observation:** a worker held an obligation in unbroken silence for **233 s** — 53 s past
+    the threshold, across one or two sweep ticks — producing **no notice and no `console.warn`**. Since
+    `registry.ts:1028` warns unconditionally before the emit, the failure is upstream of the sink:
+    `classifySilence` never classified. **The sink is not implicated and was never exercised.**
+  - **W1 is REFUTED. W2 is CONFIRMED, and more completely than it was stated.** Plan §2 guessed
+    `currentTurnId` for the wrong reason: it is not *cleared early*, it is **never set at all** on exec turns
+    ([[BL-127]]). The dedup key is innocent. A second, independent mechanism ([[BL-128]]) closes the other turn
+    class. **Every turn class is excluded**, which retires the 41-boot puzzle: the count would be zero across
+    any number of boots and any amount of traffic.
+  - **Filed, not fixed** (plan §6 makes discovering W2 a show-stopper outright; both mechanisms are shared
+    engine code): [[BL-127]] · [[BL-128]] · [[BL-129]] · [[BL-130]].
+  - **Consequence for [[BL-028]] T3c:** its precondition is **not** "a measured distribution" — it is "a sweep
+    that can observe an exec turn". A threshold on a detector that cannot fire is a number with no referent.
+    §9 q2 (*should the sweep ever kill at all?*) stays deferred, and is now moot until BL-127/BL-128 move.
+  - **Still open for the PO, unchanged:** plan §8 q4 — does the sink outlive the spike? It remains unexercised
+    end to end, so the question is now sharper: it is a correct instrument wired to a gate that never opens.
+
+  **Telemetry (task closure):**
+  - task:        BL-124 (S2 + S3 — item close)
+  - wall-clock:  2026-08-14 12:38 → 14:05 (~1h27m, one session)
+  - budget:      **unavailable** — `scripts/usage.mjs` returned `ok:false` for all three providers at session
+    start and throughout (LB-11 jitter). Spend this session is **unmeasured**: a smoke plus two claude/opus
+    multi-agent runs. Recorded as unknown rather than estimated.
+  - gate:        no code changed — docs + backlog only; `validate-backlog.mjs` clean; suite not re-run (nothing
+    under test was touched) and **that is stated rather than implied green**
+  - diff:        2 files (`design/bl124-s3-distribution.md` new, `design/backlog.md`), +1 artifact / 4 items filed
+  - outcome:     **CLOSED ✅ — negative result, delivered without touching the threshold**
+  - seats:       planner · temporary implementer · task-end reviewer, all held by Claude under the
+    resource-scarcity fallback; independence defaults **not** satisfied, recorded rather than glossed. The
+    strongest independent check here was **execution**: every one of the four findings came from running the
+    system, and two came from an agent inside the run rather than from me.
 
 <!-- @item
 id: BL-125
@@ -1183,6 +1231,137 @@ autonomy: human-only
 
   **Not urgent and explicitly not a blocker:** it costs a reader one confusing error message, not a wrong
   conclusion, now that the surrounding text explains the absence. Filed so a real finding is not lost.
+
+<!-- @item
+id: BL-127
+status: todo
+date: 2026-08-14
+epic: null
+tags: [bl-028, bl-124, observability, dead-instrument, show-stopper, engine]
+autonomy: human-only
+-->
+- [todo · **found during [[BL-124]] S3 by driving real traffic at the live orchestrator; reported and
+  deliberately NOT fixed — shared engine code, show-stopper under `bl124-plan.md` §6 and Implementer Rule 2**] —
+  **The non-reply sweep is structurally blind to `exec_rpc` turns — the long-running provider-CLI turns it
+  exists to watch — because those turns carry no obligation id, so `currentTurnId` is never set.**
+
+  `classifySilence`'s first gate is `if (!agent.currentTurnId) return undefined` (`registry.ts:929`).
+  `currentTurnId` is assigned only from `turn.turnId ?? turn.messageId` — `registry.ts:504-507` (the attached
+  `await_turn`) and `in-process-driver.ts:106-109` (the driver loop). And **`turnId` is minted in exactly one
+  place in the whole runtime**: `registry.ts:734`, inside a legacy-compat block aliasing it off an inbound
+  event's `messageId`.
+
+  An `exec_rpc` turn is built at `completer.ts:93-99` as `{ type, prompt, cwd?, timeoutMs? }` — **no `turnId`,
+  no `messageId`** — and delivered via `queueExecTurn`/`awaitExecTurn` (`agent.ts:122-146`), which bypasses
+  that EVT path entirely. Confirmed on the wire, in the attach client's own printout:
+  `Received turn: { type: 'exec_rpc', prompt: '…', cwd: 'agentalk-task-…', timeoutMs: 600000 }`.
+
+  **Observed, not inferred.** A worker held an obligation in unbroken silence for **233 s** — 53 s past the
+  180 s threshold, spanning one or two 30 s sweep ticks — and produced **no notice and no `console.warn`**.
+  `registry.ts:1028` warns unconditionally *before* the emit, so a missing warn proves the failure is upstream
+  of the sink: `classifySilence` never classified. Six MCP calls, all at the two ends of the turn, so
+  `lastProgressAt` was genuinely stale throughout. Evidence: `design/bl124-s3-distribution.md` §3a.
+
+  **Consequence:** [[BL-028]] T3c's precondition is not "a measured distribution" but "a sweep that can observe
+  an exec turn". Fixing this alone is **not** sufficient — [[BL-128]] independently blocks the other turn class.
+
+<!-- @item
+id: BL-128
+status: todo
+date: 2026-08-14
+epic: null
+tags: [bl-028, bl-124, timeout, observability, engine, show-stopper]
+autonomy: human-only
+-->
+- [todo · **found during [[BL-124]] S3; observed live, reported and NOT fixed — two constants in shared engine
+  code**] —
+  **On every turn that *does* carry an obligation id, the exec guard tears the turn down 60 s before the
+  non-reply threshold can mature: 120 s vs 180 s.**
+
+  `guardMs = opts?.timeoutMs !== undefined ? opts.timeoutMs + backstopGraceMs : DEFAULT_EXEC_TIMEOUT_MS`
+  (`completer.ts:52-54`), with `DEFAULT_EXEC_TIMEOUT_MS = 120_000` (`completer.ts:10`) — against
+  `agentIdleTimeoutMs: 180000` (`registry/config.ts:19`). Only the worker branch forwards a deadline
+  (`execOpts.timeoutMs = resolveWorkerTurnTimeoutMs()`, `in-process-driver.ts:391`, default 600 s), gated on
+  `this.completer.maintainsSession`; the comment at `:364-365` says it outright: *"Planner paths never pass
+  this opt."* When the guard fires, `loop()`'s catch (`in-process-driver.ts:122-135`) ends the turn and breaks,
+  so the obligation is gone and the gate at `registry.ts:929` closes for good.
+
+  **Observed live:** `[InProcessAgentDriver s3-r1-planner-a] exec failed, ending turn: Exec for agent
+  s3-r1-planner-a timed out after 120000ms`.
+
+  **Together with [[BL-127]] this covers every turn class** — exec turns have no id; id-carrying turns are
+  killed early — which is why zero notices have ever been recorded across 41 boots. Raising this guard does not
+  help BL-127, and minting a turn id does not help this. **Both must move for the detector to fire at all.**
+
+  **Worth arguing about, not just fixing:** the worker deadline was made configurable precisely because 600 s
+  proved too short for real work. Planner turns sit at **half** that, hard-coded, while doing work that
+  demonstrably exceeds it — an R1 planner turn was killed mid-thought at 120 s, and its completed response was
+  discarded. Whether the fix is a longer default, forwarding a deadline on all paths, or lowering the
+  non-reply threshold is a design call, not a constant swap.
+
+<!-- @item
+id: BL-129
+status: todo
+date: 2026-08-14
+epic: null
+tags: [bl-028, bl-078, bl-084, coverage-gap, hang, observability]
+autonomy: human-only
+-->
+- [todo · **found during [[BL-124]] S3 — produced accidentally by the first real multi-agent run driven at the
+  live orchestrator, then diagnosed**] —
+  **A team can hang permanently with no mechanism anywhere able to detect it, because every anti-hang
+  instrument watches agents that owe a reply — and this hang leaves nobody owing anything.**
+
+  After [[BL-128]]'s guard fired, team `team-1786704512290-3` was left `status: planning` indefinitely,
+  `GET /api/conversations` → `[]`, and all three members `status: ready` with no `currentTurnId`. Nothing sees
+  it: the **non-reply sweep** cannot (its gate is an outstanding obligation, and there is none), and
+  **failure propagation** does not (the driver error is non-fault and the driver path routes through the
+  side-effect-free `notifyAgentStatus` — `AGENT.md` Milestone 03, [[BL-078]]/[[BL-084]]).
+
+  **The classification is also lossy, which may be the cheap half of the fix.** The completer throws
+  `McpError('timeout', …)` (`completer.ts:25-31`) — an error that *carries a reason*. But `McpError extends
+  Error`, not `AgentReasonedError`, and `reasonOf` is
+  `err instanceof AgentReasonedError ? err.reason : 'driver-error-unclassified'` (`contracts/types.ts:114-116`).
+  So **a timeout — arguably the most diagnostic failure the driver can see — is recorded as "we could not
+  tell"**, one frame after the information existed. Same shape as [[BL-084]]'s typed-reason argument, on the
+  error side.
+
+  **The predicate gap is the real item:** "an agent owes a reply and has gone quiet" and "a team has stopped
+  making progress" are different questions, and only the first is instrumented. Collateral cost observed: a
+  planner returned a complete, well-argued response that the team never consumed, because the guard had already
+  fired.
+
+<!-- @item
+id: BL-130
+status: todo
+date: 2026-08-14
+epic: null
+tags: [docs, stale-claim, comments, bl-028, bl-124, fail-silent]
+autonomy: human-only
+-->
+- [todo · **found during [[BL-124]] S3 — two of the three sites were found independently by a planner agent
+  during run 1 and verified by me before filing**] —
+  **Three code/doc sites make claims about the non-reply machinery that the code refutes, and all three point a
+  reader toward the wrong conclusion about this exact subsystem.**
+
+  1. **`packages/contracts/src/types.ts:47-48`** — *"The sweep is currently dead code — `lastProgressAt` is
+     never written, so `hasAgentTimedOut()` always returns false"*. **Both halves false since T3a:**
+     `lastProgressAt` is written at `registry.ts:489`, `registry.ts:513` and `in-process-driver.ts:116`, and
+     `hasAgentTimedOut()` no longer exists — `registry.ts:890` records its two renames to `classifySilence`.
+  2. **`AGENT.md` → Milestone 03 Key Features** carries the same stale claim, citing `registry.ts:663`, a line
+     that no longer holds that code.
+  3. **`apps/orchestrator/src/server.ts:1309`** — *"the ENTIRE handler is guarded"*. The `try`/`catch` spans
+     only `:1320-1324`; `recorder?.record` (`:1308`) and `broadcast` (`:1325`) sit outside it, in a listener
+     running synchronously inside the unguarded `setInterval` at `registry.ts:226`. **S1's bar B5 is still
+     met** — the sink path genuinely is guarded — the defect is a sentence asserting a property of the whole
+     handler that only its middle third has.
+
+  **Why (1) and (2) are not cosmetic:** a reader today concludes the sweep cannot fire, which is hypothesis W2
+  — and would read [[BL-124]] S3's result as confirming what they already believed, **for the wrong reason**.
+  The real mechanisms are [[BL-127]] and [[BL-128]] and have nothing to do with `lastProgressAt`.
+
+  Run 1's planner-a proposed the right rule in passing, worth adopting: *"a citation points at the CODE that
+  makes the claim true, and where we quote a comment we say it is a comment."*
 
 <!-- @item
 id: BL-123

@@ -1878,3 +1878,34 @@ here.**
 - **The validator caught me on header/prose drift** (`status: done` over a bullet still reading `[todo`).
   Small, but it is the same family as everything above: I changed one representation of a fact and not the
   other, and a machine noticed before a human did.
+
+### 2026-08-14 — the measurement failed and that was the result; every finding came from running it
+
+- **The run I treated as a failure was the finding.** R1 hung, and my first instinct was "the run broke, start
+  another". Spending ten minutes on *why* it hung produced [[BL-128]], [[BL-129]] and the thread that led to
+  [[BL-127]]. **A stalled run is data about the system, not an obstacle between me and the data** — and the
+  session's entire value came from the interruption, not from the plan.
+- **As planner: I pre-registered the run design before any result was visible, and it paid off in the reverse
+  direction from the one I expected.** I wrote down "three runs, small/medium/large, never widen to make the
+  sink non-empty" — and then had to *cut* runs 2–3. Because the terms were fixed in writing, dropping them was
+  defensible on the record instead of looking like curation. **Pre-registration protects you when you shrink
+  the sample, not only when you are tempted to grow it.**
+- **The near-miss I am most glad I caught: `/api/agents` does not serialize `transport`.** My read showed
+  `transport=(absent)` on every agent and I was one sentence from filing "the transport is null" as a finding.
+  It was an API projection gap. **An endpoint's output is a projection, not the object** — and this is
+  [[BL-053]]/[[BL-059]]'s wrong-coordinates lesson wearing a different costume, caught this time *before* the
+  claim rather than after.
+- **I did the same thing wrong once and had to recover:** I deleted the run worktrees before verifying R2's
+  artifact, having insisted on exactly that check for the smoke twenty minutes earlier. The commit survived
+  deletion so I could verify it (285 lines, real citations) — but that was luck, not method. **Verify the
+  artifact before you clean up, because cleanup is the step that makes verification impossible.**
+- **An agent inside my own run found two of my four findings.** Run 1's planner-a independently caught the
+  stale `contracts/types.ts:47-48` claim *and* the `server.ts:1309` over-claim that I had read past twice. It
+  also proposed the rule I then adopted: *a citation points at the CODE that makes the claim true, and where
+  you quote a comment, say it is a comment.* **The traffic I generated to measure the system reviewed it
+  better than I did** — worth remembering the next time I frame a live run as purely a cost.
+- **"Zero" needed a mechanism before it meant anything.** An empty sink was pre-declared a valid result, and I
+  could have stopped there and been within the rules. It would have been nearly worthless: "no notices" is
+  consistent with a healthy system *and* with a detector wired to a gate that never opens. **The number was
+  never the deliverable — the reason for the number was.** `console.warn` firing zero times is what proved the
+  failure was upstream of the sink, and that one count did more work than the whole distribution would have.
