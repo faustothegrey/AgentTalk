@@ -1411,6 +1411,34 @@ autonomy: human-only
   planner returned a complete, well-argued response that the team never consumed, because the guard had already
   fired.
 
+  **⬛ RE-VERIFIED 2026-08-14 against current code, after [[BL-127]]/[[BL-128]] merged (`29a87c9`). The claims
+  HOLD; two citations had drifted; and the "cheap half" is NOT cheap.** No code changed — this is a
+  verification note.
+
+  **Citations, corrected** (the [[BL-130]] rule: point at the code that makes the claim true):
+  - `McpError extends Error` — now **`completer.ts:26`** (was cited `:25-31`), carrying
+    `reason: 'timeout' | 'disconnect'`. Still not an `AgentReasonedError`. ✅ claim holds.
+  - `reasonOf` — now **`contracts/types.ts:127-129`** (was cited `:114-116`). `AgentReasonedError` is at
+    `:117`. ✅ claim holds: a timeout still lands as `driver-error-unclassified`.
+
+  **⛔ The finding that changes this item's shape: `'timeout'` and `'disconnect'` are NOT members of
+  `AgentErrorReason`.** Grep returns neither. (`'idle-timeout'` exists, but in the **fault** union and for a
+  different condition.) So "make `McpError` carry its reason" cannot be a one-line `extends` swap — **it
+  requires adding reasons to the union, and adding a reason means deciding FAULT vs NON-FAULT.**
+
+  **That decision is the whole blast radius, and it is a PO scope call.** A **fault** reason propagates: it
+  reaches `handleAgentFailure`, which requests shutdown of every other team member. So classifying an exec
+  timeout as a fault turns *one hung provider CLI* into a **team-wide kill** — the exact DoS-lever shape that
+  `types.ts:93-104` says drove `driver-error-unclassified` to be non-fault in the first place, and that
+  [[BL-078]] documents as the reason in-process propagation was left off deliberately. **Classify it wrong in
+  that direction and a surprise kills a team; wrong in the other and we keep today's known, shipped
+  behaviour.** The existing comment is explicit that the safe default was chosen on exactly this reasoning.
+
+  **Status: STOPPED and reported, per Implementer Rule 2 — shared engine code, a real behaviour change, and a
+  decision that is not the implementer's to make.** The item's other half (the predicate gap — instrumenting
+  "a team has stopped making progress", which is a *new detector*, not a repair) is untouched and remains a
+  design question for whoever scopes it.
+
 <!-- @item
 id: BL-130
 status: done
@@ -3109,6 +3137,18 @@ autonomy: human-only
   better than the old plan: a detector that can produce one.** The honest sequence is (1) let the instrument run
   against real traffic, (2) *then* ask what threshold the data supports. Do not re-derive T3c's old framing from
   this update; the number was never the blocker and still is not.
+  **⚠️ AND THE INSTRUMENT IS NOT RUNNING YET — checked 2026-08-14 21:5x, do not skip this before scheduling
+  T3c.** The fix is merged (`29a87c9`, 14 Aug **21:47**). The live orchestrator is **pid 89437, port 3741,
+  started 13 Aug 21:07** — *a day before the merge*. **So the deployed sweep is still structurally blind: it
+  is running the exact pre-[[BL-127]] code whose blindness [[BL-124]] S3 measured.** Anyone who reads "the
+  sweep can observe an exec turn" and then goes looking at the live instance for notices will find zero and
+  reach S3's conclusion a second time, for a reason that is no longer true.
+
+  **The next action on this item is therefore an OPERATIONAL one, not a coding one: redeploy, then drive real
+  traffic, then look.** Deliberately NOT done here — restarting the PO's live service discards whatever team
+  state it holds (including the hung `team-1786704512290-3` that [[BL-129]] documents), and that is a call for
+  the PO or the operator seat, not something to slip into a backlog sweep.
+
   **§9 q2 — "should the sweep ever kill at all?" — remains open and is untouched by this work.** The sweep is
   still advisory; nothing gained a path to `setAgentStatus`, and BL-127's bar B4 pins that.
 
