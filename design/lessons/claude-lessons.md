@@ -1975,3 +1975,38 @@ here.**
   means adding reasons, which means **deciding fault vs non-fault — and fault reaches `handleAgentFailure`,
   which kills the whole team.** One hung CLI becoming a team-wide kill is not an implementer's call. **The
   finding that a task is bigger than it looks is a deliverable**, and it was better than a guess would have been.
+
+### 2026-08-14 (late) — as planner + implementer + both reviewers: the fix I was told to make was a no-op, and finding that out was the deliverable
+
+- **The PO authorised a change that would have done nothing, and catching that was worth more than building
+  it.** BL-129's "cheap half" was to type `McpError` so a timeout stopped reading as
+  `driver-error-unclassified`. There is **no path from an exec rejection to `reasonOf`**: the worker rethrows
+  into the M08-T3 fence, the planner path hit `console.warn(…); return null`. **That `return null` was the
+  hang.** Had I implemented as instructed I'd have shipped a green no-op with a confident closing block.
+  **Read the path the change is supposed to travel, before making the change** — the instruction described the
+  symptom's location correctly and the mechanism's location wrongly.
+- **My first implementation of the authorised change broke a routine recovery, and a test I didn't write caught
+  it.** Making every exec timeout fault-class swept in the **healthcheck** — because attached agents run an
+  `InProcessAgentDriver` too, which I had assumed they didn't. A missed 25 ms ping would have killed the team.
+  `bl032-attach-pair-chat` failed; I narrowed the change instead of weakening the test. **The PO authorised a
+  behaviour change with a stated blast radius; anything wider than that radius is MY error, not their decision** —
+  and "preserve existing behaviour" is what tells you where the edge is.
+- **I found a green that was lying, and it would have survived the whole reversal.** A test asserted *"the loop
+  did NOT force the agent to error"* against a registry double **with no `reportAgentError` method at all** —
+  the call threw inside the catch, vanished into `void this.loop()`, and the assertion observed nothing. **A
+  test double that lacks the method under test passes for the wrong reason, silently, forever.** When a test
+  asserts an absence, check that the machinery it's watching is even wired to the double.
+- **Then I nearly wrote the same defect myself, in the same hour.** My first BL-133 helper waited for
+  `status !== 'busy'` — true instantly at `ready`, before the loop had pulled the turn. It reported a
+  green-looking `'busy'`. **Vacuous passes are not a thing careless people do; they are a thing everyone does,
+  which is why the mutation run is not optional.**
+- **Gate 1 on my own plan caught a fail-OPEN before it existed.** `Date.parse` on a bad timestamp is `NaN`, and
+  `now - NaN > threshold` is **false** — the detector would have gone permanently silent on one malformed field
+  while reading exactly like a healthy system. **Reviewing my own plan adversarially found a defect that
+  reviewing my own code probably would not have** — at plan stage the question is "how could this be wrong?",
+  at code stage it drifts to "does this work?".
+- **The trustworthy field had FEWER writers, not more.** `team.updatedAt` (12 write sites, mixed meaning) looked
+  like the progress signal; `task.updatedAt` (one site, a real chokepoint) was it. **Count the writers before
+  trusting a field as a signal** — and prefer the chokepoint, which is the same shape as BL-127's fix.
+- **Three hats, four merges, zero independent review.** I keep declaring this and it keeps being the largest
+  unmitigated risk in the work. Declaring it is necessary and is not a mitigation.

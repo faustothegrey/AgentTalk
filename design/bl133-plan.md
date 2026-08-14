@@ -142,3 +142,23 @@ was cleared.
 |---|---|---|
 | **B8** | An unparseable / missing `task.updatedAt` is reported as a defect, never silently treated as "no stall" | **D1** — fail closed, not open |
 | **B2′** | stall → notice → progress → stall again produces a **SECOND** notice | **D2** — pins the clear-on-progress semantics |
+
+---
+
+## 10. Closure
+
+**Merged `91fbdcf`.** Gate 2 + gate 3 both held by the author under the resource-scarcity fallback —
+**independence not obtained at any gate on this task**, declared here rather than glossed. What that costs is
+concrete: a defect shared by the plan, the code and the bars is one no pass in this task could see.
+
+**Bars: B1–B8 VERIFIED, five mutations executed** (add the parked statuses to ACTIVE → B4 red · clear the dedup
+on notice instead of progress → B1+B5 red · drop the D1 fail-closed guard → B8 red · loosen the strict boundary
+→ B6 red · delete the emit → B1+B2+B5 red). **B7 verified by diff: `team-coordinator.ts` unchanged.**
+
+**Telemetry (task closure):**
+- task:        BL-133 (split from BL-129 at its closure)
+- wall-clock:  2026-08-14 22:57 → 23:18 (Δ ~21m)
+- budget:      weekly 19%→22% (Δ ~3%), session 17%→51% (Δ ~34%)  [claude, `scripts/usage.mjs`]
+- gate:        tsc 0, suite 779/779 (94 files), contracts v8 ✅, backlog 0 warnings, coordinator zero diff
+- diff:        8 files, +575/-7; commit `ba56fbf`, merge `91fbdcf`
+- outcome:     **MERGED ✅** — advisory only; LB-96 condition (1) satisfied, deliberately not acted on

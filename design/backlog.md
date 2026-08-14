@@ -1478,6 +1478,14 @@ autonomy: human-only
   `AGENT.md`: the M03 bullet's claim that an in-process error "has NEVER interrupted its team's active task"
   went stale at **BL-084 T2** and its cited test now pins the opposite.
 
+  **Telemetry (task closure):**
+  - task:        BL-129 (the timeout half; predicate gap split to [[BL-133]])
+  - wall-clock:  2026-08-14 ~22:10 → 22:57 (Δ ~47m)
+  - budget:      weekly 19%→~20% (Δ ~1%), session ~9%→17% (Δ ~8%)  [claude, `scripts/usage.mjs`]
+  - gate:        tsc 0, suite 770/770 (93 files), contracts v8 ✅, backlog 0 warnings
+  - diff:        9 files, +399/-25; commit `e0d6c92`, merge `32570cc`
+  - outcome:     **MERGED ✅** — behaviour change, PO-decided; relaxation condition in LB-96
+
   **⚠️ THE ITEM'S REAL HALF IS STILL OPEN and is NOT closed by this** — see [[BL-133]]. "An agent owes a reply
   and has gone quiet" and "a team has stopped making progress" remain different questions, and only the first
   is instrumented. This change makes the *timeout* case loud; a team that wedges for any other reason is still

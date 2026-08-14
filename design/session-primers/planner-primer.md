@@ -1,9 +1,9 @@
 ---
 role: planner
-key: 20260814-1410-d7e2b9
-written: 2026-08-14 by Claude — session close. BL-124 executed and CLOSED with a negative result: the
-  non-reply detector cannot fire on any turn class as deployed. Four items filed, none fixed.
-  Everything below was checked against the running system at close. Check it again yourself — that is the job.
+key: 20260814-2330-4f8ba1
+written: 2026-08-14 by Claude — session close. Backlog reached **zero todo items**; the whole non-reply
+  thread (BL-124 → BL-127/128 → BL-129 → BL-133) is closed and merged. The PO has announced a new phase.
+  Everything below was checked against the repo at close. Check it again yourself — that is the job.
 ---
 
 This is your session primer.
@@ -16,8 +16,8 @@ ladder** — improving AgentTalk *with* AgentTalk, one graded rung at a time.
 **Roles.** Human = PO (Fausto): scope, direction, `autonomy: eligible`, merges, pushes. Bindings live ONLY in
 `AGENT.md → 📌 DEFAULT ROLE ASSIGNMENTS` — read it, don't trust this line. Codex and agy remain PO-declared
 UNAVAILABLE, so you are almost certainly the sole agent under the **resource-scarcity fallback**: wear every
-hat, handshake once per role, declare all of them, keep each gate's discipline separately. **Standing
-Conditional Reassignment ACTIVE.** Hermes holds the **OPERATOR seat** — it launches and monitors, holds no
+hat, handshake once per role, declare all of them, and keep each gate's discipline separately. **Standing
+Conditional Reassignment ACTIVE.** Hermes holds the **OPERATOR seat** — launches and monitors, holds no
 authority, and its reports are *observations, unverified until you check the artifact yourself.*
 
 **Workflow / source of truth.** `design/collaboration-workflow.md` + `design/backlog.md` + `AGENT.md`. Resume
@@ -25,81 +25,78 @@ from the backlog, **NOT from chat**.
 
 ## Where we are — verified at close, and check it anyway
 
-Backlog **130 items, 0 warnings** — **6 todo** (BL-126, BL-127, BL-128, BL-129, BL-130, BL-028) · 96 done ·
-25 deferred · 3 dropped. **Agent-selectable set: EMPTY** — all four new items are `human-only`. The live
-orchestrator is **pid 89437 on port 3741** and runs S1. Ask the instruments:
+Backlog **133 items, 0 warnings — 103 done · 25 deferred · 4 dropped · ZERO todo.** The agent-selectable set is
+**EMPTY** and refilling it is a PO act. Ask the instruments:
 
 ```
 node scripts/validate-backlog.mjs
-curl -s "http://127.0.0.1:3741/api/backlog?all=true"     # the live orchestrator; NOT 3100, NOT 3600
-npx vitest run apps/orchestrator/src/__tests__/bl093-backlog-selectable.test.ts
-git status --porcelain && git log --oneline origin/master..HEAD
-ls ~/.agenttalk/                                          # still absent — and now we know why
+curl -s "http://127.0.0.1:3741/api/backlog?all=true"     # the LIVE orchestrator; NOT 3100, NOT 3600
+npx vitest run                                            # expect 779 / 94 files
+git log --oneline -12 && git status --porcelain
+ps -o pid,lstart -p 89437                                 # the live instance — read the START TIME
 ```
 
-## What this session did — and the headline is a negative result
+## What the last session did — one thread, closed end to end
 
-**[[BL-124]] is CLOSED.** S2 was already satisfied on arrival; S3 drove real traffic at the live instance and
-reduced the sink. **There is no distribution.** The artifact is `design/bl124-s3-distribution.md`.
+**The non-reply detector went from structurally blind to working, in four merged tasks.**
 
-**W1 refuted, W2 confirmed — and the detector is disconnected at BOTH ends:**
+- **[[BL-127]]/[[BL-128]]** (`29a87c9`) — an `exec_rpc` turn now carries an obligation id and gives it back
+  through a chokepoint in the completer's `cleanup()`; every exec path forwards a deadline that outlives the
+  180 s threshold, checked at construction by `assertExecGuardOutlivesIdleThreshold`.
+- **[[BL-131]]** (`57b2cdc`) — that assertion's comment claimed a system property while checking one path.
+  Comment-only.
+- **[[BL-129]]** (`32570cc`) — **a real behaviour change, PO-decided.** A planner exec timeout now raises
+  fault-class `exec-timeout` and **propagates: `handleAgentFailure` shuts down every other team member.** The
+  healthcheck is explicitly exempt. Relaxation condition: **`logbook.md` LB-96 — read it before touching this.**
+- **[[BL-133]]** (`91fbdcf`) — the team-level progress predicate: an advisory `team_no_progress` notice when a
+  team holds an active task with no transcript activity for 900 s. `team-coordinator.ts` zero diff.
 
-- **[[BL-127]]** — an `exec_rpc` turn carries **no obligation id**, so `currentTurnId` is never set and
-  `classifySilence`'s gate (`registry.ts:929`) returns `undefined` forever. `turnId` is minted in exactly one
-  place in the runtime (`registry.ts:734`, aliased off a peer message's `messageId`). **The exec turn is the
-  one the sweep exists to watch.**
-- **[[BL-128]]** — where the id *does* exist, `DEFAULT_EXEC_TIMEOUT_MS = 120_000` (`completer.ts:10`) tears the
-  turn down 60 s before the 180 s threshold matures.
-- Together they cover **every turn class**, which retires the 41-boot zero-notice puzzle.
-
-**The observation that settled it:** a worker held an obligation in unbroken silence for **233 s** and produced
-no notice *and no `console.warn`* — and since `registry.ts:1028` warns unconditionally before the emit, the
-failure is upstream of the sink. **The sink is fine and was never exercised.**
-
-Also filed: **[[BL-129]]** (a team can hang with nothing able to detect it; `McpError` is not an
-`AgentReasonedError`, so a timeout is classified "we could not tell") and **[[BL-130]]** (three sites,
-including `AGENT.md`, still say the sweep is dead code — they will make you misread all of the above).
-
-**Nothing was fixed.** Plan §6 makes discovering W2 a show-stopper; both mechanisms are shared engine code.
+**[[BL-132]] was filed and retracted the same day** — I called a deliberate `wt-setup` symlink an undocumented
+seam without reading the script that creates it. Kept as `dropped`, on purpose, as the record.
 
 ## What is open, in the order I would take it
 
-**1. [[BL-127]] + [[BL-128]] are a PO scope call, and they are coupled.** Fixing either alone leaves the
-detector dead. BL-128 in particular is not a constant swap — planner turns are hard-capped at *half* the
-worker's configurable deadline while doing work that exceeds it, and one was killed mid-thought this session
-with its completed response discarded.
+**1. Nothing is running the new code — this is the highest-value next act and it is OPERATIONAL, not coding.**
+The live orchestrator is **pid 89437, port 3741, started 13 Aug 21:07** — *a day before* every fix above. So
+production still runs the pre-BL-127 blind version. **Anyone who checks the live instance for notices will find
+zero and re-derive BL-124 S3's old conclusion for a reason that stopped being true.** Redeploy → drive real
+traffic → *then* look. A restart discards live team state, so it is the PO's call.
 
-**2. [[BL-028]] T3c's premise is gone.** It was to derive a threshold from a measured distribution. There is no
-distribution, and the number was never the blocker. Its real precondition is now "a sweep that can observe an
-exec turn". Do not let it proceed on the old framing.
+**2. [[BL-028]] is the only substantive item left, and its premise is still void.** T3c was "derive a threshold
+from a measured distribution". There is still **no distribution** — but now there is an instrument that can
+produce one. The honest sequence is (1) let it run, (2) then ask what threshold the data supports. **Do not let
+T3c proceed on the old framing.**
 
-**3. [[BL-130]] is cheap and I would take it early** — while `AGENT.md` says the sweep is dead code, every
-future reader confirms the right conclusion for the wrong reason.
+**3. LB-96's relaxation condition (1) is SATISFIED but deliberately NOT acted on.** BL-133 makes a wedge
+observable without a kill, so BL-129's team-wide kill can be reconsidered — **on evidence, by the PO.** "Condition
+satisfied" is not "condition acted on", and the entry says so.
 
-**4. [[BL-126]]** — trivial doc fix, `human-only`, still open.
-
-**5. The selectable queue is EMPTY and refilling it is a PO act.**
+**4. The PO has announced a new phase.** Expect direction rather than backlog continuation.
 
 ## Op notes — the ones that cost real time
 
-- **The meter was DOWN all session** (`ok:false`, all three providers). BL-124's closure telemetry records
-  budget as **unavailable**, not estimated. If it is still down, say so and carry on — never block on it.
-- **`/api/agents` does not serialize `transport`** (`server.ts:204-214`). I nearly filed "transport is null on
-  every agent" off that projection. An endpoint's output is not the object.
-- **Verify a run's artifact BEFORE cleaning up its worktree.** I deleted first and recovered only because the
-  commit outlived the branch. Luck, not method.
-- **`completed` still does not mean the work was done — and for claude/persistent, look in the WORKDIR, not
-  the task dir.** The cwd is session-level and structurally cannot be per-turn.
-- **Driving traffic:** the live MCP port is **54321**; attach clients want `AGENTTALK_PERSISTENT_MCP_URL` and
-  `AGENTTALK_WORKDIR` (which must be a git repo — the worker provisions a task worktree inside it).
-- **Consensus runs stall** (that is BL-128/BL-129). A worker-only team completes reliably; a
-  planner-planner-worker team hung on the first attempt.
+- **Use `node scripts/wt-setup.mjs create <id>`** for a task worktree. It wires node_modules in seconds. I
+  hand-rolled one, hit a corrupted npm cache, and filed a bogus backlog item as a direct result. Its closing
+  reminder is real: **stage files EXPLICITLY, never `git add -A`** (the symlinked node_modules slips past
+  `.gitignore`, because `node_modules/` with a trailing slash matches directories, not symlinks).
+- **The npm cache was fixed this session** (root-owned files from an old npm bug; the PO ran
+  `sudo chown -R 501:20 ~/.npm`). It also got mostly emptied, so the next full install re-downloads.
+- **`/api/agents` does not serialize `transport`.** An endpoint's output is a projection, not the object.
+- **The meter is UP again** (it was down for BL-124's closure). `node scripts/usage.mjs`.
+- **Suite is 779 / 94 files.** A delta of exactly your new tests is the cheapest scope check there is — it
+  proves no existing test was weakened without reading a single diff hunk.
 
-## The through-line
+## The through-line — and it is a warning about yourself, not about the code
 
-Last session: *the wrong coordinates are usually a document.* This one: **the wrong coordinates can be the
-instrument itself, and "zero" is not a measurement until you know why it is zero.** An empty sink was a
-pre-declared valid result, and stopping there would have been within the rules and nearly worthless — it reads
-identically whether the system is healthy or the detector is wired to a gate that never opens. What separated
-them was a single unconditional `console.warn` firing zero times. And the part worth being humble about, again:
-two of the four findings were caught by an agent inside the traffic I generated, in files I had already read.
+Last session: *"zero" is not a measurement until you know why it is zero.* This one: **the most expensive
+mistakes were claims about code I had not read, and I made three of them in one day** — a gate-1 finding that
+had already influenced a PO decision before I retracted it, a `.gitignore` "gap" that was a trailing-slash rule,
+and a whole backlog item retracted four hours after filing. Every one was under a minute of reading away.
+
+The rule this project adopted at [[BL-130]] — *a citation points at the CODE that makes the claim true* — is not
+a documentation convention. **It is the thing that stops you from being confidently wrong in a file other people
+trust.** Apply it when you file an item, not only when you write a doc.
+
+And the counterweight, because the same day produced it: the two best results here came from **running things**,
+not reading them. A mutation turned an absence-asserting bar red and proved it load-bearing. A suite-count delta
+proved a scope claim in one line. **When you can execute the question instead of reasoning about it, execute it.**
