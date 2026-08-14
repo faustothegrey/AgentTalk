@@ -1397,6 +1397,24 @@ autonomy: human-only
   Delivered on `task-BL-130` together with [[BL-126]]; the [[BL-028]] T3c premise note was written in the same
   pass, since it is the same stale-framing defect one level up.
 
+  **Telemetry (task closure — covers BL-130 + [[BL-126]], one branch):**
+  - task:        BL-130 + BL-126
+  - wall-clock:  2026-08-14 15:36 → 15:56 (~20m, including the cold-start verification pass)
+  - budget:      claude weekly 15%→15% (Δ ~0%), session 5%→5% (Δ ~0%) — the meter was UP this session,
+                 unlike BL-124's, and a comment-only task did not move a full percentage point
+  - gate:        tsc **0**, suite **754/754 (90 files)** — the master baseline was run immediately BEFORE the
+                 edits and returned the identical 754/754 (90), so the change provably moved nothing;
+                 re-run again on the merge result: tsc 0, suite 754/754. `validate-backlog` 130 items /
+                 0 warnings. BL-093 selectable pin green — the agent-selectable set stays **empty**, since
+                 both closed items were `human-only`. Pollution: one task worktree, removed at close.
+  - diff:        5 files, +112/-15 — **zero executable lines**, verified by
+                 `git diff -U0 -- '*.ts' | grep -v '^[+-]\s*//'` returning nothing;
+                 commit `438ea1a`, merge `06aa449`
+  - outcome:     **MERGED ✅** — PO-authorized 2026-08-14. **NOT pushed**; the push stays the PO's.
+  - ⚠️ note:     gate 3's fresh-eyes property was **NOT obtained** — one actor held planner, implementer and
+                 both reviewer seats under the resource-scarcity fallback. Recorded rather than glossed, as
+                 [[BL-028]] T3b recorded the same gap.
+
 <!-- @item
 id: BL-123
 status: done
