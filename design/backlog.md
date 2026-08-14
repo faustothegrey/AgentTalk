@@ -8116,4 +8116,69 @@ autonomy: po-decision
   condition:** the operator's write fence is ever relied on as a *control* rather than a convention — or a write
   outside the allowlist is discovered that nobody noticed at the time.
 
+<!-- @item
+id: BL-131
+status: todo
+date: 2026-08-14
+epic: null
+tags: [bl-127, bl-128, bl-130, claim-vs-code, coverage-gap, observability]
+autonomy: human-only
+-->
+- [todo · **found at [[BL-127]]/[[BL-128]] gate 2, recorded not fixed — it needs a scope decision, and the
+  delivery met its bar as revised**] —
+  **`assertExecGuardOutlivesIdleThreshold` checks the DEFAULT exec guard only, while its comment states the
+  invariant universally — so the healthcheck path still runs the exact inversion the assertion exists to
+  prevent.**
+
+  The assertion (`registry.ts`, added by [[BL-128]]) computes `resolveWorkerTurnTimeoutMs() +
+  EXEC_TIMEOUT_BACKSTOP_GRACE_MS` = **605 s** and requires it to strictly exceed `agentIdleTimeoutMs` (180 s).
+  But the healthcheck passes an **explicit** short deadline with `timeoutBackstopGraceMs: 0`
+  (`in-process-driver.ts:199-201`), and an explicit caller value wins — so a healthcheck exec turn runs a
+  **~30 s guard against a 180 s threshold**, which is structurally the same 120-vs-180 inversion that disabled
+  the sweep for 41 boots.
+
+  **Benign in effect, and say so plainly:** the turn is torn down and [[BL-127]]'s chokepoint clears the
+  obligation, so there is no false notice — and nobody wants a liveness ping watched by a non-reply sweep. A
+  healthcheck being unobservable to the sweep is arguably **correct**.
+
+  **Not benign in the comment, which is the actual defect.** The doc block reads *"a turn must be allowed to
+  outlive the threshold, or it is torn down before any silence can be classified and the detector is dead"* —
+  stated as a property of the system, checked for one path. **A future reader will take the assertion as
+  covering every exec path. It does not.** That gap between what code checks and what its comment claims is
+  the same family as [[BL-130]], and this whole thread exists because a claim outran its code once already.
+
+  **Options:** (a) narrow the comment to what is checked, and name the healthcheck exemption + why it is
+  correct — cheap, honest, no behaviour change; (b) extend the assertion to every exec path that builds a
+  guard, with an explicit healthcheck exemption in code rather than in prose; (c) leave it. **Recommend (a)**
+  — the exemption is legitimate, so the defect is the description, not the coverage.
+
+<!-- @item
+id: BL-132
+status: todo
+date: 2026-08-14
+epic: null
+tags: [containment, sandbox, worktree, bl-036, observation]
+autonomy: human-only
+-->
+- [todo · **observed during [[BL-127]]/[[BL-128]] gate-3 hygiene sweep; an observation, NOT a live finding —
+  nothing wrote through it and no agent ran autonomously in that worktree**] —
+  **A per-task worktree's `apps/web/node_modules` is a SYMLINK into the primary checkout, so the declared
+  safety sandbox has a seam pointing at the real repo.**
+
+  In `att-BL-127`, `apps/web/node_modules -> /Users/fausto/Software/AgentTalk/apps/web/node_modules` (created
+  by the branch's build). It also explains a puzzle worth recording on its own: it shows as `??` untracked
+  even though `.gitignore:12` says `node_modules/` — **the trailing slash matches directories only, never a
+  symlink.** It was in no commit, so mainline was never at risk.
+
+  **Why it is worth a item rather than a shrug.** The worktree MANDATE (`AGENT.md`, PO 2026-07-16) makes the
+  per-task worktree *the* containment mechanism for autonomous agents: "an agent's file changes stay contained
+  to its worktree/branch and cannot reach mainline until the gate". A dependency tree that resolves into the
+  primary checkout is a write path out of the sandbox that the mandate does not anticipate. **The sandbox's
+  entire value is that it is airtight**, and this is a seam — dormant here, but the containment fence is
+  exactly the thing you do not want to discover the limits of during an autonomous run.
+
+  Related sequencing detail belongs with **[[BL-036]]** (worktree discipline: naming, cleanup, isolation).
+  **Not urgent. Needs someone to decide whether worktree provisioning should install its own deps, accept the
+  symlink and document it, or fence the path.**
+
 *(add new items above this line)*
