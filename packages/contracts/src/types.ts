@@ -41,6 +41,27 @@ export type AgentFaultErrorReason =
   | 'mcp-internal-error'
   // Attached transport: the reconnect grace period expired with a turn still in flight.
   | 'reconnect-timeout-inflight-turn'
+  // BL-129 — a non-worker (planner) exec turn hit its guard: the provider CLI went quiet and
+  // never came back.
+  //
+  // ⚠️ FAULT BY EXPLICIT PO DECISION, 2026-08-14, taken with the blast radius stated in advance.
+  // This one PROPAGATES: `handleAgentFailure` interrupts the task and requests shutdown of every
+  // OTHER team member. That is the largest blast radius available here, and it is deliberate.
+  //
+  // The reasoning, recorded because it runs opposite to every other call on this page: the
+  // alternative is what shipped for months — the timeout swallowed into `return null`, the turn
+  // ending with no output, and the team wedged in `planning` FOREVER with every member `ready`
+  // and nobody owing a reply. Nothing detects that (BL-129's predicate gap). So the failure mode
+  // being replaced is not "an agent limps": it is "the team is dead and no instrument can say so".
+  // A loud, reversible kill beats a silent permanent hang — being wrong here costs one re-run and
+  // the operator LEARNS; being wrong the old way cost an invisible wedge.
+  //
+  // ↩ RELAXATION CONDITION (logbook LB-96): flip to non-fault — or divert to the M08-T3 worker
+  // fence (`pauseTaskForOperator`, which terminates nobody) — as soon as EITHER a progress-
+  // predicate detector exists so the hang is observable without a kill, OR real runs show
+  // provider timeouts are frequent enough that team-wide shutdown costs more than it reveals.
+  // Do NOT relax it merely because a kill was startling: that is the mechanism working.
+  | 'exec-timeout'
   // The idle sweep declared the agent hung.
   //
   // NOTE (BL-084 T1): this is fault-class ONLY to preserve today's behaviour byte-for-byte.
@@ -103,7 +124,22 @@ export type AgentNonFaultErrorReason =
   // It is NOT a hole in T1's type guarantee: the catch site passes this reason EXPLICITLY, so
   // nothing is unclassified by omission — it is unclassified BY NAME, which is greppable, and
   // counting it is how we learn which causes still deserve a reason of their own.
-  | 'driver-error-unclassified';
+  | 'driver-error-unclassified'
+  // BL-129 — the agent went `error`/`terminated` DURING an exec turn, and the completer's
+  // `onStatus` handler rejected the in-flight promise to unblock it.
+  //
+  // NON-fault, and the asymmetry with its sibling `exec-timeout` above is the whole point: by the
+  // time this exists the agent has ALREADY transitioned through its own path, carrying its own
+  // reason, and that transition already decided propagation on its own merits. Classifying the
+  // exec wrapper's view as fault too would let a rejection *derived from* the status change
+  // override the classification of the status change itself — deciding the same question twice,
+  // with the less-informed answer winning.
+  //
+  // In practice it is also unreachable at the driver's catch: the guard there skips reporting when
+  // the agent is already `error`/`terminated` (`in-process-driver.ts`), which is precisely this
+  // case. It is classified anyway rather than left to a default, because a reason that exists
+  // must say what it means — BL-084 T1's whole argument.
+  | 'exec-disconnect';
 
 export type AgentErrorReason = AgentFaultErrorReason | AgentNonFaultErrorReason;
 

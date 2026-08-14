@@ -97,9 +97,16 @@ const FAULT_CLASS_BY_REASON: Record<AgentErrorReason, boolean> = {
   'mcp-internal-error': true,
   'reconnect-timeout-inflight-turn': true,
   'idle-timeout': true, // T1 parity only — BL-028 (T3) revisits this row. See types.ts.
+  // BL-129 — PO decision 2026-08-14, taken with the blast radius stated first. UNLIKE
+  // `idle-timeout` above, this row is NOT parity: it is a live behaviour change that replaces a
+  // silent permanent wedge with a loud, reversible kill. Relaxation condition: logbook LB-96.
+  'exec-timeout': true,
 
   // ── non-fault: a normal ending, a rail firing, or a deliberate refusal ──
   'unknown-mcp-tool': false, // PO-ratified 2026-07-27 (was `true` in T1). See types.ts.
+  // BL-129 — the agent already transitioned on its own path carrying its own reason; classifying
+  // the exec wrapper's view too would decide the same question twice. See types.ts.
+  'exec-disconnect': false,
   'conversation-reply-cap': false,
   'relay-budget-exhausted': false,
   'target-agent-unavailable': false,
