@@ -1306,7 +1306,15 @@ export function startServer(
   // `AgentNonReplyNotice` declaration in `contracts/types.ts`.
   registry.on('agent_non_reply', (notice) => {
     recorder?.record('runtime', 'agent_non_reply', notice);
-    // BL-124 S1 — the unconditional channel, and the ENTIRE handler is guarded.
+    // BL-124 S1 — the unconditional channel. The SINK CALL below is guarded.
+    //
+    // CORRECTED (BL-130, 2026-08-14): this line previously claimed "the ENTIRE handler is guarded".
+    // It is not, and never was. The `try` spans only `nonReplySink.record` — `recorder?.record`
+    // above it and `broadcast` below it both sit OUTSIDE the guard and can still take the process
+    // down by the exact mechanism this comment goes on to describe. S1's bar B5 is genuinely met
+    // (the sink path IS guarded); the defect was asserting of the whole handler a property that
+    // only its middle third has — which is worse than no comment, because it tells the next reader
+    // not to look.
     //
     // This listener runs SYNCHRONOUSLY inside `emit()`, inside `checkIdleAgents()`, inside an
     // unguarded `setInterval` in the registry. Nothing above catches. So a throw here does not lose

@@ -414,7 +414,21 @@ in every context (docs, messages, primers, lessons). Violations should be correc
 - **Not yet (open follow-ups)**: multi-agent **consensus** mapping (the harness only emits `send_to_agent`, no `submit_plan`/agreement/work), clean **MCP-failure surfacing**, and the **native-loop/skill** path for claude/gemini. See `design/mcp-implementation-plan.md` (Phase 5) and `design/mcp-external-launch-proposal.md`.
 
 ### Milestone 03 Key Features
-- **Agent Failure Propagation**: Active team tasks are now immediately interrupted if an agent enters an `error` state, eliminating deadlocks. ⚠️ **Corrected 2026-07-10:** this line previously read *"(including idle timeouts)"* — **that was false.** The idle timeout is **dead code**: `lastProgressAt` is declared and read but **never written**, so `hasAgentTimedOut()` always returns false (`registry.ts:663`; see **LB-70** / **BL-028**). A clean disconnect → `terminated` (M05) and an explicit `error` status do propagate; a **hung** agent is **not** detected. Do not rely on the idle timeout, and do not cite this milestone as evidence that it works.
+- **Agent Failure Propagation**: Active team tasks are now immediately interrupted if an agent enters an `error` state, eliminating deadlocks. ⚠️ **Corrected 2026-07-10:** this line previously read *"(including idle timeouts)"* — **that was false.** A clean disconnect → `terminated` (M05) and an explicit `error` status do propagate; a **hung** agent is **not** detected. Do not rely on the idle timeout, and do not cite this milestone as evidence that it works.
+  ⬛ **CORRECTION 2026-08-14 ([[BL-130]]) — the 2026-07-10 correction was itself half-wrong, and its stale half
+  is now the more dangerous one.** It read: *"The idle timeout is **dead code**: `lastProgressAt` is declared and
+  read but **never written**, so `hasAgentTimedOut()` always returns false (`registry.ts:663`)."* **Every
+  checkable part of that is false today.** `lastProgressAt` **is** written — `registry.ts:489`, `registry.ts:513`,
+  `in-process-driver.ts:116`. **`hasAgentTimedOut()` does not exist**; it became `quietForMs` and then
+  `classifySilence` (`registry.ts:890` carries both renames). And `registry.ts:663` no longer holds that code.
+  **The conclusion above survives — a hung agent is still not detected — but NOT for this reason, and that
+  matters.** [[BL-124]] S3 established the real mechanisms: an `exec_rpc` turn carries **no obligation id**, so
+  `classifySilence`'s gate at `registry.ts:929` returns `undefined` forever ([[BL-127]]); and where an id does
+  exist, `DEFAULT_EXEC_TIMEOUT_MS` (`completer.ts:10`, 120s) tears the turn down 60s before the 180s threshold
+  matures ([[BL-128]]). **A reader who believes the `lastProgressAt` story reaches the right conclusion for the
+  wrong reason** — and would "fix" the sweep by writing a field that is already written. *(Rule adopted with this
+  correction, proposed by a planner agent during S3: **a citation points at the CODE that makes the claim true,
+  and where you quote a comment, say it is a comment.**)*
   ⚠️ **Second correction, 2026-07-27 (PO decided [[BL-078]] option (a) — document, don't fix): propagation is
   TRANSPORT-ASYMMETRIC, and the opening sentence above is only true for ATTACHED agents.** An **attached**
   agent's error routes through `Registry.setAgentStatus`, which fires `teamCoordinator.handleAgentFailure`

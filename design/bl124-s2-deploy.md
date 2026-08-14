@@ -125,12 +125,20 @@ A notice requires an agent to hold an **outstanding turn** (`currentTurnId` set)
 with the sweep running every 30 s — so expect a notice no sooner than ~3.5 min into a genuine stall. The
 threshold is **not** env-tunable, and **tuning it is a show-stopper** (plan §6): the number is the output.
 
-Watch it arrive:
+Watch it arrive. **On a fresh deploy neither the file nor `~/.agenttalk/` exists yet** — the sink opens nothing
+until the first notice arrives (that is the same fact §0's coordinate table records — *"does not exist yet"* —
+not a fault). So follow the path
+with `tail -F`, which waits for a file that is not there and picks it up on creation; plain `tail -f` fails
+outright with *No such file or directory* and tells you nothing:
 
 ```bash
-tail -f ~/.agenttalk/agent-non-reply.jsonl
-grep -c '"kind":"notice"' ~/.agenttalk/agent-non-reply.jsonl
+tail -F ~/.agenttalk/agent-non-reply.jsonl          # -F, not -f: the file may not exist yet
+grep -c '"kind":"notice"' ~/.agenttalk/agent-non-reply.jsonl 2>/dev/null || echo 0
 ```
+
+*(Fixed by [[BL-126]], 2026-08-14 — reported by the hmp9 worker, which found it one line from work it was
+already doing and correctly left it alone. The `-f` snippet contradicted the section directly above it: one half
+explained that absence was expected, the other handed the reader a command that errors on exactly that absence.)*
 
 **A restart mid-run splits the measurement.** A `{"kind":"boot"}` line marks that split — but it is written
 **on the first notice of a boot, not at startup**. The marker is emitted inside the sink's single guarded
