@@ -207,6 +207,50 @@ export type AgentNonReplyReason =
  * rejects a mismatch on binary hash equality (LB-66), so a new EVT would break every attached
  * client until both repos shipped in lockstep. A type-only add here does not move that hash.
  */
+/**
+ * BL-133 — the TEAM-level sibling of {@link AgentNonReplyNotice}, and deliberately a SEPARATE type.
+ *
+ * They answer different questions. `AgentNonReplyNotice` says "this AGENT owes a reply and has gone
+ * quiet" — gated on an outstanding obligation. This one says "this TEAM has produced nothing for a
+ * while", and the wedge that motivated it had **no obligation anywhere**: team `planning`, all
+ * members `ready`, no `currentTurnId`, so every obligation-based instrument was structurally silent
+ * (BL-124 S3 → BL-129). Merging the two would mean widening the obligation gate until it stopped
+ * meaning anything — the conflation `design/bl084-plan.md` §0 already rejected once, for the error
+ * and non-reply vocabularies.
+ *
+ * ⚠️ ADVISORY, exactly like its sibling: nothing branches on it, nothing dies of it. See `logbook.md`
+ * LB-96 — this instrument existing is the stated precondition for RELAXING BL-129's fault-class
+ * kill, and a version of it that killed could not discharge that condition.
+ *
+ * Carried on the Registry's EventEmitter surface (`team_no_progress`), not as a protocol packet, for
+ * the same contract-hash reason as its sibling above.
+ */
+export interface TeamNoProgressNotice {
+  teamId: string;
+  taskId: string;
+  /** The task's status when observed — a stalled `planning` reads very differently from `in_progress`. */
+  taskStatus: TeamTaskStatus;
+  /** How long the task had gone without any transcript activity. The measurement, as with its sibling. */
+  stalledForMs: number;
+  observedAt: string;
+}
+
+/**
+ * BL-133 (gate-1 defect D1) — an unparseable or missing `task.updatedAt`, reported rather than swallowed.
+ *
+ * `Date.parse` on a bad string yields `NaN`, and `now - NaN > threshold` is **false** — so the naive
+ * detector would go PERMANENTLY SILENT on one malformed timestamp and read exactly like a healthy
+ * system. That is the fail-open shape [[BL-114]] and [[BL-101]] exist to prevent. A broken progress
+ * clock is strictly more alarming than a stall, so it is said out loud instead of defaulting to "fine".
+ */
+export interface TeamProgressClockDefectNotice {
+  teamId: string;
+  taskId: string;
+  /** Whatever was actually there, so a reader can see what broke instead of guessing. */
+  rawUpdatedAt: unknown;
+  observedAt: string;
+}
+
 export interface AgentNonReplyNotice {
   agentId: string;
   reason: AgentNonReplyReason;

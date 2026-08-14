@@ -2865,9 +2865,14 @@ cost a dead team nobody could see.
 
 **↩ RELAXATION CONDITION — the reason this entry exists.** Flip `exec-timeout` to non-fault, **or** divert it to
 the M08-T3 worker fence (`pauseTaskForOperator`, which terminates nobody), as soon as **either**:
-1. **a progress-predicate detector exists** — something that answers *"has this team stopped making progress?"*
-   rather than only *"does an agent owe a reply?"*. That is [[BL-129]]'s unclosed half. Once a hang is
-   observable without a kill, the kill has no remaining justification; or
+1. ~~**a progress-predicate detector exists**~~ — **✅ SATISFIED 2026-08-14, same day, by [[BL-133]].** The
+   team-level sweep now emits an advisory `team_no_progress` when a team holds an active task with no
+   transcript activity for 900s, and `team-coordinator.ts` did not change to get it. **A wedge is now
+   observable WITHOUT a kill, which is exactly the condition this clause named.**
+   **So the fault-class kill can be reconsidered on evidence — and it is deliberately NOT relaxed yet.** Two
+   honest reasons: nothing has run against real traffic (the live orchestrator still serves pre-[[BL-127]]
+   code — see [[BL-028]]), and relaxing it is a PO decision, not a consequence. **Do not read "condition
+   satisfied" as "condition acted on".** The remaining clause below is untouched; or
 2. **real runs show provider timeouts are common** enough that team-wide shutdown costs more than it reveals.
    The honest number here is unknown — we have never measured provider-timeout frequency, and [[BL-028]]'s
    instrument is merged but **not yet deployed**.

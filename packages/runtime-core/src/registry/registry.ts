@@ -14,6 +14,9 @@ import type {
   AgentErrorReason,
   AgentExecutionMode,
   AgentNonReplyNotice,
+  TeamNoProgressNotice,
+  TeamProgressClockDefectNotice,
+  TeamTaskStatus,
   AgentNonReplyReason,
   AgentProvider,
   AgentStatus,
@@ -70,6 +73,29 @@ import { resolveRegistryConfig, type RegistryConfig } from './config.js';
  * ([[BL-130]]'s rule, applied to this file: the claim above is now scoped to the code that makes
  * it true.)
  */
+/**
+ * BL-133 — the second half of the same invariant family, asserted for the same reason.
+ *
+ * A worker may legitimately hold ONE exec turn for the whole guard (600s + 5s grace) while producing
+ * **no transcript entry at all** — so a team-stall threshold at or below the guard reports every long
+ * worker turn as a stall. A detector that cries wolf on normal operation is worse than none: its
+ * reader learns to ignore it, which is [[BL-127]] §3's false-notice argument one level up.
+ *
+ * Fails CLOSED at construction, like its sibling: a misconfiguration here does not degrade the
+ * detector, it makes it useless in a way that reads exactly like a working one.
+ */
+export function assertTeamStallOutlivesExecGuard(teamNoProgressTimeoutMs: number): void {
+  const execGuardMs = resolveWorkerTurnTimeoutMs() + EXEC_TIMEOUT_BACKSTOP_GRACE_MS;
+  if (teamNoProgressTimeoutMs <= execGuardMs) {
+    throw new Error(
+      `[Registry] teamNoProgressTimeoutMs (${teamNoProgressTimeoutMs}ms) must strictly outlive the ` +
+      `exec guard (${execGuardMs}ms), or one legitimate long worker turn is reported as a stalled ` +
+      `team (BL-133). Raise teamNoProgressTimeoutMs above ${execGuardMs}ms, or lower ` +
+      `AGENTTALK_WORKER_TURN_TIMEOUT_MS.`
+    );
+  }
+}
+
 export function assertExecGuardOutlivesIdleThreshold(agentIdleTimeoutMs: number): void {
   const execGuardMs = resolveWorkerTurnTimeoutMs() + EXEC_TIMEOUT_BACKSTOP_GRACE_MS;
   if (execGuardMs <= agentIdleTimeoutMs) {
@@ -231,6 +257,14 @@ export class Registry extends EventEmitter {
    * changes is new information, and deduping on the turn would keep the first reason and drop it.
    */
   private nonReplyReported = new Map<string, string>();
+  /**
+   * BL-133 — `teamId` → the `taskId` already reported as stalled, so the 30s sweep says it ONCE.
+   *
+   * Keyed by team and CLEARED ON PROGRESS (not on notice), which is what makes a
+   * stall → progress → stall sequence produce a SECOND notice rather than falling permanently
+   * silent after the first. Gate-1 defect D2 was that the original bar did not pin this.
+   */
+  private teamStallReported = new Map<string, string>();
   private pendingRelaySeq = 0;
 
   constructor(
@@ -239,6 +273,7 @@ export class Registry extends EventEmitter {
     super();
     this.config = resolveRegistryConfig(config);
     assertExecGuardOutlivesIdleThreshold(this.config.agentIdleTimeoutMs);
+    assertTeamStallOutlivesExecGuard(this.config.teamNoProgressTimeoutMs);
     this.conversations = new ConversationStore(this.config.conversationStorePath);
     this.conversations.load();
     this.conversationCoordinator = new ConversationCoordinator({
@@ -276,7 +311,10 @@ export class Registry extends EventEmitter {
       this.arbiterCoordinator?.handleAgentStatus(evt.id, evt.status);
     });
 
-    this.idleCheckInterval = setInterval(() => this.checkIdleAgents(), 30000);
+    this.idleCheckInterval = setInterval(() => {
+      this.checkIdleAgents();
+      this.checkStalledTeams();
+    }, 30000);
 
   }
 
@@ -1050,6 +1088,101 @@ export class Registry extends EventEmitter {
    * information about the same turn, and deduping it away would report the least useful of the
    * two. The classification lives in `classifySilence`; this loop only relays it.
    */
+  /**
+   * BL-133 — "has this TEAM stopped making progress?", the question no instrument here could ask.
+   *
+   * Every other anti-hang mechanism gates on an outstanding obligation: `classifySilence` needs a
+   * `currentTurnId`, M03 propagation needs an agent in `error`. The wedge from [[BL-124]] S3 had
+   * NEITHER — team `planning`, all three members `ready`, no obligation anywhere — so every one of
+   * them was structurally silent while the team was permanently dead. "Quiet" is a property of an
+   * AGENT; "not progressing" is a property of a TEAM, and no tuning of the first yields the second.
+   *
+   * The clock is `task.updatedAt`, trustworthy for one specific reason: `recordTaskTranscript`
+   * (team-coordinator) is a genuine chokepoint — ~30 call sites route through it and its last line
+   * writes that field. So this reads a clock that already exists and is already maintained.
+   * `team.updatedAt` was the tempting alternative and is NOT usable: a dozen write sites of mixed
+   * meaning. **The field with fewer writers was the honest one.**
+   *
+   * ⚠️ ADVISORY, as a design commitment rather than an oversight. No path from here to
+   * `setAgentStatus`, to `handleAgentFailure`, or to a task-status write — bar B5 pins all three.
+   * `logbook.md` LB-96 names this detector as the precondition for relaxing [[BL-129]]'s
+   * fault-class kill, and an instrument that itself killed could never discharge that condition.
+   *
+   * Reads the coordinator through its EXISTING public accessors, so `team-coordinator.ts` has a
+   * zero diff for this whole feature.
+   */
+  private checkStalledTeams(): void {
+    const now = Date.now();
+    const observedAt = new Date().toISOString();
+
+    for (const team of this.teamCoordinator.getTeams()) {
+      // No active task = nothing to stall. An idle team is not a wedged team.
+      if (!team.currentTaskId) {
+        this.teamStallReported.delete(team.id);
+        continue;
+      }
+
+      let task;
+      try {
+        task = this.teamCoordinator.getTask(team.currentTaskId);
+      } catch {
+        // The task vanished under us mid-sweep. Not a stall, and not this detector's business.
+        this.teamStallReported.delete(team.id);
+        continue;
+      }
+
+      // ⛔ The exclusions are this detector's sharpest edge — `design/bl133-plan.md` §3.
+      // `awaiting_confirmation` waits on a HUMAN to confirm a plan; `awaiting_operator` is the
+      // M08-T3 fence, where a human being slow is the entire POINT. Reporting either as a stall
+      // would train the reader to ignore this notice, and an ignored detector is worse than none.
+      const ACTIVE: TeamTaskStatus[] = ['planning', 'delegated', 'in_progress'];
+      if (!ACTIVE.includes(task.status)) {
+        this.teamStallReported.delete(team.id);
+        continue;
+      }
+
+      const updatedAtMs = Date.parse(task.updatedAt as unknown as string);
+      if (!Number.isFinite(updatedAtMs)) {
+        // D1 (gate 1): `now - NaN > threshold` is FALSE, so the naive version would go permanently
+        // silent on one bad timestamp and read exactly like a healthy system — the fail-open shape
+        // [[BL-114]] exists to prevent. A broken progress clock is MORE alarming than a stall.
+        console.warn(
+          `[Registry] Team ${team.id} task ${task.id} has an unparseable updatedAt ` +
+          `(${String(task.updatedAt)}) — the progress clock is broken, so a stall CANNOT be detected (BL-133).`
+        );
+        this.emit('team_progress_clock_defect', {
+          teamId: team.id,
+          taskId: task.id,
+          rawUpdatedAt: task.updatedAt,
+          observedAt,
+        } satisfies TeamProgressClockDefectNotice);
+        continue;
+      }
+
+      const stalledForMs = now - updatedAtMs;
+      if (stalledForMs <= this.config.teamNoProgressTimeoutMs) {
+        // Progress inside the window: re-arm, so a LATER stall is reported again (D2).
+        this.teamStallReported.delete(team.id);
+        continue;
+      }
+
+      if (this.teamStallReported.get(team.id) === task.id) continue;
+      this.teamStallReported.set(team.id, task.id);
+
+      console.warn(
+        `[Registry] Team ${team.id} has made no progress for ${stalledForMs}ms on task ${task.id} ` +
+        `(status: ${task.status}; advisory, nothing is interrupted)`
+      );
+      this.emit('team_no_progress', {
+        teamId: team.id,
+        taskId: task.id,
+        taskStatus: task.status,
+        stalledForMs,
+        observedAt,
+      } satisfies TeamNoProgressNotice);
+    }
+  }
+
   private checkIdleAgents(): void {
     for (const [id, agent] of this.agents) {
       const silence = this.classifySilence(agent);

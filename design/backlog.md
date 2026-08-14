@@ -8332,14 +8332,15 @@ autonomy: human-only
 
 <!-- @item
 id: BL-133
-status: todo
+status: done
 date: 2026-08-14
 epic: null
 tags: [bl-129, bl-028, observability, hang, detector, engine]
 autonomy: human-only
 -->
-- [todo · **split out of [[BL-129]] at its closure — this is the half that item was really about, and it is
-  NOT closed by the timeout fix**] —
+- [done · **BUILT 2026-08-14 — advisory detector shipped; see the closing block at the end of this item** ·
+  **split out of [[BL-129]] at its closure — this is the half that item was really about, and it was NOT
+  closed by the timeout fix**] —
   **Nothing answers "has this team stopped making progress?" — every instrument we have asks "does an agent owe
   a reply?", and a wedged team owes nothing.**
 
@@ -8362,5 +8363,55 @@ autonomy: human-only
   **Sequencing:** this is the honest precondition for relaxing LB-96. While a wedge is undetectable, a
   fault-class kill is the only thing that surfaces one class of it; once *this* exists, the kill can be
   reconsidered on evidence rather than on discomfort.
+
+  ---
+
+  **✅ CLOSED 2026-08-14 — the detector exists, it is ADVISORY, and `team-coordinator.ts` has a ZERO DIFF.**
+  Plan + gate 1: `design/bl133-plan.md`.
+
+  **The find that made this cheap: the clock already existed.** `recordTaskTranscript`
+  (`team-coordinator.ts:1525`) is a real chokepoint — ~30 call sites route through it and its last line already
+  writes `task.updatedAt`. So a trustworthy team-progress clock was already being maintained and simply had no
+  reader. `getTeams()` and `getTask()` were already public too, so the whole feature needed **no change to the
+  frozen coordinator**.
+  **The rejected alternative is the instructive half:** `team.updatedAt` was the obvious-looking field and is
+  NOT usable — twelve write sites of mixed meaning, against the chokepoint's one. **The field with FEWER
+  writers was the trustworthy one**, which inverts the intuition that more updates mean a better signal.
+
+  **The predicate:** an active `currentTaskId`, status in `planning | delegated | in_progress`, and
+  `now - task.updatedAt > teamNoProgressTimeoutMs` (900s).
+  **⛔ The exclusions are the sharpest edge, and B4 pins them:** `awaiting_confirmation` and `awaiting_operator`
+  are **never** stalls. Both mean *a human has not answered yet* — the M08-T3 fence exists precisely so a
+  person can take their time. A detector that reports human latency as a system fault teaches its reader to
+  ignore it, and an ignored detector is worse than none ([[BL-127]] §3's false-notice argument, one level up).
+  B4 sits at **ten times** the threshold and still expects silence.
+
+  **The invariant, and it is [[BL-128]]'s family again:** the stall threshold must **strictly** outlive the
+  605s exec guard, because a worker legitimately holds ONE exec turn that long producing no transcript entry at
+  all. Below the guard, every long worker turn reads as a stalled team.
+  `assertTeamStallOutlivesExecGuard` fails closed at construction. The engine now guarantees end to end:
+  **`agentIdleTimeoutMs (180s) < execGuard (605s) < teamNoProgressTimeoutMs (900s)`**.
+
+  **Gate 1 caught two defects in my own plan, both folded in before code:**
+  - **D1 — the naive version FAILED OPEN.** `Date.parse` on a bad string is `NaN`, and `now - NaN > threshold`
+    is **false**, so one malformed timestamp would have made the detector permanently silent while reading
+    exactly like a healthy system ([[BL-114]]'s shape). Now a broken clock emits its own
+    `team_progress_clock_defect` — **a broken instrument is worse news than a stall, so it is said out loud.**
+  - **D2 — the dedup had to clear on PROGRESS, not on notice**, or a stall→progress→stall sequence would go
+    silent forever after the first notice. B2 pins the second notice explicitly.
+
+  **Bars B1–B8, five mutations executed.** The one worth naming: **deleting the emit turned B5 red**, and B5 is
+  the "nothing dies" bar — an *absence* assertion, exactly the kind that passes trivially against a detector
+  that cannot fire. It is red under that mutation only because it also asserts the notice DID fire. Running the
+  mutation is what proved it was load-bearing rather than decorative ([[BL-127]] B3's lesson, applied on purpose
+  this time rather than discovered).
+
+  Suite **779/779 (94 files)**, `tsc -b` 0, contract hash v8 ✅, `team-coordinator.ts` **zero diff**.
+
+  **↩ What this unlocks:** LB-96's relaxation condition (1) is now **SATISFIED** — a wedge is observable without
+  a kill. [[BL-129]]'s fault-class `exec-timeout` can therefore be reconsidered **on evidence**. It is
+  deliberately NOT relaxed here: that is a PO decision, and the honest sequence is to let this instrument run
+  against real traffic first. **Which requires a redeploy — the live orchestrator still runs pre-[[BL-127]]
+  code (see [[BL-028]]).**
 
 *(add new items above this line)*
