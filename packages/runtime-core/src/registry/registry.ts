@@ -50,6 +50,25 @@ import { resolveRegistryConfig, type RegistryConfig } from './config.js';
  * silently disables it, and a silently disabled detector reads identically to a healthy system.
  * Same reasoning as [[BL-114]]'s fail-closed meter read. The message names the fix, because the
  * operator hitting this is holding an env var, not this file.
+ *
+ * ⚠️ SCOPE — read this before trusting the paragraph above as a property of the system ([[BL-131]]).
+ * This checks ONE guard: the DEFAULT one, `resolveWorkerTurnTimeoutMs() + EXEC_TIMEOUT_BACKSTOP_GRACE_MS`,
+ * which is what an exec turn gets when its caller forwards no deadline of its own. It is not, and
+ * cannot be, a check over every exec turn — the guard is resolved per call, and an explicit caller
+ * value wins (`in-process-driver.ts`, `executeApiPrompt`).
+ *
+ * The one caller that exercises that: the HEALTHCHECK passes an explicit short deadline with
+ * `timeoutBackstopGraceMs: 0`, so a healthcheck exec turn runs a guard far BELOW the threshold —
+ * structurally the same inversion this function exists to reject, and deliberately left alone.
+ * It is correct there: a liveness ping is supposed to die fast, [[BL-127]]'s chokepoint clears its
+ * obligation on the way out so no stale obligation is left behind, and a sweep whose job is to
+ * notice a long turn gone quiet has no business watching a 30-second ping.
+ *
+ * So: this function guarantees the DEFAULT path can mature the threshold. A future caller that
+ * forwards its own deadline is on its own, and if such a caller ever wants to be observable, the
+ * invariant has to move to where the deadline is resolved rather than being asserted here.
+ * ([[BL-130]]'s rule, applied to this file: the claim above is now scoped to the code that makes
+ * it true.)
  */
 export function assertExecGuardOutlivesIdleThreshold(agentIdleTimeoutMs: number): void {
   const execGuardMs = resolveWorkerTurnTimeoutMs() + EXEC_TIMEOUT_BACKSTOP_GRACE_MS;
