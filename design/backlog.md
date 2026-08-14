@@ -1381,14 +1381,15 @@ autonomy: human-only
 
 <!-- @item
 id: BL-129
-status: todo
+status: done
 date: 2026-08-14
 epic: null
 tags: [bl-028, bl-078, bl-084, coverage-gap, hang, observability]
 autonomy: human-only
 -->
-- [todo · **found during [[BL-124]] S3 — produced accidentally by the first real multi-agent run driven at the
-  live orchestrator, then diagnosed**] —
+- [done · **CLOSED 2026-08-14 — the TIMEOUT half only; the predicate gap it names is [[BL-133]] and stays
+  open. See the closing block at the end of this item** · **found during [[BL-124]] S3 — produced accidentally
+  by the first real multi-agent run driven at the live orchestrator, then diagnosed**] —
   **A team can hang permanently with no mechanism anywhere able to detect it, because every anti-hang
   instrument watches agents that owe a reply — and this hang leaves nobody owing anything.**
 
@@ -1438,6 +1439,49 @@ autonomy: human-only
   decision that is not the implementer's to make.** The item's other half (the predicate gap — instrumenting
   "a team has stopped making progress", which is a *new detector*, not a repair) is untouched and remains a
   design question for whoever scopes it.
+
+  ---
+
+  **✅ CLOSED 2026-08-14 (the cheap half). PO chose FAULT, informed by the finding below — and the finding is
+  that the "cheap half" as this item framed it was a NO-OP.**
+
+  **⛔ Typing `McpError` would have changed NOTHING, and I nearly built it.** There is no path from an exec
+  rejection to `reasonOf`: the **worker** path rethrows into `handleTeamWorkAssign`'s catch → the M08-T3 fence
+  (`pauseTaskForOperator`), and the **planner** path hit `console.warn(…); return null` — never reaching the
+  loop's catch at all. **That `return null` was the hang**, not the missing type. Caught by reading the catch
+  block before writing to it; had it been implemented as filed, it would have shipped a green no-op.
+
+  **What actually changed:** every non-healthcheck `McpError` now rethrows, reaches the loop's catch, and is
+  classified `exec-timeout` — **fault-class** — so M03 propagation fires. `exec-disconnect` is non-fault (the
+  agent already transitioned on its own path, carrying its own reason; classifying the exec wrapper's view too
+  would decide the same question twice with the less-informed answer winning).
+
+  **⛔ THE HEALTHCHECK EXEMPTION — the part that would have made this delivery worse than the bug.** An
+  **attached** agent runs an `InProcessAgentDriver` too (it is the event→`exec_rpc` bridge), so the startup
+  liveness ping goes through the same function. The first implementation therefore put an agent into `error`
+  for a **missed 25 ms ping** — fault-class, so it would have shut the team down. `bl032-attach-pair-chat`
+  caught it, and **the test was NOT weakened**: an `isHealthcheck` flag exempts the ping, because
+  `startConversation` already handles a miss and retries. The PO authorised propagation for a planner turn that
+  *hangs*, not for a probe that misses once. **A ping is not a hang.**
+
+  **A vacuous green found and fixed on the way.** `in-process-driver.test.ts`'s M08-T1 case asserted *"the loop
+  did NOT force the agent to `error`"* against a registry double that **had no `reportAgentError` method at
+  all** — the call threw inside the catch, the rejection vanished into `void this.loop()`, and the test passed
+  while observing nothing. It would have kept passing through this entire behaviour reversal. Double fixed,
+  assertion rewritten to the new (PO-approved) contract.
+
+  **Bars B1–B4, four mutations executed:** restoring the swallow → **B1 red**; dropping the healthcheck
+  exemption → **B2 red**; flipping `exec-timeout` to non-fault → **B1 red**; breaking the reason mapping →
+  **3 red across two files**. Suite **770/770 (93 files)**, `tsc -b` 0, contract hash v8 ✅.
+
+  **↩ Relaxation condition recorded at the PO's instruction: `logbook.md` LB-96.** Also corrected there and in
+  `AGENT.md`: the M03 bullet's claim that an in-process error "has NEVER interrupted its team's active task"
+  went stale at **BL-084 T2** and its cited test now pins the opposite.
+
+  **⚠️ THE ITEM'S REAL HALF IS STILL OPEN and is NOT closed by this** — see [[BL-133]]. "An agent owes a reply
+  and has gone quiet" and "a team has stopped making progress" remain different questions, and only the first
+  is instrumented. This change makes the *timeout* case loud; a team that wedges for any other reason is still
+  invisible.
 
 <!-- @item
 id: BL-130
@@ -8285,5 +8329,38 @@ autonomy: human-only
   **`wt-setup.mjs` existed the whole time, does exactly this, and its header advertises that it automates
   "the hand-run dance (and its footguns)".** Had I used it, I would have read it, and this item would never
   have been filed. Use the repo's tools before hand-rolling their job.
+
+<!-- @item
+id: BL-133
+status: todo
+date: 2026-08-14
+epic: null
+tags: [bl-129, bl-028, observability, hang, detector, engine]
+autonomy: human-only
+-->
+- [todo · **split out of [[BL-129]] at its closure — this is the half that item was really about, and it is
+  NOT closed by the timeout fix**] —
+  **Nothing answers "has this team stopped making progress?" — every instrument we have asks "does an agent owe
+  a reply?", and a wedged team owes nothing.**
+
+  [[BL-129]] closed the case where a hang has an *owner*: a planner exec turn that times out now raises a
+  fault-class `exec-timeout` and takes the team down loudly (`logbook.md` LB-96). **That is one cause.** The
+  observed failure state — team `status: planning`, `GET /api/conversations` → `[]`, all three members
+  `status: ready` with no `currentTurnId` — is reachable by other routes, and in every one of them the same
+  thing is true: **no agent owes a reply, so no obligation-based detector can fire.**
+
+  - the **non-reply sweep** gates on `currentTurnId` (`classifySilence`) — there is none;
+  - **M03 propagation** needs an agent to enter `error` — none does;
+  - the **wall-clock cap** is an operator-run rail, not an engine one, and does not exist for ordinary teams.
+
+  **The predicate is different in kind, not in threshold.** "Quiet" is a property of an *agent*; "not
+  progressing" is a property of a *team* — no scheduled turn, no task transition, no transcript growth over
+  some window. It needs a team-level clock, and a decision about what it may do when it fires (advisory notice,
+  the M08-T3 operator fence, or an interrupt — the sweep's advisory-only contract is deliberate and BL-127's
+  bar B4 pins it).
+
+  **Sequencing:** this is the honest precondition for relaxing LB-96. While a wedge is undetectable, a
+  fault-class kill is the only thing that surfaces one class of it; once *this* exists, the kill can be
+  reconsidered on evidence rather than on discomfort.
 
 *(add new items above this line)*

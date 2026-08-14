@@ -3,7 +3,7 @@ import { parseWithRetry, translateStructuredResponse } from './translation.js';
 import { WORKER_RESPONSE_INSTRUCTIONS, WORKTREE_CONTEXT, buildProtocolToolSchema } from './response-schema.js';
 import { createConversationRuntime, type ConversationEvent } from '../conversations/runtime.js';
 import type { Registry } from '../registry/registry.js';
-import { McpError } from './completer.js';
+import { McpError, execErrorReason } from './completer.js';
 import { AgentReasonedError, reasonOf } from '@agenttalk/contracts/types';
 import { type Completer, type ApiProvider, ApiCompleter } from '@agenttalk/llm-client';
 
@@ -130,7 +130,15 @@ export class InProcessAgentDriver {
             // `reasonOf` yields `driver-error-unclassified` (NON-fault) unless the throw
             // carried a reason of its own — which makes T2 strictly additive: propagation
             // switches on only where a fault was positively identified.
-            this.registry.reportAgentError(this.agent, reasonOf(err));
+            //
+            // BL-129: an exec rejection IS positively identified. `reasonOf` cannot see it —
+            // `McpError` is not an `AgentReasonedError`, and cannot become one without widening
+            // a field two tests pin (see `execErrorReason`'s note) — so the mapping happens here,
+            // on a typed discriminator rather than on message prose. `exec-timeout` is fault and
+            // propagates; `exec-disconnect` is not, and in practice cannot reach this line at all
+            // because the guard above skips an agent already `error`/`terminated`.
+            const reason = err instanceof McpError ? execErrorReason(err) : reasonOf(err);
+            this.registry.reportAgentError(this.agent, reason);
           }
           break; // Stop the loop on error to avoid infinite crash loops
         }
@@ -196,11 +204,15 @@ export class InProcessAgentDriver {
 
     if (!prompt) return;
 
+    // BL-129: `isHealthcheck` is what keeps the liveness ping OUT of the new propagation. It is an
+    // explicit flag rather than an inference from the timeout's shape, because "short deadline with
+    // grace 0" happens to identify the healthcheck today and is not a promise about tomorrow —
+    // exactly the implicit-coupling shape [[BL-128]] was.
     const healthcheckExecOpts = evt.type === 'healthcheck' && Number.isFinite(evt.timeoutMs)
-      ? { timeoutMs: Number(evt.timeoutMs), timeoutBackstopGraceMs: 0 }
+      ? { timeoutMs: Number(evt.timeoutMs), timeoutBackstopGraceMs: 0, isHealthcheck: true }
       : undefined;
 
-    const executePrompt = async (p: string, opts?: { cwd?: string; timeoutMs?: number; timeoutBackstopGraceMs?: number; throwOnExecError?: boolean }) => {
+    const executePrompt = async (p: string, opts?: { cwd?: string; timeoutMs?: number; timeoutBackstopGraceMs?: number; throwOnExecError?: boolean; isHealthcheck?: boolean }) => {
       const text = await this.executeApiPrompt(p, expectsStructured, opts);
       if (text) {
         this.runtime.recordAssistantReply(text);
@@ -250,7 +262,7 @@ export class InProcessAgentDriver {
     }
   }
 
-  private async executeApiPrompt(prompt: string, expectsStructured: boolean, opts?: { cwd?: string; timeoutMs?: number; timeoutBackstopGraceMs?: number; throwOnExecError?: boolean }): Promise<string | null> {
+  private async executeApiPrompt(prompt: string, expectsStructured: boolean, opts?: { cwd?: string; timeoutMs?: number; timeoutBackstopGraceMs?: number; throwOnExecError?: boolean; isHealthcheck?: boolean }): Promise<string | null> {
     const completerOpts: any = { expectsStructured };
     if (opts?.cwd !== undefined) completerOpts.cwd = opts.cwd;
     // BL-128 — EVERY exec path forwards a deadline, not just the worker's (PO decision 2026-08-14,
@@ -277,18 +289,53 @@ export class InProcessAgentDriver {
       const res = await this.completer.complete(prompt, completerOpts);
       return res.text;
     } catch (err) {
-      // M08-T3: the WORKER path opts in with throwOnExecError so a genuine exec crash
-      // (McpError from T1) is rethrown and caught by handleTeamWorkAssign, which fences
-      // the task to awaiting_operator. Every OTHER caller (planner paths) omits the opt and
-      // keeps the M08-T1 behaviour below byte-for-byte. Only McpError rethrows — a normal
-      // empty/`null` response is never mistaken for a crash (LB-15/LB-16 ②).
-      if (opts?.throwOnExecError && err instanceof McpError) {
+      // ⛔ BL-129 — THE SWALLOW IS GONE. Read this before restoring it.
+      //
+      // This block used to be gated on `opts?.throwOnExecError`, so ONLY the worker rethrew and
+      // every planner path fell through to `console.warn(...); return null`. That `return null`
+      // WAS the hang: a planner exec turn timed out, ended with "no text", the protocol never
+      // advanced, and the team sat in `planning` FOREVER — every member `ready`, nobody owing a
+      // reply, and therefore invisible to the non-reply sweep, to failure propagation, and to
+      // every other instrument we have. That is the whole of [[BL-129]], and it was observed live
+      // on `team-1786704512290-3` during [[BL-124]] S3.
+      //
+      // The old comment here defended the swallow as protecting the loop: "throwing would reach
+      // the loop's catch, set the agent to `error`, and trip M03 Shared-Fate — a lifecycle
+      // decision reserved for M08-T2/T3." That reservation is now SPENT: the PO took the decision
+      // explicitly on 2026-08-14, with the blast radius (shutdown of every other team member)
+      // written down in front of them beforehand. A loud, reversible kill was chosen over a
+      // silent permanent wedge.
+      //
+      // So EVERY exec rejection now propagates, worker and planner alike. The worker's behaviour
+      // is nonetheless UNCHANGED: `handleTeamWorkAssign` catches `McpError` first and diverts to
+      // `pauseTaskForOperator` (the M08-T3 fence, which terminates nobody), so it never reaches
+      // the loop's catch. Only planner paths newly reach it.
+      //
+      // `throwOnExecError` is now REDUNDANT for `McpError` — every McpError rethrows regardless.
+      // It is deliberately left in the signature rather than ripped out of its five call sites:
+      // deleting it is a mechanical change across code this task has no other reason to touch,
+      // and a gratuitously wide diff is how a behaviour change hides. Flagged as a follow-up.
+      // ⛔ THE HEALTHCHECK IS EXEMPT, and this exemption is load-bearing — do not "simplify" it away.
+      //
+      // An attached agent runs an InProcessAgentDriver too (it is the event→`exec_rpc` bridge:
+      // "Starting InProcessAgentDriver for attached agent … (provider=mcp)"), so the startup
+      // liveness ping comes through THIS function. Without the exemption a missed 25ms healthcheck
+      // put the agent straight into `error` — and, being fault-class, would take the whole team
+      // with it. A ping is not a hang: `startConversation` ALREADY handles a miss ("Agent X did not
+      // respond to healthcheck within Nms"), the agent returns to `ready`, and the caller retries.
+      // `bl032-attach-pair-chat.test.ts` exists to pin exactly that recovery, and it caught this.
+      //
+      // The PO authorised propagation for a PLANNER turn that hangs — not for a liveness probe that
+      // misses once. Sweeping the healthcheck in would have been a behaviour change nobody asked
+      // for, arriving inside one they did.
+      if (err instanceof McpError && !opts?.isHealthcheck) {
+        console.warn(`[InProcessAgentDriver ${this.agent.id}] exec failed, propagating: ${(err as Error).message}`);
         throw err;
       }
-      // M08-T1: a rejected exec (timeout / mid-exec disconnect) must not hang the turn or crash
-      // the loop. Report it (no silent swallow) and end the turn via the existing `null` "no text"
-      // contract. We deliberately do NOT throw here: throwing would reach the loop's catch, set the
-      // agent to `error`, and trip M03 Shared-Fate — a lifecycle decision reserved for M08-T2/T3.
+      // Unchanged for every NON-McpError rejection: report it and end the turn via the existing
+      // `null` "no text" contract. A normal empty response is still never mistaken for a crash
+      // (LB-15/LB-16 ②), and an unanticipated throw still does not newly kill a team — that
+      // remains `driver-error-unclassified`'s non-fault default, which BL-084 T2 chose on purpose.
       console.warn(`[InProcessAgentDriver ${this.agent.id}] exec failed, ending turn: ${(err as Error).message}`);
       return null;
     }

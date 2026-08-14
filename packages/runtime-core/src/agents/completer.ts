@@ -2,6 +2,7 @@ import { randomUUID } from 'crypto';
 import { Agent } from './agent.js';
 import type { Registry } from '../registry/registry.js';
 import type { Completer, CompleterResult, CompleterOptions } from '@agenttalk/llm-client';
+import type { AgentErrorReason } from '@agenttalk/contracts/types';
 
 // The chat plug (`Completer`) + the direct-HTTP `ApiCompleter` now live in `@agenttalk/llm-client`
 // (extraction spike, 2026-06-26). This module keeps only the Registry-coupled MCP orchestration
@@ -32,6 +33,28 @@ export class McpError extends Error {
     super(message);
     this.name = 'McpError';
   }
+}
+
+/**
+ * BL-129 — map an exec rejection onto the engine's `AgentErrorReason` vocabulary.
+ *
+ * Why a mapping function rather than `McpError extends AgentReasonedError`: `McpError.reason` is
+ * `'timeout' | 'disconnect'` and TWO existing tests pin those exact literals
+ * (`completer.test.ts`). `AgentReasonedError` declares `readonly reason: AgentErrorReason`, so
+ * subclassing would have to widen — or silently rename — a field that is already a behaviour
+ * contract. Mapping at the boundary keeps both vocabularies intact and honest.
+ *
+ * This still satisfies BL-084's rule that a reason must TRAVEL WITH THE THROW rather than be
+ * recovered by inspection: it switches on a typed discriminator the thrower set deliberately,
+ * never on `err.message` prose — which BL-084's plan §2 rejected outright.
+ *
+ * The asymmetry between the two arms is deliberate and is the PO's 2026-08-14 decision:
+ * `exec-timeout` is FAULT (it propagates, killing the team), `exec-disconnect` is NON-fault (the
+ * agent already transitioned on its own path with its own reason). Both rationales are written
+ * out at their definitions in `contracts/types.ts`.
+ */
+export function execErrorReason(err: McpError): AgentErrorReason {
+  return err.reason === 'timeout' ? 'exec-timeout' : 'exec-disconnect';
 }
 
 export class McpCompleter implements Completer {

@@ -19,6 +19,12 @@ describe('InProcessAgentDriver', () => {
       // BL-077: the driver now announces its own status transitions through the registry
       // so connected clients see them. The double just applies the transition.
       notifyAgentStatus: (a: Agent, s: Parameters<Agent['setStatus']>[0]) => a.setStatus(s),
+      // BL-129 — the double was MISSING this, and it mattered. The loop's error path calls
+      // `reportAgentError`; with no such method on the double the call threw INSIDE the catch,
+      // the rejection vanished into the fire-and-forget `void this.loop()`, and the M08-T1 test
+      // below went on passing while observing nothing: it asserted `status !== 'error'` against a
+      // double that could never produce `error` in the first place. Green for the wrong reason.
+      reportAgentError: vi.fn((a: Agent, _reason: unknown) => a.setStatus('error')),
     } as unknown as Registry;
     mockFetch = vi.fn();
     process.env.GEMINI_API_KEY = 'test-key';
@@ -245,7 +251,16 @@ describe('InProcessAgentDriver', () => {
     expect(prompt).toContain('Refactor login');
   });
 
-  it('M08-T1: a rejected exec ends the turn cleanly — no crash, agent not forced to error', async () => {
+  // ⬛ CONTRACT REVERSED BY BL-129, on an explicit PO decision (2026-08-14), taken with the blast
+  // radius written down first. This test previously asserted the OPPOSITE — *"the loop did NOT
+  // force the agent to `error` (which would trip M03 Shared-Fate)"* — and that swallow WAS the
+  // hang: a planner exec timeout ended the turn with no output and left the team wedged in
+  // `planning` forever, invisible to every instrument. The PO chose a loud, reversible kill over a
+  // silent permanent wedge.
+  //
+  // The old assertion was ALSO vacuous (see the `reportAgentError` note on the double above), so
+  // this rewrite replaces a green that observed nothing with one that observes the real path.
+  it('BL-129: a rejected exec now PROPAGATES — the agent is forced to error and M03 fires', async () => {
     // Injected completer that rejects (as McpCompleter now does on timeout/disconnect).
     const rejectingCompleter: Completer = {
       maintainsSession: false,
@@ -262,12 +277,16 @@ describe('InProcessAgentDriver', () => {
 
     // The exec was attempted...
     expect(rejectingCompleter.complete).toHaveBeenCalled();
-    // ...the rejection was reported (no silent swallow)...
-    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('exec failed'));
-    // ...the turn ended via the null contract (no protocol action emitted)...
+    // ...the rejection was reported, and the log now says PROPAGATING rather than "ending turn"...
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('exec failed, propagating'));
+    // ...no protocol action was emitted (the turn produced nothing, as before)...
     expect(registry.handleMcpToolCall).not.toHaveBeenCalled();
-    // ...and crucially the loop did NOT force the agent to `error` (which would trip M03 Shared-Fate).
-    expect(agent.status).not.toBe('error');
+    // ...and the loop NOW forces the agent to `error`, classified `exec-timeout` (fault-class),
+    // which is what reaches `handleAgentFailure` and trips M03 Shared-Fate. That propagation is
+    // the entire point of BL-129 — the alternative was a team wedged forever with nobody owing
+    // a reply, which no instrument in the system can see.
+    expect(agent.status).toBe('error');
+    expect(registry.reportAgentError).toHaveBeenCalledWith(agent, 'exec-timeout');
 
     warnSpy.mockRestore();
     driver.stop();

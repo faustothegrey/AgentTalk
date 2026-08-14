@@ -436,6 +436,22 @@ in every context (docs, messages, primers, lessons). Violations should be correc
   side-effect-free `notifyAgentStatus` (`in-process-driver.ts:105`, added by BL-077), so **an in-process agent
   that errors has NEVER interrupted its team's active task.** A BL-077 test deliberately pins that
   (`bl077-driver-status-broadcast.test.ts:84-105`).
+  ⬛ **THIRD CORRECTION, 2026-08-14 ([[BL-129]]) — the paragraph immediately above is STALE, and it was already
+  stale before this task touched anything.** Two checkable errors: (1) **BL-084 T2 moved the error site.** The
+  driver's catch has not called `notifyAgentStatus` since T2 — it calls **`reportAgentError`**
+  (`in-process-driver.ts`), which goes through `setAgentStatus` and **does** fire `handleAgentFailure` when the
+  reason is fault-class. So "NEVER interrupted its team's active task" stopped being true at T2. (2) **The cited
+  test now pins the OPPOSITE**, and says so in its own title: *"a driver-path error is announced, and since T2 a
+  fault-class cause also propagates"*, asserting `expect(handleAgentFailure).toHaveBeenCalled()`. Its path is
+  also wrong here — it lives under `registry/__tests__`, not `agents/__tests__`.
+  **What is true today:** an in-process agent's error propagates **iff its reason is fault-class**
+  (`FAULT_CLASS_BY_REASON`, `registry.ts`). The default for an unlabelled throw is
+  `driver-error-unclassified`, which is **non-fault** — so the *practical* effect stayed close to the old claim
+  until this task, and that is exactly why nobody noticed the sentence had rotted.
+  **[[BL-129]] then made it decisively false, by PO decision:** a planner exec turn that times out now raises
+  **`exec-timeout`**, which **is** fault-class, so **an in-process agent CAN now interrupt — and shut down — its
+  team.** The liveness healthcheck is explicitly exempt (`isHealthcheck`), because a missed ping is not a hang.
+  Rationale and the relaxation condition: `logbook.md` **LB-96**.
   **Why it is left that way, deliberately** — this is the load-bearing part, not an apology for a gap: `error`
   is one undifferentiated bucket, and **most conditions that reach it on the driver path are not faults** — the
   conversation **reply cap** (the designed way a conversation *ends*), the BL-083 **relay budget** firing

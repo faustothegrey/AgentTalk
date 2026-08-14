@@ -2847,3 +2847,41 @@ LB-92, LB-93; logs `/tmp/bl045-run{2,3}.log`, `/tmp/orch.log`, `runs/bl045-agy-l
   0 collisions — on the grounds that it would buy "a green of unknown meaning". See `design/bl092-investigation.md`.
 - **What is NOT established:** nothing has tested a **long** run. H-1 was 50s, H-2 ~5min. LB-49's monitoring
   concern is re-qualified for short runs only. And every rung so far was PO-relayed by hand.
+
+### LB-96 · 2026-08-14 — [engine/governance] An exec timeout is FAULT-class: a loud reversible kill chosen over a silent permanent wedge — with its relaxation condition written down in advance
+
+**PO decision, taken with the blast radius stated first.** A non-worker (planner) `exec_rpc` turn that hits its
+guard now raises **`exec-timeout`**, which is **fault-class**: `handleAgentFailure` interrupts the task and
+requests shutdown of **every other team member**. That is the largest blast radius in the codebase, and it was
+chosen deliberately over the alternative.
+
+**What it replaces, which is the part that justifies it.** The driver used to swallow the rejection
+(`console.warn(…); return null`). The turn ended with "no text", the protocol never advanced, and the team sat
+in `planning` **forever** — every member `ready`, nobody owing a reply, and therefore invisible to the non-reply
+sweep, to failure propagation, and to every other instrument we have. Observed live on
+`team-1786704512290-3` during [[BL-124]] S3. **So the choice was never "kill vs. keep working": it was "kill vs.
+wedge invisibly".** Being wrong the new way costs one re-run and the operator *learns*. Being wrong the old way
+cost a dead team nobody could see.
+
+**↩ RELAXATION CONDITION — the reason this entry exists.** Flip `exec-timeout` to non-fault, **or** divert it to
+the M08-T3 worker fence (`pauseTaskForOperator`, which terminates nobody), as soon as **either**:
+1. **a progress-predicate detector exists** — something that answers *"has this team stopped making progress?"*
+   rather than only *"does an agent owe a reply?"*. That is [[BL-129]]'s unclosed half. Once a hang is
+   observable without a kill, the kill has no remaining justification; or
+2. **real runs show provider timeouts are common** enough that team-wide shutdown costs more than it reveals.
+   The honest number here is unknown — we have never measured provider-timeout frequency, and [[BL-028]]'s
+   instrument is merged but **not yet deployed**.
+
+**Do NOT relax it merely because a kill was startling.** A kill that surprises someone is the mechanism working
+as designed; that is the signal being bought. Relax it on evidence from (1) or (2), not on discomfort.
+
+**One exemption, and it is load-bearing:** the **healthcheck is exempt** (`isHealthcheck`). An attached agent
+runs an `InProcessAgentDriver` too — it is the event→`exec_rpc` bridge — so the startup liveness ping comes
+through the same function. Without the exemption a missed **25 ms** ping errored the agent and would have taken
+its team with it. `bl032-attach-pair-chat.test.ts` caught exactly that during implementation. **A ping is not a
+hang**, and `startConversation` already handles a miss and retries.
+
+**Also corrected here:** `AGENT.md`'s M03 bullet claimed an in-process agent's error "has NEVER interrupted its
+team's active task", citing a BL-077 test. **That went stale at BL-084 T2** — the driver's catch calls
+`reportAgentError` (not `notifyAgentStatus`), and the cited test now pins the *opposite* in its own title. It
+was stale *before* this task; BL-129 made it decisively false. Third correction on that bullet.
