@@ -1246,14 +1246,16 @@ autonomy: human-only
 
 <!-- @item
 id: BL-127
-status: todo
+status: done
 date: 2026-08-14
 epic: null
 tags: [bl-028, bl-124, observability, dead-instrument, show-stopper, engine]
 autonomy: human-only
 -->
-- [todo · **found during [[BL-124]] S3 by driving real traffic at the live orchestrator; reported and
-  deliberately NOT fixed — shared engine code, show-stopper under `bl124-plan.md` §6 and Implementer Rule 2**] —
+- [done · **FIXED 2026-08-14 with [[BL-128]] — see the closing block at the end of this item** · found during
+  [[BL-124]] S3 by driving real traffic at the live orchestrator; reported and
+  deliberately NOT fixed at the time — shared engine code, show-stopper under `bl124-plan.md` §6 and
+  Implementer Rule 2] —
   **The non-reply sweep is structurally blind to `exec_rpc` turns — the long-running provider-CLI turns it
   exists to watch — because those turns carry no obligation id, so `currentTurnId` is never set.**
 
@@ -1277,16 +1279,54 @@ autonomy: human-only
   **Consequence:** [[BL-028]] T3c's precondition is not "a measured distribution" but "a sweep that can observe
   an exec turn". Fixing this alone is **not** sufficient — [[BL-128]] independently blocks the other turn class.
 
+  **✅ CLOSED 2026-08-14 — and the fix is TWO halves, the second of which is the load-bearing one.**
+  Plan: `design/bl127-bl128-plan.md` (PO answered §8 the same day: option (a), 600 s default, chokepoint).
+
+  **The mint** is smaller than this item implies: `await_turn`'s stamp (`registry.ts:502-508`) *already* handled
+  exec turns — both branches flow into the same assignment. The turn simply arrived with neither field. So one
+  `turnId` on the turn literal in `completer.ts` was the whole minting half and **no new stamping site was
+  needed**. Contract-safe: `wire-contract.json` hashes only `{mcpTools, packetTypes, protocolPrefix}` (v8), so
+  an added turn field cannot move the hash and no attached client ships in lockstep.
+
+  **⛔ The half that is NOT in this item, found while planning — minting an id ALONE would have been worse than
+  the bug.** `submit_exec_result` clears `activeExecTurn` but **not** `currentTurnId`, and none of the three
+  sites that do clear it (`markTerminalActionComplete`, the driver's `conversation_end`, the reconnect path) is
+  on an exec turn's normal path. So the naive fix leaves every attached agent holding a **stale obligation**, and
+  180 s later the sweep reports **every healthy idle agent as silent, forever** — strictly worse than the mute
+  detector it replaces. The mute one reads zero and we know why; false notices are exactly what [[BL-028]] T3c
+  would then have derived a threshold from. **A detector that cries wolf launders noise into a measurement.**
+  **The fix is a chokepoint** in the completer's `cleanup()`, which every exec-turn ending runs through exactly
+  once — normal result, guard firing, agent going terminal mid-exec. Guarded by identity
+  (`currentTurnId === turnId`) so a reconnect's re-stamped turn still clears and a later turn's id is never
+  erased by an earlier turn's teardown.
+
+  **⬛ A claim in this task's own gate-1 review was WRONG and is retracted here.** It said the codebase "already
+  leaks obligations" on close, and that the chokepoint should also close that leak — **and the PO chose the
+  chokepoint option partly on the strength of it.** It is not a leak. The `conversation_end` close path clears
+  `currentTurnId` explicitly (`registry.ts:1364`), and the abnormal-drop path **retains it deliberately**,
+  because `registry.ts:1395` reads it (`agent.currentTurnId ? 'error' : 'terminated'`) to decide whether an
+  agent died holding an obligation. Clearing there would have **broken that classification**. Caught by reading
+  the path before writing to it, reported to the PO *before* any code, and the PO rescoped to the exec lifecycle
+  only. **The close-path retention is untouched.** Second retraction in two days from the same root cause:
+  asserting a property of code I had read quickly — [[BL-130]]'s `server.ts` site was the same shape.
+
+  **Bars B1–B4, each mutation EXECUTED** (`bl127-exec-obligation.test.ts`). The one worth naming: removing the
+  chokepoint clear turned **four** bars red, including **B3** — *"an agent that finished an exec turn and then
+  idles produces NO notice"*. B3 asserts an **absence**, so it passes trivially against a detector that cannot
+  fire; it is only worth anything sitting beside B4, which proves the same machinery *can* produce a notice.
+  Running the mutation is what showed B3 was load-bearing rather than decorative.
+
 <!-- @item
 id: BL-128
-status: todo
+status: done
 date: 2026-08-14
 epic: null
 tags: [bl-028, bl-124, timeout, observability, engine, show-stopper]
 autonomy: human-only
 -->
-- [todo · **found during [[BL-124]] S3; observed live, reported and NOT fixed — two constants in shared engine
-  code**] —
+- [done · **FIXED 2026-08-14 with [[BL-127]] — see the closing block at the end of this item** · found during
+  [[BL-124]] S3; observed live, reported and NOT fixed at the time — two constants in shared engine
+  code] —
   **On every turn that *does* carry an obligation id, the exec guard tears the turn down 60 s before the
   non-reply threshold can mature: 120 s vs 180 s.**
 
@@ -1310,6 +1350,34 @@ autonomy: human-only
   demonstrably exceeds it — an R1 planner turn was killed mid-thought at 120 s, and its completed response was
   discarded. Whether the fix is a longer default, forwarding a deadline on all paths, or lowering the
   non-reply threshold is a design call, not a constant swap.
+
+  **✅ CLOSED 2026-08-14 — PO took option (a): forward a deadline on ALL paths, same 600 s default as the
+  worker.** Plan: `design/bl127-bl128-plan.md` §4. Lowering the threshold (option (c)) was rejected outright in
+  the plan: the threshold is the **output** of [[BL-028]]'s measurement, and tuning it to fit a guard is exactly
+  the show-stopper `bl124-plan.md` §6 fences. Raising the constant alone (option (b)) would have left planner
+  turns on a hard-coded budget nobody chose and re-created the same silent coupling at a new number.
+
+  **One site, not five.** The defaulting went into `executeApiPrompt` — the single function all five
+  `executeApiPrompt` callers pass through — rather than at each call site, so a path cannot be missed by
+  omission. An explicit caller value still wins, so the healthcheck's short deadline (with grace 0) and the
+  worker's resolved one are byte-for-byte unchanged.
+  **Consequence worth knowing:** `AGENTTALK_WORKER_TURN_TIMEOUT_MS` now moves **planner** turns too. The env
+  var's name is now narrower than its effect; renaming it was left out of scope as a gratuitous break of a
+  documented operator knob.
+
+  **The invariant is the durable part, and it is what this item was really about.** The guard and the threshold
+  live in two modules that know nothing about each other, and their *relationship* is what decides whether the
+  sweep can fire at all — 120 s vs 180 s disabled the detector for **41 boots with no test going red**, and was
+  found only by driving live traffic. `assertExecGuardOutlivesIdleThreshold` now checks it at Registry
+  construction and **fails closed**: a misconfiguration here does not degrade the sweep, it silently disables it,
+  and a silently disabled detector reads identically to a healthy system (same reasoning as [[BL-114]]'s
+  fail-closed meter read). The error names the env var to change, because whoever hits it is holding a config,
+  not this file. Bar B5 pins that a violating config is **rejected**, including the strict boundary — a guard
+  exactly equal to the threshold is still a failure, since the turn dies on the tick the sweep would classify.
+
+  **Bars B5–B6, mutations executed.** Re-gating the default to `maintainsSession` turned both B6 bars red.
+  B6 asserts the **resolved** deadline rather than elapsing real time — gate 1 (D3) caught that the timing form
+  would cost 120 s of wall clock per run, which is how a bar ends up asserted instead of executed.
 
 <!-- @item
 id: BL-129
@@ -3024,6 +3092,22 @@ autonomy: human-only
   answered from measurement until something can be measured.
   *(`blocked_by` deliberately left as `[BL-084]` — adding BL-127/BL-128 is a sequencing act, which is the
   SM/PO's, not this note's.)*
+
+  **✅ UPDATE, same day — the precondition named above is SATISFIED ON THE BRANCH, and not yet on mainline.**
+  [[BL-127]] and [[BL-128]] are **fixed and gate-2 verified on `task-BL-127`; the merge is gate 3's and has not
+  happened.** *(This sentence read "are fixed and merged" when it was committed, which was false at the time of
+  writing and would have stayed false if the branch were abandoned — corrected by the implementation reviewer at
+  gate 2 under Reviewer Rule 6, and recorded in §10. It is the exact stale-state-claim family [[BL-130]] had just
+  finished correcting, written one commit later.)*
+  An exec turn now carries an obligation and gives it back, and every exec path forwards a deadline
+  that outlives the threshold. **The sweep can observe an exec turn** — once this lands. T3c's real blocker is
+  therefore gone —
+  but read the next sentence before scheduling it. **We still have no distribution, and now we have something
+  better than the old plan: a detector that can produce one.** The honest sequence is (1) let the instrument run
+  against real traffic, (2) *then* ask what threshold the data supports. Do not re-derive T3c's old framing from
+  this update; the number was never the blocker and still is not.
+  **§9 q2 — "should the sweep ever kill at all?" — remains open and is untouched by this work.** The sweep is
+  still advisory; nothing gained a path to `setAgentStatus`, and BL-127's bar B4 pins that.
 
 <!-- @item
 id: BL-029

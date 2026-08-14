@@ -1,3 +1,4 @@
+import { randomUUID } from 'crypto';
 import { Agent } from './agent.js';
 import type { Registry } from '../registry/registry.js';
 import type { Completer, CompleterResult, CompleterOptions } from '@agenttalk/llm-client';
@@ -53,6 +54,18 @@ export class McpCompleter implements Completer {
       ? opts.timeoutMs + backstopGraceMs
       : DEFAULT_EXEC_TIMEOUT_MS;
 
+    // BL-127: the exec turn's OBLIGATION ID. Until this existed, an `exec_rpc` turn carried no
+    // `turnId` and no `messageId`, so `await_turn`'s stamp (`registry.ts:502-508`) matched neither
+    // branch, `currentTurnId` was never set, and `classifySilence`'s first gate returned `undefined`
+    // forever — leaving the non-reply sweep structurally blind to the ONE turn class it exists to
+    // watch (the long provider-CLI turns). Minted here rather than at the queue site because this is
+    // the scope that also OWNS the turn's end: see `cleanup` below.
+    //
+    // `randomUUID` rather than a counter or a timestamp: ids share `processedTurnIds` and the dedup
+    // key `<turnId>::<reason>` with peer-message-derived ids (`registry.ts:734`), and a collision
+    // there would silently suppress a real notice.
+    const turnId = `exec-${this.agent.id}-${randomUUID()}`;
+
     return new Promise<CompleterResult>((resolve, reject) => {
       let settled = false;
       let timer: ReturnType<typeof setTimeout>;
@@ -78,6 +91,32 @@ export class McpCompleter implements Completer {
         this.registry.off('exec_result', onResult);
         this.registry.off('status', onStatus);
         clearTimeout(timer);
+
+        // BL-127 — THE OBLIGATION CHOKEPOINT. This is the load-bearing half of the fix, and the
+        // reason minting an id is not a one-line change.
+        //
+        // Every way an exec turn can end runs through here exactly once: a normal result
+        // (`submit_exec_result` → `exec_result` → `onResult`), the guard firing (`timer`), and the
+        // agent going terminal mid-exec (`onStatus`). `submit_exec_result` clears `activeExecTurn`
+        // but NOT `currentTurnId`, and none of the three sites that do clear it
+        // (`markTerminalActionComplete`, the driver's `conversation_end`, the reconnect path) is on
+        // an exec turn's normal path. So without this line, minting an id would leave every attached
+        // agent holding a stale obligation and the sweep would report every HEALTHY IDLE agent as
+        // silent, forever — strictly worse than the mute detector it replaced, because false notices
+        // are what [[BL-028]] T3c would then derive its threshold from.
+        //
+        // Guarded by identity, not cleared unconditionally: on a reconnect the interrupted exec turn
+        // is requeued at head (`registry.ts:1384-1388`) and re-stamped with this SAME id when the
+        // harness pulls it again, but a LATER turn's id must never be erased by an earlier turn's
+        // teardown.
+        //
+        // NOT touched here, deliberately: the abnormal-close path retains `currentTurnId` on
+        // purpose — `registry.ts:1395` reads it (`agent.currentTurnId ? 'error' : 'terminated'`) to
+        // decide whether an agent died holding an obligation. That retention is load-bearing state,
+        // not a leak.
+        if (this.agent.currentTurnId === turnId) {
+          this.agent.currentTurnId = undefined;
+        }
       };
 
       this.registry.on('exec_result', onResult);
@@ -93,6 +132,11 @@ export class McpCompleter implements Completer {
       const turn: Record<string, unknown> = {
         type: 'exec_rpc',
         prompt,
+        // BL-127: read by `await_turn`'s existing stamp — no new stamping site was needed.
+        // Contract-safe: `wire-contract.json` hashes only `{mcpTools, packetTypes, protocolPrefix}`
+        // (v8, verified at the artifact), so an added turn field cannot move the hash and no
+        // attached client has to ship in lockstep. Same reasoning as BL-124 S1's registry event.
+        turnId,
       };
       if (opts?.cwd) turn.cwd = opts.cwd;
       if (opts?.timeoutMs) turn.timeoutMs = opts.timeoutMs;

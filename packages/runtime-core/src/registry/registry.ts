@@ -2,9 +2,9 @@ import { EventEmitter } from 'events';
 import { Agent } from '../agents/agent.js';
 import { ConversationStore } from '../conversations/conversation-store.js';
 import { HealthcheckManager } from '../agents/healthcheck-manager.js';
-import { InProcessAgentDriver } from '../agents/in-process-driver.js';
+import { InProcessAgentDriver, resolveWorkerTurnTimeoutMs } from '../agents/in-process-driver.js';
 import { type Completer, type ApiProvider, ApiCompleter } from '@agenttalk/llm-client';
-import { McpCompleter } from '../agents/completer.js';
+import { McpCompleter, EXEC_TIMEOUT_BACKSTOP_GRACE_MS } from '../agents/completer.js';
 import type {
   EventPayload,
   ResponsePayload,
@@ -36,6 +36,32 @@ import { ConversationCoordinator } from './conversation-coordinator.js';
 import { TeamCoordinator } from './team-coordinator.js';
 import { ArbiterCoordinator } from './arbiter-coordinator.js';
 import { resolveRegistryConfig, type RegistryConfig } from './config.js';
+
+/**
+ * BL-128 — the invariant that keeps the non-reply sweep observable, checked at construction.
+ *
+ * The exec guard and the idle threshold are two constants in two modules that know nothing about
+ * each other, and their RELATIONSHIP is what makes the sweep able to fire at all: a turn must be
+ * allowed to outlive the threshold, or it is torn down before any silence can be classified and the
+ * detector is dead without a single test going red. That is exactly what happened — 120s guard vs
+ * 180s threshold, for 41 boots, discovered only by driving live traffic ([[BL-124]] S3).
+ *
+ * Fails CLOSED, at startup, by design: a misconfiguration here does not degrade the sweep, it
+ * silently disables it, and a silently disabled detector reads identically to a healthy system.
+ * Same reasoning as [[BL-114]]'s fail-closed meter read. The message names the fix, because the
+ * operator hitting this is holding an env var, not this file.
+ */
+export function assertExecGuardOutlivesIdleThreshold(agentIdleTimeoutMs: number): void {
+  const execGuardMs = resolveWorkerTurnTimeoutMs() + EXEC_TIMEOUT_BACKSTOP_GRACE_MS;
+  if (execGuardMs <= agentIdleTimeoutMs) {
+    throw new Error(
+      `[Registry] Exec guard (${execGuardMs}ms) must outlive the non-reply threshold ` +
+      `(${agentIdleTimeoutMs}ms), or exec turns are torn down before silence can be classified and ` +
+      `the non-reply sweep can never fire (BL-128). Raise AGENTTALK_WORKER_TURN_TIMEOUT_MS above ` +
+      `${agentIdleTimeoutMs - EXEC_TIMEOUT_BACKSTOP_GRACE_MS}ms, or lower agentIdleTimeoutMs.`
+    );
+  }
+}
 import { type StructuredMessageType, buildProtocolToolSchema } from '../agents/response-schema.js';
 
 /**
@@ -186,6 +212,7 @@ export class Registry extends EventEmitter {
   ) {
     super();
     this.config = resolveRegistryConfig(config);
+    assertExecGuardOutlivesIdleThreshold(this.config.agentIdleTimeoutMs);
     this.conversations = new ConversationStore(this.config.conversationStorePath);
     this.conversations.load();
     this.conversationCoordinator = new ConversationCoordinator({
