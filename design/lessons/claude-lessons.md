@@ -1944,3 +1944,34 @@ here.**
   Gate 3's whole reason for existing is fresh eyes; a second *run* is not a second *reader*. **A defect shared by
   my plan and my gate-2 pass is one this closure was structurally unable to see** — I wrote that into §11 rather
   than into a caveat nobody reads.
+
+### 2026-08-14 (backlog sweep) — I filed an item without reading the code, and retracted it four hours later
+
+- **A filed backlog item is a CLAIM, and I do not apply the citation discipline when filing.** I filed
+  [[BL-132]] — "a seam in the containment sandbox" — off one observation, without reading
+  `scripts/wt-setup.mjs`, which **creates that symlink deliberately**, **relinks the scoped packages with
+  relative targets precisely to solve the isolation problem I was raising**, and **prints a standing warning
+  about the `.gitignore` consequence I wrote up as a discovery**. Retracted the same day. **[[BL-130]]'s rule —
+  a citation points at the code that makes the claim true — evidently lives in my head as a rule about
+  *documents*, and a backlog item did not trigger it.** It should: an item is read later, by someone who will
+  act on it, which is the definition of a load-bearing claim.
+- **This was the THIRD instance in one day, and I am the common factor:** gate-1's D1 "the codebase already
+  leaks obligations" (retracted mid-flight, after it had already influenced a PO decision); ".gitignore
+  arguably should cover it" (it does — trailing slash means directories, not symlinks); and BL-132. **Each was
+  under a minute of reading away.** The pattern is not carelessness about *evidence* — I ran mutations and
+  suites all day — it is that I treat *reading adjacent code* as optional when the claim feels like
+  infrastructure trivia rather than a result.
+- **I hand-rolled a worktree and hit a corrupted npm cache; `wt-setup.mjs` existed the whole time and its
+  header says it automates "the hand-run dance (and its footguns)".** Using it would have cost less AND made
+  me read it, which would have prevented BL-132 entirely. **Check for the repo's own tool before writing the
+  ad-hoc version of it** — the tool is also documentation.
+- **What went right, and it is the same instinct both times: I checked whether the thing was actually
+  RUNNING.** The BL-127 fix is merged, but the live orchestrator started a day earlier — so the deployed sweep
+  is still blind, and anyone checking production for notices would have re-derived S3's old conclusion for a
+  reason that had stopped being true. Nobody asked for that check. **"Is the fix deployed?" is a different
+  question from "is the fix merged?", and the gap between them is where a whole session gets wasted.**
+- **Knowing when to stop was worth more than the code I didn't write.** BL-129's "cheap half" looked like an
+  `extends` swap; two greps showed `'timeout'`/`'disconnect'` are not members of `AgentErrorReason`, so it
+  means adding reasons, which means **deciding fault vs non-fault — and fault reaches `handleAgentFailure`,
+  which kills the whole team.** One hung CLI becoming a team-wide kill is not an implementer's call. **The
+  finding that a task is bigger than it looks is a deliverable**, and it was better than a guess would have been.
