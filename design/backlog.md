@@ -8118,13 +8118,14 @@ autonomy: po-decision
 
 <!-- @item
 id: BL-131
-status: todo
+status: done
 date: 2026-08-14
 epic: null
 tags: [bl-127, bl-128, bl-130, claim-vs-code, coverage-gap, observability]
 autonomy: human-only
 -->
-- [todo · **found at [[BL-127]]/[[BL-128]] gate 2, recorded not fixed — it needs a scope decision, and the
+- [done · **FIXED 2026-08-14, option (a) — see the closing block at the end of this item** · **found at
+  [[BL-127]]/[[BL-128]] gate 2, recorded not fixed at the time because it needed a scope decision, and the
   delivery met its bar as revised**] —
   **`assertExecGuardOutlivesIdleThreshold` checks the DEFAULT exec guard only, while its comment states the
   invariant universally — so the healthcheck path still runs the exact inversion the assertion exists to
@@ -8151,6 +8152,30 @@ autonomy: human-only
   correct — cheap, honest, no behaviour change; (b) extend the assertion to every exec path that builds a
   guard, with an explicit healthcheck exemption in code rather than in prose; (c) leave it. **Recommend (a)**
   — the exemption is legitimate, so the defect is the description, not the coverage.
+
+  **✅ CLOSED 2026-08-14 — option (a) taken, and the diff is COMMENT-ONLY.** Verified mechanically before
+  anything else: stripping comment lines from `git diff` leaves **nothing**, so not one executable character
+  moved. That is the whole safety argument — an item about a comment that overclaimed does not get fixed by
+  changing behaviour, and (b) would have been a behaviour change in shared engine code to repair a sentence.
+
+  The JSDoc now says what the function actually checks — **the DEFAULT guard**, the one an exec turn gets when
+  its caller forwards no deadline — and states plainly that it *cannot* be a check over every exec turn,
+  because the guard is resolved per call and an explicit caller value wins. The healthcheck exemption is named
+  as an exemption, with the reason it is **correct** rather than tolerated: a liveness ping is supposed to die
+  fast, [[BL-127]]'s chokepoint clears its obligation on the way out, and a sweep built to notice a long turn
+  gone quiet has no business watching a 30-second ping. It closes by naming what a future caller inherits: if
+  one ever forwards its own deadline *and* wants to be observable, the invariant has to move to where the
+  deadline is resolved.
+
+  **Bar: zero executable diff, suite unchanged.** `tsc -b` exit 0 · suite **766/766, 92 files** · contract
+  hash v8 + client alignment ✅. No test was added, and that is deliberate: **there is nothing here a test
+  could pin.** Asserting the comment's text would pin the prose, not the property, and the property it now
+  describes correctly is the *absence* of a guarantee. Saying so is more honest than manufacturing a green row.
+
+  **Why this was worth doing at all, given nothing was broken.** The code was right and the sentence above it
+  was wrong in the direction that costs the most — it claimed a *system property* while checking *one path*.
+  Every expensive thing in this thread ([[BL-124]] → [[BL-127]] → [[BL-128]] → [[BL-130]]) started with a
+  reader believing a comment. This is the same family, caught before it cost anyone a session.
 
 <!-- @item
 id: BL-132
