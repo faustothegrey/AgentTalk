@@ -11,6 +11,11 @@ describe('registry config', () => {
       // BL-083 — new key; `toEqual` is exhaustive, so it is listed here rather than the
       // assertion being loosened.
       maxUncappedRelaysPerPair: 50,
+      // BL-133 — same treatment, same reason. The exhaustive `toEqual` is the point: a new config
+      // key turns this red until someone writes it down, which is how the default gets a deliberate
+      // reader instead of arriving silently. 900s, and it MUST outlive the 605s exec guard —
+      // `assertTeamStallOutlivesExecGuard` enforces that at construction.
+      teamNoProgressTimeoutMs: 900000,
     });
   });
 
@@ -21,6 +26,7 @@ describe('registry config', () => {
       agentIdleTimeoutMs: 180000,
       healthcheckTimeoutMs: 5000,
       maxUncappedRelaysPerPair: 50,
+      teamNoProgressTimeoutMs: 900000,
     });
   });
 });
