@@ -3093,14 +3093,17 @@ autonomy: human-only
   *(`blocked_by` deliberately left as `[BL-084]` — adding BL-127/BL-128 is a sequencing act, which is the
   SM/PO's, not this note's.)*
 
-  **✅ UPDATE, same day — the precondition named above is SATISFIED ON THE BRANCH, and not yet on mainline.**
-  [[BL-127]] and [[BL-128]] are **fixed and gate-2 verified on `task-BL-127`; the merge is gate 3's and has not
-  happened.** *(This sentence read "are fixed and merged" when it was committed, which was false at the time of
-  writing and would have stayed false if the branch were abandoned — corrected by the implementation reviewer at
-  gate 2 under Reviewer Rule 6, and recorded in §10. It is the exact stale-state-claim family [[BL-130]] had just
-  finished correcting, written one commit later.)*
+  **✅ UPDATE, same day — the precondition named above is SATISFIED, and merged: `29a87c9`.**
+  [[BL-127]] and [[BL-128]] are fixed, gate-2 verified and gate-3 closed on mainline.
+  *(**This sentence has now been wrong twice, in opposite directions, and the second time was mine.** It was
+  committed as "are fixed and merged" while the work sat unmerged on a branch — false. Gate 2 corrected it to
+  "the merge is gate 3's and has not happened" — true when written, and made false forty minutes later by the
+  gate-3 merge, **by the same reviewer who wrote it**. Both errors are one error: a sentence that asserts merge
+  state from a vantage point that cannot see it. **The fix that finally holds is the sha** — `29a87c9` is
+  checkable and cannot go stale, where "merged" and "not merged" both rot. [[BL-130]]'s lesson, learned the
+  expensive way, twice.)*
   An exec turn now carries an obligation and gives it back, and every exec path forwards a deadline
-  that outlives the threshold. **The sweep can observe an exec turn** — once this lands. T3c's real blocker is
+  that outlives the threshold. **The sweep can observe an exec turn.** T3c's real blocker is
   therefore gone —
   but read the next sentence before scheduling it. **We still have no distribution, and now we have something
   better than the old plan: a detector that can produce one.** The honest sequence is (1) let the instrument run

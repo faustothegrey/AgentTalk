@@ -325,3 +325,74 @@ and declared; F2 recorded as a scope question; F3 accepted; F4 handed to gate 3.
 close — and the merge is the PO's. What I am handing over is: the bars are real, the mutations are real, the
 suite delta is exactly the new bars and nothing else, and the one substantive defect I found was a false claim
 about merge state rather than a fault in the code.
+
+---
+
+## 11. Gate 3 — closure sweep and merge
+
+**Task-end Reviewer:** Claude, 2026-08-14. **Merged `29a87c9`** (`--no-ff`, per the repo's merge convention).
+
+**⚠️ Independence waived by explicit PO decision, and this is the third hat on one task.** The default is
+Task-end Reviewer ≠ Implementation Reviewer — *fresh eyes at close*, the seat adopted from the M15-T3 catch.
+I held gate 2, and I authored this plan. I raised the waiver before taking the seat and the PO assigned it
+anyway; that is the PO's call to make and it is made. **What it costs is real and should not be smoothed over:
+the closure sweep below re-ran everything independently, but "independently" here means a second run, not a
+second reader.** A defect that both gate 2 and the plan share is one this sweep is structurally unable to see.
+
+### The sweep — re-run at `ca3f32e`, not inherited from gate 2
+
+| Check | Result |
+|---|---|
+| Full suite | **766 passed / 92 files, 0 failed** |
+| `tsc -b` | **exit 0** |
+| `@agenttalk/contracts` | **hash v8 verified · client alignment verified** |
+| `validate-backlog.mjs` | **130 items, 0 warnings** |
+| `bl093-backlog-selectable.test.ts` | **15 passed** — the eligible set is untouched by this delivery |
+| Worktree / branch hygiene | two worktrees, both accounted for; master clean before and after |
+| Post-merge re-verification on master | **suite 766/92 green · tsc exit 0 · backlog 0 warnings** |
+
+**DoD (§5) — every element maps to a bar that went red under a mutation executed at gate 2:** an exec turn
+*sets* an obligation (B1) · *clears* it on completion (B2a/b/c) · a genuinely silent exec turn *produces* a
+notice (B4) · a healthy idle agent produces *none* (B3). **All VERIFIED. No row deferred, none REFUTED.**
+
+### F4 resolved, and it is not what it looked like
+
+Gate 2 flagged `apps/web/node_modules` as untracked-and-unignored and guessed at a `.gitignore` gap. **Wrong
+diagnosis — the real one is better.** It is a **symlink** (created 16:07 during the branch's build) pointing
+back into the primary checkout, and `.gitignore:12` is `node_modules/` **with a trailing slash — which matches
+directories only, never a symlink.** Hence the `??`. It is in no commit, so it never threatened mainline.
+
+**But the observation worth keeping is the containment one, not the hygiene one:** the per-task worktree is the
+project's declared safety sandbox for autonomous agents, and here its web dependencies are a symlink **into the
+real checkout**. Nothing wrote through it this time and no agent ran autonomously in this worktree — so this is
+an observation, not a finding. Recorded because the sandbox's whole value is that it is airtight, and this is a
+seam in it. → recommended as a backlog item alongside F2.
+
+### PO questions — final disposition
+
+- **§8 q1** (fix the inversion, not the number) — answered: option (a). Delivered.
+- **§8 q2** (planner deadline) — answered: 600 s, same as the worker. Delivered, with the env-var naming
+  consequence disclosed (F3).
+- **§8 q3** (should BL-028 T3c's `blocked_by` gain these two?) — **never answered, and now moot by events.**
+  Both items are `done`, so a `blocked_by` naming them would resolve on sight. **No action needed; recorded so
+  a future reader does not go looking for a decision that stopped mattering.**
+- **§9 q4** (per-site clears vs a single chokepoint) — answered: chokepoint. Delivered, and it is the half the
+  closing block correctly calls load-bearing.
+- **Still open, untouched, and correctly flagged by the implementer:** *should the sweep ever kill at all?*
+  Nothing in this task gave it a route to `setAgentStatus`, and B4 pins that.
+
+### What this task did NOT establish — read this before scheduling BL-028 T3c
+
+The sweep can now **observe** an exec turn. That is a capability, not a measurement. **There is still no
+distribution**, and the honest sequence is: let the instrument run against real traffic *first*, then ask what
+threshold the data supports. T3c's old framing — derive a number, then act — was void before this task and is
+still void after it. The number was never the blocker.
+
+**Telemetry (task closure):**
+- task:        BL-127 + BL-128 (coupled — fixing either alone leaves the detector dead)
+- wall-clock:  2026-08-14 16:16 → 21:47 (Δ ~5h31m, spanning two sessions; review+closure ~50m)
+- budget:      weekly 17%→18% (Δ ~1%), session —→9% (Δ ~9%)  [claude, per `scripts/usage.mjs`; the meter was
+               DOWN for BL-124's closure and is back up — figures are real, not estimated]
+- gate:        tsc 0, suite 766/766 (92 files), contracts v8 ✅, backlog 0 warnings, pollution clean
+- diff:        7 files, +516/-8; commits `8e4affe` `9479f25` `ca3f32e`, merge `29a87c9`
+- outcome:     **MERGED ✅** — not pushed; the push is the PO's, absolutely and without exception
