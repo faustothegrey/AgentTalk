@@ -253,7 +253,25 @@ export class InProcessAgentDriver {
   private async executeApiPrompt(prompt: string, expectsStructured: boolean, opts?: { cwd?: string; timeoutMs?: number; timeoutBackstopGraceMs?: number; throwOnExecError?: boolean }): Promise<string | null> {
     const completerOpts: any = { expectsStructured };
     if (opts?.cwd !== undefined) completerOpts.cwd = opts.cwd;
+    // BL-128 — EVERY exec path forwards a deadline, not just the worker's (PO decision 2026-08-14,
+    // option (a): fix the inversion, not the number). This one site is the chokepoint: the five
+    // `executeApiPrompt` callers all pass through it, so a path cannot be missed by omission the way
+    // it could if each call site forwarded its own.
+    //
+    // What was wrong: only the worker branch passed `timeoutMs` (`:391`, gated on
+    // `maintainsSession`), so every OTHER exec turn fell back to `DEFAULT_EXEC_TIMEOUT_MS` = 120s —
+    // against a 180s non-reply threshold. The guard tore the turn down 60s BEFORE the threshold
+    // could mature, `loop()`'s catch ended the turn, and the obligation was gone before the sweep
+    // could ever see it. Planner turns therefore ran at ONE FIFTH of a worker's deadline while doing
+    // work that exceeds it: an S3 planner turn was killed mid-thought at exactly 120s and its
+    // completed response discarded.
+    //
+    // Same 600s default as the worker (PO), same env override, so an operator sizes one deadline
+    // rather than two — note that `AGENTTALK_WORKER_TURN_TIMEOUT_MS` now moves planner turns too.
+    // An explicit caller value still wins: the healthcheck's short deadline (`:199-201`) and the
+    // worker's resolved one are unchanged.
     if (opts?.timeoutMs !== undefined) completerOpts.timeoutMs = opts.timeoutMs;
+    else completerOpts.timeoutMs = resolveWorkerTurnTimeoutMs();
     if (opts?.timeoutBackstopGraceMs !== undefined) completerOpts.timeoutBackstopGraceMs = opts.timeoutBackstopGraceMs;
     try {
       const res = await this.completer.complete(prompt, completerOpts);
