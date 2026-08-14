@@ -1909,3 +1909,38 @@ here.**
   consistent with a healthy system *and* with a detector wired to a gate that never opens. **The number was
   never the deliverable — the reason for the number was.** `console.warn` firing zero times is what proved the
   failure was upstream of the sink, and that one count did more work than the whole distribution would have.
+
+### 2026-08-14 (later) — as implementation reviewer + task-end reviewer: I shipped the defect I had just caught
+
+- **I corrected a false claim about merge state, and my correction became false forty minutes later — by my own
+  merge.** The sentence read "are fixed and merged" while the work sat unmerged; I fixed it to "the merge is
+  gate 3's and has not happened"; then I took gate 3. **Both errors are one error: asserting merge state from a
+  vantage point that cannot see it.** The fix that finally holds is the **sha** — `29a87c9` is checkable and
+  cannot rot, where "merged" and "not merged" both do. **When correcting a stale claim, do not write a fresher
+  claim of the same shape; write the thing that stays true.** I had this morning's [[BL-130]] lesson in hand and
+  still walked into it from the other side.
+- **Running the mutations myself was worth more than the entire diff read.** The closing block claimed "four
+  bars red including B3" and it was exactly right — but I only *know* that because I deleted the chokepoint and
+  watched B3 go red. B3 asserts an **absence**, so it passes trivially against a dead detector; reading it would
+  have told me nothing about whether it was load-bearing. **Verify-by-running is not a formality on bars that
+  assert nothing happened — it is the only thing that separates them from decoration.**
+- **The suite delta was a better scope check than `git diff --stat`.** master 754/90 → branch 766/92, i.e. **+12
+  and exactly the two new files' 9+3**. That single arithmetic fact proves no existing test was weakened,
+  removed, or quietly relaxed — which is precisely the failure mode Implementer Rule 3 fences and which a diff
+  read makes you hunt for file by file. **Cheap, mechanical, and it answers the question directly. Reuse it.**
+- **I went looking for the one interaction that could bite, and it was the right instinct even though it held.**
+  The new chokepoint clears `currentTurnId`; `registry.ts:1422` reads that field to classify a dead agent as
+  `error` vs `terminated`. If the clear had beaten the read, agents dying mid-obligation would be misclassified
+  **silently**. It holds (`reconnecting` doesn't trigger cleanup; `target` is read before any status set). **The
+  value was in asking "what does this new write race against?" rather than "does the suite pass?"** — the suite
+  passing would not have distinguished the two.
+- **My first diagnosis of the untracked `node_modules` was wrong and the right one was two commands away.** I
+  wrote ".gitignore arguably should cover it" at gate 2. It *does* — `node_modules/` with a trailing slash
+  matches **directories only**, and this was a **symlink into the primary checkout**. `ls -ld` settled it.
+  **That turned a shrug-tier hygiene note into [[BL-132]]: a seam in the worktree sandbox.** Same pattern as
+  yesterday's `/api/agents` near-miss — the first plausible explanation is not the checked one, and checking
+  cost nothing.
+- **Three hats on one task, and I should keep naming what that costs rather than reciting that it is permitted.**
+  Gate 3's whole reason for existing is fresh eyes; a second *run* is not a second *reader*. **A defect shared by
+  my plan and my gate-2 pass is one this closure was structurally unable to see** — I wrote that into §11 rather
+  than into a caveat nobody reads.
