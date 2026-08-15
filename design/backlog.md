@@ -3201,6 +3201,28 @@ autonomy: human-only
   state it holds (including the hung `team-1786704512290-3` that [[BL-129]] documents), and that is a call for
   the PO or the operator seat, not something to slip into a backlog sweep.
 
+  **✅ 2026-08-15 07:47 — REDEPLOYED, PO-authorized. STEP (1) IS DONE; the warning above is now HISTORY.**
+  And the warning's own evidence had already gone stale before it was acted on, which is worth more than the
+  fix: **pid 89437 no longer existed.** The service had been restarted at 14 Aug 23:28 (pid 673) — *after*
+  every merge — so "started a day before the merge" was false within hours of being written. **The conclusion
+  survived anyway, for a different and checkable reason: the process was restarted without a rebuild.**
+  Measured before touching anything: `packages/runtime-core/dist/registry/registry.js` was built 14 Aug
+  **21:48**, one minute after `29a87c9` — so [[BL-127]]/[[BL-128]] *were* deployed — while `exec-timeout`
+  ([[BL-129]], merged 22:57) and `team_no_progress` ([[BL-133]], merged 23:18) were **absent from `dist`
+  entirely**, present only in `src`. **A restart is not a redeploy.**
+  Now: `tsc -b` exit 0, `launchctl kickstart`, **pid 7121, started 15 Aug 07:47:19**, `/api/teams` `[]`,
+  backlog parsing clean. All four fixes are running for the first time. The restart cost nothing — teams and
+  agents were **both empty** before it, so the "discards live team state" objection had already lapsed (the
+  hung `team-1786704512290-3` was lost at the 23:28 restart, not this one).
+  **Step (2) — drive real traffic — is NOT done.** The sink `~/.agenttalk/agent-non-reply.jsonl` is still
+  **absent**, and that zero is now a *clean baseline* rather than an unknown: the sink is always-on and wired
+  (`server.ts:1329`, `NonReplySink` constructed unconditionally at `:83`), the detector can now observe an
+  exec turn, and **there has simply been no traffic** — `/api/teams` and `/api/agents` both `[]`. *"Zero is
+  not a measurement until you know why it is zero"* — this time we know why.
+  **T3c's own blocker is now NAMED rather than asserted:** §9 q2 is filed as [[BL-135]], and per [[BL-134]]
+  this item should carry `blocked_by: [BL-135]` — a self-releasing dependency in place of a bare
+  `autonomy: human-only`. That edit is BL-134's D5, after gate 1; it is **not** made here.
+
   **§9 q2 — "should the sweep ever kill at all?" — remains open and is untouched by this work.** The sweep is
   still advisory; nothing gained a path to `setAgentStatus`, and BL-127's bar B4 pins that.
 
@@ -8419,7 +8441,133 @@ autonomy: human-only
   **↩ What this unlocks:** LB-96's relaxation condition (1) is now **SATISFIED** — a wedge is observable without
   a kill. [[BL-129]]'s fault-class `exec-timeout` can therefore be reconsidered **on evidence**. It is
   deliberately NOT relaxed here: that is a PO decision, and the honest sequence is to let this instrument run
-  against real traffic first. **Which requires a redeploy — the live orchestrator still runs pre-[[BL-127]]
-  code (see [[BL-028]]).**
+  against real traffic first. ~~**Which requires a redeploy — the live orchestrator still runs pre-[[BL-127]]
+  code (see [[BL-028]]).**~~ **✅ REDEPLOYED 2026-08-15 07:47 (PO-authorized): `tsc -b` exit 0, launchd
+  kickstart, pid 673 → **7121**. This item's `team_no_progress` was merged-but-never-compiled until that
+  rebuild — verified absent from `dist` beforehand, present after. It is now running for the first time.**
+
+<!-- @item
+id: BL-134
+status: todo
+date: 2026-08-15
+epic: null
+tags: [backlog, autonomy, governance, operator, bl-093, simplification]
+blocked_by: [BL-136]
+autonomy: po-decision
+-->
+- [todo · **PO-DIRECTED REWRITE 2026-08-15 — supersedes this item's own first shape (option (b), "flip the
+  default"), which did not satisfy the requirement. Plan: `design/bl134-plan.md`, awaiting gate 1** · filed by
+  the planner at the PO's direction: *"the way backlog items are eligible is too complicated; any workable
+  backlog item must also be eligible for Hermes launching externally"*] —
+  **`autonomy` is a READINESS field wearing an AUTHORIZATION field's clothes, and it gates a door nobody walks
+  through.** Read its three values as they are actually defined: `eligible` = "work bounded, DoD legible" (*the
+  item is specified*); `human-only` = "judgement the item doesn't encode" (*under-specified*); `po-decision` =
+  "the resolution IS a PO call" (*a question, not a task*). **All three describe how ready an item is. None
+  describes who may touch it.** That mis-typing is the reported complexity: because the field is documented as
+  fail-closed governance, typing `eligible` reads as granting a privilege — so it is done once at a time with a
+  pin-test ritual, when what it asserts is only *"this one is ready."*
+  **And it gates nothing that matters.** There are **two independent authorization systems for one act**, which
+  never reference each other: **Gate A** (`status === 'todo' && autonomy === 'eligible' && blockers resolved`,
+  `backlog.ts:274`) and **Gate B** (`hmp-commission.mjs` — a committed brief at a sha on master, a
+  `design/operator/<run>.authorized` file containing exactly `[PO] AUTHORIZED-RUN: <run>`, a hashed bar, the
+  charter checks, replay-guarded by the launch ledger). **The string `autonomy` does not appear anywhere in
+  `hmp-commission.mjs`'s 626 lines**; Gate A's only consumers are `server.ts:260`, `bl093-backlog-selectable.test.ts`
+  and `infra-invariant.mjs:439` — **none in the launch path.** BL-093 built Gate A for an autonomous *selector*
+  that proposes items unattended; **that selector does not exist.**
+  **The shape adopted — two levels replace three states.** **workable** = `status === 'todo' &&
+  blockedBy.every(isResolved)`, computed mechanically, and anything workable may be *proposed*. **launchable** =
+  a PO-committed per-run authorization, which is what actually starts an agent. `autonomy` leaves both:
+  readiness becomes **`blocked_by`**, recursion moves to the launch gate ([[BL-136]]).
+  **Why `blocked_by` beats `human-only` at the job it was really doing:** it **states a reason** (a filed,
+  readable item, where `human-only` says only "no"); it **self-releases** when the blocker closes, so nobody has
+  to remember; it **cannot dangle** (`backlog:check` fails on a dangling id, and `isResolved` treats an unknown
+  id as unresolved); and it is a chain anyone can walk. **[[BL-028]] is the live proof:** it is not dangerous,
+  it is *unspecified* — its T3c phase contains an undecided PO question (§9 q2, *"should the sweep ever kill at
+  all?"*), now filed as **[[BL-135]]**. A spec with a hole where a decision belongs is a dependency, not an
+  authorization fact.
+  **⛔ TWO PLANNER ERRORS ARE RECORDED IN THE PLAN, because the reasoning moved twice and the record is worth
+  more than the conclusion.** (1) The argument put to the PO *against* flipping the default — *"79 never-judged
+  items become selectable silently"* — was **false**: 99 items carry no header (79 came from counting
+  *occurrences*, including the schema example inside a code fence), and of those **74 are `done`, 22 `deferred`,
+  3 `dropped`, ZERO `todo`**. (2) Worse, the plan then written for option (b) **did not satisfy the requirement
+  at all**: flipping the default yields *"any workable item **that nobody marked** is eligible"*, and the only
+  workable item is marked — BL-028 carries an explicit `human-only`, so the selectable set under (b) is `{}`,
+  identical to today. The first plan noted "it unlocks no work" as a closing footnote; **that was the
+  headline.** [[BL-130]]'s rule generalises: a claim about a predicate is checked by *running the predicate*.
+  **What this does NOT do, stated so it cannot be inferred: it creates no work.** After the plan's D5 the
+  workable set is still `{}`, because the one `todo` item genuinely is blocked. The difference is that the
+  backlog then *says why*, mechanically and self-releasingly, instead of asserting a bare `human-only`. **The
+  binding constraint is an empty backlog, not the predicate.**
+
+<!-- @item
+id: BL-135
+status: deferred
+date: 2026-08-15
+epic: null
+tags: [bl-028, engine, detector, hang, po-decision, m03]
+autonomy: po-decision
+-->
+- [deferred · **PO DECISION — split out of [[BL-028]] §9 q2 at the planner's direction 2026-08-15, so the
+  question fencing that item is a NAMED, self-releasing dependency instead of a bare `autonomy: human-only`** ·
+  **filed `todo`, corrected to `deferred` at [[BL-134]]'s gate 1 the same hour — see the closing note**] —
+  **Should the idle sweep ever KILL, or is a detector that only reports a legitimate end state?**
+  The question has been open and explicitly untouched since [[BL-028]] T3a (`f6c7655`, 2026-08-07) and was
+  restated at T3b's close: *"A detector that only reports is a legitimate end state."* Today the sweep emits
+  `agent_non_reply` and has **no path to `setAgentStatus` at all** — BL-127's bar B4 pins that, deliberately.
+  **Why it cannot be answered yet, and why that is the point:** the honest sequence has always been (1) let the
+  instrument run against real traffic, (2) *then* ask what the data supports. As of 2026-08-15 07:47 the
+  instrument is finally **deployed and running** (pid 7121; [[BL-127]]/[[BL-128]] were in the build, [[BL-129]]
+  and [[BL-133]] were merged-but-never-compiled until this rebuild), and the sink
+  `~/.agenttalk/agent-non-reply.jsonl` is **absent — a clean zero baseline, with zero traffic to explain it**.
+  **The competing considerations, so whoever answers has them in one place:** killing on silence risks
+  destroying a working agent mid-turn — a real CLI routinely exceeds the 180s default on one honest turn
+  (LB-67 Finding 1 demoted this exact signal to advisory once already), and `handleAgentFailure` requests
+  shutdown of **every other team member**, so a false positive is team-wide. Not killing leaves the wall clock
+  as the only anti-hang rail. [[BL-133]]'s advisory team-progress predicate now makes a wedge *observable*
+  without a kill, which is LB-96's relaxation condition (1) — **satisfied, and deliberately not acted on**.
+  **This item exists to be the blocker on the front of [[BL-028]], and to disappear the moment it is answered.**
+  **⛔ WHY `deferred` AND NOT `todo` — corrected at [[BL-134]]'s gate 1, hours after filing.** It was filed
+  `todo`, which under BL-134's proposed predicate (`todo` + blockers resolved, `autonomy` ignored) would have
+  made **this question workable — i.e. proposable to an agent.** That exposed a real hole in BL-134's design
+  and not merely a typo: `eligible`/`human-only` are *readiness* levels that collapse into "is it blocked",
+  but **`po-decision` is not a readiness level at all** — it asserts the item is *not a task*. That is a
+  difference of **kind**, which this schema expresses through `status`. **Resolution, zero new machinery:** a
+  question is `deferred` + `tags: [po-decision]`. `isResolved` (`backlog.ts:255-259`) counts only
+  `done`/`dropped` as resolved, so **a `deferred` blocker still fences its dependents** — [[BL-028]] stays
+  fenced exactly as intended. And `deferred` is *honest* here rather than a workaround: the standing sequence
+  is "let the instrument run, **then** ask what the data supports", so this question genuinely is parked
+  pending evidence. **The planner filed this item and wrote the predicate that would have released it, in the
+  same session** — the fix and the defect have the same author, which is what gate 1 exists for.
+
+<!-- @item
+id: BL-136
+status: todo
+date: 2026-08-15
+epic: null
+tags: [operator, hermes, commission, recursion, containment, gate-b]
+autonomy: human-only
+-->
+- [todo · **filed 2026-08-15 by the planner while verifying that Gate B holds, because [[BL-134]] proposes to
+  lean the whole containment argument on it**] —
+  **The commission's recursion fence scans the document the worker may never read, and NOT the instruction it
+  actually receives.** `findsLaunchInstruction` is called exactly once — on the **brief**,
+  `hmp-commission.mjs:343`. **`config.goal` is never scanned**: the identifier appears in that file only inside
+  a comment (`:185`). But `config.goal` is what the launcher **delivers to the worker as its first turn**
+  (`bite0-launcher.mjs:195`), and nothing in the client scans it either. `design/operator-seat/SKILL.md:167-170`
+  tells Hermes to run that scan **by hand** — *"both scans run, both must pass (hmp7 pattern)"* — which is a
+  fence that holds only while the operator remembers a command, the behavioural-not-enforced shape this project
+  keeps catching.
+  **Fix is small and strictly tightening:** the config is already parsed ten lines above the existing check
+  (`hmp-commission.mjs:357-365`), so scanning `config.goal` and refusing `recursive-commission` is additive —
+  it can only refuse *more*, never launch something it previously refused. Deliberately kept out of
+  [[BL-134]]'s scope: **a launch-gate change does not get bundled into a bookkeeping change.** BL-134 is
+  `blocked_by` this item, which is itself a dogfood of the mechanism BL-134 proposes.
+  **⛔ A NEAR-MISS RECORDED, not buried.** The same pass almost filed a second hole: *"commission mandates
+  `cap.meter` — which `AGENT.md` itself calls a warning, not a rail — but never checks `cap.wallClockMs`, the
+  only terminating rail."* The first half is true (`wallClockMs` appears nowhere in `hmp-commission.mjs`). **The
+  conclusion is false:** `bite0-launcher.mjs:36` throws `config.cap.wallClockMs must be > 0`, so the rail *is*
+  enforced, downstream. Moving it to commission would make the refusal legible and **dry-runnable** — worth
+  doing, and in scope for this item as a second bar — but **it is NOT a containment hole and must not be
+  reported as one.** Forty seconds of reading separated this from a repeat of [[BL-132]].
 
 *(add new items above this line)*
