@@ -265,9 +265,9 @@ autonomy: eligible
   is **nine PO-authorized commissioned runs**, `hmp1` … `hmp9`, the last of them 2026-08-13. `AGENT.md`'s
   soft-ladder table still presents O-1 as *"first real test of the harness"* and O-3 as aspirational — three
   weeks and fifteen runs after both were passed. Establishing this took reading the recorded-run ledger
-  (`design/operator/.hmp-launched.json`) plus roughly ten grading documents scattered among the **84 files**
-  in `design/operator/`. **Two separate artifacts, written by the actor closest to the work, both understated
-  what had actually been proven.**
+  (`design/operator/.hmp-launched.json`, 9 entries) plus **13 grading documents** scattered among the **81
+  files** in `design/operator/`. **Two separate artifacts, written by the actor closest to the work, both
+  understated what had actually been proven.**
 
   **Why this is a rung and not housekeeping.** The operator seat's entire product is *reporting the
   development situation to the PO* (charter → Visibility). The seat that is meant to be the instrument panel
