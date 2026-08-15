@@ -399,9 +399,21 @@ Record `git hash-object scripts/infra-invariant.mjs` BEFORE running the invarian
 ```bash
 node scripts/infra-invariant.mjs snapshot --out /tmp/att-invariant/before.json   # last thing
 # … the run …
-node scripts/infra-invariant.mjs check --before /tmp/att-invariant/before.json   # before cleanup
+node scripts/infra-invariant.mjs check --before /tmp/att-invariant/before.json --expect scripts/operator-run.expect.json   # before cleanup
 # … then cleanup …
 ```
+
+**About `--expect` ([[BL-138]]) — do not hand-roll it.** It names your lawful write paths so your *own*
+commits stop reporting as `critical`. **It grants you nothing**: with no declaration the harness treats every
+head move as `foreign`, so the flag only turns down noise around writes that were already permitted.
+
+- **Use the committed file, never a typed-out list.** hmp2 typed `design/operator/`, which matches **nothing**
+  (patterns are end to end — a directory is `dir/**`), and the resulting `critical` was blamed on the run.
+  That misfire is the whole origin of [[BL-116]], and the harness will not catch it for you: a bad declaration
+  warns at most, and `warn` is the ceiling.
+- **`design/po/**` is absent from it deliberately.** That is where the launch authorization lives ([[BL-137]]),
+  and a write there must stay `foreign` — it is the one path whose appearance in your run is supposed to be
+  loud. The file sits in `scripts/`, outside your write allowlist, so this is not yours to widen.
 
 ### Port discipline
 
@@ -581,7 +593,7 @@ echo "exit: $?"
 ### Phase 6: Harness check (BEFORE cleanup)
 
 ```bash
-node scripts/infra-invariant.mjs check --before /tmp/att-invariant/h<N>-before.json
+node scripts/infra-invariant.mjs check --before /tmp/att-invariant/h<N>-before.json --expect scripts/operator-run.expect.json
 ```
 
 Expected output for a clean run: exit 0, no `critical` or `warn` findings. Two `info` findings are normal:
