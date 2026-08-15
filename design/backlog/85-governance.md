@@ -252,12 +252,14 @@ tags: [docs, governance, rot, operator, agent-md, fence-in-prose]
 
 <!-- @item
 id: BL-144
-status: todo
+status: done
 date: 2026-08-15
 epic: null
 tags: [overhaul, wave2, modules, colocation, architecture, docs]
 -->
-- [todo · **filed 2026-08-15 · Wave 2 of the overhaul · waves 0 and 1 are MERGED (`0b8bee5`,
+- [done 2026-08-15 · `modules/` exists and is gated · `npm run modules:check` · design/ top level
+  36 → 2 · **two deviations from this item's own text, both argued not absorbed; the AGENT.md
+  split is deliberately NOT done and went to the PO as a proposal** · **filed 2026-08-15 · Wave 2 of the overhaul · waves 0 and 1 are MERGED (`0b8bee5`,
   `b12c0ee`); this is the remainder and it is the judgment-heavy part**] —
   **Colocate: move code into `modules/`, carrying its durable docs and backlog slice with it.**
 
@@ -286,6 +288,71 @@ tags: [overhaul, wave2, modules, colocation, architecture, docs]
   governance. Extract a repo only when something outside actually consumes a module.
 
   Analysis and measurements behind this: the overhaul artifact published 2026-08-15.
+
+  **CLOSED 2026-08-15.** `modules/` exists: 13 modules, `npm run modules:check` proving ownership
+  **total** (every source file claimed) and **disjoint** (none claimed twice), 115/116 owned with one
+  entry on a commented UNOWNED register. 34 documents left `design/`'s top level — 30 to the module
+  that owns them, 4 to the archive — leaving only this task's own live plan and ledger. Plan and
+  ledger: `design/bl144-plan.md`, `design/bl144-implementation.md`.
+
+  **Two deviations from the text above, decided at Gate 1 and recorded loudly rather than absorbed:**
+
+  1. **The backlog did NOT move.** `design/backlog/**` is not merely a location — it is a path in the
+     **operator seat's write allowlist**, named at six sites. Dispersing it under `modules/` would
+     force that fence to widen across the module tree, where durable law now lives, or strip the seat
+     of its ability to file at all. A module owns its slice by **naming** it in `backlog:`.
+  2. **The code did NOT move.** The build is a project-references graph — 9 root references, 6
+     package-level, `paths` aliases, and a `["apps/*","packages/*"]` workspace list under which
+     `modules/*` is not a workspace. Relocation rewrites four coupled things for no gain that Wave 2
+     needs: **a gate forces a reader to touch the claim; a directory only invites it.**
+
+  **The AGENT.md split is deliberately NOT done** — it is what every agent auto-loads at turn 1, so
+  it is governance, which the PO's standing overhaul grant explicitly does not cover. It shipped as a
+  measured proposal instead, and **the measurement inverted this item's own prescription**: all ten
+  correction markers sit in three of fifteen sections, and the other twelve — 556 lines — have never
+  needed one. Law does not rot; claims about code rot. ~300 lines should leave, not ~880. The PO's
+  decision is [[BL-145]].
+
+  **Three defects the gates caught during the build, each recorded rather than quietly fixed:** the
+  ownership gate reported all 115 files unowned on its first run (one typo — `m.code` where the
+  wrapper is `{name,dir,raw}`; volume is not evidence); it then **caught its own author**, because
+  `check-modules.mjs` was untracked when the T1 suite ran and so escaped its own coverage check,
+  exactly as [[BL-141]] shipped red; and the doc migration rewrote citations **inside
+  `design/archive/`**, breaking Wave 0's never-edit-the-archive rule that the migration script's own
+  header states — 28 files reverted before the commit, and the citation gate could never have caught
+  it because the archive is `CITER_EXEMPT`.
+
+
+<!-- @item
+id: BL-145
+status: todo
+date: 2026-08-15
+epic: null
+tags: [governance, agent-md, overhaul, wave2, po-decision]
+-->
+- [todo · **PO DECISION REQUIRED — not agent work** · filed 2026-08-15 by [[BL-144]] T3 · the
+  proposal is written and measured; what is missing is a decision] —
+  **Does `AGENT.md` split, and if so which three sections leave?**
+
+  `AGENT.md` is what every agent auto-loads at turn 1, through three names on a case-insensitive
+  filesystem. Changing it changes what every actor reads before it acts, so it sits outside the
+  standing overhaul grant by construction.
+
+  The proposal is `modules/governance/docs/agent-md-split-proposal.md`, and its finding is that
+  [[BL-144]]'s prescription was **backwards**. Measured: 1,033 lines in 15 sections; **all ten**
+  correction markers in three of them (operator charter 5, milestone Key Features 4, role
+  assignments 1); the other twelve, **556 lines**, have never carried one. So the split should be
+  ~300 lines out and ~730 staying — not the ~150-stays the item assumed.
+
+  **Three questions for the PO**, the first being the real one:
+
+  1. **Does the split happen at all?** A defensible answer is *no* — fix the three corrected sections
+     in place and leave the file whole. The proposal does not assume its own conclusion.
+  2. The milestone Key Features: **archive, or keep as a dated appendix?** Either way, the three live
+     behavioural facts buried in them (transport-asymmetric propagation, nothing detects a hung
+     agent, the wall clock is the only anti-hang rail) get **promoted first**, with their own
+     citations. That promotion is the un-automatable step and must not ride a mechanical commit.
+  3. The per-agent **op-notes**: split from the role table, or stay beside it?
 
 
 *(add new items above this line)*

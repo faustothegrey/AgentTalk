@@ -463,7 +463,26 @@ describe('the real backlog (design/backlog/)', () => {
     // 2026-08-15 — [[BL-142]] delivered and closed. Second decrement in a row caused by work.
     // 2026-08-15 — [[BL-143]] delivered and closed. Third consecutive decrement caused by work
     // rather than a re-status. What remains is [[BL-144]] — Wave 2, the judgment-heavy remainder.
-    expect(workableBacklogItems(items).map((i) => i.id)).toEqual(['BL-144']);
+    //
+    // 2026-08-15 — [[BL-144]] DELIVERED and closed; [[BL-145]] filed by its own T3. Red shown first,
+    // as always. This is a SWAP, not a decrement, and the swap is the point: BL-144's last
+    // deliverable was a *proposal* to split `AGENT.md`, which is what every agent auto-loads at turn
+    // 1 — governance, outside the standing overhaul grant. Closing the work item necessarily filed
+    // the decision item.
+    //
+    // NOTE WHAT IS DELIBERATELY **NOT** DONE HERE, because it is the exact trap [[BL-134]] cleared.
+    // BL-145 is a PO decision, so the instinct is to keep it off this list with
+    // `autonomy: po-decision`. That field still PARSES and no longer GATES anything, by design: it
+    // was a readiness field misread as an authorization one. Post-BL-134 the correct shape for a new
+    // item is to declare NO autonomy at all, with readiness carried by `blocked_by` — which names
+    // its reason as a filed item and releases itself when that item closes. BL-145 is blocked by
+    // nothing filed. It is genuinely ready; what it is ready FOR is a decision.
+    //
+    // So BL-145 is workable, and that is correct, because WORKABLE IS NOT LAUNCHABLE — a launch
+    // needs `design/po/<run>.authorized` committed at the sha the commission names. Re-adding a
+    // field to keep a PO item off this list would rebuild the fail-open-in-a-document shape BL-134
+    // removed.
+    expect(workableBacklogItems(items).map((i) => i.id)).toEqual(['BL-145']);
   });
 
   // 2026-08-07 — deliberately updated, and the red was shown to the PO first. BL-084 CLOSED (PO
@@ -538,7 +557,7 @@ describe('the real backlog (design/backlog/)', () => {
     // 2026-08-15 — [[BL-142]] delivered and closed. Second decrement in a row caused by work.
     // 2026-08-15 — [[BL-143]] delivered and closed. Third consecutive decrement caused by work
     // rather than a re-status. What remains is [[BL-144]] — Wave 2, the judgment-heavy remainder.
-    expect(workableBacklogItems(items).map((i) => i.id)).toEqual(['BL-144']);
+    expect(workableBacklogItems(items).map((i) => i.id)).toEqual(['BL-145']);
   });
 
   it('marks BL-086 as the PO decision it is', () => {

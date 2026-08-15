@@ -34,14 +34,92 @@ plus a gate. **This narrows BL-144's literal text and is recorded loudly rather 
 
 ---
 
+## Deliveries
+
+| Commit | What |
+|---|---|
+| `6221b0e` | plan + Gate 1 (on master — docs are master-editable) |
+| `7df22ae` | **T1** — `modules/` manifests + `npm run modules:check` + 28 bars |
+| `e6ba57d` | **T2 pre-step** — the citation gate learns `modules/**.md`, *before* any doc moved |
+| `873da23` | **T2** — 34 docs move; `design/` top level 36 → 2 |
+| `d814152` | **T3** — the `AGENT.md` split proposal, measured and deliberately not executed |
+| `b5f72a6` | closure — BL-144 done, [[BL-145]] filed, the BL-093 pin moved |
+
 ## Gate 2 — implementation review
 
-*(rows filled per delivery, only after running)*
+Every row run, never read. Commands and their output are the evidence.
 
 | # | DoD row | Verdict | Evidence |
 |---|---|---|---|
-| | | | |
+| 1 | 13 manifests, names match directories | **VERIFIED ✅** | `modules:check` → `13 modules`; a bar pins `name !== directory` as an error |
+| 2 | Dep graph acyclic, deps resolve | **VERIFIED ✅** | `findCycles` bars: 3-cycle detected, diamond correctly *not* a cycle |
+| 3 | Coverage — every path owned or registered | **VERIFIED ✅** | `115/116 source files owned`, 1 on the UNOWNED register (`scripts/lib/is-main.mjs`, reason in source) |
+| 4 | Uniqueness — nothing owned twice | **VERIFIED ✅** | `modules:check` green; bar pins the "owned twice" error naming both claimants |
+| 5 | Backlog slices resolve, claimed once | **VERIFIED ✅** | `9 backlog slices`; bars pin both failure modes |
+| 6 | Boundary-anchored matcher, planted bar | **VERIFIED ✅ (proven to bite)** | dropping the trailing slash turned **exactly one** test red — the sibling-directory case — and no others |
+| 7 | Gate runs in the suite against the **real** repo | **VERIFIED ✅** | `describe('against the real repository')` asserts `main(['--json']) === 0` |
+| 8 | Durable docs relocated, each owned once | **VERIFIED ✅** | `31 docs`; `ls design/*.md` → 2, both this task's own |
+| 9 | Citation parity across every doc-move commit | **VERIFIED ✅** | `docs:check` **709 / 0 newly broken / 41 carried** — and the register **shrank** 43 → 41 as two entries genuinely resolved |
+| 10 | Backlog untouched by the mechanics | **VERIFIED ✅** | 144 → 145 items only via the deliberate close+file; all **6** operator-fence sites intact (`AGENT.md` 3, `infra-invariant.mjs` 2, `SKILL.md` 1) |
+| 11 | Full regression | **VERIFIED ✅** | `tsc -b` 0 · suite **871 / 98 files** (from 838/97; every delta accounted: +28 module bars, +4 citation bars, +1 from the dynamic is-main guard) |
+| 12 | T3 a proposal; `AGENT.md` citation-only | **VERIFIED ✅** | `git diff` on `AGENT.md` = **16 lines, every one a rewritten citation path** |
+
+### Defects found during the build — recorded, not quietly fixed
+
+1. **The gate reported all 115 files unowned on its first run.** One typo: `ownersOf` read `m.code`
+   where the manifest wrapper is `{name, dir, raw}`. It looked like a catastrophic ownership hole and
+   was a single accessor. One hand-check of a path it certainly owned found it in seconds.
+   **Volume is not evidence.**
+2. **The gate caught its own author, and the finding is against T1.** `scripts/check-modules.mjs` was
+   *untracked* when T1's suite ran, so `git ls-files` did not see it and it escaped its own coverage
+   check — `7df22ae` shipped a gate that was **red on its own repo**, precisely [[BL-141]]'s failure
+   repeated. Now owned by `governance`.
+3. **The doc migration edited the archive.** It rewrote citations inside `design/archive/` (28
+   files), breaking Wave 0's never-edit-the-archive rule *that the migration script's own header
+   states*. Reverted before the commit; a guard added. **The citation gate could not have caught
+   this** — `design/archive/**` is `CITER_EXEMPT`, so it is never scanned.
+4. **The T3 proposal cited its own proposed destination** as though it existed. The gate refuted it.
+   A proposal must not plant a citation that only becomes true if the proposal is accepted.
+
+### The session's defining failure mode
+
+**Four times a figure went into the record ahead of the output that settles it** — Gate 1's "20 of 34
+docs declare a `Status:`" (backwards: 14/20), T1's and T2's "689 checked" (752 once the new files
+were tracked), and T3's "706" (709). Every conclusion around them survived; none of the numbers did.
+Two were caught only because a later step re-ran them. The mechanical cause of the 689s is worth
+stating plainly: **`docs:check` walks `git ls-files`, so any run made before staging understates by
+exactly the contribution of the unstaged files** — measured here at 63. Recorded in
+`design/lessons/claude-lessons.md`.
 
 ## Gate 3 — closure sweep
 
-*(independent re-run of the load-bearing bars + telemetry, at close)*
+Independent re-run at close, on the merge candidate, after the backlog was closed:
+
+```
+tsc -b                 → 0
+vitest run             → 871 passed (98 files)
+npm run modules:check  → 13 modules own 115/116, 31 docs, 9 slices
+npm run docs:check     → 709 checked, 0 newly broken, 41 carried
+validate-backlog.mjs   → 145 items, 0 warnings, exit 0
+workableBacklogItems   → ["BL-145"]
+git worktree list      → 2 (primary + this task's), no strays
+git status --short     → clean apart from the known apps/web/node_modules symlink (?? — leave it)
+```
+
+**The BL-093 pin fired, as designed, and was shown red before it was moved:**
+`expected [ 'BL-145' ] to deeply equal [ 'BL-144' ]`. It is the guard on what an agent could be
+handed unattended, and it moved because BL-144 closed and BL-145 was filed. Deliberately **not**
+done: adding `autonomy: po-decision` to keep a PO item off the workable list. That field still parses
+and no longer gates, by [[BL-134]]'s design — it was a readiness field misread as an authorization
+one. **Workable is not launchable**; a launch needs `design/po/<run>.authorized`. Re-adding a field
+there would rebuild the shape BL-134 removed.
+
+**Verdict: MERGED ✅** — every DoD row VERIFIED, none deferred.
+
+**Telemetry (task closure):**
+- task:        BL-144 (Wave 2)
+- wall-clock:  2026-08-15 22:39 → 23:12 (~33 min)
+- budget:      weekly 41% → 42% (Δ ~1%), session 39% → ~50% (Δ ~11%) [per `scripts/usage.mjs`]
+- gate:        tsc 0, suite 871/871 (98 files), modules 115/116, docs 709/0/41, backlog 145/0 warnings, pollution clean
+- diff:        6 commits, `6221b0e` `7df22ae` `e6ba57d` `873da23` `d814152` `b5f72a6`
+- outcome:     **MERGED ✅** — with T3 stopped at the PO's door on purpose ([[BL-145]])
