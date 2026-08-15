@@ -428,6 +428,24 @@ describe('launch: approving commits the authorization the commission will read',
     expect(git(['show', `HEAD:${rel}`]).trim()).toBe(authorizationLineFor(RUN));
   });
 
+  it('B5b: the authorize commit is pathspec-limited — it cannot sweep up whatever else is staged', () => {
+    // The mutation run showed the internal "touched exactly one path" guard is UNFALSIFIABLE while
+    // the commit is pathspec-limited. This bar attacks the property that IS falsifiable: drop
+    // `'--', rel` from the commit and an unrelated staged file rides along into a commit the PO
+    // never approved. (Written once, lost to a `git checkout -- scripts/` during the mutation run,
+    // and restored at gate 2 — which is why the gate re-runs things instead of reading reports.)
+    fs.writeFileSync(path.join(repo, 'unrelated.txt'), 'the PO never saw this');
+    git(['add', 'unrelated.txt']);
+
+    const p = propose({ root: repo, action: 'launch', run: RUN });
+    expect(approve({ root: repo, token: p.record.token }).ok).toBe(true);
+
+    const touched = git(['show', '--name-only', '--format=', 'HEAD']).split('\n').filter(Boolean);
+    expect(touched).toEqual([authorizationPathFor(RUN)]);
+    // And the interloper is still sitting in the index, uncommitted, where it started.
+    expect(git(['diff', '--cached', '--name-only'])).toBe('unrelated.txt');
+  });
+
   it('B6: a moved branch refuses sha-moved AND writes no file — refusal precedes the write', () => {
     const p = propose({ root: repo, action: 'launch', run: RUN });
     fs.writeFileSync(path.join(repo, 'b.txt'), 'two');

@@ -464,6 +464,36 @@ describe('verifyCommission', () => {
     expect(r.reason).toBe(REFUSAL.NO_PO_AUTHORIZATION);
   });
 
+  it('B3: an authorization at the OLD design/operator/ path does NOT authorize — the fence MOVED, it did not widen', () => {
+    // The regression that proves BL-137 actually RELOCATED the gate. Moving the fixtures only shows
+    // the new path works; this is the one that shows the old path stopped working. Without it, a
+    // change that read BOTH paths would sail through every other bar in this file.
+    write('design/operator/oldpath-brief.md', '# old path\n\nGoal: report HEAD.\n');
+    write('design/operator/oldpath-bar.md', BAR);
+    write('design/operator/oldpath.config.json', JSON.stringify(CONFIG, null, 2));
+    // Authorization committed where it used to live, and NOWHERE else.
+    write('design/operator/oldpath.authorized', `${authorizationLineFor('oldpath')}\n`);
+    git([
+      'add',
+      'design/operator/oldpath-brief.md',
+      'design/operator/oldpath-bar.md',
+      'design/operator/oldpath.config.json',
+      'design/operator/oldpath.authorized',
+    ]);
+    git(['commit', '-m', 'authorization at the pre-BL-137 path']);
+    const s = git(['rev-parse', 'HEAD']);
+    const r = verify(
+      commission({
+        run: 'oldpath',
+        brief: path.join(repo, 'design/operator/oldpath-brief.md'),
+        'repo-sha': s,
+        sandbox: 'att-op-oldpath',
+      }),
+    );
+    expect(r.reason).toBe(REFUSAL.NO_PO_AUTHORIZATION);
+    expect(r.detail).toContain('design/po/oldpath.authorized');
+  });
+
   it('refuses a bar hash that does not match the committed bar', () => {
     const r = verify(commission({ 'bar-sha256': '0'.repeat(64) }));
     expect(r.reason).toBe(REFUSAL.BAR_HASH_MISMATCH);
