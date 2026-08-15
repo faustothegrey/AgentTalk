@@ -139,14 +139,21 @@ longer an open question; it is a specified task.** It is re-tagged in the same c
 The planner recommended against this; **the PO overruled it and it proceeds in full.** But draft 1 never
 measured it, and it is not the one-line concept change §13 F4 implied:
 
+**⬛ CORRECTED AT RE-GATE (H1): the table below was a FILTERED SAMPLE presented as a cost inventory.** It
+understated two files and **missed two entirely**, one of which was outside the declared scope. This is the
+full code inventory, re-run unfiltered:
+
 | Site | Hits | Kind |
 |---|---|---|
 | `apps/orchestrator/src/__tests__/bl093-backlog-selectable.test.ts` | 22 | test |
-| `scripts/infra-invariant.mjs` | 12 | **production** |
-| `scripts/__tests__/infra-invariant.test.mjs` | 9 | test |
+| `scripts/__tests__/infra-invariant.test.mjs` | **17** *(said 9)* | test |
+| `scripts/infra-invariant.mjs` | **14** *(said 12)* | **production** |
 | `apps/orchestrator/src/server.ts` | 5 | **production — the wire param** |
+| `scripts/validate-backlog.mjs` | **2** *(missed)* | **production** — incl. the message *"only todo is selectable"* |
+| `apps/orchestrator/src/backlog.ts` | **2** *(missed from this table)* | **production** |
+| `scripts/test-mcp-gate.mjs` | **1** *(missed, and OUTSIDE §8 scope — now added)* | script |
 | `design/operator-seat/SKILL.md` | 5 | docs, incl. **two verbatim `curl` commands** |
-| plans + run logs | ~20 | see below |
+| `design/backlog.md` | 3 | **MIXED — see constraint 5** |
 
 **The renames:** `selectableBacklogItems` → `workableBacklogItems` · `parseSelectableIds` → `parseWorkableIds`
 · `?selectable=true` → **`?workable=true`**.
@@ -162,6 +169,12 @@ measured it, and it is not the one-line concept change §13 F4 implied:
    match a rename is the same error as re-dating a closing block.
 4. **The test FILE keeps its `bl093-` name.** The prefix anchors provenance to the item that created the bar;
    renaming it severs that link for no gain. The *contents* rename.
+5. **⚠️ `design/backlog.md` is MIXED, and a global `sed` on it would falsify the record (re-gate, H2).**
+   Line **46** is the **live schema block** — `Selector view: GET /api/backlog?selectable=true` — and it
+   **must** be renamed. Lines **5790** and **5803** sit inside **[[BL-093]]'s closed item prose**, recording
+   what the API returned at the time (*"1 of 93, 0 warnings"*). Those are **records: do not touch them.**
+   §8 lists `design/backlog.md` as touchable, which is exactly the invitation to run a blanket replace.
+   **Rename by line, not by file.**
 
 **Land it as its own commit**, separate from the autonomy mechanics, so reverting one does not drag the other.
 
@@ -177,6 +190,7 @@ measured it, and it is not the one-line concept change §13 F4 implied:
 | `scripts/validate-backlog.mjs` | migration warning (§6) + warn on `todo` carrying `po-decision` |
 | `apps/orchestrator/src/__tests__/bl093-backlog-selectable.test.ts` | contracts in §9; **file name unchanged** |
 | `scripts/__tests__/infra-invariant.test.mjs` | rename only |
+| `scripts/test-mcp-gate.mjs` | rename only — **added at re-gate (H1); it was missing from draft 2's scope entirely** |
 | `design/backlog.md` | schema block; BL-028's `blocked_by`; BL-134 re-tag; BL-139/BL-140 → `deferred` |
 | `AGENT.md` | OPERATOR Visibility paragraph (§4) |
 | `design/operator-seat/SKILL.md` · `references/backlog-semantics.md` | the ladder, the fail-closed claim, the two curls |
@@ -255,3 +269,57 @@ BL-138's `_comment` key). **Each must be shown to turn its own bar red**, and th
 | F3 | §8 changed the tripwire's **frequency**, not just its location | **resolved by q1** — commit-time pin retained |
 | F4 | `?selectable=true` is curled verbatim in SKILL.md | **resolved by q5** — renamed, with the curls in the same commit |
 | — | Independence: plan reviewer *was* the planner | **still true.** Declared, not mitigated |
+
+---
+
+## 15. Re-gate on draft 2 (plan reviewer, 2026-08-15) — **APPROVED ✅, two corrections applied**
+
+**Independence absent** (same actor as planner) — declared. Both findings came from **running an unfiltered
+grep**, not from re-reading the plan, which is the only reviewing that works when the reviewer is the author.
+
+### H1 — [BLOCK-class] §7's cost table was a FILTERED SAMPLE presented as an inventory
+
+Draft 2's table came from a `grep | awk | sort | uniq -c | head -10` — a *top-10 of a filtered set*. It was
+then used to justify a scope list and to underwrite **D9** (*"no `selectable` identifier remains in production
+or live docs"*). Re-running it unfiltered:
+
+- **understated** two files (`infra-invariant.test.mjs` 9→**17**, `infra-invariant.mjs` 12→**14**)
+- **missed** `scripts/validate-backlog.mjs` (2, including the user-facing message *"only todo is selectable"*)
+  and `apps/orchestrator/src/backlog.ts` (2)
+- **missed `scripts/test-mcp-gate.mjs` entirely — a file §8 did not permit touching**, so **D9 was
+  unsatisfiable within the declared scope.**
+
+**Fixed:** the true inventory replaces the sample, and `test-mcp-gate.mjs` is added to §8.
+
+**The lesson is the same one this session keeps re-learning:** a `head -10` is a *sample*. Presenting it as a
+cost table is the same error class as reading a guard and not the branch it returns ([[BL-138]]), or reading
+`:86`'s `export` and assuming it applied to `:87` ([[BL-137]] gate 1).
+
+### H2 — [substantive] `design/backlog.md` is MIXED, and §8 invited a blanket replace
+
+Three hits, and they are **not** the same kind:
+
+| Line | Content | Disposition |
+|---|---|---|
+| **46** | the **live schema block** — `Selector view: GET /api/backlog?selectable=true` | **rename** |
+| **5790**, **5803** | inside **[[BL-093]]'s closed item prose**, recording what the API returned then (*"1 of 93, 0 warnings"*) | **DO NOT TOUCH — records** |
+
+§7's constraint 3 protected "run logs and closed plans" but said nothing about **closed item prose inside
+`design/backlog.md`**, while §8 listed the file as touchable. A blanket `sed` would have rewritten BL-093's
+closing record to describe an API that did not exist when it closed. **New constraint 5: rename by line, not
+by file.**
+
+### Verified and cleared
+
+| Check | Result |
+|---|---|
+| new names free of collisions (`workableBacklogItems`, `parseWorkableIds`, `?workable=true`) | ✅ zero existing hits |
+| the pin at `:147` is what §5 says it is | ✅ and its comment is emphatic — *"Updating this line is a deliberate act — do NOT loosen it… If the new value is not what you expected, that is the finding"* |
+| `validate-backlog.mjs` enforces no `autonomy` enum | ✅ only a targeted rule (`eligible` on non-`todo`), so retiring `po-decision` breaks no existing validation |
+| §6's "leave `done`/`deferred` values alone" is safe | ✅ follows from the above |
+
+**The pin's own comment vindicates q1.** It records that an unexpected value *is the finding* — and that the
+last update surfaced "NOTHING can currently be handed to an agent unattended" as a PO call. That is precisely
+the forcing-function the PO chose to keep, and precisely what harness-only would have discarded.
+
+**Cleared for implementation** in the §11 order, with H1 and H2 applied.
