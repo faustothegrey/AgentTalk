@@ -16,8 +16,8 @@
  *
  *   It was written as a throwaway check to prove the Wave 0 archive move broke no references, and
  *   immediately found something no one could have known: 1,727 citations across the repo, 131 of
- *   them unresolved — including the operator seat's own launch runbook citing `scripts/launcher.mjs`,
- *   which is not in the repo. Every correction marker in `AGENT.md` is a citation that silently
+ *   them unresolved — including the operator seat's own launch runbook citing a launcher script
+ *   that is not in the repo (twelve documents cite it; see the debt register). Every correction marker in `AGENT.md` is a citation that silently
  *   stopped resolving. This is the class, mechanised.
  *
  * IT IS A RATCHET, AND THAT IS THE LOAD-BEARING DESIGN DECISION
@@ -31,7 +31,7 @@
  *   The worklist it represents is [[BL-142]].
  *
  * WHAT IS DELIBERATELY NOT A CITATION — both learned by getting it wrong
- *   1. Anything under `__tests__`. Their "paths" (`design/x.md`, `design/operator/unauth-brief.md`)
+ *   1. Anything under `__tests__`. Their "paths" (`design/<nope>.md`, `design/operator/<unauth>.md`)
  *      are FIXTURES fed to pure matchers, not references to real files. Counting them turned a real
  *      signal into noise — it is why an early count said 36 and a later one 131 for the same repo.
  *   2. Paths on the NEVER_EXISTS list. `design/session-primers/claude.md` and `CLAUDE.md` are named
@@ -62,7 +62,7 @@ export const NEVER_EXISTS = ['design/session-primers/claude.md', 'design/session
  * Three kinds, each excluded for its own reason — and the reasons matter, because every exclusion
  * is a place the gate agrees to be blind:
  *
- *   `__tests__/**`        fixtures fed to pure matchers (`design/x.md`, `unauth-brief.md`). They
+ *   `__tests__/**`        fixtures fed to pure matchers (`design/<nope>.md` and the like). They
  *                         describe no file and never did.
  *   `design/archive/**`   immutable episodic records. Wave 0's rule is that an archived plan is
  *   `scripts/archive/**`  never edited again, so a reference that has gone stale is CORRECT AS

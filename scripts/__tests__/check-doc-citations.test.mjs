@@ -167,3 +167,19 @@ describe('BL-141 — the ratchet', () => {
     expect(evaluate(dir, path.join(dir, 'nope.json')).fresh).toHaveLength(1);
   });
 });
+
+describe('BL-141 — the gate runs against THIS repo', () => {
+  // A gate nothing runs is not a gate. This one shipped red for exactly one commit because the
+  // baseline was generated while its own source was still untracked, so `git ls-files` did not
+  // list it — and nothing in the suite would have said so. That is the gap this bar closes.
+  //
+  // Yes, this couples a unit test to real repo state. That is deliberate and is the house idiom:
+  // `bl093-backlog-selectable.test.ts` pins the real backlog for the same reason — some properties
+  // are only true of the actual tree, and pinning them is how a human is forced to look.
+  it('has no NEWLY broken citations — fix the reference, do not re-baseline', () => {
+    const { fresh, total, baselineSize } = evaluate();
+    expect(total).toBeGreaterThan(0); // not passing by having scanned nothing
+    expect(baselineSize).toBeGreaterThan(0); // …nor by having lost the register
+    expect(fresh).toEqual([]);
+  });
+});
