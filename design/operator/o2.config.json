@@ -1,5 +1,5 @@
 {
-  "_comment": "O-2 launch config — see design/o2-plan.md. First rung where the worker WRITES and COMMITS. Absolute paths are required: startCommand.cwd resolves against the CLIENT root when relative.",
+  "_comment": "O-2 launch config — see design/archive/o2-plan.md. First rung where the worker WRITES and COMMITS. Absolute paths are required: startCommand.cwd resolves against the CLIENT root when relative.",
 
   "instance": {
     "orchestratorUrl": "http://127.0.0.1:3600",
@@ -26,7 +26,7 @@
     }
   ],
 
-  "goal": "Investigate backlog item BL-088 — the invariant harness answers the damage question but not the teardown question — and write a design document at design/bl088-investigation.md weighing its three recorded options and recommending one, with reasons. Commit that document to your branch; change no code.",
+  "goal": "Investigate backlog item BL-088 — the invariant harness answers the damage question but not the teardown question — and write a design document at design/archive/bl088-investigation.md weighing its three recorded options and recommending one, with reasons. Commit that document to your branch; change no code.",
 
   "cap": {
     "wallClockMs": 1200000,

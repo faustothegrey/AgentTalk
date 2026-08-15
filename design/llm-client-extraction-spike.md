@@ -188,6 +188,6 @@ non-breaking) rather than flatten — keeps roles, doesn't break the string sign
 
 ## 12. Related
 
-- `design/phase5-client-extraction-proposal.md` (client-harness extraction — adjacent concern).
+- `design/archive/phase5-client-extraction-proposal.md` (client-harness extraction — adjacent concern).
 - memory `client-harness-is-ancillary` (mcp-client is a pure relay; consensus stays in AgentTalk).
 - `agentalk-mcp-client/wire-contract.json` (the shared wire shape; exec subset vs consensus tools).

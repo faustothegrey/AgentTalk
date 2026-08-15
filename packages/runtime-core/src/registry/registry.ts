@@ -112,7 +112,7 @@ import { type StructuredMessageType, buildProtocolToolSchema } from '../agents/r
 /**
  * BL-084 T1 — the classification table, and the single decision point for M03 propagation.
  *
- * Ratified in `design/bl084-plan.md` §4; each row is a behaviour call, not an implementation
+ * Ratified in `design/archive/bl084-plan.md` §4; each row is a behaviour call, not an implementation
  * detail, so the table is written out one reason per line rather than derived. Typing it as an
  * exhaustive `Record` over the union is deliberate: adding a reason to
  * `AgentErrorReason` without deciding its class is a COMPILE error, not a silent default.
@@ -931,7 +931,7 @@ export class Registry extends EventEmitter {
    * producer next to `ArbiterCoordinator`'s strict `=== 'ready'` convergence gate and a transition
    * table that THROWS — an escaped `Invalid transition: terminated -> busy` once killed the
    * orchestrator process (M17 G3-4, [[BL-020]]). It would buy nothing in return: `sessionStatus`
-   * is read by no component in either repo. Reasoning: `design/bl120-attached-busy-investigation.md`.
+   * is read by no component in either repo. Reasoning: `design/archive/bl120-attached-busy-investigation.md`.
    *
    * The name matters more than it looks, and `markAgentIdle` is chosen to be unmisreadable:
    * marking idle is all this does. `setAgentBusyState` announced a capability this code does
@@ -1010,7 +1010,7 @@ export class Registry extends EventEmitter {
     // "apiDrivers holds drivers for the attached transport too".
     //
     // What IS true, and all that ever was: `setAgentBusyState`'s `true` branch was unreachable, so
-    // `sessionStatus` never becomes `'busy'`. See `design/bl120-attached-busy-investigation.md`.
+    // `sessionStatus` never becomes `'busy'`. See `design/archive/bl120-attached-busy-investigation.md`.
     // That branch is now GONE (BL-121) and the helper is `markAgentIdle`; the sentence above is
     // kept in the past tense because it is the correction's own history, not a live claim.
     //
@@ -1131,7 +1131,7 @@ export class Registry extends EventEmitter {
         continue;
       }
 
-      // ⛔ The exclusions are this detector's sharpest edge — `design/bl133-plan.md` §3.
+      // ⛔ The exclusions are this detector's sharpest edge — `design/archive/bl133-plan.md` §3.
       // `awaiting_confirmation` waits on a HUMAN to confirm a plan; `awaiting_operator` is the
       // M08-T3 fence, where a human being slow is the entire POINT. Reporting either as a stall
       // would train the reader to ignore this notice, and an ignored detector is worse than none.

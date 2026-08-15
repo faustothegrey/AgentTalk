@@ -43,7 +43,7 @@ suite, giving for each the exact command you ran and its actual output. Change n
 
 **Goal (verbatim):** "Investigate backlog item BL-092 — a latent flake in the BL-048 broadcast test where the
 WebSocket handshake intermittently gets a 403 from a server that is not ours — and write a design document at
-design/bl092-investigation.md weighing its recorded options and recommending one, with reasons. Commit that
+design/archive/bl092-investigation.md weighing its recorded options and recommending one, with reasons. Commit that
 document to your branch; change no code."
 
 **Config:**
@@ -62,7 +62,7 @@ document to your branch; change no code."
 | outcome completed | 16:10:36 | 5m 21s |
 
 **Worker's report summary:**
-Worker produced a 173-line design document at `design/bl092-investigation.md`, committed as `285e831` on
+Worker produced a 173-line design document at `design/archive/bl092-investigation.md`, committed as `285e831` on
 branch `task-op-h2`. Key findings (from the worker's own sidecar, repeated here only for reference):
 
 1. **Refuted BL-092's leading hypothesis:** MCP server does not emit 403 (uses post-handshake close codes
@@ -76,7 +76,7 @@ branch `task-op-h2`. Key findings (from the worker's own sidecar, repeated here 
 6. **Corrected two claims in BL-092's entry:** only 2 test files bind a listener (not "whole suite"), and
    binding `127.0.0.1` would break LAN UI access.
 
-**Artifact location:** parent workdir only (`/private/tmp/att-op-h2/design/bl092-investigation.md`). Nested
+**Artifact location:** parent workdir only (`/private/tmp/att-op-h2/design/archive/bl092-investigation.md`). Nested
 `agentalk-task-*` worktree had no deliverable — matches runbook §8.4 (claude works in parent).
 
 **Show-stopper fence:** `git diff --stat master...HEAD` → 1 file, +173. Harness blob hash unchanged.

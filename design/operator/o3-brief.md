@@ -31,7 +31,7 @@ the investigation's conclusions; the worker must reach them by reading the docum
 
 ```
 Implement backlog item BL-092's recommended option D, exactly as specified in
-design/bl092-investigation.md §4 and §5. Read that document first. The change is
+design/archive/bl092-investigation.md §4 and §5. Read that document first. The change is
 confined to the test helper openSocket() in
 apps/orchestrator/src/__tests__/server.test.ts. Do not change any production
 source file. Run the gates and report their real output. Commit to your branch.

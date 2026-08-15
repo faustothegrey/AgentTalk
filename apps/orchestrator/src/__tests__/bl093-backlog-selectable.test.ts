@@ -373,7 +373,7 @@ describe('the real backlog (design/backlog.md)', () => {
   // **BL-125** eligible; the assertion returned exactly `["BL-125"]` and nothing else, so per the
   // standing note above the new value was the expected one and there is no finding in it.
   //
-  // BL-125 is a docs-only fix to `design/bl124-s2-deploy.md` §5, and it was chosen on the same O-1
+  // BL-125 is a docs-only fix to `design/archive/bl124-s2-deploy.md` §5, and it was chosen on the same O-1
   // instinct as BL-104: one file, an unambiguous bar, and a botched attempt is harmless because
   // nothing executable depends on the prose. It is fenced hard in its own entry — the sink's lazy
   // open is intended, bar-covered behaviour, so a worker concluding the CODE is wrong must stop and

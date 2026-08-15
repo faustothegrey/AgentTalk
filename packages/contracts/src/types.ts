@@ -29,7 +29,7 @@ export type AgentStatus = 'creating' | 'starting' | 'ready' | 'busy' | 'error' |
 // The vocabulary is split by ONE question — "is this the agent's fault?" — because that
 // is the only question propagation asks. It is deliberately NOT LB-67 Finding 1's
 // non-reply vocabulary, which answers a different question ("why did a peer not reply?")
-// for a different consumer (the sender). See design/bl084-plan.md §0.
+// for a different consumer (the sender). See design/archive/bl084-plan.md §0.
 //
 // The classification lives in `isFaultClass` (registry.ts); these are just the names.
 
@@ -170,7 +170,7 @@ export function reasonOf(err: unknown): AgentErrorReason {
 // the agent's fault?", which is the only question M03 propagation asks. This one answers "why did
 // a peer not reply?", whose consumer is the sender. They overlap (`errored`, `exited`) and diverge
 // (`receiver-cancelled` is not an error cause; a workflow-gate refusal is not a non-reply), and
-// `design/bl084-plan.md` §0 rejected conflating them once already. Vocabulary: LB-67 Finding 1.
+// `design/archive/bl084-plan.md` §0 rejected conflating them once already. Vocabulary: LB-67 Finding 1.
 //
 // ⚠️ T3a EMITS EXACTLY ONE OF THESE — `quiet` — AND IT IS ADVISORY. Nothing branches on it and
 // nothing dies of it. The other six are NAMED here and UNWIRED, in the same way T1 named
@@ -215,7 +215,7 @@ export type AgentNonReplyReason =
  * while", and the wedge that motivated it had **no obligation anywhere**: team `planning`, all
  * members `ready`, no `currentTurnId`, so every obligation-based instrument was structurally silent
  * (BL-124 S3 → BL-129). Merging the two would mean widening the obligation gate until it stopped
- * meaning anything — the conflation `design/bl084-plan.md` §0 already rejected once, for the error
+ * meaning anything — the conflation `design/archive/bl084-plan.md` §0 already rejected once, for the error
  * and non-reply vocabularies.
  *
  * ⚠️ ADVISORY, exactly like its sibling: nothing branches on it, nothing dies of it. See `logbook.md`
@@ -314,7 +314,7 @@ export interface NormalizedAgentKind {
 // Accepts either a legacy `provider` (+ providerName) or the new `{transport, vendor}`,
 // and returns all fields consistently populated. The empty input (no provider, no
 // transport) passes through untouched — preserving today's "provider-less agents throw
-// at start()" behaviour. See design/bl024-provider-split-design.md §5.
+// at start()" behaviour. See design/archive/bl024-provider-split-design.md §5.
 export function normalizeAgentKind(input: {
   provider?: AgentProvider | undefined;
   providerName?: string | undefined;

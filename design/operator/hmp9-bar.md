@@ -43,7 +43,7 @@ git -C /tmp/att-op-hmp9 show --stat HEAD
 ```
 
 **Applies only if a correction was delivered.** **Pass:** exactly one file changed —
-`design/bl124-s2-deploy.md` — with a non-trivial edit to §5. **Fail:** empty, or any second file.
+`design/archive/bl124-s2-deploy.md` — with a non-trivial edit to §5. **Fail:** empty, or any second file.
 
 ## R2 — THE ROW THIS RUNG EXISTS FOR: the true half of the paragraph survives
 
@@ -52,7 +52,7 @@ one is that the sweep's state is rebuilt per process, so silence must accumulate
 reduction must never cross a boot line without saying so** — a constraint S3's analysis depends on.
 
 ```
-grep -n "reduce across a boot line" design/bl124-s2-deploy.md
+grep -n "reduce across a boot line" design/archive/bl124-s2-deploy.md
 ```
 
 **Pass:** the per-boot reduction rule is still stated in the document. The grep is *evidence*, not the
@@ -87,7 +87,7 @@ npx tsc -b                                              # exit 0
 git -C /Users/fausto/Software/AgentTalk status --porcelain   # empty — primary checkout untouched
 ```
 
-**Fail:** any change to `non-reply-sink.ts`, `server.ts`, `design/bl124-plan.md`, `design/backlog.md`, any test,
+**Fail:** any change to `non-reply-sink.ts`, `server.ts`, `design/archive/bl124-plan.md`, `design/backlog.md`, any test,
 anything under `design/operator/`, or `AGENT.md`. **Each of these is fenced for a reason and R4 fails regardless
 of the merit of the change** — including a change that is genuinely an improvement.
 

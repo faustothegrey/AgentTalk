@@ -22,7 +22,7 @@ has forged precisely what the check exists to protect, and the check would still
 ## 1. Goal — the item, and the deliverable
 
 > Investigate backlog item BL-120 — `setAgentBusyState(agent, true)` is unreachable, so an attached agent's
-> status never says `busy` — and write a design document at `design/bl120-attached-busy-investigation.md` weighing
+> status never says `busy` — and write a design document at `design/archive/bl120-attached-busy-investigation.md` weighing
 > its recorded options and recommending one, with reasons. Commit that document to your branch; change no code.
 
 The authoritative statement of the task is the committed backlog item — read [[BL-120]] in `design/backlog.md`.
@@ -47,7 +47,7 @@ The item's coordinates were filed against an earlier sha. What matters is the me
 ## 3. What this run is, and is not
 
 **Is:** an **INVESTIGATION that changes no code.** The deliverable is a design document at
-`design/bl120-attached-busy-investigation.md`.
+`design/archive/bl120-attached-busy-investigation.md`.
 
 **Is not:** a fix. Wiring the `true` branch is a behaviour change on shared status logic — `busy` is read by the
 conversation coordinator, the team coordinator, `ALLOWED_TRANSITIONS`, and the reconnect restore. That is a
@@ -101,7 +101,7 @@ fails.
 
 ## 6. Scope
 
-**May write:** `design/bl120-attached-busy-investigation.md` — the one deliverable.
+**May write:** `design/archive/bl120-attached-busy-investigation.md` — the one deliverable.
 
 **May read:** anything in this repo, including the code paths named by the item. The backlog **is** in your
 workdir (`design/backlog.md`), so no external read is needed.

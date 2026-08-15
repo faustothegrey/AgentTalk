@@ -38,7 +38,7 @@ Produce, **without launching anything**, the two artifacts an operator needs to 
 
 **H-2 has the shape of an earlier run called O-2:** a worker is given a **read-only investigation** of a backlog
 item, writes a design document, and **commits it to its own branch** — changing no code. O-2's own plan is at
-`design/o2-plan.md` and its config at `design/operator/o2.config.json`.
+`design/archive/o2-plan.md` and its config at `design/operator/o2.config.json`.
 
 **Part of your task is deciding what H-2 should investigate.** Choose a subject you can justify, and say why it
 is the right one. The goal statement you write goes into the config.

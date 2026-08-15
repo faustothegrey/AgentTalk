@@ -657,7 +657,7 @@ describe('BL-097 DoD row 3 — one foreign path poisons the range', () => {
     expect(matchesWritePath('design/backlog.md', ['design/backlog.md'])).toBe(true);
     expect(matchesWritePath('apps/vendor/design/backlog.md', ['design/backlog.md'])).toBe(false);
     expect(matchesWritePath('design/operator/runs/deep/o5.md', ['design/operator/**'])).toBe(true);
-    expect(matchesWritePath('design/bl097-plan.md', ['design/backlog.md'])).toBe(false);
+    expect(matchesWritePath('design/archive/bl097-plan.md', ['design/backlog.md'])).toBe(false);
   });
 });
 

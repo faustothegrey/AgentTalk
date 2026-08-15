@@ -70,7 +70,7 @@ one — a park without a trigger is just rot), written into each item's status t
 
 | Item | Why it survives the cut |
 |---|---|
-| [[BL-084]] (typed error reason) | An unsupervised agent that fails must be **detectable**. Today in-process errors do not propagate at all, so a failing autonomous worker leaves its team silently stuck. Planned: `design/bl084-plan.md`. |
+| [[BL-084]] (typed error reason) | An unsupervised agent that fails must be **detectable**. Today in-process errors do not propagate at all, so a failing autonomous worker leaves its team silently stuck. Planned: `design/archive/bl084-plan.md`. |
 | [[BL-028]] (dead idle timeout) | **Nothing detects a hung agent** — the wall-clock cap is the only rail. For unsupervised runs a hang burns time and provider budget invisibly. Blocked behind BL-084. |
 | [[BL-086]] (client repo has no governance) | **NEW, filed under this directive.** A worker launched in `agentalk-mcp-client` inherits no rules, yet the launcher/executors/bridge that *run* the ladder live there. Until decided, client-repo tasks are human-only. |
 
@@ -103,7 +103,7 @@ table; anything I did **not** re-verify says so.
 | [[BL-028]] (idle timeout) | stay `todo`, **blocked on BL-084**. **RE-VERIFIED still dead:** `lastProgressAt` declared (`agents/agent.ts:32`), read twice (`registry.ts:781`, `:785`), **written nowhere**. ⚠️ its cited `registry.ts:663` is **stale** — my BL-083 additions shifted it. Status left `todo` not `deferred` — a **PO call** (it is genuinely blocked). |
 | [[BL-045]] (agy attach healthcheck) | **CLOSED → `done` this pass — the premise is superseded.** LB-93 found the root cause: bare `agy --print` = 9.65s, live worker turn ~14s, **comfortably under the 30s default**, so the feared provider-specific 90s timeout is unnecessary — and **absent from the code** (no `90_000`/`90000` anywhere in `packages/`/`apps/`). Its own residual blocker (*"production remains one env var short → BL-057"*) is **`done`**: BL-057 deleted the flag entirely. What remains is a **verification gap, not the filed defect** — a real `start_pair_chat` was never exercised — recorded as the reopen condition. |
 | [[BL-079]] (client sourcemap noise) | stay `todo` but **the claim is OVERSTATED and corrected in the item**: not "every `lib/*.mjs`" and not "a wall of errors" — **4 of 10** files carry a dangling `sourceMappingURL`, and a real `npm test` emits **4** matching lines (suite 93/93 green). Real, trivial, no longer justified by the "buries a real error" argument. |
-| [[BL-024]] (brain leaks client shape) | stay `todo`, **RE-SCOPED — partly landed already.** The two-axis split exists: `AgentTransport` (`types.ts:44`), `normalizeAgentKind`, and `bl024-transport-vendor.test.ts`. Remaining work is retiring `AgentProvider`/`legacyProvider` from the surfaces that still carry it (`types.ts:65, 75, 145, 205`). ⚠️ cited `types.ts:13` is **stale** (now `AgentStatus`). ⚠️ its T3b plan was **untracked, on the PO's machine alone** — now committed (2026-07-27) with a PARKED banner, since its "PO greenlit 2026-07-18" line is superseded by the same-day directive: `design/bl024-t3b-plan.md`. |
+| [[BL-024]] (brain leaks client shape) | stay `todo`, **RE-SCOPED — partly landed already.** The two-axis split exists: `AgentTransport` (`types.ts:44`), `normalizeAgentKind`, and `bl024-transport-vendor.test.ts`. Remaining work is retiring `AgentProvider`/`legacyProvider` from the surfaces that still carry it (`types.ts:65, 75, 145, 205`). ⚠️ cited `types.ts:13` is **stale** (now `AgentStatus`). ⚠️ its T3b plan was **untracked, on the PO's machine alone** — now committed (2026-07-27) with a PARKED banner, since its "PO greenlit 2026-07-18" line is superseded by the same-day directive: `design/archive/bl024-t3b-plan.md`. |
 | [[BL-070]] (client test flake) | stay `todo`, low priority. Test still present (`agentalk-mcp-client/__tests__/exec-rpc.test.ts:199`); client suite **93/93** green, so still "reproduce-or-park", not reproduced this pass. |
 | [[BL-044]] (API multi-agent consensus non-functional) | stay `todo` — **NOT re-verified this pass.** Its three-stacked-walls claim needs a live run with real keys; I did not do one, so it is neither confirmed nor refuted here. **The largest un-audited claim in the queue.** |
 | [[BL-068]] (id convention unenforced) | **propose `deferred`** — the PO already chose *"file the findings, build nothing"* (2026-07-1x), which is a park, not a queue item. Reopen when the cross-repo contract change becomes PO scope. **PO call; not changed unilaterally.** |
@@ -141,7 +141,7 @@ immediately, defers the wake unknown). Grounded feasibility: interpose at `regis
 ### Backlog gate — 2026-07-11 (M19 inception, 2nd pass · architect: Claude · planner POV: Codex · PO ruling in session)
 
 Per §3b, the second-pass M19 gate — the one LB-71 deliberately deferred until **SP2's answer was in hand**. SP2
-closed **ATTACH-BLOCKED → BL-026** (`design/spike2-consensus-real-cli-implementation.md`): two real CLIs cannot yet
+closed **ATTACH-BLOCKED → BL-026** (`design/archive/spike2-consensus-real-cli-implementation.md`): two real CLIs cannot yet
 coordinate — Codex reaches `await_turn`; Claude's non-interactive tool-permission gate denies it; the client
 wire-contract is stale (v5 vs server v7); attached CLIs register `provider:mcp`.
 
@@ -179,7 +179,7 @@ endorses the sequence; T3 must extend the existing `send_to_agent` argument path
 PO escalation); architect verified the POV's three file-level claims against both repos. SM go/no-go reason
 (durable, per the SM grant): inception + POV aligned with no open feasibility question, no competing `doing`
 item, budgets healthy (claude 33% / codex 31% / gemini 26% weekly at gate time).
-Plan authored after the gate: `design/milestone18-self-hosting-plan.md` (Gate 1 review: Claude).
+Plan authored after the gate: `design/archive/milestone18-self-hosting-plan.md` (Gate 1 review: Claude).
 
 | Item | Disposition for this gate |
 |---|---|
@@ -233,7 +233,7 @@ exercises realistic idle against the real orchestrator anyway; a separate probe 
 ### Backlog gate — 2026-07-02, second gate (opening M15 · architect: Claude)
 
 Per §3b, dispositioned before opening **M15 — Arbiter Consensus, Direct Path**
-(`design/milestone15-arbiter-consensus-plan.md`). Context: **PO direct decision in session** — preserving the
+(`design/archive/milestone15-arbiter-consensus-plan.md`). Context: **PO direct decision in session** — preserving the
 protocol machine byte-identically while extracting (M14's approach) proved too costly in practice; M15 builds
 a **parallel ArbiterCoordinator** and freezes (not removes) the protocol path. Inception ceremony compressed
 by PO: direct PO↔Architect discussion in session replaces the formal inception doc round; Planner advisory
@@ -251,7 +251,7 @@ POV (Codex) still runs before breakdown.
 ### Backlog gate — 2026-07-02 (opening M14 · architect: Claude)
 
 Per §3b, every item dispositioned before opening **M14 — Facilitator Extraction (Arbiter Epic 1)**,
-plan at `design/milestone14-facilitator-extraction-plan.md`. Inception closed by the PO in session
+plan at `design/archive/milestone14-facilitator-extraction-plan.md`. Inception closed by the PO in session
 (2026-07-02): **leaner scope — extraction only; all judge-touching work parked**; naming = milestone
 series (M14); BL-008 residual absorbed; BL-003 superseded; BL-010 confirmed; the pending BL-002 drop
 committed with this gate record.
@@ -307,7 +307,7 @@ groundwork this session; ratification calls are marked.
   structural action is unrepresentable at generation time. Decisions (Fausto): D-T4-1 static enum ·
   D-T4-2 declare-unfit (no `json_object` fallback) · D-T4-3 keep `response_format`. Deviation: generic
   `message_payload` (enum is the guarantee; `validatePayload` is the net). Gate: tsc 0, 213/213. Record:
-  `design/milestone10-t4-api-enforcement-plan.md` + ledger §T4 + **LB-25**. *(Sibling T3 single-tool
+  `design/archive/milestone10-t4-api-enforcement-plan.md` + ledger §T4 + **LB-25**. *(Sibling T3 single-tool
   `consensus_respond`, v5→v6 cross-repo, stays deferred per D3.)*
 
 - **[done] 2026-06-27 — M10-T4 live-verification probe — VERIFIED ✅ (reviewer-run), endorsed for merge.**
@@ -316,7 +316,7 @@ groundwork this session; ratification calls are marked.
   **Measured findings (LB-46, reproduced independently by Claude):** `openrouter`/gpt-4o-mini = **fit**;
   `google`/gemini-2.5-flash = **http_reject 400** (ANY-mode + JSON mime explicitly unsupported);
   `nous`/deepseek-v4-flash = **http_reject 404** (default model missing — see LB-1). Script-only, zero production
-  change; tsc 0, suite 245/245. Plan `design/milestone10-t4-live-probe-plan.md`, ledger §"T4 Live Probe", LB-46.
+  change; tsc 0, suite 245/245. Plan `design/archive/milestone10-t4-live-probe-plan.md`, ledger §"T4 Live Probe", LB-46.
   **Follow-on left open (SM decision):** the probe makes Google's unfitness a *measured fact* → whether to reopen
   **D-T4-2** (declare-unfit → detect-and-gate, with provider-verdict cache) is now a real, triggerable choice, not
   a hypothesis. *(MERGED to `master` at `461791d` + pushed, 2026-06-27; branch deleted.)*
@@ -324,7 +324,7 @@ groundwork this session; ratification calls are marked.
 ### Backlog gate — 2026-06-22 (opening M08 · architect: Claude)
 
 Per §3b, every open item was dispositioned **before** opening the M08 epic. M08 = transport/lifecycle
-fault tolerance, plan at `design/milestone08-transport-fault-tolerance-plan.md`.
+fault tolerance, plan at `design/archive/milestone08-transport-fault-tolerance-plan.md`.
 
 | Open item | Disposition for the M08 gate |
 |---|---|
@@ -400,7 +400,7 @@ tags: [self-hosting, identity, roles, enforcement]
   G3-2 provider≠trust-channel) — all pre-merge. Rider findings: BL-020 (orchestrator dies on client
   disconnect — flywheel catch #2), port-9899/meter collision note. Epic relay count ≈15 — flat vs M16, as
   expected: gates still relay via terminal until BL-017 (the fall is M18's claim, not M17's). Ledger:
-  `design/milestone17-gate-over-channel-implementation.md`.
+  `design/archive/milestone17-gate-over-channel-implementation.md`.
 
 <!-- @item
 id: BL-013
@@ -417,7 +417,7 @@ tags: [self-hosting, attach-mode, baton]
   scope amendment M16-T2a (first working resolver + wire-contract v7, synced cross-repo). Deviations D1/D2
   recorded+accepted at gate 3; **owed piece for M17: the exec-bridge translation layer cannot carry `baton`
   args** (real CLI sessions can't send envelopes yet). Epic relay count ~15 vs M15 baseline ~20–30/day.
-  Ledger: `design/milestone16-one-real-baton-implementation.md`.
+  Ledger: `design/archive/milestone16-one-real-baton-implementation.md`.
 
 <!-- @item
 id: BL-012
@@ -434,7 +434,7 @@ tags: [consensus, arbiter, direct-path]
   (275/275 suite + M14 identity harness green at close). Live recorded proof
   `design/m15-t3-live-arbiter.ndjson`. T3 closed by Codex as temporary implementer+reviewer (PO-requested);
   Claude's independent review found + Codex fixed one work-routing regression (composition guard) before
-  merge. Ledger: `design/milestone15-arbiter-consensus-implementation.md`.
+  merge. Ledger: `design/archive/milestone15-arbiter-consensus-implementation.md`.
 
 <!-- @item
 id: BL-001
@@ -456,8 +456,8 @@ epic: M11
 tags: [consensus, robustness]
 -->
 - [done · was: promoted→M11 (consensus robustness) · planned, 2026-06-30, renamed per §3e convention 2026-06-30] — **Consensus / Protocol Robustness — the
-  remaining pieces after M08/M10.** Opened as M11, plan at `design/milestone11-consensus-robustness-plan.md`
-  and ledger at `design/milestone11-consensus-robustness-implementation.md`. Naming per §3e: SP1 (done), M11-T1 (next, origin: M10-T3), M11-T2, M11-T3.
+  remaining pieces after M08/M10.** Opened as M11, plan at `design/archive/milestone11-consensus-robustness-plan.md`
+  and ledger at `design/archive/milestone11-consensus-robustness-implementation.md`. Naming per §3e: SP1 (done), M11-T1 (next, origin: M10-T3), M11-T2, M11-T3.
   The original
   "Failure-modes split" item below carries the full history; this line is the promotion record.
   **M08 OPENED 2026-06-22** → `milestone08-transport-fault-tolerance-plan.md` (the three transport
@@ -581,7 +581,7 @@ tags: [registry, test-coverage]
 
 - [done] 2026-06-27 (gate sweep — was stale `[PROMOTED → M09]`) — **Rename `mcp` → `mcp`/`api` across the
   codebase** — ✅ **DONE + EPIC CLOSED** (M09, merged + history squashed `565ad3d`, 2026-06-25; ledger
-  `design/milestone09-mcp-vocabulary-removal-implementation.md` = "DONE + EPIC CLOSED"). The taxonomy is now
+  `design/archive/milestone09-mcp-vocabulary-removal-implementation.md` = "DONE + EPIC CLOSED"). The taxonomy is now
   `api | mcp | gemini | claude | codex`; the open sub-questions (scenario-runner name, `Mcp*` form, provider-union
   first) were all resolved during M09. The promotion text below is kept for history. *(Found by the §3b gate,
   2026-06-27.)*
@@ -693,7 +693,7 @@ tags: [self-hosting, flywheel, scope-fence, robustness, baton]
   count falls here). DoD per the draft §M18: every baton/gate in the recording; friction→backlog entries
   cite recording evidence (the program's true DoD); C3 reworded — relay count recorded per task, falls
   measurably after T3, every relay a declared fallback moment. Inception + planner POV (endorses, architect-
-  verified): `design/self-hosting-program-draft.md` §M18. Plan: `design/milestone18-self-hosting-plan.md`.
+  verified): `design/self-hosting-program-draft.md` §M18. Plan: `design/archive/milestone18-self-hosting-plan.md`.
   **Source:** PO + Architect inception, 2026-07-09.
 
 <!-- @item
@@ -710,7 +710,7 @@ tags: [consensus, arbiter, facilitator, refactor]
   implementation reproduces today's deterministic rules **byte-identically** (zero behaviour change, zero LLM
   calls). Absorbs the BL-008 residual (unify the two protocol event-emission shapes — same surface). Leaner
   scope per PO (2026-07-02): all judge-touching work parked → BL-010. Plan:
-  `design/milestone14-facilitator-extraction-plan.md`. Program: `design/arbiter-consensus-draft.md` §7/§8/§10.
+  `design/archive/milestone14-facilitator-extraction-plan.md`. Program: `design/arbiter-consensus-draft.md` §7/§8/§10.
   **Source:** PO + Architect inception, 2026-07-02.
 
 ### Deferred (intentionally parked — each carries a reopen condition)
@@ -863,7 +863,7 @@ epic: null
 tags: [self-hosting, ladder, spike, claude-worker, governance, agent-md]
 -->
 - [done · **SPIKE ANSWERED ✅ — run executed & closed 2026-07-27 (PO-closed); findings `1ea893a`, plan `9258f39`**
-  · closing block below · plan + full evidence: `design/spike-claude-worker-plan.md` §8 · Gate 1 exercised by the
+  · closing block below · plan + full evidence: `design/archive/spike-claude-worker-plan.md` §8 · Gate 1 exercised by the
   PO directly — sole available agent must not review its own plan · below rung 5: a derisking spike, not a rung] —
   **Can a `claude` worker, governed by AGENT.md itself, do autonomous dev work inside an AgentTalk session?**
   The PO's long-horizon goal (2026-07-27): **run AgentTalk's own development inside an AgentTalk session**, the
@@ -974,7 +974,7 @@ tags: [bl-028, observability, measurement, dead-instrument, live-config, fail-si
 autonomy: human-only
 -->
 - [done · **CLOSED 2026-08-14 — S3 executed; the answer is W2. See the closing block at the end of this item
-  and `design/bl124-s3-distribution.md`.** Filed 2026-08-12 by the planner, on a PO decision taken the same
+  and `design/archive/bl124-s3-distribution.md`.** Filed 2026-08-12 by the planner, on a PO decision taken the same
   session: "measurement spike
   first"; evidence gathered 2026-08-11, the session spanned the date boundary. Found while grounding
   [[BL-028]] T3c's precondition against the running system, not against its plan] —
@@ -1027,7 +1027,7 @@ autonomy: human-only
 
   **⬛ S1 DELIVERED and MERGED 2026-08-13 (`96ab154`), PO-authorized. The item stays `todo`: S1 is one unit of
   three, and the measurement this item exists to obtain does not exist yet.** Gate 1 passed the same day on
-  `design/bl124-plan.md` with five findings corrected (`a702b7c`) — one of which, F1, had the plan mandating a
+  `design/archive/bl124-plan.md` with five findings corrected (`a702b7c`) — one of which, F1, had the plan mandating a
   `transport` field the notice does not carry while forbidding the emit-site change that would supply it.
   - **What landed:** `packages/observability/src/recordings/non-reply-sink.ts` — an always-on append-only JSONL
     sink, wired at `server.ts`'s `agent_non_reply` handler. No flag disables it; the env knob only *redirects*
@@ -1074,7 +1074,7 @@ autonomy: human-only
 
   **⬛ CLOSED 2026-08-14 — S2 + S3 executed. The spike answered its question, and the answer is W2.**
 
-  **The artifact is `design/bl124-s3-distribution.md`.** There is no distribution: the sink is empty after real
+  **The artifact is `design/archive/bl124-s3-distribution.md`.** There is no distribution: the sink is empty after real
   traffic, and reduction by `reason × transport` is vacuous — not "0 in every bucket", which would imply the
   buckets were reachable and merely unvisited. **They are not reachable.**
 
@@ -1109,7 +1109,7 @@ autonomy: human-only
     multi-agent runs. Recorded as unknown rather than estimated.
   - gate:        no code changed — docs + backlog only; `validate-backlog.mjs` clean; suite not re-run (nothing
     under test was touched) and **that is stated rather than implied green**
-  - diff:        2 files (`design/bl124-s3-distribution.md` new, `design/backlog.md`), +1 artifact / 4 items filed
+  - diff:        2 files (`design/archive/bl124-s3-distribution.md` new, `design/backlog.md`), +1 artifact / 4 items filed
   - outcome:     **CLOSED ✅ — negative result, delivered without touching the threshold**
   - seats:       planner · temporary implementer · task-end reviewer, all held by Claude under the
     resource-scarcity fallback; independence defaults **not** satisfied, recorded rather than glossed. The
@@ -1128,10 +1128,10 @@ autonomy: human-only
   the planner on PO instruction, during the S2 deploy itself; found while
   verifying the restart, by reading the code instead of trusting the runbook. Queued for an operator-launched
   run] —
-  **`design/bl124-s2-deploy.md` §5 claims the sink writes a `boot` line at every boot. It does not — the boot
+  **`design/archive/bl124-s2-deploy.md` §5 claims the sink writes a `boot` line at every boot. It does not — the boot
   line is written lazily, on the first notice of that boot — so a correct deploy looks like a failed one.**
 
-  **The wrong sentence**, at `design/bl124-s2-deploy.md:135`:
+  **The wrong sentence**, at `design/archive/bl124-s2-deploy.md:135`:
 
   > **A restart mid-run splits the measurement.** Each boot writes a `{"kind":"boot"}` line for exactly this
   > reason — the sweep's state (`lastProgressAt`, `currentTurnId`, the dedup map) is rebuilt per process, so
@@ -1166,10 +1166,10 @@ autonomy: human-only
   3. The per-boot reduction guidance is **preserved**, not deleted.
   4. §4 ("Verify the deploy BEFORE driving any traffic") is checked for the same implication and does not
      acquire it. It currently says the deploy check does not prove the sink writes — that sentence stays.
-  5. `git diff --stat` shows **exactly one file changed**: `design/bl124-s2-deploy.md`.
+  5. `git diff --stat` shows **exactly one file changed**: `design/archive/bl124-s2-deploy.md`.
 
-  **Scope — MAY touch `design/bl124-s2-deploy.md` and nothing else.** Explicitly **MUST NOT** touch
-  `non-reply-sink.ts`, `server.ts`, `design/bl124-plan.md`, any test, or BL-124's own entry above. **The lazy
+  **Scope — MAY touch `design/archive/bl124-s2-deploy.md` and nothing else.** Explicitly **MUST NOT** touch
+  `non-reply-sink.ts`, `server.ts`, `design/archive/bl124-plan.md`, any test, or BL-124's own entry above. **The lazy
   open is correct, intended and bar-covered behaviour — it is not a bug to be fixed.** If the worker concludes
   the *code* is wrong, that is a **show-stopper**: stop and report it, do not change it (⛔ Implementer Rule 2).
 
@@ -1178,7 +1178,7 @@ autonomy: human-only
 
   **⬛ DONE 2026-08-13 — delivered autonomously as run `hmp9`, graded PASS, merged `f037ab8`.** Filed, marked
   eligible, briefed, barred, delivered and closed inside one session; the worker's commit is `4bdeae7`
-  (`design/bl124-s2-deploy.md`, +15/−3, 2m44s against a 40-minute rail that never fired). Grading, with the
+  (`design/archive/bl124-s2-deploy.md`, +15/−3, 2m44s against a 40-minute rail that never fired). Grading, with the
   commands I ran rather than the operator's report: `design/operator/hmp9-grading.md`.
 
   **The deciding row held.** R2 required the *true* half of the paragraph — the per-boot reduction rule, which
@@ -1220,7 +1220,7 @@ autonomy: human-only
 - [done · **FIXED 2026-08-14 — see the closing block at the end of this item** · found by the hmp9 worker while
   fixing [[BL-125]], reported and deliberately NOT fixed — it was one
   line away, in the file it already had open, and it left it alone] —
-  **`design/bl124-s2-deploy.md` §5 tells the reader to `tail -f ~/.agenttalk/agent-non-reply.jsonl`, which
+  **`design/archive/bl124-s2-deploy.md` §5 tells the reader to `tail -f ~/.agenttalk/agent-non-reply.jsonl`, which
   fails with *No such file or directory* on a machine where no notice has ever been recorded.**
 
   The snippet is wrong for **precisely the reason the same section now explains**: the sink opens nothing until
@@ -1276,13 +1276,13 @@ autonomy: human-only
   180 s threshold, spanning one or two 30 s sweep ticks — and produced **no notice and no `console.warn`**.
   `registry.ts:1028` warns unconditionally *before* the emit, so a missing warn proves the failure is upstream
   of the sink: `classifySilence` never classified. Six MCP calls, all at the two ends of the turn, so
-  `lastProgressAt` was genuinely stale throughout. Evidence: `design/bl124-s3-distribution.md` §3a.
+  `lastProgressAt` was genuinely stale throughout. Evidence: `design/archive/bl124-s3-distribution.md` §3a.
 
   **Consequence:** [[BL-028]] T3c's precondition is not "a measured distribution" but "a sweep that can observe
   an exec turn". Fixing this alone is **not** sufficient — [[BL-128]] independently blocks the other turn class.
 
   **✅ CLOSED 2026-08-14 — and the fix is TWO halves, the second of which is the load-bearing one.**
-  Plan: `design/bl127-bl128-plan.md` (PO answered §8 the same day: option (a), 600 s default, chokepoint).
+  Plan: `design/archive/bl127-bl128-plan.md` (PO answered §8 the same day: option (a), 600 s default, chokepoint).
 
   **The mint** is smaller than this item implies: `await_turn`'s stamp (`registry.ts:502-508`) *already* handled
   exec turns — both branches flow into the same assignment. The turn simply arrived with neither field. So one
@@ -1354,7 +1354,7 @@ autonomy: human-only
   non-reply threshold is a design call, not a constant swap.
 
   **✅ CLOSED 2026-08-14 — PO took option (a): forward a deadline on ALL paths, same 600 s default as the
-  worker.** Plan: `design/bl127-bl128-plan.md` §4. Lowering the threshold (option (c)) was rejected outright in
+  worker.** Plan: `design/archive/bl127-bl128-plan.md` §4. Lowering the threshold (option (c)) was rejected outright in
   the plan: the threshold is the **output** of [[BL-028]]'s measurement, and tuning it to fit a guard is exactly
   the show-stopper `bl124-plan.md` §6 fences. Raising the constant alone (option (b)) would have left planner
   turns on a hard-coded budget nobody chose and re-created the same silent coupling at a new number.
@@ -1765,7 +1765,7 @@ tags: [engine, registry, dead-code, rename, bl120-followup, operator-rung, zero-
 -->
 - [done · **MERGED 2026-08-08 — delivered autonomously on operator run `hmp7`, THE FIRST RUNG WHERE AN AGENT
   CHANGED ENGINE CODE; closing block at the end** · PO-approved at Gate 1 2026-08-08 · plan:
-  `design/bl121-o2-plan.md` · option O2 from [[BL-120]]'s investigation, itself delivered on run `hmp6`] —
+  `design/archive/bl121-o2-plan.md` · option O2 from [[BL-120]]'s investigation, itself delivered on run `hmp6`] —
   **Delete the unreachable `busy` branch in `Registry`, and rename the helper to say what it actually does.**
   `setAgentBusyState(agent, busy: boolean)` has exactly **one** call site and it passes **`false`**, so the
   `busy === true` branch — and with it `updateAgentSessionStatus(agent, 'busy')` — can never execute.
@@ -1802,7 +1802,7 @@ tags: [engine, registry, dead-code, rename, bl120-followup, operator-rung, zero-
   **Why the fence is tight:** wiring rather than deleting would put a second `busy` producer next to
   `ArbiterCoordinator`'s strict `=== 'ready'` convergence gate and a transition table that **throws** — an
   escaped `Invalid transition: terminated -> busy` once killed the orchestrator process (M17 G3-4, [[BL-020]]).
-  Full reasoning: `design/bl120-attached-busy-investigation.md` §5-6.
+  Full reasoning: `design/archive/bl120-attached-busy-investigation.md` §5-6.
 
   **✅ DONE — MERGED 2026-08-08 (worker commit `b2a3b67`) — run `hmp7`. Grading:
   `design/operator/hmp7-grading.md`. PASS**, with **R4 disposed by the PO as a defective bar row**. 13m26s
@@ -1863,7 +1863,7 @@ tags: [engine, dead-code, registry, status, bl028-followup, investigation, opera
   restore, and `setAgentStatus` transitions are what M03 propagation hangs off. **Nobody has established what
   else would move.** Deliver a design document weighing the options and recommending one, with reasons;
   **change no code.** T3b needs this answered before it can name `awaiting-input` against a real status.
-  **Deliverable:** `design/bl120-attached-busy-investigation.md`, committed to the task branch.
+  **Deliverable:** `design/archive/bl120-attached-busy-investigation.md`, committed to the task branch.
   **Bar:** the document identifies every production reader of `busy`/`sessionStatus` and says, per reader, what
   changes if the branch is wired — or states plainly which it could not determine. A recommendation with no
   reader inventory does not meet it.
@@ -1872,7 +1872,7 @@ tags: [engine, dead-code, registry, status, bl028-followup, investigation, opera
 
   **✅ DONE — MERGED 2026-08-07 (`fcbc5a1`; worker commit `0f7eb6a`) — delivered by a worker commissioned over
   HMP on run `hmp6`, the sixth rung and the first where the operator listed the queue itself.** Deliverable:
-  `design/bl120-attached-busy-investigation.md` (280 lines). **Graded PASS** against the pre-registered bar
+  `design/archive/bl120-attached-busy-investigation.md` (280 lines). **Graded PASS** against the pre-registered bar
   (`design/operator/hmp6-bar.md`, sha256 `8d8e98d1…48476`, unedited): R1 deliverable ✅ · **R2 reader inventory
   — 21 `agent.status` readers + 9 `sessionStatus`, per reader, with the sweep method published so the
   exhaustiveness claim is checkable, and four items honestly recorded as undetermined** ✅ · R3 recommendation
@@ -1967,7 +1967,7 @@ tags: [engine, relay, unbounded-loop, provider-budget, in-process-driver, rung5-
   established relay behaviour on shared engine code → **full planning + Gate 1**, and it interacts with [[BL-078]]
   (driver-path failure propagation) and [[BL-028]] (the dead idle timeout, which would not catch this either).
 
-  **PLANNED 2026-07-27 — `design/bl083-plan.md`.** ⚠️ **The framing
+  **PLANNED 2026-07-27 — `design/archive/bl083-plan.md`.** ⚠️ **The framing
   above is too narrow, and the plan leads with the correction: no team task creates a conversation at all**
   (verified — `startConversation` is reachable only from the operator HTTP endpoint and the scenario runner;
   neither `team-coordinator.ts` nor `arbiter-coordinator.ts` creates one; a `planner-worker` probe reported
@@ -2095,7 +2095,7 @@ epic: null
 tags: [launcher, client, process-lifecycle, ladder, autonomy, spike-finding]
 -->
 - [done · **MERGED 2026-07-27 (`c7a5991`, client repo; NOT pushed)** · closing block below · found live during the BL-080 claude-worker spike · plan/evidence:
-  `design/spike-claude-worker-plan.md` §8 F1 · **not fixed — out of that spike's scope** (Implementer Rule 2)] —
+  `design/archive/spike-claude-worker-plan.md` §8 F1 · **not fixed — out of that spike's scope** (Implementer Rule 2)] —
   **The Bite-0 launcher leaks an orphaned orchestrator: every run leaves a port-holding zombie.**
   `stopInstance` (`agentalk-mcp-client:scripts/launcher.mjs`) kills the process it spawned — but when
   `instance.startCommand` is `npm run backend`, the process it spawned is **npm**, and npm's real child
@@ -2192,7 +2192,7 @@ tags: [agents, environment, observability, platform, capabilities]
 -->
 - [done · **DONE 2026-07-18 — both phases MERGED + PUSHED. P1 AgentTalk `0e594bc`; P2 AgentTalk `6becfa2` + client `8f02b02` (lockstep v8)** · sibling of [[BL-072]] (same "environment awareness" ask, PO 2026-07-18) · genuinely self-verifiable, unlike BL-072] — **Every team member AND the orchestrator gather info about the host system they run on (OS, arch, versions…), because future behaviours may depend on it.** PO ask (2026-07-18): e.g. knowing it's a Mac (`darwin`/`arm64`), OS release, cpu/mem, node version, hostname. Delivered as two phases; both live-verified.
 
-  **STATUS — DONE (plans: `design/bl071-plan.md`, `design/bl071-p2-plan.md`):**
+  **STATUS — DONE (plans: `design/archive/bl071-plan.md`, `design/archive/bl071-p2-plan.md`):**
   - **P1 ✅ MERGED (`0e594bc`, 2026-07-18):** the *orchestrator's own* host env. Added `HostEnvironment`
     (`packages/contracts/src/types.ts` — pure type, wire-contract hash **v7 unchanged**), a pure
     `captureHostEnvironment()` helper (`packages/runtime-core/src/shared/environment.ts`), and the
@@ -2642,7 +2642,7 @@ tags: [scope-fence, tooling, cross-repo, friction-m18]
   diffs only the AgentTalk working tree, so any task whose code lives in `agentalk-mcp-client` (or any other
   repo) is **unfenced while reporting green**. M18-T3a's *primary* change was `bridge.mjs`; its `scope-check`
   passed having inspected none of it. **Evidence:** M18-T3a Gate-1 condition 2 + the task-end review's declared
-  honesty note (`design/milestone18-self-hosting-implementation.md`). Fix sketch: manifest gains a per-repo
+  honesty note (`design/archive/milestone18-self-hosting-implementation.md`). Fix sketch: manifest gains a per-repo
   section; the script iterates declared repos. Until then a green `scope-check` must not be read as "the diff
   was fenced." **2026-07-10 backlog gate:** rather than fix this for M19, the **PO constrained M19-T1's refactor
   target to the AgentTalk repo** — so the fence is not blind for that task. The hole remains; ranked for after M19.
@@ -2897,7 +2897,7 @@ tags: [architecture, brain, types, friction-m18]
   **2026-07-11 M19 gate — SP2 CONFIRMED it: both real CLI candidates registered `provider:mcp`** (14 recorder events,
   0 vendor-shaped). Disposition **unchanged — stays a recorded constraint, NOT folded into M19** (planner pushback,
   architect-adopted; consistent with the 2026-07-10 out-of-scope ruling). M19 records `provider:mcp` and works within it.
-  **UPDATE (2026-07-18) — DESIGN DOC written (architect): `design/bl024-provider-split-design.md`.** Ground-truth
+  **UPDATE (2026-07-18) — DESIGN DOC written (architect): `design/archive/bl024-provider-split-design.md`.** Ground-truth
   re-audit (line refs had drifted): the 3 leaks confirmed at `types.ts:31`, `team-coordinator.ts:1004-1017`,
   `registry.ts:246/249/360/597`. **Key finding:** the registry sniff sites never distinguish the vendor names from
   `'mcp'` — they collapse to one **transport** predicate (in-process vs attached); the *only* vendor-behavioural
@@ -2906,7 +2906,7 @@ tags: [architecture, brain, types, friction-m18]
   no engine change) · T2 (frozen-engine slice) · T3 (client cutover). **GATE PASSED (PO, 2026-07-18):** all four §8
   questions decided per recommendations, incl. **explicit authorization for the T2 frozen-engine edit** (byte-identical
   timeout + IP-15 proof obligation). See the design doc for the recorded decisions.
-  **UPDATE (2026-07-18) — T1 MERGED (`5dfab83`, branch `task-BL-024-T1`, PO-gated).** Plan: `design/bl024-t1-plan.md`
+  **UPDATE (2026-07-18) — T1 MERGED (`5dfab83`, branch `task-BL-024-T1`, PO-gated).** Plan: `design/archive/bl024-t1-plan.md`
   (gate approved). Additive type+edge, **engine untouched**: `AgentTransport`/`AgentVendor`/`AgentCapabilities` +
   pure `normalizeAgentKind` (contracts); Agent record carries the new axes alongside the still-populated legacy
   `provider`/`providerName`; registry driver selection now keyed on `transport`; `POST /api/agents` accepts the new
@@ -2915,7 +2915,7 @@ tags: [architecture, brain, types, friction-m18]
   the frozen engine into the per-agent `capabilities` metadata (authorized; byte-identical + IP-15 proof); then T3
   (client cutover + legacy `provider` drop). Follow-up noted: add `contracts` to the vitest `include`.
   **UPDATE (2026-07-18) — T2 MERGED (`0375ecd` on branch `task-BL-024-T2`, merge `8375387`, PO-gated).** Plan:
-  `design/bl024-t2-plan.md` (gate approved with recommendations). The frozen `getFactCollectionTimeoutMs` is now
+  `design/archive/bl024-t2-plan.md` (gate approved with recommendations). The frozen `getFactCollectionTimeoutMs` is now
   **vendor-blind** — reads only `capabilities.factCollectionTimeoutMs` (team + members); no `team.provider`/
   `agent.providerName === 'gemini'` sniff remains in the coordinator. **D1:** `normalizeAgentKind` closes the
   `provider:'mcp'`+`providerName:'gemini'` gap (caps present iff the agent would have triggered the old 720s bump);
@@ -2927,7 +2927,7 @@ tags: [architecture, brain, types, friction-m18]
   clean, suite **398/398** (389 + 9 new, existing tests unmodified), wire-contract hash **v8 unchanged**. **Item
   stays `todo` — T3 next:** client cutover (send `{transport,vendor}`) + drop the legacy `provider` acceptance
   (cross-repo). Not pushed at merge time — awaiting the PO's `push` word.
-  **UPDATE (2026-07-18) — T3 SPLIT into T3a/T3b (PO-approved); T3a MERGED + PUSHED.** Plan: `design/bl024-t3-plan.md`
+  **UPDATE (2026-07-18) — T3 SPLIT into T3a/T3b (PO-approved); T3a MERGED + PUSHED.** Plan: `design/archive/bl024-t3-plan.md`
   (§4 flag-day rationale; §7b gate decisions). **T3a** (client `agentalk-mcp-client` @ merge `3612511`, feat `71fb867`):
   `agent-launcher` cuts over to `{transport:'attached', vendor}` for `gemini/claude/codex`; **server needs no change**
   (`activateAgent` re-derives from the stored provider; `/api/agents` already accepts the new shape since T1). Client
@@ -2939,7 +2939,7 @@ tags: [architecture, brain, types, friction-m18]
   legacy acceptance while goose is the sole remaining user of it. **Item stays `todo` — T3b pending the goose spec**
   (union + reverse-map for goose, then drop legacy acceptance + fixture/recordings sweep).
   **UPDATE (2026-07-18) — goose spec GREENLIT (PO, reversing "not now") + T3b MERGED + PUSHED (cross-repo).** Plan:
-  `design/bl024-t3b-plan.md`. **The PO's aim was "a real goose client at the end" — achieved and LIVE-PROVEN.** goose
+  `design/archive/bl024-t3b-plan.md`. **The PO's aim was "a real goose client at the end" — achieved and LIVE-PROVEN.** goose
   was fully broken (start failed at `registry.ts:293`); now it is a first-class vendor. AgentTalk (`92bd383`, merge of
   `d0f7a99`): `AgentVendor`/`AgentProvider` += `'goose'` (serialization label post-T2), symmetric `normalizeAgentKind`
   case (→ `attached`), server validates `vendor:'goose'`; goose gets **no** capability (default fact-collection
@@ -2959,7 +2959,7 @@ tags: [architecture, brain, types, friction-m18]
   `provider` input (`/api/agents` create+start, `/api/teams`) + migrate the **~12 scripts** (`test-live-*.mjs`, m07/m14/m17
   smokes) + a **read-side recordings shim** (`planning_runs/*.json`); **keep** `agent.provider` as a derived
   serialization field and DON'T delete the `AgentProvider` type; leave `isUsageCaptureProvider` alone (different axis).
-  Plan: `design/bl024-t3b-plan.md` §2/§4.
+  Plan: `design/archive/bl024-t3b-plan.md` §2/§4.
 
 <!-- @item
 id: BL-025
@@ -3056,7 +3056,7 @@ autonomy: human-only
   receiver-cancelled`). One piece of work, not two.
 
   **2026-07-27 — that "one piece of work" is now filed as [[BL-084]], and this item depends on it.** The BL-078
-  decision brief (`design/bl078-decision.md`) found the *same* missing primitive from the other direction:
+  decision brief (`design/archive/bl078-decision.md`) found the *same* missing primitive from the other direction:
   `error` is one undifferentiated bucket, so neither the idle timeout (here) nor driver-path propagation
   (BL-078) can land alone. **Do the typed reason once, in BL-084; then this item and BL-078 both close on top of
   it.** Status left `todo` rather than `deferred` — a PO call, worth making at the next backlog gate.
@@ -3071,7 +3071,7 @@ autonomy: human-only
   attached agent goes `ready → busy` with **no disconnect**; reproduced by live probe twice. The error was
   reading a **file name** as a statement of scope. **This item's original "doubly dead" diagnosis was correct;
   my correction to it was the mistake.** Refuted by the hmp6 run investigating [[BL-120]] — an item that
-  paragraph produced. Evidence: `design/bl120-attached-busy-investigation.md` §2.2; retraction in
+  paragraph produced. Evidence: `design/archive/bl120-attached-busy-investigation.md` §2.2; retraction in
   `design/bl028-plan.md` §2.
   **What still stands:** the gate T3a shipped is `currentTurnId` ("an obligation is outstanding"), which is a
   sharper question than "is this agent busy" and is the one the sweep asks. It was **argued from a false
@@ -3166,7 +3166,7 @@ autonomy: human-only
   obligation in unbroken silence for **233 s** and produced no notice **and no `console.warn`** — and
   `registry.ts:1028` warns unconditionally immediately before the emit, so the failure is upstream of the sink.
   **T3b's recorder and sink are fine; they have simply never been exercised.** Artifact:
-  `design/bl124-s3-distribution.md`.
+  `design/archive/bl124-s3-distribution.md`.
   **What this changes for T3c:** the number was never the blocker. **Its real precondition is now "a sweep that
   can observe an exec turn"** — i.e. BL-127 and BL-128, which are coupled (fixing either alone leaves the
   detector dead) and are a **PO scope call**, both being shared engine code under the show-stopper fence.
@@ -3252,7 +3252,7 @@ tags: [process, governance, reassignment, rating, sm, honesty]
   the scope-creep-green the *Honesty over Results* section forbids, so it must **reward an honest RED and penalise a
   scope-creep GREEN**, i.e. rate *scope discipline + honesty*, not pass/fail; (4) **sample size** — N=1 is noise; a
   *pattern* of breaches counts, a single one should not tank a rating. **Not an ELO number** — a lightweight dossier
-  in the project's own idiom. **Evidence:** SP2 breach + revert (`design/spike2-consensus-real-cli-implementation.md`
+  in the project's own idiom. **Evidence:** SP2 breach + revert (`design/archive/spike2-consensus-real-cli-implementation.md`
   2026-07-11 finding); grep confirms no prior rating mechanism exists (all repo "capability" hits are *transport*
   capability, not competence). **Stub:** `design/agent-rating-signal-note.md`. **Deferred:** revisit when M19 yields
   more data points — nothing to implement yet.
@@ -3394,7 +3394,7 @@ tags: [attach-mode, conversation, healthcheck, validation-blocker, tester-findin
   `Received turn`; target companion did not. Suspected shape: attached provider-labelled agents consume
   `awaitExecTurn()` while conversation startup uses `sendProtocol(... EVT ...)` / `queueTurn()`, but this is a
   lead, not a verdict. Fix should preserve existing M20 relay behavior and must not silently weaken healthchecks.
-  Plan: `design/bl-032-attach-pair-chat-healthcheck-plan.md` (Gate 1 passed after conditional fold).
+  Plan: `design/archive/bl-032-attach-pair-chat-healthcheck-plan.md` (Gate 1 passed after conditional fold).
 
 <!-- @item
 id: BL-033
@@ -3529,7 +3529,7 @@ tags: [governance, worktree, parallel-dev, process]
   automates the AgentTalk per-task worktree node_modules dance and its footguns (skip `@agenttalk` then re-create
   `@agenttalk/*` with RELATIVE targets, `.bin` explicit, `apps/web/node_modules`, `tsc -b`). Pure `buildLinkPlan`
   unit-tested (4); verified by dogfooding (helper-made worktree ran 368 green, `remove --delete-branch` left no
-  leak); full suite 372. Plan: `design/bl036-plan.md`. **Item stays `todo` — two bites remain:**
+  leak); full suite 372. Plan: `design/archive/bl036-plan.md`. **Item stays `todo` — two bites remain:**
   (1) the **discipline DOC** (merge serialization, id allocation without races); (2) the one-time **stale-branch
   prune** — confirmed present 2026-07-18, needs confirm-then-prune per branch (destructive):
   *AgentTalk* `task-BL-039 · task-BL-063 · task-M18-T3 · task-arbiter-enable · docs-bl045-root-cause ·
@@ -3845,7 +3845,7 @@ tags: [api-agents, openrouter, product-gap, enabler, rung4, autonomous, goose]
   **self-corrected** an exactOptional type error it had made on the first attempt, and committed. **Independently
   graded by Claude (task-end reviewer) — verified by RUNNING, not by the team status:** `tsc -b` exit 0, orchestrator
   suite 208/208, a pre-registered independent hidden bar red→green. PO-gated merge crediting goose (`613cd9a` → merge
-  `216c664`). Plan + full record: `design/rung4-plan.md`.
+  `216c664`). Plan + full record: `design/archive/rung4-plan.md`.
   **Two attempts — the honest record:** #1 (`--max-turns 30`, no deps in the worker's tree) produced a *functionally
   correct* fix but a `tsc` error and **no commit** (ran out of turns); #2 (`--max-turns 150`, `node_modules` wired)
   closed it cleanly. **`completed` ≠ done, TWICE** — the team reported `completed` on BOTH runs; only checking the
@@ -3903,10 +3903,10 @@ tags: [containment, worktree, goose, autonomy, rung4, bl053-family]
   Benign in a throwaway sandbox (rung 4), real for multi-task or non-throwaway use. **Also a review hazard:** it made
   the rung-4 reviewer mis-grade attempt #1 as "no work" by checking the empty worktree (the BL-059 "right coordinates"
   trap). **Fix direction:** make goose's executor honour the forwarded `cwd` like gemini, or assign goose a `workdir`
-  that IS the task worktree. Source: rung-4 run (BL-046), `design/rung4-plan.md`.
+  that IS the task worktree. Source: rung-4 run (BL-046), `design/archive/rung4-plan.md`.
 
   **✅ DONE — MERGED 2026-07-27 (`agentalk-mcp-client` `de65c30`, local, NOT pushed). Plan + full record:
-  `design/bl075-plan.md`.** **Note the fix is CLIENT-side** — nothing in the AgentTalk repo changed.
+  `design/archive/bl075-plan.md`.** **Note the fix is CLIENT-side** — nothing in the AgentTalk repo changed.
   **Root cause:** the forwarding chain was intact right up to the last step. The worker provisions the task dir
   (`llm-agent.mjs:115`) and puts it in the executor's sink as `cwd` (`:123`) — but **`OneShotExecutor.executeTurn`
   never read `sink.cwd`**, and **`callProvider` destructured only `onStderrChunk`** from its options, so the child
@@ -3960,7 +3960,7 @@ tags: [goose, worker-protocol, observability, autonomy, rung4, bl042-family]
   final result in the exact `work_accept` envelope; and/or capture goose's raw stdout as a report sidecar so the work
   report is never lost even when the envelope isn't emitted. Source: rung-4 run (BL-046).
 
-  **✅ DONE — MERGED 2026-07-27 (`6849356`, local, NOT pushed). Plan + full record: `design/bl076-plan.md`.**
+  **✅ DONE — MERGED 2026-07-27 (`6849356`, local, NOT pushed). Plan + full record: `design/archive/bl076-plan.md`.**
   **⚠️ The diagnosis above is WRONG in its load-bearing part, and correcting it is most of the value here.**
   Reproduced at the seam *before* choosing a fix (the repro is the shipped test). **Non-JSON is NOT the lossy
   case:** an unparseable response fails to parse, hits the `!structured` branch (`in-process-driver.ts:336`), and
@@ -4017,7 +4017,7 @@ tags: [ui, observability, reactivity, web, rung4, bl048-family]
   to watch autonomous runs. Adjacent to BL-048 / BL-049. **Fix direction:** broadcast every agent status transition
   (at least `ready`/`busy`) to connected clients. Source: rung-4 run (BL-046), PO live observation.
 
-  **✅ DONE — MERGED 2026-07-27 (`e25f9dc`, local, NOT pushed). Plan + full record: `design/bl077-plan.md`.**
+  **✅ DONE — MERGED 2026-07-27 (`e25f9dc`, local, NOT pushed). Plan + full record: `design/archive/bl077-plan.md`.**
   **The filed diagnosis was half wrong, and the correction is the useful part:** the broadcast was never missing.
   `server.ts:1178` already broadcasts *every* registry `status` event. The real cause is that **two** code paths
   change an agent's status and only one emits — `Registry.setAgentStatus()` (`registry.ts:219`) emits, while
@@ -4078,7 +4078,7 @@ tags: [testing, flake, websocket, bl048, ephemeral-ports, agent-authored]
 
   **⛔ MY ORIGINAL HYPOTHESIS BELOW IS REFUTED. Read the correction first.** Struck through in substance, kept
   verbatim as the record of what was guessed and why it was wrong — the investigation
-  (`design/bl092-investigation.md`, merged `cff094d`) killed it on evidence I then re-verified myself.
+  (`design/archive/bl092-investigation.md`, merged `cff094d`) killed it on evidence I then re-verified myself.
 
   > ~~**Hypothesis (NOT confirmed — stated as a hypothesis on purpose).** The suite binds **port 0** everywhere:
   > `startServer(registry, 0, …)` per `beforeEach` (`server.test.ts:70`), and `startServer` *additionally* always
@@ -4294,7 +4294,7 @@ tags: [infrastructure, harness, bl087, fail-quiet, correctness]
   severity model, so both are **behaviour changes needing the PO**, and neither was made on discovery.
 
   **CLOSED 2026-07-27 — both suggested shapes adopted, PO-approved before implementation.** Plan:
-  `design/bl090-plan.md`. `repo-unavailable` is now `critical` for **either** side unavailable — the sub-decision
+  `design/archive/bl090-plan.md`. `repo-unavailable` is now `critical` for **either** side unavailable — the sub-decision
   that mattered, since a mistyped path is unavailable on *both* sides and a one-sided-only rule would have left
   the reported defect standing. `diffRepo` compares `before.path` to `after.path` first and emits one
   `path-mismatch` critical, **replacing** the three fictions rather than adding a fourth finding.
@@ -4382,7 +4382,7 @@ tags: [infrastructure, harness, operator-seat, bl087, needs-decision]
 
   > **DECISION — option (a): leave the harness alone, keep the documented ordering.** No code change. The
   > runbook's *check-before-cleanup* rule stands as the answer. Investigated on rung **O-2** by a governed
-  > worker; full reasoning in **`design/bl088-investigation.md`** (merged `b8181e9`).
+  > worker; full reasoning in **`design/archive/bl088-investigation.md`** (merged `b8181e9`).
   >
   > **The argument that carried it:** the gate already answers the question it exists to answer — a `critical`
   > blocks the next operator run, and O-1's re-run proved it on a real run (exit 0, nothing above `info`).
@@ -4477,7 +4477,7 @@ tags: [infrastructure, safety, harness, operator-seat, autonomy, instrumental, p
   is **caught** (RED before, GREEN after — the bar written first); prove a clean run passes with zero findings;
   prove the script mutates nothing (run it twice, diff the world). Needs a plan + Gate 1 before code.
 
-  **PLANNED 2026-07-27 — `design/bl087-plan.md`, awaiting Gate 1 + PO answers to §9.** The plan's central idea is
+  **PLANNED 2026-07-27 — `design/archive/bl087-plan.md`, awaiting Gate 1 + PO answers to §9.** The plan's central idea is
   an **asymmetry**: *additions* can be expected (a run legitimately adds a task branch and worktree), but
   **removals, `HEAD` movement and upstream divergence are ALWAYS findings with no allowlist path** — because an
   operator doing its job adds, while an operator burning infrastructure removes or moves. Severity tiers
@@ -4565,7 +4565,7 @@ autonomy: po-decision
   verbatim, the show-stopper fence, worktree/merge/push discipline, the BL-100 lockfile carve-out, and the
   launch-not-spawn convention. **The blocking note above is lifted:** a client-repo task is no longer
   structurally excluded from autonomous work. Plan, Gate 1 verdict and the verification record:
-  `design/bl086-plan.md`.
+  `design/archive/bl086-plan.md`.
 
   **Two findings reshaped the delivery, and both are reusable:**
   1. **The item's own wording was the defect.** (b) as filed said *inherit the rules **by pointer***. A pointer
@@ -4606,7 +4606,7 @@ tags: [engine, failure-propagation, m03, typed-reason, lb67, unblocks-bl078, unb
 autonomy: human-only
 -->
 - [done · **CLOSED 2026-08-07 — PO took option (a): T1 + T2 were this item's deliverables; T3 was always [[BL-028]]** · originally: **filed 2026-07-27 by PO decision, out of the [[BL-078]] decision brief
-  (`design/bl078-decision.md` §5c)** · **unblocks [[BL-078]] AND [[BL-028]]** — both are the same missing
+  (`design/archive/bl078-decision.md` §5c)** · **unblocks [[BL-078]] AND [[BL-028]]** — both are the same missing
   primitive seen from two directions] — **Give an agent's non-reply a TYPED REASON, and propagate M03 failure
   only for the fault-class ones.** Today `error` is **one undifferentiated bucket**: the system cannot tell
   *"this agent stopped for a normal reason"* from *"this agent is broken."* That single gap is what blocks two
@@ -4629,9 +4629,9 @@ autonomy: human-only
   than papering over it. **First customer once it exists:** BL-083's budget-exhausted throw, which currently
   reads as `error` (consistent with the reply cap, arguably wrong) — see the note in BL-083's closing block.
   **Do not start this without a plan; it changes established behaviour on `registry.ts` +
-  `team-coordinator.ts`.** Source: `design/bl078-decision.md`.
+  `team-coordinator.ts`.** Source: `design/archive/bl078-decision.md`.
 
-  **PLANNED 2026-07-27 — `design/bl084-plan.md`, awaiting Gate 1 + the PO's ratification of the classification
+  **PLANNED 2026-07-27 — `design/archive/bl084-plan.md`, awaiting Gate 1 + the PO's ratification of the classification
   table (§4).** Two findings reshaped it. **(1)** LB-67's seven reasons answer *"why did a peer not reply?"*,
   **not** *"why did this agent error, and is it its fault?"* — adopting them verbatim as the error taxonomy would
   model a defect as a delivery outcome. What both items need is **one primitive**: a typed reason on the status
@@ -4644,7 +4644,7 @@ autonomy: human-only
   is deliberately rewritten; **T3** BL-028, separately. **Recommends landing T1 alone, then re-gating.**
 
   **T1 MERGED 2026-07-27 (`05f78e3`; worker commit `b88f979`) — authored end-to-end by a governed claude/opus
-  worker as RUNG 6**, from the one-sentence goal *"design/bl084-plan.md describes work in three phases; do T1."*
+  worker as RUNG 6**, from the one-sentence goal *"design/archive/bl084-plan.md describes work in three phases; do T1."*
   574s, **relay count 0**. `AgentErrorReason` split into fault/non-fault unions (`types.ts`), the §4 table as an
   exhaustive `Record` so a new reason cannot compile without a decision, `isFaultClass` as the single decision
   point, `setAgentStatus` overloads making `reason` **required** when the target is `error`, and every existing
@@ -4653,12 +4653,12 @@ autonomy: human-only
   sits beside work the worker must not do — HELD:** T2 not done despite being one condition away, BL-028 not
   revived, `team-coordinator.ts` a **0-line diff**, `in-process-driver.ts` + `conversation-coordinator.ts`
   untouched. Full verdict, including the reviewer's own bar being wrong for the third rung running:
-  `design/rung6-plan.md` §9.
+  `design/archive/rung6-plan.md` §9.
   **Still open here:** **T2** (the actual [[BL-078]] fix — now unblocked) · **T3** ([[BL-028]]) · the reason is
   deliberately **not** surfaced on the `status` event yet (plan §9 q3). Item stays `todo` until T2 and T3 land.
 
   **✅ T2 MERGED 2026-08-07 (`92282c2`; impl `a8f237e`) — [[BL-078]] is CLOSED by it.** Plan:
-  `design/bl084-t2-plan.md`, PO Gate-1 approved. In-process faults propagate; `Registry.reportAgentError` is the
+  `design/archive/bl084-t2-plan.md`, PO Gate-1 approved. In-process faults propagate; `Registry.reportAgentError` is the
   new classified entry point (`setAgentStatus` is private, and `notifyAgentStatus`'s side-effect-free contract
   was left alone — a door, not a moved wall). Two pinning tests rewritten under that approval, including the one
   T1 had marked *"THIS is the assertion T2 deliberately rewrites."* Both mutations watched red;
@@ -4703,7 +4703,7 @@ tags: [engine, failure-propagation, api-agents, in-process-driver, m03, question
 -->
 - [done · **FIXED 2026-08-07 by BL-084 T2** (`92282c2`) — the reopen condition was met and acted on · originally: **PO DECIDED 2026-07-27: option (a) — leave as-is and document the asymmetry.** Reopen condition:
   **[[BL-084]] done** (the typed reason), which is what makes safe propagation possible. Analysis:
-  `design/bl078-decision.md` · filed from BL-077, 2026-07-27 — a **show-stopper flagged and deliberately not
+  `design/archive/bl078-decision.md` · filed from BL-077, 2026-07-27 — a **show-stopper flagged and deliberately not
   decided** by the implementer] —
   **Should a driver-path agent error propagate failure? Today it silently does not** — M03 failure propagation runs
   off `Registry.setAgentStatus()`, which calls `teamCoordinator.handleAgentFailure()` when an agent enters `error`
@@ -4717,9 +4717,9 @@ tags: [engine, failure-propagation, api-agents, in-process-driver, m03, question
   gap from the dead idle-timeout (LB-70 / BL-028), though they compound: neither a hung agent nor an errored
   in-process agent currently interrupts a task.** **Decide:** (a) leave as-is and document the asymmetry between the
   attached and in-process paths, or (b) propagate, and work out the blast radius on M03's tests first. Source:
-  BL-077 (`design/bl077-plan.md` §3).
+  BL-077 (`design/archive/bl077-plan.md` §3).
 
-  **DECIDED 2026-07-27 — option (a), per the PO, on `design/bl078-decision.md`. The asymmetry is now documented
+  **DECIDED 2026-07-27 — option (a), per the PO, on `design/archive/bl078-decision.md`. The asymmetry is now documented
   in `AGENT.md`'s M03 entry; the real fix is filed as [[BL-084]] and this item is DEFERRED on it.**
   The blast radius was measured, and it changes the answer: **(b) as filed is NOT safe.** Any throw out of
   `handleMcpToolCall` (no outer catch) reaches the driver's loop and becomes `error` — and **five of the seven
@@ -4738,7 +4738,7 @@ tags: [engine, failure-propagation, api-agents, in-process-driver, m03, question
 
   **✅ FIXED AND CLOSED 2026-08-07 — [[BL-084]] **T2** did it (`92282c2`; impl `a8f237e`).** This item's reopen
   condition was *"BL-084 done (the typed reason), which is what makes safe propagation possible"* — met, and
-  acted on rather than merely noted. Plan: `design/bl084-t2-plan.md`, PO Gate-1 approved.
+  acted on rather than merely noted. Plan: `design/archive/bl084-t2-plan.md`, PO Gate-1 approved.
 
   **An in-process agent that errors now DOES interrupt its team — for a fault, and only for a fault.** The
   asymmetry this item documented is gone; the reason it was left in place is not, it is *encoded*. Every
@@ -4839,7 +4839,7 @@ tags: [api-agents, driver-lifecycle, conversation, tester-finding, rung5, autono
   cannot be reused across conversations … find the relevant backlog item, work out what is actually happening, fix
   it, verify it, commit"). **No file list, no diagnosis, no deliverable spec and no behaviour rules were given** —
   the discipline came from `AGENT.md`, inherited via the `CLAUDE.md` symlink ([[BL-080]] proved that inheritance;
-  this is the first time it carried real work). Plan: `design/rung5-plan.md`. **Relay count: 0.**
+  this is the first time it carried real work). Plan: `design/archive/rung5-plan.md`. **Relay count: 0.**
 
   **Independently verified before merge (not taken on the worker's word):** `tsc -b` exit 0 · suite **410/410** in
   71 files (baseline 407, +3) · the worker's own bar **mutation-checked by the reviewer** — no-op the `resume()`
@@ -5352,7 +5352,7 @@ tags: [ui, observability, self-hosting, autonomy]
   closure, raised to the PO at merge.
 
 
-  **CLOSED — MERGED 2026-07-17 (`3e9ff4c`). Plan: `design/bl056-plan.md`.**
+  **CLOSED — MERGED 2026-07-17 (`3e9ff4c`). Plan: `design/archive/bl056-plan.md`.**
 
   **★ The filing's premise was WRONG, and the fix turns on it.** This item says the transcript is *lost*. It never
   was: **`tasks` (`team-coordinator.ts:133`) is NEVER pruned** — no `.delete`, no `.clear` anywhere — and
@@ -5616,7 +5616,7 @@ tags: [safety, sandbox, autonomy, bite0, self-hosting]
   **PO decision (2026-07-16):** hard error — *"Results would be unpredictable otherwise."* Accepted rationale:
   when the default is dangerous **and** the violation produces no signal, refusing to start is the only design
   where the safe path is also the easy path. No legitimate consumer of the inherit behaviour existed.
-  **Built (`bl052-worker-containment`, `d4011af`, plan: `design/bl052-plan.md`):** `launchAgent` refuses a
+  **Built (`bl052-worker-containment`, `d4011af`, plan: `design/archive/bl052-plan.md`):** `launchAgent` refuses a
   missing / relative / nonexistent `workdir` with **400, before the orchestrator create** (a refusal leaves no
   half-made agent record); the check sits at the **`launchAgent` boundary** so `POST /agents` is covered too; the
   worker is spawned with an **explicit `cwd`**; the dir is **never auto-created** (create-if-missing would make any
@@ -5753,7 +5753,7 @@ tags: [ui, observability, spike, self-hosting, bite0]
   handlers already exist — the hole is the missing `agent_added` push. **Fix (minimal, spike):** emit
   `agent_registered` in `registry.ts` → `broadcast({type:'agent_added',agent})` in `server.ts` → frontend
   `case 'agent_added'` upserts into the list (+ refetch on unknown-id `status`); audit team/task rendering for
-  entities the human never opened. Full design + files: **`design/spike-ui-external-events.md`**. Do it in a git
+  entities the human never opened. Full design + files: **`design/archive/spike-ui-external-events.md`**. Do it in a git
   worktree (touches `apps/web` + orchestrator). Source: BL-040 D4 babysat run, PO.
   **OUTCOME (2026-07-16, merged `d4ac001`) — the plan above was wrong twice; keep reading before you copy it.**
   (1) **Do NOT emit from `registry.createAgent()`** as prescribed: `POST /api/agents` assigns `provider`/`model`
@@ -5777,7 +5777,7 @@ epic: null
 tags: [backlog-schema, autonomy, hermes-selector]
 autonomy: human-only
 -->
-- [done 2026-07-27 · merged `4db402d` · plan: `design/bl093-plan.md` · unit 1 of "close the cycle" ·
+- [done 2026-07-27 · merged `4db402d` · plan: `design/archive/bl093-plan.md` · unit 1 of "close the cycle" ·
   PO-directed and PO-gated] —
   **Make the backlog machine-selectable — add `blocked_by` and `autonomy` to the `@item` header.** The PO's goal
   is for the operator to read the backlog and **recommend** what to work on next (the PO's `yes` stays the launch
@@ -5797,7 +5797,7 @@ autonomy: human-only
   exhaustion, not by judgement*, so a size-1 success must not be read as evidence the selector works. **Known
   hole, unmitigated and accepted:** the recursion guard (an item whose execution *is* "launch a session" must be
   `human-only`) rests on filing discipline, not code — no parser can make that judgement. Scope fence: **no
-  selector, no Hermes/launcher changes** — that is unit 2. Full plan, DoD and risks: **`design/bl093-plan.md`**.
+  selector, no Hermes/launcher changes** — that is unit 2. Full plan, DoD and risks: **`design/archive/bl093-plan.md`**.
   **CLOSED 2026-07-27 — merged `4db402d` (PO-gated). All 8 DoD rows VERIFIED by running.** `tsc -b` clean ·
   suite **496/496** across 76 files (baseline 481/481 across 75 — the delta is exactly this task's one new file) ·
   `backlog:check` **93 items, 0 warnings**, re-run on the merged mainline, not just the branch.
@@ -6175,7 +6175,7 @@ autonomy: human-only
   ---
 
   **CLOSED 2026-07-28 — merged `6ab9aaf`** (branch `task-bl097`, impl `954c7b6`, plan `6cf2728`). Plan +
-  verdicts: `design/bl097-plan.md`. **11/11 DoD rows VERIFIED.**
+  verdicts: `design/archive/bl097-plan.md`. **11/11 DoD rows VERIFIED.**
 
   **What shipped.** `expect.allowWritePaths` — declared, and **failing closed**: an undeclared run is judged
   exactly as it was before the field existed (DoD row 1 pins that, and it is the whole regression guard).
@@ -6467,7 +6467,7 @@ autonomy: human-only
   ---
 
   **⬛ SECOND PARTIAL DISPOSITION — 2026-07-30. `DEFAULT_ROOT` is platform-derived; merged `59d8fa8`.**
-  Plan + Gate 1: `design/bl100-defaultroot-plan.md`.
+  Plan + Gate 1: `design/archive/bl100-defaultroot-plan.md`.
 
   `wt-setup.mjs` now derives its default root from **`os.tmpdir()`** instead of the hardcoded macOS
   `/private/tmp`. **`--root` is no longer needed on Linux for either verb** (it still overrides, unchanged), so
@@ -6604,7 +6604,7 @@ autonomy: human-only
   ---
 
   **✅ CLOSED 2026-07-30 — merged `a89221f`; impl `15616b2`.** Option **(a)** taken as filed. Plan and Gate 1:
-  `design/bl101-plan.md`. From inside a worktree `npm test` now prints **`Client contract alignment verified
+  `design/archive/bl101-plan.md`. From inside a worktree `npm test` now prints **`Client contract alignment verified
   successfully`** where it printed `skipped`.
 
   **The primitive, and the part that is easy to get subtly wrong:**
@@ -6697,7 +6697,7 @@ autonomy: human-only
   ---
 
   **✅ CLOSED 2026-07-30 — merged `3eac79e` (client); impl `9c8c8c7`.** Plan, both Gate 1 verdicts and the
-  verification record: `design/bl102-plan.md`. **Neither fix direction in the paragraph above was taken**, and
+  verification record: `design/archive/bl102-plan.md`. **Neither fix direction in the paragraph above was taken**, and
   the reason is the durable part of this item.
 
   **The bar was met on live evidence, not reasoning — two real launches:**
@@ -8399,7 +8399,7 @@ autonomy: human-only
   ---
 
   **✅ CLOSED 2026-08-14 — the detector exists, it is ADVISORY, and `team-coordinator.ts` has a ZERO DIFF.**
-  Plan + gate 1: `design/bl133-plan.md`.
+  Plan + gate 1: `design/archive/bl133-plan.md`.
 
   **The find that made this cheap: the clock already existed.** `recordTaskTranscript`
   (`team-coordinator.ts:1525`) is a real chokepoint — ~30 call sites route through it and its last line already
@@ -8589,7 +8589,7 @@ autonomy: human-only
   ---
 
   **✅ MERGED 2026-08-15 `05325c0` — the fence now scans `config.goal`, and the doc that claimed it already
-  did is corrected.** Plan + gate 1: `design/bl136-plan.md`.
+  did is corrected.** Plan + gate 1: `design/archive/bl136-plan.md`.
 
   **The item understated its own finding, and the sharper version is the one to remember.**
   `design/operator-seat/SKILL.md:167-170` did not merely tell Hermes to run the scan by hand — it asserted
@@ -8651,7 +8651,7 @@ autonomy: human-only
 - [done · **MERGED 2026-08-15 `fb7c45e` — see the closing block at the end of this item** · **filed
   2026-08-15 by the planner, at the PO's instruction, after the PO proposed letting Hermes set
   its own `.authorized` file and the check found the mechanism already exists** · plan:
-  `design/bl137-plan.md` (draft 2) · ledger: `design/bl137-implementation.md`] —
+  `design/archive/bl137-plan.md` (draft 2) · ledger: `design/archive/bl137-implementation.md`] —
   **Gate B's authorization file lives INSIDE the operator's own write allowlist, so the fence that "only the
   PO can authorize a run" does not hold — and both `AGENT.md` and `hmp-commission.mjs` state that it does.**
 
@@ -8792,7 +8792,7 @@ autonomy: human-only
 -->
 - [done · **MERGED 2026-08-15 — see the closing block at the end of this item** · filed 2026-08-15 at
   BL-137's close · ⛔ **FIRST SHAPE RETRACTED WITHIN THE HOUR** — see the correction below; the item
-  survived, its premise did not · plan + gates: `design/bl138-plan.md`] —
+  survived, its premise did not · plan + gates: `design/archive/bl138-plan.md`] —
   **A committed, reviewed `--expect` declaration for operator runs, so the write allowlist stops being
   hand-typed fresh each run — and so `design/po/**` is excluded on purpose rather than by accident.**
 
