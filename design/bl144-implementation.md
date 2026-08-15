@@ -1,7 +1,7 @@
 # BL-144 — implementation ledger (Wave 2)
 
 **Plan:** `design/bl144-plan.md`. **Item:** [[BL-144]].
-**Status:** T1 in progress.
+**Status:** CLOSED — all three deliveries merged; T3 stopped at the PO's door on purpose ([[BL-145]]).
 **Seats (resource-scarcity fallback — one actor, every hat, each gate kept separately):**
 Planner · Plan Reviewer · Implementer · Implementation Reviewer · Task-end Reviewer — Claude.
 **PO grant in force:** commits, merges and pushes pre-approved (2026-08-15). *The grant removes the
@@ -43,7 +43,7 @@ plus a gate. **This narrows BL-144's literal text and is recorded loudly rather 
 | `e6ba57d` | **T2 pre-step** — the citation gate learns `modules/**.md`, *before* any doc moved |
 | `873da23` | **T2** — 34 docs move; `design/` top level 36 → 2 |
 | `d814152` | **T3** — the `AGENT.md` split proposal, measured and deliberately not executed |
-| `b5f72a6` | closure — BL-144 done, [[BL-145]] filed, the BL-093 pin moved |
+| *(the closure commit itself)* | BL-144 done, [[BL-145]] filed, the BL-093 pin moved — a commit cannot cite its own hash, and amending to "fix" it only moves the target again. `git log` is the authority. |
 
 ## Gate 2 — implementation review
 
@@ -121,5 +121,5 @@ there would rebuild the shape BL-134 removed.
 - wall-clock:  2026-08-15 22:39 → 23:12 (~33 min)
 - budget:      weekly 41% → 42% (Δ ~1%), session 39% → ~50% (Δ ~11%) [per `scripts/usage.mjs`]
 - gate:        tsc 0, suite 871/871 (98 files), modules 115/116, docs 709/0/41, backlog 145/0 warnings, pollution clean
-- diff:        6 commits, `6221b0e` `7df22ae` `e6ba57d` `873da23` `d814152` `b5f72a6`
+- diff:        6 commits on `task-bl144` + the plan commit on master; hashes in `git log`
 - outcome:     **MERGED ✅** — with T3 stopped at the PO's door on purpose ([[BL-145]])
