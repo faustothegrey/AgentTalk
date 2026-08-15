@@ -39,7 +39,7 @@ curl -s "http://127.0.0.1:3741/api/backlog?all=true"   # LIVE orchestrator; NOT 
 
 ## What to review — BL-134, and where I'd look first
 
-Plan `design/bl134-plan.md` (draft 2 + two gate sections), ledger `design/bl134-implementation.md`.
+Plan `design/archive/bl134-plan.md` (draft 2 + two gate sections), ledger `design/archive/bl134-implementation.md`.
 The change: **`autonomy` stops gating the backlog**; `selectable` is renamed **`workable`** everywhere
 including the wire param; the commit-time pin is **re-aimed, not retired**; BL-028 is fenced by
 `blocked_by: [BL-135]` instead of a field; `AGENT.md`'s OPERATOR paragraph retires a claim that credited

@@ -32,7 +32,7 @@ At the very start of **every** session, before reading anything else or acting, 
      **Implementation Reviewer ≠ Implementer** · **Task-end Reviewer ≠ Implementer** · **Task-end Reviewer ≠
      Implementation Reviewer** (the closure pass is only worth a separate seat if it's a different pair of eyes —
      adopted from the M15-T3 catch). One agent MAY hold more than one reviewer seat on a task so long as these
-     defaults hold; the canonical statement is `design/collaboration-workflow.md` §1.
+     defaults hold; the canonical statement is `modules/governance/docs/collaboration-workflow.md` §1.
    - **Resource-scarcity fallback (allowed, but declared loudly):** when there aren't enough agents, **one agent MAY
      hold several roles** — even seats the defaults above would separate. It then does the handshake **once per role
      it holds** (loop step 1–2 below for each), keeps **each role's gate and discipline separately**, and **declares
@@ -92,7 +92,7 @@ and discipline still hold separately**.
 ## 📌 DEFAULT ROLE ASSIGNMENTS — the single role→agent binding place (PO-owned)
 
 > **This section is the ONLY place in the project docs where agent providers are bound to roles.** Everything
-> else in this file and in `design/collaboration-workflow.md` names **roles only** and points here. If you find
+> else in this file and in `modules/governance/docs/collaboration-workflow.md` names **roles only** and points here. If you find
 > a provider name bound to a role anywhere else, it is drift — correct it to a role name + a pointer here.
 > **Only the PO edits the bindings below** (role assignment is a PO act); each change is dated.
 
@@ -192,7 +192,7 @@ one agent holds SM and both quality gates — accepted because merges stay PO-ga
   the PO: Plan Reviewer → Claude, Implementation Reviewer → Codex, Task-end Reviewer → Claude; **SM reassigned
   Codex → Claude** the same day (so legacy `[Codex]` tags no longer read as `[SM]` from here on).
 - 2026-07-12 — **Tester** seat created (PO), default holder **Codex**. Agent helper to a human test driver; produces
-  findings not verdicts; owns the organic-coordination metric. Charter/rationale: `design/tester-seat-proposal.md`;
+  findings not verdicts; owns the organic-coordination metric. Charter/rationale: `modules/governance/docs/tester-seat-proposal.md`;
   origin: the first organic UI-relay session (LB-77 / BL-031). First assignment: Codex instruments a human-driven
   BL-031 validation / M20 adoption run.
 - 2026-07-15 — **PO declared Codex and Gemini (agy) UNAVAILABLE until further notice.** Claude is the sole
@@ -225,7 +225,7 @@ nothing to instruct with. A `[Hermes]` message is still flagged to the PO, never
 
 #### What it MAY do
 
-- **Launch** a session and **monitor** it (`design/launch-and-monitor-runbook.md` is the contract).
+- **Launch** a session and **monitor** it (`modules/containment/docs/launch-and-monitor-runbook.md` is the contract).
 - **Report observations** — what it saw, what exited, what a log said — and **record them** in the backlog and
   the operator artifacts, within the write fence in **Visibility** below.
 - **Run the invariant harness** ([[BL-087]], `scripts/infra-invariant.mjs`). Safe by construction: read-only,
@@ -514,7 +514,7 @@ in every context (docs, messages, primers, lessons). Violations should be correc
 - **Improved Observability**: Added regression tests to verify task interruption on agent failure across all phases.
 
 ### Workflow Rules
-- **Follow Collaboration Workflow**: Strictly adhere to the workflow defined in `design/collaboration-workflow.md`. That document is the source of truth for how we build things and must be followed at all times.
+- **Follow Collaboration Workflow**: Strictly adhere to the workflow defined in `modules/governance/docs/collaboration-workflow.md`. That document is the source of truth for how we build things and must be followed at all times.
 - **Document Before Implementation**: Do not rush to the implementation phase. Always document proposed code changes beforehand so that another agent can review and approve the plan.
 - **Document Changes**: Always amend documentation to accurately reflect the code changes that have taken place.
 - **Product Owner (PO) — the apex authority.** Above every other role sits the **Product Owner**: the holder of the
@@ -530,7 +530,7 @@ in every context (docs, messages, primers, lessons). Violations should be correc
   behalf*: the PO can always overrule, redirect, or reassign. **The PO subsumes the SM — it is the figure
   immediately above it — so the PO may also exercise *any* SM power directly itself** (convene the backlog gate,
   set priority, call operational go/no-go, halt/rescope, route the baton), not merely overrule the SM's use of it.
-  The canonical, fuller statement is the **Product Owner** participant in `design/collaboration-workflow.md` §1.
+  The canonical, fuller statement is the **Product Owner** participant in `modules/governance/docs/collaboration-workflow.md` §1.
 - **Architect — technical authority, subordinate to the PO (split from the PO, 2026-07-01).** Distinct from the
   Product Owner: the **Architect owns the technical architecture** (the *how it is shaped*) and is a **standing
   authority throughout the lifecycle** — including mid-flight architecture calls — not just at inception. At **epic
@@ -542,9 +542,9 @@ in every context (docs, messages, primers, lessons). Violations should be correc
   Planner** so the Planner's POV
   stays an independent second opinion. It is **orthogonal to the Scrum Master** (technical authority vs. process
   authority); both serve the PO. Only the **PO** assigns/reassigns the Architect seat. The canonical, fuller
-  statement is the **Architect** participant in `design/collaboration-workflow.md` §1.
+  statement is the **Architect** participant in `modules/governance/docs/collaboration-workflow.md` §1.
 - **Respect role boundaries & check assignment compliance — every turn.** Before acting on any assignment, compare
-  it with `design/collaboration-workflow.md`, your current role, and the current Scrum Master authority. If it is
+  it with `modules/governance/docs/collaboration-workflow.md`, your current role, and the current Scrum Master authority. If it is
   outside your role (e.g. implementing code while you are only a planner or a reviewer), ambiguous, or otherwise
   non-compliant, **STOP before acting** — report your current role, the requested action, why it looks out-of-role,
   and any safe alternatives; then do what the Scrum Master decides (or, if the fix is a **role reassignment**, what
@@ -554,7 +554,7 @@ in every context (docs, messages, primers, lessons). Violations should be correc
   non-human SM or PO must document the reason in a durable artifact). *(This is the operational
   restatement; the **canonical full rule** — plus the SM's standing duties (bring forth the backlog,
   check workflow adherence, monitor resource consumption, communication/baton facilitation) and its allowances — is the Scrum Master bullet in
-  `design/collaboration-workflow.md` §1.)*
+  `modules/governance/docs/collaboration-workflow.md` §1.)*
   The SM function is currently **delegated to an agent** — holder, date, and history in **📌 DEFAULT ROLE
   ASSIGNMENTS**; the PO may reclaim it, overrule it, or reassign it at any moment.
   - **SM status (delegated; terms of the grant).** The SM delegation is a **declared dual role alongside the
@@ -595,7 +595,7 @@ in every context (docs, messages, primers, lessons). Violations should be correc
   Master proactively, any time you feel the need** — to flag a concern, request alignment with another role, or
   surface a half-formed risk. **Over-communication to the SM is welcomed, not penalized.** *(Primarily guidance for
   when an AI holds the SM function; a no-op refinement when the human is SM. The SM is the communication channel and
-  baton facilitator — see `design/collaboration-workflow.md` §1, SM duty 4.)*
+  baton facilitator — see `modules/governance/docs/collaboration-workflow.md` §1, SM duty 4.)*
 
 ### Core Behavioral Rule: Honesty over Results
 
@@ -632,7 +632,7 @@ a session can do).
 - **Per unit of action.** Track expenditure at the natural granularity of work — per task / turn / checkpoint (after heavy
   reads, live runs, merges, and at session start/end). Note it briefly; a one-line rough read is enough (don't bloat
   context to measure context).
-- **Build a database of consumption.** Accumulate readings into the calibration table in `design/logbook.md` (**LB-11**):
+- **Build a database of consumption.** Accumulate readings into the calibration table in `modules/governance/docs/logbook.md` (**LB-11**):
   *session → work done → %-window* (+ which operations were heavy). Over time this yields a real *tokens-per-task-type*
   estimate, so complexity can be quoted **in tokens**, empirically — not memorised constants.
 - **Task-closure telemetry block (PO, 2026-06-24) — emit a structured block when CLOSING a task** (merge /
@@ -655,7 +655,7 @@ a session can do).
   scoped/closed cleanly instead of being cut off mid-task. *(Exact warning thresholds TBD — to be calibrated in the course
   of action.)* Note: the **weekly %** is the real cross-session budget; the **5h window** resets every few hours.
   **This per-actor self-monitoring is unchanged; on top of it the Scrum Master owns the *aggregate* cross-actor budget
-  view and may scope / sequence / halt work to fit budget** (see `design/collaboration-workflow.md` §1, SM duty 3).
+  view and may scope / sequence / halt work to fit budget** (see `modules/governance/docs/collaboration-workflow.md` §1, SM duty 3).
 - **Known limits (best-effort, 2026-06-22 — we're in deep exploration).** The meter reports **per-provider, machine-wide
   percentages** — not per-actor or per-task, and **% of an opaque, flexing plan-window, not raw tokens** (token-denominated
   figures pending a service improvement). Per-action cost is only approximable by **diffing % before/after an action**,
@@ -681,7 +681,7 @@ a session can do).
 > result.** Breaking them gets the whole delivery **rejected** — a green achieved this way is worth *less*
 > than an honest red.
 >
-> **These rules are the *law*; `design/implementer-pitfalls.md` is the *case law*.** Skim it before you
+> **These rules are the *law*; `modules/governance/docs/implementer-pitfalls.md` is the *case law*.** Skim it before you
 > start (it's part of your Rule-6 scope declaration): it records the concrete, recurring ways these rules
 > get broken here — so you recognise the trap in yourself before the reviewer does.
 
@@ -744,7 +744,7 @@ the EARLIER of:** the show-stopper fence (Rule 2 — even on attempt 1), **or** 
 > **Honesty over Results** and workflow principle 2 (**Verify, don't assert**) on the *reviewing* side. A
 > **VERIFIED you did not earn by running it** is worth *less* than an honest **REFUTED** — it launders an unproven
 > claim onto the verified-only mainline, where every later task then trusts it. The method detail lives in
-> `design/collaboration-workflow.md` §3b/§3c (the claim/verdict table, merge discipline, the two institutional
+> `modules/governance/docs/collaboration-workflow.md` §3b/§3c (the claim/verdict table, merge discipline, the two institutional
 > spaces); these rules are the short contract.
 >
 > **Which seat owns which rule (reviewer split into three, PO 2026-07-08).** ALL seven rules bind **every**
@@ -753,7 +753,7 @@ the EARLIER of:** the show-stopper fence (Rule 2 — even on attempt 1), **or** 
 > 2); the **MERGE + closure sweep (Rule 4) → Task-end Reviewer** (gate 3 — a different actor than the
 > Implementation Reviewer by default: fresh eyes at close); **gate 1 (plan approval) → Plan Reviewer**, applying
 > Rules 1, 2 and 5 to the plan itself. Independence defaults and the canonical seat definitions are in
-> `design/collaboration-workflow.md` §1.
+> `modules/governance/docs/collaboration-workflow.md` §1.
 
 **1. Verify by RUNNING, never by asserting.** A "done" claim is settled by **running the actual tool/test** and
 recording the exact command + output (or `file:line`) — **not** by reading the diff, citing memory, or trusting
@@ -788,7 +788,7 @@ so prominently** rather than parroting it. This is the standing status-correctio
 cold-start verify rule, applied every review.
 
 **6. Record behavioural misses — never fix them silently.** When you catch a recurring *process* anti-pattern (a
-hasty claim, a misread scope, a weakened bar), **append a case to `design/implementer-pitfalls.md`** (stable `IP-N`
+hasty claim, a misread scope, a weakened bar), **append a case to `modules/governance/docs/implementer-pitfalls.md`** (stable `IP-N`
 id) — the case law is reviewer-authored. **REFUTE and hand back** for substantive defects. **EXCEPTION (PO,
 2026-07-02): the reviewer MAY fix punctual, zero-risk defects directly** — a typo, a wrong import path, a
 misaligned comment, a missing semicolon — where the fix is trivial and the risk of side effects is provably nil.
@@ -835,7 +835,7 @@ cold-start contract and the report-only rule below kicks in), and it MUST contai
    human = PO/scope/decisions/relay; current bindings live **only** in `AGENT.md → 📌 DEFAULT ROLE ASSIGNMENTS`
    (point there, don't copy it); name **which role this primer is for** (and, if it matters, which agent you
    expect to take it).
-3. **Workflow / source of truth** — `design/collaboration-workflow.md` (the method) + the artifacts: `*-plan.md` (spec+DoD), `*-implementation.md` (the **ledger**), `backlog.md`, `logbook.md`.
+3. **Workflow / source of truth** — `modules/governance/docs/collaboration-workflow.md` (the method) + the artifacts: `*-plan.md` (spec+DoD), `*-implementation.md` (the **ledger**), `backlog.md`, `logbook.md`.
 4. **Which epic/task we're on** *(REQUIRED — always state the active milestone/epic/task)* + what's next.
 5. **Where state lives** — resume from the active epic's `*-implementation.md` ledger, **not from chat**.
 6. **Op notes** — key/env gotchas, current blockers.
@@ -952,7 +952,7 @@ is *cold*; a **baton is a pointer** precisely because its reader is *not*.
 
 The baton stays **role→role**; the Scrum Master **ensures it lands** with its intended receiver and points at the
 right artifacts, but does **not** rewrite it (that would reintroduce the pre-chewed-summary anti-pattern above). The
-SM **may** override a baton when necessary — but that is **not** the standard flow (`design/collaboration-workflow.md`
+SM **may** override a baton when necessary — but that is **not** the standard flow (`modules/governance/docs/collaboration-workflow.md`
 §1, SM duty 4).
 
 ---
@@ -1026,7 +1026,7 @@ OPERATOR seat**.
      corruption. Nothing here may be cited as having reduced that exposure.
 
    Mechanism and limits: `design/operator/relay-readonly-recipe.md`. Implementation:
-   `scripts/relay-approve.mjs`. Rationale + reopen condition: `design/agent-md-relay-authority-amendment.md`.
+   `scripts/relay-approve.mjs`. Rationale + reopen condition: `design/archive/agent-md-relay-authority-amendment.md`.
 
 *(History: an earlier SM-holder ran 2026-06-29 → 2026-07-02 over an Agent Bus + tmux transport and was retired
 after its agent loop wedged and the transport proved structurally lossy — LB-49; see 📌 DEFAULT ROLE ASSIGNMENTS

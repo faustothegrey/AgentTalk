@@ -1,7 +1,7 @@
 # A bidirectional PO↔session channel over Hermes — feasibility and design
 
 **Status: PROPOSAL, not adopted.** Nothing here is in force. **Author:** Claude (Architect seat), 2026-07-30, at
-the PO's request. **Sibling of** `design/hmp-commission-plan.md` (which carries *commissions*; this carries
+the PO's request. **Sibling of** `modules/containment/docs/hmp-commission-plan.md` (which carries *commissions*; this carries
 *instructions*).
 
 > **The one-line answer.** Yes, and it is a much better bet than it was on 2026-07-02 — **the transport defects

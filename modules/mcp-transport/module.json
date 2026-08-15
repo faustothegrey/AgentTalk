@@ -11,7 +11,9 @@
     "scripts/m19-bridge-recorder.mjs",
     "scripts/m19-real-cli-attach.mjs"
   ],
-  "docs": [],
+  "docs": [
+    "modules/mcp-transport/docs/attach-chat-runbook.md"
+  ],
   "backlog": "30-mcp-transport.md",
   "deps": [
     "contracts"

@@ -34,7 +34,7 @@ tags: [tester, observability, artifacts, browser]
 -->
 - [deferred · PARKED 2026-07-27 — PO directive: not instrumental to "AgentTalk within AgentTalk". Reopen: a human-driven Tester validation run is scheduled · surfaced 2026-07-13 during autonomous Tester instrumentation rehearsal] — **Tester run artifacts:
   durable testlog + passive screen recording** — the Tester role now needs replayable validation records, not only
-  chat-local narration. `design/testlog.md` exists as the durable index, but artifact capture is still manual and
+  chat-local narration. `modules/governance/docs/testlog.md` exists as the durable index, but artifact capture is still manual and
   lossy: Browser Use screenshots currently overwrite a temp path, logs are not bundled, and no `.webm` recording is
   saved. Implement a lightweight Tester harness convention that creates `design/test-artifacts/<test-id>/`, captures
   targeted screenshots and logs, and, when available, records a passive browser/session `.webm`. The recording is an

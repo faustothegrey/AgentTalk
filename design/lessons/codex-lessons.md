@@ -100,7 +100,7 @@ here.**
 - As tester, declare the validation strategy before running autonomously: objective, evidence sources, unverified
   scope, and real-vs-fake path. That makes API/log-heavy validation and browser-use visual checkpoints auditable
   without pretending they prove the same thing.
-- Preserve replayable test evidence in `design/testlog.md`; use `logbook.md` for project decisions and cross-cutting
+- Preserve replayable test evidence in `modules/governance/docs/testlog.md`; use `logbook.md` for project decisions and cross-cutting
   findings. A testlog entry should include conversation IDs, agent IDs, provider path, artifact paths, result, and
   residuals.
 - Treat `.webm` recordings as passive artifacts by default. Saving a video path costs effectively no tokens; token

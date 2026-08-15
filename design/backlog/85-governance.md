@@ -50,7 +50,7 @@ tags: [process, governance, reassignment, rating, sm, honesty]
   *pattern* of breaches counts, a single one should not tank a rating. **Not an ELO number** — a lightweight dossier
   in the project's own idiom. **Evidence:** SP2 breach + revert (`design/archive/spike2-consensus-real-cli-implementation.md`
   2026-07-11 finding); grep confirms no prior rating mechanism exists (all repo "capability" hits are *transport*
-  capability, not competence). **Stub:** `design/agent-rating-signal-note.md`. **Deferred:** revisit when M19 yields
+  capability, not competence). **Stub:** `modules/governance/docs/agent-rating-signal-note.md`. **Deferred:** revisit when M19 yields
   more data points — nothing to implement yet.
 
 <!-- @item
@@ -85,7 +85,7 @@ tags: [self-hosting, scope-fence, governance, harness]
   evidence-driven from a live violation] — **Deterministic scope fences — machine-readable per-task
   scope manifest + layered enforcement** — move the implementer scope fence from *policy* (prose RoE +
   self-discipline) to *mechanism* (the environment refuses or loudly flags out-of-scope acts). Design note:
-  `design/scope-fences-design-note.md`. **Evidence:**
+  `modules/governance/docs/scope-fences-design-note.md`. **Evidence:**
   during M16-T2a an implementer found a real bug, spec'd the fix, then made changes beyond task scope
   (acknowledged after); same failure class as IP-2 / IP-9 / IP-12 / IP-13 — different agents, same broken
   behavioral rule. **Policy source already exists:** each ledger task's "Allowed/Forbidden surfaces" prose —
@@ -124,7 +124,7 @@ tags: [self-hosting, role-skill, governance]
   M17's session→identity→role mapping; would collapse primer-handshake drift (the brain knows what's fresh)
   and administer the 2026-07-08 role-only governance model (`AGENT.md → 📌 DEFAULT ROLE ASSIGNMENTS`) over
   the channel instead of per-CLI context files. Source: PO idea 2026-07-02 + architect read,
-  `design/self-hosting-program-draft.md` §Candidate.
+  `modules/governance/docs/self-hosting-program-draft.md` §Candidate.
 
 
 <!-- @item
@@ -168,7 +168,7 @@ tags: [docs, governance, rot, operator, agent-md, fence-in-prose]
   **69 citations from live documents do not resolve — but read the retraction first.**
 
   **⛔ CORRECTION 2026-08-15, hours after filing, by the author: THIS ITEM'S HEADLINE CLAIM WAS
-  FALSE, and it was the most alarming line in it.** It read: *"`design/launch-and-monitor-runbook.md`
+  FALSE, and it was the most alarming line in it.** It read: *"`modules/containment/docs/launch-and-monitor-runbook.md`
   and `design/operator-seat/SKILL.md` both cite `scripts/launcher.mjs`, which is not in the repo —
   the operator seat's LIVE launch contract points at nothing."*
 
@@ -236,7 +236,7 @@ tags: [docs, governance, rot, operator, agent-md, fence-in-prose]
   the session.
 
   **⚠️ The load-bearing lesson, and it is an input to [[BL-144]]: neither filename NOR date classifies
-  lifecycle.** `design/architecture.md` is frozen at 2026-06-25 and is DURABLE — it needs updating, not
+  lifecycle.** `modules/orchestrator-host/docs/architecture.md` is frozen at 2026-06-25 and is DURABLE — it needs updating, not
   burying; archiving it by staleness would have been exactly wrong. **What does classify is already in the
   corpus: the docs declare themselves in their own `Status:` line.** *"Resolved"*, *"Draft for review"*,
   *"Verification note"* are episodic; *"reference doc"*, *"Operative reference"*, *"Living reference"* are
@@ -276,7 +276,7 @@ tags: [overhaul, wave2, modules, colocation, architecture, docs]
   forces a reader touching the code to touch the claim.
 
   **Use the `Status:` line as the lifecycle classifier — do NOT invent a third proxy.** [[BL-142]]
-  established that filename patterns and staleness BOTH misclassify: `design/architecture.md` is seven
+  established that filename patterns and staleness BOTH misclassify: `modules/orchestrator-host/docs/architecture.md` is seven
   weeks cold and durable. The docs already declare themselves — *"Resolved"* / *"Draft for review"* /
   *"Verification note"* are episodic; *"reference doc"* / *"Operative reference"* / *"Living reference"*
   are durable. Where a doc declares nothing, that is the signal a human must read it.

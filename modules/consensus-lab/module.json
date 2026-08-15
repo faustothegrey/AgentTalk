@@ -4,7 +4,9 @@
   "code": [
     "scripts/arbiter-*.mjs"
   ],
-  "docs": [],
+  "docs": [
+    "modules/consensus-lab/docs/arbiter-consensus-draft.md"
+  ],
   "backlog": "70-consensus-lab.md",
   "deps": []
 }

@@ -11,7 +11,11 @@
     "scripts/test-live-gate.mjs",
     "scripts/test-pf2.mjs"
   ],
-  "docs": [],
+  "docs": [
+    "modules/team-orchestration/docs/decision-api-agents-for-coordination.md",
+    "modules/team-orchestration/docs/planning-protocol-diagrams.md",
+    "modules/team-orchestration/docs/planning-protocol.md"
+  ],
   "backlog": "10-team-orchestration.md",
   "deps": [
     "contracts",

@@ -26,7 +26,7 @@ import { fileURLToPath } from 'url';
  *   [[BL-098]] and [[BL-100]].
  *
  * WHY THIS IS NOT AN EDGE CASE
- *   The broken invocation is the MANDATED one. `design/launch-and-monitor-runbook.md` requires
+ *   The broken invocation is the MANDATED one. `modules/containment/docs/launch-and-monitor-runbook.md` requires
  *   tooling to be invoked by absolute path, worktrees live under `os.tmpdir()` since [[BL-100]],
  *   and a remote courier ([[BL-110]]) has no other option. The failure was reachable by exactly the
  *   intended caller, which is why a green suite never saw it — every test and every hand-run used a

@@ -50,7 +50,7 @@ checking the wrong place is worse than not checking, because it manufactures a p
 
 ## Procedure
 
-`design/launch-and-monitor-runbook.md` remains the contract. The sequence you executed in H-1 was correct —
+`modules/containment/docs/launch-and-monitor-runbook.md` remains the contract. The sequence you executed in H-1 was correct —
 pre-flight for real, reference values, baseline **last**, launch, monitor, **harness check before cleanup**,
 process sweep, cleanup — with cleanup now **partial**, as above.
 

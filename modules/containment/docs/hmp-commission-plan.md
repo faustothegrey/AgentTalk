@@ -1,7 +1,7 @@
 # HMP commissioning — the mechanised fence, and the first channel proof
 
 **Status:** PLAN — awaiting Gate 1 (plan review) and the PO's go on T2's live launch.
-**Planner:** Claude, 2026-07-30. **Supersedes the open questions in** `design/hmp-session-submission.md` §8
+**Planner:** Claude, 2026-07-30. **Supersedes the open questions in** `modules/relay/docs/hmp-session-submission.md` §8
 for decisions 1–3; decisions 4–5 are answered below as findings, not proposals.
 **PO decisions taken 2026-07-30, in session:** harden before wiring the launch verb · the first commission
 must be one that *cannot write* · authorization is a **per-run `[PO]` line** in a committed brief.
@@ -157,7 +157,7 @@ as containment.**
 
 **May touch:** `scripts/hmp-commission.mjs` (new) · `scripts/__tests__/hmp-commission.test.mjs` (new) ·
 `design/operator/hmp1-brief.md`, `design/operator/hmp1-bar.md` (new) · `design/backlog.md` (file BL-107, BL-108) ·
-`design/launch-and-monitor-runbook.md` (**one** correction, §5).
+`modules/containment/docs/launch-and-monitor-runbook.md` (**one** correction, §5).
 **May NOT touch:** the launcher · `scripts/infra-invariant.mjs` · `packages/**` · `apps/**` ·
 `~/.hermes/**` (the PO's install — read-only, always) · anything in the client repo.
 

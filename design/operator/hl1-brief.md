@@ -150,7 +150,7 @@ It exits `0` only when the outcome is `completed`.
 
 ## Procedure
 
-**`design/launch-and-monitor-runbook.md` is the contract — follow it, do not reconstruct it from memory.**
+**`modules/containment/docs/launch-and-monitor-runbook.md` is the contract — follow it, do not reconstruct it from memory.**
 Three points that have each cost a run before:
 
 1. **Run your pre-flight checklist for real** and report each result. A checklist written and not run is the

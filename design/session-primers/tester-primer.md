@@ -57,7 +57,7 @@ logbook, and testlog; treat tester evidence as validation findings, not merge ve
 output, or other production deviations in a validation run unless the PO explicitly approves the deviation first.
 Engineering instrumentation can be useful, but it is not valid tester evidence for production-equivalent behavior.
 One-off harness evidence is useful for diagnosis, but product direction follows the latest accepted product-run
-evidence in `design/logbook.md` and `design/testlog.md`.
+evidence in `modules/governance/docs/logbook.md` and `modules/governance/docs/testlog.md`.
 
 **Operational toolkit (PO-confirmed 2026-07-12).** When Codex wears the Tester hat, these tools are available for
 low-token UI validation and debugging:
@@ -95,8 +95,8 @@ cmux/browser-use, *not* those tools. The cmux-specific commands above (surfaces,
 **Lessons.** Agent-keyed — write tester-hat lessons into *your own* `design/lessons/<agent>-lessons.md` tagged
 "*as tester*" (there is deliberately **no** role-keyed `tester-lessons.md`).
 
-**Where state lives.** The active epic's `*-implementation.md` ledger, `design/backlog/`, `design/logbook.md`,
-and `design/testlog.md`. Charter/rationale + open decisions: `design/tester-seat-proposal.md`. Runbook for attach:
-`design/attach-chat-runbook.md`.
+**Where state lives.** The active epic's `*-implementation.md` ledger, `design/backlog/`, `modules/governance/docs/logbook.md`,
+and `modules/governance/docs/testlog.md`. Charter/rationale + open decisions: `modules/governance/docs/tester-seat-proposal.md`. Runbook for attach:
+`modules/mcp-transport/docs/attach-chat-runbook.md`.
 
 Current role: tester.

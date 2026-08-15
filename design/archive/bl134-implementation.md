@@ -1,6 +1,6 @@
 # BL-134 — implementation ledger
 
-**Branch:** `task-bl134` · **Worktree:** `/tmp/att-bl134` · **Plan:** `design/bl134-plan.md` (draft 2, re-gate
+**Branch:** `task-bl134` · **Worktree:** `/tmp/att-bl134` · **Plan:** `design/archive/bl134-plan.md` (draft 2, re-gate
 APPROVED with H1/H2 applied) · **Implementer:** Claude, 2026-08-15 (Standing Conditional Reassignment ACTIVE)
 
 ---

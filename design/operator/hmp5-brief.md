@@ -1,7 +1,7 @@
 # Run `hmp5` — operator brief: the first rung outside this repo
 
 **Rung:** the fifth commission carried over HMP, and the **first whose workdir is not AgentTalk**.
-**Plan:** `design/hmp-session-submission.md` §3.
+**Plan:** `modules/relay/docs/hmp-session-submission.md` §3.
 **Bar:** `design/operator/hmp5-bar.md` (pre-registered; its hash travels in the commission).
 **Config:** `design/operator/hmp5.config.json`. **Backlog item:** [[BL-105]].
 

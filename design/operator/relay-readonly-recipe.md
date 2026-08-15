@@ -1,6 +1,6 @@
 # The read-only PO→session relay — recipe
 
-**Step 1 of [[BL-110]].** Full design: `design/hmp-bidirectional-relay.md`. Handler: `scripts/relay-inbox.mjs`.
+**Step 1 of [[BL-110]].** Full design: `modules/relay/docs/hmp-bidirectional-relay.md`. Handler: `scripts/relay-inbox.mjs`.
 
 > **What this is.** A way for the PO, away from the desk, to ask a running session *"what's your status?"* and get
 > an answer — over Hermes, with **no authentication**, and that being safe is not an oversight. Every verb this
@@ -74,7 +74,7 @@ The inbox always resolves against the **primary checkout** (`--git-common-dir`, 
 ## Answering back — the outbound pointer relay
 
 **Implemented 2026-07-31** as `scripts/relay-status.mjs` ([[BL-110]] step 2; plan:
-`design/outbound-pointer-relay-plan.md`). Until then this section listed two *possible* paths and the channel was
+`modules/relay/docs/outbound-pointer-relay-plan.md`). Until then this section listed two *possible* paths and the channel was
 a **doorbell**: a message could reach the session, and nothing came back but a receipt. The substrate is still
 the live JSONL transcript LB-49 named as the lossless alternative — now read for one datum, not scraped.
 
@@ -275,7 +275,7 @@ still has no execute path.**
 `[PO-RELAY]`, and the sentence *"push remains the PO's, absolutely and without exception"* was **kept and
 defended** rather than weakened: the PO still authorises every push; only the channel changed, and a courier
 relaying an approval has not been granted the approval. Rationale and reopen condition:
-`design/agent-md-relay-authority-amendment.md`.
+`design/archive/agent-md-relay-authority-amendment.md`.
 
 ## Limits, so nobody is surprised
 

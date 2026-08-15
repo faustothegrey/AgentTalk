@@ -149,7 +149,7 @@ describe('BL-141 — where the gate agrees to be blind, and why', () => {
   });
 
   it('exempts paths that are cited BECAUSE they must never exist (LB-12)', () => {
-    const dir = makeRepo({ 'design/logbook.md': `never create ${NEVER_EXISTS[0]}` });
+    const dir = makeRepo({ 'modules/governance/docs/logbook.md': `never create ${NEVER_EXISTS[0]}` });
     expect(collectCitations(dir).unresolved).toEqual([]);
   });
 });

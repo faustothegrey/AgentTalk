@@ -1,7 +1,7 @@
 # Proposal — a **Tester** seat (validation of the running product)
 
 > **Status: LIVE — PO-ratified and promoted to canonical files 2026-07-12.** All four design questions (§8) decided
-> by the PO; default holder **Codex**; charter folded into `design/collaboration-workflow.md §1`, the seat row added
+> by the PO; default holder **Codex**; charter folded into `modules/governance/docs/collaboration-workflow.md §1`, the seat row added
 > to `AGENT.md → 📌 DEFAULT ROLE ASSIGNMENTS` (+ history line), `tester-primer.md` created and added to the FIRST
 > ENTRY POINT role→primer map. **First assignment (PO):** Codex instruments a human-driven BL-031 validation / M20
 > adoption run. This doc is now the seat's **charter/rationale of record**; the binding definition lives in the
@@ -84,7 +84,7 @@ The PO asked for the seat to have its own lessons + context. Mapping onto existi
 ## 7. If ratified — the exact edits (listed, NOT applied here)
 
 Left for the PO to make/authorise, so this proposal changes nothing binding:
-1. `design/collaboration-workflow.md §1` — add the **Tester** participant (charter from §2 above, the scope fence, the
+1. `modules/governance/docs/collaboration-workflow.md §1` — add the **Tester** participant (charter from §2 above, the scope fence, the
    independence default).
 2. `AGENT.md → 📌 DEFAULT ROLE ASSIGNMENTS` — add a **Tester** row (default holder + eligible + constraint
    "≠ that task's Implementer"), dated; add its op-note if an agent holds it.

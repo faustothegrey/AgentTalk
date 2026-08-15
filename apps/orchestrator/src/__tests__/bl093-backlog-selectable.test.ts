@@ -345,7 +345,7 @@ describe('the real backlog (design/backlog/)', () => {
   // the expected one (`["BL-122"]`) — so per the standing note above there is no finding here.
   //
   // What makes this refill different from the five before it: BL-122 is NOT stocked to be
-  // implemented next. It is the subject of a brief-authoring rung (`design/brief-authoring-rung-plan.md`),
+  // implemented next. It is the subject of a brief-authoring rung (`modules/containment/docs/brief-authoring-rung-plan.md`),
   // where the worker writes the operator brief FOR this item and does not do the item's work. The
   // eligibility bit is needed for the later rung that implements it, not for the authoring one.
   //

@@ -7,7 +7,12 @@
     "scripts/test-live-cross-provider.mjs",
     "scripts/probe-t4-api-tools.mjs"
   ],
-  "docs": [],
+  "docs": [
+    "modules/agent-runtime/docs/bl028-plan.md",
+    "modules/agent-runtime/docs/bl028-t3b-plan.md",
+    "modules/agent-runtime/docs/live-test-models.md",
+    "modules/agent-runtime/docs/llm-client-architecture.md"
+  ],
   "backlog": "20-agent-runtime.md",
   "deps": [
     "contracts",

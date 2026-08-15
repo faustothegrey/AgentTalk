@@ -14,7 +14,7 @@
  *   2  the handler itself crashed. Distinct from 1 on purpose.
  *
  * WHAT THIS IS, AND WHAT IT DELIBERATELY IS NOT
- *   `design/hmp-bidirectional-relay.md` proposes a bidirectional channel so the PO can steer a
+ *   `modules/relay/docs/hmp-bidirectional-relay.md` proposes a bidirectional channel so the PO can steer a
  *   session from away from the desk. That proposal needs a PO decision on an authority model
  *   (`[PO-RELAY]`) and it is BLOCKED on authenticating HMP (BL-107). This is the one slice that
  *   needs neither: **verbs that cannot do harm even if forged.**
@@ -55,7 +55,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
  *
  * `[PO-RELAY]` may NEVER express: merge · push · scope/direction/epics · role reassignment ·
  * `autonomy: eligible` · disposing of a `critical`. Those are the PO's, and they are reserved
- * to a human at a terminal. See `design/hmp-bidirectional-relay.md` §3a.
+ * to a human at a terminal. See `modules/relay/docs/hmp-bidirectional-relay.md` §3a.
  */
 export const READ_ONLY_VERBS = Object.freeze(['status', 'report']);
 
@@ -164,7 +164,7 @@ export function writeMessage(root, { from, verb, note }, now = new Date()) {
     note ?? '(no note)',
     '',
     '> Relayed over HMP. **`[PO-RELAY]` is not `[PO]`** — it is binding only within the read-only',
-    '> verb fence (`design/hmp-bidirectional-relay.md` §3a). This channel is unauthenticated',
+    '> verb fence (`modules/relay/docs/hmp-bidirectional-relay.md` §3a). This channel is unauthenticated',
     '> ([[BL-107]]), which is safe here precisely because a forged read-only request costs nothing.',
     '> It may NOT authorise a merge, a push, a scope change, a role reassignment, `autonomy:',
     '> eligible`, or the disposition of a `critical`. Those need a human at a terminal.',

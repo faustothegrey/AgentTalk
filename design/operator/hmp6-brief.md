@@ -1,7 +1,7 @@
 # Run `hmp6` — operator brief: an investigation inside AgentTalk
 
 **Rung:** the sixth commission carried over HMP, and the first to investigate a dead branch in status logic.
-**Plan:** `design/hmp-session-submission.md` §3.
+**Plan:** `modules/relay/docs/hmp-session-submission.md` §3.
 **Bar:** `design/operator/hmp6-bar.md` (pre-registered; its hash travels in the commission).
 **Config:** `design/operator/hmp6.config.json`. **Backlog item:** [[BL-120]].
 

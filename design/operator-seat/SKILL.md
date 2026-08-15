@@ -24,7 +24,7 @@ You hold no primer key (primers are keyed by role; you have none). The runbook a
 
 - **This skill:** `design/operator-seat/` in the AgentTalk repo (canonical, versioned — Hermes loads it via symlink). Write path verified working through the symlink (2026-08-06). Editing this skill (skill_manage) writes into the repo working tree — a governed change. **You MAY commit inside the write allowlist** (`design/backlog/**`, `design/operator/**`, `design/operator-seat/**`) — BL-123, PO option (a), 2026-08-11. **You may never PUSH**; that is the PO's, absolutely. Commit rather than leaving the tree dirty: your edit is live from the moment it lands in the working tree either way, so a commit is what makes it visible, attributable and revertible — an untracked file hides from a casual `git status` read. **Report every path you touched, including untracked ones** (`git status --porcelain` prints them as `??`). Symlink mechanism + the skill_manage symlink-scan pitfall: see the `skill-repo-hosting` skill.
 - **Charter:** `AGENT.md` → 📌 DEFAULT ROLE ASSIGNMENTS → 🔧 The OPERATOR seat
-- **Runbook:** `design/launch-and-monitor-runbook.md` — written for exactly your situation. This skill does NOT summarize it; read the runbook directly.
+- **Runbook:** `modules/containment/docs/launch-and-monitor-runbook.md` — written for exactly your situation. This skill does NOT summarize it; read the runbook directly.
 - **Reference configs:** `design/operator/o*.config.json` — pattern references, not answers.
 - **Reference plans:** `design/o*-plan.md` — operational context for each rung.
 

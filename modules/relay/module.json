@@ -7,7 +7,11 @@
     "scripts/relay-status.mjs",
     "scripts/m19-relay-ratio.mjs"
   ],
-  "docs": [],
+  "docs": [
+    "modules/relay/docs/hmp-bidirectional-relay.md",
+    "modules/relay/docs/hmp-session-submission.md",
+    "modules/relay/docs/outbound-pointer-relay-plan.md"
+  ],
   "backlog": "60-relay.md",
   "deps": []
 }

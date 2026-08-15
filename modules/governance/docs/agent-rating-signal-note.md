@@ -27,7 +27,7 @@ The material to aggregate is already produced by the workflow; nothing new needs
 
 | Source | What it already records | Strength |
 |---|---|---|
-| `design/implementer-pitfalls.md` | reviewer-authored case law on *how the implementer failed* (IP-1…IP-N) | strong — independent, adversarial |
+| `modules/governance/docs/implementer-pitfalls.md` | reviewer-authored case law on *how the implementer failed* (IP-1…IP-N) | strong — independent, adversarial |
 | `*-implementation.md` verdict rows + closure telemetry | VERIFIED-first-pass vs. REFUTED-and-redelivered; cost/outcome | strong — per-task, evidenced |
 | `design/lessons/<agent>-lessons.md` | self-reported reflection | weak — self-graded, but real |
 

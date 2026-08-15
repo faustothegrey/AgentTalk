@@ -231,7 +231,7 @@ entry carries a **stable `LB-N` id** — cite it from ledgers/backlog (titles ma
   private key store is agent-writable, so the gate is behavioural, not enforced (hard-gate alt: human supplies the
   key value so possession proves authorisation — considered, not adopted).
 - **Source:** Fausto ↔ Claude design exchange, 2026-06-22 (surfaced by a stress-test of the consumed-key re-read
-  path). See `design/reprime-mechanism.md` *(renamed from `…-proposal.md` + actualized to the role-keyed model 2026-06-27)*.
+  path). See `modules/governance/docs/reprime-mechanism.md` *(renamed from `…-proposal.md` + actualized to the role-keyed model 2026-06-27)*.
 
 ### LB-14 · 2026-06-22 — [process] The human gate's purpose is *independence*, not *determinism* — so a deterministic check can be delegated, a judgment check cannot
 - **Finding:** with Gemini out of budget there is **no independent agent verifier**, so plan §8 made Fausto the
@@ -768,7 +768,7 @@ The other three were less "is it safe" and more "is this a small clean change or
   - diff:        6 mod + 2 new packages (mcp-transport, mcp-exec-server) + 2 git-mv renames; commit `b67a6ce`
   - outcome:     MERGED ✅ — `b67a6ce` on `master` + pushed; live CLI smoke closed by `e3f85c4`/`4fb2a69`
 - **Source:** Claude, 2026-06-26. Implements `design/archive/mcp-exec-server-plan.md`. Continues the llm-client
-  extraction ([[LB-14]] gating); pairs with `design/llm-client-architecture.md`.
+  extraction ([[LB-14]] gating); pairs with `modules/agent-runtime/docs/llm-client-architecture.md`.
 
 ---
 
@@ -816,16 +816,16 @@ The other three were less "is it safe" and more "is this a small clean change or
      (*"Let me check my memory for context on this project and user."*). That's the **client's** provider
      output-parser leaking thinking into the response — a `agentalk-mcp-client` concern (separate repo;
      relay-only). Worth a follow-up there; AgentTalk just relayed what the client submitted.
-- **Reproduction.** Full operator steps + troubleshooting captured in **`design/attach-chat-runbook.md`**
+- **Reproduction.** Full operator steps + troubleshooting captured in **`modules/mcp-transport/docs/attach-chat-runbook.md`**
   (the old `attach-harness.mjs` is gone, so that runbook is now canonical).
 - **Telemetry (task closure):**
   - task:        live 1:1 attach-chat verification (web UI ⇄ real mcp-client → claude)
   - wall-clock:  2026-06-26 ~17:30 → ~18:10 CEST (~40 min, mostly exploration + the env-var stumble)
   - budget:      claude session ~0%→27% (Δ ~27%, heavy read/explore), weekly 72%→74% (Δ ~2%)
   - gate:        no code change to app/engine; build green; live round-trip ✅ (real claude reply in UI)
-  - diff:        docs only — `design/attach-chat-runbook.md` (new) + this LB-28 entry
+  - diff:        docs only — `modules/mcp-transport/docs/attach-chat-runbook.md` (new) + this LB-28 entry
   - outcome:     VERIFIED ✅ — 1:1 attach chat works on the current codebase
-- **Source:** Claude, 2026-06-26. Pairs with `design/attach-chat-runbook.md`; relates to [[LB-27]]
+- **Source:** Claude, 2026-06-26. Pairs with `modules/mcp-transport/docs/attach-chat-runbook.md`; relates to [[LB-27]]
   (mcp-exec-server, the consensus-free sibling path) and the M05 attach mode.
 
 ---
@@ -921,7 +921,7 @@ The other three were less "is it safe" and more "is this a small clean change or
   action falls outside that role, the agent must stop, report the mismatch, may propose alternatives, and must ask the
   Development Orchestrator / Scrum Master for an authoritative course-of-action decision. The agent then does what
   the Scrum Master decides.
-- **Role definition.** `design/collaboration-workflow.md` defines the Scrum Master function generically as the
+- **Role definition.** `modules/governance/docs/collaboration-workflow.md` defines the Scrum Master function generically as the
   authority for task-assignment ambiguity. `AGENT.md` records the current project-specific holders/delegates: Fausto
   by default, with Hermes Agent allowed when Fausto explicitly assigns it that function.
 - **Verification.** Docs-only process amendment; checked with `rg` and `git diff --check`. No build/test run needed
@@ -992,7 +992,7 @@ no scope change to the probe plan otherwise. The plan stays DRAFT-for-review aft
   roles on the fly as necessity arises. If the Scrum Master is not human, it must document the reason for each
   assignment or de-assignment in a durable project artifact.
 - **Agent turn check.** `AGENT.md` now requires each agent, before acting on a turn assignment, to check whether the
-  assignment complies with `design/collaboration-workflow.md`, its current role, and current Scrum Master authority;
+  assignment complies with `modules/governance/docs/collaboration-workflow.md`, its current role, and current Scrum Master authority;
   on mismatch or ambiguity, the agent reports, stops, and waits for the Scrum Master's go/no-go.
 - **Verification.** Docs-only process amendment; checked with targeted `rg` and `git diff --check`. No build/test run
   needed because no code, scripts, package config, or test contracts changed.
@@ -1005,7 +1005,7 @@ no scope change to the probe plan otherwise. The plan stays DRAFT-for-review aft
 - **What happened.** Codex updated `design/archive/milestone10-t4-live-probe-plan.md` with an implementer task plan, but also
   added a logbook entry that merely restated the planning update.
 - **Why that was wrong.** The plan file is the source artifact for this task. Recording the planning pass itself in
-  `design/logbook.md` was redundant logbook noise; the logbook should capture durable findings, decisions, corrections,
+  `modules/governance/docs/logbook.md` was redundant logbook noise; the logbook should capture durable findings, decisions, corrections,
   operational results, or process lessons, not every ordinary plan edit.
 - **Amendment.** Removed the redundant planning-entry content and replaced it with this correction record at Fausto's
   request. The implementer task plan remains in `design/archive/milestone10-t4-live-probe-plan.md`; no implementation approval,
@@ -1196,7 +1196,7 @@ no scope change to the probe plan otherwise. The plan stays DRAFT-for-review aft
   low `max_tokens`. The cleanest free instruct picks were `google/gemma-4-26b-a4b-it:free` and
   `google/gemma-4-31b-it:free` (both gave a terse `pong`). **Don't gate a required check on a `:free` model**; use a
   cheap-paid fallback (`meta-llama/llama-3.3-70b-instruct`, `openai/gpt-4o-mini`) when reliability matters.
-- **Where the maintained list lives.** Curated, growing reference: **`design/live-test-models.md`** (gateways +
+- **Where the maintained list lives.** Curated, growing reference: **`modules/agent-runtime/docs/live-test-models.md`** (gateways +
   verified free models + cheap fallbacks + how to add more). The logbook records the finding; the doc holds the
   living list (logbook is append-only and can't maintain it).
 - **Verification.** Live `curl` to `/models` and `/chat/completions` with the env key; pass/fail probed across ~10
@@ -1372,7 +1372,7 @@ no scope change to the probe plan otherwise. The plan stays DRAFT-for-review aft
   SM instructions `[Codex]`. (4) The M15 target picture makes AgentTalk itself the coordination substrate
   (agents attach over MCP; the arbiter holds the threads) — the structural replacement for tmux scraping.
 - **Records updated:** `AGENT.md` (SM-status bullet, Origin Tag Protocol rewritten),
-  `design/collaboration-workflow.md` §1 (canonical SM standing), planner primer re-minted for the dual role
+  `modules/governance/docs/collaboration-workflow.md` §1 (canonical SM standing), planner primer re-minted for the dual role
   (key `20260702-1654-2bd94e`).
 
 ### LB-51 · 2026-07-02 — [process] SM next-step call for BL-012 / M15
@@ -1882,13 +1882,13 @@ never on real attached CLI sessions** — so the more-defensible half is also th
 the same way: **self-hosting is the experiment that would settle it.**
 
 Related: LB-67 (prior art), LB-66 (contract-hash; PO out-of-band run), M03 failure propagation, M17 workflow
-authority, `AGENT.md` ⛔ Implementer Rules of Engagement (Rules 2/5/7), `design/collaboration-workflow.md` §1
+authority, `AGENT.md` ⛔ Implementer Rules of Engagement (Rules 2/5/7), `modules/governance/docs/collaboration-workflow.md` §1
 independence defaults. Analysis only — **no code, no behaviour change, no backlog items created.**
 
 ### LB-69 · 2026-07-10 — [process] **Nobody owns role→capability enforcement: BL-015 defers it to M17, M17 doesn't do it. Plus: the case law's dominant failure is false claims, not trespass.**
 
 Same out-of-band architect session as LB-67/68. **Correction first, because it is the point:** the "deterministic
-role fence" discussed in this session is **not a new idea** — it is **BL-015**, `design/scope-fences-design-note.md`
+role fence" discussed in this session is **not a new idea** — it is **BL-015**, `modules/governance/docs/scope-fences-design-note.md`
 (🟡 DRAFT, dated 2026-07-08, Owner: Architect, Origin: PO idea). That note already contains the L0/L1/L2 ladder, the
 machine-readable `@scope` manifest (`allowed:` / `forbidden:` / **`free:`**), "the refusal message IS the
 deviation-report template," "fences are amended only at gates," "freedom inside the box is sacred," and principle 4,
@@ -1907,7 +1907,7 @@ work that both documents believe the other is doing.** This is the finding of th
 colour. *(Disposition is the PO's + a planner's; naming it is the architect's job. No backlog item created here.)*
 
 **Finding 2 (empirical) — quantifying BL-015's own principle 4.** The note concedes fences are "necessary, not
-sufficient." Classifying all 16 `IP-N` cases in `design/implementer-pitfalls.md` against a deterministic file fence:
+sufficient." Classifying all 16 `IP-N` cases in `modules/governance/docs/implementer-pitfalls.md` against a deterministic file fence:
 - **Prevented outright (3):** IP-5 (out-of-scope engine creep), IP-6 (non-hermetic tests touching real fs/git/network
   — a sandbox decides this, not a promise), IP-12 (delivered loose in mainline — structurally impossible if the
   harness *is* a worktree on a task branch; the note already claims this one).
@@ -1946,7 +1946,7 @@ ledgers can cite them — and the collision has **already produced ambiguous cit
 citations, so this is **not** a zero-risk reviewer fix; it needs a decision (renumber-with-redirect vs. retitle).
 **The case law is reviewer-authored — flagged here, deliberately left untouched by the architect.**
 
-Related: **BL-015** / `design/scope-fences-design-note.md` (the prior art *inside the house*), **BL-014**
+Related: **BL-015** / `modules/governance/docs/scope-fences-design-note.md` (the prior art *inside the house*), **BL-014**
 (role-skill injection — the note gates L2 with it at M19), LB-68 (the gate notarizes, it does not govern), LB-67
 (Traycer launches; we attach), M05 attach-mode premise, M17 workflow authority. Analysis only — **no code, no
 behaviour change, no backlog items created, `implementer-pitfalls.md` untouched.**
@@ -2080,7 +2080,7 @@ concentration tripwire): an SM that also holds the quality gates could easily ov
 standing bias to **give control away when the context lives elsewhere.**
 
 Related: LB-34 (SM owns reassignment), LB-71 (the incumbent is the worst-placed actor to check its own shape),
-BL-029 + `design/agent-rating-signal-note.md` (a track-record *signal* is the durable basis for exactly this kind of
+BL-029 + `modules/governance/docs/agent-rating-signal-note.md` (a track-record *signal* is the durable basis for exactly this kind of
 routing call), `AGENT.md` → ⛔ REVIEWER RULES (verify-don't-assert). Process only — no code, no behaviour change.
 
 ### LB-73 · 2026-07-11 — [process] **M19 inception ruled: C-first (attach enabler), never B, narrow-A if T1 is cheap. A spike's answer reshaped the epic before a line was planned.**
@@ -2094,7 +2094,7 @@ POV → PO ruled.**
 **What was decided (PO `[PO]`, 2026-07-11).** **Fork C-first, never B, narrow-A conversion pre-authorized iff T1
 proves cheap.** M19 = **T1 BL-018-lite** (contract alignment/fail-fast — *not* full negotiation) → **T2 BL-026**
 (supported attach ritual + Claude `--allowedTools` permission proof). C3 (a real relay-fall + BL-027 ratio)
-discharges here only via narrow-A, else defers to M20. Full record: `design/self-hosting-program-draft.md` §M19;
+discharges here only via narrow-A, else defers to M20. Full record: `modules/governance/docs/self-hosting-program-draft.md` §M19;
 `backlog.md` gate 2026-07-11.
 
 **Two things worth remembering.** (1) **"Never B" is a metric-honesty rule, not a tech preference:** SDK clients can
@@ -2211,8 +2211,8 @@ real Codex CLI) but has **0 organic dev coordination** yet (LB-75) — this diag
 
 **Source.** Authored 2026-07-12 (architect) answering the PO's "how do I stop using the terminal and work in the UI"
 question; grounded in `apps/web/src/App.tsx` (WS `message` / `approve_pending_relay` / `set_relay_approval_mode`),
-`apps/web/src/RelayApprovalPanel.tsx`, and `design/attach-chat-runbook.md`. Related: LB-75 (M20 closed), LB-28 (1:1
-attach chat verified), `design/attach-chat-runbook.md` (the operational steps).
+`apps/web/src/RelayApprovalPanel.tsx`, and `modules/mcp-transport/docs/attach-chat-runbook.md`. Related: LB-75 (M20 closed), LB-28 (1:1
+attach chat verified), `modules/mcp-transport/docs/attach-chat-runbook.md` (the operational steps).
 
 ### LB-77 · 2026-07-12 — [product] First **un-scripted, UI-driven** approval-gated relay run (real codex ↔ real gemini) — the M20 operational path works end-to-end from the browser
 
@@ -2242,7 +2242,7 @@ mechanism was correct (buttons render only inside a `pending` card, `RelayApprov
 purely visual. Exactly the class of finding this first-run exercise existed to surface.
 
 **Source.** PO-driven run 2026-07-12 (~06:49–06:53), backend log (scratchpad), screenshot. Related: LB-76 (the two
-flows), LB-75 (M20 closed, the boundary), BL-031 (the UX nit), `design/attach-chat-runbook.md`. Product finding — no
+flows), LB-75 (M20 closed, the boundary), BL-031 (the UX nit), `modules/mcp-transport/docs/attach-chat-runbook.md`. Product finding — no
 code change; durable cross-cutting record.
 
 ### LB-78 · 2026-07-12 — [tester] BL-031 human-driven validation run BLOCKED before UI exercise: pair-chat startup healthcheck never reaches one attached client
@@ -2611,7 +2611,7 @@ parallel non-code work should still self-monitor best-effort and expect the aggr
 
 **Canonical:** `AGENT.md → Resource Expenditure Monitoring → Known limits` (the amended interim rule). Related: the
 three 2026-07-13 near-misses (see the plan-reviewer primer caution + this session's coordination flags), the Tester
-seat (LB-77, `design/tester-seat-proposal.md`), the testlog (`design/testlog.md`). Governance finding.
+seat (LB-77, `modules/governance/docs/tester-seat-proposal.md`), the testlog (`modules/governance/docs/testlog.md`). Governance finding.
 
 ### LB-91 · 2026-07-13 — [tester] The API-driven multi-agent consensus path is non-functional through the product; the arbiter is orphaned
 

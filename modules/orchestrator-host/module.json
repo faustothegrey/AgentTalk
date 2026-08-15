@@ -12,7 +12,10 @@
     "scripts/check-orchestrator-ports.mjs",
     "scripts/e2e-test.ts"
   ],
-  "docs": [],
+  "docs": [
+    "modules/orchestrator-host/docs/architecture.md",
+    "modules/orchestrator-host/docs/implementation.md"
+  ],
   "backlog": null,
   "deps": [
     "team-orchestration",

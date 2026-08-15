@@ -143,7 +143,7 @@ re-register.
 
 | Port | What | Set by |
 |---|---|---|
-| **3500** | the orchestrator an **operator run** launches | the launcher config (`design/launch-and-monitor-runbook.md`) |
+| **3500** | the orchestrator an **operator run** launches | the launcher config (`modules/containment/docs/launch-and-monitor-runbook.md`) |
 | **3600** | the **operator's own** sandbox port — never 3500 | OPERATOR charter; `infra-invariant.mjs` `allowPorts: [3600]` |
 | **3741** | the **auto-started** orchestrator (`AGENTTALK_MCP_PORT=54321`) | the launchd plist → **the systemd unit on Linux (§10; none installed here yet)** |
 | **3000** | web app (pinned by the Drive OAuth redirect) | `PORT` |
@@ -314,7 +314,7 @@ instruction**. `[Hermes]` is VOID as an authority tag. Its reports are **observa
 until checked against the artifact. Its write fence — `design/backlog/**` + `design/operator/**`, never
 `autonomy: eligible` / `blocked_by` / `status: done` — is now **machine-checked** (BL-097). Full charter:
 `AGENT.md → 📌 DEFAULT ROLE ASSIGNMENTS → 🔧 The OPERATOR seat`. Runbook:
-`design/launch-and-monitor-runbook.md`.
+`modules/containment/docs/launch-and-monitor-runbook.md`.
 
 **To actually enforce the fence on an operator run, pass an expect file:**
 

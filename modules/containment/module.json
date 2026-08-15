@@ -7,7 +7,14 @@
     "scripts/wt-setup.mjs",
     "scripts/scope-check.mjs"
   ],
-  "docs": [],
+  "docs": [
+    "modules/containment/docs/brief-authoring-rung-plan.md",
+    "modules/containment/docs/hmp-commission-plan.md",
+    "modules/containment/docs/http-launcher-proposal.md",
+    "modules/containment/docs/launch-and-monitor-runbook.md",
+    "modules/containment/docs/meter-cap-cluster-plan.md",
+    "modules/containment/docs/worktree-discipline.md"
+  ],
   "backlog": "50-containment.md",
   "deps": [
     "backlog"

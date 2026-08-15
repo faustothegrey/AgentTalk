@@ -50,7 +50,7 @@ output that would satisfy it.
 
 ## Your source of truth
 
-**`design/launch-and-monitor-runbook.md`** in `/Users/fausto/Software/AgentTalk` — corrected since H-0. It is
+**`modules/containment/docs/launch-and-monitor-runbook.md`** in `/Users/fausto/Software/AgentTalk` — corrected since H-0. It is
 written for exactly your situation. **This brief does not summarize it**, deliberately: a restated ruleset
 invites you to follow the summary instead of the source, and would make this a test of my summary rather than of
 the document.
