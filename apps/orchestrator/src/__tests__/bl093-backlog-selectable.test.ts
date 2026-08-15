@@ -160,7 +160,7 @@ describe('workableBacklogItems', () => {
   });
 });
 
-describe('the real backlog (design/backlog.md)', () => {
+describe('the real backlog (design/backlog/)', () => {
   // DoD row 3 — the whole unit expressed as one assertion. If this ever returns something
   // unexpected, either an item was marked `eligible` that should not have been, or a blocker
   // resolved; both deserve a human look, so pin it exactly and let the failure force the look.
@@ -425,7 +425,24 @@ describe('the real backlog (design/backlog.md)', () => {
     //     expired never; it is now held by a filed item that releases itself when BL-135 closes.
     // Leaving BL-134 itself, which is `todo`, unblocked, and — since the PO answered its four open
     // questions — no longer a question but a specified task.
-    expect(workableBacklogItems(items).map((i) => i.id)).toEqual(['BL-134']);
+    //
+    // 2026-08-15 (later, at BL-134's own closure) — deliberately updated, and THE RED WAS SHOWN
+    // BEFORE THIS LINE MOVED, which is the whole ritual. BL-134 merged (`5f8f068`) and closed, so
+    // it left the set and took the set with it: the value is now **empty**.
+    //
+    // Per the note at the head of this describe: an unexpected value IS the finding. Here it is,
+    // and it is not a formality —
+    //
+    //   NOTHING IN A 140-ITEM BACKLOG CAN BE HANDED TO AN AGENT UNATTENDED.
+    //
+    // 2 todo, 28 deferred, 110 closed. Of the two `todo`, BL-134 is now done and BL-028 is held by
+    // `blocked_by: [BL-084, BL-135]` — correctly, for a stated reason. So the queue is not blocked
+    // by accident or by a stale fence; it is genuinely empty, and refilling it is a PO act.
+    //
+    // This matters more than the usual empty-set note because the project's stated goal is
+    // AUTOMATED DEVELOPMENT, and this line is the measure of whether any is currently possible.
+    // It is the ONE place that says so out loud, which is why it is pinned exactly.
+    expect(workableBacklogItems(items).map((i) => i.id)).toEqual([]);
   });
 
   // 2026-08-07 — deliberately updated, and the red was shown to the PO first. BL-084 CLOSED (PO
@@ -489,7 +506,9 @@ describe('the real backlog (design/backlog.md)', () => {
     // where it becomes visible.
     //
     // Still the whole set, still not an absence check, for the same reason as every entry above.
-    expect(workableBacklogItems(items).map((i) => i.id)).toEqual(['BL-134']);
+    // 2026-08-15 — BL-134 closed, so the set is empty. BL-028's fence is what this bar is about
+    // and it is UNCHANGED: it stays out because BL-135 is unresolved, not because the set drained.
+    expect(workableBacklogItems(items).map((i) => i.id)).toEqual([]);
   });
 
   it('marks BL-086 as the PO decision it is', () => {

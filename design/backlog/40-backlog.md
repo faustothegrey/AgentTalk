@@ -5,14 +5,14 @@ Open items owned by the **backlog** module. Closed items live in `90-closed.md`.
 <!-- Split from design/backlog.md (Wave 1). -->
 <!-- @item
 id: BL-134
-status: todo
+status: done
 date: 2026-08-15
 epic: null
 tags: [backlog, autonomy, governance, operator, bl-093, simplification]
 blocked_by: [BL-137]
 autonomy: human-only
 -->
-- [todo · **PO-DIRECTED REWRITE 2026-08-15 — supersedes this item's own first shape (option (b), "flip the
+- [done 2026-08-15 · merged `5f8f068` · gate 2 + gate 3 VERIFIED · **PO-DIRECTED REWRITE 2026-08-15 — supersedes this item's own first shape (option (b), "flip the
   default"), which did not satisfy the requirement. Plan: `design/bl134-plan.md`, awaiting gate 1** · filed by
   the planner at the PO's direction: *"the way backlog items are eligible is too complicated; any workable
   backlog item must also be eligible for Hermes launching externally"*] —
