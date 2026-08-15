@@ -117,6 +117,31 @@ run, at that sha, replay-guarded by `design/operator/.hmp-launched.json`.
 
 This is stronger than what it replaces: per-run rather than per-commit, sha-bound, and single-use.
 
+**⛔ THE WORDING ABOVE IS SUPERSEDED — DO NOT SHIP IT. Rewritten below after [[BL-137]] merged (2026-08-15).**
+Three things in it are now false or stale, and the third is the reason BL-134 was blocked in the first place:
+
+1. **The path moved** — `design/po/<run>.authorized`, not `design/operator/`.
+2. **The line reference has shifted** and must be re-read, not copied.
+3. **"it cannot hand any of it to an agent" remains FALSE, and BL-137 did not make it true.** BL-137
+   established that the operator *can* write the authorization — the seat holds a shell, the SSH key is
+   unencrypted ([[BL-139]]), and only a secret it cannot read would be a fence. What changed is that the write
+   is now **conspicuous**, not that it is prevented.
+
+**Replacement wording (proposed; the PO still owns this prose — q2):**
+
+> An item Hermes files may become **workable** — but *workable is not launchable*. A launch requires
+> `design/po/<run>.authorized`, containing exactly `[PO] AUTHORIZED-RUN: <run>`, **committed at the repo-sha
+> the commission names**, single-use via the launch ledger, and written by the PO's `approve <token>` alone.
+> It lives in a directory **nothing else writes**, so an operator write there is conspicuous — and a foreign
+> path in a bracketed run ([[BL-138]]). **This is detection, not prevention:** nothing mechanically stops a
+> process holding a shell from writing it. The fence is the seat observing its instructions, and the
+> instruments that make a breach visible.
+
+**That is weaker than the superseded draft claimed, and deliberately so.** Shipping "it cannot hand any of it
+to an agent" would replace one overstated fence with another — precisely the defect [[BL-136]] corrected in
+`SKILL.md` and [[BL-137]] corrected in `AGENT.md` and `hmp-commission.mjs`. **The honest sentence is the
+deliverable.**
+
 ## 6. Gate B must hold first — hence the `blocked_by`
 
 This plan moves the whole containment argument onto Gate B. Gate B currently has a hole, verified:
@@ -204,7 +229,7 @@ method under test, caught 2026-08-14), and rows 4-5 are exactly that shape.
 | D3 | `parseSelectableIds` agrees with the real parser; the existing drift test is green |
 | D4 | `validate-backlog.mjs` warns on `todo` + fenced-by-field + no unresolved blocker; exit code unchanged |
 | D5 | **The mechanism is proven on the real case:** [[BL-135]] is filed, BL-028 carries `blocked_by: [BL-135]`, and BL-028 is consequently **NOT** in the workable set — fenced for a stated, self-releasing reason |
-| D6 | The workable set is exactly **`{BL-136}`**, and every exclusion is legible from the backlog alone *(corrected at gate 1 — see §13 F1: this row previously asserted `{}`, a value the planner had never run the predicate to obtain)* |
+| D6 | The workable set is exactly **`{BL-028, BL-134, BL-139, BL-140}`**, and every exclusion is legible from the backlog alone. **⬛ RECOMPUTED 2026-08-15 against the live API after BL-137 merged** — this row has now been wrong **twice**: it first asserted `{}` (never run — gate 1 F1), was corrected to `{BL-136}`, and that value went stale the moment BL-136 closed and three items were filed. **Re-run the predicate before trusting this row a third time; do not read it, run it.** |
 | D7 | Mutation run recorded for §9 rows 3, 4, 5 — each turns its own bar red |
 | D8 | §7's docs no longer describe `autonomy` as a gate or a fail-closed default |
 | D9 | `AGENT.md`'s OPERATOR Visibility paragraph rests on Gate B (§5 wording, or the PO's) |
