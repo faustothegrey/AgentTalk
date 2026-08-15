@@ -311,7 +311,7 @@ Every read is `try`-wrapped and best-effort — missing files yield `idle`/zeroe
 
 **Governance, unchanged and load-bearing:** Hermes holds **no role**, receives **no baton**, and **issues no
 instruction**. `[Hermes]` is VOID as an authority tag. Its reports are **observations, not findings**, unverified
-until checked against the artifact. Its write fence — `design/backlog.md` + `design/operator/**`, never
+until checked against the artifact. Its write fence — `design/backlog/**` + `design/operator/**`, never
 `autonomy: eligible` / `blocked_by` / `status: done` — is now **machine-checked** (BL-097). Full charter:
 `AGENT.md → 📌 DEFAULT ROLE ASSIGNMENTS → 🔧 The OPERATOR seat`. Runbook:
 `design/launch-and-monitor-runbook.md`.
@@ -320,7 +320,7 @@ until checked against the artifact. Its write fence — `design/backlog.md` + `d
 
 ```bash
 cat > /tmp/operator-expect.json <<'EOF'
-{ "allowWritePaths": ["design/backlog.md", "design/operator/**"] }
+{ "allowWritePaths": ["design/backlog/**", "design/operator/**"] }
 EOF
 node scripts/infra-invariant.mjs snapshot --out /tmp/before.json
 # … the run …

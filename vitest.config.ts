@@ -28,7 +28,7 @@ export default defineConfig({
     // THAT `apps/web` IS UNTESTED IS A DELIBERATE, RECORDED POSITION (PO, 2026-08-10), not an oversight:
     // the UI is thin enough to stay verified by eye. What is knowingly NOT verified — that the
     // `agent_non_reply` arm in App.tsx actually RENDERS its notice — and the condition under which this
-    // reopens are written up in BL-122's closing block in design/backlog.md. Read that before reversing this.
+    // reopens are written up in BL-122's closing block in design/backlog/90-closed.md. Read that before reversing this.
     //
     // To bring apps/web in, you must ADD an include glob — and scope it to `apps/web/src/**`, NOT
     // `apps/web/**`: supplying this `exclude` array REPLACES vitest's defaultExclude, which is where

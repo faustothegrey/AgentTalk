@@ -2,7 +2,7 @@
 /**
  * Deterministic backlog structure gate (M13).
  *
- * Run it every time `design/backlog.md` changes:  `npm run backlog:check`
+ * Run it every time the backlog changes:  `npm run backlog:check`
  * (the npm script builds the parser first, then runs this).
  *
  * Fails (exit 1) on ANY structural defect:
@@ -15,13 +15,34 @@
  * Zero LLM, zero network — pure parse + assert. Reuses the real parser
  * (apps/orchestrator/src/backlog.ts) so the gate can never drift from the API.
  */
-import { readFileSync } from 'fs';
+import { readFileSync, existsSync, statSync, readdirSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { readBacklog } from '../apps/orchestrator/dist/backlog.js';
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
-const backlogPath = join(repoRoot, 'design', 'backlog.md');
+
+// The backlog is a DIRECTORY since Wave 1 (`design/backlog/`, one file per concern), and was a
+// single `design/backlog.md` before it. Both are read, the directory winning — the same rule
+// `defaultBacklogPath()` applies, kept in step deliberately: this validator and the parser
+// disagreeing about WHERE the backlog is would be a silent pass on a file nobody serves.
+const backlogDir = join(repoRoot, 'design', 'backlog');
+const backlogPath =
+  existsSync(backlogDir) && statSync(backlogDir).isDirectory()
+    ? backlogDir
+    : join(repoRoot, 'design', 'backlog.md');
+
+/** The whole backlog as one document, whichever layout is on disk. */
+function backlogText() {
+  if (statSync(backlogPath).isDirectory()) {
+    return readdirSync(backlogPath)
+      .filter((f) => f.endsWith('.md'))
+      .sort()
+      .map((f) => readFileSync(join(backlogPath, f), 'utf8'))
+      .join('\n');
+  }
+  return readFileSync(backlogPath, 'utf8');
+}
 
 const ID_RE = /^BL-\d{3,}$/;
 const INACTIVE = new Set(['done', 'dropped']); // need no header
@@ -115,7 +136,7 @@ for (const it of items) walk(it.id, []);
 const headeredBullets = new Set(
   items.map((it) => it.bodyMarkdown.split('\n')[0]?.trim()).filter(Boolean),
 );
-const lines = readFileSync(backlogPath, 'utf8').split('\n');
+const lines = backlogText().split('\n');
 let inFence = false;
 lines.forEach((line, idx) => {
   const t = line.trimStart();
@@ -140,7 +161,7 @@ lines.forEach((line, idx) => {
 if (errors.length > 0) {
   console.error(`✗ backlog structure INVALID — ${errors.length} error(s):`);
   for (const e of errors) console.error(`  - ${e}`);
-  console.error(`\nParsed ${items.length} item(s) from design/backlog.md.`);
+  console.error(`\nParsed ${items.length} item(s) from ${backlogPath.replace(repoRoot + '/', '')}.`);
   process.exit(1);
 }
 
