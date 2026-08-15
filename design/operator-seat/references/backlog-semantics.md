@@ -6,7 +6,9 @@ Verified against `apps/orchestrator/src/backlog.ts` and the live orchestrator on
 
 - **No params** → open queue: status NOT in `{done, dropped, deferred}` (i.e. `todo` + `doing` + unknown). The normal answer to "list the backlog".
 - **`?all=true`** → EVERYTHING — done and dropped included (122 of 122 on 2026-08-11, vs 1 in the default view). Not "parked items".
-- **`?selectable=true`** → the currently selectable set, a SEPARATE eligibility signal.
+- **`?workable=true`** → the currently workable set, a SEPARATE eligibility signal. *(Renamed from
+  `?selectable=true` by BL-134. The old spelling is **not** an alias — `server.ts` reads only `workable`, so
+  `?selectable=true` returns HTTP 200 carrying the **open queue**: wider than what you asked for, silently.)*
 
 `activeBacklogItems()` filters done/dropped/deferred. Unknown statuses stay visible on purpose (a typo'd state should surface, not vanish).
 
