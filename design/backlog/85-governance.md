@@ -325,13 +325,14 @@ tags: [overhaul, wave2, modules, colocation, architecture, docs]
 
 <!-- @item
 id: BL-145
-status: todo
+status: done
 date: 2026-08-15
 epic: null
 tags: [governance, agent-md, overhaul, wave2, po-decision]
 -->
-- [todo · **DECIDED 2026-08-15 `[PO]`: NO SPLIT — "fix the three sections in place."** · 2 of 3
-  sections fixed and merged; the OPERATOR charter remains · filed by [[BL-144]] T3] —
+- [done 2026-08-15 · **DECIDED `[PO]`: NO SPLIT — "fix the three sections in place."** · all three
+  sections fixed and merged · `AGENT.md` **1,033 → 1,001 lines, 10 correction markers → 0** · filed by
+  [[BL-144]] T3] —
   **`AGENT.md` does NOT split. The three corrected sections get fixed where they are.**
 
   `AGENT.md` is what every agent auto-loads at turn 1, through three names on a case-insensitive
@@ -387,12 +388,26 @@ tags: [governance, agent-md, overhaul, wave2, po-decision]
   — check the artifact, at the coordinates where the process actually stood"* lesson preserved
   verbatim.
 
-  **STILL OPEN: the OPERATOR charter (226 lines, 5 markers).** Deliberately left, not forgotten, and
-  it is the *lowest-risk* of the three: every claim in it was **verified accurate** during this pass —
-  `classifyHeadMove` (`infra-invariant.mjs`), `authorizationPathFor` → `design/po/**`
-  (`hmp-commission.mjs`), the three ports (**3100** code default, **3741** live, **3600** operator
-  sandbox), `cap.meter` mandatory, `cap.wallClockMs` the only terminating rail. It needs *compression*,
-  not *correction*, which is why it was safe to stop before it rather than start it badly.
+  **DONE — the OPERATOR charter, 226 → 178 lines.** Every claim in it had been **verified accurate**
+  (`classifyHeadMove` in `infra-invariant.mjs`, `authorizationPathFor` → `design/po/**` in
+  `hmp-commission.mjs`, the three ports — **3100** code default, **3741** live, **3600** operator
+  sandbox — `cap.meter` mandatory, `cap.wallClockMs` the only terminating rail), so this was
+  **compression, not correction**, and the risk was dropping an obligation rather than repeating a
+  falsehood. Its five correction markers are gone; the two whose *retraction is itself the lesson* are
+  kept as one-line notes — [[BL-123]] (the seat "cannot commit and cannot push" was false **and
+  contradicted the allowlist nine lines below it**, without anyone noticing the two sentences could not
+  both be true) and [[BL-134]] (`autonomy` was a **readiness** field misread as an **authorization**
+  one; the real fence is Gate B, and it is **detection, not prevention**).
+
+  **Conservation held by hand:** 72 normative lines before, 53 after, and each of the 21 distinct
+  obligations in the original checked for a successor. **One was genuinely missing on the first pass**
+  — the rationale that `bl093-backlog-selectable.test.ts` is pinned at *commit* time because the
+  invariant harness only runs around operator runs, which would leave every ordinary commit unguarded.
+  Restored before commit. That is precisely what the inventory exists to catch.
+
+  **Result across the whole item: `AGENT.md` 1,033 → 1,001 lines with 10 correction markers → 0.** The
+  file every agent auto-loads at turn 1 now states what is true once, rather than stating it four times
+  with three retractions.
 
   **Conservation used, since prose has no line-count or parse-equality property:** a normative-statement
   inventory (`scripts/archive/bl145-normative-inventory.mjs`) taken before and after — 294 lines

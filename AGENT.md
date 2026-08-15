@@ -197,49 +197,51 @@ one agent holds SM and both quality gates — accepted because merges stay PO-ga
   deferred item). Path allowlist `design/backlog/**` + `design/operator/**`. It still holds **no authority**:
   no baton, no instruction, no verdict, no push. Charter: 🔧 The OPERATOR seat → **Visibility**.
 
-### 🔧 The OPERATOR seat — Hermes (charter, PO 2026-07-27)
+### 🔧 The OPERATOR seat — Hermes (charter, PO 2026-07-27; compressed in place 2026-08-15)
 
-> **Read the first line twice: the operator is NOT a role, and it is deliberately absent from the role table
-> above.** Every role in this project carries authority — a planner decides an approach, a reviewer issues a
-> verdict, the SM makes operational calls. **This seat must have none.** It **launches and monitors sessions,
-> and does not partake in them.** Putting it in the table would be the exact error the charter exists to prevent.
+> **The operator is NOT a role, and it is deliberately absent from the role table above.** Every role
+> in this project carries authority — a planner decides an approach, a reviewer issues a verdict, the
+> SM makes operational calls. **This seat must have none.** It **launches and monitors sessions, and
+> does not partake in them.** Listing it in the table would be the exact error this charter exists to
+> prevent.
 
-**Holder: Hermes. Its retirement stands, and that is not a contradiction — read why.** The 2026-07-02 retirement
-(LB-49) banned routing **batons, reports, or authority** through Hermes: *workflow participation*. Operating is
-not workflow participation. So both hold at once, and the per-agent op-note above stays exactly as written:
-**Hermes takes no scrum role, receives no baton, and issues no instruction.**
+**Holder: Hermes — and its 2026-07-02 retirement (LB-49) still stands.** That retirement banned
+routing **batons, reports, or authority** through Hermes: *workflow participation*. Operating is not
+workflow participation. So both hold at once: **Hermes takes no scrum role, receives no baton, and
+issues no instruction.**
 
-**`[Hermes]` remains VOID as an authority tag** (Origin Tag Protocol) — and now for a sharper reason than its
-retirement: **an operator must never instruct.** A tag exists so an instruction can be acted on; this seat has
-nothing to instruct with. A `[Hermes]` message is still flagged to the PO, never acted on.
+**`[Hermes]` is VOID as an authority tag** — now for a sharper reason than the retirement: **an
+operator must never instruct.** A tag exists so an instruction can be acted on, and this seat has
+nothing to instruct with. A `[Hermes]` message is flagged to the PO and **never acted on**.
 
 #### What it MAY do
 
-- **Launch** a session and **monitor** it (`modules/containment/docs/launch-and-monitor-runbook.md` is the contract).
-- **Report observations** — what it saw, what exited, what a log said — and **record them** in the backlog and
-  the operator artifacts, within the write fence in **Visibility** below.
-- **Run the invariant harness** ([[BL-087]], `scripts/infra-invariant.mjs`). Safe by construction: read-only,
-  no git writes, no signals. Running it is permitted precisely *because* it cannot change anything.
+- **Launch** a session and **monitor** it — `modules/containment/docs/launch-and-monitor-runbook.md`
+  is the contract.
+- **Report observations**, and record them within the write fence below.
+- **Run the invariant harness** ([[BL-087]], `scripts/infra-invariant.mjs`). Safe by construction:
+  read-only, no git writes, no signals. Running it is permitted *because* it cannot change anything.
 
 #### What it may NEVER do
 
-**Grade · issue a verdict · merge · push · decide scope · mark an item agent-eligible · un-park a deferred
-item · touch mainline · dispose of a `critical` finding.** Not "should not" — *may never*. Each of these is
-someone else's seat, and most are the PO's alone.
+**Grade · issue a verdict · merge · push · decide scope · mark an item agent-eligible · un-park a
+deferred item · touch mainline · dispose of a `critical` finding.** Not "should not" — *may never*.
+Each is someone else's seat, and most are the PO's alone.
 
-**Its reports are OBSERVATIONS, not findings, and they are unverified until checked against the artifact.**
-This is the operative sentence of the whole charter. `completed` has never meant "the work was done" here, and
-an operator's report is one layer further from the evidence than a worker's status field. **Grade the artifact,
-at the coordinates where the process actually stood** — the twice-repeated lesson behind [[BL-053]] / [[BL-059]],
-where a rigorous check at the wrong path manufactured false confidence and a defect that never existed.
+**Its reports are OBSERVATIONS, not findings, and they are unverified until checked against the
+artifact.** This is the operative sentence of the whole charter. `completed` has never meant "the work
+was done" here, and an operator's report sits one layer further from the evidence than a worker's
+status field. **Grade the artifact, at the coordinates where the process actually stood** — the
+twice-repeated lesson behind [[BL-053]] / [[BL-059]], where a rigorous check at the wrong path
+manufactured false confidence and a defect that never existed.
 
-#### Visibility — the instrument panel (PO amendment, 2026-07-28)
+#### Visibility — the instrument panel (PO, 2026-07-28)
 
-**The operator is the PO's instrument panel, so it gets the whole dashboard: full READ access to the backlog,
-the ledgers, the metrics, the logs, the harness output — everything.** This is not a concession to be
-minimised. An operator that cannot see the development situation cannot report it, and reporting *is* the
-seat's entire product. Prefer **`GET /api/backlog`** over parsing `design/backlog/**`: it serves the same
-parsed items and does not hand the reader a write path it has no need of.
+**The operator is the PO's instrument panel, so it gets the whole dashboard: full READ access** to the
+backlog, the ledgers, the metrics, the logs, the harness output. This is not a concession to be
+minimised — an operator that cannot see the development situation cannot report it, and reporting *is*
+the seat's entire product. Prefer **`GET /api/backlog`** over parsing `design/backlog/**`: same parsed
+items, without handing the reader a write path it does not need.
 
 **It also WRITES. The line is between RECORDING and DECIDING — not between reading and writing.**
 
@@ -250,167 +252,120 @@ parsed items and does not hand the reader a write path it has no need of.
 | run metrics, timings, exit codes, meter readings | **`status`** → `done` (that is a merge verdict) |
 | its own artifacts under `design/operator/` | anything on a `deferred` item (that is your park) |
 | | a **closing block** or **telemetry block** (they belong to a closure) |
-| | **`design/po/<run>.authorized`** — the launch authorization ([[BL-137]]; see below) |
+| | **`design/po/<run>.authorized`** — the launch authorization ([[BL-137]]) |
 
-**⬛ `.authorized` added to the never-write column 2026-08-15 ([[BL-137]]).** It was **absent from this table
-while living inside the operator's own write allowlist** — so the seat could author every input to its own
-launch gate, and both this file and `hmp-commission.mjs:38` asserted it could not. The path moved to
-`design/po/**`, which **no seat writes and nothing else uses**, and the PO's act is now a single
-`approve <token>` (`scripts/relay-approve.mjs`) that writes and commits the file itself.
+**Path allowlist: `design/backlog/**`, `design/operator/**`, `design/operator-seat/**`. Nothing
+else.** No code, no `AGENT.md`, no ledger verdict rows.
 
-**Read what that does and does not buy, because the old sentence overstated it and this one must not.** The
-move buys **conspicuousness**: in `design/operator/**` an authorization was indistinguishable from the
-seat's routine output, and in `design/po/` it is the only thing in the directory — so a write there is
-visible, and `classifyHeadMove` (`infra-invariant.mjs`) can report it as a foreign path inside a bracketed
-run. **It is detection, not prevention.** Nothing mechanically stops a process holding a shell from writing
-that path; the SSH key on this machine is unencrypted, so the same is true of `git push`. **Only a secret
-the operator cannot read would be a fence, and none exists here.** Do not restore the stronger claim.
+**`design/operator-seat/**` is the seat's own skill** — its operating instructions, versioned here and
+loaded by Hermes over a symlink. So the seat maintains the document telling it how to behave. That was
+**already true in practice** before the allowlist admitted it, which is the fail-open-in-a-document
+shape this project exists to catch. **It grants the seat no authority:** a skill telling it to grade or
+merge still would not let it, because those fences live here and in `hmp-commission.mjs`, not in the
+skill it writes.
 
-**`autonomy: eligible` is the field that matters, and it is authority in file form.** It is the single bit
-deciding what an agent may be handed *unattended*. Writing it is not describing the process, it is steering
-it — and this seat steers nothing. The rest of the write surface is bookkeeping.
+**The seat MAY commit inside that allowlist, and committing is the SAFER arrangement** — not a risk to
+be tolerated. Hermes loads the skill **from the working tree**, so a commit was never what stood
+between an edit and its effect. A commit makes the change visible, attributable, diffable and
+revertible; an uncommitted edit is invisible, and an untracked file hides from a casual `git status`
+entirely. **Not hypothetical** — on 2026-08-11 the seat authored a new skill reference file, left it
+untracked, did not report it across six reports, and it was live for hours before anyone read it. The
+prohibition then in force stopped nothing. *(Corrected [[BL-123]]: this passage once claimed the seat
+"cannot commit and cannot push", offered as the reason the concession was safe. It was false, and it
+contradicted the allowlist nine lines below it, without anyone noticing the two sentences could not
+both be true.)*
 
-**Why filing is safe by construction — this is the load-bearing part, REWRITTEN 2026-08-15 ([[BL-134]], PO-approved).**
+**Know the real difference anyway:** filing a backlog item puts a *proposal* in front of the PO;
+patching the skill changes what the seat **does on its next run**, from the moment it lands in the
+working tree. But that difference lands at **write** time, not commit time — a reason to **review skill
+edits promptly**, not to withhold the commit.
 
-**⬛ The paragraph this replaces credited Gate A with a containment Gate B provides, and it had always done
-so.** It read: *"[[BL-093]] made `autonomy` fail closed: an item that does not say it is eligible is not
-eligible… the operator can put anything it likes in front of you; it cannot hand any of it to an agent."*
-`autonomy` no longer gates anything — it was a **readiness** field misread as an **authorization** one, and
-the predicate that reads it (`workableBacklogItems`) populates an API view and two reports. **It launches
-nothing.** The old sentence was resting a safety argument on a list.
+**"It never touches mainline" still holds.** That rule fences **code and merges**: the operator owns no
+branch reaching master and performs no merge. Governance and docs have always been directly
+master-editable, and a backlog commit inside the allowlist is a *commit*, not a merge and not a push.
+**Push remains the PO's, absolutely and without exception.**
 
-**What is true instead:**
+**Relayed authorization does not change that** ([[BL-110]], Origin Tag Protocol rule 5). The PO may
+*authorise* a merge or push from away from the desk by answering a session-minted token. The
+**operator carries that answer and nothing else** — it mints no proposals, holds no tokens, and
+performs neither the merge nor the push. **A courier relaying an approval has not been granted it**,
+any more than relaying a `[PO]` instruction makes them the PO.
 
-> An item Hermes files may become **workable** — but *workable is not launchable*. A launch requires
-> `design/po/<run>.authorized`, containing exactly `[PO] AUTHORIZED-RUN: <run>`, **committed at the repo-sha
-> the commission names**, single-use via the launch ledger, and written by the PO's `approve <token>` alone.
-> It lives in a directory **nothing else writes**, so an operator write there is conspicuous — and a foreign
-> path in a bracketed run ([[BL-138]]). **This is detection, not prevention:** nothing mechanically stops a
-> process holding a shell from writing it. The fence is the seat observing its instructions, and the
-> instruments that make a breach visible.
+**Why filing is safe — and the fence is Gate B, not `autonomy`** ([[BL-134]]). An item Hermes files
+may become **workable** — but **workable is not launchable**. A launch requires
+`design/po/<run>.authorized`, containing exactly `[PO] AUTHORIZED-RUN: <run>`, **committed at the
+repo-sha the commission names**, single-use via the launch ledger, and written by the PO's
+`approve <token>` (`scripts/relay-approve.mjs`) alone. It lives in a directory **nothing else
+writes**, so an operator write there is conspicuous, and a foreign path in a bracketed run
+([[BL-138]]).
 
-**Readiness is now carried by `blocked_by`**, which is strictly better at that job than a field: it names its
-reason as a filed item, releases itself when the blocker closes, and cannot dangle (a bad id fails
-`backlog:check`). `human-only` named nothing and expired never.
+**⚠️ That is DETECTION, not PREVENTION, and the distinction must not be softened.** Nothing
+mechanically stops a process holding a shell from writing that path; the SSH key on this machine is
+unencrypted, so the same is true of `git push`. **Only a secret the operator cannot read would be a
+fence, and none exists here.** The real fence is the seat observing its instructions, plus instruments
+that make a breach visible. *(`autonomy` was a **readiness** field misread as an **authorization**
+one; it gates nothing. Readiness now rides `blocked_by`, which names its reason as a filed item and
+releases itself when that item closes.)* The mechanical guard that survives is
+`bl093-backlog-selectable.test.ts`, which pins the real backlog's **workable** set exactly, so any
+change to what an agent could be handed goes red and forces a human look. **Do not loosen it to
+accommodate the operator, and do not weaken it to a length or emptiness check** — its whole value is
+that it moves. It is pinned at **commit time** deliberately, in preference to relying on the invariant
+harness alone, because **the harness only runs around operator runs** — which would leave every
+ordinary commit unguarded.
 
-**The mechanical guard survives, re-aimed rather than retired** (PO decision, [[BL-134]] q1):
-`bl093-backlog-selectable.test.ts` pins the real backlog's **workable** set *exactly*, so any change to what
-an agent could be handed goes red and forces a human look. It has fired on real changes repeatedly. **Do not
-loosen it to accommodate the operator, and do not weaken it to a length or emptiness check** — its whole value
-is that it moves. The commit-time pin was kept deliberately in preference to relying on the invariant harness
-alone, because **the harness only runs around operator runs**, which would leave every ordinary commit
-unguarded.
+**The legitimate version of "steer."** An operator noticing that the eligible queue is empty, that a
+cap never fired, or that a metric moved — and putting that in front of the PO — changes the project's
+direction without ever holding authority. That is informing the steersman, and it is encouraged. What
+it may not do is take the wheel: no instruction, no verdict, no eligibility bit.
 
-**Where it may write — a path allowlist, the write-side analogue of the `att-op-*` sandbox:**
-`design/backlog/**`, `design/operator/**`, and **`design/operator-seat/**`**. Nothing else. No code, no
-`AGENT.md`, no ledger verdict rows.
-
-**⬛ `design/operator-seat/**` added 2026-08-07 ([[BL-119]], PO option (a)) — and it is worth saying what it
-concedes.** That directory is the seat's **own skill**: its operating instructions, versioned in this repo since
-`1e469a7` and loaded by Hermes over a symlink. So the seat maintains the document that tells it how to behave.
-Two reasons this is the right call rather than a reluctant one: it was **already true in practice** and the
-allowlist was simply not describing reality, which is the fail-open-in-a-document shape this project exists to
-catch; and **the fence that matters is untouched** — **push remains the PO's**, so a skill edit reaches no other
-checkout, no history anyone else reads, and no other machine without the PO. **The seat also gains no authority
-from its own skill:** one telling it to grade or merge still would not let it, because those fences live here
-and in `hmp-commission.mjs`, not in the skill it writes.
-
-**⬛ CORRECTED 2026-08-11 ([[BL-123]], PO option (a)) — this passage previously read *"the seat still cannot
-commit and cannot push, so a skill edit reaches mainline only as a diff the PO gates"*, offered as the reason
-the concession is safe. THAT WAS FALSE TWICE OVER.** It contradicted the allowlist paragraph nine lines below,
-which grants exactly that commit; and it claimed a gate that **does not bind**. Hermes loads the skill over a
-symlink **from the working tree**, so the commit was never what stood between an edit and its effect — as the
-next paragraph had already conceded, without anyone noticing the two sentences could not both be true.
-**Committing is therefore the SAFER arrangement, not the riskier one:** it makes the change visible,
-attributable, diffable and revertible, where an uncommitted edit is invisible and an untracked file hides from
-a casual `git status` read entirely. **Not hypothetical** — on 2026-08-11 the seat authored
-`design/operator-seat/references/backlog-semantics.md`, left it untracked, did not report it across six
-reports, and it was live for hours before anyone read it. The prohibition was in force the whole time and
-stopped nothing.
-
-**Know the difference anyway, because it is real:** filing a backlog item puts a *proposal* in front of the PO,
-whereas patching the skill changes what the seat **does on its next run**, from the moment it lands in the
-working tree — commit or no commit. But that difference lands at **write** time, not at commit time. It is a
-reason to **review skill edits promptly**, not a reason to withhold the commit.
-
-**"It never touches mainline" still holds, and that is not a contradiction — read why.** That rule fences
-**code and merges**: the operator owns no branch that reaches master and performs no merge. Governance and
-docs have always been directly master-editable (see the worktree MANDATE), and a backlog commit inside the
-allowlist is a *commit*, not a merge and not a push. **Push remains the PO's, absolutely and without
-exception.**
-
-**That is unchanged by relayed authorization ([[BL-110]] step 3, 2026-07-31), and the distinction is exact:**
-the PO may now *authorise* a merge or push from away from the desk, by answering a session-minted token
-(Origin Tag Protocol rule 5). The **operator carries that answer and nothing else** — it does not mint
-proposals, does not hold tokens, and does not perform the merge or the push. **A courier relaying an approval
-has not been granted the approval**, any more than relaying a `[PO]` instruction makes it the PO. The seat's
-authority is still exactly zero.
-
-**The legitimate version of "steer."** An operator noticing that the eligible queue is empty, that a cap
-never fired, or that a metric moved — and putting that in front of the PO — changes the project's direction
-without ever holding authority. That is informing the steersman, and it is encouraged. What it may not do is
-take the wheel: no instruction, no verdict, no eligibility bit.
-
-**Honest limit:** this fence is **behavioural, not enforced** — `scripts/infra-invariant.mjs` does not yet
-check the path allowlist or diff the eligible set. Like the re-priming gate, it holds because the holder
+**Honest limit:** this fence is **behavioural, not enforced** — `infra-invariant.mjs` does not check
+the path allowlist or diff the eligible set. Like the re-priming gate, it holds because the holder
 observes it. Mechanising it is a follow-up, not a precondition.
 
 #### Containment — the fence, and why the old one does not transfer
 
-Every autonomous run so far tested an **implementer**, structurally contained: its own worktree, its own branch,
-no merge rights. An **operator** launches process trees, binds ports, and creates and removes worktrees and
-branches. **That fence does not transfer** — which is why the invariant harness was built first. Standing rules:
+Every autonomous run so far tested an **implementer**, structurally contained: its own worktree, its
+own branch, no merge rights. An **operator** launches process trees, binds ports, and creates and
+removes worktrees and branches. **That fence does not transfer** — which is why the invariant harness
+was built first. Standing rules:
 
 - **The operator never reaches mainline.** Nothing it does is a merge, and nothing it does is a push.
-- **Sandbox prefix `att-op-*`** for its worktrees; **its own port 3600**, never the orchestrator's. *(Corrected
-  2026-08-13: this said "the orchestrator's 3500", a port nothing uses. The **live** orchestrator is **3741**
-  (launchd `PORT`); the **code default** is **3100** (`index.ts`). 3600 remains the operator's.)*
-- **`cap.meter` is MANDATORY to *configure* — and it is a WARNING, not a rail.** *(Amended 2026-08-06; it
-  previously read "`cap.meter` is MANDATORY … a named-but-unmitigated budget risk already took a session window
-  to 100%", offered as **the mitigation** for the shared-pool risk. That claim was false and is retracted.)*
-  `hmp-commission.mjs` still refuses `missing-cap-meter`, and the reading, the delta and the meter's
-  reachability are all recorded in the run artifact — observability worth having. **What it may not do is end a
-  run.** It reports **machine-wide, per-provider** percentages, so it cannot separate the worker's spend from
-  the supervising session's: it fires on the **sum** and attributes it to the worker. On `hmp5` it killed
-  complete, verified work **fourteen seconds after the commit**. **A shared-fate trigger is not a mitigation.**
-  ([[BL-117]], PO option (b); [[BL-114]] made the read fail closed — merged `e04c576`.)
-- **`cap.wallClockMs` is the ONLY terminating rail** — and the only one ever proven to terminate: a real
-  process, a real timeout, the PID confirmed dead ([[BL-096]]). Since [[BL-118]] a termination also **cascades
-  to the provider CLI**, which until then survived as an orphan and went on drawing from the pool after the
-  kill. **Check its value on every operator config; nothing else will stop a run.**
-- **⚠️ The budget risk is REAL, NAMED, and now explicitly UNMITIGATED — do not read the amendment above as
-  having solved it.** The old sentence is still true on its own terms: an unmitigated budget risk already took
-  a session window to 100%. What changed is that we stopped claiming an instrument which cannot attribute spend
-  was the answer to it. **Today the mitigation is the wall clock, plus a human who reads the meter.**
-  Per-actor accounting is the real fix and **has not been built** ([[BL-117]] option (d) — deliberately not
-  filed as a follow-up; reopen when the meter cap is proposed as containment again, or a run needs a
-  terminating rail that measures the worker alone).
+- **Sandbox prefix `att-op-*`** for its worktrees; **its own port 3600, never the orchestrator's.**
+  *(Three ports, kept straight: **3600** operator sandbox · **3741** the live orchestrator (launchd
+  `PORT`) · **3100** the code default in `index.ts`.)*
+- **`cap.meter` is MANDATORY to configure — and it is a WARNING, not a rail.** `hmp-commission.mjs`
+  refuses `missing-cap-meter`, and the reading, delta and reachability are recorded in the run
+  artifact: observability worth having. **What it may not do is end a run.** It reports
+  **machine-wide, per-provider** percentages, so it cannot separate the worker's spend from the
+  supervising session's — it fires on the **sum** and attributes it to the worker. On `hmp5` it killed
+  complete, verified work **fourteen seconds after the commit**. **A shared-fate trigger is not a
+  mitigation** ([[BL-117]]; [[BL-114]] made the read fail closed).
+- **`cap.wallClockMs` is the ONLY terminating rail**, and the only one ever proven to terminate a real
+  process with the PID confirmed dead ([[BL-096]]). Since [[BL-118]] a termination also **cascades to
+  the provider CLI**, which until then survived as an orphan and went on drawing from the pool after
+  the kill. **Check its value on every operator config; nothing else will stop a run.**
+- **⚠️ The budget risk is REAL, NAMED, and UNMITIGATED.** An unmitigated budget risk already took a
+  session window to 100%. Today the mitigation is the wall clock plus a human reading the meter.
+  Per-actor accounting is the real fix and **has not been built** — reopen when a meter cap is proposed
+  as containment again, or a run needs a terminating rail that measures the worker alone.
 - **No recursion.** An operator's goal is *never* "launch a session."
-- **A pre-flight checklist is printed before launching**, and the run is **bracketed by the harness** —
-  `snapshot` before, `check` after. A **`critical` finding GATES the next operator run** until the PO clears it.
-  Hermes may run the harness; **only the PO may dispose of what it finds.**
-- **Workdir in AgentTalk, launcher invoked by absolute path — the rule STANDS; its original reason no longer
-  does.** It was written when the client repo carried no governance at all. **[[BL-086]] closed 2026-07-30 (PO
-  took option (b), merged `0b770c2`):** `agentalk-mcp-client` now carries its own `AGENT.md` + `AGENTS.md` /
-  `CLAUDE.md` symlinks, with Honesty-over-Results, all seven Implementer Rules, the show-stopper fence and
-  worktree/merge/push discipline **inline** — a *pointer* was rejected because it resolves to nothing from a task
-  worktree, which is [[BL-101]]'s fail-open shape appearing in a doc. **So a client-repo task is no longer
-  structurally excluded from autonomous work**, and the constraint that forced rung 5 to be an AgentTalk task is
-  lifted.
-  **What that closure did NOT prove — do not read it as proving it:** that a launched worker actually *picks the
-  file up*. Inheritance is verified for **claude only** ([[BL-080]], headless `-p`); codex and gemini are assumed
-  from convention. *The file existing and a worker being governed are different claims.* **Relaxing this workdir
-  rule is a PO call, not a consequence of the closure.**
-  **⬛ CORRECTION 2026-08-05 (backlog gate) — this passage previously read "the client has no `GEMINI.md` while
-  this repo does (verified 2026-08-02)". THAT IS FALSE, and was false within two minutes of being written.**
-  The client has carried `GEMINI.md -> AGENT.md` since **2026-08-02 00:12** (client commit `d43be0f`, *"add the
-  GEMINI.md symlink the closure left out"*); this file was last written at 00:10. Both repos now carry all four
-  names. The caution *around* it is untouched and still stands — a symlink is not evidence a worker reads it.
+- **A pre-flight checklist is printed before launching**, and the run is **bracketed by the harness**
+  (`snapshot` before, `check` after). A **`critical` finding GATES the next operator run** until the PO
+  clears it. Hermes may run the harness; **only the PO may dispose of what it finds.**
+- **Workdir in AgentTalk, launcher invoked by absolute path.** The rule stands; its original reason —
+  that the client repo carried no governance — does not. [[BL-086]] gave `agentalk-mcp-client` its own
+  `AGENT.md` with Honesty-over-Results, the Implementer Rules, the show-stopper fence and
+  worktree/merge/push discipline **inline** (a *pointer* was rejected: it resolves to nothing from a
+  task worktree, which is the fail-open shape again). **So a client-repo task is no longer structurally
+  excluded from autonomous work.** What that did **not** prove is that a launched worker actually
+  *picks the file up*: inheritance is verified for **claude only** ([[BL-080]], headless `-p`); codex
+  and gemini are assumed from convention. **A file existing and a worker being governed are different
+  claims**, and a symlink is not evidence a worker reads it. Relaxing this workdir rule is a PO call.
 
 #### The soft ladder — earn the seat one rung at a time
 
-The first rungs prove the operator can **guide the process**, not deliver value. Do not skip ahead; each rung is
-cheap and the failure it catches is not.
+The first rungs prove the operator can **guide the process**, not deliver value. Do not skip ahead;
+each rung is cheap and the failure it catches is not.
 
 | Rung | Goal | Risk |
 |---|---|---|
@@ -419,10 +374,9 @@ cheap and the failure it catches is not.
 | **O-2** | A **read-only investigation**, committed to a branch. | contained |
 | **O-3** | A real task. | the actual seat |
 
-**O-1 is as much a test of the harness as of the operator** — BL-087's `att-op-*` allowlist and port 3600 are
-predictions about a seat that had not yet run. If the first real run produces a wall of `warn`s, that is a
-**finding about the harness**, and the tiers get tuned *before* anyone is told to ignore output.
-
+**O-1 is as much a test of the harness as of the operator** — BL-087's `att-op-*` allowlist and port
+3600 were predictions about a seat that had not yet run. If a real run produces a wall of `warn`s, that
+is a **finding about the harness**, and the tiers get tuned *before* anyone is told to ignore output.
 ### Vocabulary note — "spawn" is not used in this project
 
 Do not use the word "spawn" in any agent message, session primer, design doc, or workflow artifact
