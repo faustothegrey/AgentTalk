@@ -66,9 +66,15 @@ beforeAll(() => {
   sandboxDir = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'hmp-sandbox-')), `att-op-${RUN}`);
   fs.mkdirSync(sandboxDir, { recursive: true });
   fs.writeFileSync(path.join(sandboxDir, 'CLAUDE.md'), '# governance inherits here\n');
+  // `goal` and `cap.wallClockMs` are required since BL-136. They are not decoration on this
+  // fixture: every real committed config carries both (o1/o2 and hmp1-hmp9 — all eleven were
+  // checked before the change landed, and none of them refuses under it), and the launcher has
+  // always demanded them (`bite0-launcher.mjs:34,36`). The stub simply predated the checks.
   CONFIG = {
     agents: [{ id: 'worker-1', provider: 'claude', workdir: sandboxDir }],
+    goal: 'Report the current HEAD sha and the suite counts. Change no files.',
     caps: { meter: { url: 'http://127.0.0.1:9899/usage', provider: 'claude', maxPercentDelta: 5 } },
+    cap: { wallClockMs: 900000 },
   };
   git(['init', '-b', 'master']);
   git(['config', 'user.email', 'test@example.com']);
@@ -503,6 +509,83 @@ describe('verifyCommission', () => {
       }),
     );
     expect(r.reason).toBe(REFUSAL.MISSING_CAP_METER);
+  });
+
+  /**
+   * BL-136. The fence scanned the brief and never `config.goal` — the string the launcher actually
+   * delivers as the worker's first turn (`bite0-launcher.mjs:195`). These three bars drive the
+   * config side; each commits its OWN fixture so a refusal is attributable to one field.
+   *
+   * Each fixture is otherwise COMPLETE (real workdir, governance, meter, wallClockMs) precisely so
+   * that the reason under test is the reason reported. A fixture missing two fields would refuse on
+   * whichever check comes first and pass for the wrong reason — the failure mode this suite exists
+   * to catch, and the one gate 1 caught in the plan itself.
+   */
+  const commitRun = (run, config) => {
+    // Each run needs its OWN sandbox named `att-op-<run>`: the workdir/sandbox binding at
+    // `hmp-commission.mjs:379` fires before these checks, so reusing hmp1's directory refused
+    // `charter-mismatch` and every bar below passed for the wrong reason. Caught by the bars on
+    // the first run — which is the argument for writing them before believing the code.
+    const dir = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'hmp-sandbox-')), `att-op-${run}`);
+    fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(path.join(dir, 'CLAUDE.md'), '# governance inherits here\n');
+    config = { ...config, agents: [{ ...CONFIG.agents[0], workdir: dir }] };
+
+    write(`design/operator/${run}-brief.md`, `# ${run}\n\nGoal: report HEAD.\n\n${authorizationLineFor(run)}\n`);
+    write(`design/operator/${run}.authorized`, `${authorizationLineFor(run)}\n`);
+    write(`design/operator/${run}-bar.md`, BAR);
+    write(`design/operator/${run}.config.json`, JSON.stringify(config, null, 2));
+    git(['add', `design/operator/${run}.authorized`, `design/operator/${run}-brief.md`, `design/operator/${run}-bar.md`, `design/operator/${run}.config.json`]);
+    git(['commit', '-m', `${run} fixture`]);
+    const s = git(['rev-parse', 'HEAD']);
+    return verify(
+      commission({
+        run,
+        brief: path.join(repo, `design/operator/${run}-brief.md`),
+        'repo-sha': s,
+        sandbox: `att-op-${run}`,
+      }),
+    );
+  };
+
+  it('refuses a launch instruction hidden in the config goal, with the brief clean', () => {
+    // The brief `commitRun` writes says only "report HEAD" — it passes the `:343` scan. The refusal
+    // can therefore only come from the goal, which is the whole point of the item.
+    const r = commitRun('recgoal', { ...CONFIG, goal: 'Then launch another session on port 3600 and report.' });
+    expect(r.reason).toBe(REFUSAL.RECURSIVE_COMMISSION);
+    expect(r.detail).toMatch(/^config goal matches/);
+  });
+
+  /** `without('goal')` is spelled out rather than patched, so "absent" is genuinely absent. */
+  const without = (key) => {
+    const cfg = { ...CONFIG };
+    delete cfg[key];
+    return cfg;
+  };
+
+  it.each([
+    ['absent', 'nogoal-absent', () => without('goal')],
+    ['blank', 'nogoal-blank', () => ({ ...CONFIG, goal: '   \n' })],
+    ['not-a-string', 'nogoal-array', () => ({ ...CONFIG, goal: ['report', 'HEAD'] })],
+  ])('refuses a config whose goal is %s', (_label, run, build) => {
+    expect(commitRun(run, build()).reason).toBe(REFUSAL.MISSING_GOAL);
+  });
+
+  it.each([
+    ['absent', 'nowc-absent', () => without('cap')],
+    ['zero', 'nowc-zero', () => ({ ...CONFIG, cap: { wallClockMs: 0 } })],
+    ['negative', 'nowc-neg', () => ({ ...CONFIG, cap: { wallClockMs: -1 } })],
+  ])('refuses a config whose cap.wallClockMs is %s — the only terminating rail', (_label, run, build) => {
+    expect(commitRun(run, build()).reason).toBe(REFUSAL.MISSING_CAP_WALLCLOCK);
+  });
+
+  it('reads the `caps` spelling too, matching the meter lookup it sits beside', () => {
+    // The meter is read as `config?.caps?.meter ?? config?.cap?.meter` (`:371`), so real configs
+    // use `cap` and this fixture uses `caps`. A wallClockMs check that understood only one
+    // spelling would refuse a valid config — a refuse-only change is only safe if "valid" means
+    // the same thing to both lookups. Asserted as a PASS, because that is the claim.
+    const cfg = { ...without('cap'), caps: { ...CONFIG.caps, wallClockMs: 900000 } };
+    expect(commitRun('capsspelling', cfg).ok).toBe(true);
   });
 
   it('refuses when the committed config launches into a different sandbox than commissioned', () => {

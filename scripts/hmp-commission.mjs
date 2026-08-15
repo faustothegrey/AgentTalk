@@ -67,7 +67,9 @@ export const REFUSAL = {
   CHARTER_MISMATCH: 'charter-mismatch',
   RECURSIVE_COMMISSION: 'recursive-commission',
   CONFIG_NOT_COMMITTED: 'config-not-committed',
+  MISSING_GOAL: 'missing-goal',
   MISSING_CAP_METER: 'missing-cap-meter',
+  MISSING_CAP_WALLCLOCK: 'missing-cap-wallclock',
   CRITICAL_OUTSTANDING: 'critical-outstanding',
   ALREADY_LAUNCHED: 'already-launched',
   WORKDIR_MISSING: 'workdir-missing',
@@ -391,6 +393,39 @@ export function verifyCommission({ text, repoRoot = REPO_ROOT, io, preflight, la
   // prevent. Cheap to check, catastrophic to miss.
   if (!existsSync(path.join(workdir, 'CLAUDE.md'))) {
     return refuse(REFUSAL.GOVERNANCE_MISSING, `${workdir} has no CLAUDE.md — the worker would have no rules`);
+  }
+
+  // The goal is the string the launcher hands the worker as its FIRST TURN
+  // (`bite0-launcher.mjs:195`), so it — not the brief — is the instruction the worker is most
+  // certain to read. Until BL-136 the recursion fence scanned only the brief (`:343` above), and
+  // `SKILL.md` patched the gap by telling the operator to run the scan by hand while asserting
+  // the verifier already did it. A fence that holds only while its operator remembers a command
+  // is the behavioural-not-enforced shape this project keeps catching.
+  //
+  // Placement is deliberate and was corrected at gate 1: these are the config's INTERNAL
+  // completeness checks, so they sit after the checks that bind the message to the config
+  // (sandbox, workdir, governance) and before the world-state checks below. Ordering here is
+  // purely diagnostic — nothing executes until `pass()` — but moving them above the meter check
+  // silently changes which reason two existing bars report. See `design/bl136-plan.md` §9 F1.
+  //
+  // A missing goal REFUSES rather than scanning `?? ''` and passing: a silent no-op on exactly
+  // the input that most deserves the check is this project's most-caught defect shape (BL-111,
+  // BL-113, BL-114, BL-116). The predicate mirrors `bite0-launcher.mjs:34` exactly so the two
+  // gates cannot disagree about what a valid goal is.
+  if (typeof config?.goal !== 'string' || !config.goal.trim()) {
+    return refuse(REFUSAL.MISSING_GOAL, `${configRel} has no usable string goal`);
+  }
+  const goalPattern = findsLaunchInstruction(config.goal);
+  if (goalPattern) return refuse(REFUSAL.RECURSIVE_COMMISSION, `config goal matches ${goalPattern}`);
+
+  // `cap.wallClockMs` is the ONLY rail that has ever been proven to terminate a run (BL-096), and
+  // since BL-118 its kill cascades to the provider CLI. It is ALREADY enforced, downstream, at
+  // `bite0-launcher.mjs:36` — so this is NOT a containment hole and must not be reported as one
+  // (the near-miss is recorded in BL-136 itself). What the check buys is a refusal that is legible
+  // in the operator's reply and reachable by a dry run, before anything is provisioned.
+  const wallClockMs = config?.cap?.wallClockMs ?? config?.caps?.wallClockMs;
+  if (!(wallClockMs > 0)) {
+    return refuse(REFUSAL.MISSING_CAP_WALLCLOCK, `${configRel} has no cap.wallClockMs > 0 — no terminating rail`);
   }
 
   // A `critical` gates the next operator run. BL-109 records that "uncleared" has nowhere to
