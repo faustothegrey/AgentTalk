@@ -123,3 +123,42 @@ requires BL-028 to carry `blocked_by: [BL-135]` and be **consequently NOT workab
 
 Derived expectation after commit 3: **`{BL-134}`** alone. **Do not type either number** — run the predicate
 after the migration and let it say. That row has now been wrong three times.
+
+---
+
+**Commit 3 — backlog + docs migration.** ✅ Continued at the PO's direction after the budget stop.
+**806/806 across 95 files**, `tsc -b` 0, `validate-backlog` **140 items / 0 errors**.
+
+- **BL-139, BL-140 → `deferred`** with reopen conditions; **BL-134 → `human-only`** (it is a specified task
+  now, and may not defer itself out of its own delivery).
+- **BL-028 → `blocked_by: [BL-084, BL-135]`** — the item's whole argument made concrete: it was held for
+  months by `autonomy: human-only`, a field naming no reason that would never expire; it is now held by a
+  filed item that releases itself when BL-135 closes.
+- `AGENT.md`'s Visibility paragraph rewritten to §4's PO-approved wording; the retired claim quoted so a
+  reader can see what changed. `backlog-semantics.md` and the backlog schema block rewritten; `SKILL.md`
+  pointer updated.
+- **Pin revalued to the DERIVED `["BL-134"]`** — the plan predicted `{BL-028, BL-134}` in §6 and `{BL-134}`
+  in D5, which contradicted each other. **Running it settled it; D5 was right.** That row has now been wrong
+  three times and correct only when computed.
+
+**The BL-028 bar caught my own migration**, which is exactly what it is for: it asserted BL-028 was workable,
+went red when I fenced it, and now asserts the opposite with the reason recorded in place.
+
+### ⚠️ D4 is PARTIAL — one half is not implementable, and I did not fake it
+
+D4 has two halves. The **`po-decision` on a `todo` item** check is implemented and is a genuine error: that
+value is **retired vocabulary**, not a stale fence.
+
+The **`human-only` migration aid is NOT implemented**, deliberately, because **D4 and D2 conflict**:
+
+- this gate has **no warning tier** — parser warnings are folded into `errors` (`validate-backlog.mjs:33`)
+  and any finding fails the run;
+- **D2 requires `autonomy` to survive as legitimate advisory metadata.**
+
+**A field that is allowed to be present cannot make the backlog invalid by being present.** Implementing D4's
+second half would have failed the gate on **BL-134 itself** — `human-only`, `todo`, blockers resolved — i.e.
+the item would have invalidated the backlog on its own delivery. Adding a real warning tier would change
+`exitCodeFor` behaviour other callers depend on, which is outside this task's scope.
+
+**Reported as PARTIAL with the reason recorded in the code**, rather than shipped as a check that contradicts
+another DoD row or quietly dropped. **A reviewer may disagree and require the warning tier as its own item.**

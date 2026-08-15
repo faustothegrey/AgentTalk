@@ -67,7 +67,7 @@ curl -s 'http://127.0.0.1:3741/api/backlog?workable=true'
 
 Statuses are exactly five: todo · doing · deferred · done · dropped. There is no wontfix and no parked — "parked" is informal for deferred.
 
-**`blockedBy` is a RAW header field, not a computed state.** The API echoes the stored `blocked_by` list verbatim; whether the block is actually live is computed by `isResolved()` (a blocker is resolved once it is `done` or `dropped`). So an item can show `blockedBy: ['BL-084']` while BL-084 is `done` — the item is unblocked. **Never report "blocked by X" without checking X's status** (BL-028 lists BL-084 and was released automatically when BL-084 closed 2026-08-07). Full semantics — statuses, autonomy levels, selectability predicate, live counts: `references/backlog-semantics.md`.
+**`blockedBy` is a RAW header field, not a computed state.** The API echoes the stored `blocked_by` list verbatim; whether the block is actually live is computed by `isResolved()` (a blocker is resolved once it is `done` or `dropped`). So an item can show `blockedBy: ['BL-084']` while BL-084 is `done` — the item is unblocked. **Never report "blocked by X" without checking X's status** (BL-028 lists BL-084 and was released automatically when BL-084 closed 2026-08-07). Full semantics — statuses, the advisory autonomy field, the workable predicate, live counts: `references/backlog-semantics.md`.
 
 **Fallback to `design/backlog.md` ONLY if 3741 does not answer** (connection refused / timeout / non-200). Grep `status:` per item. **Always say in your report which source you used** — API (and which variant) or the file.
 

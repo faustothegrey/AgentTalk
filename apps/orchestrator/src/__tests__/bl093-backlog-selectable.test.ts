@@ -415,12 +415,17 @@ describe('the real backlog (design/backlog.md)', () => {
     // motion, so a red here means "something changed about what an agent could be handed" and
     // deserves the same look it always did. Do NOT loosen it to a length check or an emptiness
     // check to stop it moving.
-    expect(workableBacklogItems(items).map((i) => i.id)).toEqual([
-      'BL-028',
-      'BL-134',
-      'BL-139',
-      'BL-140',
-    ]);
+    // ⬛ 2026-08-15, later — BL-134's migration commit. The set moved twice more, both DERIVED by
+    // running the predicate after each edit, never typed to match a red:
+    //   · BL-139 and BL-140 → `deferred`. `po-decision` retired as an autonomy value; a question is
+    //     not a task, so it belongs in `status` where it keeps them out of the set for a stated
+    //     reason.
+    //   · BL-028 → `blocked_by: [BL-084, BL-135]`. This is the whole argument of BL-134 made
+    //     concrete: it was held back by `autonomy: human-only`, a field that named no reason and
+    //     expired never; it is now held by a filed item that releases itself when BL-135 closes.
+    // Leaving BL-134 itself, which is `todo`, unblocked, and — since the PO answered its four open
+    // questions — no longer a question but a specified task.
+    expect(workableBacklogItems(items).map((i) => i.id)).toEqual(['BL-134']);
   });
 
   // 2026-08-07 — deliberately updated, and the red was shown to the PO first. BL-084 CLOSED (PO
@@ -434,16 +439,19 @@ describe('the real backlog (design/backlog.md)', () => {
   // And the distinction that matters: BL-028 is now UNBLOCKED but still NOT workable — because
   // it is `human-only`, not because anything holds it. Those are different reasons and a future
   // reader must not confuse them.
-  it('releases BL-028 now that BL-084 is closed — and since BL-134 it is workable, though not launchable', () => {
+  it('BL-028: BL-084 resolved, but BL-135 now holds it — fenced by a reason, not by a field', () => {
     const { items } = readBacklog();
     const byId = new Map(items.map((i) => [i.id, i]));
-    expect(byId.get('BL-028')!.blockedBy).toEqual(['BL-084']);   // dependency unchanged
-    expect(byId.get('BL-084')!.status).toBe('done');              // …and now resolved
-    // ⬛ BL-134: `autonomy` is no longer what holds BL-028 back — nothing in the predicate reads it.
-    // It is WORKABLE now, and what it actually still lacks is a decided spec (its §9 q2), which is
-    // why the plan fences it on [[BL-135]] in the migration commit rather than by a field.
-    expect(byId.get('BL-028')!.autonomy).toBe('human-only');      // advisory metadata, not a gate
-    expect(workableBacklogItems(items).map((i) => i.id)).toContain('BL-028');
+    // ⬛ BL-134 — this is the item's whole argument, made concrete on the case that motivated it.
+    // BL-028 used to be held back by `autonomy: human-only`: a field that named NO reason, could not
+    // be second-guessed, and would never expire. It is now held by a filed, readable item that
+    // RELEASES ITSELF the moment that item closes.
+    expect(byId.get('BL-028')!.blockedBy).toEqual(['BL-084', 'BL-135']);
+    expect(byId.get('BL-084')!.status).toBe('done');              // the old blocker, resolved
+    expect(byId.get('BL-135')!.status).toBe('deferred');          // the real one: an undecided PO question
+    expect(byId.get('BL-028')!.autonomy).toBe('human-only');      // still present — advisory, not a gate
+    // Consequently NOT workable, and now for a reason anyone can walk to.
+    expect(workableBacklogItems(items).map((i) => i.id)).not.toContain('BL-028');
     // 2026-08-09 — this comment previously read "No item's arrival or close has ever changed
     // BL-028's standing", and BL-122 going eligible falsified its LETTER: an item's arrival has
     // now changed the set. Corrected rather than merely revalued, because a confidently wrong
@@ -481,12 +489,7 @@ describe('the real backlog (design/backlog.md)', () => {
     // where it becomes visible.
     //
     // Still the whole set, still not an absence check, for the same reason as every entry above.
-    expect(workableBacklogItems(items).map((i) => i.id)).toEqual([
-      'BL-028',
-      'BL-134',
-      'BL-139',
-      'BL-140',
-    ]);
+    expect(workableBacklogItems(items).map((i) => i.id)).toEqual(['BL-134']);
   });
 
   it('marks BL-086 as the PO decision it is', () => {
