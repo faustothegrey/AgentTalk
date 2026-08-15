@@ -68,3 +68,58 @@ no-behaviour-change proof: **a pure rename must leave the suite count identical.
 ## Log
 
 **Commit 1 — the rename.** *(in progress)*
+
+**Commit 1 — the rename.** ✅ `28f62eb`. **805/805 across 95 files, identical to baseline** — which is the
+proof a pure rename should produce. `test-mcp-gate.mjs` deliberately not renamed (see the correction above);
+`design/backlog.md` renamed at **line 46 only**, records at `:1556/:4682/:5780-5803` untouched; `:40` deferred
+to commit 3 because its *content* becomes false in commit 2.
+
+**Commit 2 — predicate + pin.** ✅ **806/806 across 95 files**, `tsc -b` 0. `autonomy` is out of both
+predicates (real parser and harness mirror, which agree); the `:147` pin is **re-aimed at the workable set in
+the same commit** (q1), and seven declared contracts updated.
+
+**The pin's value was DERIVED, not typed** — and getting it took two attempts, both instructive:
+
+1. The first derivation returned **`[]`** against a **stale `dist/`**: my `npx tsc -b >/dev/null 2>&1` sat
+   behind a `||` and never ran. I nearly recorded an empty set as the finding. **"Is the fix deployed?" — the
+   artifact was two edits behind the source.**
+2. Rebuilt, both the real parser and the harness mirror independently return
+   **`["BL-028","BL-134","BL-139","BL-140"]`**.
+
+### Mutation run — three load-bearing rows, and one mutation that lied
+
+| # | Mutation | Killed |
+|---|---|---|
+| P3 | drop the `status === 'todo'` clause | **8** |
+| P4 | `.every` → partial resolution releases | **1** |
+| P5 | dangling blocker treated as resolved — **first attempt** | **0** ⚠️ |
+| P5 | same, **corrected** | **2** |
+
+**P5's first run killed nothing, and that was MY defect, not a weak bar.** `isResolved` short-circuits on
+`if (!b) return false;` *before* the line I patched, so the mutation was unreachable — it changed no
+behaviour, and a no-op mutation kills nothing by construction.
+
+**The lesson, which generalises past this task:** a mutation that kills nothing means **either** an uncovered
+check **or** a mutation that never took effect. Those are opposite conclusions and they look identical in the
+output. **Verify the mutation actually changed behaviour before reading it as a coverage finding** — this is
+the same shape as the stale `dist/` an hour earlier and as [[BL-138]]'s guard-vs-branch misread.
+
+### ⏸️ STOPPED AFTER COMMIT 2 — the plan's own pre-registered decision
+
+Plan §11: *"If budget runs short, stop after commit 2 with the branch green."* Session budget is **~76%**, and
+commit 3 is not a small remainder: it edits `AGENT.md`'s charter paragraph, migrates four backlog items, and
+**moves the workable-set pin twice more** (BL-139/140 → `deferred` and BL-028 → `blocked_by: [BL-135]` each
+change the set). Starting it here risks stopping mid-migration with the pin disagreeing with the backlog — the
+one state worse than not starting.
+
+**The branch is green and coherent as it stands:** the rename and the predicate are a complete, reviewable
+unit. The migration resumes cold from plan §11 commit 3.
+
+### ⚠️ A plan inconsistency found while deriving, for whoever picks up commit 3
+
+**Plan §6 and D5 contradict each other.** §6 says the workable set contracts to **`{BL-028, BL-134}`**; **D5**
+requires BL-028 to carry `blocked_by: [BL-135]` and be **consequently NOT workable**. [[BL-135]] is
+`deferred` — not `done`/`dropped` — so `isResolved` is false and BL-028 is held back. **Both cannot hold.**
+
+Derived expectation after commit 3: **`{BL-134}`** alone. **Do not type either number** — run the predicate
+after the migration and let it say. That row has now been wrong three times.
