@@ -8647,7 +8647,9 @@ tags: [operator, hermes, containment, gate-b, authorization, charter, bl-134]
 autonomy: human-only
 -->
 - [todo · **filed 2026-08-15 by the planner, at the PO's instruction, after the PO proposed letting Hermes set
-  its own `.authorized` file and the check found the mechanism already exists**] —
+  its own `.authorized` file and the check found the mechanism already exists** · **PLAN:
+  `design/bl137-plan.md`, awaiting gate 1 — options (a)+(c) via the existing propose/approve primitive, at the
+  PO's direction 2026-08-15: *"plan BL-137 with the propose/approve flow"***] —
   **Gate B's authorization file lives INSIDE the operator's own write allowlist, so the fence that "only the
   PO can authorize a run" does not hold — and both `AGENT.md` and `hmp-commission.mjs` state that it does.**
 
