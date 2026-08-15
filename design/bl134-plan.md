@@ -300,3 +300,80 @@ asserting a bare `human-only`.
 
 **The binding constraint is an empty backlog, not the predicate.** Whatever is decided here, the next act that
 produces value is filing real work.
+
+---
+
+## 14. PO decisions, 2026-08-15 — four answers, two of which change the plan's shape
+
+Asked after [[BL-137]] merged and BL-134 became workable. **Two answers overturn the plan's own assumptions,
+and one overturns the planner's explicit recommendation.** Recorded with their real cost, measured rather than
+estimated.
+
+| # | Question | PO decision | vs. the plan |
+|---|---|---|---|
+| q1 | keep a commit-time pin? | **Re-pin the WORKABLE set** | ⚠️ **changes §8** — the plan assumed harness-only |
+| q2 | §5 charter wording | **Take the planner's replacement** (the superseded-draft rewrite in §5) | confirms §5 as rewritten |
+| q3 | does `po-decision` survive? | **Retire it — a question is not a task** | ⚠️ **changes §12** — the plan kept it advisory |
+| q5 | rename `?selectable=true`? | **Rename it properly**, updating SKILL.md | ⚠️ **overrules the planner's recommendation** |
+
+### q1 — the tripwire does not vanish, it moves and stays mechanical
+
+§8 retires `bl093-backlog-selectable.test.ts:147` (which pins the *selectable* set). The PO's answer keeps a
+commit-time pin, re-aimed at the **workable** set. This is the better call than the plan's: the harness runs
+only around operator runs, so harness-only would have left every ordinary commit unguarded — a gap the plan
+did not name. **§8 must be rewritten to retire the old pin and land the new one in the same change**, so the
+tripwire is never absent between commits.
+
+### q3 — retiring `po-decision`: measured blast radius, and one wrinkle the plan must handle
+
+**Nine items carry `po-decision`; only three are `todo`** — BL-134, [[BL-139]], [[BL-140]]. The other six are
+`done` or `deferred` and are **history: leave their values untouched.** Migrating only live items keeps the
+change small and keeps the record honest.
+
+**⚠️ The wrinkle: BL-134 is itself tagged `po-decision`, so a literal migration defers the very item doing the
+work.** That is not a paradox, it is a state change the plan must make explicit: **with these four answers
+BL-134 is no longer an open question — it is a specified task**, and it must be re-tagged (`human-only`) in
+the same commit that retires the value. An item may not defer itself out of its own delivery.
+
+**Consequence to state plainly:** after migration the workable set contracts from
+`{BL-028, BL-134, BL-139, BL-140}` to **`{BL-028, BL-134}`** — BL-139 and BL-140 become `deferred`, which is
+correct: both genuinely *are* PO decisions with no work specified.
+
+### q5 — the rename is bigger than this plan assumed, and I said so before proceeding
+
+The planner recommended **against** this and the PO overruled it; the work proceeds in full. **But the cost was
+never measured in the plan, and it is not small.** `selectable` appears across:
+
+| Site | Hits | Kind |
+|---|---|---|
+| `apps/orchestrator/src/__tests__/bl093-backlog-selectable.test.ts` | 22 | test (and the file name itself) |
+| `scripts/infra-invariant.mjs` | 12 | **production** |
+| `apps/orchestrator/src/server.ts` | 5 | **production — the wire param** |
+| `scripts/__tests__/infra-invariant.test.mjs` | 9 | test |
+| `design/operator-seat/SKILL.md` + run logs + plans | ~25 | docs, incl. two verbatim `curl` commands |
+
+**So this is a cross-cutting rename touching two production files, two test files and the operator's own
+documented commands — not the one-line concept change §13 F4 implied.** Three constraints follow, and they are
+not optional:
+
+1. **The wire param and the internal concept must move together**, or the API and its docs disagree — which is
+   the drift this project keeps paying for.
+2. **SKILL.md's two `curl` lines must change in the same commit.** A stale documented command is a command
+   Hermes will run and get a wrong answer from.
+3. **Historical run logs (`hmp7-run-log.md`, `o3-brief.md`) are RECORDS and must NOT be rewritten.** They
+   record what was true at the time. Rewriting history to match a rename is the same error as re-dating a
+   closing block.
+
+**Recommendation now that it is costed:** land the rename as its **own commit**, separate from the autonomy
+mechanics, so a revert of one does not drag the other.
+
+---
+
+## 15. Status after these answers
+
+**BL-134 is unblocked and workable** — verified against the live API: `blockedBy: [BL-137]` is satisfied,
+nothing else blocks it, and **the agent-selectable set is empty** while four items are workable. That emptiness
+is live evidence for this item's own premise, which is the PO's original complaint restated as data.
+
+**The plan needs a draft 2 and a re-gate before implementation.** q1, q3 and q5 each change scope: §8 is
+rewritten, §12 is inverted, and a costed cross-cutting rename joins the task. **Do not implement from draft 1.**
