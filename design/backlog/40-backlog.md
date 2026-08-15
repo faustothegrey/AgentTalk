@@ -70,4 +70,29 @@ autonomy: human-only
   binding constraint is an empty backlog, not the predicate.**
 
 
+<!-- @item
+id: BL-143
+status: todo
+date: 2026-08-15
+epic: null
+tags: [backlog, validator, warning-tier, bl-134, gate]
+-->
+- [todo · **filed 2026-08-15 at BL-134's gate 2 · the reviewer ACCEPTED BL-134's D4 as an honest
+  PARTIAL on condition this was filed**] —
+  **`validate-backlog.mjs` has no warning tier — every finding is fatal, so it cannot advise.**
+
+  Parser warnings are folded into `errors` (`validate-backlog.mjs:33`) and any finding fails the
+  run. That made one of BL-134's DoD rows unimplementable: a `human-only` migration aid would have
+  had to fail the backlog on **BL-134 itself** — `human-only`, `todo`, blockers resolved — i.e. the
+  item would have invalidated the backlog on its own delivery.
+
+  The underlying rule is worth stating because it will recur: **a field that is allowed to be
+  present cannot make the document invalid by being present.** BL-134's D2 deliberately keeps
+  `autonomy` alive as advisory metadata, so any check that fails on its presence contradicts it.
+
+  Wanted: a real `warn` tier — reported, non-fatal, distinct from `error` in both the human output
+  and `--json`. **Note the blast radius, which is why BL-134 correctly left it alone:** it changes
+  `exitCodeFor` semantics that other callers depend on, so it is its own task with its own review.
+
+
 *(add new items above this line)*

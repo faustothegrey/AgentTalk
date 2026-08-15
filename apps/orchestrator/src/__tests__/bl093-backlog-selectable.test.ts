@@ -442,7 +442,26 @@ describe('the real backlog (design/backlog/)', () => {
     // This matters more than the usual empty-set note because the project's stated goal is
     // AUTOMATED DEVELOPMENT, and this line is the measure of whether any is currently possible.
     // It is the ONE place that says so out loud, which is why it is pinned exactly.
-    expect(workableBacklogItems(items).map((i) => i.id)).toEqual([]);
+    //
+    // 2026-08-15 (later still) — deliberately updated, red shown first, as always. The set is no
+    // longer empty: the Wave 0/1 overhaul surfaced four follow-ups and FILING THEM REFILLED THE
+    // QUEUE — [[BL-141]] the doc-citation linter, [[BL-142]] its 16 findings, [[BL-143]] the
+    // validator's missing warn tier, [[BL-144]] Wave 2.
+    //
+    // Read what that does and does not mean, because it is exactly the distinction BL-134 drew:
+    // these four are WORKABLE — todo, unblocked, ready to be picked up. They are NOT LAUNCHABLE.
+    // A launch still needs `design/po/<run>.authorized`, committed by the PO at the sha the
+    // commission names. Filing put four proposals in front of the PO; it handed nothing to anyone.
+    //
+    // ORDER IS FILE ORDER, not id order: `40-backlog.md` is read before `85-governance.md`, which
+    // is why BL-143 leads. Since Wave 1 the backlog is a directory read in FILENAME order, so this
+    // list moves when a file is renamed as well as when an item changes. Derive it, never type it.
+    expect(workableBacklogItems(items).map((i) => i.id)).toEqual([
+      'BL-143',
+      'BL-141',
+      'BL-142',
+      'BL-144',
+    ]);
   });
 
   // 2026-08-07 — deliberately updated, and the red was shown to the PO first. BL-084 CLOSED (PO
@@ -506,9 +525,16 @@ describe('the real backlog (design/backlog/)', () => {
     // where it becomes visible.
     //
     // Still the whole set, still not an absence check, for the same reason as every entry above.
-    // 2026-08-15 — BL-134 closed, so the set is empty. BL-028's fence is what this bar is about
-    // and it is UNCHANGED: it stays out because BL-135 is unresolved, not because the set drained.
-    expect(workableBacklogItems(items).map((i) => i.id)).toEqual([]);
+    // 2026-08-15 — BL-134 closed and four follow-ups were filed. BL-028's fence is what this bar
+    // is about and it is UNCHANGED: it stays out because BL-135 is unresolved — note it is absent
+    // from a NON-empty set now, which is a strictly stronger statement than being absent from an
+    // empty one. The earlier empty pin could not tell "fenced" from "nothing here at all".
+    expect(workableBacklogItems(items).map((i) => i.id)).toEqual([
+      'BL-143',
+      'BL-141',
+      'BL-142',
+      'BL-144',
+    ]);
   });
 
   it('marks BL-086 as the PO decision it is', () => {

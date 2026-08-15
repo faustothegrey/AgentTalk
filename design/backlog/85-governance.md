@@ -127,4 +127,100 @@ tags: [self-hosting, role-skill, governance]
   `design/self-hosting-program-draft.md` §Candidate.
 
 
+<!-- @item
+id: BL-141
+status: todo
+date: 2026-08-15
+epic: null
+tags: [docs, governance, linter, citations, overhaul, wave2]
+-->
+- [todo · **filed 2026-08-15 during the Wave 0/1 overhaul, by the resolver written to verify those
+  waves rather than by reading**] —
+  **Docs are the primary artifact here and have no build. Give the citation graph a gate.**
+
+  A one-off resolver written to prove Wave 0 moved 91 files without breaking a reference found
+  **1,727 citations across the repo, 131 unresolved** — a number nobody could have known, because
+  nothing has ever checked. The check is ~30 lines: walk every tracked `.md`/`.ts`/`.mjs`, extract
+  `design/**.md` and `scripts/**.mjs` references, assert each resolves.
+
+  **Scope note learned the hard way:** `__tests__` files must be EXCLUDED. Their "paths"
+  (`design/x.md`, `design/operator/unauth-brief.md`) are fixtures fed to pure matchers, not
+  citations — including them turns a real signal into noise, which is how the first count came out
+  at 36 and the second at 131 for the same repo.
+
+  This is the mechanical half of the overhaul's Rule 2 (a doc dependency graph, linted). The
+  ambitious half — a module may cite only its own module, its declared code dependencies, and
+  `governance/` — needs [[BL-144]]'s module layout to exist first. **This half does not, and is
+  worth having on its own.** Wire it into `npm run backlog:check` or its own `docs:check`.
+
+  Findings it already produced: [[BL-142]].
+
+
+<!-- @item
+id: BL-142
+status: todo
+date: 2026-08-15
+epic: null
+tags: [docs, governance, rot, operator, agent-md, fence-in-prose]
+-->
+- [todo · **filed 2026-08-15 · found by [[BL-141]]'s resolver · PRE-EXISTING, verified present at
+  `289fa07` before the overhaul touched anything**] —
+  **16 live documents cite files that do not exist, and two of them are operating instructions.**
+
+  Not a tidiness item. The two that matter:
+
+  1. **`design/launch-and-monitor-runbook.md` and `design/operator-seat/SKILL.md` both cite
+     `scripts/launcher.mjs`, which is not in the repo.** Those are the operator seat's LIVE
+     instructions for launching a session — the runbook is named in `AGENT.md` as "the contract".
+     The seat is told to invoke a launcher by absolute path and the path resolves to nothing.
+  2. **`AGENT.md` itself cites `scripts/attach-harness.mjs` and `scripts/test-attach-mode.mjs`** in
+     its Milestone 05 section, offered as the evidence that attach mode was verified. Both are gone.
+
+  Others: `scripts/llm-agent.mjs` (3 docs), `scripts/mcp-bridge.mjs` (3), `scripts/smoke-llm-agent.mjs`
+  (2), `scripts/backlog-parse.mjs`, `scripts/explore-launch-worker.mjs`, `scripts/lib/protocol.mjs`
+  (cited from `packages/runtime-core/src/protocol/protocol.ts`), `design/bl091-investigation.md`
+  (from `SKILL.md`), `design/arbiter-shadow-corpus/README.md`, `design/operator/hl4-brief.md`.
+
+  **Two are NOT defects and must not be "fixed":** `design/session-primers/claude.md` and
+  `CLAUDE.md`, cited by `logbook.md` — LB-12 names them precisely as files that must NEVER exist
+  (case-insensitive auto-slurp). A linter needs an allowlist for deliberate non-existence, or it
+  will teach its readers to ignore it.
+
+  **Disposition is per-citation and needs a human:** a dead script may mean "renamed" (fix the
+  pointer), "deleted" (delete the claim), or "never existed" (the claim was always false). Only the
+  last is interesting, and only reading tells them apart.
+
+
+<!-- @item
+id: BL-144
+status: todo
+date: 2026-08-15
+epic: null
+tags: [overhaul, wave2, modules, colocation, architecture, docs]
+-->
+- [todo · **filed 2026-08-15 · Wave 2 of the overhaul · waves 0 and 1 are MERGED (`0b8bee5`,
+  `b12c0ee`); this is the remainder and it is the judgment-heavy part**] —
+  **Colocate: move code into `modules/`, carrying its durable docs and backlog slice with it.**
+
+  Waves 0 and 1 were mechanical and are done: episodic records evicted to `design/archive/` (91
+  files, ~22k lines), the backlog split into `design/backlog/` by concern. **Wave 2 is not
+  mechanical** and should not be attempted as one commit.
+
+  The unit: a module owns its code, the durable docs describing it, and its backlog file, together.
+  Proposed order, cheapest-first — **start with `backlog/`**, which imports `fs` and `path` and
+  nothing else, so it proves the pattern at near-zero cost; then `containment/`, the largest mass
+  (~11k lines) and almost pure docs.
+
+  `AGENT.md` splits LAST: ~150 lines of genuinely cross-cutting law stay in `governance/`, the rest
+  distributes to the module whose code it constrains. That is the direct fix for its 24 correction
+  markers — they exist because it asserts things about files it does not sit beside, so nothing
+  forces a reader touching the code to touch the claim.
+
+  **Deliberately NOT in scope: new repositories.** Modules give every seam without eight `AGENT.md`
+  files to keep true, and [[BL-086]] already showed what one cross-repo split costs in duplicated
+  governance. Extract a repo only when something outside actually consumes a module.
+
+  Analysis and measurements behind this: the overhaul artifact published 2026-08-15.
+
+
 *(add new items above this line)*
