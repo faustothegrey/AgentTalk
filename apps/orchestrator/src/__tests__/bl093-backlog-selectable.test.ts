@@ -395,7 +395,7 @@ describe('the real backlog (design/backlog/)', () => {
   //
   // Worth recording next to the row it protects: the guard pins WHAT is workable, never WHETHER the thing is
   // still worth selecting. A green here is not evidence the queue is sane.
-  it('offers nothing — the queue emptied when BL-125 was delivered and closed', () => {
+  it('offers exactly the six ladder items — the queue the PO refilled to climb the ladder itself', () => {
     const { items, warnings } = readBacklog();
     expect(warnings).toEqual([]);
     // ⬛ 2026-08-15 — BL-134 RE-AIMED THIS PIN, and the PO chose to keep it rather than let the
@@ -494,7 +494,35 @@ describe('the real backlog (design/backlog/)', () => {
     // remaining piece of work is parked behind a decision, and un-parking is a PO act. That is a
     // different and healthier state than "we ran out of ideas", and the distinction is the reason
     // this assertion is pinned exactly rather than loosened to a length check.
-    expect(workableBacklogItems(items).map((i) => i.id)).toEqual([]);
+    //
+    // 2026-08-16 — REFILLED with SIX, and the red was shown to the PO before this line moved. The PO
+    // set the direction — *"autonomy ladder is now my top priority"*, then *"a list of backlog items to
+    // climb the autonomy ladder itself"* — and these six are that list. It is the largest refill this
+    // file has seen; every prior one was a queue of one or two.
+    //
+    // What makes six safe here is not size but SHAPE: each names an artifact as its deliverable, never
+    // an action on the machinery. That distinction was verified rather than assumed — all six candidate
+    // wordings were run through the real `findsLaunchInstruction`, and a control set was run alongside
+    // them to prove the fence still discriminates (3 tripped on the right patterns, a benign string
+    // passed). A goal naming the run ledger by path passes; "commission a run for BL-050" trips. The
+    // ladder may therefore climb itself, and this is the queue that does it.
+    //
+    // Read what did NOT change, because it is the whole containment argument: these are WORKABLE, not
+    // launchable. Each still needs `design/po/<run>.authorized` ([[BL-137]]), single-use, at the sha the
+    // commission names. Filing six items did not authorize a single run.
+    //
+    // BL-152/153/154 were filed in the same pass and are deliberately ABSENT from this set — they are
+    // `deferred` because executing them would itself mean launching (the no-recursion rule) or because
+    // they touch `AGENT.md`, which is PO-fenced. That they are absent from a set of six, rather than
+    // from an empty one, is the stronger statement.
+    expect(workableBacklogItems(items).map((i) => i.id)).toEqual([
+      'BL-146',
+      'BL-147',
+      'BL-148',
+      'BL-149',
+      'BL-150',
+      'BL-151',
+    ]);
   });
 
   // 2026-08-07 — deliberately updated, and the red was shown to the PO first. BL-084 CLOSED (PO
@@ -569,7 +597,18 @@ describe('the real backlog (design/backlog/)', () => {
     // 2026-08-15 — [[BL-142]] delivered and closed. Second decrement in a row caused by work.
     // 2026-08-15 — [[BL-143]] delivered and closed. Third consecutive decrement caused by work
     // rather than a re-status. What remains is [[BL-144]] — Wave 2, the judgment-heavy remainder.
-    expect(workableBacklogItems(items).map((i) => i.id)).toEqual([]);
+    // 2026-08-16 — six ladder items filed ([[BL-146]]–[[BL-151]]). BL-028's fence is UNCHANGED and that
+    // is the point of asserting it here: it stays out because [[BL-135]] is still deferred, while six
+    // new items go in. A fence that holds while the set around it changes is a fence doing its job —
+    // and it is now visible against a non-empty set, which no emptiness check could have shown.
+    expect(workableBacklogItems(items).map((i) => i.id)).toEqual([
+      'BL-146',
+      'BL-147',
+      'BL-148',
+      'BL-149',
+      'BL-150',
+      'BL-151',
+    ]);
   });
 
   it('marks BL-086 as the PO decision it is', () => {
