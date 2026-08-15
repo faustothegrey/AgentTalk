@@ -1,0 +1,15 @@
+{
+  "name": "containment",
+  "summary": "The fences: worktrees, the invariant harness, the operator commission, scope checks.",
+  "code": [
+    "scripts/infra-invariant.mjs",
+    "scripts/hmp-commission.mjs",
+    "scripts/wt-setup.mjs",
+    "scripts/scope-check.mjs"
+  ],
+  "docs": [],
+  "backlog": "50-containment.md",
+  "deps": [
+    "backlog"
+  ]
+}

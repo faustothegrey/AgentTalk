@@ -1,0 +1,19 @@
+{
+  "name": "mcp-transport",
+  "summary": "The MCP surface: the WebSocket attach transport and the exec server agents call back through.",
+  "code": [
+    "packages/mcp-transport/**",
+    "packages/mcp-exec-server/**",
+    "scripts/smoke-mcp-exec-server.mjs",
+    "scripts/test-mcp-gate.mjs",
+    "scripts/test-mcp-provider.mjs",
+    "scripts/spike-ws-server.mjs",
+    "scripts/m19-bridge-recorder.mjs",
+    "scripts/m19-real-cli-attach.mjs"
+  ],
+  "docs": [],
+  "backlog": "30-mcp-transport.md",
+  "deps": [
+    "contracts"
+  ]
+}

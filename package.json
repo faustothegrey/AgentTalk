@@ -19,7 +19,8 @@
     "smoke:exec": "tsc -b && node scripts/smoke-mcp-exec-server.mjs",
     "probe:t4-api-tools": "tsc -b && node scripts/probe-t4-api-tools.mjs",
     "backlog:check": "tsc -b && node scripts/validate-backlog.mjs",
-    "docs:check": "node scripts/check-doc-citations.mjs"
+    "docs:check": "node scripts/check-doc-citations.mjs",
+    "modules:check": "node scripts/check-modules.mjs"
   },
   "devDependencies": {
     "@types/node": "^25.5.0",

@@ -1,0 +1,12 @@
+{
+  "name": "host-ui",
+  "summary": "The web UI the human watches a run through.",
+  "code": [
+    "apps/web/**"
+  ],
+  "docs": [],
+  "backlog": "80-host-ui.md",
+  "deps": [
+    "contracts"
+  ]
+}

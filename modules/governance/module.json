@@ -1,0 +1,10 @@
+{
+  "name": "governance",
+  "summary": "The working method itself: roles, gates, primers, and the doc-citation gate that keeps its claims honest.",
+  "code": [
+    "scripts/check-doc-citations.mjs"
+  ],
+  "docs": [],
+  "backlog": "85-governance.md",
+  "deps": []
+}

@@ -1,0 +1,10 @@
+{
+  "name": "consensus-lab",
+  "summary": "The arbiter shadow corpus and its scoring — measuring consensus quality offline.",
+  "code": [
+    "scripts/arbiter-*.mjs"
+  ],
+  "docs": [],
+  "backlog": "70-consensus-lab.md",
+  "deps": []
+}
