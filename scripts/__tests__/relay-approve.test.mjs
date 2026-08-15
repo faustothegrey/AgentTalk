@@ -17,6 +17,8 @@ import {
   shaOf,
   main,
 } from '../relay-approve.mjs';
+// [[BL-137]] — the launch bars assert the SAME helpers the commission reads, never local copies.
+import { authorizationLineFor, authorizationPathFor, RUN_ID, CHARTER } from '../hmp-commission.mjs';
 
 /**
  * Token-bound merge/push authorization — [[BL-110]] step 3.
@@ -81,7 +83,10 @@ describe('propose', () => {
   it('refuses an action outside the allowlist', () => {
     const r = propose({ root: repo, action: 'deploy', branch: 'task-x' });
     expect(r.reason).toBe(REFUSAL.BAD_ACTION);
-    expect(ACTIONS).toEqual(['merge', 'push']);
+    // CONTRACT ROW — the action allowlist, pinned exactly. `launch` was added by [[BL-137]].
+    // Adding an action is a governance act, so this bar is MEANT to go red and be re-approved.
+    // Never widen it to a `toContain`.
+    expect(ACTIONS).toEqual(['merge', 'push', 'launch']);
   });
 
   it('refuses a branch that does not exist rather than minting an unusable token', () => {
@@ -342,5 +347,100 @@ describe('CLI', () => {
 
   it('an unknown command throws rather than silently succeeding — the BL-111 lesson', () => {
     expect(() => main([], { root: repo, out: () => {} })).toThrow(/usage/);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// launch — [[BL-137]]. The only action whose approval WRITES THE REPO.
+// ---------------------------------------------------------------------------
+
+describe('launch: approving commits the authorization the commission will read', () => {
+  const RUN = 'hmp42';
+
+  it('B4: requires --run, and refuses a run id the commission would later refuse', () => {
+    expect(propose({ root: repo, action: 'launch' }).reason).toBe(REFUSAL.MISSING_FIELD);
+    expect(propose({ root: repo, action: 'launch', run: 'Bad Run!' }).reason).toBe(REFUSAL.BAD_RUN_ID);
+  });
+
+  it('B10: propose and the commission agree on which run ids are valid', () => {
+    // One shape, one definition. A run id proposable here but refusable there is the defect.
+    expect(RUN_ID.test(RUN)).toBe(true);
+    expect(propose({ root: repo, action: 'launch', run: RUN }).ok).toBe(true);
+    for (const bad of ['UPPER', 'has space', '-leading', 'a'.repeat(33)]) {
+      expect(RUN_ID.test(bad)).toBe(false);
+      expect(propose({ root: repo, action: 'launch', run: bad, token: 'aaaaaaaa' }).reason)
+        .toBe(REFUSAL.BAD_RUN_ID);
+    }
+  });
+
+  it('B4b: defaults the branch to the ref the commission checks ancestry against', () => {
+    const r = propose({ root: repo, action: 'launch', run: RUN });
+    expect(r.ok).toBe(true);
+    expect(r.record.branch).toBe(CHARTER.authorizedRef);
+    expect(r.record.run).toBe(RUN);
+  });
+
+  it('B5: approving writes exactly the authorization line, in a commit touching exactly one path', () => {
+    const p = propose({ root: repo, action: 'launch', run: RUN });
+    const r = approve({ root: repo, token: p.record.token });
+    expect(r.ok).toBe(true);
+
+    const rel = authorizationPathFor(RUN);
+    expect(rel).toBe(`design/po/${RUN}.authorized`);
+    expect(fs.readFileSync(path.join(repo, rel), 'utf-8').trim()).toBe(authorizationLineFor(RUN));
+
+    // The PO approved a tree and gets that tree plus THIS one line. Anything else in this commit
+    // is work they never saw — which is the whole point of sha-moved.
+    const touched = git(['show', '--name-only', '--format=', 'HEAD']).split('\n').filter(Boolean);
+    expect(touched).toEqual([rel]);
+    // And it is readable as a blob at HEAD, which is how verifyCommission reads it.
+    expect(git(['show', `HEAD:${rel}`]).trim()).toBe(authorizationLineFor(RUN));
+  });
+
+  it('B6: a moved branch refuses sha-moved AND writes no file — refusal precedes the write', () => {
+    const p = propose({ root: repo, action: 'launch', run: RUN });
+    fs.writeFileSync(path.join(repo, 'b.txt'), 'two');
+    git(['add', 'b.txt']);
+    git(['commit', '-q', '-m', 'the branch moves under the PO']);
+
+    const r = approve({ root: repo, token: p.record.token });
+    expect(r.reason).toBe(REFUSAL.SHA_MOVED);
+    expect(fs.existsSync(path.join(repo, authorizationPathFor(RUN)))).toBe(false);
+    expect(readRecord(repo, p.record.token).usedAt).toBe(null);
+  });
+
+  it('B7: re-approving refuses already-used and does not commit a second time', () => {
+    const p = propose({ root: repo, action: 'launch', run: RUN });
+    expect(approve({ root: repo, token: p.record.token }).ok).toBe(true);
+    const afterFirst = git(['rev-parse', 'HEAD']);
+
+    const second = approve({ root: repo, token: p.record.token });
+    expect(second.reason).toBe(REFUSAL.ALREADY_USED);
+    expect(git(['rev-parse', 'HEAD'])).toBe(afterFirst);
+  });
+
+  it('B9: a failing commit reports a refusal, does NOT return ok, and does NOT burn the token', () => {
+    const p = propose({ root: repo, action: 'launch', run: RUN });
+    // A held index is how git actually fails here, and it fails deterministically.
+    fs.writeFileSync(path.join(repo, '.git', 'index.lock'), '');
+
+    const r = approve({ root: repo, token: p.record.token });
+    expect(r.ok).toBeFalsy();
+    expect(r.reason).toBe(REFUSAL.COMMIT_FAILED);
+    // The token survives, so the PO can retry after the obstruction clears. Burning it here would
+    // have cost them the approval for a reason that was never theirs.
+    expect(readRecord(repo, p.record.token).usedAt).toBe(null);
+  });
+
+  it('B8: merge and push are untouched — no run recorded, nothing committed', () => {
+    const before = git(['rev-parse', 'HEAD']);
+    for (const action of ['merge', 'push']) {
+      const p = propose({ root: repo, action, branch: 'task-x' });
+      expect(p.ok).toBe(true);
+      expect(p.record.run).toBeUndefined();
+      expect(approve({ root: repo, token: p.record.token }).ok).toBe(true);
+    }
+    expect(git(['rev-parse', 'HEAD'])).toBe(before);
+    expect(fs.existsSync(path.join(repo, 'design', 'po'))).toBe(false);
   });
 });

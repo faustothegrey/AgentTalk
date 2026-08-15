@@ -1,13 +1,20 @@
 #!/usr/bin/env node
 
 /**
- * Token-bound merge/push authorization over the relay — [[BL-110]] step 3.
+ * Token-bound merge/push/launch authorization over the relay — [[BL-110]] step 3, [[BL-137]].
  *
  * USAGE:
  *   node scripts/relay-approve.mjs propose --action <merge|push> --branch <b> [--ttl <mins>]
+ *   node scripts/relay-approve.mjs propose --action launch --run <id> [--ttl <mins>]
  *   node scripts/relay-approve.mjs approve <token>
  *   node scripts/relay-approve.mjs status <token>
  *   node scripts/relay-approve.mjs list
+ *
+ * `launch` ([[BL-137]]) is the PO's authorization for one operator run, and it is the ONLY action
+ * whose approval writes the repo: it commits `design/po/<run>.authorized`. The PO's whole act is
+ * `approve <token>` — they never touch the path. See `writeAuthorization` for why the commit is
+ * verified rather than assumed, and the threat-model note in `hmp-commission.mjs` for why the
+ * location buys DETECTION and not prevention.
  *
  * Exit codes:
  *   0  proposed / approved / listed
@@ -88,11 +95,23 @@ import crypto from 'crypto';
 import { execFileSync } from 'child_process';
 import { fileURLToPath } from 'url';
 import { isMainModule } from './lib/is-main.mjs';
+// Named imports ONLY — both modules export `primaryRoot`, and a wildcard would shadow ours
+// (re-gate F4). Importing is side-effect-free: that module's CLI sits behind an `isMainModule` guard.
+import { authorizationLineFor, authorizationPathFor, RUN_ID, CHARTER } from './hmp-commission.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-/** The actions a proposal may name. Adding one is a governance act, not a refactor. */
-export const ACTIONS = Object.freeze(['merge', 'push']);
+/**
+ * The actions a proposal may name. Adding one is a governance act, not a refactor.
+ *
+ * `launch` added by [[BL-137]]: approving one WRITES AND COMMITS the run's authorization file, so
+ * unlike `merge`/`push` — which only ever hand a verdict back to the session — this action has a
+ * side effect on the repo. That asymmetry is why `approve` verifies its own commit (see `approve`).
+ */
+export const ACTIONS = Object.freeze(['merge', 'push', 'launch']);
+
+/** Actions whose approval writes the repo, and therefore require `run`. */
+export const REPO_WRITING_ACTIONS = Object.freeze(['launch']);
 
 export const REFUSAL = {
   UNKNOWN_TOKEN: 'unknown-token',
@@ -103,6 +122,16 @@ export const REFUSAL = {
   BAD_ACTION: 'bad-action',
   NO_BRANCH: 'no-branch',
   MISSING_FIELD: 'missing-field',
+  /**
+   * [[BL-137]] / bar B9. `git()` swallows every failure and returns null, so without a reason of
+   * its own a failed authorize commit would return `ok: true` — the PO believing they authorized,
+   * the token spent, and the commission later refusing `no-po-authorization` for reasons no one
+   * could trace back to here. A missing NOTIFICATION is cosmetic and is deliberately swallowed
+   * (see `announce`); a missing AUTHORIZATION is the act not having happened.
+   */
+  COMMIT_FAILED: 'commit-failed',
+  /** A run id `propose` would accept but `hmp-commission.mjs` would later refuse. Bar B10. */
+  BAD_RUN_ID: 'bad-run-id',
 };
 
 export const STORE_REL = '.approvals';
@@ -143,19 +172,36 @@ export function shaOf(root, branch) {
  * a commit between proposal and approval voids the token rather than silently authorizing
  * something the PO never saw. That is the property that makes a slow human round trip safe.
  */
-export function propose({ root, action, branch, ttlMin = DEFAULT_TTL_MIN, now = Date.now(), token }) {
+export function propose({ root, action, branch, run, ttlMin = DEFAULT_TTL_MIN, now = Date.now(), token }) {
   if (!action) return refuse(REFUSAL.MISSING_FIELD, 'action');
-  if (!branch) return refuse(REFUSAL.MISSING_FIELD, 'branch');
+
+  // ORDER IS LOAD-BEARING (plan §5 / re-gate G2). `branch` may only be defaulted AFTER the action
+  // is known to be valid. Defaulted before the `!branch` guard, an INVALID action with no branch
+  // would start reporting `bad-action` where it reports `missing-field` today. No existing bar
+  // breaks either way — `:82` supplies a branch — which is exactly why this is written down.
+  const isRepoWriting = REPO_WRITING_ACTIONS.includes(action);
+  if (!branch && !isRepoWriting) return refuse(REFUSAL.MISSING_FIELD, 'branch');
   if (!ACTIONS.includes(action)) return refuse(REFUSAL.BAD_ACTION, `'${action}'; allowed: ${ACTIONS.join(', ')}`);
 
-  const sha = shaOf(root, branch);
-  if (!sha) return refuse(REFUSAL.NO_BRANCH, branch);
+  // A repo-writing action authorizes ONE named run. Validated against the commission's own RUN_ID,
+  // imported rather than copied: a run id proposable here but refusable there is a defect.
+  if (isRepoWriting) {
+    if (!run) return refuse(REFUSAL.MISSING_FIELD, 'run');
+    if (!RUN_ID.test(String(run))) return refuse(REFUSAL.BAD_RUN_ID, String(run).slice(0, 40));
+  }
+
+  const effectiveBranch = branch || (isRepoWriting ? CHARTER.authorizedRef : branch);
+  const sha = shaOf(root, effectiveBranch);
+  if (!sha) return refuse(REFUSAL.NO_BRANCH, effectiveBranch);
 
   const tok = token ?? crypto.randomBytes(4).toString('hex');
   const record = {
     token: tok,
     action,
-    branch,
+    branch: effectiveBranch,
+    // Present only for repo-writing actions, so a `merge`/`push` record is byte-identical to what
+    // it was before [[BL-137]] (bar B8).
+    ...(isRepoWriting ? { run: String(run) } : {}),
     sha,
     createdAt: new Date(now).toISOString(),
     expiresAt: new Date(now + ttlMin * 60_000).toISOString(),
@@ -203,10 +249,66 @@ export function approve({ root, token, now = Date.now() }) {
     return refuse(REFUSAL.SHA_MOVED, `proposed ${rec.sha}, now ${current ?? 'gone'}`);
   }
 
-  const used = { ...rec, usedAt: new Date(now).toISOString() };
+  // COMMIT BEFORE BURN ([[BL-137]] plan §4.4, gate-1 F3). The authorization must exist in the repo
+  // before the token is spent. The other order returns `ok: true` on a silently failed commit —
+  // `git()` swallows failures — leaving the PO believing they authorized, the token spent, and the
+  // commission refusing `no-po-authorization` with nothing pointing back here.
+  //
+  // The crash window between the two is SAFE and fails closed: if the process dies after the commit
+  // but before the burn, a retry re-resolves the branch — now one commit ahead — and refuses
+  // `sha-moved`. The authorization exists but is unusable without a fresh proposal. Do not "fix"
+  // that by burning first.
+  let authorized = null;
+  if (REPO_WRITING_ACTIONS.includes(rec.action)) {
+    authorized = writeAuthorization(root, rec.run);
+    if (!authorized.ok) return authorized;
+  }
+
+  const used = { ...rec, usedAt: new Date(now).toISOString(), ...(authorized ? { authorizedAt: authorized.sha } : {}) };
   fs.writeFileSync(path.join(storeDir(root), `${tok}.json`), `${JSON.stringify(used, null, 2)}\n`);
   announce(root, used);
   return { ok: true, record: used };
+}
+
+/**
+ * Write and commit the run's authorization, then PROVE it landed before reporting success.
+ *
+ * Two things this must not do, both learned rather than assumed:
+ *   1. Trust `git()`. It returns `null` on every failure and discards stderr, so "it didn't throw"
+ *      is not evidence. The commit is verified by reading the blob back out of the new HEAD.
+ *   2. Commit anything else. The PO approved a tree and is getting that tree plus THIS one line;
+ *      a second file in this commit is work they never saw, which is what `sha-moved` exists to
+ *      prevent. The path is pathspec-staged, and the commit's file list is asserted (bar B5).
+ */
+export function writeAuthorization(root, run) {
+  const rel = authorizationPathFor(run);
+  const abs = path.join(root, rel);
+  try {
+    fs.mkdirSync(path.dirname(abs), { recursive: true });
+    fs.writeFileSync(abs, `${authorizationLineFor(run)}\n`);
+  } catch (e) {
+    return refuse(REFUSAL.COMMIT_FAILED, `could not write ${rel}: ${e.message}`);
+  }
+
+  if (git(['add', '--', rel], root) === null) return refuse(REFUSAL.COMMIT_FAILED, `git add ${rel}`);
+  if (git(['commit', '-m', `authorize(${run}): ${authorizationLineFor(run)}`, '--', rel], root) === null) {
+    return refuse(REFUSAL.COMMIT_FAILED, `git commit ${rel}`);
+  }
+
+  // Verification, not optimism: the blob must be readable at the new HEAD, and that commit must
+  // have touched exactly one path.
+  const head = git(['rev-parse', 'HEAD'], root);
+  if (!head) return refuse(REFUSAL.COMMIT_FAILED, 'HEAD unreadable after commit');
+  const blob = git(['show', `${head}:${rel}`], root);
+  if (blob === null || blob.trim() !== authorizationLineFor(run)) {
+    return refuse(REFUSAL.COMMIT_FAILED, `${rel} not committed at ${head.slice(0, 8)}`);
+  }
+  const touched = git(['show', '--name-only', '--format=', head], root);
+  const files = (touched ?? '').split('\n').map((s) => s.trim()).filter(Boolean);
+  if (files.length !== 1 || files[0] !== rel) {
+    return refuse(REFUSAL.COMMIT_FAILED, `authorize commit touched ${files.length} path(s): ${files.join(', ')}`);
+  }
+  return { ok: true, sha: head, path: rel };
 }
 
 /** Where consumed approvals are announced. Deliberately NOT the request inbox — see `announce`. */
@@ -319,7 +421,13 @@ export function main(argv = process.argv.slice(2), io = {}) {
 
   if (cmd === 'propose') {
     const f = parseFlags(argv.slice(1));
-    const r = propose({ root, action: f.action, branch: f.branch, ttlMin: f.ttl ? Number(f.ttl) : undefined });
+    const r = propose({
+      root,
+      action: f.action,
+      branch: f.branch,
+      run: f.run,
+      ttlMin: f.ttl ? Number(f.ttl) : undefined,
+    });
     if (!r.ok) {
       out(`refused: ${r.reason}${r.detail ? ` (${r.detail})` : ''}\n`);
       return 1;

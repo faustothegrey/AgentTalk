@@ -80,11 +80,11 @@ beforeAll(() => {
   git(['config', 'user.email', 'test@example.com']);
   git(['config', 'user.name', 'Test']);
 
-  write('design/operator/hmp1.authorized', `${authorizationLineFor(RUN)}\n`);
+  write('design/po/hmp1.authorized', `${authorizationLineFor(RUN)}\n`);
   write('design/operator/hmp1-brief.md', BRIEF);
   write('design/operator/hmp1-bar.md', BAR);
   write(`design/operator/${RUN}.config.json`, JSON.stringify(CONFIG, null, 2));
-  git(['add', 'design/operator/hmp1.authorized', 'design/operator/hmp1-brief.md', 'design/operator/hmp1-bar.md', `design/operator/${RUN}.config.json`]);
+  git(['add', 'design/po/hmp1.authorized', 'design/operator/hmp1-brief.md', 'design/operator/hmp1-bar.md', `design/operator/${RUN}.config.json`]);
   git(['commit', '-m', 'commission fixtures']);
   sha = git(['rev-parse', 'HEAD']);
 
@@ -205,7 +205,7 @@ describe('isAuthorizationFile — a discrete artifact, not a phrase', () => {
   });
 
   it('names the file by convention, per run', () => {
-    expect(authorizationPathFor(RUN)).toBe('design/operator/hmp1.authorized');
+    expect(authorizationPathFor(RUN)).toBe('design/po/hmp1.authorized');
   });
 });
 
@@ -472,10 +472,10 @@ describe('verifyCommission', () => {
 
   it('refuses a recursive brief', () => {
     write('design/operator/rec-brief.md', `# rec\n\nGoal: launch a session on 3600.\n\n${authorizationLineFor('rec')}\n`);
-    write('design/operator/rec.authorized', `${authorizationLineFor('rec')}\n`);
+    write('design/po/rec.authorized', `${authorizationLineFor('rec')}\n`);
     write('design/operator/rec-bar.md', BAR);
     write('design/operator/rec.config.json', JSON.stringify(CONFIG, null, 2));
-    git(['add', 'design/operator/rec.authorized', 'design/operator/rec-brief.md', 'design/operator/rec-bar.md', 'design/operator/rec.config.json']);
+    git(['add', 'design/po/rec.authorized', 'design/operator/rec-brief.md', 'design/operator/rec-bar.md', 'design/operator/rec.config.json']);
     git(['commit', '-m', 'recursive fixture']);
     const s = git(['rev-parse', 'HEAD']);
     const r = verify(
@@ -491,13 +491,13 @@ describe('verifyCommission', () => {
 
   it('refuses a config with no cap.meter — the charter calls it mandatory', () => {
     write('design/operator/nometer-brief.md', `# nometer\n\nGoal: report HEAD.\n\n${authorizationLineFor('nometer')}\n`);
-    write('design/operator/nometer.authorized', `${authorizationLineFor('nometer')}\n`);
+    write('design/po/nometer.authorized', `${authorizationLineFor('nometer')}\n`);
     write('design/operator/nometer-bar.md', BAR);
     write(
       'design/operator/nometer.config.json',
       JSON.stringify({ agents: [{ workdir: '/tmp/att-op-nometer' }] }, null, 2),
     );
-    git(['add', 'design/operator/nometer.authorized', 'design/operator/nometer-brief.md', 'design/operator/nometer-bar.md', 'design/operator/nometer.config.json']);
+    git(['add', 'design/po/nometer.authorized', 'design/operator/nometer-brief.md', 'design/operator/nometer-bar.md', 'design/operator/nometer.config.json']);
     git(['commit', '-m', 'no-meter fixture']);
     const s = git(['rev-parse', 'HEAD']);
     const r = verify(
@@ -532,10 +532,10 @@ describe('verifyCommission', () => {
     config = { ...config, agents: [{ ...CONFIG.agents[0], workdir: dir }] };
 
     write(`design/operator/${run}-brief.md`, `# ${run}\n\nGoal: report HEAD.\n\n${authorizationLineFor(run)}\n`);
-    write(`design/operator/${run}.authorized`, `${authorizationLineFor(run)}\n`);
+    write(`design/po/${run}.authorized`, `${authorizationLineFor(run)}\n`);
     write(`design/operator/${run}-bar.md`, BAR);
     write(`design/operator/${run}.config.json`, JSON.stringify(config, null, 2));
-    git(['add', `design/operator/${run}.authorized`, `design/operator/${run}-brief.md`, `design/operator/${run}-bar.md`, `design/operator/${run}.config.json`]);
+    git(['add', `design/po/${run}.authorized`, `design/operator/${run}-brief.md`, `design/operator/${run}-bar.md`, `design/operator/${run}.config.json`]);
     git(['commit', '-m', `${run} fixture`]);
     const s = git(['rev-parse', 'HEAD']);
     return verify(
@@ -590,7 +590,7 @@ describe('verifyCommission', () => {
 
   it('refuses when the committed config launches into a different sandbox than commissioned', () => {
     write('design/operator/drift-brief.md', `# drift\n\nGoal: report HEAD.\n\n${authorizationLineFor('drift')}\n`);
-    write('design/operator/drift.authorized', `${authorizationLineFor('drift')}\n`);
+    write('design/po/drift.authorized', `${authorizationLineFor('drift')}\n`);
     write('design/operator/drift-bar.md', BAR);
     write(
       'design/operator/drift.config.json',
@@ -600,7 +600,7 @@ describe('verifyCommission', () => {
         2,
       ),
     );
-    git(['add', 'design/operator/drift.authorized', 'design/operator/drift-brief.md', 'design/operator/drift-bar.md', 'design/operator/drift.config.json']);
+    git(['add', 'design/po/drift.authorized', 'design/operator/drift-brief.md', 'design/operator/drift-bar.md', 'design/operator/drift.config.json']);
     git(['commit', '-m', 'drift fixture']);
     const s = git(['rev-parse', 'HEAD']);
     const r = verify(
