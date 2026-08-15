@@ -132,49 +132,39 @@ one agent holds SM and both quality gates — accepted because merges stay PO-ga
 - **Gemini (agy)** — key store `~/.config/AgentTalk_Gemini/session-primer-key.json` (bootstrapped 2026-06-27;
   agy's own `~/.gemini` tree is a write-protected/ephemeral sandbox, hence the stable XDG dir); lessons
   `design/lessons/gemini-lessons.md`; meter block `antigravity`.
-  **✅ FIT as an MCP attach client — the LB-92 UNFIT park is LIFTED (PO, 2026-07-16), on live PO-witnessed
-  evidence.** The hang is fixed and proven end-to-end: a real agy, launched by the real launcher against a **real
-  orchestrator**, attached, ran a real generation, and round-tripped MCP tool calls back through the bridge
-  (`submit_work_response` + `submit_work_result`) — the team reached **completed** and the **PO witnessed `391`**
-  (a *computed* 17×23, so no stub or hung TUI can explain it) rendered next to the worker in the Team panel. An
-  earlier probe also proved tool use: `answer.txt` = `391` written to disk. Turn latency **~14s** (bare
-  `agy --print` = **9.65s**) — well under the 30s healthcheck default, so the once-feared provider-specific 90s
-  timeout is **NOT** needed (LB-93's "necessary after all" is superseded).
-  **⚠️ ONE BOUND — read before relying on this:**
-  1. ~~**Production is still broken without `AGENTTALK_PERSISTENT_MCP=true`.**~~ **RESOLVED — BL-057 merged
-     2026-07-16 (`3403bdb`, `agentalk-mcp-client`). The flag NO LONGER EXISTS; set nothing.** The gate and the
-     `agy mcp` fall-through are deleted, and the live-proven path is now the only path — re-verified live with **no
-     env var set** (full MCP round-trip, computed `589`). *(Deleted for all three providers, not just gemini: the
-     flag gated nine sites and no fall-through had ever survived a live run. Details in BL-057's closing block.)*
-     **If you find any doc still telling you to export that flag, it is stale — correct it.**
-  2. ~~**agy's execution compliance is unreliable — fit to ATTACH, not trusted to EXECUTE.**~~ **⛔ RETRACTED
-     2026-07-16 (PO-prompted) — THAT WAS FALSE, AND IT WAS OUR BUG, NOT agy's.** **agy is fit to EXECUTE: it did
-     the work, every time, and we were checking the wrong directory.** Both "accepted-then-skipped" runs are on
-     disk, complete: `wt/answer.txt` = **`391`** committed `2e52556`, and `wt057/answer.txt` = **`589`** committed
-     `241396a` — under `/tmp/agentalk-task-<id>/`, **not** under the worker's `workdir`.
-     **The mechanism — know this before you judge any agy run (it is [[BL-053]]):** `llm-agent.mjs` forwards the
-     `exec_rpc` `cwd`, and at the time of the runs above **gemini was the ONLY provider that honoured it**; claude and
-     codex spawned in `process.cwd()`. **So agy alone worked in the orchestrator's task worktree — a worktree of the
-     ORCHESTRATOR's cwd, not of the `workdir` you assigned it.** "The worker works in its `workdir`" (BL-052) was true
-     for claude/codex and **false for agy**. **Look in `/tmp/agentalk-task-<id>/`.**
-     **⚠️ STATE UPDATE 2026-07-27 — the per-provider split above is HISTORY; do not act on it.** BL-053 anchored the
-     task worktree **inside the worker's own `workdir`** (so the old "orchestrator's cwd" path is gone: look under
-     `<workdir>/agentalk-task-<id>/`), and BL-053 + **[[BL-075]]** closed the split. **Today: gemini, codex, and every
-     ONE-SHOT provider (goose included) all honour the forwarded `cwd`** — `executor-runtime.mjs`, `OneShotExecutor`
-     and both persistent executors, all `cwd: sink.cwd || process.cwd()`. The one remaining exception is **claude on
-     the persistent path**, whose cwd is **session-level, not per-turn, and structurally cannot be** (the process is
-     spawned once at `initialize()`, before any turn exists) — a documented limit, not a containment hole, since
-     `process.cwd()` is still the assigned workdir. **The durable lesson below is unchanged; only the provider table
-     moved.**
-     **Still true, and now sharper:** never read `completed` as "the work was done" — **check the artifact.** But
-     **check it where the process actually stood**: an artifact check at the wrong coordinates is *worse* than none,
-     because it manufactures false confidence and a paper trail. Twice we ran that check rigorously, at the wrong
-     path, and wrote a model-honesty defect into this file that never existed. **Read the spawn cwd out of the code
-     (30 seconds) before concluding an agent didn't work.** See **BL-059** (retracted, kept as the record of the
-     mistake) and **BL-053** (the live defect that caused it).
-  `start_pair_chat` itself was not exercised (the launcher builds a worker-only team), but the healthcheck rides the
-  same `exec_rpc` mechanism proven above. See LB-94 / BL-045 / BL-057 / BL-059.
-  *(Scope: the attach-client capability only; agy's Implementer role is a separate PO call.)*
+  **✅ FIT as an MCP attach client, and FIT to EXECUTE** (PO, 2026-07-16, on live PO-witnessed evidence).
+  A real agy, launched by the real launcher against a **real orchestrator**, attached, ran a generation,
+  and round-tripped MCP tool calls back through the bridge (`submit_work_response` +
+  `submit_work_result`); the team reached **completed** and the PO witnessed **`391`** — a *computed*
+  17×23, so no stub or hung TUI explains it. Turn latency **~14s** (bare `agy --print` = 9.65s), well
+  under the 30s healthcheck default, so **no provider-specific 90s timeout is needed** (LB-93's
+  "necessary after all" is superseded). `start_pair_chat` itself was not exercised — the launcher builds
+  a worker-only team — but the healthcheck rides the same `exec_rpc` mechanism proven above.
+  **Set no environment variable.** `AGENTTALK_PERSISTENT_MCP` **no longer exists** (BL-057, merged
+  2026-07-16 in `agentalk-mcp-client`): the gate and the `agy mcp` fall-through are deleted for all three
+  providers, and the live-proven path is the only path. **Any doc still telling you to export that flag is
+  stale — correct it.**
+
+  > **⚠️ Before you judge any agy run, know where its work lands.** The task worktree is anchored **inside
+  > the worker's own `workdir`** — look under **`<workdir>/agentalk-task-<id>/`**. Today **gemini, codex and
+  > every ONE-SHOT provider (goose included) honour the forwarded `exec_rpc` `cwd`**: `lib/executor-runtime.mjs`
+  > in the client repo passes `cwd: sink.cwd || process.cwd()` at all three executor sites, pinned by a
+  > `bl075-oneshot-cwd` bar. The one exception is **claude on the persistent path**, whose cwd is
+  > **session-level and structurally cannot be per-turn** — the process is launched once at `initialize()`,
+  > before any turn exists. That is a documented limit, not a containment hole: `process.cwd()` is still the
+  > assigned workdir. *(History, kept only because the lesson below came from it: there was once a
+  > per-provider split in which agy alone honoured the cwd. [[BL-053]] + [[BL-075]] closed it.)*
+  >
+  > **THE DURABLE LESSON, and it is why this paragraph exists at all:** never read `completed` as "the work
+  > was done" — **check the artifact.** But **check it where the process actually stood.** An artifact check
+  > at the wrong coordinates is *worse* than no check, because it manufactures false confidence and a paper
+  > trail to match. Twice we ran that check rigorously, at the wrong path, and wrote a **model-honesty defect
+  > into this file that had never existed** — agy had done the work every time. **Read the spawn cwd out of
+  > the code (thirty seconds) before concluding an agent didn't work.** See [[BL-053]] (the live defect) and
+  > **BL-059** (retracted, kept as the record of the mistake).
+
+  *(Scope: the attach-client capability. agy's Implementer role is a separate PO call. See LB-94 / BL-045 /
+  BL-057 / BL-059.)*
 - **Hermes** — **RETIRED from the process entirely (2026-07-02)**: its agent loop wedged and its tmux transport
   proved structurally lossy (LB-49). Do not route batons, reports, or authority through it; its lessons file is
   frozen history.
@@ -440,79 +430,103 @@ related to AgentTalk. Use **launch** instead (e.g. "launch the implementer" not 
 This is a hard naming convention, not a code detail — it applies to how we talk about starting agents
 in every context (docs, messages, primers, lessons). Violations should be corrected when seen.
 
-### Milestone 06 Key Features
-- **Multi-Agent Consensus under Attach Mode**: The planner protocol successfully executes across isolated MCP client environments. Planners can engage in the `fact_collection`, `discussion`, and `proposal` phases, emitting structured JSON responses that map dynamically to MCP tool calls (`submit_plan`, `send_to_agent`, etc.) without dropping the connection.
-- **Provider Multi-Turn State (`agy`)**: The `GeminiPersistentExecutor` was completely rewritten to maintain native persistent multi-turn execution (`agy --continue`) within isolated temporary homes per agent. This avoids fragile `stream-json` bridge issues and reliably simulates MCP-based agent statefulness.
-- **Verified live**: In `scripts/test-live-gate.mjs`, two Gemini agents (`planner-a` and `planner-b`) execute fully isolated turns, successfully debate, reach consensus, submit a valid `plan.md` plan, and cleanly hand off execution to `worker-1` which completes the test end-to-end. Suite **139/139** *(M06-era baseline; the current green count lives in the active epic's `*-implementation.md` ledger, not here)*, build clean.
+### What the milestones established — and what is actually true now
 
-### Milestone 05 Key Features
-- **MCP Attach Mode (single-agent transport)**: AgentTalk runs as an MCP server; provider MCPs are **externally launched** by the operator (not auto-launched) and connect in over a persistent WebSocket.
-- **Pull-based turn loop**: attached agents block on the `await_turn` MCP tool; the orchestrator enqueues turns per agent and replies route back via `send_to_agent`. A clean disconnect marks the agent `terminated` (not `error`), so stopping an external agent doesn't trip Milestone-03 failure propagation.
-- **Verified**: codex, claude, and gemini each attach and complete a turn end-to-end via the attach harness
-  (Model B; MCP invoked per turn, no MCP needed on the MCP side) + the web UI; an in-process smoke covered the
-  same path. Full regression stays green.
-  ⬛ **PATHS CORRECTED 2026-08-15 ([[BL-142]]) — the evidence stands, the pointers did not.** This named both harnesses as paths
-  inside THIS repo. **Neither file
-  exists, and neither ever lived at the path given.** Traced across the full history of both repos: the harness
-  was **`attach-harness.mjs` at the CLIENT repo's root** (2 commits, since deleted); the smoke was
-  **`test-attach-mode.mjs` under this repo's `scripts/`** (3 commits, since deleted). So a reader following either
-  pointer to check the claim finds nothing and cannot tell whether the verification happened.
-  **The claim itself is not impeached** — that was this correction's first draft and it was wrong. Both
-  artifacts existed and were deleted in the ordinary course; what rotted is the citation, not the evidence.
-  Naming them without a path is deliberate: a pointer into another repo's deleted file is worse than none.
-- **Not yet (open follow-ups)**: multi-agent **consensus** mapping (the harness only emits `send_to_agent`, no `submit_plan`/agreement/work), clean **MCP-failure surfacing**, and the **native-loop/skill** path for claude/gemini. See `design/archive/mcp-implementation-plan.md` (Phase 5) and `design/archive/mcp-external-launch-proposal.md`.
+> **Read this heading, not the old one.** These were three lists of shipped features, written in the
+> present tense on the day each milestone closed and then corrected four times as the code moved
+> underneath them. **Dated feature lists read as current status, which is how they rotted.** What
+> follows states what is true *today*, with the milestone that introduced it named for provenance
+> only. Git history holds the original lists and every correction; the archaeology is not repeated
+> here. **The behavioural facts below are load-bearing — read them before relying on failure
+> handling.**
+>
+> **Citation rule, adopted 2026-08-14 and sharpened by the rewrite that produced this section:** a
+> citation points at the **CODE that makes the claim true**, and where you quote a comment, say it is
+> a comment. **Cite a file and a SYMBOL, never a line number** — every stale citation this section
+> accumulated was a line number, and every one of them rotted silently while the symbol stayed
+> findable. *(Four were still wrong when this rewrite began: `registry.ts:489`/`:513`, `:890`, `:929`
+> and `completer.ts:10`.)*
 
-### Milestone 03 Key Features
-- **Agent Failure Propagation**: Active team tasks are now immediately interrupted if an agent enters an `error` state, eliminating deadlocks. ⚠️ **Corrected 2026-07-10:** this line previously read *"(including idle timeouts)"* — **that was false.** A clean disconnect → `terminated` (M05) and an explicit `error` status do propagate; a **hung** agent is **not** detected. Do not rely on the idle timeout, and do not cite this milestone as evidence that it works.
-  ⬛ **CORRECTION 2026-08-14 ([[BL-130]]) — the 2026-07-10 correction was itself half-wrong, and its stale half
-  is now the more dangerous one.** It read: *"The idle timeout is **dead code**: `lastProgressAt` is declared and
-  read but **never written**, so `hasAgentTimedOut()` always returns false (`registry.ts:663`)."* **Every
-  checkable part of that is false today.** `lastProgressAt` **is** written — `registry.ts:489`, `registry.ts:513`,
-  `in-process-driver.ts:116`. **`hasAgentTimedOut()` does not exist**; it became `quietForMs` and then
-  `classifySilence` (`registry.ts:890` carries both renames). And `registry.ts:663` no longer holds that code.
-  **The conclusion above survives — a hung agent is still not detected — but NOT for this reason, and that
-  matters.** [[BL-124]] S3 established the real mechanisms: an `exec_rpc` turn carries **no obligation id**, so
-  `classifySilence`'s gate at `registry.ts:929` returns `undefined` forever ([[BL-127]]); and where an id does
-  exist, `DEFAULT_EXEC_TIMEOUT_MS` (`completer.ts:10`, 120s) tears the turn down 60s before the 180s threshold
-  matures ([[BL-128]]). **A reader who believes the `lastProgressAt` story reaches the right conclusion for the
-  wrong reason** — and would "fix" the sweep by writing a field that is already written. *(Rule adopted with this
-  correction, proposed by a planner agent during S3: **a citation points at the CODE that makes the claim true,
-  and where you quote a comment, say it is a comment.**)*
-  ⚠️ **Second correction, 2026-07-27 (PO decided [[BL-078]] option (a) — document, don't fix): propagation is
-  TRANSPORT-ASYMMETRIC, and the opening sentence above is only true for ATTACHED agents.** An **attached**
-  agent's error routes through `Registry.setAgentStatus`, which fires `teamCoordinator.handleAgentFailure`
-  (`registry.ts:226-228`) — that propagates. An **in-process / API** agent's error routes through the
-  side-effect-free `notifyAgentStatus` (`in-process-driver.ts:105`, added by BL-077), so **an in-process agent
-  that errors has NEVER interrupted its team's active task.** A BL-077 test deliberately pins that
-  (`bl077-driver-status-broadcast.test.ts:84-105`).
-  ⬛ **THIRD CORRECTION, 2026-08-14 ([[BL-129]]) — the paragraph immediately above is STALE, and it was already
-  stale before this task touched anything.** Two checkable errors: (1) **BL-084 T2 moved the error site.** The
-  driver's catch has not called `notifyAgentStatus` since T2 — it calls **`reportAgentError`**
-  (`in-process-driver.ts`), which goes through `setAgentStatus` and **does** fire `handleAgentFailure` when the
-  reason is fault-class. So "NEVER interrupted its team's active task" stopped being true at T2. (2) **The cited
-  test now pins the OPPOSITE**, and says so in its own title: *"a driver-path error is announced, and since T2 a
-  fault-class cause also propagates"*, asserting `expect(handleAgentFailure).toHaveBeenCalled()`. Its path is
-  also wrong here — it lives under `registry/__tests__`, not `agents/__tests__`.
-  **What is true today:** an in-process agent's error propagates **iff its reason is fault-class**
-  (`FAULT_CLASS_BY_REASON`, `registry.ts`). The default for an unlabelled throw is
-  `driver-error-unclassified`, which is **non-fault** — so the *practical* effect stayed close to the old claim
-  until this task, and that is exactly why nobody noticed the sentence had rotted.
-  **[[BL-129]] then made it decisively false, by PO decision:** a planner exec turn that times out now raises
-  **`exec-timeout`**, which **is** fault-class, so **an in-process agent CAN now interrupt — and shut down — its
-  team.** The liveness healthcheck is explicitly exempt (`isHealthcheck`), because a missed ping is not a hang.
-  Rationale and the relaxation condition: `logbook.md` **LB-96**.
-  **Why it is left that way, deliberately** — this is the load-bearing part, not an apology for a gap: `error`
-  is one undifferentiated bucket, and **most conditions that reach it on the driver path are not faults** — the
-  conversation **reply cap** (the designed way a conversation *ends*), the BL-083 **relay budget** firing
-  correctly, a peer not `ready`/`busy`, and a **workflow-gate refusal** (propagating a *rejected* privilege
-  escalation would hand anyone who can trip a gate a team-wide DoS lever, since `handleAgentFailure` requests
-  shutdown of every other member). Switching propagation on today would attach a team-wide kill to normal
-  control flow. The fix is a **typed non-reply reason** → **[[BL-084]]**, which also unblocks BL-028.
-  **So: nothing detects a hung agent, and an errored in-process agent does not stop its team. The wall-clock cap
-  is the only anti-hang rail.** Evidence + measured blast radius: `design/archive/bl078-decision.md`.
-- **Refined Planning Protocol**: Protocol briefings are more direct and action-oriented, with explicit initiator/peer instructions and a "Proposal Priority" rule.
-- **Improved Observability**: Added regression tests to verify task interruption on agent failure across all phases.
+**Attach mode — the transport (M05).** AgentTalk runs as an MCP server. Provider MCPs are
+**externally launched** by the operator, never auto-launched, and connect over a persistent
+WebSocket. Attached agents block on the `await_turn` tool; the orchestrator enqueues turns per agent
+and replies route back via `send_to_agent`. **A clean disconnect marks the agent `terminated`, not
+`error`**, so stopping an external agent deliberately does not trip failure propagation.
+*Verified at the time* for codex, claude and gemini — each attached and completed a turn end-to-end
+through an attach harness and the web UI, with an in-process smoke over the same path. **Both
+harnesses have since been deleted in the ordinary course, and are named here without paths on
+purpose**: the evidence stands, the pointers did not, and a pointer to a deleted file (in this repo
+or another) is worse than none.
 
+**Multi-agent consensus under attach (M06).** The planner protocol executes across isolated MCP
+client environments: planners move through `fact_collection`, `discussion` and `proposal`, emitting
+structured JSON that maps to MCP tool calls (`submit_plan`, `send_to_agent`) without dropping the
+connection. Provider multi-turn state for `agy` is native (`--continue`) inside a per-agent isolated
+home, rather than bridged over `stream-json`. Exercised live by `scripts/test-live-gate.mjs`.
+*(Suite counts are deliberately not quoted here — the current green count lives in the active epic's
+`*-implementation.md` ledger. A number in this file is a number nobody re-runs.)*
+
+#### Failure propagation — the part to actually read (M03, as amended by BL-078 / BL-084 / BL-129)
+
+**An agent's error interrupts its team if and only if the error's reason is fault-class.** Both
+transports now reach the same gate, which is the fact the old text got wrong for a year in two
+different directions:
+
+- **attached** — the error routes through `Registry.setAgentStatus`, which calls
+  `teamCoordinator.handleAgentFailure` when `isFaultClass(reason)` holds;
+- **in-process / API** — the driver's catch calls `Registry.reportAgentError`
+  (`in-process-driver.ts`), which goes through `setAgentStatus` and therefore the **same** gate.
+  *(Before BL-084 T2 it called the side-effect-free `notifyAgentStatus` and propagated nothing. That
+  is history: the driver has not done this since T2.)*
+
+**The classification is a table, not a heuristic:** `FAULT_CLASS_BY_REASON` in `registry.ts`, read
+through `isFaultClass`. Adding a reason without classifying it is a **compile error**, so an
+unclassified site cannot drift in. Fault-class today: `conversation-start-failed`,
+`mcp-internal-error`, `reconnect-timeout-inflight-turn`, `idle-timeout`, `exec-timeout`. Non-fault:
+`unknown-mcp-tool`, `exec-disconnect`, `conversation-reply-cap`, `relay-budget-exhausted`,
+`target-agent-unavailable`, `workflow-gate-refusal`, `planning-task-inactive`,
+`healthcheck-token-invalid`, `driver-error-unclassified`. Note the two unknowns point **opposite
+ways on purpose** — `isFaultClass(undefined)` is `true` (a site not yet migrated keeps today's
+behaviour), while the explicitly-passed `driver-error-unclassified` is `false` (a surprise on the
+driver path must not newly kill teams). Both rules say the same thing: **a surprise never changes
+what happens.**
+
+**Why most driver-path errors are deliberately non-fault** — this is design, not a gap. `error` is
+one undifferentiated bucket, and most conditions reaching it are normal control flow: the
+conversation **reply cap** (the designed way a conversation ends), the relay budget firing
+*correctly*, a peer not `ready`/`busy`, and a **workflow-gate refusal**. Propagating a *rejected*
+privilege escalation would hand anyone who can trip a gate a team-wide DoS lever, since
+`handleAgentFailure` requests shutdown of every other member.
+
+**⚠️ What detects a hang — corrected here, because the old text's closing sentence said the opposite
+of its own body.** It read *"nothing detects a hung agent, and an errored in-process agent does not
+stop its team; the wall-clock cap is the only anti-hang rail"* — while the paragraph ten lines above
+it already recorded BL-129 making `exec-timeout` fault-class. **Both halves were false, and false in
+the dangerous direction:** they told a reader no rail existed. What is true:
+
+1. **An exec turn IS torn down** — `DEFAULT_EXEC_TIMEOUT_MS` (`completer.ts`, 120s) when the caller
+   forwards no timeout — and it raises **`exec-timeout`, which IS fault-class**. So a hung exec turn
+   is detected *and* propagates: an in-process agent **can** now interrupt and shut down its team.
+   The liveness healthcheck is explicitly exempt (`isHealthcheck`), because a missed ping is not a
+   hang. Rationale and the relaxation condition: `modules/governance/docs/logbook.md` **LB-96**.
+2. **The 180s idle sweep still does not fire for `exec_rpc` turns** (`agentIdleTimeoutMs` in
+   `registry/config.ts`; the sweep is `classifySilence` in `registry.ts`). Its first gate is an
+   *obligation* check, and an `exec_rpc` turn carries no obligation id, so the sweep returns
+   `undefined` for it forever ([[BL-127]]). Where an id does exist, the 120s exec timeout fires 60s
+   before the 180s threshold matures ([[BL-128]]). **So do not cite the idle sweep as a hang
+   detector** — it is the exec timeout that does that work.
+3. **`cap.wallClockMs` remains the outer rail for operator runs**, and the only one ever proven to
+   terminate a real process ([[BL-096]]). It is not the *only* anti-hang mechanism, which is what the
+   old sentence claimed.
+
+Evidence and the measured blast radius of leaving the non-fault reasons alone:
+`design/archive/bl078-decision.md`. The typed non-reply vocabulary this rests on is [[BL-084]].
+
+**Still open from M05:** multi-agent **consensus mapping** over the attach harness (it emits
+`send_to_agent` only — no `submit_plan`, agreement or work), clean **MCP-failure surfacing**, and the
+**native-loop/skill** path for claude and gemini. Background:
+`design/archive/mcp-implementation-plan.md` (Phase 5) and
+`design/archive/mcp-external-launch-proposal.md`.
 ### Workflow Rules
 - **Follow Collaboration Workflow**: Strictly adhere to the workflow defined in `modules/governance/docs/collaboration-workflow.md`. That document is the source of truth for how we build things and must be followed at all times.
 - **Document Before Implementation**: Do not rush to the implementation phase. Always document proposed code changes beforehand so that another agent can review and approve the plan.
