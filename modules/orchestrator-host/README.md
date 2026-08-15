@@ -31,4 +31,9 @@ Nothing is currently filed against this module. That is a statement of fact, not
 
 ## Durable docs
 
-_None assigned yet — the doc relocation is Wave 2 T2 (`design/bl144-plan.md`)._
+- [`architecture.md`](./docs/architecture.md)
+- [`implementation.md`](./docs/implementation.md)
+
+These live here because this module owns them: the durable and still-undecided documents
+that describe this code. Episodic records — resolved plans, closed ledgers, dated gate minutes —
+are in [`design/archive/`](../../design/archive/) instead, and are never edited again.

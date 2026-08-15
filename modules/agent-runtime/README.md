@@ -26,4 +26,11 @@ Its open work is filed in [`design/backlog/20-agent-runtime.md`](../../design/ba
 
 ## Durable docs
 
-_None assigned yet — the doc relocation is Wave 2 T2 (`design/bl144-plan.md`)._
+- [`bl028-plan.md`](./docs/bl028-plan.md)
+- [`bl028-t3b-plan.md`](./docs/bl028-t3b-plan.md)
+- [`live-test-models.md`](./docs/live-test-models.md)
+- [`llm-client-architecture.md`](./docs/llm-client-architecture.md)
+
+These live here because this module owns them: the durable and still-undecided documents
+that describe this code. Episodic records — resolved plans, closed ledgers, dated gate minutes —
+are in [`design/archive/`](../../design/archive/) instead, and are never edited again.

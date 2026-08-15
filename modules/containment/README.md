@@ -26,4 +26,13 @@ Its open work is filed in [`design/backlog/50-containment.md`](../../design/back
 
 ## Durable docs
 
-_None assigned yet — the doc relocation is Wave 2 T2 (`design/bl144-plan.md`)._
+- [`brief-authoring-rung-plan.md`](./docs/brief-authoring-rung-plan.md)
+- [`hmp-commission-plan.md`](./docs/hmp-commission-plan.md)
+- [`http-launcher-proposal.md`](./docs/http-launcher-proposal.md)
+- [`launch-and-monitor-runbook.md`](./docs/launch-and-monitor-runbook.md)
+- [`meter-cap-cluster-plan.md`](./docs/meter-cap-cluster-plan.md)
+- [`worktree-discipline.md`](./docs/worktree-discipline.md)
+
+These live here because this module owns them: the durable and still-undecided documents
+that describe this code. Episodic records — resolved plans, closed ledgers, dated gate minutes —
+are in [`design/archive/`](../../design/archive/) instead, and are never edited again.

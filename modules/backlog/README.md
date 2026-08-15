@@ -24,4 +24,5 @@ Its open work is filed in [`design/backlog/40-backlog.md`](../../design/backlog/
 
 ## Durable docs
 
-_None assigned yet — the doc relocation is Wave 2 T2 (`design/bl144-plan.md`)._
+_None. This module’s behaviour is described by its code and its tests; nothing durable was written
+about it separately. That is a fact worth stating rather than an omission to fill._

@@ -23,4 +23,17 @@ Its open work is filed in [`design/backlog/85-governance.md`](../../design/backl
 
 ## Durable docs
 
-_None assigned yet — the doc relocation is Wave 2 T2 (`design/bl144-plan.md`)._
+- [`agent-rating-signal-note.md`](./docs/agent-rating-signal-note.md)
+- [`collaboration-workflow.md`](./docs/collaboration-workflow.md)
+- [`implementer-pitfalls.md`](./docs/implementer-pitfalls.md)
+- [`logbook.md`](./docs/logbook.md)
+- [`reprime-mechanism.md`](./docs/reprime-mechanism.md)
+- [`research-agenda.md`](./docs/research-agenda.md)
+- [`scope-fences-design-note.md`](./docs/scope-fences-design-note.md)
+- [`self-hosting-program-draft.md`](./docs/self-hosting-program-draft.md)
+- [`tester-seat-proposal.md`](./docs/tester-seat-proposal.md)
+- [`testlog.md`](./docs/testlog.md)
+
+These live here because this module owns them: the durable and still-undecided documents
+that describe this code. Episodic records — resolved plans, closed ledgers, dated gate minutes —
+are in [`design/archive/`](../../design/archive/) instead, and are never edited again.

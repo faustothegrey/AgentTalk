@@ -26,4 +26,10 @@ Its open work is filed in [`design/backlog/60-relay.md`](../../design/backlog/60
 
 ## Durable docs
 
-_None assigned yet — the doc relocation is Wave 2 T2 (`design/bl144-plan.md`)._
+- [`hmp-bidirectional-relay.md`](./docs/hmp-bidirectional-relay.md)
+- [`hmp-session-submission.md`](./docs/hmp-session-submission.md)
+- [`outbound-pointer-relay-plan.md`](./docs/outbound-pointer-relay-plan.md)
+
+These live here because this module owns them: the durable and still-undecided documents
+that describe this code. Episodic records — resolved plans, closed ledgers, dated gate minutes —
+are in [`design/archive/`](../../design/archive/) instead, and are never edited again.

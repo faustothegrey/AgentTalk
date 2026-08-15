@@ -6,6 +6,7 @@
     "scripts/check-modules.mjs"
   ],
   "docs": [
+    "modules/governance/docs/agent-md-split-proposal.md",
     "modules/governance/docs/agent-rating-signal-note.md",
     "modules/governance/docs/collaboration-workflow.md",
     "modules/governance/docs/implementer-pitfalls.md",

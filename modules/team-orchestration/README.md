@@ -30,4 +30,10 @@ Its open work is filed in [`design/backlog/10-team-orchestration.md`](../../desi
 
 ## Durable docs
 
-_None assigned yet — the doc relocation is Wave 2 T2 (`design/bl144-plan.md`)._
+- [`decision-api-agents-for-coordination.md`](./docs/decision-api-agents-for-coordination.md)
+- [`planning-protocol-diagrams.md`](./docs/planning-protocol-diagrams.md)
+- [`planning-protocol.md`](./docs/planning-protocol.md)
+
+These live here because this module owns them: the durable and still-undecided documents
+that describe this code. Episodic records — resolved plans, closed ledgers, dated gate minutes —
+are in [`design/archive/`](../../design/archive/) instead, and are never edited again.

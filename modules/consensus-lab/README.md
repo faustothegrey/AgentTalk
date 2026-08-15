@@ -23,4 +23,8 @@ Its open work is filed in [`design/backlog/70-consensus-lab.md`](../../design/ba
 
 ## Durable docs
 
-_None assigned yet — the doc relocation is Wave 2 T2 (`design/bl144-plan.md`)._
+- [`arbiter-consensus-draft.md`](./docs/arbiter-consensus-draft.md)
+
+These live here because this module owns them: the durable and still-undecided documents
+that describe this code. Episodic records — resolved plans, closed ledgers, dated gate minutes —
+are in [`design/archive/`](../../design/archive/) instead, and are never edited again.
