@@ -2207,3 +2207,43 @@ here.**
 - **What worked, repeatedly: capture a baseline, then diff.** Pre-refactor output vs post; citation
   parity before vs after; `--strict` proven to bite by planting a real fence. Every one was one
   command, and each is worth more than any amount of re-reading.
+
+### 2026-08-15 (seventh stretch) — BL-144 / Wave 2: I wrote four numbers before reading them
+
+- **The session's defining failure was not a bug, it was a habit: four times a figure went into the
+  record ahead of the output that settles it.** Gate 1's "20 of 34 docs declare a `Status:`"
+  (backwards — 14 declare, 20 do not); "689 citations" in two consecutive commit messages (752);
+  "706" in a third (709); and a commit hash for a commit that did not exist yet. **Every conclusion
+  around them survived. None of the numbers did.** My previous entry already named this exact habit
+  — *"I wrote suite 825/825 into a commit message before reading it"* — and I did it four more times
+  the same day. Naming a failure mode does not fix it. **The fix is mechanical: paste the number
+  from the output, never from the plan.**
+- **The mechanical cause of the two 689s is worth carrying: `docs:check` walks `git ls-files`, so any
+  run made BEFORE staging understates by exactly the contribution of the unstaged files** — measured
+  at 63. This is the third time this session the untracked-working-tree footgun has bitten (it also
+  let `check-modules.mjs` escape its own coverage gate, so T1 shipped a gate red on its own repo,
+  precisely as BL-141 did). **Any git-ls-files gate is meaningless until you have staged.**
+- **A commit cannot cite its own hash, and amending to "fix" it moves the target.** I chased that
+  loop once before stopping and writing what the row actually is. Small, but it is the same shape as
+  the rest: the record asserting something it cannot know at the time it is written.
+- **What worked, and worked repeatedly: proving a gate BITES before trusting it.** I broke the glob
+  matcher's trailing slash on purpose and confirmed exactly one test went red — the sibling-directory
+  case — and no others. One command, and it converts "I wrote a test" into "the test discriminates."
+  Do this for every new gate.
+- **Volume is not evidence.** The ownership gate's first run reported all 115 files unowned, which
+  read as a catastrophic hole and was a single accessor typo (`m.code` vs `m.raw.code`). Hand-checking
+  ONE path I knew it owned found it in seconds. Big red numbers deserve *more* suspicion, not less.
+- **Reading the code before planning against an item changed the plan twice, and both were load-bearing.**
+  `design/backlog/**` turned out to be a path in the operator's write allowlist (six sites), so
+  BL-144's "move the backlog into modules" would have widened a containment fence; and the build is a
+  project-references graph, so "move the code" rewrites four coupled things for no gain. **The item
+  was written by me, last session, and was wrong in two places. Deviating loudly beats complying
+  quietly.**
+- **Measure before you accept a prescription, even your own.** BL-144 said ~150 lines of `AGENT.md`
+  should stay and the rest should scatter. Counting correction markers per section: all ten sit in
+  three of fifteen sections; the other twelve — 556 lines — have never carried one. **Law does not
+  rot; claims about code rot.** The prescription was backwards, and one `awk` found it.
+- **A migration script broke the rule stated in its own header** (it rewrote citations inside
+  `design/archive/`, which Wave 0 forbids). I reverted 28 files. **The citation gate could never have
+  caught it, because the archive is `CITER_EXEMPT` and is never scanned** — a reminder that a gate's
+  exclusions are exactly where it cannot help you, so those are the places to check by hand.

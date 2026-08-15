@@ -1,10 +1,10 @@
 ---
 role: planner
-key: 20260816-0028-b6e3f7
-written: 2026-08-15 by Claude at session close — the PO declared the project collapsing under its own
-  weight and opened a DEEP OVERHAUL. Waves 0 and 1 are MERGED AND PUSHED. Wave 2 is filed as
-  [[BL-144]] and is the judgment-heavy remainder — it needs you. Everything below was checked against
-  the repo at close; check it again yourself.
+key: none
+written: 2026-08-15 by Claude at session close — BL-144 (Wave 2) is MERGED AND PUSHED (`9e91e98`).
+  `key: none` deliberately: the only workable item is [[BL-145]], and it is a **PO decision**, not
+  planner work. Nothing fresh is waiting for this role. The body below is orientation, not an
+  assignment — verify it before relying on it.
 ---
 
 This is your session primer.
@@ -12,134 +12,89 @@ This is your session primer.
 **Project.** AgentTalk orchestrates real, heterogeneous LLM agents (claude / codex / gemini-agy /
 goose) as one software team: they attach as MCP clients over WebSocket, pull turns via `await_turn`,
 and coordinate through a planner→implementer→reviewer workflow under a human Product Owner. Stated
-overarching goal, restated by the PO this session: **automated development of some sort.**
+overarching goal: **automated development of some sort.**
 
 **Roles.** Human = PO (Fausto): scope, direction, merges, pushes. Bindings live ONLY in `AGENT.md →
 📌 DEFAULT ROLE ASSIGNMENTS` — read it, don't trust this line. Codex and agy remain PO-declared
 UNAVAILABLE, so you are almost certainly the sole agent under the **resource-scarcity fallback**:
 wear every hat, handshake once per role, declare all of them, keep each gate's discipline separately.
 
-## ⚠️ Read this before anything else: the PO's standing grant
+## The PO's standing grant — still in force, still narrow
 
-The PO said, verbatim: *"go ahead full steam. Stop only when you need my opinion not a ceremonial
-allowance. I pre approve all commit and merges and push. This is no normal development phase but a
-deep overhaul. In my discernment, no way to avoid it and no way to go back."*
+Verbatim: *"go ahead full steam. Stop only when you need my opinion not a ceremonial allowance. I pre
+approve all commit and merges and push. This is no normal development phase but a deep overhaul."*
 
-**That grant is real and it is narrow in one specific way: it removes the PERMISSION step, not the
-VERIFICATION step.** What kept it safe this session was that every wave carried its own *mechanical*
-proof. **With the gates relaxed, the bars get stricter, not looser.** If you cannot state a
-conservation property your change preserves, you are not ready to use the grant.
-
-The grant is the PO's and can be withdrawn by the PO. Do not extend it by analogy to anything else —
-it does not touch `autonomy`/workable→launchable, and it does not make you the PO.
+**It removes the PERMISSION step, not the VERIFICATION step.** With the gates relaxed the bars get
+stricter, not looser. If you cannot state a conservation property your change preserves, you are not
+ready to use it. It does not reach `AGENT.md` (see BL-145), does not touch workable→launchable, and
+does not make you the PO.
 
 ## The state — verified at close, check it anyway
 
-Clean on `master` at **`2cd1ea5`**, **pushed** (0 ahead / 0 behind). No worktrees but the primary.
-Suite **838 / 97 files**, `tsc -b` 0, backlog **144 items / 0 warnings**, `docs:check` **676 citations
-/ 0 newly broken / 43 carried**. **Workable: `["BL-144"]` — your item, and the only one left.**
-Ask the instruments:
+Clean on `master` at **`9e91e98`**, **pushed** (0 ahead / 0 behind), no worktrees but the primary.
+Suite **871 / 98 files**, `tsc -b` 0, backlog **145 items / 0 warnings**, `docs:check` **713 / 0
+newly broken / 41 carried**, `modules:check` **13 modules, 115/116 owned, 31 docs, 9 slices**.
+**Workable: `["BL-145"]` — and it is the PO's, not yours.** Ask the instruments:
 
 ```
 git log --oneline -1 && git status --short
-npx tsc -b && npx vitest run                     # expect 838 / 97
-node scripts/validate-backlog.mjs                # expect 144 items / 0 warnings
-npm run docs:check                               # expect 676 / 0 newly broken / 43 carried
-node -e 'const{readBacklog,workableBacklogItems}=require("./apps/orchestrator/dist/backlog.js");
-         console.log(workableBacklogItems(readBacklog().items).map(i=>i.id))'
+npx tsc -b && npx vitest run          # expect 871 / 98
+npm run modules:check                 # NEW — expect 13 modules, 115/116 owned
+npm run docs:check                    # expect 713 / 0 newly broken / 41 carried
+node scripts/validate-backlog.mjs     # expect 145 items / 0 warnings
 ```
 
 ## What happened this session
 
-**[[BL-134]] reviewed, merged, pushed, closed** (`5f8f068`). `autonomy` no longer gates the backlog;
-`selectable` → `workable` everywhere including the wire param. Gate 2 found one real defect — a live
-doc in the operator's own skill named `?selectable=true`, which `server.ts:258` no longer reads, so
-it returned the **open queue at HTTP 200**. Fixed under the Rule 6 zero-risk exception.
+**[[BL-144]] — Wave 2 — BUILT, MERGED, PUSHED.** `modules/` now exists: 13 modules, each with a
+`module.json` declaring the code it owns, the durable docs it owns, its backlog slice, and its
+dependencies. `npm run modules:check` proves ownership **total** (every source file claimed) and
+**disjoint** (none claimed twice). **`design/` top level went 36 → 2** — and the two that remain are
+this task's own plan and ledger.
 
-**Wave 0 — evict episodic records** (`0b8bee5`). `design/` 143 → **53** top-level files; 91 records to
-`design/archive/`; 8 dead provers to `scripts/archive/`. **Archived, never deleted** — they are cited
-by durable docs. 421 citations rewritten. **Verified by baseline: 1,727 citations / 131 unresolved,
-identical before and after.**
+**Two deviations from BL-144's own text, decided at Gate 1 and worth knowing before you plan
+anything nearby:**
 
-**Wave 1 — the backlog becomes a directory** (`b12c0ee`). `design/backlog.md` (8,946 lines) →
-`design/backlog/*.md`, one file per concern, read in **filename order** (hence numeric prefixes).
-**Proven identical: 140 items, ZERO items differing in any field, same workable set.** Both parsers
-learned the new location in step — `readBacklog()` and the dependency-free mirror in
-`infra-invariant.mjs` (`readBacklogText`) — and the BL-097 drift bar now pins **where** as well as how.
+1. **The backlog did NOT move.** `design/backlog/**` is a path in the **operator seat's write
+   allowlist**, named at six sites. Dispersing it under `modules/` would have widened a containment
+   fence over the whole module tree. A module owns its slice by **naming** it.
+2. **The code did NOT move.** It is a project-references build (9 root refs, 6 package-level, `paths`
+   aliases, a two-glob `workspaces`). **A gate forces a reader to touch the claim; a directory only
+   invites it.** Ownership was the product; adjacency was only ever one means to it.
 
-**Four follow-ups filed** (`979891c`), which **refilled the workable queue**. Then **[[BL-141]] was
-BUILT and CLOSED** (`npm run docs:check` — a ratchet over 780 citations, 69-entry debt register).
-**Workable now: `["BL-143","BL-142","BL-144"]`.**
+**[[BL-145]] is filed and is the only workable item: does `AGENT.md` split?** T3 measured it instead
+of doing it, and **the measurement inverted BL-144's prescription** — 1,033 lines in 15 sections,
+**all ten** correction markers in three of them, the other twelve (556 lines) never corrected.
+**Law does not rot; claims about code rot.** So ~300 lines should leave, not ~880. Proposal:
+`modules/governance/docs/agent-md-split-proposal.md`. Its first question is whether the split is
+worth its cost at all — a defensible answer is no.
 
-**[[BL-141]], [[BL-142]] and [[BL-143]] are all now BUILT, MERGED and CLOSED.** In order: the
-doc-citation gate (`npm run docs:check`, a ratchet); the citation disposition (register 78 → 43, and
-it fixed a LIVE operator defect — `SKILL.md` told the seat to fall back to a backlog *file* Wave 1
-had replaced with a directory); and the backlog gate's severity tier (`warns` advise, `--strict`
-promotes, 12 tests where there were none).
+## Op notes — the ones that cost real time
 
-**⚠️ Read [[BL-142]]'s and [[BL-143]]'s correction blocks before citing either.** Both items contained
-a FALSE claim written by their author — BL-142's headline (a substring bug made client-repo paths read
-as missing from this one; nine of sixteen findings were noise) and BL-143's stated blast radius
-(`exitCodeFor` lives in a different tool and this script never called it). **Neither was caught by
-review; both by running something.** Durable lesson: *a checker with a false-positive rate is worse
-than no checker.*
-
-**Also from BL-142, and it is an input to your plan: Wave 0 UNDER-ARCHIVED**, because filename
-patterns missed topic-named episodic docs and `*-spike.md` suffixes. 18 more were archived.
-`design/` top level across the session: **143 → 34**.
-
-## Your job: plan [[BL-144]] — Wave 2, and it is the hard one
-
-Waves 0 and 1 were mechanical and provable. **Wave 2 is neither.** The unit is a *module* owning its
-code, its durable docs and its backlog slice together. Start with **`backlog/`** (imports `fs` and
-`path` and nothing else — proves the pattern at near-zero cost), then **`containment/`** (~11k lines,
-almost pure docs, and the largest mass in the project).
-
-**Three things I would put in the plan and would want challenged:**
-
-1. **The one un-automatable task is PROMOTION.** A load-bearing durable claim buried inside an
-   episodic doc is lost the moment it moves. Telling the two apart is exactly the judgment the whole
-   scheme exists to make explicit — do not let it ride along inside a mechanical commit.
-2. **`AGENT.md` splits LAST**, and it is 999 lines with **24 correction markers**. Those markers exist
-   because it asserts things about files it does not sit beside. ~150 lines of genuinely cross-cutting
-   law stay in `governance/`; the rest goes to the module whose code it constrains.
-3. **NOT new repositories** — deliberately. [[BL-086]] already showed what one cross-repo split costs
-   in duplicated governance. Modules give every seam without eight `AGENT.md` files to keep true.
-
-**[[BL-143]] is the small one** — give `validate-backlog.mjs` a real `warn` tier. Note its blast
-radius before starting: it changes `exitCodeFor` semantics other callers depend on, which is exactly
-why BL-134 correctly refused to do it inline.
-
-**[[BL-142]] is disposition work, not sweeping** — 69 entries, and they are not one kind of thing. Per
-path: four scripts **never committed** at their cited path (`AGENT.md` cites one as how Milestone 05
-was *"Verified"* — a claim about evidence pointing at a file that never existed, which is the
-interesting one), one deleted, one moved to the client root, seven ambiguous-not-dangling, 42
-legitimate historical mentions Wave 1 itself created. **Only reading tells them apart.**
-
-## Op notes — the ones that cost real time today
-
-- **Assert a conservation property; do not inspect a diff.** Line conservation (8,955 in / 8,955 out),
-  citation parity against a **master baseline**, field-level parse equality. Each cost one command and
-  each is worth more than reading 90 files.
-- **A count of zero is a claim about your instrument first.** A shell rewrite loop reported 0
-  substitutions; the real answer was **330**. Redone in node. Shell quoting is where this class lives.
-- **Check the exit status, not that a pipeline printed something.** An `&&` chain let a commit through
-  whose message claimed `806/806` while the suite was red. Amended — but I asserted a green I had not read.
-- **`git worktree remove` BEFORE `git branch -D`**, or the delete fails with the branch still checked out.
-- **Stage files EXPLICITLY, never `git add -A`** (`apps/web/node_modules` is a symlink that slips past
-  `.gitignore`; it shows as `??` — leave it).
-- **`validate-backlog.mjs` checks header↔prose drift.** Flipping `status` without matching the `- [status`
-  lead-in goes red. It caught me; let it.
-- **Budget: session hit 100%** at close (weekly 37%, resets Aug 19). That is why Wave 2 was not started
-  rather than started badly. `node scripts/usage.mjs`.
+- **Paste numbers from the output, never from the plan.** Four figures went into the record this
+  session ahead of the command that settles them. Every conclusion survived; no number did.
+- **`docs:check` walks `git ls-files`, so a run before staging UNDERSTATES** — by exactly the
+  contribution of the unstaged files (measured: 63). The same footgun let `check-modules.mjs` escape
+  its own coverage gate, shipping it red on its own repo. **Stage, then measure.**
+- **Prove a new gate BITES**: break the thing it guards, confirm exactly the intended test goes red,
+  restore. One command, and it converts "I wrote a test" into "the test discriminates."
+- **Volume is not evidence.** A gate reporting 115 catastrophic findings was one accessor typo.
+  Hand-check one instance before believing — or reporting — any of them.
+- **A gate's exclusions are exactly where it cannot help you.** `design/archive/**` is `CITER_EXEMPT`,
+  so nothing noticed a migration rewriting archived docs in violation of Wave 0's rule. Check
+  exclusions by hand.
+- **`git worktree remove` BEFORE `git branch -D`**; stage files **explicitly**, never `git add -A`
+  (`apps/web/node_modules` is a symlink that shows as `??` — leave it).
+- **Budget:** session ~50% at close, weekly 42% (resets Aug 19). `node scripts/usage.mjs`.
 
 ## The through-line
 
-The PO's diagnosis was right, and the measurements sharpened it rather than softening it: the **code**
-was already decomposed (clean DAG, zero boundary escapes) — the collapse was entirely in the artifacts
-*describing* the work, which had no modules, no dependency graph, no dead-code elimination and no CI.
-Waves 0 and 1 gave them the first two. **[[BL-141]] and [[BL-144]] are the other two.**
+The PO's diagnosis has held up under measurement every time: the **code** was already decomposed —
+clean DAG, zero boundary escapes — and the collapse was entirely in the artifacts *describing* the
+work, which had no modules, no dependency graph, no dead-code elimination and no CI. Waves 0 and 1
+gave them the first two, [[BL-141]] the fourth, and **[[BL-144]] the third**. The overhaul's four
+mechanical gaps are now closed.
 
-And the standing risk is unchanged and worth stating plainly, because it is now larger, not smaller:
-**one actor held every seat, and the PO has pre-approved the merges.** Every claim in this primer is
-therefore a claim you should verify rather than inherit.
+What is left is judgment: [[BL-145]], and whatever the PO wants next. And the standing risk is
+unchanged — **one actor held every seat and the merges were pre-approved** — so every claim here is
+one you should verify rather than inherit.
