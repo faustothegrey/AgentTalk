@@ -2,7 +2,7 @@
 
 **Status:** Resolved (2026-06-18)  
 **Author:** Antigravity (with Fausto)  
-**Related:** `design/mcp-implementation-plan.md`, `design/mcp-implementation-caveats.md`
+**Related:** `design/archive/mcp-implementation-plan.md`, `design/archive/mcp-implementation-caveats.md`
 
 This document details the resolution of the **R1 (Turn-termination mechanics)** and **R2 (Plan-rejection feedback loop)** design gates as required by Phase 3 of the MCP transport migration plan.
 

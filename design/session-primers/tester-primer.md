@@ -95,7 +95,7 @@ cmux/browser-use, *not* those tools. The cmux-specific commands above (surfaces,
 **Lessons.** Agent-keyed — write tester-hat lessons into *your own* `design/lessons/<agent>-lessons.md` tagged
 "*as tester*" (there is deliberately **no** role-keyed `tester-lessons.md`).
 
-**Where state lives.** The active epic's `*-implementation.md` ledger, `design/backlog.md`, `design/logbook.md`,
+**Where state lives.** The active epic's `*-implementation.md` ledger, `design/backlog/`, `design/logbook.md`,
 and `design/testlog.md`. Charter/rationale + open decisions: `design/tester-seat-proposal.md`. Runbook for attach:
 `design/attach-chat-runbook.md`.
 

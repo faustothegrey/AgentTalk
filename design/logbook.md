@@ -767,7 +767,7 @@ The other three were less "is it safe" and more "is this a small clean change or
   - gate:        tsc 0, suite 245/245 (239 +6), pollution clean
   - diff:        6 mod + 2 new packages (mcp-transport, mcp-exec-server) + 2 git-mv renames; commit `b67a6ce`
   - outcome:     MERGED ✅ — `b67a6ce` on `master` + pushed; live CLI smoke closed by `e3f85c4`/`4fb2a69`
-- **Source:** Claude, 2026-06-26. Implements `design/mcp-exec-server-plan.md`. Continues the llm-client
+- **Source:** Claude, 2026-06-26. Implements `design/archive/mcp-exec-server-plan.md`. Continues the llm-client
   extraction ([[LB-14]] gating); pairs with `design/llm-client-architecture.md`.
 
 ---
@@ -947,7 +947,7 @@ The other three were less "is it safe" and more "is this a small clean change or
   3. **The primer Codex wrote** is action-oriented, enumerates the commit's contents, and correctly flags the T4
      probe as DRAFT-not-approved.
 - **Gap 1 — the LB-31 stale-status sweep was scoped, not exhaustive.** The same status vocabulary survived in a
-  sibling doc Codex didn't sweep: `design/llm-client-extraction-spike.md` still said *"Phase 2 core ✅ done
+  sibling doc Codex didn't sweep: `design/archive/llm-client-extraction-spike.md` still said *"Phase 2 core ✅ done
   (uncommitted)"* though `McpChatCompleter` was committed at `877577c` (on `master`, verified). **Corrected here**
   (see that file's status line). *Lesson:* a status-correction pass should declare its scope and `rg` the whole
   `design/` for the status vocabulary (`uncommitted`, `pending Fausto`, `HUMAN-GATED`, `owed`) — fix all instances

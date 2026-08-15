@@ -1,6 +1,6 @@
 # Analysis: Standalone MCP Orchestration Package Extraction
 
-This document summarizes the design discussion captured in [mcp-orchestration-proposal.md](file:///Users/fausto/Software/AgentTalk/design/mcp-orchestration-proposal.md) regarding extracting a standalone package to handle MCP (Model Context Protocol) communication with model MCP executors, replacing the legacy stdout-scraping line protocol.
+This document summarizes the design discussion captured in [mcp-orchestration-proposal.md](file:///Users/fausto/Software/AgentTalk/design/archive/mcp-orchestration-proposal.md) regarding extracting a standalone package to handle MCP (Model Context Protocol) communication with model MCP executors, replacing the legacy stdout-scraping line protocol.
 
 ---
 

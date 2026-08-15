@@ -3,7 +3,7 @@
 **Status:** Refined / Decisions Documented (2026-06-18)
 **Author:** Fausto (with Claude & Gemini)
 **Date:** 2026-06-17 (Updated 2026-06-18)
-**Related:** `design/agy-revised-protocol-spec.md`, existing `[AgentTalk]:` stdout protocol
+**Related:** `design/archive/agy-revised-protocol-spec.md`, existing `[AgentTalk]:` stdout protocol
 
 > This proposal has been refined and aligned. Architectural decisions and the initial 
 > approach are documented in Section 10.

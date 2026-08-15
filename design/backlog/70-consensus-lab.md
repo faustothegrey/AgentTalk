@@ -18,7 +18,7 @@ tags: [arbiter, judge, llm-client, shadow-mode]
   google-via-OpenRouter path (shared-code behaviour change, own plan/DoD; restores `gemini-2.5-flash` as judge
   candidate); (3) **shadow wiring** — the judge rides the Facilitator interface read-only at readiness-triggered
   cadence, logging judgment-vs-machine per decision point; (4) **second-model spot-check** (all spike numbers are
-  single-model `gpt-4o-mini`). Evidence base: `design/arbiter-shadow-spike-implementation.md` AS-T4 addendum.
+  single-model `gpt-4o-mini`). Evidence base: `design/archive/arbiter-shadow-spike-implementation.md` AS-T4 addendum.
   **Reopen condition: the §3b gate that opens the next arbiter epic** (Epic 2 / the judge epic).
   **Source:** spike PROMOTE (qualified) + PO leaner-scope decision, 2026-07-02.
 

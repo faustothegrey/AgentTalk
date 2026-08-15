@@ -1,6 +1,6 @@
 # MCP Orchestration Phased Implementation Plan
 
-This document details the step-by-step implementation and smoke testing roadmap for migrating AgentTalk to the MCP-based turn routing transport, resolving the caveats from [mcp-implementation-caveats.md](file:///Users/fausto/Software/AgentTalk/design/mcp-implementation-caveats.md).
+This document details the step-by-step implementation and smoke testing roadmap for migrating AgentTalk to the MCP-based turn routing transport, resolving the caveats from [mcp-implementation-caveats.md](file:///Users/fausto/Software/AgentTalk/design/archive/mcp-implementation-caveats.md).
 
 ---
 

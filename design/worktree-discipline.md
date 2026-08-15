@@ -68,7 +68,7 @@ Four real near-misses on 2026-07-13, plus two since, define the collision surfac
 
 Two id namespaces — keep them distinct:
 
-- **Backlog ids (`BL-NNN`)** are human/agent-allocated by editing `design/backlog.md`. To avoid two actors claiming
+- **Backlog ids (`BL-NNN`)** are human/agent-allocated by editing the relevant file under `design/backlog/`. To avoid two actors claiming
   the same number:
   1. **Allocate on `master`, atomically, before branching.** Add the `@item` header + `todo` line for your new
      `BL-NNN` directly on `master` (docs are master-editable), run **`npm run backlog:check`**, and confirm the

@@ -460,7 +460,8 @@ describe('the real backlog (design/backlog/)', () => {
     // first, as always. This is the shape the queue is supposed to have: an item is picked up, done,
     // closed, and the set shrinks by exactly one — the first time in this file's history that a
     // decrement was caused by work rather than by a re-status or a park.
-    expect(workableBacklogItems(items).map((i) => i.id)).toEqual(['BL-143', 'BL-142', 'BL-144']);
+    // 2026-08-15 — [[BL-142]] delivered and closed. Second decrement in a row caused by work.
+    expect(workableBacklogItems(items).map((i) => i.id)).toEqual(['BL-143', 'BL-144']);
   });
 
   // 2026-08-07 — deliberately updated, and the red was shown to the PO first. BL-084 CLOSED (PO
@@ -532,7 +533,8 @@ describe('the real backlog (design/backlog/)', () => {
     // first, as always. This is the shape the queue is supposed to have: an item is picked up, done,
     // closed, and the set shrinks by exactly one — the first time in this file's history that a
     // decrement was caused by work rather than by a re-status or a park.
-    expect(workableBacklogItems(items).map((i) => i.id)).toEqual(['BL-143', 'BL-142', 'BL-144']);
+    // 2026-08-15 — [[BL-142]] delivered and closed. Second decrement in a row caused by work.
+    expect(workableBacklogItems(items).map((i) => i.id)).toEqual(['BL-143', 'BL-144']);
   });
 
   it('marks BL-086 as the PO decision it is', () => {

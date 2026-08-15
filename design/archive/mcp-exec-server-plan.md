@@ -135,6 +135,6 @@ big unknown is the live smoke (real CLI executor), not the code.
 
 ## 10. Related
 - `design/llm-client-architecture.md` §3 (where the WebSocket lives), §8 (what's owed).
-- `design/llm-client-extraction-spike.md` §7 (the owed adapter note).
+- `design/archive/llm-client-extraction-spike.md` §7 (the owed adapter note).
 - `apps/orchestrator/src/mcp-server.ts` (the generic server being reused).
 - `agentalk-mcp-client/wire-contract.json` (exec subset = `await_turn` + `submit_exec_result`).

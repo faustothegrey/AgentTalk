@@ -2,9 +2,9 @@
 
 **Status:** Draft for implementation (Claude, 2026-06-20)
 **Author:** Claude (architect/reviewer) · **Implementer:** Gemini (bulk) · Claude reviews/refines.
-**Related:** `design/mcp-implementation-plan.md` (Phases 1–5) ·
+**Related:** `design/archive/mcp-implementation-plan.md` (Phases 1–5) ·
 `design/archive/phase5-client-extraction-proposal.md` §6 (parked → this) ·
-`design/planning-protocol.md` · `design/agy-revised-protocol-spec.md`
+`design/planning-protocol.md` · `design/archive/agy-revised-protocol-spec.md`
 
 > Division of labor (agreed with Fausto, 2026-06-20): **Claude owns this design + the
 > readiness gate + reviews; Gemini does the bulk implementation.** Per the workflow:

@@ -222,6 +222,6 @@ any `ExecTransport` you provide (a fake, or an in-process executor).
   package's tests from the run.)
 
 ## 10. Related docs
-- `design/llm-client-extraction-spike.md` — the plan + decisions (Q1–Q4) + phasing.
+- `design/archive/llm-client-extraction-spike.md` — the plan + decisions (Q1–Q4) + phasing.
 - `design/backlog.md` — "Unify protocol state-change event emission" (the `McpCompleter`↔`ExecTransport` dedup hint).
 - `agentalk-mcp-client/wire-contract.json` — the wire shapes; exec subset = `await_turn` + `submit_exec_result`.
