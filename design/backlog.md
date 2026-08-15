@@ -8754,9 +8754,18 @@ autonomy: human-only
   **Not live-proven.** No Hermes-authored authorization has been driven through a real commission. The bars are
   unit-level; BL-137's original honest limit carries forward unchanged.
 
-  **Follow-ups filed:** [[BL-138]] (populate `allowWritePaths` — without it this item's detection is available
-  but never switched on), [[BL-139]] (the unencrypted SSH key vs the "push is the PO's alone" claim),
-  [[BL-140]] (option (b), signature verification).
+  **Follow-ups filed:** [[BL-138]], [[BL-139]] (the unencrypted SSH key vs the "push is the PO's alone"
+  claim), [[BL-140]] (option (b), signature verification).
+
+  **⛔ CORRECTION 2026-08-15, same day, before BL-138 was started.** This block originally described BL-138 as
+  *"populate `allowWritePaths` — without it this item's detection is available but never switched on."*
+  **That was false and backwards, and the error was in this item's own closing block for about an hour.**
+  `classifyHeadMove` with an empty allowlist returns **`foreign`** (`infra-invariant.mjs:413-415`) → **`critical`**
+  (`:793-799`); the source says so directly at `:400-405`. **The harness is at its STRICTEST when nothing is
+  declared**, and `allowWritePaths` is a deliberate **softening** that real runs already use ad hoc. So
+  BL-137's detection is **not** waiting on anything: a write to `design/po/` during a bracketed run is
+  `critical` today. BL-138 is now scoped as *preserving* that exclusion when the softening is applied — see
+  its own correction block for the full retraction.
 
   **[[BL-134]] is unblocked** — its `blocked_by: [BL-137]` is self-releasing. **But its plan §5 must be
   re-checked against what actually shipped:** it may now describe Gate B as per-run, sha-bound, single-use
@@ -8779,32 +8788,58 @@ epic: null
 tags: [operator, hermes, containment, invariant-harness, detection, bl-137]
 autonomy: human-only
 -->
-- [todo · **filed 2026-08-15 at BL-137's close; it is that item's missing second half**] —
-  **[[BL-137]]'s detection is BUILT but never SWITCHED ON: `allowWritePaths` is `[]`, so no operator run
-  declares anything and `classifyHeadMove` early-returns.**
+- [todo · **filed 2026-08-15 at BL-137's close · ⛔ FIRST SHAPE RETRACTED WITHIN THE HOUR — see the
+  correction immediately below; the item survives, its premise did not**] —
+  **A committed, reviewed `--expect` declaration for operator runs, so the write allowlist stops being
+  hand-typed fresh each run — and so `design/po/**` is excluded on purpose rather than by accident.**
 
-  BL-137 moved the launch authorization to `design/po/`, whose whole value is that a write there is
-  **conspicuous**. The mechanism that would *notice* already exists and works — `classifyHeadMove`
-  (`infra-invariant.mjs:408`) compares paths written during a bracketed run against `allowWritePaths` and
-  reports anything unmatched as **foreign** (`:431`, `:864-865`). But the field is `[]` by default (`:92`) and
-  early-returns when empty (`:410`), and **no committed operator config declares it**.
+  ### ⛔ CORRECTION 2026-08-15, by the planner who filed it, before any work started
 
-  **So today: the authorization is conspicuous to a human reading a diff, and invisible to the harness.**
-  BL-137's closing block says its detection is "available, not switched on" — this is the item that switches
-  it on. Without it, BL-137 delivered a documentation correction plus a tidier path, which is real but is not
-  what the charter needs.
+  **This item was filed claiming: *"[[BL-137]]'s detection is BUILT but never SWITCHED ON … `classifyHeadMove`
+  early-returns … the authorization is conspicuous to a human and invisible to the harness."* THAT IS FALSE,
+  and it is backwards.**
 
-  **Scope sketch:** declare `allowWritePaths: ['design/backlog.md', 'design/operator/**',
-  'design/operator-seat/**']` on operator run configs — deliberately **excluding** `design/po/**` — so a write
-  to the authorization path during a bracketed run surfaces as a finding.
+  `classifyHeadMove` with an empty allowlist does **not** early-return into silence — it returns **`foreign`**
+  (`infra-invariant.mjs:413-415`), which is emitted as **`critical`** (`:793-799`). The file's own contract
+  comment states it plainly: *"no allowlist declared → `foreign` (today's behaviour, unchanged)"* and **"the
+  softening is narrow on purpose"** (`:400-405`).
 
-  **⚠️ Read [[BL-116]] before writing a pattern:** a pattern that matches nothing was indistinguishable from
-  the legitimate "you declared nothing" state, and **two consecutive operator runs each reported one
-  `critical`** because of it. Write paths are matched **end to end**, so a whole directory is `dir/**`, not
-  `dir/`. Getting this wrong produces confident silence.
+  **So `allowWritePaths` is a SOFTENING, not a detector.** With nothing declared the harness is at its
+  **strictest**: every HEAD move during a bracketed run is critical. Declaring paths makes it report **less**.
+  The filed item had it exactly inverted — it proposed "switching on detection" when the change is a
+  deliberate, narrow **loosening**.
 
-  **This is BL-119's residue** (its option (d), recorded in that item's closing block and deliberately not
-  filed at the time). It became load-bearing the moment BL-137 rested an argument on it.
+  **Two further facts the filing got wrong:** declarations are **already used** by real runs (hmp2 passed
+  `allowWritePaths: ['design/operator/']`), and they are passed **ad hoc on the command line**, not from any
+  committed config — which is why no committed file was found and why absence was misread as disuse.
+
+  **How the error happened, recorded because it is the third of its kind today:** the planner read `:410`'s
+  `if (!allowWritePaths || allowWritePaths.length === 0)` as "empty ⇒ no detection", never read the two lines
+  it returns, and wrote the conclusion into a backlog item **and** into [[BL-137]]'s closing block. A citation
+  points at the code that makes the claim true — reading the guard is not reading the branch.
+
+  ### What the item actually is, restated
+
+  Operator runs already declare `--expect` by hand, and **hmp2 already got it wrong**: `design/operator/`
+  instead of `design/operator/**`, which matched nothing, contributed nothing, and produced a `critical` the
+  run had not caused. That is the whole of [[BL-116]]'s origin.
+
+  **Proposal:** a committed, reviewable `design/operator/operator-run.expect.json` carrying the seat's real
+  write allowlist — `design/backlog.md`, `design/operator/**`, `design/operator-seat/**` — passed as
+  `--expect` by the runbook, so the declaration is versioned and diffable instead of retyped each run.
+
+  **`design/po/**` is deliberately EXCLUDED, and that exclusion is the item's only tie to [[BL-137]]:** when
+  the softening is applied, a write to the authorization path must remain **foreign**. Not new detection —
+  *preserved* detection, at the moment the surrounding noise is turned down.
+
+  **⚠️ Read [[BL-116]] before writing a pattern.** Write paths match **end to end**, so a whole directory is
+  `dir/**`, never `dir/`. A pattern matching nothing now warns (`expect-pattern-unmatched`) rather than
+  passing in silence — but `warn` is the deliberate **ceiling**, so a wrong pattern still will not gate a run,
+  and will not save you.
+
+  **Honest scope note:** this is **housekeeping with a small safety edge**, not the second half of BL-137.
+  BL-137 is complete as merged. Whether this is worth doing at all is a fair question for the gate — the
+  status quo is *stricter*, merely noisier.
 
 <!-- @item
 id: BL-139
