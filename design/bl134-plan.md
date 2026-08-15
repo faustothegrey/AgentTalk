@@ -1,9 +1,11 @@
-# BL-134 — workable ⟹ eligible: retire `autonomy` as a gate, express fencing as `blocked_by`
+# BL-134 — `workable` replaces `selectable`; `autonomy` stops being a gate
 
-**Status:** plan, awaiting gate 1 (plan reviewer)
-**Planner:** Claude, 2026-08-15
-**Blocked on:** [[BL-136]] — this plan leans the whole containment argument on Gate B, so Gate B's
-recursion fence must be closed *first*. That dependency is itself a dogfood of the mechanism proposed here.
+**Draft 2** — rewritten 2026-08-15 after [[BL-137]] merged and the PO answered q1/q2/q3/q5.
+**Status:** awaiting re-gate · **Planner:** Claude
+**Blocker:** [[BL-137]] — **RESOLVED** (merged `fb7c45e`). Verified against the live API: nothing blocks this item.
+
+> **Draft 1 is superseded in full.** Its history is compressed into §1; the three assumptions the PO overturned
+> are marked ⚠️ where they appear. **Do not implement from draft 1.**
 
 ---
 
@@ -14,50 +16,28 @@ recursion fence must be closed *first*. That dependency is itself a dogfood of t
 | Term | Means | Computed from | Who decides |
 |---|---|---|---|
 | **workable** | there is real work here and nothing is holding it | `status === 'todo' && blockedBy.every(isResolved)` | the backlog, mechanically |
-| **launchable** | an agent may actually be started on it | a committed `design/operator/<run>.authorized` containing exactly `[PO] AUTHORIZED-RUN: <run>` | the PO, per run, at a sha |
+| **launchable** | an agent may actually be started on it | a committed `design/po/<run>.authorized` containing exactly `[PO] AUTHORIZED-RUN: <run>` | the PO, per run, at a sha |
 
-`autonomy` disappears from both. Everything it really encoded is expressed as `blocked_by` (readiness) or
-lives at the launch gate (recursion).
+`autonomy` disappears from the predicate. What it really encoded becomes `blocked_by` (readiness) or lives at
+the launch gate (recursion). **And the word `selectable` retires with it** — the concept is renamed to
+`workable` everywhere, wire param included (PO, q5).
 
-## 1. PO decision history — recorded, because the reasoning moved twice
+## 1. How this plan got here — compressed
 
-1. PO framing: *"the way backlog items are eligible is too complicated; any workable backlog item must also be
-   eligible for Hermes launching externally."*
-2. Planner offered four options and recommended (a). **PO chose (b) — flip the default.**
-3. Planner's argument against (b) was then found **factually wrong** (§2a) and a plan for (b) was written.
-4. PO asked for a second, thorough pass. That pass found **(b) does not satisfy the stated requirement at all**
-   (§2b), and that the field is mis-typed at the concept level (§3). **PO directed this rewrite.**
+1. PO: *"the way backlog items are eligible is too complicated; any workable backlog item must also be eligible
+   for Hermes launching externally."*
+2. Planner offered four options, recommended (a); **PO chose (b)**. The planner's argument against (b) was then
+   found **factually wrong**, and a plan for (b) was written.
+3. A second pass found **(b) does not satisfy the requirement at all** — flipping the default yields *"any
+   workable item that nobody marked"*, and the only workable item was marked. **PO directed a rewrite.**
+4. Gate 1 approved draft 1 after finding a DoD row asserting a set the planner had never run.
+5. **PO re-blocked on [[BL-137]]** rather than ship a charter sentence known to overstate its fence.
+6. BL-137 merged; **PO answered four open questions (§11), two of which changed this plan's shape.**
 
-**This plan implements neither (a) as first pitched nor (b).** It implements the design §0 describes.
+**The through-line worth keeping:** at every step the error was a claim made without running the thing that
+would have settled it. §12's mutation discipline exists because of that pattern, not as ceremony.
 
-## 2. Two errors this plan exists to correct — both the planner's
-
-### 2a. "(b) breaks fail-closed — 79 items go selectable" — FALSE
-
-Measured at `f1d17b3`, fence-aware. `99` items carry no `autonomy` header (not 79 — that number came from
-counting *occurrences*, including the schema example inside a code fence). Of those 99: **74 `done`, 22
-`deferred`, 3 `dropped`, ZERO `todo`.** The predicate's first clause is `status === 'todo'`, which already
-excluded every one of them. There was no mass release to fear.
-
-### 2b. "(b) delivers the requirement" — ALSO FALSE, and this is the one that matters
-
-Flipping the default yields *"any workable item **that nobody marked** is eligible."* Marked items stay fenced,
-and **the only workable item in the backlog is marked**:
-
-| | selectable set today |
-|---|---|
-| current predicate | `{}` |
-| option (b) | **`{}`** — BL-028 carries an explicit `autonomy: human-only` |
-| the stated requirement | `{BL-028}` |
-
-BL-028 is `todo` with `blocked_by: [BL-084]`, and BL-084 is `done` — workable by every measure. **Option (b)
-changes nothing whatsoever.** The first plan recorded this in its closing section as a footnote; it was the
-headline.
-
-## 3. The diagnosis: `autonomy` is a *readiness* field wearing an *authorization* field's clothes
-
-Read the three values as they are actually defined in `design/backlog.md` and
-`design/operator-seat/references/backlog-semantics.md`:
+## 2. The diagnosis (unchanged from draft 1, and still the core of the item)
 
 | Value | Documented as | What it actually asserts |
 |---|---|---|
@@ -65,69 +45,44 @@ Read the three values as they are actually defined in `design/backlog.md` and
 | `human-only` | "judgement the item doesn't encode" | **the item is under-specified** |
 | `po-decision` | "the resolution IS a PO call" | **it is a question, not a task** |
 
-All three describe *how ready the item is*. None describes *who may touch it*. The single genuinely
-authorization-shaped clause hidden inside `human-only` is the recursion guard — *"execution would itself mean
-launching a session"* — and recursion is a property of the **brief and goal**, not of the item, so it belongs
-at Gate B (§6, [[BL-136]]).
+All three describe *how ready an item is*. **None describes who may touch it.** The one
+authorization-shaped clause hidden inside `human-only` — *"execution would itself mean launching a session"* —
+is a property of the **brief and goal**, not of the item, and lives at Gate B ([[BL-136]], merged).
 
-**This mis-typing is the complexity the PO reported.** Because the field is documented as fail-closed
-governance, typing `eligible` reads as *granting a privilege*, so it is done once at a time with a pin-test
-ritual — when what it actually asserts is *"this one is ready."*
+**That mis-typing is the complexity the PO reported.** Because the field reads as fail-closed governance,
+typing `eligible` feels like *granting a privilege*, so it is done one at a time with a pin-test ritual — when
+all it asserts is *"this one is ready."*
 
-## 4. Why `blocked_by` is strictly better than `human-only` for the real job
-
-BL-028 is the live test case, and it is not dangerous — it is **unspecified**. Its remaining phase T3c
-contains an undecided PO question (§9 q2, *"should the sweep ever kill at all?"*). You cannot hand an agent a
-spec with a hole where a decision should be.
-
-That is not an authorization fact. It is a dependency.
+**Why `blocked_by` is strictly better at the real job:**
 
 | | `autonomy: human-only` | `blocked_by: [BL-135]` |
 |---|---|---|
 | states a reason | no — it says only "no" | **yes — a filed, readable item** |
-| releases itself | never; a human must remember | **automatically, when the blocker closes** (`isResolved`) |
+| releases itself | never; a human must remember | **automatically, when the blocker closes** |
 | can dangle | n/a | **no — a dangling id fails `backlog:check`** |
 | auditable | a field nobody can second-guess | a chain anyone can walk |
 
-The self-releasing property is already documented behaviour: *"Closing a blocker releases dependents by
-itself"* (`backlog-semantics.md`). Fencing-by-blocker **forces the fencer to name the reason as an item**,
-where `human-only` names nothing and expires never.
+## 3. PO decisions, 2026-08-15 — the four that shape this draft
 
-## 5. What happens to the OPERATOR charter's safety argument
+| # | Question | Decision | Effect |
+|---|---|---|---|
+| q1 | keep a commit-time pin? | **Re-pin the WORKABLE set** | ⚠️ **§5 rewritten** — draft 1 assumed harness-only |
+| q2 | §4 charter wording | **Take the planner's rewrite** | §4 is now settled prose |
+| q3 | does `po-decision` survive? | **Retire it — a question is not a task** | ⚠️ **§6 is new** — draft 1 kept it advisory |
+| q5 | rename `?selectable=true`? | **Rename it properly** | ⚠️ **§7 is new, and it is the largest single piece** |
 
-`AGENT.md` → 🔧 The OPERATOR seat → **Visibility** currently justifies Hermes's write access with:
+**q1 is a correction to the plan, not just a preference, and it deserves saying:** draft 1 argued the harness
+was "the better home and always was." **The harness only runs around operator runs.** Harness-only would have
+left every ordinary commit unguarded — a gap draft 1 never named. The PO's answer keeps a commit-time bar and
+re-aims it. **The plan was wrong; the answer fixed it.**
 
-> **[[BL-093]] made `autonomy` fail closed**: an item that does not say it is eligible *is not eligible*. So an
-> item Hermes files defaults to `human-only` and reaches no worker until the PO says so. […] **And the guard is
-> mechanical, not merely stated:** `bl093-backlog-selectable.test.ts:147` pins the real `design/backlog.md`'s
-> selectable set *exactly* […] **Do not loosen it to accommodate the operator** — that test is now this fence's
-> enforcement.
+## 4. The OPERATOR charter paragraph (q2 — settled)
 
-**That paragraph credits Gate A with a containment that Gate B provides, and it was always doing so.**
-`selectableBacklogItems` populates an API view and two reports. It launches nothing. What actually stops
-Hermes handing itself work is `hmp-commission.mjs:336-341` — a PO-committed authorization file naming that
-run, at that sha, replay-guarded by `design/operator/.hmp-launched.json`.
+`AGENT.md` → OPERATOR → **Visibility** currently rests its safety argument on `autonomy` failing closed and on
+`bl093-backlog-selectable.test.ts:147`. That paragraph **credits Gate A with a containment Gate B provides**:
+`selectableBacklogItems` populates an API view and two reports. **It launches nothing.**
 
-**Replacement wording (proposed; the PO owns this prose):**
-
-> An item Hermes files may become **workable** — but *workable is not launchable*. A launch requires
-> `design/operator/<run>.authorized`, containing exactly `[PO] AUTHORIZED-RUN: <run>`, **committed at the
-> repo-sha the commission names** (`hmp-commission.mjs:336-341`), single-use via the launch ledger. The
-> operator can put anything it likes in front of you; it cannot hand any of it to an agent.
-
-This is stronger than what it replaces: per-run rather than per-commit, sha-bound, and single-use.
-
-**⛔ THE WORDING ABOVE IS SUPERSEDED — DO NOT SHIP IT. Rewritten below after [[BL-137]] merged (2026-08-15).**
-Three things in it are now false or stale, and the third is the reason BL-134 was blocked in the first place:
-
-1. **The path moved** — `design/po/<run>.authorized`, not `design/operator/`.
-2. **The line reference has shifted** and must be re-read, not copied.
-3. **"it cannot hand any of it to an agent" remains FALSE, and BL-137 did not make it true.** BL-137
-   established that the operator *can* write the authorization — the seat holds a shell, the SSH key is
-   unencrypted ([[BL-139]]), and only a secret it cannot read would be a fence. What changed is that the write
-   is now **conspicuous**, not that it is prevented.
-
-**Replacement wording (proposed; the PO still owns this prose — q2):**
+**Replacement wording (PO-approved):**
 
 > An item Hermes files may become **workable** — but *workable is not launchable*. A launch requires
 > `design/po/<run>.authorized`, containing exactly `[PO] AUTHORIZED-RUN: <run>`, **committed at the repo-sha
@@ -137,243 +92,166 @@ Three things in it are now false or stale, and the third is the reason BL-134 wa
 > process holding a shell from writing it. The fence is the seat observing its instructions, and the
 > instruments that make a breach visible.
 
-**That is weaker than the superseded draft claimed, and deliberately so.** Shipping "it cannot hand any of it
-to an agent" would replace one overstated fence with another — precisely the defect [[BL-136]] corrected in
-`SKILL.md` and [[BL-137]] corrected in `AGENT.md` and `hmp-commission.mjs`. **The honest sentence is the
-deliverable.**
+**Deliberately weaker than draft 1's version**, which still implied *"it cannot hand any of it to an agent."*
+[[BL-137]] proved that false. Shipping it would replace one overstated fence with another — the exact defect
+BL-136 corrected in `SKILL.md` and BL-137 in `AGENT.md`. **The honest sentence is the deliverable.**
 
-## 6. Gate B must hold first — hence the `blocked_by`
+## 5. The tripwire moves — and stays at commit time (q1)
 
-This plan moves the whole containment argument onto Gate B. Gate B currently has a hole, verified:
+`bl093-backlog-selectable.test.ts:147` pins the real backlog's **selectable** set exactly. Under the new
+predicate that set changes whenever any item is filed or any blocker resolves — ordinary motion, not a
+governance event. Kept as-is it becomes churn, and the first person to "fix the red" would loosen it.
 
-- `findsLaunchInstruction` is called **once**, on the `brief` — `hmp-commission.mjs:343`
-- **`config.goal` is never scanned** — the identifier appears in that file only inside a comment
-- but `config.goal` is what the worker receives as its **first turn** — `bite0-launcher.mjs:195`
-- the config is already parsed ten lines above the check (`hmp-commission.mjs:357-365`)
-- `design/operator-seat/SKILL.md:167-170` instructs Hermes to run that scan **by hand**
+**So it is re-aimed, not retired:** it pins the **workable** set instead. Same mechanical forcing-function —
+any change to what an agent could be handed goes red and demands a human look — against a set that only moves
+for real reasons.
 
-So the fence protects the document the worker may never read, and not the instruction it actually receives.
-Filed as **[[BL-136]]**; BL-134 is `blocked_by` it.
+**Both must land in the same commit.** A window where neither pin exists is a window where the fence is
+absent, and this project has been bitten by exactly that shape.
 
-**⛔ A near-miss recorded rather than buried.** This pass almost reported a second hole: *"commission mandates
-`cap.meter` — which `AGENT.md` says cannot end a run — but never checks `cap.wallClockMs`, the only
-terminating rail."* The first half is true; the conclusion is **wrong**. `bite0-launcher.mjs:36` throws
-`config.cap.wallClockMs must be > 0`. It is enforced, downstream. Moving it to commission would make the
-refusal legible and dry-runnable, but **it is not a containment hole** and this plan does not claim one.
-Forty seconds of reading separated a real finding from a repeat of [[BL-132]].
+The harness (`scripts/infra-invariant.mjs`) **also** reports the workable set at launch time. That is
+additive: commit-time pin **and** run-time report, catching different things at different moments.
 
-## 7. Scope
+## 6. Retiring `po-decision` (q3) — measured, with one wrinkle
+
+**Blast radius, measured against the live API: 9 items carry `po-decision`; only 3 are `todo`.**
+
+| Item | Status | Disposition |
+|---|---|---|
+| BL-123 · BL-086 · BL-110 · BL-119 | `done` | **untouched — history.** Rewriting closed items' metadata to match a new vocabulary falsifies the record |
+| BL-107 · BL-135 | `deferred` | **untouched** — already parked, already correct |
+| [[BL-139]] · [[BL-140]] | `todo` | → **`deferred`.** Both genuinely *are* PO decisions with no work specified. Correct outcome: they leave the workable set |
+| **BL-134 (this item)** | `todo` | → **`human-only`.** See the wrinkle |
+
+**⚠️ The wrinkle: BL-134 is itself tagged `po-decision`, so a literal migration defers the item doing the
+work.** Not a paradox — a state change that must be explicit. **With the four answers in §3, BL-134 is no
+longer an open question; it is a specified task.** It is re-tagged in the same commit that retires the value.
+**An item may not defer itself out of its own delivery.**
+
+**Consequence, stated so nobody discovers it in a diff:** the workable set contracts from
+`{BL-028, BL-134, BL-139, BL-140}` to **`{BL-028, BL-134}`**.
+
+**The value retires from the vocabulary, not from history.** `validate-backlog.mjs` accepts `po-decision` on
+`done`/`deferred` items (they are records) and **warns** on a `todo` item carrying it.
+
+## 7. The rename (q5) — costed, and the largest piece
+
+The planner recommended against this; **the PO overruled it and it proceeds in full.** But draft 1 never
+measured it, and it is not the one-line concept change §13 F4 implied:
+
+| Site | Hits | Kind |
+|---|---|---|
+| `apps/orchestrator/src/__tests__/bl093-backlog-selectable.test.ts` | 22 | test |
+| `scripts/infra-invariant.mjs` | 12 | **production** |
+| `scripts/__tests__/infra-invariant.test.mjs` | 9 | test |
+| `apps/orchestrator/src/server.ts` | 5 | **production — the wire param** |
+| `design/operator-seat/SKILL.md` | 5 | docs, incl. **two verbatim `curl` commands** |
+| plans + run logs | ~20 | see below |
+
+**The renames:** `selectableBacklogItems` → `workableBacklogItems` · `parseSelectableIds` → `parseWorkableIds`
+· `?selectable=true` → **`?workable=true`**.
+
+**Four constraints, none optional:**
+
+1. **Wire param and internal concept move together**, or the API and its docs disagree — the drift this
+   project keeps paying for.
+2. **SKILL.md's two `curl` lines change in the same commit.** A stale documented command is one Hermes will
+   run and get a wrong answer from.
+3. **Historical run logs (`hmp7-run-log.md`, `o3-brief.md`) and closed plans (`bl093-plan.md`,
+   `bl097-plan.md`) are RECORDS — do NOT rewrite them.** They say what was true then. Rewriting history to
+   match a rename is the same error as re-dating a closing block.
+4. **The test FILE keeps its `bl093-` name.** The prefix anchors provenance to the item that created the bar;
+   renaming it severs that link for no gain. The *contents* rename.
+
+**Land it as its own commit**, separate from the autonomy mechanics, so reverting one does not drag the other.
+
+## 8. Scope
 
 **MAY touch:**
 
 | File | Change |
 |---|---|
-| `apps/orchestrator/src/backlog.ts` | drop the `autonomy === 'eligible'` clause from `selectableBacklogItems`; keep the field parsed and exposed, redocumented as **advisory readiness metadata**; rewrite the function's doc comment |
-| `scripts/infra-invariant.mjs` | `parseSelectableIds` mirrors the new predicate (it duplicates it deliberately; a drift test pins the two); this becomes the tripwire's new home (§8) |
-| `scripts/validate-backlog.mjs` | **migration warning**: a `todo` item whose `autonomy` is `human-only`/`po-decision` with **no unresolved blocker** is fenced by a field that no longer fences → "convert to `blocked_by`" |
-| `apps/orchestrator/src/__tests__/bl093-backlog-selectable.test.ts` | contract changes enumerated in §9 |
-| `design/backlog.md` | schema block (lines 25-46); BL-028's `blocked_by`; the BL-134 item |
-| `AGENT.md` | the OPERATOR **Visibility** paragraph, per §5 |
-| `design/operator-seat/references/backlog-semantics.md` · `SKILL.md` | both state the fail-closed default and the three-value ladder |
+| `apps/orchestrator/src/backlog.ts` | predicate drops `autonomy`; function renamed; `autonomy` still parsed + exposed, redocumented **advisory** |
+| `apps/orchestrator/src/server.ts` | `?selectable=true` → `?workable=true` |
+| `scripts/infra-invariant.mjs` | mirror predicate + rename; workable set still reported at run time |
+| `scripts/validate-backlog.mjs` | migration warning (§6) + warn on `todo` carrying `po-decision` |
+| `apps/orchestrator/src/__tests__/bl093-backlog-selectable.test.ts` | contracts in §9; **file name unchanged** |
+| `scripts/__tests__/infra-invariant.test.mjs` | rename only |
+| `design/backlog.md` | schema block; BL-028's `blocked_by`; BL-134 re-tag; BL-139/BL-140 → `deferred` |
+| `AGENT.md` | OPERATOR Visibility paragraph (§4) |
+| `design/operator-seat/SKILL.md` · `references/backlog-semantics.md` | the ladder, the fail-closed claim, the two curls |
 
-**MAY NOT touch:** `scripts/hmp-commission.mjs` (that is [[BL-136]]; a launch-gate change does not get bundled
-into a bookkeeping change) · `team-coordinator.ts` · the registry · anything on the exec/turn path.
+**MAY NOT touch:** `scripts/hmp-commission.mjs` · `scripts/operator-run.expect.json` ([[BL-138]], just merged)
+· `team-coordinator.ts` · the registry · anything on the exec/turn path · **historical run logs and closed
+plans** (§7 constraint 3) · the `autonomy` values on `done`/`deferred` items (§6).
 
-**Deliberately NOT done: stripping `autonomy` from the 54 items that carry it.** A 54-item mechanical diff
-inside a simplification task is a bad trade. The field stays, demoted to advisory, and the §7 migration warning
-surfaces each case that still needs converting — a guided migration instead of a blind rewrite.
+**Deliberately NOT done: stripping `autonomy` from the 54 items carrying it.** A 54-item mechanical diff inside
+a simplification task is a bad trade. The field stays, demoted to advisory; the migration warning surfaces each
+case that still needs converting.
 
-## 8. The pin test is retired deliberately — and the tripwire moves, it does not vanish
-
-`bl093-backlog-selectable.test.ts:147` pins the real backlog's selectable set **exactly**, so any change forces
-a human look. Under the new predicate that set changes whenever *any* item is filed or *any* blocker resolves
-— ordinary backlog motion, not a governance event. Kept as-is it becomes churn, and the first person to
-"fix the red" would loosen it, which its own comment forbids.
-
-**It moves to `scripts/infra-invariant.mjs`, which is the better home and always was:** the harness brackets
-every operator run (`snapshot` before, `check` after), so the workable set is reported **at the moment it
-matters — a launch** — rather than at every commit. A `critical` there already gates the next operator run.
-
-This is a conscious loss of a commit-time tripwire in exchange for a run-time one. **No fake replacement is
-manufactured**: if the PO wants the commit-time bar kept as well, say so at gate 1 and it stays, pinning the
-*workable* set instead of the selectable one.
-
-**Gate 1 (§13 F3) sharpened this: it is not only a change of location, it is a change of FREQUENCY** —
-every-commit becomes only-when-an-operator-runs. If no operator run happens, nothing checks at all. That is
-defensible because a launch is the risk moment, but it must be read as the trade it is: **fewer checks, better
-timed.** A harness bug now goes unnoticed longer.
-
-## 9. Test contracts that change — enumerated, because they are contracts
-
-Under the M06 rule these are behaviour contracts; each change is named here, not discovered in a diff.
+## 9. Test contracts that change
 
 | # | Assertion | Disposition |
 |---|---|---|
-| 1 | "an item with no `autonomy` header is not selectable" | **inverts** — it is selectable if workable |
+| 1 | "an item with no `autonomy` header is not selectable" | **inverts** — selectable if workable |
 | 2 | "an unknown `autonomy` value is not selectable" | **inverts** — `autonomy` no longer participates |
-| 3 | "`doing` is excluded — someone already has it" | **unchanged** |
-| 4 | "requires EVERY blocker to be resolved, not just one" | **unchanged — and now load-bearing**, since it is the only fence left |
-| 5 | "an unknown blocker id keeps the item back" | **unchanged — now load-bearing** for the same reason |
-| 6 | the real-backlog exact pin at `:147` | **retired**, per §8, with the reasoning recorded in place |
-
-**Mutation discipline is mandatory on rows 3-5.** They carry the entire predicate now. An absence-asserting
-bar that passes for the wrong reason is this project's documented failure mode (a test double lacking the
-method under test, caught 2026-08-14), and rows 4-5 are exactly that shape.
+| 3 | "`doing` is excluded" | **unchanged** |
+| 4 | "requires EVERY blocker resolved, not just one" | **unchanged — now load-bearing**, the only fence left |
+| 5 | "an unknown blocker id keeps the item back" | **unchanged — now load-bearing** |
+| 6 | the real-backlog exact pin at `:147` | ⚠️ **re-aimed at the workable set** (q1), **not retired** |
 
 ## 10. Definition of Done
 
 | # | Bar |
 |---|---|
-| D1 | `selectableBacklogItems` is `status === 'todo' && blockedBy.every(isResolved)`; `autonomy` appears nowhere in it |
-| D2 | `autonomy` is still parsed, still in the API projection, documented as **advisory** — no silent field removal |
-| D3 | `parseSelectableIds` agrees with the real parser; the existing drift test is green |
-| D4 | `validate-backlog.mjs` warns on `todo` + fenced-by-field + no unresolved blocker; exit code unchanged |
-| D5 | **The mechanism is proven on the real case:** [[BL-135]] is filed, BL-028 carries `blocked_by: [BL-135]`, and BL-028 is consequently **NOT** in the workable set — fenced for a stated, self-releasing reason |
-| D6 | The workable set is exactly **`{BL-028, BL-134, BL-139, BL-140}`**, and every exclusion is legible from the backlog alone. **⬛ RECOMPUTED 2026-08-15 against the live API after BL-137 merged** — this row has now been wrong **twice**: it first asserted `{}` (never run — gate 1 F1), was corrected to `{BL-136}`, and that value went stale the moment BL-136 closed and three items were filed. **Re-run the predicate before trusting this row a third time; do not read it, run it.** |
-| D7 | Mutation run recorded for §9 rows 3, 4, 5 — each turns its own bar red |
-| D8 | §7's docs no longer describe `autonomy` as a gate or a fail-closed default |
-| D9 | `AGENT.md`'s OPERATOR Visibility paragraph rests on Gate B (§5 wording, or the PO's) |
-| D10 | `tsc -b` 0; suite green at baseline + only the new bars; `git diff --stat` entirely inside §7 |
+| D1 | the predicate is `status === 'todo' && blockedBy.every(isResolved)`; `autonomy` appears nowhere in it |
+| D2 | `autonomy` still parsed, still in the API projection, documented **advisory** — no silent field removal |
+| D3 | `parseWorkableIds` agrees with the real parser; the drift test is green |
+| D4 | `validate-backlog.mjs` warns on `todo` + fenced-by-field + no unresolved blocker, **and** on `todo` + `po-decision`; exit code unchanged |
+| D5 | **proven on the real case:** [[BL-135]] filed, BL-028 carries `blocked_by: [BL-135]`, BL-028 consequently **not** workable — fenced for a stated, self-releasing reason |
+| D6 | **the workable-set pin exists and is green, and the old selectable pin is gone — in ONE commit** (q1) |
+| D7 | **RUN the predicate; do not read a number from this plan.** This row has been wrong twice: `{}` (never run), then `{BL-136}` (stale within a day). Expected after §6: **`{BL-028, BL-134}`** — *verify it* |
+| D8 | mutation run recorded for §9 rows 3, 4, 5 — each turns its own bar red |
+| D9 | rename complete: no `selectable` identifier or wire param remains in **production or live docs**; historical records untouched |
+| D10 | `AGENT.md`'s Visibility paragraph is §4's wording |
+| D11 | `tsc -b` 0; suite green at baseline + new bars; `git diff --stat` entirely inside §8 |
 
-## 11. Open questions for gate 1
+## 11. Sequencing — three commits, in this order
 
-1. **§8 — keep a commit-time pin as well** (pinning the *workable* set), or accept the harness as the only
-   tripwire? Plan assumes the latter.
-2. **§5 — is the replacement charter wording the PO's?** It is load-bearing governance prose; the planner
-   proposes, the PO owns.
-3. **Does `po-decision` survive as a tag?** The plan keeps the field advisory and changes nothing else. The
-   cleaner end state is that a question is not `todo` at all — but that is a backlog-hygiene pass, not this task.
-4. **Independence:** under the resource-scarcity fallback the plan reviewer *was* the planner (§13). Declared,
-   not mitigated.
-5. **§13 F4 — is the `?selectable=true` API param renamed?** `SKILL.md` curls it verbatim twice.
-   Recommendation: **keep the param, rename only the internal concept** — a wire rename buys nothing and
-   breaks Hermes's documented commands.
+1. **The rename** (§7). Mechanical, no behaviour change, easiest to review and revert alone.
+2. **The predicate + pin** (§5, §9, D1–D3, D6). The actual behaviour change.
+3. **The backlog + docs migration** (§4, §6, D5, D10).
 
-## 12. A question is `deferred`, not `todo` — the gap gate 1 found
+**Rationale:** commit 2 is the only one that changes behaviour, so it should be small and isolated. Doing the
+rename first means commit 2's diff is about the predicate and nothing else.
 
-The plan's first draft said *"`po-decision` becomes a tag, not a gate — a question isn't `todo`"* and left it
-there. Gate 1 (§13 F2) established that this was not a detail but a hole: `eligible` and `human-only` are
-**readiness levels** and collapse cleanly into "is it blocked", but **`po-decision` is not a readiness level at
-all** — it asserts the item is *not a task*. That is a difference of **kind**, and the schema expresses kind
-through `status`, whose five values are all task-lifecycle states. Removing the field without replacing that
-expression makes every open PO question proposable to an agent.
+**⚠️ Honest sizing:** this is materially larger than draft 1 — two production files, four test files, a
+cross-cutting rename, and a backlog migration. At ~57% session budget when draft 2 was written, **commits 1
+and 2 are realistic this session; commit 3 may not be.** If budget runs short, **stop after commit 2 with the
+branch green** — the rename and predicate are coherent without the migration, and the migration is the easiest
+piece to resume cold.
 
-**Resolution — zero new machinery.** A question is filed **`status: deferred`** with **`tags: [po-decision]`**.
+## 12. Mutation discipline — mandatory, and this is why
 
-- `isResolved` returns true only for `done`/`dropped` (`backlog.ts:255-259`), so a `deferred` blocker **still
-  fences its dependents** — the mechanism this plan depends on is untouched.
-- `deferred` is *honest* for [[BL-135]] specifically: the standing sequence is "let the instrument run, **then**
-  ask what the data supports", so the question genuinely is parked pending evidence.
-- The tag preserves the distinction between "parked" and "awaiting a decision" for the 25 existing `deferred`
-  items, without adding a sixth status.
-- **Rejected alternative:** adding a `question` status. It is more honest in isolation but touches
-  `VALID_STATUS`, the API's active filter, the harness's duplicate parser and three docs — new machinery to
-  express something two existing fields already express.
+**§9 rows 3, 4 and 5 carry the entire predicate once `autonomy` is out of it.** Rows 4 and 5 are
+absence-asserting bars — the shape that most easily passes for the wrong reason, and the shape this project
+has now been bitten by three times in two days ([[BL-136]]'s insertion point, BL-137's uncovered checks,
+BL-138's `_comment` key). **Each must be shown to turn its own bar red**, and the run recorded in the ledger.
 
-Consequently the workable set after this task is **`{BL-136}`**, not `{}` — and that is the correct target.
-**An empty workable set was never the goal; an honest one was.**
+## 13. What this does NOT do
 
-## 13. Gate 1 findings (plan reviewer, 2026-08-15)
+- **It does not change who may launch anything.** Gate B is untouched. `workable` is a readiness fact; the
+  launch authorization is a separate, PO-written artifact ([[BL-137]]).
+- **It does not make anything agent-eligible by itself.** After this the workable set is `{BL-028, BL-134}`,
+  and both still require a PO-authorized commission to reach a worker.
+- **It does not remove `autonomy`.** The field survives as advisory metadata; only its role as a *gate* ends.
+- **It does not fix `autonomy`'s 54 existing values.** Guided migration by warning, not a blind rewrite.
 
-⚠️ **Independence NOT obtained**: the plan reviewer was the planner, under the resource-scarcity fallback.
-Declared, not mitigated. Recorded here rather than in a closing note so a later reader meets it with the
-findings, not after them.
+## 14. Gate 1 history (draft 1) — findings carried forward
 
-| # | Class | Finding | Disposition |
-|---|---|---|---|
-| **F1** | **BLOCK** | **D6 asserted the workable set is `{}`. Running the proposed predicate against the real backlog returns `{BL-028, BL-135, BL-136}`** — `{BL-135, BL-136}` after D5. A DoD bar was written without ever being run. | **Fixed** — D6 now reads `{BL-136}`, with the correction visible in the row. |
-| **F2** | **BLOCK** | The design had **no way to express "this is a question, not a task."** BL-135 — a PO decision — would have become *workable*, i.e. proposable to an agent. The plan had waved this off in one clause and then filed BL-135 as `todo` in the same session. | **Fixed** — §12. |
-| **F3** | minor | §8 presents the tripwire move as a change of *location*. It is also a change of **frequency**: every-commit → only-when-an-operator-runs. Defensible (that is the risk moment) but must be stated. | Folded into §8's wording as an explicit trade. |
-| **F4** | minor | The plan never states whether the `?selectable=true` **API param is renamed**. `design/operator-seat/SKILL.md` curls it verbatim in two places; a rename breaks Hermes's documented commands. | **Open — §11 q5.** Recommendation: keep the param name, rename only the internal concept. |
-| **F5** | in favour | The D4 migration warning, exactly as specified, **would have caught F2**: BL-135 is `todo` + fenced-by-field + no unresolved blocker, which is precisely its trigger. | Recorded — the bar earned its place before its code existed. |
-
-**Verdict: REFUTED at first pass, remedied, and the plan is re-submitted.** F1 and F2 were both real and both
-would have shipped a wrong bar. The pattern is the one this project keeps re-learning and the planner
-re-committed inside a single session: **F1 was one command away from being known** — the predicate was
-runnable against the live API the whole time.
-
-## 14. What this does NOT fix — stated so it cannot be inferred
-
-**This change creates no work.** After D5 the workable set is `{}` — the same as today — because the one
-`todo` item genuinely is blocked. The difference is that the backlog now *says why*, mechanically, instead of
-asserting a bare `human-only`.
-
-**The binding constraint is an empty backlog, not the predicate.** Whatever is decided here, the next act that
-produces value is filing real work.
-
----
-
-## 14. PO decisions, 2026-08-15 — four answers, two of which change the plan's shape
-
-Asked after [[BL-137]] merged and BL-134 became workable. **Two answers overturn the plan's own assumptions,
-and one overturns the planner's explicit recommendation.** Recorded with their real cost, measured rather than
-estimated.
-
-| # | Question | PO decision | vs. the plan |
-|---|---|---|---|
-| q1 | keep a commit-time pin? | **Re-pin the WORKABLE set** | ⚠️ **changes §8** — the plan assumed harness-only |
-| q2 | §5 charter wording | **Take the planner's replacement** (the superseded-draft rewrite in §5) | confirms §5 as rewritten |
-| q3 | does `po-decision` survive? | **Retire it — a question is not a task** | ⚠️ **changes §12** — the plan kept it advisory |
-| q5 | rename `?selectable=true`? | **Rename it properly**, updating SKILL.md | ⚠️ **overrules the planner's recommendation** |
-
-### q1 — the tripwire does not vanish, it moves and stays mechanical
-
-§8 retires `bl093-backlog-selectable.test.ts:147` (which pins the *selectable* set). The PO's answer keeps a
-commit-time pin, re-aimed at the **workable** set. This is the better call than the plan's: the harness runs
-only around operator runs, so harness-only would have left every ordinary commit unguarded — a gap the plan
-did not name. **§8 must be rewritten to retire the old pin and land the new one in the same change**, so the
-tripwire is never absent between commits.
-
-### q3 — retiring `po-decision`: measured blast radius, and one wrinkle the plan must handle
-
-**Nine items carry `po-decision`; only three are `todo`** — BL-134, [[BL-139]], [[BL-140]]. The other six are
-`done` or `deferred` and are **history: leave their values untouched.** Migrating only live items keeps the
-change small and keeps the record honest.
-
-**⚠️ The wrinkle: BL-134 is itself tagged `po-decision`, so a literal migration defers the very item doing the
-work.** That is not a paradox, it is a state change the plan must make explicit: **with these four answers
-BL-134 is no longer an open question — it is a specified task**, and it must be re-tagged (`human-only`) in
-the same commit that retires the value. An item may not defer itself out of its own delivery.
-
-**Consequence to state plainly:** after migration the workable set contracts from
-`{BL-028, BL-134, BL-139, BL-140}` to **`{BL-028, BL-134}`** — BL-139 and BL-140 become `deferred`, which is
-correct: both genuinely *are* PO decisions with no work specified.
-
-### q5 — the rename is bigger than this plan assumed, and I said so before proceeding
-
-The planner recommended **against** this and the PO overruled it; the work proceeds in full. **But the cost was
-never measured in the plan, and it is not small.** `selectable` appears across:
-
-| Site | Hits | Kind |
+| # | Finding | Status in draft 2 |
 |---|---|---|
-| `apps/orchestrator/src/__tests__/bl093-backlog-selectable.test.ts` | 22 | test (and the file name itself) |
-| `scripts/infra-invariant.mjs` | 12 | **production** |
-| `apps/orchestrator/src/server.ts` | 5 | **production — the wire param** |
-| `scripts/__tests__/infra-invariant.test.mjs` | 9 | test |
-| `design/operator-seat/SKILL.md` + run logs + plans | ~25 | docs, incl. two verbatim `curl` commands |
-
-**So this is a cross-cutting rename touching two production files, two test files and the operator's own
-documented commands — not the one-line concept change §13 F4 implied.** Three constraints follow, and they are
-not optional:
-
-1. **The wire param and the internal concept must move together**, or the API and its docs disagree — which is
-   the drift this project keeps paying for.
-2. **SKILL.md's two `curl` lines must change in the same commit.** A stale documented command is a command
-   Hermes will run and get a wrong answer from.
-3. **Historical run logs (`hmp7-run-log.md`, `o3-brief.md`) are RECORDS and must NOT be rewritten.** They
-   record what was true at the time. Rewriting history to match a rename is the same error as re-dating a
-   closing block.
-
-**Recommendation now that it is costed:** land the rename as its **own commit**, separate from the autonomy
-mechanics, so a revert of one does not drag the other.
-
----
-
-## 15. Status after these answers
-
-**BL-134 is unblocked and workable** — verified against the live API: `blockedBy: [BL-137]` is satisfied,
-nothing else blocks it, and **the agent-selectable set is empty** while four items are workable. That emptiness
-is live evidence for this item's own premise, which is the PO's original complaint restated as data.
-
-**The plan needs a draft 2 and a re-gate before implementation.** q1, q3 and q5 each change scope: §8 is
-rewritten, §12 is inverted, and a costed cross-cutting rename joins the task. **Do not implement from draft 1.**
+| F1 | **BLOCK** — D6 asserted a workable set the planner had never run | fixed twice, and D7 now forbids reading a number from the plan at all |
+| F3 | §8 changed the tripwire's **frequency**, not just its location | **resolved by q1** — commit-time pin retained |
+| F4 | `?selectable=true` is curled verbatim in SKILL.md | **resolved by q5** — renamed, with the curls in the same commit |
+| — | Independence: plan reviewer *was* the planner | **still true.** Declared, not mitigated |
