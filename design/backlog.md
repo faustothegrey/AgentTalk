@@ -8541,14 +8541,15 @@ autonomy: po-decision
 
 <!-- @item
 id: BL-136
-status: todo
+status: done
 date: 2026-08-15
 epic: null
 tags: [operator, hermes, commission, recursion, containment, gate-b]
 autonomy: human-only
 -->
-- [todo · **filed 2026-08-15 by the planner while verifying that Gate B holds, because [[BL-134]] proposes to
-  lean the whole containment argument on it**] —
+- [done · **MERGED 2026-08-15 `05325c0` — see the closing block at the end of this item** · **filed
+  2026-08-15 by the planner while verifying that Gate B holds, because [[BL-134]] proposes to lean the whole
+  containment argument on it**] —
   **The commission's recursion fence scans the document the worker may never read, and NOT the instruction it
   actually receives.** `findsLaunchInstruction` is called exactly once — on the **brief**,
   `hmp-commission.mjs:343`. **`config.goal` is never scanned**: the identifier appears in that file only inside
@@ -8569,5 +8570,59 @@ autonomy: human-only
   enforced, downstream. Moving it to commission would make the refusal legible and **dry-runnable** — worth
   doing, and in scope for this item as a second bar — but **it is NOT a containment hole and must not be
   reported as one.** Forty seconds of reading separated this from a repeat of [[BL-132]].
+
+  ---
+
+  **✅ MERGED 2026-08-15 `05325c0` — the fence now scans `config.goal`, and the doc that claimed it already
+  did is corrected.** Plan + gate 1: `design/bl136-plan.md`.
+
+  **The item understated its own finding, and the sharper version is the one to remember.**
+  `design/operator-seat/SKILL.md:167-170` did not merely tell Hermes to run the scan by hand — it asserted
+  that a launch-phrase in the goal *"refuses `recursive-commission` at commission time even if the brief is
+  clean."* **Nothing did.** So the operator was told an automated fence stood behind the manual command while
+  the only thing standing there was their memory. **A safety instruction that overstates its own enforcement
+  is worse than one that admits the gap**, because it retires the reader's vigilance — the [[BL-101]]
+  fail-open-in-a-document shape, and the third time this project has caught a document describing a fence that
+  was not there. Corrected in place with the false claim preserved, not rewritten away.
+
+  **What shipped** — three refuse-only checks, `+35/-0` in the verifier, `LAUNCH_PATTERNS` byte-identical:
+  `missing-goal` (absent / blank / **non-string**, mirroring `bite0-launcher.mjs:34` exactly so the two gates
+  cannot disagree about what a valid goal is), `recursive-commission` **from the goal** with the brief clean,
+  and `missing-cap-wallclock`.
+  **⛔ `missing-cap-wallclock` is LEGIBILITY, not containment — it must not be cited as having closed a
+  containment hole.** `cap.wallClockMs` was already enforced at `bite0-launcher.mjs:36`; the near-miss that
+  nearly filed it as a hole is recorded above and stays recorded. What the lift buys is a refusal legible in
+  the operator's reply and reachable before anything is provisioned.
+
+  **Placement was the whole design decision, and gate 1 caught the planner getting it wrong.** The obvious
+  insertion point — immediately after the config parse — silently breaks two existing refusal bars
+  (`missing-cap-meter` at `:485` and the sandbox-drift bar at `:507` both commit fixtures with **no goal**),
+  and the plan's own contract table asserted they were unchanged. **The plan had named that exact hazard two
+  paragraphs earlier.** The checks sit after the governance check instead: ordering here is *purely
+  diagnostic* — nothing executes until `pass()` — so the coherent grouping is message↔config binding, then
+  config completeness, then world state.
+  **Then the implementation committed the same error a third time:** the new fixtures reused `hmp1`'s sandbox
+  and refused `charter-mismatch` before reaching any check under test. **The bars caught it; the author did
+  not.** Three encounters with one failure shape in one task is the argument for writing the bar before
+  believing the code.
+
+  **Refuse-only was proven, not asserted.** All **eleven** committed operator configs (`hmp1`-`hmp9`, `o1`,
+  `o2`) pass under the new code — the change refuses **zero** historical runs. Re-run it rather than trusting
+  this line; the command is `bl136-plan.md` §10.
+  **Four mutations executed**, each killing exactly its own bars and no others. The one worth naming is the
+  `caps`-spelling bar: it asserts a **pass**, and a pass-asserting bar is the kind that most easily passes
+  vacuously — dropping the `caps` fallback turns it red, which is what makes it load-bearing rather than
+  decorative. It exists because a DoD row claimed both spellings were read when only one had been exercised.
+
+  Suite **787/787 (94 files)**, `tsc -b` 0, backlog 136 items / 0 warnings, working tree clean.
+  **[[BL-134]] is unblocked** — its `blocked_by` is now resolved, and it becomes the only workable item.
+
+  **Telemetry (task closure):**
+  - task:        BL-136
+  - wall-clock:  2026-08-15 08:20 → 08:46 (~26 min)
+  - budget:      weekly 25%→26% (Δ ~1%), session 24%→36% (Δ ~12%)
+  - gate:        tsc 0, suite 787/787 (94 files), pollution clean
+  - diff:        3 files, +131/-2, commits `82cdcb7` `fb52665` `b1a31d8` `c46744c` merge `05325c0`
+  - outcome:     MERGED ✅
 
 *(add new items above this line)*
