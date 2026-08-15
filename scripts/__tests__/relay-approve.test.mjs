@@ -238,10 +238,41 @@ describe('the execute fence — no relay-reachable command performs a git operat
       .join('\n');
     // Targets the CALL, not the word: `ACTIONS = ['merge','push']` is the allowlist this file is
     // built around, so a bare word-search would fail on the very thing it is protecting.
-    for (const verb of ['merge', 'push', 'commit', 'reset', 'checkout', 'cherry-pick', 'rebase']) {
+    //
+    // ⚠️ AMENDED 2026-08-15 ([[BL-137]], PO chose option A). `commit` left this list because
+    // `approve --action launch` MUST write the authorization the commission reads; the PO's whole
+    // act is `approve <token>`, and a version that cannot commit hands the ceremony straight back.
+    //
+    // The amendment was NOT made by the implementer who needed it. The bar went red, the
+    // implementer STOPPED and reported it rather than trimming the verb list, and the PO lowered
+    // the fence knowingly. That sequence is the point: this bar exists to force exactly that
+    // conversation, and it worked. If you are here because it went red again, do the same thing.
+    //
+    // `commit` is therefore not deleted from the fence — it is NARROWED to one sanctioned call,
+    // asserted by shape below. Every other write verb is still absolutely forbidden.
+    for (const verb of ['merge', 'push', 'reset', 'checkout', 'cherry-pick', 'rebase']) {
       expect(code).not.toMatch(new RegExp(`git\\(\\s*\\[\\s*['"\`]${verb}['"\`]`));
       expect(code).not.toMatch(new RegExp(`['"\`]git['"\`]\\s*,\\s*\\[\\s*['"\`]${verb}['"\`]`));
     }
+
+    // THE NARROWED COMMIT FENCE — exactly one call site, and it must be pathspec-limited.
+    const commitCalls = code.split('\n').filter((l) => /git\(\s*\[\s*['"`]commit['"`]/.test(l));
+    expect(commitCalls).toHaveLength(1);
+    // Pathspec-limited (`'--', rel`), so it can never sweep up whatever else is staged. This is
+    // what makes "the authorize commit touches exactly one file" (bar B5) structural rather than
+    // incidental — the PO approved a tree, and gets that tree plus one line.
+    expect(commitCalls[0]).toMatch(/['"`]--['"`]\s*,\s*rel/);
+    // And it commits the authorization, not something that merely happens to be one file.
+    expect(commitCalls[0]).toContain('authorizationLineFor');
+  });
+
+  it('the only path this module may commit is an authorization under design/po/', () => {
+    // The companion to the narrowed fence above: `rel` in that call must come from the
+    // commission's own `authorizationPathFor`, never a locally-built string. If someone later
+    // widens what this module can write, they have to defeat this too.
+    const src = fs.readFileSync(new URL('../relay-approve.mjs', import.meta.url), 'utf-8');
+    expect(src).toMatch(/const rel = authorizationPathFor\(run\)/);
+    expect(authorizationPathFor('anyrun')).toBe('design/po/anyrun.authorized');
   });
 });
 
