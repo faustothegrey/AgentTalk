@@ -8640,16 +8640,16 @@ autonomy: human-only
 
 <!-- @item
 id: BL-137
-status: todo
+status: done
 date: 2026-08-15
 epic: null
 tags: [operator, hermes, containment, gate-b, authorization, charter, bl-134]
 autonomy: human-only
 -->
-- [todo · **filed 2026-08-15 by the planner, at the PO's instruction, after the PO proposed letting Hermes set
-  its own `.authorized` file and the check found the mechanism already exists** · **PLAN:
-  `design/bl137-plan.md`, awaiting gate 1 — options (a)+(c) via the existing propose/approve primitive, at the
-  PO's direction 2026-08-15: *"plan BL-137 with the propose/approve flow"***] —
+- [done · **MERGED 2026-08-15 `fb7c45e` — see the closing block at the end of this item** · **filed
+  2026-08-15 by the planner, at the PO's instruction, after the PO proposed letting Hermes set
+  its own `.authorized` file and the check found the mechanism already exists** · plan:
+  `design/bl137-plan.md` (draft 2) · ledger: `design/bl137-implementation.md`] —
   **Gate B's authorization file lives INSIDE the operator's own write allowlist, so the fence that "only the
   PO can authorize a run" does not hold — and both `AGENT.md` and `hmp-commission.mjs` state that it does.**
 
@@ -8705,5 +8705,166 @@ autonomy: human-only
   **And do not read it as a [[BL-107]]-class exposure either:** an attacker who can reach the HMP port already
   holds a shell and needs none of this. This is about the *operator seat's own* containment, which is the
   thing the charter exists to bound.
+
+  ---
+
+  ### CLOSING BLOCK — merged `fb7c45e`, 2026-08-15
+
+  **What shipped, and what it is worth.** `authorizationPathFor` now resolves to
+  **`design/po/<run>.authorized`**, outside the operator's write allowlist, and the PO's act is a single
+  **`approve <token>`** (`relay-approve.mjs`, action `launch`) which writes, commits and **verifies** the file
+  before burning the token. 8 files, +572/−40, suite **798/798**, `tsc -b` 0.
+
+  **⚠️ READ THIS BEFORE CITING THIS ITEM AS A FIX.** The path move buys **conspicuousness, not prevention**.
+  `design/operator/**` is written routinely by the seat, so an authorization there was camouflaged; `design/po/`
+  is written by nothing else, so a write there is visible — and `classifyHeadMove` can name it as a foreign
+  path *inside a bracketed run*. **Nothing mechanically stops a process holding a shell from writing it.** The
+  `origin/master` anchor was tested and killed during planning: `~/.ssh/id_rsa` is unencrypted and `ssh-add`
+  holds no identities, so there is **no credential boundary** between the operator and the remote either.
+  **Only a secret the operator cannot read would be a fence, and none exists on this machine** — that is
+  option (b), filed separately.
+
+  **The primary deliverable was the retraction, not the move.** `hmp-commission.mjs`'s header claimed the PO's
+  merge *was* the authorization act; `AGENT.md`'s never-write table omitted `.authorized` entirely. Both now
+  state what is true, and DoD row **D9** pinned it: the words *fence*/*prevents* may not describe the path move
+  anywhere in the diff. A false fence retires the reader's vigilance, which is worse than no fence — [[BL-136]]
+  and [[BL-101]] before it.
+
+  **A guardrail was lowered, deliberately and by the PO.** `relay-approve.test.mjs` asserted this module never
+  calls `git()` with a write verb — *"a fence against a future 'just merge it here'"*. Making `approve` commit
+  breaks it. The implementer **stopped and reported** rather than trimming the verb list; the PO chose to
+  **narrow** it (option A): `commit` is now a shape-asserted **single call site**, pathspec-limited to an
+  `authorizationPathFor` path, with every other write verb still absolutely forbidden. **The bar records its own
+  history so the next reader repeats the conversation, not the shortcut.**
+
+  **Both quality gates refuted before passing, and the findings were real:**
+  - **Gate 1** killed draft 1 on two internal contradictions (an import the scope forbade; a title claiming
+    option (c) that nothing implemented). The PO's *"rethink"* then killed the **premise** — a plan can be
+    perfectly self-consistent and still solve the wrong problem.
+  - **Gate 2** found bar **B3 was never written** while DoD row D2 claimed it: a verifier patched to read
+    **both** paths passed all 54 other bars. It also found **B5b had been silently reverted** by the
+    implementer's own `git checkout -- scripts/` during the mutation run, so the reported *40/40* was a
+    pre-revert reading of a post-revert artifact. **Commit the bar, then mutate.**
+
+  **Two checks ship UNCOVERED and are not proven behaviour:** the internal "commit touched exactly one path"
+  guard and the post-commit blob read-back. Mutations M5 and M6 deleted each and **killed no test**, because
+  neither is reachable while the commit is pathspec-limited. They are kept as defence-in-depth and reported
+  rather than deleted — which is what produced **B5b**, the bar attacking the property that *is* falsifiable.
+
+  **Not live-proven.** No Hermes-authored authorization has been driven through a real commission. The bars are
+  unit-level; BL-137's original honest limit carries forward unchanged.
+
+  **Follow-ups filed:** [[BL-138]] (populate `allowWritePaths` — without it this item's detection is available
+  but never switched on), [[BL-139]] (the unencrypted SSH key vs the "push is the PO's alone" claim),
+  [[BL-140]] (option (b), signature verification).
+
+  **[[BL-134]] is unblocked** — its `blocked_by: [BL-137]` is self-releasing. **But its plan §5 must be
+  re-checked against what actually shipped:** it may now describe Gate B as per-run, sha-bound, single-use
+  **and conspicuous** — it may **not** imply "and only the PO can produce it", which remains false. **§11 D6 is
+  also stale** and must be recomputed.
+
+  **Telemetry (task closure):**
+  - task:        BL-137
+  - wall-clock:  2026-08-15 16:44 → 18:40 (~1h56m, incl. planning, 3 gates and the merge)
+  - budget:      weekly 27%→31% (Δ ~4%), session 0%→40% (Δ ~40%)
+  - gate:        tsc 0, suite 798/798 (94 files), pollution clean, worktree removed
+  - diff:        8 files, +572/−40; merge `fb7c45e`; 5 commits on `task-bl137`
+  - outcome:     **MERGED ✅**
+
+<!-- @item
+id: BL-138
+status: todo
+date: 2026-08-15
+epic: null
+tags: [operator, hermes, containment, invariant-harness, detection, bl-137]
+autonomy: human-only
+-->
+- [todo · **filed 2026-08-15 at BL-137's close; it is that item's missing second half**] —
+  **[[BL-137]]'s detection is BUILT but never SWITCHED ON: `allowWritePaths` is `[]`, so no operator run
+  declares anything and `classifyHeadMove` early-returns.**
+
+  BL-137 moved the launch authorization to `design/po/`, whose whole value is that a write there is
+  **conspicuous**. The mechanism that would *notice* already exists and works — `classifyHeadMove`
+  (`infra-invariant.mjs:408`) compares paths written during a bracketed run against `allowWritePaths` and
+  reports anything unmatched as **foreign** (`:431`, `:864-865`). But the field is `[]` by default (`:92`) and
+  early-returns when empty (`:410`), and **no committed operator config declares it**.
+
+  **So today: the authorization is conspicuous to a human reading a diff, and invisible to the harness.**
+  BL-137's closing block says its detection is "available, not switched on" — this is the item that switches
+  it on. Without it, BL-137 delivered a documentation correction plus a tidier path, which is real but is not
+  what the charter needs.
+
+  **Scope sketch:** declare `allowWritePaths: ['design/backlog.md', 'design/operator/**',
+  'design/operator-seat/**']` on operator run configs — deliberately **excluding** `design/po/**` — so a write
+  to the authorization path during a bracketed run surfaces as a finding.
+
+  **⚠️ Read [[BL-116]] before writing a pattern:** a pattern that matches nothing was indistinguishable from
+  the legitimate "you declared nothing" state, and **two consecutive operator runs each reported one
+  `critical`** because of it. Write paths are matched **end to end**, so a whole directory is `dir/**`, not
+  `dir/`. Getting this wrong produces confident silence.
+
+  **This is BL-119's residue** (its option (d), recorded in that item's closing block and deliberately not
+  filed at the time). It became load-bearing the moment BL-137 rested an argument on it.
+
+<!-- @item
+id: BL-139
+status: todo
+date: 2026-08-15
+epic: null
+tags: [governance, security, po, push, fence-in-prose, agent-md]
+autonomy: po-decision
+-->
+- [todo · **filed 2026-08-15 by the planner during BL-137, after TESTING an idea rather than reasoning about
+  it — PO decision, not an agent call**] —
+  **`AGENT.md` asserts in bold, in several places, that push is the PO's "absolutely and without exception".
+  Nothing on this machine enforces that.**
+
+  Found while testing whether `CHARTER.authorizedRef` could be re-anchored from local `master` to
+  `origin/master` — which would have built [[BL-137]]'s fence out of a credential boundary that already
+  existed, at zero maintenance cost. **The idea is dead, and this is why:**
+
+  - `~/.ssh/id_rsa` is an **unencrypted** PEM private key (`-----BEGIN RSA PRIVATE KEY-----`, no `ENCRYPTED`
+    header)
+  - `ssh-add -l` → *"The agent has no identities"*, so git reads that key file directly
+  - Hermes runs as the same user, so it can push with the same key
+
+  **Perspective, so this is not over-read: an unencrypted key on a personal dev box is extremely common and
+  this is NOT a crisis.** No remote attacker gains anything; [[BL-107]] remains the real exposure and is
+  unaffected. The finding is narrower and structural: **it means no git-based anchor can ever serve as a fence
+  against a local process**, so `origin/master` is not available as a containment primitive — and the bold
+  claim in `AGENT.md` is a **fence that exists only in prose**, the exact shape [[BL-136]], [[BL-101]] and
+  BL-137 were each about.
+
+  **Options (uncosted, PO's call):** (a) passphrase-protect the key and rely on the agent, which makes
+  `origin/master` a real anchor and reopens that design; (b) soften `AGENT.md`'s wording to describe a
+  convention rather than a control; (c) accept and document, on the grounds that a defecting operator is out
+  of scope anyway. **(a) and (b) compose.**
+
+<!-- @item
+id: BL-140
+status: todo
+date: 2026-08-15
+epic: null
+tags: [operator, hermes, containment, authorization, signatures, bl-137]
+autonomy: po-decision
+-->
+- [todo · **filed 2026-08-15 at BL-137's close so it stays a DECISION rather than a planner's omission**] —
+  **Signature verification is the only option that would actually fence a shell-holding operator — and it
+  trades away exactly the lightness the PO asked for.**
+
+  [[BL-137]] option (b), deliberately excluded from that item's scope. Its own §2 concluded: *no file
+  location, directory, store or git ref can prevent a defecting operator from authorizing its own run; only a
+  secret it cannot read can.* A `git verify-commit` check on the authorization commit, against a key whose
+  passphrase lives only in the PO's head, **is** that secret.
+
+  **The cost is the reason it was not just done.** The PO's brief was *"make this process lighter"*, and BL-137
+  delivered an act of one word. Signing means **a passphrase typed per approval** — plus key generation,
+  distribution, rotation, and a `verify-commit` path in `hmp-commission.mjs` that must fail closed on a missing
+  or unknown key. That is a straight trade of convenience for a real fence, and **only the PO can make it.**
+
+  **Do not file this as "the fix BL-137 should have made."** BL-137 addressed the failure modes that are real
+  on this machine — accident, drift, and two false safety claims. This addresses **defection**, which has not
+  occurred and may never. Reopen when the threat model changes, when [[BL-139]] option (a) makes key handling
+  routine anyway, or when a `critical` finding shows a seat writing where it should not.
 
 *(add new items above this line)*
