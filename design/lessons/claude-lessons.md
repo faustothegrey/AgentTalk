@@ -2305,3 +2305,38 @@ here.**
 - **An empty result is ambiguous and must be annotated.** The workable queue is now `[]`, and a
   drained queue looks exactly like a broken assertion. The test carries a comment saying which it is
   and why — 28 deferred items behind PO decisions, not an absence of work.
+
+### 2026-08-16 — as planner: the autonomy ladder, and writing six briefs in one sitting
+
+- **I inherited a false position from my own predecessor primer and nearly repeated it.** It said the
+  ladder was at "O-1/O-2"; nine commissioned runs had happened. I caught it only because I went to
+  `design/operator/` instead of trusting the sentence. **The artifact closest to the work is not the
+  most reliable one** — it is written by whoever was most tired, at the end. Reviewer Rule 5 is not
+  ceremony; it caught the single biggest error of the session in the first ten minutes.
+- **Verify the feasibility claim by running it, even when the reasoning is airtight.** "The ladder can
+  climb itself because the fence refuses *instructions*, not *subjects*" was a good argument. Running
+  eight candidate wordings through the real predicate turned it into a fact — **and running a control
+  set alongside is what made the 8/8 mean anything.** I nearly skipped the control because the result
+  was already the one I wanted. That is exactly when to run it.
+- **The fence caught my own brief, and the shape is one I have now hit three times.** A document that
+  warns about a forbidden phrase, by quoting it, contains it. Same as the lesson bullet that broke the
+  citation gate by naming a dead path. **When writing a warning about a string, describe it — never
+  reproduce it.** I have written this down twice before and still did it.
+- **Two figures went into the record before measurement, again — the fifth and sixth in two sessions.**
+  "84 files", "roughly ten grading documents"; really 81 and 13. I caught them only because writing the
+  brief forced me to re-derive them. **The habit that saved me was not discipline, it was building an
+  artifact that required the number to be re-checked.** Prefer mechanisms over intentions.
+- **Staging before measuring is now proven, not just believed.** `docs:check` read 710 before staging
+  and 769 after — it would have silently skipped all 59 citations I had just written. The gate walks
+  `git ls-files`. **An untracked file is invisible to every gate that walks the index.**
+- **Writing six bars in one sitting taught me more about bars than reading twenty did.** The
+  mutual-satisfiability section stops being a formality the moment you write a pair yourself and watch
+  it nearly contradict — my BL-147 pair ("the check must fail on hmp6" × "the suite must be green")
+  would have been unsatisfiable and would have read perfectly reasonable. **hmp7's R4 was not
+  carelessness; it is the default outcome of writing rows independently.**
+- **The best rows I wrote were the ones demanding a gate be observed FAILING** — remove the exemption,
+  see red, restore. "I wrote a check" and "the check discriminates" are different claims and only the
+  second is worth grading. I should apply that to my own work more than I do.
+- **What I'd do differently:** I proposed a fuel slate of unrelated items before the PO redirected me to
+  ladder-work-as-fuel. Theirs was the better idea and I should have reached it — the question "what work
+  would make the next round of this work cheaper?" was available to me and I did not ask it.
