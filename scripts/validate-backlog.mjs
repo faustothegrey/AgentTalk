@@ -39,7 +39,7 @@ for (const it of items) {
 
 // 3. BL-093 — the dependency graph must be sound. A dangling or circular `blocked_by`
 //    silently UNBLOCKS an item (the parser fails closed, so it just disappears from the
-//    selectable set with no explanation), which is exactly the kind of quiet wrong answer
+//    workable set with no explanation), which is exactly the kind of quiet wrong answer
 //    this gate exists to make loud.
 const byId = new Map(items.map((it) => [it.id, it]));
 for (const it of items) {
@@ -56,7 +56,7 @@ for (const it of items) {
   // has no warning tier.
   if (it.autonomy === 'eligible' && it.status !== 'todo') {
     errors.push(
-      `item "${it.id}": autonomy "eligible" on a "${it.status}" item (only todo is selectable)`,
+      `item "${it.id}": autonomy "eligible" on a "${it.status}" item (only todo is workable)`,
     );
   }
 }

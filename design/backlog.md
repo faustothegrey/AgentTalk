@@ -43,7 +43,7 @@ judgement the item does not encode, **or its execution would itself mean launchi
 charter's no-recursion rule — a judgement no parser can make, so it rests on whoever files the item and is
 re-checked at each §3b gate). `po-decision` = the item's resolution *is* a PO call, not agent work.
 `blocked_by` is resolved only when every id it names is `done` or `dropped`; a dangling, self- or circular
-reference **fails `backlog:check`**. Selector view: `GET /api/backlog?selectable=true`.
+reference **fails `backlog:check`**. Selector view: `GET /api/backlog?workable=true`.
 
 The **header is authoritative for the API**; if it disagrees with the prose `[STATUS]` tag the parser
 emits a drift warning (surfaced at the §3b gate). Validate with `npm run backlog:check` after any edit.

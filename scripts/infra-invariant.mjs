@@ -437,9 +437,9 @@ export function classifyHeadMove(before, after, allowWritePaths) {
 }
 
 /**
- * BL-097 — the effective agent-selectable set, re-implemented dependency-free.
+ * BL-097 — the effective agent-workable set, re-implemented dependency-free.
  *
- * This duplicates `parseBacklog`/`selectableBacklogItems` (`apps/orchestrator/src/backlog.ts`) on
+ * This duplicates `parseBacklog`/`workableBacklogItems` (`apps/orchestrator/src/backlog.ts`) on
  * purpose: the harness is infrastructure safety and must run when the build is broken, so it may
  * not import from `dist`. The duplication is fenced by a test that pins this against the real
  * parser on the real `design/backlog.md` — if they ever drift, that test goes red.
@@ -450,7 +450,7 @@ export function classifyHeadMove(before, after, allowWritePaths) {
  *   - unknown/absent `autonomy` → not eligible (BL-093 fails closed)
  *   - an unknown `blocked_by` id is UNRESOLVED, so a typo hides an item rather than releasing it
  */
-export function parseSelectableIds(markdown) {
+export function parseWorkableIds(markdown) {
   const lines = String(markdown).split('\n');
   const items = [];
   let fence = false;
@@ -602,8 +602,8 @@ export function snapshotRepo(repoPath, env) {
 
     // BL-097 — what an agent may be handed unattended. `SKIPPED` (not `[]`) when the repo has no
     // backlog: collected-but-empty and deliberately-not-collected must never look alike.
-    selectable: fs.existsSync(path.join(repoPath, 'design', 'backlog.md'))
-      ? parseSelectableIds(fs.readFileSync(path.join(repoPath, 'design', 'backlog.md'), 'utf-8'))
+    workable: fs.existsSync(path.join(repoPath, 'design', 'backlog.md'))
+      ? parseWorkableIds(fs.readFileSync(path.join(repoPath, 'design', 'backlog.md'), 'utf-8'))
       : SKIPPED,
   };
 }
@@ -881,35 +881,35 @@ function diffRepo(name, before, after, expect, findings, candidates = emptyCandi
     at('stash-count-changed', SEVERITY.INFO, `${name}: stash count ${before.stashCount} → ${after.stashCount}`);
   }
 
-  // --- the agent-selectable set (BL-097): NEVER allowlistable ---
+  // --- the agent-workable set (BL-097): NEVER allowlistable ---
   // `allowWritePaths` deliberately has no effect here. `design/backlog.md` is a path the operator
   // may write, but WHAT an agent may be handed unattended is not a write — it is authority, and
   // the charter reserves it to the PO. So a lawful write to a lawful path still gates if it moved
   // this set. The set is the *effective* one, because it also moves indirectly: by writing
   // `blocked_by`, or by flipping a blocker to `done`.
-  const bSel = before.selectable;
-  const aSel = after.selectable;
+  const bSel = before.workable;
+  const aSel = after.workable;
   if (Array.isArray(bSel) && Array.isArray(aSel)) {
     const added = aSel.filter((x) => !bSel.includes(x));
     const removed = bSel.filter((x) => !aSel.includes(x));
     if (added.length > 0 || removed.length > 0) {
       const parts = [];
-      if (added.length > 0) parts.push(`now selectable: ${added.join(', ')}`);
-      if (removed.length > 0) parts.push(`no longer selectable: ${removed.join(', ')}`);
+      if (added.length > 0) parts.push(`now workable: ${added.join(', ')}`);
+      if (removed.length > 0) parts.push(`no longer workable: ${removed.join(', ')}`);
       at(
-        'selectable-set-changed',
+        'workable-set-changed',
         SEVERITY.CRITICAL,
-        `${name}: the agent-selectable backlog set changed — ${parts.join('; ')}. ` +
+        `${name}: the agent-workable backlog set changed — ${parts.join('; ')}. ` +
           `Only the PO may change what an agent may be handed unattended ` +
           `(AGENT.md → 🔧 The OPERATOR seat → Visibility).`,
       );
     }
   } else if (bSel !== aSel) {
     at(
-      'selectable-set-unreadable',
+      'workable-set-unreadable',
       SEVERITY.CRITICAL,
       `${name}: the backlog was ${Array.isArray(bSel) ? 'readable' : String(bSel)} before the run and ` +
-        `${Array.isArray(aSel) ? 'readable' : String(aSel)} after — the selectable set could not be compared.`,
+        `${Array.isArray(aSel) ? 'readable' : String(aSel)} after — the workable set could not be compared.`,
     );
   }
 }

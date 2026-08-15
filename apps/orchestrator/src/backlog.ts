@@ -28,7 +28,7 @@ export type BacklogStatus = 'todo' | 'doing' | 'deferred' | 'done' | 'dropped';
  *
  * `human-only` is the DEFAULT and the fallback for any unrecognised value — this parser
  * fails CLOSED. An item that does not say it is eligible is not eligible, so shipping the
- * field cannot retroactively make the existing backlog autonomously selectable, and a typo
+ * field cannot retroactively make the existing backlog autonomously workable, and a typo
  * hides an item rather than releasing it.
  */
 export type Autonomy = 'eligible' | 'human-only' | 'po-decision';
@@ -271,7 +271,7 @@ function isResolved(blockerId: string, byId: Map<string, BacklogItem>): boolean 
  * be marked `human-only` by whoever files it, or the OPERATOR charter's no-recursion rule
  * is silently breached. No parser can make that judgement — see design/bl093-plan.md §6.
  */
-export function selectableBacklogItems(items: BacklogItem[]): BacklogItem[] {
+export function workableBacklogItems(items: BacklogItem[]): BacklogItem[] {
   const byId = new Map(items.map((i) => [i.id, i]));
   return items.filter(
     (i) =>

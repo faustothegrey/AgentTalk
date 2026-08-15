@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseBacklog, readBacklog, selectableBacklogItems } from '../backlog.js';
+import { parseBacklog, readBacklog, workableBacklogItems } from '../backlog.js';
 
 /**
  * BL-093 — `blocked_by` + `autonomy`, and the selection they enable.
@@ -7,7 +7,7 @@ import { parseBacklog, readBacklog, selectableBacklogItems } from '../backlog.js
  * The unit exists so an autonomous selector cannot pick work that is blocked, reserved to
  * the PO, or otherwise not handable. Every clause fails CLOSED, and these tests pin that
  * direction specifically: the interesting assertions are the ones proving an item stays
- * OUT of the selectable set, because the failure that matters is an item wrongly let in.
+ * OUT of the workable set, because the failure that matters is an item wrongly let in.
  */
 
 /** Build a minimal backlog document from `@item` header blocks. */
@@ -66,10 +66,10 @@ describe('BL-093 header fields', () => {
   });
 });
 
-describe('selectableBacklogItems', () => {
+describe('workableBacklogItems', () => {
   it('admits a todo + eligible item with no blockers', () => {
     const { items } = parseBacklog(md({ id: 'BL-001', status: 'todo', extra: ['autonomy: eligible'] }));
-    expect(selectableBacklogItems(items).map((i) => i.id)).toEqual(['BL-001']);
+    expect(workableBacklogItems(items).map((i) => i.id)).toEqual(['BL-001']);
   });
 
   it('excludes human-only and po-decision, and anything with no autonomy at all', () => {
@@ -80,7 +80,7 @@ describe('selectableBacklogItems', () => {
         { id: 'BL-003', status: 'todo' },
       ),
     );
-    expect(selectableBacklogItems(items)).toEqual([]);
+    expect(workableBacklogItems(items)).toEqual([]);
   });
 
   it('excludes an eligible item whose blocker is still open, and admits it once done', () => {
@@ -90,7 +90,7 @@ describe('selectableBacklogItems', () => {
         { id: 'BL-002', status: 'todo' },
       ),
     );
-    expect(selectableBacklogItems(open.items)).toEqual([]);
+    expect(workableBacklogItems(open.items)).toEqual([]);
 
     const closed = parseBacklog(
       md(
@@ -98,7 +98,7 @@ describe('selectableBacklogItems', () => {
         { id: 'BL-002', status: 'done' },
       ),
     );
-    expect(selectableBacklogItems(closed.items).map((i) => i.id)).toEqual(['BL-001']);
+    expect(workableBacklogItems(closed.items).map((i) => i.id)).toEqual(['BL-001']);
   });
 
   it('treats a dropped blocker as resolved', () => {
@@ -108,19 +108,19 @@ describe('selectableBacklogItems', () => {
         { id: 'BL-002', status: 'dropped' },
       ),
     );
-    expect(selectableBacklogItems(items).map((i) => i.id)).toEqual(['BL-001']);
+    expect(workableBacklogItems(items).map((i) => i.id)).toEqual(['BL-001']);
   });
 
   it('keeps an item back when its blocker id does not exist (a typo must not release work)', () => {
     const { items } = parseBacklog(
       md({ id: 'BL-001', status: 'todo', extra: ['autonomy: eligible', 'blocked_by: [BL-999]'] }),
     );
-    expect(selectableBacklogItems(items)).toEqual([]);
+    expect(workableBacklogItems(items)).toEqual([]);
   });
 
   it('excludes a `doing` item even when eligible — someone already has it', () => {
     const { items } = parseBacklog(md({ id: 'BL-001', status: 'doing', extra: ['autonomy: eligible'] }));
-    expect(selectableBacklogItems(items)).toEqual([]);
+    expect(workableBacklogItems(items)).toEqual([]);
   });
 
   it('requires EVERY blocker to be resolved, not just one', () => {
@@ -131,7 +131,7 @@ describe('selectableBacklogItems', () => {
         { id: 'BL-003', status: 'todo' },
       ),
     );
-    expect(selectableBacklogItems(items)).toEqual([]);
+    expect(workableBacklogItems(items)).toEqual([]);
   });
 });
 
@@ -146,7 +146,7 @@ describe('the real backlog (design/backlog.md)', () => {
   // red go away. If the new value is not what you expected, that is the finding.
   // 2026-07-28 — updated deliberately, not to silence a red. BL-094 was MERGED (`ef5be1d`, delivered
   // autonomously in the H-L2 operator run) and closing it dropped its `autonomy: eligible`, so the
-  // selectable set is now EMPTY. Per the note above, the new value being unexpected is the finding —
+  // workable set is now EMPTY. Per the note above, the new value being unexpected is the finding —
   // and here it is: NOTHING can currently be handed to an agent unattended. That is a PO call to make,
   // and this line is where it becomes visible again the moment an item is marked eligible.
   //
@@ -172,7 +172,7 @@ describe('the real backlog (design/backlog.md)', () => {
   // Two things this transition demonstrated that are worth more than the value itself:
   //
   // 1. **The blocker chain works, and it was verified by the red rather than assumed.** BL-115 carries
-  //    `blocked_by: [BL-104]`. It became selectable the moment BL-104 flipped to `done` — nothing
+  //    `blocked_by: [BL-104]`. It became workable the moment BL-104 flipped to `done` — nothing
   //    edited the dependency, and this assertion is what proved the *effective* set is computed
   //    rather than read off the `autonomy` flag alone.
   // 2. **A full cycle fits in one session.** BL-104 went eligible → commissioned over HMP → delivered
@@ -193,7 +193,7 @@ describe('the real backlog (design/backlog.md)', () => {
   // and here is why") and have it hold under pressure to be green.
   //
   // So the queue is empty for the fourth time, and the standing observation holds: NOTHING is
-  // currently agent-selectable, and refilling it is a PO act — `autonomy: eligible` is authority in
+  // currently agent-workable, and refilling it is a PO act — `autonomy: eligible` is authority in
   // file form ([[BL-093]] made it fail closed). This line is where that becomes visible again.
   //
   // Do NOT loosen this to an emptiness check or a length assertion to stop it moving. Its whole value
@@ -256,7 +256,7 @@ describe('the real backlog (design/backlog.md)', () => {
   //
   // TWO THINGS THIS MOVE CAUGHT, both worth more than the line change itself:
   //
-  // 1. The `warnings` assertion fired FIRST, not the selectable one — and it was a real defect in the
+  // 1. The `warnings` assertion fired FIRST, not the workable one — and it was a real defect in the
   //    closing edit, not in the backlog's meaning: the item's header said `status: done` while its prose
   //    still opened `[todo · …]`, which the parser reports as header/prose drift. It was briefly misread
   //    as "the queue emptied" because a failing `toEqual([])` looks the same at a glance either way.
@@ -277,7 +277,7 @@ describe('the real backlog (design/backlog.md)', () => {
   // critical path rather than makework: BL-028 T3b cannot name `awaiting-input` against a status
   // nobody has established the readers of.
   //
-  // Exactly ONE item is selectable, and that is deliberate. A queue of one cannot be mis-picked,
+  // Exactly ONE item is workable, and that is deliberate. A queue of one cannot be mis-picked,
   // and the point of this rung is the loop, not throughput.
   // 2026-08-07, later the same day — EMPTY AGAIN, and this one closed a full loop rather than a
   // task. BL-120 was delivered by run `hmp6`, graded PASS against its pre-registered bar, merged
@@ -364,16 +364,16 @@ describe('the real backlog (design/backlog.md)', () => {
   // because the work is done, not because nobody chose anything.
   //
   // Dropping `autonomy: eligible` at close is the part that needed doing deliberately: an item left `eligible`
-  // after its delivery merges stays agent-selectable while pointing at finished work, and THIS GUARD WOULD NOT
+  // after its delivery merges stays agent-workable while pointing at finished work, and THIS GUARD WOULD NOT
   // HAVE CAUGHT IT — the assertion `['BL-125']` was still true. That exact miss has happened here before:
   // `1706500 fix(BL-105): drop the stale eligible flag left behind at close`.
   //
-  // Worth recording next to the row it protects: the guard pins WHAT is selectable, never WHETHER the thing is
+  // Worth recording next to the row it protects: the guard pins WHAT is workable, never WHETHER the thing is
   // still worth selecting. A green here is not evidence the queue is sane.
   it('offers nothing — the queue emptied when BL-125 was delivered and closed', () => {
     const { items, warnings } = readBacklog();
     expect(warnings).toEqual([]);
-    expect(selectableBacklogItems(items).map((i) => i.id)).toEqual([]);
+    expect(workableBacklogItems(items).map((i) => i.id)).toEqual([]);
   });
 
   // 2026-08-07 — deliberately updated, and the red was shown to the PO first. BL-084 CLOSED (PO
@@ -384,10 +384,10 @@ describe('the real backlog (design/backlog.md)', () => {
   // mechanism: closing a blocker resolves it with no edit to the blocked item, because isResolved
   // counts only done/dropped. That is a stronger bar than the one it replaces.
   //
-  // And the distinction that matters: BL-028 is now UNBLOCKED but still NOT selectable — because
+  // And the distinction that matters: BL-028 is now UNBLOCKED but still NOT workable — because
   // it is `human-only`, not because anything holds it. Those are different reasons and a future
   // reader must not confuse them.
-  it('releases BL-028 now that BL-084 is closed — unblocked, but still not agent-selectable', () => {
+  it('releases BL-028 now that BL-084 is closed — unblocked, but still not agent-workable', () => {
     const { items } = readBacklog();
     const byId = new Map(items.map((i) => [i.id, i]));
     expect(byId.get('BL-028')!.blockedBy).toEqual(['BL-084']);   // dependency unchanged
@@ -417,7 +417,7 @@ describe('the real backlog (design/backlog.md)', () => {
     // hmp9 delivered it. Two revaluations in one day is not churn to engineer away: it is the
     // full arrival→delivery→close cycle finally running end to end, and this line moved once for
     // each transition, exactly as intended. BL-028's standing is untouched for the fourth time.
-    expect(selectableBacklogItems(items).map((i) => i.id)).toEqual([]);
+    expect(workableBacklogItems(items).map((i) => i.id)).toEqual([]);
   });
 
   it('marks BL-086 as the PO decision it is', () => {

@@ -58,12 +58,12 @@ curl -s 'http://127.0.0.1:3741/api/backlog?all=true'
 
 # Eligibility signal — which items are currently selectable for a run. SEPARATE question
 # from the open queue; do not conflate the two.
-curl -s 'http://127.0.0.1:3741/api/backlog?selectable=true'
+curl -s 'http://127.0.0.1:3741/api/backlog?workable=true'
 ```
 
 - **Default `/api/backlog` (no params)** → the open queue. That is the normal answer to "is there open work" — but NOT what this PO means by a bare "list the backlog" (corrected 2026-08-13, hmp9 session): delivering only the open queue got the verbatim-repeat treatment; the accepted answer was the full list.
 - **`?all=true`** → every item, done and dropped included. **When the PO says "list the backlog" / "list the backlog items", deliver THIS**: grouped by status (todo/doing/deferred/done/dropped), compact `BL-XXX · title` lines (titles truncated ~100 chars), no prose, no grading, no trailing offers like "want the full list? just ask" — a verbatim repeat of the same request is the miss signal. One closing line stating the source variant and counts (e.g. `?all=true — 125 total (3 todo · 25 deferred · 94 done · 3 dropped)`) is right. "Only exact output, no prose" is the PO's stated preference.
-- **`?selectable=true`** → a separate eligibility signal, not a substitute for the open queue.
+- **`?workable=true`** → a separate eligibility signal, not a substitute for the open queue.
 
 Statuses are exactly five: todo · doing · deferred · done · dropped. There is no wontfix and no parked — "parked" is informal for deferred.
 
@@ -370,8 +370,8 @@ Preparation and launch are separated in time, and mainline moves. A backlog item
 
 ```bash
 # WAY 1 — backlog API (preferred). The launchd orchestrator answers on 3741.
-curl -s 'http://127.0.0.1:3741/api/backlog?selectable=true'
-# Returns the currently selectable set (0 of 122 as of 2026-08-11). The item
+curl -s 'http://127.0.0.1:3741/api/backlog?workable=true'
+# Returns the currently workable set (0 of 122 as of 2026-08-11). The item
 # you are about to launch MUST appear here. If it does not — if it is `doing`,
 # `done`, or no longer `eligible` — stop and report; do not launch.
 
