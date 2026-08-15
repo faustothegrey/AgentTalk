@@ -2076,3 +2076,42 @@ here.**
   that sentence in four consecutive sessions.** The plan-review hat did do real work (it caught the BLOCK-class
   ordering defect before code existed). But declaring the concentration is not mitigating it, and repeating the
   declaration does not make it less true.
+
+### 2026-08-15 (third session) — as planner + all three reviewer seats + implementer: four reversals, and the only thing that ever caught one was running it
+
+- **I reversed four of my own claims today, and not one was caught by re-reading.** The `origin/master`
+  containment anchor (killed by checking the SSH key), gate 2's missing bar B3 (found by grepping for bars I'd
+  claimed), the bar B5b my own mutation cleanup had silently reverted (found by re-running the count), and
+  BL-138's entire premise (killed by reading the branch a guard returns). **Three were caught before shipping.
+  One shipped** — into BL-137's closing block, an hour after I merged it. The pattern is unambiguous: my
+  reading finds nothing, my running finds everything.
+- **Read the branch a guard returns, not just the guard.** I saw `if (!allowWritePaths || length === 0)` and
+  concluded "empty ⇒ no detection". It returns `foreign` → `critical`: the empty state is the *strictest*.
+  I filed a backlog item on the inverted premise and wrote it into a closing block. **The guard is not the
+  behaviour; the two lines below it are.**
+- **A mutation that kills nothing means EITHER an uncovered check OR a mutation that did nothing — and they
+  look identical.** P5 killed zero bars; I nearly recorded it as missing coverage. `isResolved`
+  short-circuits *before* the line I patched, so my mutation was unreachable and changed no behaviour. **Verify
+  the mutation moved something before reading its silence as a finding.** Same day, M5/M6 on BL-137 killed
+  nothing *for real* — so both cases occurred within hours, which is exactly why they must be distinguished.
+- **A `head -10` is a sample. I used one as a cost inventory and underwrote a DoD row with it.** Unfiltered it
+  understated two files, missed two more, and missed one that was outside the declared scope — making D9
+  unsatisfiable within its own plan. Then, fixing it, **I added a file to scope on a grep hit that was the
+  ordinary English word "selectable"** — committing the string-vs-concept error *inside the finding that
+  diagnosed it*. A grep hit is a candidate, not a finding.
+- **"Is the fix deployed?" caught a third artifact today.** A derived set came back empty against a `dist/`
+  two edits stale, because my `npx tsc -b >/dev/null 2>&1` sat behind a `||` and never ran. I was one step
+  from recording `[]` as the answer. The DoD row that said **"run the predicate, do not read a number from
+  this plan"** is the only reason I looked twice — that row exists because the same number had already been
+  wrong twice, and it went on to be wrong a third time in the plan and right only when computed.
+- **An honest PARTIAL beat a green.** D4 asked for a validator warning that would have failed the gate on
+  BL-134 itself, because the gate has no warning tier while D2 requires the field to remain legitimate. **A
+  field allowed to be present cannot invalidate the backlog by being present.** I implemented the half that is
+  real, withdrew the half that contradicts D2, and put the reasoning in the code. Faking it was available and
+  would have gone green.
+- **The PO overturned my reasoning twice on one item, and was right both times.** Option (b) earlier, and q1
+  (keep the commit-time pin — because the harness only runs around operator runs, a gap my own plan never
+  named). **Four hats and every gate held by me is the standing risk, and external correction outperformed my
+  self-review again.** I have now written that sentence in five consecutive sessions; what changed today is
+  that I can name what my self-review *does* catch — internal inconsistency — and what it never catches: a
+  plan that is perfectly consistent and solving the wrong problem.
