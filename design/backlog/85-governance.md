@@ -409,6 +409,14 @@ tags: [governance, agent-md, overhaul, wave2, po-decision]
   file every agent auto-loads at turn 1 now states what is true once, rather than stating it four times
   with three retractions.
 
+  **Telemetry (task closure):**
+  - task:        BL-145
+  - wall-clock:  2026-08-15 23:12 → 23:38 (~26 min, across two stretches)
+  - budget:      weekly 44% → 46% (Δ ~2%), session 71% → 83% (Δ ~12%) [per `scripts/usage.mjs`]
+  - gate:        tsc 0, suite 871/871 (98 files), docs 710/0 newly broken/40 carried, modules 115/116, backlog 145/0 warnings, pollution clean
+  - diff:        `AGENT.md` 1,033 → 1,001; 3 commits + 2 merges on `task-bl145` / `task-bl145b`
+  - outcome:     **MERGED ✅** — all three sections fixed in place, `[PO]` decision honoured (no split)
+
   **Conservation used, since prose has no line-count or parse-equality property:** a normative-statement
   inventory (`scripts/archive/bl145-normative-inventory.mjs`) taken before and after — 294 lines
   carrying an obligation across the file, 123 of them in the three sections — with every obligation in
