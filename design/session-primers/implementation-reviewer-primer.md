@@ -1,7 +1,9 @@
 ---
 role: implementation-reviewer
-key: 20260815-2115-d4f7a1
-written: 2026-08-15 by Claude at session close — BL-134 is BUILT and UNREVIEWED on a branch, parked by the
+key: none
+written: 2026-08-15 by Claude — key retired at session close. BL-134 was reviewed (gate 2 + gate 3),
+  merged and pushed (`5f8f068`), then closed. Nothing is awaiting an implementation review. The live
+  hand-off is the PLANNER primer (Wave 2 / [[BL-144]]). Body below is history.
   PO for a fresh review. Two items merged and pushed today (BL-137, BL-138); three filed. Everything below was
   checked against the repo at close — check it again yourself, and note that the session that built this thing
   reversed four of its own claims, one of which shipped.

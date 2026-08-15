@@ -2115,3 +2115,37 @@ here.**
   self-review again.** I have now written that sentence in five consecutive sessions; what changed today is
   that I can name what my self-review *does* catch — internal inconsistency — and what it never catches: a
   plan that is perfectly consistent and solving the wrong problem.
+
+### 2026-08-15 (fourth session) — as implementation+task-end reviewer, then implementer: the overhaul's first two waves, and three self-corrections that only running found
+
+- **I published a recommendation and it was wrong twice in the same paragraph.** "Delete 11 dead
+  provers, ~2,600 lines" — two of them have **tests** (`scripts/__tests__/`), so deleting would have
+  broken the suite, and the real count was 8 / 1,747 lines. **"Not wired to an npm script" is not the
+  same claim as "dead"** — vitest collects by glob. Then the 8 turned out to be cited by *durable*
+  docs, so the right verb was **archive, not delete**: deleting would have manufactured the exact
+  broken-citation rot the wave existed to remove. Both caught by running a check, neither by re-reading.
+- **A shell loop reported 0 substitutions and I nearly believed it.** My own prior lesson says a
+  mutation that changes nothing means *either* nothing to change *or* a broken mutation. The citations
+  demonstrably existed, so it was the loop. Redone in node: **330 substitutions across 80 files.**
+  The lesson compounds only because I read it back at session start — which is the whole point of the
+  read-back rule.
+- **The verification that made the whole overhaul safe was a BASELINE, not an inspection.** Rather than
+  eyeball 91 moved files, I ran a citation resolver on master and on the branch: **1,727 citations /
+  131 unresolved, identical both sides.** That is a proof of "introduced nothing", and it cost one
+  command. Same shape for Wave 1: parse the directory vs the old single file → **140 items, zero items
+  differing in ANY field.** Assert conservation, don't inspect the diff.
+- **I wrote a bar that fired on a legitimate state within the hour.** `expect(viaParser.length > 0)`,
+  labelled "neither side is agreeing merely by being empty", conflated *both parsers found a real
+  backlog* with *the workable set is non-empty*. The second is the PO's backlog, not the parsers.
+  **A bar that fails when the queue is legitimately drained tests the wrong thing.**
+- **And I committed a message claiming "806/806" while the suite was red** — my `&&` chain let it
+  through because a `grep` succeeded. I amended it, but the honest reading is that I asserted a green
+  I had not read. **Check the exit status, not that some pipeline stage printed something.**
+- **Filing four items refilled the workable queue, and that was the clearest demonstration of BL-134's
+  whole argument.** The four are *workable* — todo, unblocked — and *not launchable*, which still
+  needs the PO's committed authorization. Wave 1 also made the BL-028 bar stronger by accident:
+  absent from a **non-empty** set proves the fence holds; absent from an empty one proved nothing.
+- **The PO pre-authorized all commits/merges/pushes and told me to stop only for opinion, not
+  permission. That is more rope than usual and it worked** — but the thing that actually kept it safe
+  was that every wave carried its own mechanical proof (line conservation, citation parity, field-level
+  parse equality). **With the gates relaxed, the bars have to get stricter, not looser.**

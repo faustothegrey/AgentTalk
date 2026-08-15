@@ -1,108 +1,119 @@
 ---
 role: planner
-key: 20260815-0916-3f7a2c
-written: 2026-08-15 by Claude — session close. One item planned, built, merged and closed (BL-136);
-  one containment finding filed (BL-137); the queue's only workable item deliberately re-blocked on it
-  by PO decision. Everything below was checked against the repo at close — check it again yourself.
-  The predecessor primer's own warning applies to this one: three of its claims had rotted before
-  anyone acted on them.
+key: 20260815-2148-e7b3c9
+written: 2026-08-15 by Claude at session close — the PO declared the project collapsing under its own
+  weight and opened a DEEP OVERHAUL. Waves 0 and 1 are MERGED AND PUSHED. Wave 2 is filed as
+  [[BL-144]] and is the judgment-heavy remainder — it needs you. Everything below was checked against
+  the repo at close; check it again yourself.
 ---
 
 This is your session primer.
 
-**Project.** AgentTalk orchestrates real, heterogeneous LLM agents (claude / codex / gemini-agy / goose) as one
-software team: they attach as MCP clients over WebSocket, pull turns via `await_turn`, and coordinate through a
-planner→implementer→reviewer workflow under a human Product Owner. Current thrust: the **autonomous-development
-ladder** — improving AgentTalk *with* AgentTalk, one graded rung at a time.
+**Project.** AgentTalk orchestrates real, heterogeneous LLM agents (claude / codex / gemini-agy /
+goose) as one software team: they attach as MCP clients over WebSocket, pull turns via `await_turn`,
+and coordinate through a planner→implementer→reviewer workflow under a human Product Owner. Stated
+overarching goal, restated by the PO this session: **automated development of some sort.**
 
-**Roles.** Human = PO (Fausto): scope, direction, merges, pushes. Bindings live ONLY in `AGENT.md → 📌 DEFAULT
-ROLE ASSIGNMENTS` — read it, don't trust this line. Codex and agy remain PO-declared UNAVAILABLE, so you are
-almost certainly the sole agent under the **resource-scarcity fallback**: wear every hat, handshake once per
-role, declare all of them, keep each gate's discipline separately. **Standing Conditional Reassignment ACTIVE.**
-Hermes holds the **OPERATOR seat** — launches and monitors, holds no authority; its reports are *observations,
-unverified until you check the artifact yourself.*
+**Roles.** Human = PO (Fausto): scope, direction, merges, pushes. Bindings live ONLY in `AGENT.md →
+📌 DEFAULT ROLE ASSIGNMENTS` — read it, don't trust this line. Codex and agy remain PO-declared
+UNAVAILABLE, so you are almost certainly the sole agent under the **resource-scarcity fallback**:
+wear every hat, handshake once per role, declare all of them, keep each gate's discipline separately.
 
-**Workflow / source of truth.** `design/collaboration-workflow.md` + `design/backlog.md` + `AGENT.md`. Resume
-from the backlog, **NOT from chat**.
+## ⚠️ Read this before anything else: the PO's standing grant
 
-## Where we are — verified at close, and check it anyway
+The PO said, verbatim: *"go ahead full steam. Stop only when you need my opinion not a ceremonial
+allowance. I pre approve all commit and merges and push. This is no normal development phase but a
+deep overhaul. In my discernment, no way to avoid it and no way to go back."*
 
-Clean on `master` at **`67e1a66`**. Backlog **137 items, 0 warnings**. Suite **787 / 94 files**, `tsc -b` 0 —
-both re-run on the merge result, not inherited. No worktrees, no `task-*` branches. Ask the instruments:
+**That grant is real and it is narrow in one specific way: it removes the PERMISSION step, not the
+VERIFICATION step.** What kept it safe this session was that every wave carried its own *mechanical*
+proof. **With the gates relaxed, the bars get stricter, not looser.** If you cannot state a
+conservation property your change preserves, you are not ready to use the grant.
+
+The grant is the PO's and can be withdrawn by the PO. Do not extend it by analogy to anything else —
+it does not touch `autonomy`/workable→launchable, and it does not make you the PO.
+
+## The state — verified at close, check it anyway
+
+Clean on `master` at **`979891c`**, **pushed** (0 ahead / 0 behind). No worktrees but the primary.
+Suite **806 / 95 files**, `tsc -b` 0, backlog **144 items / 0 warnings**. Ask the instruments:
 
 ```
-node scripts/validate-backlog.mjs
-curl -s "http://127.0.0.1:3741/api/backlog?all=true"    # LIVE orchestrator; NOT 3100, NOT 3600
-npx vitest run                                           # expect 787 / 94
-git log --oneline -8 && git status --porcelain
-lsof -nP -iTCP:3741 -sTCP:LISTEN -t                      # read the pid, THEN read its start time
+git log --oneline -1 && git status --short
+npx tsc -b && npx vitest run                     # expect 806 / 95
+node scripts/validate-backlog.mjs                # expect 144 / 0
+node -e 'const{readBacklog,workableBacklogItems}=require("./apps/orchestrator/dist/backlog.js");
+         console.log(workableBacklogItems(readBacklog().items).map(i=>i.id))'
 ```
 
-## What this session did
+## What happened this session
 
-**1. [[BL-136]] — planned, gate-1'd, built, merged, closed** (`05325c0`). The recursion fence scanned the brief
-and never `config.goal`, the string `bite0-launcher.mjs:195` delivers as the worker's first turn. Three
-refuse-only checks now sit in `verifyCommission`; `LAUNCH_PATTERNS` is byte-identical; `+35/-0` in the verifier.
-Refuse-only was **proven** against all eleven committed operator configs, not asserted. Four mutations, each
-killing exactly its own bars.
-**The item understated its own finding, and that half matters more than the code:** `SKILL.md` did not merely
-omit the goal scan — it *asserted the verifier already performed it*. The operator was told a fence stood behind
-their manual command when the command **was** the fence.
+**[[BL-134]] reviewed, merged, pushed, closed** (`5f8f068`). `autonomy` no longer gates the backlog;
+`selectable` → `workable` everywhere including the wire param. Gate 2 found one real defect — a live
+doc in the operator's own skill named `?selectable=true`, which `server.ts:258` no longer reads, so
+it returned the **open queue at HTTP 200**. Fixed under the Rule 6 zero-risk exception.
 
-**2. Filed [[BL-137]] and it is the live one.** The PO proposed letting Hermes set its own `.authorized` file
-("double check while moving operativity to Hermes"). Checking it found **the mechanism already exists**:
-`design/operator/<run>.authorized` (`hmp-commission.mjs:179`) sits **inside the operator's own write
-allowlist**, and the verifier checks content + ancestry from local `master` (`:323`) but **nothing about who
-committed it**. So `hmp-commission.mjs:38`'s *"the PO's merge is the authorization act"* is false for the one
-directory that matters. The PO kept the gate and rejected self-authorization.
+**Wave 0 — evict episodic records** (`0b8bee5`). `design/` 143 → **53** top-level files; 91 records to
+`design/archive/`; 8 dead provers to `scripts/archive/`. **Archived, never deleted** — they are cited
+by durable docs. 421 citations rewritten. **Verified by baseline: 1,727 citations / 131 unresolved,
+identical before and after.**
 
-**3. [[BL-134]] re-blocked `[BL-136]` → `[BL-137]`, by PO decision.** Its plan §5 would rest the OPERATOR
-charter's safety argument on Gate B and call it *per-run, sha-bound, single-use* — all true; the implied *"and
-only the PO can produce it"* is not. The PO was offered the cheaper path (implement it, drop §5 from scope) and
-**chose to block**, re-emptying the workable set rather than ship a sentence known to overstate its fence.
+**Wave 1 — the backlog becomes a directory** (`b12c0ee`). `design/backlog.md` (8,946 lines) →
+`design/backlog/*.md`, one file per concern, read in **filename order** (hence numeric prefixes).
+**Proven identical: 140 items, ZERO items differing in any field, same workable set.** Both parsers
+learned the new location in step — `readBacklog()` and the dependency-free mirror in
+`infra-invariant.mjs` (`readBacklogText`) — and the BL-097 drift bar now pins **where** as well as how.
 
-## What is open, in the order the backlog now forces
+**Four follow-ups filed** (`979891c`), which **refilled the workable queue**: [[BL-141]] doc-citation
+linter · [[BL-142]] its 16 findings · [[BL-143]] the validator's missing warn tier · [[BL-144]] Wave 2.
 
-**1. [[BL-137]]** — the fence. Four uncosted options in the item; **(a) move the file out of the allowlist** and
-**(c) propose/authorize split** compose, and that combination is probably the cheap path to both the fence and
-the operativity the PO wanted. Needs a plan.
-**2. [[BL-134]]** — fenced on 137. Plan `design/bl134-plan.md` passed gate 1; **§11 q1/q3/q5 are still open**
-(q2 was answered: *keep the authorized gate*). **⚠️ D6 is STALE** — it asserts a post-task workable set of
-`{BL-136}`, an item now `done`, and predates BL-137. Recompute it, don't trust it.
-**3. [[BL-028]]** — workable *by predicate* (its only blocker BL-084 is `done`) but **not actually startable**:
-it needs real traffic through the non-reply sink. That gap — a practical precondition the backlog cannot
-express — is exactly what BL-134's D5 intends to fix by fencing it on [[BL-135]]. Not done yet.
-**4. Drive real traffic and read the sink.** Still not done, three sessions running. Precondition for BL-135 and
-BL-028 T3c. Deserves its own session with the PO present; it is an open-ended live run, not a scoped task.
+## Your job: plan [[BL-144]] — Wave 2, and it is the hard one
 
-## Op notes — the ones that cost real time
+Waves 0 and 1 were mechanical and provable. **Wave 2 is neither.** The unit is a *module* owning its
+code, its durable docs and its backlog slice together. Start with **`backlog/`** (imports `fs` and
+`path` and nothing else — proves the pattern at near-zero cost), then **`containment/`** (~11k lines,
+almost pure docs, and the largest mass in the project).
 
-- **`validate-backlog.mjs` checks header↔prose drift.** Flipping `status: done` without changing the `- [todo`
-  lead-in goes red. It caught me at closure; let it.
-- **`node scripts/wt-setup.mjs create|remove <id>`** for a task worktree; **stage files EXPLICITLY, never
-  `git add -A`** (the symlinked `apps/web/node_modules` slips past `.gitignore` — it will show as `??`, leave it).
-- **Refusal-ordering is load-bearing in `hmp-commission.mjs`.** Checks are grouped message↔config binding →
-  config completeness → world state. Inserting in the wrong group silently changes which reason an existing bar
-  reports. Nothing executes until `pass()`, so ordering is purely diagnostic — which is *why* it is free to get
-  right and cheap to get wrong.
-- **The meter is up.** `node scripts/usage.mjs`. Close: claude weekly **27%**, session **49%** (session Δ ~25%
-  for one small merged task plus two backlog items — plans and closing blocks are not cheap).
-- **Docs/governance are directly master-editable; code is not** (worktree MANDATE).
+**Three things I would put in the plan and would want challenged:**
 
-## The through-line — one failure shape, three times, in one task
+1. **The one un-automatable task is PROMOTION.** A load-bearing durable claim buried inside an
+   episodic doc is lost the moment it moves. Telling the two apart is exactly the judgment the whole
+   scheme exists to make explicit — do not let it ride along inside a mechanical commit.
+2. **`AGENT.md` splits LAST**, and it is 999 lines with **24 correction markers**. Those markers exist
+   because it asserts things about files it does not sit beside. ~150 lines of genuinely cross-cutting
+   law stay in `governance/`; the rest goes to the module whose code it constrains.
+3. **NOT new repositories** — deliberately. [[BL-086]] already showed what one cross-repo split costs
+   in duplicated governance. Modules give every seam without eight `AGENT.md` files to keep true.
 
-A refusal attributed to **the wrong check**. The plan picked an insertion point that would have silently flipped
-two existing bars' reasons, while its own contract table said "unchanged" — and it had **named that exact
-hazard two paragraphs earlier**. Then the implementation reused another run's sandbox and refused
-`charter-mismatch` before reaching anything under test. Three encounters; the bars caught all three; reasoning
-caught none.
+**[[BL-141]] is shovel-ready and needs no plan** — the resolver already exists (it is the check that
+verified Wave 0); it needs to become a gate, excluding `__tests__` (their "paths" are fixtures for
+pure matchers) and allowlisting deliberate non-existence (`session-primers/CLAUDE.md`, which LB-12
+says must NEVER exist).
 
-The predecessor primer said: *claims about code I could have RUN.* The sharper version from this session is
-**claims about code I had already warned myself about.** Naming a hazard in a document does not inoculate you
-against it — the document is not a check. **Write the bar, run the mutation, and let the machine tell you which
-check fired.** That is the only step in this session that actually caught anything.
+## Op notes — the ones that cost real time today
 
-And its corollary, which is what BL-136 and BL-137 are both *about*: **a fence described in prose is not a
-fence.** `SKILL.md` claimed an automated scan that did not exist; `AGENT.md` and `hmp-commission.mjs` claim a
-PO-only authorization the allowlist contradicts. When you read a safety sentence in this repo, **go find the
-line of code that makes it true.** Twice this session that line was absent.
+- **Assert a conservation property; do not inspect a diff.** Line conservation (8,955 in / 8,955 out),
+  citation parity against a **master baseline**, field-level parse equality. Each cost one command and
+  each is worth more than reading 90 files.
+- **A count of zero is a claim about your instrument first.** A shell rewrite loop reported 0
+  substitutions; the real answer was **330**. Redone in node. Shell quoting is where this class lives.
+- **Check the exit status, not that a pipeline printed something.** An `&&` chain let a commit through
+  whose message claimed `806/806` while the suite was red. Amended — but I asserted a green I had not read.
+- **`git worktree remove` BEFORE `git branch -D`**, or the delete fails with the branch still checked out.
+- **Stage files EXPLICITLY, never `git add -A`** (`apps/web/node_modules` is a symlink that slips past
+  `.gitignore`; it shows as `??` — leave it).
+- **`validate-backlog.mjs` checks header↔prose drift.** Flipping `status` without matching the `- [status`
+  lead-in goes red. It caught me; let it.
+- **Budget: session hit 100%** at close (weekly 37%, resets Aug 19). That is why Wave 2 was not started
+  rather than started badly. `node scripts/usage.mjs`.
+
+## The through-line
+
+The PO's diagnosis was right, and the measurements sharpened it rather than softening it: the **code**
+was already decomposed (clean DAG, zero boundary escapes) — the collapse was entirely in the artifacts
+*describing* the work, which had no modules, no dependency graph, no dead-code elimination and no CI.
+Waves 0 and 1 gave them the first two. **[[BL-141]] and [[BL-144]] are the other two.**
+
+And the standing risk is unchanged and worth stating plainly, because it is now larger, not smaller:
+**one actor held every seat, and the PO has pre-approved the merges.** Every claim in this primer is
+therefore a claim you should verify rather than inherit.
