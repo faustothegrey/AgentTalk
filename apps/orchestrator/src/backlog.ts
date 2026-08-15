@@ -1,7 +1,9 @@
 /**
  * Structured backlog parser (M13).
  *
- * `design/backlog.md` stays the single source of truth and stays hand-writable prose.
+ * The backlog stays the single source of truth and stays hand-writable prose. It lives as
+ * `design/backlog/` — one file per concern, read in filename order — having outgrown a single
+ * 8,946-line `design/backlog.md`; both layouts are read (see `defaultBacklogPath`).
  * Each item may carry a machine-readable header as an HTML comment:
  *
  *   <!-- @item
@@ -18,7 +20,7 @@
  * `warnings`, never thrown. The header is authoritative for the API; where the header
  * disagrees with the prose `[STATUS]` tag, a drift warning is emitted (LB-47 discipline).
  */
-import { readFileSync, existsSync } from 'fs';
+import { readFileSync, existsSync, statSync, readdirSync } from 'fs';
 import { dirname, join } from 'path';
 
 export type BacklogStatus = 'todo' | 'doing' | 'deferred' | 'done' | 'dropped';
@@ -291,12 +293,24 @@ export function workableBacklogItems(items: BacklogItem[]): BacklogItem[] {
   return items.filter((i) => i.status === 'todo' && i.blockedBy.every((b) => isResolved(b, byId)));
 }
 
-/** Walk up from cwd to locate `design/backlog.md` (CJS/ESM agnostic). */
+/**
+ * Walk up from cwd to locate the backlog (CJS/ESM agnostic).
+ *
+ * Two layouts are supported, and the DIRECTORY wins where both exist:
+ *   - `design/backlog/`   — one file per concern (the layout since the overhaul)
+ *   - `design/backlog.md` — the original single file
+ *
+ * The legacy path is kept deliberately, not as dead code: `parseBacklog` is a pure
+ * function of a string, so a caller holding one file must keep working unchanged —
+ * every existing test constructs a single document and passes it directly.
+ */
 export function defaultBacklogPath(): string {
   let dir = process.cwd();
   for (let hops = 0; hops < 10; hops++) {
-    const candidate = join(dir, 'design', 'backlog.md');
-    if (existsSync(candidate)) return candidate;
+    const asDir = join(dir, 'design', 'backlog');
+    if (existsSync(asDir) && statSync(asDir).isDirectory()) return asDir;
+    const asFile = join(dir, 'design', 'backlog.md');
+    if (existsSync(asFile)) return asFile;
     const parent = dirname(dir);
     if (parent === dir) break;
     dir = parent;
@@ -304,10 +318,29 @@ export function defaultBacklogPath(): string {
   return join(process.cwd(), 'design', 'backlog.md');
 }
 
-/** Read + parse the on-disk backlog. Missing file → empty result + a warning. */
+/**
+ * Read every `*.md` under a backlog directory, in filename order, as one document.
+ *
+ * Concatenation is sound rather than convenient: `parseBacklog` carries NO state across
+ * an item boundary, and its only file-global construct — the ``` fence map — is rebuilt
+ * per call. The `*(add new items above this line)*` sentinel is a *body* boundary
+ * (`isBodyBoundary`), never a parse terminator, so one per file is harmless.
+ *
+ * Filenames therefore carry the ordering, which is why they are numerically prefixed.
+ */
+function readBacklogDir(dir: string): string {
+  return readdirSync(dir)
+    .filter((f) => f.endsWith('.md'))
+    .sort()
+    .map((f) => readFileSync(join(dir, f), 'utf8'))
+    .join('\n');
+}
+
+/** Read + parse the on-disk backlog — a directory or a single file. Missing → empty + warning. */
 export function readBacklog(path: string = defaultBacklogPath()): BacklogParseResult {
   if (!existsSync(path)) {
-    return { items: [], warnings: [`backlog.md not found at ${path}`] };
+    return { items: [], warnings: [`backlog not found at ${path}`] };
   }
-  return parseBacklog(readFileSync(path, 'utf8'));
+  const markdown = statSync(path).isDirectory() ? readBacklogDir(path) : readFileSync(path, 'utf8');
+  return parseBacklog(markdown);
 }

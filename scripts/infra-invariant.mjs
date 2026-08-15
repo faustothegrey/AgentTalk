@@ -80,7 +80,7 @@ export const DEFAULT_EXPECT = {
   allowPorts: [3600],
   allowProcesses: [],
   // BL-097 — repo-relative paths the OPERATOR seat may lawfully write. The charter's list is
-  // `design/backlog.md` + `design/operator/**` + `design/operator-seat/**` (the last added 2026-08-07,
+  // `design/backlog/**` + `design/operator/**` + `design/operator-seat/**` (the last added 2026-08-07,
   // BL-119 option (a) — the seat's own skill). It does NOT include `design/po/**`, which holds the
   // launch authorizations and is written by `relay-approve.mjs approve` alone (BL-137, 2026-08-15):
   // a write there during an operator run is precisely the FOREIGN path `classifyHeadMove` exists to
@@ -258,7 +258,7 @@ export function applyDispositions(findings, dispositions = []) {
  * BL-097 — path matching for the operator WRITE fence. Deliberately NOT `matchesAny`.
  *
  * `matchesAny` also tests the basename and every trailing segment, which is right for naming a
- * worktree or a branch and wrong for a fence: it would accept `apps/vendor/design/backlog.md` on
+ * worktree or a branch and wrong for a fence: it would accept `apps/vendor/design/backlog/x.md` on
  * the strength of its tail. This one is anchored at the repo root, and `**` crosses separators
  * while `*` does not — so `design/operator/**` covers the whole subtree, as the charter says.
  */
@@ -437,12 +437,39 @@ export function classifyHeadMove(before, after, allowWritePaths) {
 }
 
 /**
+ * The whole backlog as one document, whichever layout the repo uses — or `null` if it has none.
+ *
+ * `null` is NOT the same as `''`: the caller turns it into `SKIPPED` so that "this repo has no
+ * backlog" and "this backlog yields no workable items" stay distinguishable. Collapsing them
+ * would make a missing backlog read as a safely-empty one.
+ */
+export function readBacklogText(repoPath) {
+  const dir = path.join(repoPath, 'design', 'backlog');
+  if (fs.existsSync(dir) && fs.statSync(dir).isDirectory()) {
+    return fs
+      .readdirSync(dir)
+      .filter((f) => f.endsWith('.md'))
+      .sort()
+      .map((f) => fs.readFileSync(path.join(dir, f), 'utf-8'))
+      .join('\n');
+  }
+  const file = path.join(repoPath, 'design', 'backlog.md');
+  return fs.existsSync(file) ? fs.readFileSync(file, 'utf-8') : null;
+}
+
+/**
  * BL-097 — the effective agent-workable set, re-implemented dependency-free.
  *
  * This duplicates `parseBacklog`/`workableBacklogItems` (`apps/orchestrator/src/backlog.ts`) on
  * purpose: the harness is infrastructure safety and must run when the build is broken, so it may
  * not import from `dist`. The duplication is fenced by a test that pins this against the real
- * parser on the real `design/backlog.md` — if they ever drift, that test goes red.
+ * parser on the real backlog — if they ever drift, that test goes red.
+ *
+ * WHERE the backlog is must mirror the parser too, not just HOW it is read: since Wave 1 it is a
+ * `design/backlog/` directory (one file per concern, filename order), and a single
+ * `design/backlog.md` before that. `readBacklogText` below keeps the two in step. Reading the
+ * wrong location would not fail loudly — it would report a workable set computed from nothing,
+ * which is the shape this harness exists to catch.
  *
  * Mirrors the parser's semantics exactly, including the ones that look like details:
  *   - `@item` blocks inside ``` fences are examples, not items (the schema block at the top of the
@@ -607,9 +634,10 @@ export function snapshotRepo(repoPath, env) {
 
     // BL-097 — what an agent may be handed unattended. `SKIPPED` (not `[]`) when the repo has no
     // backlog: collected-but-empty and deliberately-not-collected must never look alike.
-    workable: fs.existsSync(path.join(repoPath, 'design', 'backlog.md'))
-      ? parseWorkableIds(fs.readFileSync(path.join(repoPath, 'design', 'backlog.md'), 'utf-8'))
-      : SKIPPED,
+    workable: (() => {
+      const text = readBacklogText(repoPath);
+      return text === null ? SKIPPED : parseWorkableIds(text);
+    })(),
   };
 }
 
@@ -887,7 +915,7 @@ function diffRepo(name, before, after, expect, findings, candidates = emptyCandi
   }
 
   // --- the agent-workable set (BL-097): NEVER allowlistable ---
-  // `allowWritePaths` deliberately has no effect here. `design/backlog.md` is a path the operator
+  // `allowWritePaths` deliberately has no effect here. `design/backlog/**` is a path the operator
   // may write, but WHAT an agent may be handed unattended is not a write — it is authority, and
   // the charter reserves it to the PO. So a lawful write to a lawful path still gates if it moved
   // this set. The set is the *effective* one, because it also moves indirectly: by writing

@@ -204,7 +204,7 @@ one agent holds SM and both quality gates — accepted because merges stay PO-ga
   section immediately below. Hermes's 2026-07-02 retirement **stands unchanged**.
 - 2026-07-28 — **OPERATOR charter amended (PO): the seat gains full backlog/metrics READ and a fenced WRITE
   surface** (file items, append observations; never `autonomy: eligible`, `blocked_by`, `status: done`, or a
-  deferred item). Path allowlist `design/backlog.md` + `design/operator/**`. It still holds **no authority**:
+  deferred item). Path allowlist `design/backlog/**` + `design/operator/**`. It still holds **no authority**:
   no baton, no instruction, no verdict, no push. Charter: 🔧 The OPERATOR seat → **Visibility**.
 
 ### 🔧 The OPERATOR seat — Hermes (charter, PO 2026-07-27)
@@ -248,7 +248,7 @@ where a rigorous check at the wrong path manufactured false confidence and a def
 **The operator is the PO's instrument panel, so it gets the whole dashboard: full READ access to the backlog,
 the ledgers, the metrics, the logs, the harness output — everything.** This is not a concession to be
 minimised. An operator that cannot see the development situation cannot report it, and reporting *is* the
-seat's entire product. Prefer **`GET /api/backlog`** over parsing `design/backlog.md`: it serves the same
+seat's entire product. Prefer **`GET /api/backlog`** over parsing `design/backlog/**`: it serves the same
 parsed items and does not hand the reader a write path it has no need of.
 
 **It also WRITES. The line is between RECORDING and DECIDING — not between reading and writing.**
@@ -312,7 +312,7 @@ alone, because **the harness only runs around operator runs**, which would leave
 unguarded.
 
 **Where it may write — a path allowlist, the write-side analogue of the `att-op-*` sandbox:**
-`design/backlog.md`, `design/operator/**`, and **`design/operator-seat/**`**. Nothing else. No code, no
+`design/backlog/**`, `design/operator/**`, and **`design/operator-seat/**`**. Nothing else. No code, no
 `AGENT.md`, no ledger verdict rows.
 
 **⬛ `design/operator-seat/**` added 2026-08-07 ([[BL-119]], PO option (a)) — and it is worth saying what it

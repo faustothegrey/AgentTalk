@@ -9,6 +9,7 @@ import {
   matchesAny,
   matchesWritePath,
   parseWorkableIds,
+  readBacklogText,
   diffSnapshots,
   exitCodeFor,
   snapshotRepo,
@@ -562,7 +563,9 @@ describe('BL-089 — the first porcelain entry keeps its filename', () => {
 // ---------------------------------------------------------------------------
 // BL-097 — the OPERATOR write fence.
 //
-// The charter amendment (`7948ea4`) lets the operator COMMIT to `design/backlog.md` and
+// The charter amendment (`7948ea4`) lets the operator COMMIT to the backlog (`design/backlog/**`
+// since Wave 1; `design/backlog.md` when this was written — the fixtures below pass literal
+// strings to a pure glob matcher, so they exercise the matching rule, not the real file) and
 // `design/operator/**`. Before this, a HEAD move was critical and "never allowlisted", so the
 // seat's first lawful write fired three criticals and gated the next run. These bars pin the
 // softening as NARROW: declared paths only, never on an unreadable range, and never over the
@@ -800,14 +803,24 @@ describe('BL-097 DoD row 7 — the workable set is NEVER allowlistable', () => {
 });
 
 describe('BL-097 DoD row 8 — the duplicated parser may not drift', () => {
-  it('agrees with parseBacklog/workableBacklogItems on the REAL design/backlog.md', async () => {
-    const { parseBacklog, workableBacklogItems } = await import(
+  it('agrees with parseBacklog/workableBacklogItems on the REAL backlog', async () => {
+    const { readBacklog, workableBacklogItems } = await import(
       '../../apps/orchestrator/src/backlog.ts'
     );
-    const real = fs.readFileSync(path.resolve(__dirname, '../../design/backlog.md'), 'utf-8');
+    const repoRoot = path.resolve(__dirname, '../..');
 
-    const viaParser = workableBacklogItems(parseBacklog(real).items).map((i) => i.id).sort();
-    expect(parseWorkableIds(real)).toEqual(viaParser);
+    // Each side LOCATES the backlog its own way — the mirror via `readBacklogText`, the real
+    // parser via `defaultBacklogPath()` inside `readBacklog()`. That is deliberate, and since
+    // Wave 1 it is part of the bar: the backlog is a `design/backlog/` DIRECTORY now, and a
+    // mirror that agreed on PARSING while reading a different LOCATION would report a workable
+    // set computed from nothing — passing this test while being silently wrong.
+    const viaMirror = parseWorkableIds(readBacklogText(repoRoot));
+    const viaParser = workableBacklogItems(readBacklog().items).map((i) => i.id).sort();
+
+    expect(viaMirror).toEqual(viaParser);
+    // …and neither side is agreeing merely by being empty.
+    expect(readBacklogText(repoRoot)).not.toBeNull();
+    expect(viaParser.length).toBeGreaterThan(0);
   });
 
   it('ignores the @item EXAMPLE inside the schema fence — it declares autonomy: eligible', () => {
