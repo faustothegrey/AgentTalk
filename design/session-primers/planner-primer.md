@@ -31,16 +31,16 @@ does not make you the PO.
 
 ## The state — verified at close, check it anyway
 
-Clean on `master` at **`0bcf358`**, **pushed** (0 ahead / 0 behind), no worktrees but the primary.
-Suite **871 / 98 files**, `tsc -b` 0, backlog **145 items / 0 warnings**, `docs:check` **717 / 0
+Clean on `master` at **`853bbb1`** or later, **pushed** (0 ahead / 0 behind), no worktrees but the primary.
+Suite **871 / 98 files**, `tsc -b` 0, backlog **145 items / 0 warnings**, `docs:check` **710 / 0
 newly broken / 40 carried**, `modules:check` **13 modules, 115/116 owned, 31 docs, 9 slices**.
-**Workable: `["BL-145"]` — its remainder is the operator charter.** Ask the instruments:
+**Workable: `[]` — the queue is EMPTY, and structurally so.** Ask the instruments:
 
 ```
 git log --oneline -1 && git status --short
 npx tsc -b && npx vitest run          # expect 871 / 98
 npm run modules:check                 # NEW — expect 13 modules, 115/116 owned
-npm run docs:check                    # expect 717 / 0 newly broken / 40 carried
+npm run docs:check                    # expect 710 / 0 newly broken / 40 carried
 node scripts/validate-backlog.mjs     # expect 145 items / 0 warnings
 ```
 
@@ -74,13 +74,12 @@ rail exists — it does: `exec-timeout` is fault-class) and the agy op-note (46 
 lesson kept verbatim). **The remedy that fell out of the evidence, and the rule to carry: cite a file
 and a SYMBOL, never a line number** — every stale citation in those sections was a line number.
 
-**⚠️ STILL OPEN — the OPERATOR charter, 226 lines, 5 markers.** Left deliberately at 71% session
-budget, and it is the **lowest-risk** of the three: every claim in it was verified accurate during
-that pass (`classifyHeadMove`, `authorizationPathFor` → `design/po/**`, ports 3100 code default /
-3741 live / 3600 operator sandbox, `cap.meter` mandatory, `cap.wallClockMs` the only terminating
-rail). **It needs compression, not correction** — so treat it as an editing job with a conservation
-property, not a bug hunt. `scripts/archive/bl145-normative-inventory.mjs` is the instrument used for
-the first two.
+**All three sections are now fixed and merged.** `AGENT.md`: **1,033 → 1,001 lines, 10 correction
+markers → 0.** The charter went 226 → 178 by *compression* (its claims were all accurate), held
+against a normative-statement inventory — 72 obligation-bearing lines before, 53 after, each of 21
+distinct obligations checked for a successor by hand. **It caught one real omission.** The instrument
+is `scripts/archive/bl145-normative-inventory.mjs`; use it for any in-place governance rewrite,
+because prose has neither line conservation nor parse equality.
 
 ## Op notes — the ones that cost real time
 
@@ -115,6 +114,17 @@ work, which had no modules, no dependency graph, no dead-code elimination and no
 gave them the first two, [[BL-141]] the fourth, and **[[BL-144]] the third**. The overhaul's four
 mechanical gaps are now closed.
 
-What is left is judgment: [[BL-145]]'s remainder, and whatever the PO wants next. And the standing risk is
-unchanged — **one actor held every seat and the merges were pre-approved** — so every claim here is
-one you should verify rather than inherit.
+**The overhaul is CLOSED, and the board is deliberately clean.** The workable queue is `[]` — not
+because we ran out of ideas, but because all 28 remaining items are **deferred** and one (`BL-028`) is
+blocked by a deferred item. **Un-parking is a PO act**, so nothing is waiting on an agent; 28 things
+are waiting on a decision.
+
+When the PO does pick, the three clusters worth knowing about are: **the product** ([[BL-044]] —
+API-driven multi-agent consensus is non-functional *through the product*, which is the central claim
+this project makes), **containment** ([[BL-107]] unauthenticated HMP from any LAN peer, [[BL-140]]
+signature verification, [[BL-091]] the harness cannot see a portless process), and **the autonomy
+ladder** (at O-1/O-2; O-3 is a real task). Do not start any of them without a PO call — direction is
+PO-reserved.
+
+The standing risk is unchanged — **one actor held every seat and the merges were pre-approved** — so
+every claim here is one you should verify rather than inherit.

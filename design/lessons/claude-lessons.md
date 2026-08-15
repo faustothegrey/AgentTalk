@@ -2282,3 +2282,26 @@ here.**
 - **I stopped before the 226-line section rather than start it badly at 71% budget, and said so
   plainly.** Its claims all verified accurate, so it was the right one to leave. *Choosing where to
   stop is part of the work; an honest partial beats a rushed whole.*
+
+### 2026-08-15 (ninth stretch) — BL-145 finished: compressing prose that is already true
+
+- **Twice in one session a shell chain let a RED gate read as GREEN**, and the second time I printed
+  "POST-MERGE GATES ALL OK" while two tests were failing. Both times the last link was a `grep` or a
+  `;`, so the exit status I cared about was never the one the shell reported. **Capture the exit
+  status of the command you are making a claim about** (`cmd > log 2>&1; echo "EXIT=$?"`), never the
+  pipeline's tail. This is in my own op-notes and I broke it anyway.
+- **A fifth figure went into the record before measurement** ("1,057 → 1,009, markers → 1"; really
+  1,033 → 1,001 and 10 → 0). I caught it this time by measuring *before* commit rather than after.
+  **The habit is the finding, not any one number.**
+- **Compression is a different job from correction, and it fails in the opposite direction.** The
+  charter's claims were all accurate, so nothing needed fixing — the entire risk was silently dropping
+  an obligation. **The normative inventory caught exactly one** (why the BL-093 pin is enforced at
+  commit time rather than by the harness), which I would never have noticed by re-reading. **Build the
+  conservation instrument before touching prose that has no parse equality.**
+- **Two retractions were worth keeping and the other three were not.** Keep a retraction when the
+  *being-wrong* is the lesson — BL-123's two sentences that could not both be true, sitting nine lines
+  apart unnoticed; BL-134's readiness-field-misread-as-authorization. Drop it when it merely records
+  that a line number changed.
+- **An empty result is ambiguous and must be annotated.** The workable queue is now `[]`, and a
+  drained queue looks exactly like a broken assertion. The test carries a comment saying which it is
+  and why — 28 deferred items behind PO decisions, not an absence of work.
