@@ -167,8 +167,19 @@ directly instead — `python3 -c "import json; print([r['run'] for r in json.loa
 **Recursion-fence pre-verification.** Before committing the brief, run the verifier's own scan:
 `node --input-type=module -e "import {findsLaunchInstruction} from './scripts/hmp-commission.mjs'; import fs from 'fs'; console.log(findsLaunchInstruction(fs.readFileSync('design/operator/<run>-brief.md','utf-8')) ?? 'NONE (pass)')"`
 Expected `NONE (pass)`. **Scan the goal string inside the config too** — the launcher delivers `config.goal`
-to the worker, and a launch-phrase in it refuses `recursive-commission` at commission time even if the brief
-is clean (hmp7 pattern: both scans run, both must pass).
+to the worker as its first turn, so a launch-phrase there reaches the worker even when the brief is clean
+(the hmp7 pattern: both scans run, both must pass).
+
+**⬛ CORRECTED 2026-08-15 ([[BL-136]]) — this passage previously claimed the goal scan "refuses
+`recursive-commission` at commission time". THAT WAS FALSE when written, and it is TRUE only as of this
+item.** `findsLaunchInstruction` had exactly one call site, on the **brief** (`hmp-commission.mjs:343`);
+`config.goal` was never scanned by the verifier or by the client. So the sentence told the operator an
+automated fence stood behind the manual command while the only thing standing there was the operator's
+memory — a safety instruction inverted, and the fail-open-in-a-document shape of [[BL-101]].
+**Both scans are now enforced by `verifyCommission`**, which additionally refuses `missing-goal` and
+`missing-cap-wallclock` rather than passing an incomplete config downstream to fail at launch.
+**Run the manual scan anyway.** It is now a pre-flight convenience rather than the fence — it tells you at
+authoring time what the verifier would otherwise tell you after a commit and a round-trip.
 
 **Bar sha256 from the COMMITTED blob, not the working tree.** The verifier hashes
 `git cat-file blob <repo-sha>:design/operator/<run>-bar.md`; your pinned value must match that. A hash taken
