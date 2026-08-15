@@ -1,9 +1,10 @@
 ---
 role: planner
-key: 20260814-2330-4f8ba1
-written: 2026-08-14 by Claude — session close. Backlog reached **zero todo items**; the whole non-reply
-  thread (BL-124 → BL-127/128 → BL-129 → BL-133) is closed and merged. The PO has announced a new phase.
-  Everything below was checked against the repo at close. Check it again yourself — that is the job.
+key: 20260815-0820-9e4c7b
+written: 2026-08-15 by Claude — session close. One plan written and gate-1'd (BL-134), two items filed,
+  the live orchestrator finally redeployed. Everything below was checked against the repo at close.
+  Check it again yourself — three claims in this file's predecessor had already rotted by the time
+  anyone acted on them, and one of them was mine.
 ---
 
 This is your session primer.
@@ -13,90 +14,89 @@ software team: they attach as MCP clients over WebSocket, pull turns via `await_
 planner→implementer→reviewer workflow under a human Product Owner. Current thrust: the **autonomous-development
 ladder** — improving AgentTalk *with* AgentTalk, one graded rung at a time.
 
-**Roles.** Human = PO (Fausto): scope, direction, `autonomy: eligible`, merges, pushes. Bindings live ONLY in
-`AGENT.md → 📌 DEFAULT ROLE ASSIGNMENTS` — read it, don't trust this line. Codex and agy remain PO-declared
-UNAVAILABLE, so you are almost certainly the sole agent under the **resource-scarcity fallback**: wear every
-hat, handshake once per role, declare all of them, and keep each gate's discipline separately. **Standing
-Conditional Reassignment ACTIVE.** Hermes holds the **OPERATOR seat** — launches and monitors, holds no
-authority, and its reports are *observations, unverified until you check the artifact yourself.*
+**Roles.** Human = PO (Fausto): scope, direction, merges, pushes. Bindings live ONLY in `AGENT.md → 📌 DEFAULT
+ROLE ASSIGNMENTS` — read it, don't trust this line. Codex and agy remain PO-declared UNAVAILABLE, so you are
+almost certainly the sole agent under the **resource-scarcity fallback**: wear every hat, handshake once per
+role, declare all of them, keep each gate's discipline separately. **Standing Conditional Reassignment ACTIVE.**
+Hermes holds the **OPERATOR seat** — launches and monitors, holds no authority; its reports are *observations,
+unverified until you check the artifact yourself.*
 
 **Workflow / source of truth.** `design/collaboration-workflow.md` + `design/backlog.md` + `AGENT.md`. Resume
 from the backlog, **NOT from chat**.
 
 ## Where we are — verified at close, and check it anyway
 
-Backlog **133 items, 0 warnings — 103 done · 25 deferred · 4 dropped · ZERO todo.** The agent-selectable set is
-**EMPTY** and refilling it is a PO act. Ask the instruments:
+Clean on `master` at **`086fc0d`**. Backlog **136 items, 0 warnings** — 103 done · 26 deferred · 4 dropped ·
+**3 todo** (BL-028, BL-134, BL-136). The agent-selectable set is **still `{}`**; nothing this session became
+launchable. Ask the instruments:
 
 ```
 node scripts/validate-backlog.mjs
-curl -s "http://127.0.0.1:3741/api/backlog?all=true"     # the LIVE orchestrator; NOT 3100, NOT 3600
-npx vitest run                                            # expect 779 / 94 files
-git log --oneline -12 && git status --porcelain
-ps -o pid,lstart -p 89437                                 # the live instance — read the START TIME
+curl -s "http://127.0.0.1:3741/api/backlog?all=true"    # LIVE orchestrator; NOT 3100, NOT 3600
+npx vitest run                                           # expect 779 / 94 files — NOT re-verified this
+                                                         # session (no code changed); treat as inherited
+git log --oneline -6 && git status --porcelain
+lsof -nP -iTCP:3741 -sTCP:LISTEN -t                      # read the pid, then read its START TIME
 ```
 
-## What the last session did — one thread, closed end to end
+## What this session did
 
-**The non-reply detector went from structurally blind to working, in four merged tasks.**
+**1. The live orchestrator was redeployed — and the warning telling us to do it was already stale.**
+`tsc -b` exit 0 → `launchctl kickstart` → **pid 7121, 15 Aug 07:47:19**. All four fixes of the non-reply thread
+now run for the first time. **The lesson is in the discovery, not the act:** BL-028 and BL-133 both said "pid
+89437, started 13 Aug, a day before the merge." That pid no longer existed — the service had been restarted at
+14 Aug 23:28, *after* every merge. The conclusion survived for a **different, checkable** reason: the restart
+came with no rebuild, so `exec-timeout` (BL-129) and `team_no_progress` (BL-133) were absent from `dist`
+entirely. **A restart is not a redeploy.** Both stale passages are corrected in the backlog.
 
-- **[[BL-127]]/[[BL-128]]** (`29a87c9`) — an `exec_rpc` turn now carries an obligation id and gives it back
-  through a chokepoint in the completer's `cleanup()`; every exec path forwards a deadline that outlives the
-  180 s threshold, checked at construction by `assertExecGuardOutlivesIdleThreshold`.
-- **[[BL-131]]** (`57b2cdc`) — that assertion's comment claimed a system property while checking one path.
-  Comment-only.
-- **[[BL-129]]** (`32570cc`) — **a real behaviour change, PO-decided.** A planner exec timeout now raises
-  fault-class `exec-timeout` and **propagates: `handleAgentFailure` shuts down every other team member.** The
-  healthcheck is explicitly exempt. Relaxation condition: **`logbook.md` LB-96 — read it before touching this.**
-- **[[BL-133]]** (`91fbdcf`) — the team-level progress predicate: an advisory `team_no_progress` notice when a
-  team holds an active task with no transcript activity for 900 s. `team-coordinator.ts` zero diff.
+**2. [[BL-134]] — planned and gate-1'd.** The PO asked that any *workable* item also be launchable by Hermes.
+The finding: **two independent authorization systems for one act, which never reference each other.** Gate A
+(`autonomy: eligible` + todo + blockers, `backlog.ts:274`) and Gate B (`hmp-commission.mjs` — committed brief at
+a sha, `<run>.authorized`, hashed bar, replay guard). **`autonomy` appears nowhere in hmp-commission.mjs's 626
+lines**; Gate A's only consumers are `server.ts:260`, the BL-093 test and `infra-invariant.mjs:439` — none in
+the launch path. Diagnosis: **`autonomy` is a readiness field wearing an authorization field's clothes.** Shape
+adopted: **workable** (`todo` + blockers resolved, mechanical) vs **launchable** (PO-committed per-run
+authorization). Readiness becomes `blocked_by`; recursion moves to the launch gate.
 
-**[[BL-132]] was filed and retracted the same day** — I called a deliberate `wt-setup` symlink an undocumented
-seam without reading the script that creates it. Kept as `dropped`, on purpose, as the record.
+**3. Filed [[BL-135]]** (BL-028's §9 q2 — *should the sweep ever kill?* — `deferred`, so it fences without being
+proposable) and **[[BL-136]]** (the commission scans the brief but never `config.goal`, the string the worker
+actually receives as its first turn — `bite0-launcher.mjs:195`). **BL-134 is `blocked_by: [BL-136]`**, which is
+a dogfood of its own mechanism.
 
-## What is open, in the order I would take it
+## What is open, in the order the backlog now forces
 
-**1. Nothing is running the new code — this is the highest-value next act and it is OPERATIONAL, not coding.**
-The live orchestrator is **pid 89437, port 3741, started 13 Aug 21:07** — *a day before* every fix above. So
-production still runs the pre-BL-127 blind version. **Anyone who checks the live instance for notices will find
-zero and re-derive BL-124 S3's old conclusion for a reason that stopped being true.** Redeploy → drive real
-traffic → *then* look. A restart discards live team state, so it is the PO's call.
-
-**2. [[BL-028]] is the only substantive item left, and its premise is still void.** T3c was "derive a threshold
-from a measured distribution". There is still **no distribution** — but now there is an instrument that can
-produce one. The honest sequence is (1) let it run, (2) then ask what threshold the data supports. **Do not let
-T3c proceed on the old framing.**
-
-**3. LB-96's relaxation condition (1) is SATISFIED but deliberately NOT acted on.** BL-133 makes a wedge
-observable without a kill, so BL-129's team-wide kill can be reconsidered — **on evidence, by the PO.** "Condition
-satisfied" is not "condition acted on", and the entry says so.
-
-**4. The PO has announced a new phase.** Expect direction rather than backlog continuation.
+**1. [[BL-136]] is the ONLY workable item** — small, additive, refuse-only, and it unblocks BL-134. Note it
+touches Gate B, the real fence; a launch-gate change was deliberately kept out of BL-134's scope.
+**2. [[BL-134]]** — the predicate change. Plan `design/bl134-plan.md` passed gate 1 on its second pass; **§11 q5
+(rename `?selectable=true` or not — recommendation: not) is still open for the PO.**
+**3. [[BL-135]] is the PO's alone.** Now answerable-in-principle for the first time: the instrument is deployed
+and the sink `~/.agenttalk/agent-non-reply.jsonl` is a clean zero — **zero traffic, not zero silence**
+(`/api/teams` and `/api/agents` were both `[]` all session).
+**4. Drive real traffic and read the sink.** Still not done. It is the precondition for BL-135 and for BL-028 T3c.
 
 ## Op notes — the ones that cost real time
 
-- **Use `node scripts/wt-setup.mjs create <id>`** for a task worktree. It wires node_modules in seconds. I
-  hand-rolled one, hit a corrupted npm cache, and filed a bogus backlog item as a direct result. Its closing
-  reminder is real: **stage files EXPLICITLY, never `git add -A`** (the symlinked node_modules slips past
-  `.gitignore`, because `node_modules/` with a trailing slash matches directories, not symlinks).
-- **The npm cache was fixed this session** (root-owned files from an old npm bug; the PO ran
-  `sudo chown -R 501:20 ~/.npm`). It also got mostly emptied, so the next full install re-downloads.
+- **The plan reviewer caught two BLOCK-class defects in the planner's work, and both were the same author.**
+  Read `bl134-plan.md` §13 before writing your own plan; the pattern is not exotic.
+- **Run the predicate, don't reason about it.** A DoD row asserting a set was wrong, and one `curl` + six lines
+  of node settled it. That command is in §13 F1.
+- **Use `node scripts/wt-setup.mjs create <id>`** for a task worktree; **stage files EXPLICITLY, never
+  `git add -A`** (the symlinked `node_modules` slips past `.gitignore`).
 - **`/api/agents` does not serialize `transport`.** An endpoint's output is a projection, not the object.
-- **The meter is UP again** (it was down for BL-124's closure). `node scripts/usage.mjs`.
-- **Suite is 779 / 94 files.** A delta of exactly your new tests is the cheapest scope check there is — it
-  proves no existing test was weakened without reading a single diff hunk.
+- **The meter is up.** `node scripts/usage.mjs`. Close of session: claude weekly **25%**, session **24%**.
+- **Docs/governance are directly master-editable; code is not** (worktree MANDATE).
 
-## The through-line — and it is a warning about yourself, not about the code
+## The through-line — a warning about yourself, not the code
 
-Last session: *"zero" is not a measurement until you know why it is zero.* This one: **the most expensive
-mistakes were claims about code I had not read, and I made three of them in one day** — a gate-1 finding that
-had already influenced a PO decision before I retracted it, a `.gitignore` "gap" that was a trailing-slash rule,
-and a whole backlog item retracted four hours after filing. Every one was under a minute of reading away.
+The predecessor primer said: *the most expensive mistakes were claims about code I had not read.* This session
+produced the sharper version — **claims about code I could have RUN.**
 
-The rule this project adopted at [[BL-130]] — *a citation points at the CODE that makes the claim true* — is not
-a documentation convention. **It is the thing that stops you from being confidently wrong in a file other people
-trust.** Apply it when you file an item, not only when you write a doc.
+Three times the fix was one command away. The stale pid: one `ps`. The false DoD bar: one `curl`. The "79 items
+become selectable": one filter. Each was stated confidently in a durable artifact, and two of them had already
+influenced a decision before being caught. **The counterweight held, though, and it is the thing to imitate:**
+every one was caught by *executing the question* — and the one genuine near-miss avoided (the `cap.wallClockMs`
+"containment hole", which is enforced downstream at `bite0-launcher.mjs:36`) was avoided by forty seconds of
+reading *before* filing, not after.
 
-And the counterweight, because the same day produced it: the two best results here came from **running things**,
-not reading them. A mutation turned an absence-asserting bar red and proved it load-bearing. A suite-count delta
-proved a scope claim in one line. **When you can execute the question instead of reasoning about it, execute it.**
+So: **when a claim is checkable, check it before you write it down — not before you're challenged on it.** A
+backlog item and a plan are read later, by someone who will act on them. That is the definition of load-bearing.

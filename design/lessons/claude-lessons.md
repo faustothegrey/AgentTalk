@@ -2010,3 +2010,35 @@ here.**
   trusting a field as a signal** — and prefer the chokepoint, which is the same shape as BL-127's fix.
 - **Three hats, four merges, zero independent review.** I keep declaring this and it keeps being the largest
   unmitigated risk in the work. Declaring it is necessary and is not a mitigation.
+
+### 2026-08-15 — as planner + plan reviewer: I was right about the code and wrong about the requirement, twice
+
+- **The PO overruled me, and the PO was right — but not for the reason either of us gave.** I argued against
+  flipping the `autonomy` default with "79 never-judged items go selectable silently." Both halves were wrong:
+  99 items are unmarked, and **zero of them are `todo`**, so the predicate's first clause already excluded every
+  one. One filter would have told me. **I have now twice built an argument on a predicate I never ran** — and a
+  predicate is the single most runnable thing in a codebase.
+- **Then I built the wrong thing anyway, and the tell was in my own document.** The PO asked that *any workable
+  item* be launchable. Flipping a default yields "any workable item *that nobody marked*" — and the only
+  workable item is marked, so the change delivered **literally zero**. I wrote "this unlocks no work" as a
+  closing footnote in §8 of the plan. **When a plan's closing caveat says the change does nothing, that is not a
+  caveat, it is the finding** — I had written the refutation myself and filed it under "limitations."
+- **Second chances are worth taking seriously rather than defensively.** When the PO said "think this through
+  thoroughly," the instinct was to re-defend. What actually paid was re-deriving from scratch — which produced
+  the real diagnosis (`autonomy` is a *readiness* field wearing an *authorization* field's clothes; there are
+  two authorization systems and the one being debated gates nothing) and a design better than any of the four
+  options I had offered.
+- **Wearing the reviewer hat against my own plan bought something real, for once.** Gate 1 found a DoD row
+  asserting a workable set of `{}` that I had **never run** — it is `{BL-136}` — and that arithmetic error was
+  concealing a genuine hole: the design had no way to say *"this is a question, not a task,"* so an open PO
+  decision would have become proposable to an agent. **The bug and the fix had the same author within one hour.**
+  Independence is still absent and declaring it is still not mitigating it, but the second hat is not theatre if
+  it actually re-runs things.
+- **The near-miss is the one to imitate.** I nearly filed "the commission never checks `cap.wallClockMs`, the
+  only terminating rail" as a containment hole. It's enforced downstream (`bite0-launcher.mjs:36`). Forty
+  seconds of reading *before* filing separated a real finding (BL-136) from a repeat of BL-132. **Last session I
+  learned to read adjacent code after being burned; this session I did it unprompted and it worked.**
+- **"Is the fix deployed?" paid off a second time, and the warning telling me to check was itself stale.**
+  BL-028 said "pid 89437, started a day before the merge." That pid was gone; the service had restarted *after*
+  every merge — and was still blind, because **a restart is not a redeploy.** Right conclusion, dead reasoning,
+  and only checking the artifact separated them.
