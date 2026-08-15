@@ -93,10 +93,15 @@ almost pure docs, and the largest mass in the project).
 3. **NOT new repositories** — deliberately. [[BL-086]] already showed what one cross-repo split costs
    in duplicated governance. Modules give every seam without eight `AGENT.md` files to keep true.
 
-**[[BL-141]] is shovel-ready and needs no plan** — the resolver already exists (it is the check that
-verified Wave 0); it needs to become a gate, excluding `__tests__` (their "paths" are fixtures for
-pure matchers) and allowlisting deliberate non-existence (`session-primers/CLAUDE.md`, which LB-12
-says must NEVER exist).
+**[[BL-143]] is the small one** — give `validate-backlog.mjs` a real `warn` tier. Note its blast
+radius before starting: it changes `exitCodeFor` semantics other callers depend on, which is exactly
+why BL-134 correctly refused to do it inline.
+
+**[[BL-142]] is disposition work, not sweeping** — 69 entries, and they are not one kind of thing. Per
+path: four scripts **never committed** at their cited path (`AGENT.md` cites one as how Milestone 05
+was *"Verified"* — a claim about evidence pointing at a file that never existed, which is the
+interesting one), one deleted, one moved to the client root, seven ambiguous-not-dangling, 42
+legitimate historical mentions Wave 1 itself created. **Only reading tells them apart.**
 
 ## Op notes — the ones that cost real time today
 
