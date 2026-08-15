@@ -8782,14 +8782,15 @@ autonomy: human-only
 
 <!-- @item
 id: BL-138
-status: todo
+status: done
 date: 2026-08-15
 epic: null
 tags: [operator, hermes, containment, invariant-harness, detection, bl-137]
 autonomy: human-only
 -->
-- [todo · **filed 2026-08-15 at BL-137's close · ⛔ FIRST SHAPE RETRACTED WITHIN THE HOUR — see the
-  correction immediately below; the item survives, its premise did not**] —
+- [done · **MERGED 2026-08-15 — see the closing block at the end of this item** · filed 2026-08-15 at
+  BL-137's close · ⛔ **FIRST SHAPE RETRACTED WITHIN THE HOUR** — see the correction below; the item
+  survived, its premise did not · plan + gates: `design/bl138-plan.md`] —
   **A committed, reviewed `--expect` declaration for operator runs, so the write allowlist stops being
   hand-typed fresh each run — and so `design/po/**` is excluded on purpose rather than by accident.**
 
@@ -8840,6 +8841,46 @@ autonomy: human-only
   **Honest scope note:** this is **housekeeping with a small safety edge**, not the second half of BL-137.
   BL-137 is complete as merged. Whether this is worth doing at all is a fair question for the gate — the
   status quo is *stricter*, merely noisier.
+
+  ---
+
+  ### CLOSING BLOCK — merged 2026-08-15
+
+  **Shipped:** `scripts/operator-run.expect.json` (the seat's real allowlist — `design/backlog.md`,
+  `design/operator/**`, `design/operator-seat/**`), `scripts/__tests__/bl138-operator-expect.test.mjs` (7
+  bars), and `--expect` wired into all three bracket sites (runbook `:289`, SKILL `:402`, `:584`).
+  **No production code changed** — `infra-invariant.mjs` is untouched. Suite **805/805 across 95 files**,
+  `tsc -b` 0.
+
+  **⚠️ THE FENCE ON THIS FILE IS THE SUITE, AND NOTHING ELSE.** An over-wide declaration produces at most a
+  `warn`, and `warn` is [[BL-116]]'s deliberate ceiling — so **the harness will never catch a future edit that
+  adds `design/po/**` here.** Bar **B3** is the only guard, and it must not be weakened to accommodate a path
+  someone later wants allowed. Mutation N1 (adding `design/po/**`) kills 3 bars, B3 among them.
+
+  **Gate 1 caught this session's own mistake one level down.** The plan put the declaration at
+  `design/operator/operator-run.expect.json` — **inside the seat's own write allowlist** — defended by *"it
+  only loosens what is reported, and B3 is the guard."* That fails: **B3 is a suite bar, not a run-time one**,
+  so the seat could widen its own declaration, run, and revert with a clean report. Exactly [[BL-137]]'s
+  shape. Moved to `scripts/`, verified outside the allowlist.
+
+  **The defect found in the artifact itself.** The declaration's first version carried a `_comment` key — the
+  natural way to document comment-less JSON. It produces a BL-116 `expect-key-unknown` **warn**, and a warn
+  takes an otherwise clean bracket from **exit 0 to exit 1**. It would have made **every operator run fail**,
+  in an item whose whole purpose is reducing false alarms. Caught by running `unmatchedDeclarations` against
+  the file rather than assuming JSON comments are inert; the rationale moved into the test, where the
+  enforcement lives.
+
+  **Behaviour change, and it IS the deliverable:** lawful operator commits stop firing `critical` in a
+  bracketed run. The benefit is that a reviewer stops learning to ignore a permanently-red signal — which is
+  what any always-on alarm eventually produces.
+
+  **Telemetry (task closure):**
+  - task:        BL-138
+  - wall-clock:  2026-08-15 18:45 → 19:10 (~25m)
+  - budget:      weekly ~31%, session ~45% (Δ ~5%)
+  - gate:        tsc 0, suite 805/805 (95 files), pollution clean, worktree removed
+  - diff:        5 files (2 new), +181/−3, no production code
+  - outcome:     **MERGED ✅**
 
 <!-- @item
 id: BL-139

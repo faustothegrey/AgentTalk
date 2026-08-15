@@ -8,7 +8,8 @@ rescoped before planning — read that correction block first)
 ## 0. In one sentence
 
 Stop hand-typing the operator's write allowlist at every run: commit it once as
-`design/operator/operator-run.expect.json`, and **test that it does not match `design/po/**`.**
+`scripts/operator-run.expect.json` *(path corrected at gate 1 — see G1)*, and **test that it does not match
+`design/po/**`.**
 
 ## 1. What is true today — verified, not assumed
 
