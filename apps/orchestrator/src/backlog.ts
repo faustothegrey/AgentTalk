@@ -259,26 +259,36 @@ function isResolved(blockerId: string, byId: Map<string, BacklogItem>): boolean 
 }
 
 /**
- * The items an autonomous selector may PROPOSE (BL-093): `todo`, marked `eligible`,
- * and with every blocker resolved.
+ * The items that are WORKABLE: `todo`, with every blocker resolved. Nothing else.
  *
- * Deliberately narrower than `activeBacklogItems()` — that one answers "what is live?"
- * for the dashboard, this one answers "what may be handed to an agent without a human
- * in the loop?". Every clause fails closed: `doing` is excluded (someone already has it),
- * a missing `autonomy` is `human-only`, and an unresolvable blocker id keeps the item back.
+ * BL-134 removed the `autonomy === 'eligible'` clause. Read why before adding it back.
  *
- * NOTE the guard this canNOT enforce: an item whose execution IS "launch a session" must
- * be marked `human-only` by whoever files it, or the OPERATOR charter's no-recursion rule
- * is silently breached. No parser can make that judgement — see design/bl093-plan.md §6.
+ * `autonomy` was a READINESS field wearing an AUTHORIZATION field's clothes. All three of its
+ * values describe how ready an item is — `eligible` = specified, `human-only` = under-specified,
+ * `po-decision` = a question rather than a task — and **none describes who may touch it.** Because
+ * it *read* as fail-closed governance, typing `eligible` felt like granting a privilege, so it was
+ * done one item at a time with a pin-test ritual. That was the complexity the PO reported, and it
+ * was buying nothing here: this function populates an API view and two reports. **It launches
+ * nothing.**
+ *
+ * Readiness is now carried by `blocked_by`, which is strictly better at the job: it names its
+ * reason as a filed item, it releases itself when the blocker closes, and a dangling id fails
+ * `backlog:check`. `human-only` named nothing and expired never.
+ *
+ * WHAT ACTUALLY STOPS AN AGENT BEING HANDED WORK is Gate B, not this predicate: a PO-authorized
+ * `design/po/<run>.authorized` at the commissioned sha, single-use via the launch ledger, written
+ * by `relay-approve.mjs approve <token>` alone (BL-137). **Workable is not launchable.**
+ *
+ * The recursion guard this canNOT enforce is Gate B's too: `findsLaunchInstruction` scans the brief
+ * AND the goal the worker actually receives (BL-136). It never belonged here — recursion is a
+ * property of the brief, not of the item.
+ *
+ * Still fails closed where it should: `doing` is excluded (someone already has it), and an
+ * unresolvable or dangling blocker id keeps the item back.
  */
 export function workableBacklogItems(items: BacklogItem[]): BacklogItem[] {
   const byId = new Map(items.map((i) => [i.id, i]));
-  return items.filter(
-    (i) =>
-      i.status === 'todo' &&
-      i.autonomy === 'eligible' &&
-      i.blockedBy.every((b) => isResolved(b, byId)),
-  );
+  return items.filter((i) => i.status === 'todo' && i.blockedBy.every((b) => isResolved(b, byId)));
 }
 
 /** Walk up from cwd to locate `design/backlog.md` (CJS/ESM agnostic). */

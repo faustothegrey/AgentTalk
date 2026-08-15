@@ -447,8 +447,13 @@ export function classifyHeadMove(before, after, allowWritePaths) {
  * Mirrors the parser's semantics exactly, including the ones that look like details:
  *   - `@item` blocks inside ``` fences are examples, not items (the schema block at the top of the
  *     backlog declares `autonomy: eligible` and must not be counted)
- *   - unknown/absent `autonomy` → not eligible (BL-093 fails closed)
  *   - an unknown `blocked_by` id is UNRESOLVED, so a typo hides an item rather than releasing it
+ *
+ * BL-134 — `autonomy` is NO LONGER part of the predicate, here or in the real parser. It was a
+ * readiness field misread as an authorization one; readiness is now `blocked_by`. Keep the header
+ * parsed (it is still advisory metadata and the drift test compares whole shapes), but do not
+ * reintroduce it as a filter clause: what stops an agent being handed work is Gate B's
+ * PO-authorized `design/po/<run>.authorized`, not this list.
  */
 export function parseWorkableIds(markdown) {
   const lines = String(markdown).split('\n');
@@ -493,7 +498,7 @@ export function parseWorkableIds(markdown) {
   };
 
   return items
-    .filter((it) => it.status === 'todo' && it.autonomy === 'eligible' && it.blockedBy.every(resolved))
+    .filter((it) => it.status === 'todo' && it.blockedBy.every(resolved))
     .map((it) => it.id)
     .sort();
 }

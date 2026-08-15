@@ -72,12 +72,32 @@ describe('workableBacklogItems', () => {
     expect(workableBacklogItems(items).map((i) => i.id)).toEqual(['BL-001']);
   });
 
-  it('excludes human-only and po-decision, and anything with no autonomy at all', () => {
+  // ⬛ CONTRACT INVERTED BY BL-134 (plan §9 rows 1-2). This previously asserted that `human-only`,
+  // `po-decision` and a missing header were all EXCLUDED — `autonomy` failing closed. It no longer
+  // participates in the predicate at all: it was a readiness field misread as an authorization one,
+  // and what actually stops an agent being handed work is Gate B's PO-authorized
+  // `design/po/<run>.authorized`, not this list. Do not "restore" this bar; read backlog.ts's
+  // comment first.
+  it('ignores autonomy entirely — every value, and its absence, is workable if unblocked', () => {
     const { items } = parseBacklog(
       md(
         { id: 'BL-001', status: 'todo', extra: ['autonomy: human-only'] },
         { id: 'BL-002', status: 'todo', extra: ['autonomy: po-decision'] },
         { id: 'BL-003', status: 'todo' },
+        { id: 'BL-004', status: 'todo', extra: ['autonomy: nonsense-value'] },
+      ),
+    );
+    expect(workableBacklogItems(items).map((i) => i.id)).toEqual(['BL-001', 'BL-002', 'BL-003', 'BL-004']);
+  });
+
+  it('still fails closed on the things that DO gate — status and blockers', () => {
+    // The two clauses that survive now carry the whole predicate (plan §9 rows 3-5), so they are
+    // asserted together and mutation-tested.
+    const { items } = parseBacklog(
+      md(
+        { id: 'BL-001', status: 'doing' },
+        { id: 'BL-002', status: 'todo', extra: ['blocked_by: [BL-999]'] },
+        { id: 'BL-003', status: 'deferred' },
       ),
     );
     expect(workableBacklogItems(items)).toEqual([]);
@@ -86,25 +106,28 @@ describe('workableBacklogItems', () => {
   it('excludes an eligible item whose blocker is still open, and admits it once done', () => {
     const open = parseBacklog(
       md(
-        { id: 'BL-001', status: 'todo', extra: ['autonomy: eligible', 'blocked_by: [BL-002]'] },
+        { id: 'BL-001', status: 'todo', extra: ['blocked_by: [BL-002]'] },
         { id: 'BL-002', status: 'todo' },
       ),
     );
-    expect(workableBacklogItems(open.items)).toEqual([]);
+    // BL-134 note: the BLOCKER itself (BL-002, todo and unblocked) is now workable in its own
+    // right — `autonomy` no longer hides it. The property under test is that BL-001 is held back.
+    expect(workableBacklogItems(open.items).map((i) => i.id)).toEqual(['BL-002']);
 
     const closed = parseBacklog(
       md(
-        { id: 'BL-001', status: 'todo', extra: ['autonomy: eligible', 'blocked_by: [BL-002]'] },
+        { id: 'BL-001', status: 'todo', extra: ['blocked_by: [BL-002]'] },
         { id: 'BL-002', status: 'done' },
       ),
     );
     expect(workableBacklogItems(closed.items).map((i) => i.id)).toEqual(['BL-001']);
+    // and it was the blocker resolving that released it, not anything about autonomy.
   });
 
   it('treats a dropped blocker as resolved', () => {
     const { items } = parseBacklog(
       md(
-        { id: 'BL-001', status: 'todo', extra: ['autonomy: eligible', 'blocked_by: [BL-002]'] },
+        { id: 'BL-001', status: 'todo', extra: ['blocked_by: [BL-002]'] },
         { id: 'BL-002', status: 'dropped' },
       ),
     );
@@ -113,25 +136,27 @@ describe('workableBacklogItems', () => {
 
   it('keeps an item back when its blocker id does not exist (a typo must not release work)', () => {
     const { items } = parseBacklog(
-      md({ id: 'BL-001', status: 'todo', extra: ['autonomy: eligible', 'blocked_by: [BL-999]'] }),
+      md({ id: 'BL-001', status: 'todo', extra: ['blocked_by: [BL-999]'] }),
     );
     expect(workableBacklogItems(items)).toEqual([]);
   });
 
-  it('excludes a `doing` item even when eligible — someone already has it', () => {
-    const { items } = parseBacklog(md({ id: 'BL-001', status: 'doing', extra: ['autonomy: eligible'] }));
+  it('excludes a `doing` item — someone already has it', () => {
+    const { items } = parseBacklog(md({ id: 'BL-001', status: 'doing' }));
     expect(workableBacklogItems(items)).toEqual([]);
   });
 
   it('requires EVERY blocker to be resolved, not just one', () => {
     const { items } = parseBacklog(
       md(
-        { id: 'BL-001', status: 'todo', extra: ['autonomy: eligible', 'blocked_by: [BL-002, BL-003]'] },
+        { id: 'BL-001', status: 'todo', extra: ['blocked_by: [BL-002, BL-003]'] },
         { id: 'BL-002', status: 'done' },
         { id: 'BL-003', status: 'todo' },
       ),
     );
-    expect(workableBacklogItems(items)).toEqual([]);
+    // BL-001 is held back by the ONE unresolved blocker. BL-003, itself todo and unblocked, is
+    // workable — which is the point: partial resolution releases nothing.
+    expect(workableBacklogItems(items).map((i) => i.id)).toEqual(['BL-003']);
   });
 });
 
@@ -373,7 +398,29 @@ describe('the real backlog (design/backlog.md)', () => {
   it('offers nothing — the queue emptied when BL-125 was delivered and closed', () => {
     const { items, warnings } = readBacklog();
     expect(warnings).toEqual([]);
-    expect(workableBacklogItems(items).map((i) => i.id)).toEqual([]);
+    // ⬛ 2026-08-15 — BL-134 RE-AIMED THIS PIN, and the PO chose to keep it rather than let the
+    // invariant harness be the only tripwire (q1). The reasoning is worth keeping: the harness runs
+    // only AROUND OPERATOR RUNS, so harness-only would have left every ordinary commit unguarded.
+    //
+    // What it pins changed with it. It used to pin the SELECTABLE set — `todo` + `autonomy:
+    // eligible` + blockers resolved — where marking an item eligible was the governance event this
+    // line existed to surface. `autonomy` no longer gates anything, so it now pins the WORKABLE set:
+    // `todo` + every blocker resolved.
+    //
+    // The value below was DERIVED by running the predicate against the real backlog, never typed to
+    // match a red. That distinction is this row's history: it has been wrong twice in the plan that
+    // produced it, both times because someone wrote down a set instead of computing one.
+    //
+    // Everything above still applies, and applies MORE: the set now moves on ordinary backlog
+    // motion, so a red here means "something changed about what an agent could be handed" and
+    // deserves the same look it always did. Do NOT loosen it to a length check or an emptiness
+    // check to stop it moving.
+    expect(workableBacklogItems(items).map((i) => i.id)).toEqual([
+      'BL-028',
+      'BL-134',
+      'BL-139',
+      'BL-140',
+    ]);
   });
 
   // 2026-08-07 — deliberately updated, and the red was shown to the PO first. BL-084 CLOSED (PO
@@ -387,12 +434,16 @@ describe('the real backlog (design/backlog.md)', () => {
   // And the distinction that matters: BL-028 is now UNBLOCKED but still NOT workable — because
   // it is `human-only`, not because anything holds it. Those are different reasons and a future
   // reader must not confuse them.
-  it('releases BL-028 now that BL-084 is closed — unblocked, but still not agent-workable', () => {
+  it('releases BL-028 now that BL-084 is closed — and since BL-134 it is workable, though not launchable', () => {
     const { items } = readBacklog();
     const byId = new Map(items.map((i) => [i.id, i]));
     expect(byId.get('BL-028')!.blockedBy).toEqual(['BL-084']);   // dependency unchanged
     expect(byId.get('BL-084')!.status).toBe('done');              // …and now resolved
-    expect(byId.get('BL-028')!.autonomy).toBe('human-only');      // what still holds it back
+    // ⬛ BL-134: `autonomy` is no longer what holds BL-028 back — nothing in the predicate reads it.
+    // It is WORKABLE now, and what it actually still lacks is a decided spec (its §9 q2), which is
+    // why the plan fences it on [[BL-135]] in the migration commit rather than by a field.
+    expect(byId.get('BL-028')!.autonomy).toBe('human-only');      // advisory metadata, not a gate
+    expect(workableBacklogItems(items).map((i) => i.id)).toContain('BL-028');
     // 2026-08-09 — this comment previously read "No item's arrival or close has ever changed
     // BL-028's standing", and BL-122 going eligible falsified its LETTER: an item's arrival has
     // now changed the set. Corrected rather than merely revalued, because a confidently wrong
@@ -417,7 +468,25 @@ describe('the real backlog (design/backlog.md)', () => {
     // hmp9 delivered it. Two revaluations in one day is not churn to engineer away: it is the
     // full arrival→delivery→close cycle finally running end to end, and this line moved once for
     // each transition, exactly as intended. BL-028's standing is untouched for the fourth time.
-    expect(workableBacklogItems(items).map((i) => i.id)).toEqual([]);
+    //
+    // ⬛ 2026-08-15, BL-134 — and here BL-028's standing MOVES for the first time, which is exactly
+    // what this bar was built to make impossible to miss. `autonomy` no longer gates, so BL-028 is
+    // WORKABLE. The title above ("still not agent-workable") is now false and is corrected below.
+    //
+    // Read what did and did not change: BL-028 is workable, meaning "todo and nothing blocks it".
+    // It is NOT launchable — that needs a PO-authorized `design/po/<run>.authorized` (BL-137). And
+    // it is still not *ready*: its T3c carries an undecided PO question, which the migration commit
+    // fences properly as `blocked_by: [BL-135]` — a stated, self-releasing reason instead of a field
+    // that named nothing and expired never. THAT is the whole argument of BL-134, and this line is
+    // where it becomes visible.
+    //
+    // Still the whole set, still not an absence check, for the same reason as every entry above.
+    expect(workableBacklogItems(items).map((i) => i.id)).toEqual([
+      'BL-028',
+      'BL-134',
+      'BL-139',
+      'BL-140',
+    ]);
   });
 
   it('marks BL-086 as the PO decision it is', () => {
