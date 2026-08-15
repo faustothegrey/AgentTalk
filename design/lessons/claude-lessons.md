@@ -2247,3 +2247,35 @@ here.**
   `design/archive/`, which Wave 0 forbids). I reverted 28 files. **The citation gate could never have
   caught it, because the archive is `CITER_EXEMPT` and is never scanned** — a reminder that a gate's
   exclusions are exactly where it cannot help you, so those are the places to check by hand.
+
+### 2026-08-15 (eighth stretch) — BL-145: fixing AGENT.md in place
+
+- **Verifying the claims before rewriting the prose changed the whole job.** I expected "resolve ten
+  correction markers." What the code actually showed was **three different diseases**: stale
+  citations in one section, a strikethrough stack in another, and — in the biggest — claims that were
+  all **accurate**, merely stratified. One remedy would have been wrong for two of them. *Diagnose
+  per section; do not assume a marker means an error.*
+- **The remedy fell out of the evidence, and it is the durable rule: cite a file and a SYMBOL, never
+  a line number.** Every stale citation these sections had accumulated was a line number, and every
+  one rotted silently while the symbol stayed findable. Four were still wrong when I started.
+- **The worst defect was a self-contradiction, not a stale pointer.** The M03 section's closing
+  sentence said no anti-hang rail existed; the paragraph ten lines above it recorded the change that
+  made one. **A document long enough to contradict itself will**, and the contradiction survives
+  because nobody reads a 47-line correction stack top to bottom. Length is a correctness risk.
+- **I nearly recorded a false "this symbol does not exist"** because `head -8` truncated my grep. The
+  very next command disproved it. **A negative result from a truncated command is not a negative
+  result** — this is the same shape as [[BL-142]]'s substring bug, one layer up, in the tooling I use
+  to check rather than in the tool I ship.
+- **A `cd` in one Bash call persists into the next**, and I spent a real scare thinking my splice had
+  destroyed `AGENT.md` (it was the client repo's 127-line one). **Check `pwd` before believing a
+  shocking file measurement.**
+- **The gate caught me mid-rewrite**, exactly as intended: I cited `design/logbook.md`, which Wave 2
+  had moved hours earlier. Four newly-broken citations, red in the suite. **My own migration
+  invalidated my own memory of where files live — trust the gate over recall.**
+- **What worked: an explicit conservation instrument for prose.** Prose has no line conservation and
+  no parse equality, so I built a normative-statement inventory (294 obligation-bearing lines) and
+  dispositioned every obligation in a rewritten section by hand. Without it "I didn't drop a rule"
+  would have been an assertion, which is exactly what this project doesn't accept.
+- **I stopped before the 226-line section rather than start it badly at 71% budget, and said so
+  plainly.** Its claims all verified accurate, so it was the right one to leave. *Choosing where to
+  stop is part of the work; an honest partial beats a rushed whole.*
