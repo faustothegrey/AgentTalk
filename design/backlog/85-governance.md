@@ -129,12 +129,12 @@ tags: [self-hosting, role-skill, governance]
 
 <!-- @item
 id: BL-141
-status: todo
+status: done
 date: 2026-08-15
 epic: null
 tags: [docs, governance, linter, citations, overhaul, wave2]
 -->
-- [todo · **filed 2026-08-15 during the Wave 0/1 overhaul, by the resolver written to verify those
+- [done 2026-08-15 · `npm run docs:check` · 806 citations gated, 78-entry debt register handed to [[BL-142]] · **filed during the Wave 0/1 overhaul, by the resolver written to verify those
   waves rather than by reading**] —
   **Docs are the primary artifact here and have no build. Give the citation graph a gate.**
 
