@@ -330,9 +330,9 @@ date: 2026-08-15
 epic: null
 tags: [governance, agent-md, overhaul, wave2, po-decision]
 -->
-- [todo · **PO DECISION REQUIRED — not agent work** · filed 2026-08-15 by [[BL-144]] T3 · the
-  proposal is written and measured; what is missing is a decision] —
-  **Does `AGENT.md` split, and if so which three sections leave?**
+- [todo · **DECIDED 2026-08-15 `[PO]`: NO SPLIT — "fix the three sections in place."** · 2 of 3
+  sections fixed and merged; the OPERATOR charter remains · filed by [[BL-144]] T3] —
+  **`AGENT.md` does NOT split. The three corrected sections get fixed where they are.**
 
   `AGENT.md` is what every agent auto-loads at turn 1, through three names on a case-insensitive
   filesystem. Changing it changes what every actor reads before it acts, so it sits outside the
@@ -353,6 +353,51 @@ tags: [governance, agent-md, overhaul, wave2, po-decision]
      agent, the wall clock is the only anti-hang rail) get **promoted first**, with their own
      citations. That promotion is the un-automatable step and must not ride a mechanical commit.
   3. The per-agent **op-notes**: split from the role table, or stay beside it?
+
+  **`[PO]` DECISION, 2026-08-15: option 1 — no split. Fix the three sections in place.** Questions 2
+  and 3 fall away with it: nothing moves, so nothing needs a destination.
+
+  **What the fix turned out to be, and it is not what "fix the corrections" sounds like.** Verifying
+  every factual claim in the three sections against the code first showed they have **three different
+  diseases**, so one remedy would have been wrong for two of them:
+
+  | Section | Markers | Diagnosis |
+  |---|---|---|
+  | Milestone Key Features | 4 | **Stale citations** — four wrong line numbers, and a **self-contradiction** (see below) |
+  | Role assignments (agy op-note) | 1 | A 46-line strikethrough stack burying its own live content |
+  | OPERATOR charter | 5 | **Claims verified ACCURATE** — the disease is stratification, not falsehood |
+
+  **The remedy the evidence pointed to: cite a file and a SYMBOL, never a line number.** Every stale
+  citation these sections accumulated was a line number, and every one rotted silently while the
+  symbol stayed findable — `registry.ts:489`/`:513` (really 580/604), `:890` (981), `:929` (994),
+  `completer.ts:10` (12). Adopted as the sharpened form of the 2026-08-14 citation rule.
+
+  **⚠️ The serious find: the M03 section's closing sentence contradicted its own body, in the
+  dangerous direction.** It read *"nothing detects a hung agent, and an errored in-process agent does
+  not stop its team; the wall-clock cap is the only anti-hang rail"* — while the paragraph ten lines
+  above it already recorded [[BL-129]] making `exec-timeout` fault-class. Checked against
+  `FAULT_CLASS_BY_REASON` (`registry.ts`): `exec-timeout: true`. **Both halves were false.** An exec
+  turn IS torn down at `DEFAULT_EXEC_TIMEOUT_MS` (`completer.ts`, 120s) and DOES propagate. A reader
+  trusting that sentence would believe no rail existed. Rewritten to state the three real mechanisms
+  and their boundaries.
+
+  **DONE (merged):** the milestone sections — now *"What the milestones established — and what is
+  actually true now"*, stating current truth once instead of four stacked corrections — and the agy
+  op-note, compressed 46 → 36 lines with the durable *"never read `completed` as 'the work was done'
+  — check the artifact, at the coordinates where the process actually stood"* lesson preserved
+  verbatim.
+
+  **STILL OPEN: the OPERATOR charter (226 lines, 5 markers).** Deliberately left, not forgotten, and
+  it is the *lowest-risk* of the three: every claim in it was **verified accurate** during this pass —
+  `classifyHeadMove` (`infra-invariant.mjs`), `authorizationPathFor` → `design/po/**`
+  (`hmp-commission.mjs`), the three ports (**3100** code default, **3741** live, **3600** operator
+  sandbox), `cap.meter` mandatory, `cap.wallClockMs` the only terminating rail. It needs *compression*,
+  not *correction*, which is why it was safe to stop before it rather than start it badly.
+
+  **Conservation used, since prose has no line-count or parse-equality property:** a normative-statement
+  inventory (`scripts/archive/bl145-normative-inventory.mjs`) taken before and after — 294 lines
+  carrying an obligation across the file, 123 of them in the three sections — with every obligation in
+  a rewritten section dispositioned by hand.
 
 
 *(add new items above this line)*
