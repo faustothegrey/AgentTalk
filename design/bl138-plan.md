@@ -147,3 +147,58 @@ effect. **The reviewer's note:** the real benefit is that a reviewer stops learn
 is the failure mode a permanently-red signal always produces.
 
 **Cleared for implementation** with G1 and G2 applied above.
+
+---
+
+## 9. Gates 2 + 3 — implementation review and closure sweep, 2026-08-15
+
+**Held together and declared as such.** The task changed **no production code** (D6), so the two seats' work
+collapses to one sweep. **Independence absent at every seat** — same actor throughout, under the
+resource-scarcity fallback. Declared, not mitigated.
+
+| DoD | Verdict | Evidence — re-run at the gate, not read off the implementation |
+|---|---|---|
+| D1 lawful roots covered | **VERIFIED ✅** | B2; `matchesWritePath` true for all three roots + `.hmp-launched.json` |
+| D2 **`design/po/**` not matched** | **VERIFIED ✅** | B3 + mutation **N1** (add `design/po/**` → 3 bars die, B3 among them) |
+| D3 no unknown keys | **VERIFIED ✅** | B1 + mutation **N3** (mistype the key → 6 of 7 bars die) |
+| D4 no dead pattern | **VERIFIED ✅** | B5 + `unmatchedDeclarations` → `[]` + mutation **N2** (hmp2's bare `dir/` → 3 bars die) |
+| D5 both brackets pass `--expect` | **VERIFIED ✅** | grep: 3 `check` sites, all carrying the flag (runbook `:289`, SKILL `:402`, `:584`) |
+| D6 **zero production-code changes** | **VERIFIED ✅** | `git diff --name-only` — one new JSON, one new test, two docs. `infra-invariant.mjs` absent |
+| D7 suite + tsc | **VERIFIED ✅** | **805 passed / 95 files**, `tsc -b` 0 |
+
+### The defect this task caught in its own artifact
+
+**The first version of the declaration carried a `_comment` key** — the natural way to document a JSON file
+with no comment syntax. Running `unmatchedDeclarations` against it produced a **`warn`** (BL-116's
+unknown-key finding), and **a warn takes an otherwise clean bracket from exit 0 to exit 1**. Shipping it would
+have made **every operator run fail**, in an item whose entire purpose is reducing false alarms.
+
+Caught by testing the artifact rather than assuming JSON comments are inert. The rationale moved into the test
+file — which is where the enforcement lives anyway — and the JSON is now four lines of pure data.
+
+### Mutation run
+
+| # | Mutation | Bars killed |
+|---|---|---|
+| N1 | add `design/po/**` to the declaration | **3**, including ⭐B3 |
+| N2 | hmp2's bare `design/operator/` | **3** |
+| N3 | mistype `allowWritePaths` → `allowWritePath` | **6** |
+
+Every mutation kills bars, and **B3 dies only to N1** — the defect it exists for.
+
+### Carried into the merge, unresolved by design
+
+- **The fence on this file is the suite, and nothing else.** An over-wide declaration warns at most, and
+  `warn` is BL-116's deliberate ceiling — so the harness will never catch a future edit adding `design/po/**`.
+  **B3 is the only guard.** Do not weaken it to accommodate a future path.
+- **This makes the harness report less.** Lawful operator commits stop firing `critical`. That is the
+  deliverable, not a side effect (gate 1, G3), and the benefit is that a reviewer stops learning to ignore a
+  permanently-red signal.
+
+**Telemetry (task closure):**
+- task:        BL-138
+- wall-clock:  2026-08-15 18:45 → 19:05 (~20m)
+- budget:      weekly ~31%, session ~45% (Δ ~5% for this item)
+- gate:        tsc 0, suite 805/805 (95 files), pollution clean
+- diff:        4 files (2 new), no production code
+- outcome:     **READY TO MERGE — PO-gated**

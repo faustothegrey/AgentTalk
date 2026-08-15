@@ -286,7 +286,7 @@ already. So bracket every run with a machine check instead of trusting the sweep
 ```bash
 node scripts/infra-invariant.mjs snapshot --out /tmp/att-invariant/before.json   # LAST thing before launching
 # … the run …
-node scripts/infra-invariant.mjs check --before /tmp/att-invariant/before.json   # BEFORE the cleanup above
+node scripts/infra-invariant.mjs check --before /tmp/att-invariant/before.json --expect scripts/operator-run.expect.json   # BEFORE the cleanup above
 # … then the cleanup …
 ```
 

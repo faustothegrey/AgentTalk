@@ -1,0 +1,7 @@
+{
+  "allowWritePaths": [
+    "design/backlog.md",
+    "design/operator/**",
+    "design/operator-seat/**"
+  ]
+}
