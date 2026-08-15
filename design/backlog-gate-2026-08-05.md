@@ -60,7 +60,7 @@ Recommendation column: **KEEP** = stays `todo` as written · **PARK** = recommen
 
 Its own text: *"Status left `todo` rather than `deferred` — a PO call, worth making at the next backlog gate."*
 **Recommendation: keep it `todo`.** It is not parked work waiting on a trigger; it is **phase T3 of an existing
-plan** (`design/bl084-plan.md`), behind a blocker that is itself active. Parking it would misfile scheduled work
+plan** (`design/archive/bl084-plan.md`), behind a blocker that is itself active. Parking it would misfile scheduled work
 as abandoned work. `blocked_by: [BL-084]` already does the sequencing honestly.
 
 ### 2.2 BL-098 is dormant, because the machine moved — and BL-054's *design* moved with it

@@ -1,7 +1,7 @@
 # hmp6 run log — investigation rung, 2026-08-07
 
 Run `hmp6`, backlog item **BL-120** (`setAgentBusyState(agent, true)` is unreachable, so an attached agent's
-status never says `busy`). Investigation rung: deliverable is `design/bl120-attached-busy-investigation.md`,
+status never says `busy`). Investigation rung: deliverable is `design/archive/bl120-attached-busy-investigation.md`,
 committed to the task branch, **no code changed**.
 
 ## Commission (final, accepted)
@@ -50,7 +50,7 @@ Process sweep: clean. Worktree list: primary `master` + `/private/tmp/att-op-hmp
 ## Worker outcome (observations only — no grading)
 
 - Commit `0f7eb6a` on `task-op-hmp6`: ONE file, 280 insertions, at the **parent workdir**
-  (`/tmp/att-op-hmp6/design/bl120-attached-busy-investigation.md`). Nested task worktree released empty.
+  (`/tmp/att-op-hmp6/design/archive/bl120-attached-busy-investigation.md`). Nested task worktree released empty.
 - Worker's report (sidecar `/tmp/att-op-hmp6-recording.json.responses.ndjson`): scope declared (Rule 6),
   retry budget pre-registered; premise **half refuted with a live probe** — `setAgentBusyState`'s `true`
   branch IS unreachable and `sessionStatus` never becomes `busy`, BUT an attached agent's `status` DOES become

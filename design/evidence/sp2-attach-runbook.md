@@ -7,7 +7,7 @@ hand-assembled ritual, not production tooling.
 
 - Do not edit `agentalk-mcp-client`.
 - Do not edit global CLI config.
-- Do not use `scripts/m17-live-gate-proof.mjs` as evidence.
+- Do not use `scripts/archive/m17-live-gate-proof.mjs` as evidence.
 - Pass the server's current v7 contract hash in the bridge URL:
   `ffa94e93e3182d44924ed28381870c7bd814c908279942022d5925a4865a9446`.
 

@@ -3,7 +3,7 @@
 > **Status:** STUB — captured, not specified. **Nothing to implement yet** (PO, 2026-07-11).
 > **Owner:** Architect. **Backlog:** BL-029. **Trigger to revisit:** M19 yields more per-agent data points.
 > **Origin:** the SP2 attach breach + reassignment call, 2026-07-11
-> (`design/spike2-consensus-real-cli-implementation.md` → 2026-07-11 finding).
+> (`design/archive/spike2-consensus-real-cli-implementation.md` → 2026-07-11 finding).
 
 ## Why this exists
 

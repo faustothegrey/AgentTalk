@@ -22,7 +22,7 @@ brief has forged precisely what the check exists to protect, and the check would
 
 ## 1. Goal — the item, and the deliverable
 
-> Implement backlog item BL-125 — correct the false claim in `design/bl124-s2-deploy.md` §5 that the non-reply
+> Implement backlog item BL-125 — correct the false claim in `design/archive/bl124-s2-deploy.md` §5 that the non-reply
 > sink writes a `boot` line at every boot — satisfying the item's own DoD, whose deciding property is that the
 > **correct half of the same paragraph survives the fix**. Commit on your branch; change exactly one file.
 
@@ -36,7 +36,7 @@ by grepping for the identifier** — this project has put a stale line number in
 sessions, and the item you are implementing exists because a *document* asserted something the *code* refutes.
 Do not repeat the shape of the defect while fixing it.
 
-- **The false sentence** lives in `design/bl124-s2-deploy.md` §5 ("Drive traffic"). Grep the file for
+- **The false sentence** lives in `design/archive/bl124-s2-deploy.md` §5 ("Drive traffic"). Grep the file for
   `Each boot writes`. It claims a `{"kind":"boot"}` line is written on every boot.
 - **The code refutes it.** In `packages/observability/src/recordings/non-reply-sink.ts`, grep for `bootPending`.
   The boot marker is emitted **inside the private `write()` method**, behind that flag — and `write()` is
@@ -109,14 +109,14 @@ regardless of merit. Finding a bug is your job; fixing it is not.
 
 ## 6. Scope
 
-**May write:** `design/bl124-s2-deploy.md` — and nothing else. `git diff --stat` against the baseline must show
+**May write:** `design/archive/bl124-s2-deploy.md` — and nothing else. `git diff --stat` against the baseline must show
 **exactly one file**.
 
 **May read:** anything in this repo. The backlog **is** in your workdir (`design/backlog.md`), so no external
 read is needed.
 
 **May NOT write:** `packages/observability/src/recordings/non-reply-sink.ts`,
-`apps/orchestrator/src/server.ts`, `design/bl124-plan.md`, `design/backlog.md` (including BL-125's own entry —
+`apps/orchestrator/src/server.ts`, `design/archive/bl124-plan.md`, `design/backlog.md` (including BL-125's own entry —
 you do not close your own item), any test file, anything under `design/operator/`, `AGENT.md`, or any code
 anywhere. The primary checkout `/Users/fausto/Software/AgentTalk` must remain byte-identical — your shell can
 reach it, which is precisely why this line is explicit.

@@ -1,4 +1,4 @@
-// BL-084 T2 — the bars from `design/bl084-t2-plan.md` §5 that no existing test covered.
+// BL-084 T2 — the bars from `design/archive/bl084-t2-plan.md` §5 that no existing test covered.
 //
 // B1 (a fault-class driver error propagates) and B2 (parity for every non-fault reason) are
 // already carried by the rewritten pinning tests and by bl084-error-reason's table. What was

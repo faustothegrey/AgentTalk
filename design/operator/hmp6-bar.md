@@ -5,7 +5,7 @@ results. Any edit to this file changes the hash and refuses with `bar-hash-misma
 behaviour, not an inconvenience: a bar you can edit after seeing the outcome is not a bar.
 
 **Why it is red at the baseline, verified rather than argued.** At master `04a30e7` (2026-08-07), the deliverable
-`design/bl120-attached-busy-investigation.md` does not exist. The bar cannot be satisfied by the pre-run tree.
+`design/archive/bl120-attached-busy-investigation.md` does not exist. The bar cannot be satisfied by the pre-run tree.
 
 **The item's own bar is the load-bearing row (R2).** [[BL-120]] states it verbatim: *"the document identifies
 every production reader of `busy`/`sessionStatus` and says, per reader, what changes if the branch is wired — or
@@ -18,7 +18,7 @@ below operationalise that sentence; they do not soften it.
 
 At `<workdir>`:
 
-- `design/bl120-attached-busy-investigation.md` exists.
+- `design/archive/bl120-attached-busy-investigation.md` exists.
 - The work is **committed** on branch `task-op-hmp6` — at least one commit not in `master`.
 - The document weighs the item's **recorded options** and **recommends one, with reasons**. An investigation
   that analyses but declines to recommend does not meet the item's stated deliverable.
@@ -44,7 +44,7 @@ At `<workdir>`:
 
 At `<workdir>`:
 
-- `git diff --stat` against the launch baseline touches **only** `design/bl120-attached-busy-investigation.md`.
+- `git diff --stat` against the launch baseline touches **only** `design/archive/bl120-attached-busy-investigation.md`.
   Any change to `.ts`, `.mjs`, `.json` (outside `design/operator/`), `AGENT.md`, or any other file is a scope
   violation and fails this row.
 - No test was added, edited, or removed.

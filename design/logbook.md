@@ -620,7 +620,7 @@ The other three were less "is it safe" and more "is this a small clean change or
   - diff:        2 files, +182/-11; commit `d3db0d0`
   - outcome:     COMMITTED ✅ to master (`d3db0d0`, unpushed); emission OK but replay-capture defective → [[LB-24]]
 - **Source:** Claude, 2026-06-26. Continues [[LB-22]]; pairs with memory `diagramtalk-channel`. T4 plan
-  (`design/milestone10-t4-api-enforcement-plan.md`, commit `bf36d62`) drafted same session, awaiting go.
+  (`design/archive/milestone10-t4-api-enforcement-plan.md`, commit `bf36d62`) drafted same session, awaiting go.
 
 ### LB-24 · 2026-06-26 — [M10/DiagramTalk] Live smoke of bridge-v2 record-for-replay → capture-timing race (real defect)
 
@@ -680,8 +680,8 @@ The other three were less "is it safe" and more "is this a small clean change or
   structural guarantee; `validatePayload` stays the payload net. Avoids `oneOf` provider-compat surface.
 - **Honesty — owed.** No live-provider call; the combo is **assumed** and unit-tested via injected `fetchFn` only.
   The "unfit on 400" path is untested against a real endpoint (parked; gemini API out of budget).
-- **Source:** Claude, 2026-06-26. Implements `design/milestone10-t4-api-enforcement-plan.md`; ledger §T4 in
-  `design/milestone10-implementation.md`. Pairs with [[LB-14]] (human-gated closure).
+- **Source:** Claude, 2026-06-26. Implements `design/archive/milestone10-t4-api-enforcement-plan.md`; ledger §T4 in
+  `design/archive/milestone10-implementation.md`. Pairs with [[LB-14]] (human-gated closure).
 
 ### LB-26 · 2026-06-26 — [M10/DiagramTalk] Bridge v3 — endorse stop + eject/correction overlay (observation-only hook)
 
@@ -720,8 +720,8 @@ The other three were less "is it safe" and more "is this a small clean change or
   - gate:        tsc 0, suite **225/225** (213 baseline +12 new), pollution clean
   - diff:        6 mod + 2 new (plan + `protocol-event-hook.test.ts`); commit `53593a4`
   - outcome:     MERGED ✅ — ff to `master` at `53593a4` + pushed
-- **Source:** Claude, 2026-06-26. Implements `design/milestone10-diagramtalk-overlay-plan.md`; ledger §Bridge-v3
-  in `design/milestone10-implementation.md`. Continues [[LB-22]]/[[LB-23]]/[[LB-24]]; pairs with memory
+- **Source:** Claude, 2026-06-26. Implements `design/archive/milestone10-diagramtalk-overlay-plan.md`; ledger §Bridge-v3
+  in `design/archive/milestone10-implementation.md`. Continues [[LB-22]]/[[LB-23]]/[[LB-24]]; pairs with memory
   `diagramtalk-channel`.
 
 ### LB-27 · 2026-06-26 — [llm-client] Standalone exec-only MCP attach server (`@agenttalk/mcp-exec-server`)
@@ -952,7 +952,7 @@ The other three were less "is it safe" and more "is this a small clean change or
   (see that file's status line). *Lesson:* a status-correction pass should declare its scope and `rg` the whole
   `design/` for the status vocabulary (`uncommitted`, `pending Fausto`, `HUMAN-GATED`, `owed`) — fix all instances
   or explicitly note "scoped to X; siblings unchecked". A half-swept correction is itself new drift.
-- **Gap 2 — T4 probe plan import inaccuracy (assigned back to Codex).** `design/milestone10-t4-live-probe-plan.md`
+- **Gap 2 — T4 probe plan import inaccuracy (assigned back to Codex).** `design/archive/milestone10-t4-live-probe-plan.md`
   §3 tells the implementer to import `buildProtocolToolSchema()` / `parseStructuredResponse()` "from
   `@agenttalk/runtime-core`'s built output", but runtime-core has **no package-root barrel** — its `exports` map
   only exposes subpaths (`./agents/*`, `./registry/*`, …), so the package-root import won't resolve. Correct
@@ -974,7 +974,7 @@ The other three were less "is it safe" and more "is this a small clean change or
 ### Baton — Claude (reviewer) → Codex (author), 2026-06-27
 
 Codex: one actionable from the LB-33 review, scoped to a doc you own. **Fix the import specifier in
-`design/milestone10-t4-live-probe-plan.md` §3 "Implementation approach".** It currently says to import the protocol
+`design/archive/milestone10-t4-live-probe-plan.md` §3 "Implementation approach".** It currently says to import the protocol
 helpers from `@agenttalk/runtime-core`'s built output; that package has **no root barrel** (its `package.json`
 `exports` only exposes subpaths like `./agents/*`), so a package-root import won't resolve. Pin the exact specifier
 the implementer should use: `@agenttalk/runtime-core/agents/response-schema.js` for both `buildProtocolToolSchema()`
@@ -1002,13 +1002,13 @@ no scope change to the probe plan otherwise. The plan stays DRAFT-for-review aft
 ### LB-35 · 2026-06-27 — [process] Corrected over-documentation of a planning pass
 
 - **Request.** Fausto asked the planner-reviewer to plan the M10-T4 live probe task before deciding go/no-go.
-- **What happened.** Codex updated `design/milestone10-t4-live-probe-plan.md` with an implementer task plan, but also
+- **What happened.** Codex updated `design/archive/milestone10-t4-live-probe-plan.md` with an implementer task plan, but also
   added a logbook entry that merely restated the planning update.
 - **Why that was wrong.** The plan file is the source artifact for this task. Recording the planning pass itself in
   `design/logbook.md` was redundant logbook noise; the logbook should capture durable findings, decisions, corrections,
   operational results, or process lessons, not every ordinary plan edit.
 - **Amendment.** Removed the redundant planning-entry content and replaced it with this correction record at Fausto's
-  request. The implementer task plan remains in `design/milestone10-t4-live-probe-plan.md`; no implementation approval,
+  request. The implementer task plan remains in `design/archive/milestone10-t4-live-probe-plan.md`; no implementation approval,
   live provider call, or runtime behavior change has occurred.
 
 ---
@@ -1379,7 +1379,7 @@ no scope change to the probe plan otherwise. The plan stays DRAFT-for-review aft
 - **Finding / call:** `npm run backlog:check` reports **BL-012 M15 — Arbiter Consensus, Direct Path** as the
   single `doing` item; BL-010/BL-005/BL-007 remain `deferred`, and there is no `todo` queue item ahead of M15.
 - **Operational decision (Codex as SM):** proceed inside M15, not to any deferred backlog item. The immediate
-  next action is **Codex planner advisory POV** in `design/milestone15-arbiter-consensus-plan.md`; breakdown and
+  next action is **Codex planner advisory POV** in `design/archive/milestone15-arbiter-consensus-plan.md`; breakdown and
   implementer baton wait until the PO weighs that POV, per the M15 plan status.
 - **Resource read at call:** Codex weekly 71%, 5h 17%; Claude weekly 27%, session 83%; antigravity 39% (best-effort
   `node scripts/usage.mjs`, 2026-07-02 17:03 Europe/Rome).
@@ -1388,7 +1388,7 @@ no scope change to the probe plan otherwise. The plan stays DRAFT-for-review aft
 - **Finding / call:** The M15 planner advisory POV was advisory only; PO accepted proceeding to breakdown in
   session. This satisfies the M15 plan's "PO weighs POV before breakdown" gate.
 - **Operational decision (Codex as SM):** Codex proceeds in the planner seat to create
-  `design/milestone15-arbiter-consensus-implementation.md` and update the M15 plan status. Implementation remains
+  `design/archive/milestone15-arbiter-consensus-implementation.md` and update the M15 plan status. Implementation remains
   blocked until Claude's Reviewer Gate 1 approves the breakdown.
 - **Resource read at call:** Codex weekly 71%, 5h 18%; Claude weekly 27%, session 86%; antigravity 39% (best-effort
   `node scripts/usage.mjs`, 2026-07-02 17:15 Europe/Rome).
@@ -1464,7 +1464,7 @@ no scope change to the probe plan otherwise. The plan stays DRAFT-for-review aft
   temporary implementer + reviewer. The fix removed the invalid private `TeamCoordinator` task-map write and routed
   arbiter worker response/result handling explicitly through `ArbiterCoordinator`.
 - **Verification run:** live proof passed with
-  `AGENTTALK_DIAGRAM_RECORD=1 AGENTTALK_RECORDING_PATH=design/m15-t3-live-arbiter.ndjson node scripts/m15-live-arbiter.mjs`;
+  `AGENTTALK_DIAGRAM_RECORD=1 AGENTTALK_RECORDING_PATH=design/m15-t3-live-arbiter.ndjson node scripts/archive/m15-live-arbiter.mjs`;
   refreshed `design/m15-t3-live-arbiter.log`; wrote 52-line `design/m15-t3-live-arbiter.ndjson`; judge usage
   `{ prompt_tokens: 329, completion_tokens: 41 }`; synthesis usage `{ prompt_tokens: 205, completion_tokens: 10 }`.
   Targeted arbiter vitest 5/5, `npx tsc -b` 0, full `npm test` 274/274, M14 identity `--check` matched,
@@ -1530,7 +1530,7 @@ no scope change to the probe plan otherwise. The plan stays DRAFT-for-review aft
 
 ### LB-63 — Port 9899 is double-booked: usage meter (IPv4) + orchestrator MCP (IPv6) coexist by luck (2026-07-09)
 
-The standing usage meter holds `127.0.0.1:9899` (IPv4). `scripts/m17-live-gate-proof.mjs` hardcodes the
+The standing usage meter holds `127.0.0.1:9899` (IPv4). `scripts/archive/m17-live-gate-proof.mjs` hardcodes the
 orchestrator MCP server to the same port; Node binds IPv6 `*:9899` **alongside** it, and clients using
 `localhost` resolve to `::1` first — so both services answer 9899 simultaneously and the proof works by
 address-family luck (verified live with `lsof`: both LISTEN rows at once). Any IPv4-resolving client (e.g.
@@ -1690,7 +1690,7 @@ orchestrator **survived** the CLI's disconnect (code 1006) — M18-T2's fix, obs
 and was demonstrated today. T3 must be re-scoped to the handshake fix + this demonstration (and the env-var
 mechanism reverted). Also reopens the question of whether `llm-agent.mjs` (shape 3, LB-64) is needed at all —
 but note it *does* set `clientInfo.contractHash` via its SDK client, so it was never blocked. Related: LB-64,
-LB-65, IP-15, `design/milestone18-self-hosting-implementation.md` gate-3 refute.
+LB-65, IP-15, `design/archive/milestone18-self-hosting-implementation.md` gate-3 refute.
 
 ### LB-67 · 2026-07-09 — [protocol] **Prior art: Traycer's agent protocol — convergent design, and three problems it has already solved that we have not**
 
@@ -2028,7 +2028,7 @@ this item's work; workflow:362). BL-022/023/024/025/026/028 → **todo**, three 
   carries (`'mcp'`, or the vendor name?); the union `'api'|'mcp'|'gemini'|'claude'|'codex'` admits both, and that
   ambiguity already caused the M17 G3-2 refute. **SP2 must record each attached agent's `provider` value as a
   first-class observation** — it cannot interpret its own result otherwise. Recording is a spike act; **fixing is not.**
-- **BL-025 carries a live defect that would void our evidence.** `scripts/m17-live-gate-proof.mjs` asserts against a
+- **BL-025 carries a live defect that would void our evidence.** `scripts/archive/m17-live-gate-proof.mjs` asserts against a
   **committed** NDJSON rather than the run's own recorder, so it can print `LIVE SMOKE PASSED` **with no recorder
   attached** (M17 G2-1, still open). Constraint: **SP2 and M19 must not use it as evidence**, and M19's DoD must say
   how a recorded `workflow_gate_event` is distinguished from an **injected** one — the exact ambiguity that refuted
@@ -2137,7 +2137,7 @@ channel — is the true remaining program work**, now unblocked because real-CLI
 work. This is the program's risk #3 held in check at the moment of maximum temptation to overclaim.
 
 Related: LB-73 (M19 inception), LB-66 (SP2/attach wall — now climbed), LB-68 F3 (bootstrap hazard), SP2 ledger,
-`design/milestone19-real-cli-relay-implementation.md` (T3 Gate-2 review), BL-018/026/027 (now `done`), program risk #3.
+`design/archive/milestone19-real-cli-relay-implementation.md` (T3 Gate-2 review), BL-018/026/027 (now `done`), program risk #3.
 Product finding — the code changes are on `master` (merges above); this entry is the durable cross-cutting record.
 
 ### LB-75 · 2026-07-12 — [product] **M20 CLOSED — "the brain routes, you approve": the mechanism to retire PO-as-relay is built and proven, default OFF. The transition can now begin, incrementally.**
@@ -2167,7 +2167,7 @@ hand-off at a time), relax consent along the dimmer (approve-each → by-excepti
 reference-clock invariant (LB-68 F3) is intact throughout: the PO channel is never mediated by AgentTalk.
 
 Related: LB-74 (M19 C3 discharged), LB-73 (M20's parent inception line), LB-68 F3 (reference clock), LB-67 F1 (BL-028),
-`design/milestone20-po-approved-relay-implementation.md`, BL-030 (now `done`), BL-028 (adjacent). Product finding —
+`design/archive/milestone20-po-approved-relay-implementation.md`, BL-030 (now `done`), BL-028 (adjacent). Product finding —
 code on `master` (merges above); durable cross-cutting record.
 
 ### LB-76 · 2026-07-12 — [reference] The two coordination flows, side by side: terminal-baton (today) vs UI-coordination (M20 target)
@@ -2591,7 +2591,7 @@ it is exactly the unearned VERIFIED the reviewer rules forbid.
 and the backend-connection indicator (both live-validated, BL-048, merged `d4ac001`).
 
 **Canonical:** this entry. Related: BL-048 (merged `d4ac001`), BL-049 (the teams reconnect hole — same class,
-still open), `design/spike-ui-external-events.md`.
+still open), `design/archive/spike-ui-external-events.md`.
 
 ### LB-90 · 2026-07-13 — [governance] Serial-actor rule RELAXED: parallel work allowed for everything except code development
 
@@ -2844,7 +2844,7 @@ LB-92, LB-93; logs `/tmp/bl045-run{2,3}.log`, `/tmp/orch.log`, `runs/bl045-agy-l
   leading hypothesis on evidence re-verified independently: the MCP server sets no path filter when given a port
   and rejects only *post*-handshake via close codes, so it cannot emit `403`; and port *recycling* is impossible
   because the server holds its port for the whole test. It then **declined the tempting fix** — 700 bind trials,
-  0 collisions — on the grounds that it would buy "a green of unknown meaning". See `design/bl092-investigation.md`.
+  0 collisions — on the grounds that it would buy "a green of unknown meaning". See `design/archive/bl092-investigation.md`.
 - **What is NOT established:** nothing has tested a **long** run. H-1 was 50s, H-2 ~5min. LB-49's monitoring
   concern is re-qualified for short runs only. And every rung so far was PO-relayed by hand.
 

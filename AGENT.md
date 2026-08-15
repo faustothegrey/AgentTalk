@@ -498,7 +498,7 @@ in every context (docs, messages, primers, lessons). Violations should be correc
   shutdown of every other member). Switching propagation on today would attach a team-wide kill to normal
   control flow. The fix is a **typed non-reply reason** → **[[BL-084]]**, which also unblocks BL-028.
   **So: nothing detects a hung agent, and an errored in-process agent does not stop its team. The wall-clock cap
-  is the only anti-hang rail.** Evidence + measured blast radius: `design/bl078-decision.md`.
+  is the only anti-hang rail.** Evidence + measured blast radius: `design/archive/bl078-decision.md`.
 - **Refined Planning Protocol**: Protocol briefings are more direct and action-oriented, with explicit initiator/peer instructions and a "Proposal Priority" rule.
 - **Improved Observability**: Added regression tests to verify task interruption on agent failure across all phases.
 

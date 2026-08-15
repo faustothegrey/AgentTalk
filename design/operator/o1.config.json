@@ -1,5 +1,5 @@
 {
-  "_comment": "O-1 launch config — produced by O-0 (design/o0-operator-launch-plan.md) and NOT YET LAUNCHED. Validated against validateConfig() in agentalk-mcp-client/lib/bite0-launcher.mjs. Absolute paths are machine-specific by necessity: startCommand.cwd resolves against the CLIENT root when relative, so a relative path here would silently point somewhere else.",
+  "_comment": "O-1 launch config — produced by O-0 (design/archive/o0-operator-launch-plan.md) and NOT YET LAUNCHED. Validated against validateConfig() in agentalk-mcp-client/lib/bite0-launcher.mjs. Absolute paths are machine-specific by necessity: startCommand.cwd resolves against the CLIENT root when relative, so a relative path here would silently point somewhere else.",
 
   "instance": {
     "orchestratorUrl": "http://127.0.0.1:3600",

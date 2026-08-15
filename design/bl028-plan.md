@@ -4,14 +4,14 @@
 **Status (corrected 2026-08-11 — this line read "awaiting Gate 1" for three days after the work shipped):**
 **T3a MERGED** (`f6c7655`) · **T3b MERGED** (`9ba8197`, plan: `design/bl028-t3b-plan.md`) · **T3c
 OUTSTANDING** — the only unit that can kill, gated separately, and now **preceded by [[BL-124]]**
-(`design/bl124-plan.md`): T3a's promised silence distribution was never durably recorded on the live
+(`design/archive/bl124-plan.md`): T3a's promised silence distribution was never durably recorded on the live
 orchestrator, so T3c's stated precondition is unmet. Of §9's questions, **q1 and q3 were ratified and
 shipped**, **q4 is closed** (the dead `setAgentBusyState` branch was filed and removed by [[BL-121]]), **q5**
 was settled by T3b's naming. **q2 — does the sweep ever kill at all? — remains open and is still the live PO
 call**, deliberately deferred until BL-124 produces numbers.
 **Item:** [[BL-028]] (filed 2026-07-10, unblocked 2026-08-07 when [[BL-084]] closed).
-**Parents:** `design/bl084-plan.md` (the taxonomy, §0 for the two-axis distinction) · `design/bl084-t2-plan.md`
-(the shape this copies) · **evidence:** LB-70, LB-67 Finding 1, `design/bl078-decision.md`.
+**Parents:** `design/archive/bl084-plan.md` (the taxonomy, §0 for the two-axis distinction) · `design/archive/bl084-t2-plan.md`
+(the shape this copies) · **evidence:** LB-70, LB-67 Finding 1, `design/archive/bl078-decision.md`.
 **Scope class:** engine, shared paths, a live behaviour change on a currently-dead mechanism. `human-only`.
 
 > **Read §2 before anything else.** The item's fix sketch is a hypothesis about the code, and on this one the
@@ -62,7 +62,7 @@ Verified with `node` line-scans, not `grep` — `grep` under-reported on `regist
 > diagnosis was correct and my correction to it was the error.**
 >
 > Refuted by the worker on run **hmp6**, commissioned to investigate [[BL-120]] — an item this very section
-> produced. Full evidence: `design/bl120-attached-busy-investigation.md` §2.2.
+> produced. Full evidence: `design/archive/bl120-attached-busy-investigation.md` §2.2.
 
 ## 2. ~~The finding that changes the fix — the sweep is **triply** dead, and the third deadness inverts the item~~ *(RETRACTED — see above; kept as the record of the mistake)*
 
@@ -134,7 +134,7 @@ before parking the message (`:571`), so a human-gated relay leaves nobody swept.
 
 **Why the vocabulary stays separate from the fault taxonomy.** `AgentErrorReason` answers *"is this the agent's
 fault?"*; the sweep answers *"why did a peer not reply?"* — different question, different consumer.
-`design/bl084-plan.md` §0 rejected conflating them once already; this plan does not reopen that. The non-reply
+`design/archive/bl084-plan.md` §0 rejected conflating them once already; this plan does not reopen that. The non-reply
 reason is a **new, sibling** union, and only its escalation path (T3c) ever produces an `AgentErrorReason`.
 
 ## 5. Phasing — three units, and only the last one can kill anything

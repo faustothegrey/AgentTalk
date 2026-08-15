@@ -4,7 +4,7 @@
 **Author:** Codex (planner-reviewer), 2026-06-29.
 **Type:** exploratory spike, no production-code implementation in this plan.
 **Related:** `design/backlog.md` item "Unify protocol state-change event emission";
-`design/milestone10-diagramtalk-overlay-plan.md`; `design/milestone10-implementation.md` Bridge v3;
+`design/archive/milestone10-diagramtalk-overlay-plan.md`; `design/archive/milestone10-implementation.md` Bridge v3;
 `design/logbook.md` LB-22/LB-26.
 
 ---
@@ -48,8 +48,8 @@ The implementer may inspect:
 - `packages/runtime-core/src/registry/__tests__/protocol-event-hook.test.ts`
 - `apps/orchestrator/src/diagramtalk-bridge.ts`
 - `apps/orchestrator/src/__tests__/diagramtalk-bridge.test.ts`
-- Related design records: `design/milestone10-diagramtalk-overlay-plan.md`,
-  `design/milestone10-implementation.md`, `design/logbook.md`, and the backlog item.
+- Related design records: `design/archive/milestone10-diagramtalk-overlay-plan.md`,
+  `design/archive/milestone10-implementation.md`, `design/logbook.md`, and the backlog item.
 
 The implementer may edit only this spike document to record findings, options, and a recommendation.
 

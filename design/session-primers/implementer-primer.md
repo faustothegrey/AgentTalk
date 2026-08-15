@@ -69,7 +69,7 @@ at the seam before you design against it.** Both times the reproduction changed 
    run emits a wall of ENOENT noise), **BL-050** (Team view doesn't show which team you're in), **BL-047** (API
    agents not reusable across conversations — I reproduced it live this session, incidentally).
 4. **The deferred BL-024 T3b-2 remainder** — drop the legacy `provider` *input*, migrate ~12 scripts + a
-   recordings shim. **⚠️ Its plan doc `design/bl024-t3b-plan.md` is UNTRACKED and has never been committed** — it
+   recordings shim. **⚠️ Its plan doc `design/archive/bl024-t3b-plan.md` is UNTRACKED and has never been committed** — it
    exists on the PO's machine only. If you take this, commit it first or you are working from an artifact that
    does not exist for anyone else.
 

@@ -477,7 +477,7 @@ When the subject is a backlog investigation (H-2/O-2 shape), the goal must NOT r
 > *"Investigate backlog item BL-092 — the BL-048 broadcast test's WebSocket handshake intermittently gets 403, and the load-bearing clue is that nothing in the repo emits 403, which reframes the bug as the client connecting to the wrong listener under ephemeral-port recycling — and write a design document weighing the suggested options (expose the MCP port as a resolved promise, dial from live server.address() at connect time, or others) and recommending one, with reasons. Commit that document to your branch; change no code."*
 
 **Just the problem statement (correct — H-0d pattern, matching O-2's shape):**
-> *"Investigate backlog item BL-092 — a latent flake in the BL-048 broadcast test where the WebSocket handshake intermittently gets a 403 from a server that is not ours — and write a design document at design/bl092-investigation.md weighing its recorded options and recommending one, with reasons. Commit that document to your branch; change no code."*
+> *"Investigate backlog item BL-092 — a latent flake in the BL-048 broadcast test where the WebSocket handshake intermittently gets a 403 from a server that is not ours — and write a design document at design/archive/bl092-investigation.md weighing its recorded options and recommending one, with reasons. Commit that document to your branch; change no code."*
 
 The second version:
 - Names the item (BL-092)

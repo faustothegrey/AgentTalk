@@ -431,7 +431,7 @@ export function verifyCommission({ text, repoRoot = REPO_ROOT, io, preflight, la
   // completeness checks, so they sit after the checks that bind the message to the config
   // (sandbox, workdir, governance) and before the world-state checks below. Ordering here is
   // purely diagnostic — nothing executes until `pass()` — but moving them above the meter check
-  // silently changes which reason two existing bars report. See `design/bl136-plan.md` §9 F1.
+  // silently changes which reason two existing bars report. See `design/archive/bl136-plan.md` §9 F1.
   //
   // A missing goal REFUSES rather than scanning `?? ''` and passing: a silent no-op on exactly
   // the input that most deserves the check is this project's most-caught defect shape (BL-111,

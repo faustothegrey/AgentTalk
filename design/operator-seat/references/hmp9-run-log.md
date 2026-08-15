@@ -1,6 +1,6 @@
 # hmp9 run log — first DOCS-ONLY rung, 2026-08-13
 
-Run `hmp9`, backlog item **BL-125** — `design/bl124-s2-deploy.md` §5 claims the non-reply sink writes a
+Run `hmp9`, backlog item **BL-125** — `design/archive/bl124-s2-deploy.md` §5 claims the non-reply sink writes a
 `{"kind":"boot"}` line at every boot; it does not (the marker is emitted inside `NonReplySink`'s private
 `write()` behind `bootPending`, and `write()` is reached only by a notice). **First docs-only rung** — one
 file, one paragraph, and the paragraph is **half true**. The item was filed while executing the very document
@@ -40,7 +40,7 @@ it corrects (S2 deploy verification, 2026-08-13).
 
 ## Worker outcome (observations only — no grading)
 
-- Commit `4bdeae7` on `task-op-hmp9` at the **parent workdir**: `design/bl124-s2-deploy.md` (+15/−3).
+- Commit `4bdeae7` on `task-op-hmp9` at the **parent workdir**: `design/archive/bl124-s2-deploy.md` (+15/−3).
   `git diff --stat 2c1c1b8..4bdeae7` = **exactly one file**.
 - Verified by SYMBOL (item + brief both insisted): `bootPending` consumed inside `write()`; `write()`'s only
   caller is `record()`; constructor opens nothing; the wiring comment above `new NonReplySink` in `server.ts`

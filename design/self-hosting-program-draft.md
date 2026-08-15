@@ -112,7 +112,7 @@ such, honestly.)* **M17 OPENED at the 2026-07-09 backlog gate — BL-019 `doing`
 authors the plan, then Gate 1.**
 
 **M17 DELIVERED AND CLOSED same day (2026-07-09).** C1–C3 (plan C1–C7) all VERIFIED; merges `5e4ca27` /
-`59856f9` / `467bd4a`; ledger `design/milestone17-gate-over-channel-implementation.md` frozen. The negative
+`59856f9` / `467bd4a`; ledger `design/archive/milestone17-gate-over-channel-implementation.md` frozen. The negative
 test is live-proven: an attached session claiming `[PO]`/po-act is refused pre-delivery by the brain.
 **Relay count ≈15 — flat vs M16, honestly stated:** M17 built the gate over the channel but the *humans'*
 gates still relay via terminal until real CLI sessions can emit envelopes — the relay-count fall is
@@ -160,7 +160,7 @@ measurably after T3, every relay logged as a declared fallback moment.
    disposition 3.
 6. **Next act:** planner advisory POV (feasibility/risk/effort on the T1→T3 sequence; a fresh planner
    primer is already keyed), then the backlog gate opens M18. **Done same day:** POV recorded below; backlog
-   gate opened BL-021; plan authored in `design/milestone18-self-hosting-plan.md`; next Gate 1 review.
+   gate opened BL-021; plan authored in `design/archive/milestone18-self-hosting-plan.md`; next Gate 1 review.
 
 **Planner advisory POV (Codex, PO-relayed, 2026-07-09) — RECORDED; endorses the sequence.** Feasibility:
 T1 right shakedown (additive, no runtime-core; hard boundary L1/L2 out — Gate-1 hand-back if they appear);
@@ -373,7 +373,7 @@ coordination from a real dev epic — M19's own development was ~entirely termin
 plan's sense ("record ≥1 real attached-CLI workflow event + report the ratio", ratio T3 2/4 · milestone 2/~9), **not**
 in the program's ultimate sense (a measured fall in the PO's real relay burden). **That measurement — a real dev epic
 run end-to-end over the channel — is the remaining program work** (the true next milestone; SP2's plain-baton path is
-now proven available for it). Ledger: `design/milestone19-real-cli-relay-implementation.md`.
+now proven available for it). Ledger: `design/archive/milestone19-real-cli-relay-implementation.md`.
 
 ---
 
@@ -452,7 +452,7 @@ demonstration ratio (T3 1/3) is capability, not productivity. **The remaining pr
 operational + incremental:** the PO flips the mode on and starts approving real agent→agent batons during actual
 dev work (retiring the cut-and-paste one hand-off at a time), then relaxes consent along the dimmer
 (approve-each → by-exception → autonomous), checking at each notch — with **BL-028** (typed non-reply / wake) as the
-dependency when autonomous delivery is approached. Ledger: `design/milestone20-po-approved-relay-implementation.md`.
+dependency when autonomous delivery is approached. Ledger: `design/archive/milestone20-po-approved-relay-implementation.md`.
 
 ---
 
@@ -465,7 +465,7 @@ code** (BL-046: `POST /api/agents` forwards `providerName`). It ran `tsc` and **
 made on its first attempt. Independently graded by running it (tsc 0, suite 208/208, an independent mutation-checked
 bar red→green), **PO-gated merged + pushed** (`216c664`), crediting goose. This is the "rung" ladder (rung 1 → 1.5 →
 2 → 3 → **4**) reaching its graduation — the concrete complement to the M16→M20 milestone ladder above. Plan +
-telemetry: `design/rung4-plan.md`; closure in backlog **BL-046**.
+telemetry: `design/archive/rung4-plan.md`; closure in backlog **BL-046**.
 
 **What it proved, and what it did NOT.** Proved: a real, heterogeneous, non-Claude/non-agy agent (goose, over
 OpenRouter) can be launched by the substrate to do a genuine engineering task on AgentTalk and land it — the
