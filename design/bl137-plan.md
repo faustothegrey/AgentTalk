@@ -138,9 +138,17 @@ having happened.
 | C7 | `SKILL.md` (`:140-142`, `:149`, `:275-282`, `:422-428`) | new path; token instead of "what to commit" |
 | C8 | `infra-invariant.mjs:83` comment | restate the charter list with the `design/po/**` exclusion. **Comment only — `allowWritePaths` stays `[]`** (populating it is §11.1) |
 
-**Refusal ordering is load-bearing** (primer op-note; BL-136's own near-miss). C1 changes *which path*
-`NO_PO_AUTHORIZATION` names and must **not** move the check's position: `:330` `BRIEF_NOT_COMMITTED` → `:339`/`:342`
-`NO_PO_AUTHORIZATION` → `:346` `RECURSIVE_COMMISSION`, verified at gate 1.
+**Refusal ordering is load-bearing — in BOTH files** (primer op-note; BL-136's own near-miss; re-gate G2).
+
+- `hmp-commission.mjs`: C1 changes *which path* `NO_PO_AUTHORIZATION` names and must **not** move the check's
+  position — `:330` `BRIEF_NOT_COMMITTED` → `:339`/`:342` `NO_PO_AUTHORIZATION` → `:346`
+  `RECURSIVE_COMMISSION`, verified at gate 1.
+- `relay-approve.mjs` `propose` is **equally order-sensitive and C3 edits it**: `:147` `!action` → `:148`
+  `!branch` → `:149` `ACTIONS.includes` → `:151` `!sha`. **The `branch` default for `launch` MUST be applied
+  after the `ACTIONS.includes` check**, not before. Applied earlier it changes which refusal an invalid action
+  with no branch reports (`bad-action` instead of `missing-field`). No existing bar breaks either way —
+  `:82` supplies a branch — which is exactly why an implementer could move it without noticing, and why the
+  constraint is written here rather than discovered later.
 
 ## 6. Scope
 
@@ -162,7 +170,8 @@ nine historical `design/operator/hmp[1-9].authorized` files (spent records; rewr
 | `hmp-commission.test.mjs:208` | `toBe('design/operator/hmp1.authorized')` | `'design/po/hmp1.authorized'` — **the contract row**; it moves deliberately |
 | `:83`, `:475`, `:494`, `:535`, `:593` | fixtures at the old path | new path (fixtures, not contracts) |
 | `:173-204` `isAuthorizationFile` | content semantics | **unchanged** — content is not what this item touches |
-| `relay-approve.test.mjs` (29 tests) | `merge`/`push` | add `launch`; **every existing bar stays green unchanged** |
+| **`relay-approve.test.mjs:84`** | `expect(ACTIONS).toEqual(['merge','push'])` | **`['merge','push','launch']` — THE SECOND CONTRACT ROW.** It pins the action allowlist exactly, so C2 turns it red *by design*. It is the twin of `:208` and draft 2 missed it (re-gate G1) |
+| `relay-approve.test.mjs` (rest of 29) | `merge`/`push` | add `launch` cases; every **other** existing bar stays green unchanged |
 
 **Baseline, run at gate 1: `npx vitest run` both files → 83 passed (83), 5.02s.**
 
@@ -266,3 +275,36 @@ fallback) — declared, not mitigated. All four findings are disposed of below; 
 defects — the reviewer checked whether the plan agreed with itself and with the code, and never asked whether
 moving a file fences anything. **A plan can be perfectly consistent and still be solving the wrong problem**,
 and no amount of the same actor re-reading it was going to surface that. The PO's "rethink" did.
+
+## 14. Re-gate (plan reviewer, 2026-08-15) — **APPROVED ✅, corrections applied**
+
+PO settled q1 (`design/po/`) and q2 (`approve` commits). Draft 2's design is sound and its honesty sections are
+load-bearing and correct. Two defects found and **fixed in this commit** before implementation starts; both
+were plan text, not design.
+
+| # | Finding | Severity | Disposition |
+|---|---|---|---|
+| **G1** | §7 claimed *"every existing bar stays green unchanged"* for `relay-approve.test.mjs`. **False.** `:84` asserts `expect(ACTIONS).toEqual(['merge','push'])` — C2 turns it red by design. It is a **contract** row, the exact twin of `:208`, which the plan *did* flag | **BLOCK-class** — an undeclared contract change is how a red test gets "fixed" by weakening instead of recognised as a declared move | **FIXED** — §7 now names `:84` as the second contract row |
+| **G2** | *"Refusal ordering is load-bearing"* was scoped to `hmp-commission.mjs` only, while C3 edits `propose`'s equally order-sensitive guard sequence. The `branch` default's insertion point silently decides whether an invalid action reports `bad-action` or `missing-field` | substantive | **FIXED** — §5 now constrains both files and names the insertion point |
+
+**Checked and cleared (not findings):**
+
+- **The crash window in commit-before-burn is safe, and fails closed.** If the process dies after the commit
+  but before the token is marked used, a retry re-resolves `master` — now at `Y` — and refuses `sha-moved`.
+  The authorization exists but is unusable without a fresh proposal. Correct behaviour; worth knowing before
+  someone "fixes" it.
+- **`relay-approve.test.mjs:78`** already asserts the store is *not* under `design/operator` — the codebase
+  independently reached the same directory-separation reasoning as §3, which is corroboration rather than a
+  finding.
+- **No test pins `AGENT.md`'s charter prose**, so C6 breaks nothing. (`hmp-commission.test.mjs:341` only
+  asserts the file *exists*, as a primary-checkout probe; `:68`/`:531` write a fixture `CLAUDE.md` for the
+  governance bar. Neither reads the charter.)
+- **Baseline still 83/83** — `git diff --stat 6f1c3e8..HEAD -- scripts/ src/` is empty, so no code has moved
+  since the gate-1 run.
+
+**Independence: still absent.** Same actor as the planner. Both re-gate findings came from *running greps
+against the test files* rather than re-reading the plan — which is the only part of this review that does not
+depend on who wrote it.
+
+**Cleared for implementation.** Worktree `bl137`; C1–C8; bars B1–B10 with the mutation run; §10 must survive
+the implementation unsoftened.
