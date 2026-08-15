@@ -162,3 +162,66 @@ the item would have invalidated the backlog on its own delivery. Adding a real w
 
 **Reported as PARTIAL with the reason recorded in the code**, rather than shipped as a check that contradicts
 another DoD row or quietly dropped. **A reviewer may disagree and require the warning tier as its own item.**
+
+---
+
+## Gate 2 — implementation review (Claude, 2026-08-15)
+
+**Independence note, declared loudly:** under the resource-scarcity fallback I hold the reviewer seats *and*
+authored the implementation. This is the standing unmitigated risk, not a formality. Every row below was earned
+by **running a command in a fresh worktree** (`att-bl134r`, branch checked out clean), never by re-reading the
+diff — because re-reading is exactly what has never caught anything in this project.
+
+| # | Claim | Verdict | Evidence |
+|---|---|---|---|
+| B1 | `tsc -b` clean | **VERIFIED ✅** | `npx tsc -b` → exit 0, fresh worktree |
+| B2 | Suite 806/806 across 95 files | **VERIFIED ✅** | `npx vitest run` → `Test Files 95 passed (95) / Tests 806 passed (806)`, 44.15s |
+| B3 | Backlog valid, 140 items | **VERIFIED ✅** | `validate-backlog.mjs` → `140 item(s), 0 warnings` |
+| D7 | Workable-set pin is DERIVED and correct | **VERIFIED ✅** | rebuilt (`tsc -b` exit 0, *not* behind a `\|\|`), then ran the real parser: `["BL-134"]` — matches the pin exactly |
+| D5 | BL-028 held by `blocked_by: [BL-084, BL-135]`, not by a field | **VERIFIED ✅** | diff hunk `@@ -3032` is the `blocked_by` change; BL-028 absent from the derived set above |
+| — | "`design/backlog.md` renamed at line 46 ONLY" | **VERIFIED ✅** | 5 hunks total; `@@ -3032` and `@@ -8453` are *migration* (`blocked_by`, `autonomy`), not rename. Records at `:1556/:4682/:5780-5803` untouched — **no record falsified** |
+| — | `test-mcp-gate.mjs` correctly excluded | **VERIFIED ✅** | `:12` is the ordinary English word, about provider choice. The implementer's own retraction of H1 was right |
+| D9 | No `selectable` remains in production or live docs | **REFUTED ❌ → fixed** | **See finding F1.** Reviewer fixed per Rule 6; row now VERIFIED *(reviewer fixed `backlog-semantics.md:9`)* |
+| D4 | `human-only` migration warning | **PARTIAL ⚠️ — ACCEPTED** | See disposition below |
+
+### F1 — a live doc named a dead wire param *(the one real defect; caught by grep, not by reading)*
+
+`design/operator-seat/references/backlog-semantics.md:9` still listed **`?selectable=true`** as a live API
+view after the rename. **`server.ts:258` reads only `req.query.workable`.** The old spelling is therefore
+**not an alias**: `workable` is false, `all` is false, so it falls through to `activeBacklogItems()` and
+returns **HTTP 200 carrying the open queue** — a *wider* set than the caller asked for, with no error.
+
+**Why this one mattered more than its size.** It is a live doc inside the **operator seat's own skill**,
+loaded over a symlink — so the reader most likely to copy that line is the seat whose entire product is
+reporting what the backlog says. It would have reported the open queue as the workable set, at 200, forever.
+This is the project's signature failure shape (a document asserting a mechanism no code provides), and the
+rename *created* it.
+
+Fixed on the branch (`ab626d3`) as a punctual zero-risk reviewer fix — doc-only, corrected value read out of
+`server.ts:258`. **Not** a REFUTE-and-hand-back: bouncing four green commits for a one-token doc error would
+have cost a full cycle for no added safety.
+
+**Deliberately NOT changed** — historical records, correct as history: `design/backlog.md:5792/:5805`
+(BL-093's closed prose), `hmp6/hmp7/o3-run-log.md`, `o3-bar-real.md`, `o3-grading.md`, `o3-brief.md`. These
+describe what was actually run at the time. `SKILL.md:59` is also a non-finding — its live `curl` correctly
+says `?workable=true`; only the English prose above it reads "selectable".
+
+### Disposition of the implementer's PARTIAL on D4 — ACCEPTED, with a condition
+
+The reasoning holds and I could not refute it: this gate folds warnings into `errors`
+(`validate-backlog.mjs:33`), so any finding fails the run, while **D2 requires `autonomy` to survive as
+legitimate advisory metadata**. A field allowed to be present cannot invalidate the backlog by being present —
+the check would have failed the gate on **BL-134 itself**. Adding a real warning tier changes `exitCodeFor`
+behaviour other callers depend on, which is correctly out of scope.
+
+**Accepted as PARTIAL, not waived.** An honest PARTIAL that names the contradiction beats a green that hides
+it. **Condition: the warning tier is filed as its own item before any future task relies on a `human-only`
+migration aid existing.** Not a merge blocker — nothing today depends on it.
+
+### Gate 3 — task-end sweep
+
+Load-bearing bars re-run above (B1/B2/B3, D7) rather than inherited. Worktree hygiene: `git worktree list`
+clean apart from this review worktree, removed at close. Every DoD row is VERIFIED or explicitly dispositioned.
+
+**Merge recommendation: READY — pending `[PO]`.** Merges are PO-gated; this seat does not merge on its own
+authority, and the concentration of hats on this task is the reason to keep that gate exactly where it is.
