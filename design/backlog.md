@@ -8625,4 +8625,70 @@ autonomy: human-only
   - diff:        3 files, +131/-2, commits `82cdcb7` `fb52665` `b1a31d8` `c46744c` merge `05325c0`
   - outcome:     MERGED ✅
 
+<!-- @item
+id: BL-137
+status: todo
+date: 2026-08-15
+epic: null
+tags: [operator, hermes, containment, gate-b, authorization, charter, bl-134]
+autonomy: human-only
+-->
+- [todo · **filed 2026-08-15 by the planner, at the PO's instruction, after the PO proposed letting Hermes set
+  its own `.authorized` file and the check found the mechanism already exists**] —
+  **Gate B's authorization file lives INSIDE the operator's own write allowlist, so the fence that "only the
+  PO can authorize a run" does not hold — and both `AGENT.md` and `hmp-commission.mjs` state that it does.**
+
+  `authorizationPathFor` resolves to **`design/operator/<run>.authorized`** (`hmp-commission.mjs:179`).
+  **`design/operator/**` IS the operator's write allowlist** — granted by `AGENT.md` → 🔧 The OPERATOR seat →
+  Visibility, and named identically at `infra-invariant.mjs:83`. The verifier checks the file's *content*
+  (`isAuthorizationFile`, `:339-341`) and that its commit is an ancestor of **local** `master` (`:323`). It
+  checks **nothing about who wrote or committed it**: there is no author, committer, signature or `gpg`
+  check anywhere in the file.
+
+  **So the operator can author every input to its own gate.** It already controls the brief, the config, the
+  bar, the sha and the commission message; `.authorized` was the one artifact it did not. Since
+  [[BL-123]] the seat commits, and governance paths are directly master-editable, so a commit it makes is an
+  ancestor of local `master` and satisfies `:323`. **The file's own header comment — *"it makes the PO's merge
+  the authorization act, which is where the charter already puts it"* (`hmp-commission.mjs:38`) — is therefore
+  false for the one directory that matters.** *(That is a comment, and it is quoted as one; the behaviour it
+  describes is the `isAncestorOf` call at `:323`.)*
+
+  **The enumerated write fence does not catch it either.** The charter's "may NEVER write" table lists
+  `autonomy: eligible`, `blocked_by`, `status: done`, deferred items, closing and telemetry blocks.
+  **`.authorized` is not on it.** Self-authorization is forbidden by the charter's *spirit* — *"The operator
+  can put anything it likes in front of you; it cannot hand any of it to an agent"* — and by nothing
+  enumerated and nothing mechanical. `infra-invariant.mjs:88-91` says so in its own words: it *"does NOT
+  enforce the charter's allowlist, and nothing does"*, and **"a write made outside a bracketed run is seen by
+  nothing at all."** So the write is neither prevented nor necessarily observed.
+
+  **⚠️ This lands directly on [[BL-134]], which is why it is filed rather than parked.** BL-134 §5 proposes to
+  retire the `autonomy` fail-closed paragraph and rest the OPERATOR charter's safety argument on Gate B, with
+  replacement wording calling it *"per-run, sha-bound, and single-use."* Each of those adjectives is true; the
+  implied *"and only the PO can produce it"* is not. **Shipping that wording unchanged would replace one
+  overstated fence with another** — the same defect class [[BL-136]] just corrected in `SKILL.md` and
+  [[BL-101]] before it. **Whether BL-134 should be `blocked_by` this item is a PO/SM sequencing call**, not
+  the filer's: it would re-empty the workable set.
+
+  **Options, none costed yet:**
+  (a) **Move the authorization file out of the operator's allowlist** — e.g. `design/po/<run>.authorized`, or
+  narrow the allowlist to exclude `*.authorized`. Smallest change; keeps every other property.
+  (b) **Require a signature** the operator cannot produce (`git verify-commit`). Strongest, and the only
+  option that survives the operator having a shell; also the most machinery, and key handling is a real cost.
+  (c) **Propose/authorize split** — the operator writes `<run>.requested` and everything else; the PO writes
+  one line. Preserves two parties and is the version of the PO's original "move operativity to Hermes" that
+  does not collapse the gate. Composes with (a).
+  (d) **Ratify it** — grant self-authorization deliberately. Then `AGENT.md`'s "it cannot hand any of it to an
+  agent" and `hmp-commission.mjs:38` **must both be rewritten in the same change**, because they would be
+  false. The PO considered and rejected this on 2026-08-15 ("I'll keep the authorized gate").
+
+  **⛔ HONEST LIMIT — this is a code-reading finding, NOT a live-proven one.** No Hermes-authored
+  `.authorized` has been driven through a real commission. What IS run-proven is the weaker half, and it is in
+  the suite already: the happy-path fixture commits `hmp1.authorized` as `Test <test@example.com>`
+  (`hmp-commission.test.mjs:74-81`) and `verifyCommission` accepts it — **authorization by an arbitrary
+  committer is a passing test today.** The step not demonstrated is the operator actually performing that
+  commit in a live run. Do not report this as an exploited hole; report it as an unenforced fence.
+  **And do not read it as a [[BL-107]]-class exposure either:** an attacker who can reach the HMP port already
+  holds a shell and needs none of this. This is about the *operator seat's own* containment, which is the
+  thing the charter exists to bound.
+
 *(add new items above this line)*
