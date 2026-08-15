@@ -81,7 +81,10 @@ export const DEFAULT_EXPECT = {
   allowProcesses: [],
   // BL-097 — repo-relative paths the OPERATOR seat may lawfully write. The charter's list is
   // `design/backlog.md` + `design/operator/**` + `design/operator-seat/**` (the last added 2026-08-07,
-  // BL-119 option (a) — the seat's own skill). Deliberately EMPTY by default, so it fails closed:
+  // BL-119 option (a) — the seat's own skill). It does NOT include `design/po/**`, which holds the
+  // launch authorizations and is written by `relay-approve.mjs approve` alone (BL-137, 2026-08-15):
+  // a write there during an operator run is precisely the FOREIGN path `classifyHeadMove` exists to
+  // name. Deliberately EMPTY by default, so it fails closed:
   // with no declaration, every write is judged exactly as it was before this field existed.
   //
   // NOTE, so nobody reads more into this field than it does: it judges what a run DECLARED against

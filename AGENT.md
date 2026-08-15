@@ -260,6 +260,21 @@ parsed items and does not hand the reader a write path it has no need of.
 | run metrics, timings, exit codes, meter readings | **`status`** → `done` (that is a merge verdict) |
 | its own artifacts under `design/operator/` | anything on a `deferred` item (that is your park) |
 | | a **closing block** or **telemetry block** (they belong to a closure) |
+| | **`design/po/<run>.authorized`** — the launch authorization ([[BL-137]]; see below) |
+
+**⬛ `.authorized` added to the never-write column 2026-08-15 ([[BL-137]]).** It was **absent from this table
+while living inside the operator's own write allowlist** — so the seat could author every input to its own
+launch gate, and both this file and `hmp-commission.mjs:38` asserted it could not. The path moved to
+`design/po/**`, which **no seat writes and nothing else uses**, and the PO's act is now a single
+`approve <token>` (`scripts/relay-approve.mjs`) that writes and commits the file itself.
+
+**Read what that does and does not buy, because the old sentence overstated it and this one must not.** The
+move buys **conspicuousness**: in `design/operator/**` an authorization was indistinguishable from the
+seat's routine output, and in `design/po/` it is the only thing in the directory — so a write there is
+visible, and `classifyHeadMove` (`infra-invariant.mjs`) can report it as a foreign path inside a bracketed
+run. **It is detection, not prevention.** Nothing mechanically stops a process holding a shell from writing
+that path; the SSH key on this machine is unencrypted, so the same is true of `git push`. **Only a secret
+the operator cannot read would be a fence, and none exists here.** Do not restore the stronger claim.
 
 **`autonomy: eligible` is the field that matters, and it is authority in file form.** It is the single bit
 deciding what an agent may be handed *unattended*. Writing it is not describing the process, it is steering

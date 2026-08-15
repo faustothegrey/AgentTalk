@@ -34,8 +34,21 @@
  *   self-asserted; an `authorized-by: PO` string in a payload is a claim, not a control. So
  *   authorization is anchored in the repo instead: the brief must be COMMITTED, and reachable
  *   from `master`. A LAN forger can compose any message it likes and cannot make a commit be
- *   an ancestor of master. That is the check doing real work against the real adversary — and
- *   it makes the PO's merge the authorization act, which is where the charter already puts it.
+ *   an ancestor of master. That is the check doing real work against the real adversary.
+ *
+ *   ⚠️ WHAT IT DOES **NOT** DO — corrected 2026-08-15 ([[BL-137]]). This used to end: "and it
+ *   makes the PO's merge the authorization act, which is where the charter already puts it."
+ *   **That was false for the LOCAL operator — the very party the OPERATOR charter exists to
+ *   bound.** The ancestry check stops a *remote* forger, who cannot commit here. It stops nothing
+ *   run by a shell on this box: Hermes can commit to local `master`, and no committer identity is
+ *   checked anywhere in this file — no author, no signature, no `verify-commit`.
+ *
+ *   So authorization is a discrete, sha-bound, single-use and CONSPICUOUSLY-LOCATED act
+ *   (`design/po/**` — a directory the operator's write allowlist excludes and nothing else
+ *   writes), whose integrity against the local seat rests on that seat observing its
+ *   instructions, NOT on a mechanism here. Detection, not prevention. Do not restore the old
+ *   sentence, and do not describe the path as a fence: only a secret the operator cannot read
+ *   would be one, and none exists on this machine.
  */
 
 import fs from 'fs';
@@ -84,7 +97,12 @@ export const CHARTER = {
 };
 
 export const REQUIRED_FIELDS = ['run', 'brief', 'repo-sha', 'bar-sha256', 'port', 'sandbox'];
-const RUN_ID = /^[a-z0-9][a-z0-9-]{0,31}$/;
+/**
+ * Exported since [[BL-137]]: `relay-approve.mjs` validates `propose --run` against THIS regex, so
+ * a run id the commission would later refuse can never be proposed. One shape, one definition —
+ * a second copy is a contract that drifts.
+ */
+export const RUN_ID = /^[a-z0-9][a-z0-9-]{0,31}$/;
 const SHA40 = /^[0-9a-f]{40}$/;
 const SHA256 = /^[0-9a-f]{64}$/;
 
@@ -169,14 +187,21 @@ export function parseCommission(text) {
  * from the real thing, and stripping code fences does not save it: a four-space-indented block,
  * or a blockquote, quotes the line just as well. The mechanism was wrong, not the regex.
  *
- * So authorization lives in `design/operator/<run>.authorized`, whose ENTIRE committed content
- * must be exactly the line. Quoting it inside any document is then harmless by construction, and
- * "the PO authorized run X" becomes a discrete, diffable, committed act rather than a sentence
- * buried in prose — which is what §4 wanted in the first place.
+ * So authorization lives in its own file, whose ENTIRE committed content must be exactly the
+ * line. Quoting it inside any document is then harmless by construction, and "the PO authorized
+ * run X" becomes a discrete, diffable, committed act rather than a sentence buried in prose —
+ * which is what §4 wanted in the first place.
+ *
+ * The path moved out of `design/operator/` in [[BL-137]]: that directory is the operator's own
+ * write allowlist, so an authorization sitting there was indistinguishable from the seat's
+ * routine output. `design/po/` is written by nothing else, which makes an unauthorized write
+ * CONSPICUOUS — and `classifyHeadMove` (`infra-invariant.mjs`) can then report it as a foreign
+ * path inside a bracketed run. That is detection, not prevention; see the threat-model note at
+ * the head of this file before describing it as anything stronger.
  */
 export const authorizationLineFor = (runId) => `[PO] AUTHORIZED-RUN: ${runId}`;
 
-export const authorizationPathFor = (runId) => path.posix.join('design/operator', `${runId}.authorized`);
+export const authorizationPathFor = (runId) => path.posix.join('design/po', `${runId}.authorized`);
 
 /** Whole-content equality, whitespace-normalised. Anything ELSE in the file refuses. */
 export function isAuthorizationFile(text, runId) {

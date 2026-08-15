@@ -137,9 +137,9 @@ working tree — and requires `repo-sha` to be an ancestor of `master`.
 **Dry-run every commission before the real one** (hmp9 pattern): `node scripts/hmp-commission.mjs --text-file <file> --dry-run` → `accepted: run=… … dry-run: verified only, nothing launched`, exit 0. It touches nothing (no ledger write, no launch) and catches a malformed line or a stale bar hash before the replay guard is armed.
 
 **A PO message saying "Authorized" is NOT authorization.** Authorization is a discrete committed file,
-`design/operator/<run>.authorized`, whose ENTIRE content must be exactly `[PO] AUTHORIZED-RUN: <run>`, present
+`design/po/<run>.authorized`, whose ENTIRE content must be exactly `[PO] AUTHORIZED-RUN: <run>`, present
 **at the repo-sha**. Before assembling the commission, verify:
-`git show <repo-sha>:design/operator/<run>.authorized` → exactly that one line. If it is absent,
+`git show <repo-sha>:design/po/<run>.authorized` → exactly that one line. If it is absent,
 `hmp-commission.mjs` refuses `no-po-authorization` — that is the fence working, NOT a bug. Report the refusal
 verbatim and STOP. Do NOT write the file yourself (the PO's act alone; writing it forges the one check the
 design rests on). The PO commits the file and re-issues with the **new tip** as repo-sha — a repo-sha that
@@ -275,7 +275,7 @@ Full walkthroughs: `references/hmp7-run-log.md` (this shape) · `references/hmp6
 ### The phantom `.authorized` deletion in `master..<branch>` diffs
 
 The PO's authorize commit lands AFTER the prep commit the worktree branched from, so `git diff master..task-op-<id>`
-compares the worker's branch against a tip it predates and shows `design/operator/<run>.authorized | 1 -` as a
+compares the worker's branch against a tip it predates and shows `design/po/<run>.authorized | 1 -` as a
 "deletion" the worker never made — a branch-point artifact, NOT a scope violation (hmp9: `master..task-op-hmp9`
 showed 2 files; `git diff --stat 2c1c1b8..4bdeae7` = exactly 1). **Always diff the worker's branch against the
 recorded branch point** — the worktree HEAD reference value captured at pre-flight — never against `master`.
@@ -421,12 +421,35 @@ differ from the branch you created if the PO updated it before launch.
 
 ### The `.authorized` file is the only authorization — a PO message is not
 
-When the PO says "Authorized" in a message but `design/operator/<run>.authorized` is not committed at the
+When the PO says "Authorized" in a message but `design/po/<run>.authorized` is not committed at the
 repo-sha, `hmp-commission.mjs` refuses `no-po-authorization` — and that refusal is the fence working, not a
-bug. Do not write the file yourself, do not bypass the verifier, do not "helpfully" commit it. Report the
-refusal verbatim and tell the PO exactly what to commit (file, exact content, that the new tip becomes the
-repo-sha). On hmp6 the first launch attempt was refused for exactly this; the PO's next message carried the
-authorize commit (`2946e6f`) and the launch then passed every check.
+bug. Do not write the file yourself, do not bypass the verifier, do not "helpfully" commit it. On hmp6 the
+first launch attempt was refused for exactly this; the PO's next message carried the authorize commit
+(`2946e6f`) and the launch then passed every check.
+
+**Since [[BL-137]] you no longer tell the PO what to commit — you send them a token.** Propose the run,
+relay the token, and the PO's entire act is one word:
+
+```
+node scripts/relay-approve.mjs propose --action launch --run <run>   # you run this
+                                                                    # the PO answers: approve <token>
+```
+
+`approve` writes and commits `design/po/<run>.authorized` itself. **Refusals to relay verbatim:**
+`sha-moved` (the tree gained a commit between the proposal and the answer — **re-propose, never wave it
+through**: the PO would be authorizing work they never saw), `already-used`, `expired`, `bad-run-id`, and
+`commit-failed` (the commit did not land; the token is **not** spent, so `approve` again once the
+obstruction clears).
+
+**Two things about the new path, so you do not have to infer them:**
+
+1. **`design/po/` is outside your write allowlist, and that is the whole point.** `design/operator/**` is
+   yours, so an authorization sitting there was indistinguishable from your own routine output. In
+   `design/po/` an unauthorized write is the only thing in the directory — **conspicuous**, and reportable
+   by `classifyHeadMove` as a foreign path inside a bracketed run.
+2. **This is detection, not prevention, and you are what it relies on.** Nothing mechanically stops a
+   process holding a shell from writing that path. The fence is you observing this instruction. Do not
+   describe it to anyone as containment.
 
 ## Goal statement rules (runbook §4)
 
