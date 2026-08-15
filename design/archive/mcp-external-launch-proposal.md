@@ -2,8 +2,8 @@
 
 **Status:** Draft for review (2026-06-18)
 **Author:** Claude (at Fausto's request)
-**Related:** `design/mcp-orchestration-proposal.md`, `design/mcp-implementation-plan.md`,
-`design/mcp-implementation-caveats.md` (R1/R2 turn-loop), live-test bug #2 (per-turn disconnect→error)
+**Related:** `design/archive/mcp-orchestration-proposal.md`, `design/archive/mcp-implementation-plan.md`,
+`design/archive/mcp-implementation-caveats.md` (R1/R2 turn-loop), live-test bug #2 (per-turn disconnect→error)
 
 > Sketch for review, not a finished spec. It proposes flipping the operational model so
 > AgentTalk **does not launch** provider MCPs — instead an operator launches an agent

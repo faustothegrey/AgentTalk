@@ -3,7 +3,7 @@
 **Status:** Verification note (for review / second opinion)
 **Author:** Claude (verification spike at Fausto's request)
 **Date:** 2026-06-18
-**Related:** `design/mcp-orchestration-proposal.md` (esp. §4 Topology A, §10A server granularity, open question #4)
+**Related:** `design/archive/mcp-orchestration-proposal.md` (esp. §4 Topology A, §10A server granularity, open question #4)
 
 > This note assesses **open question #4** of the MCP orchestration proposal:
 > *"Provider capability matrix: confirm per-MCP support for Streamable HTTP, sampling,

@@ -11,7 +11,7 @@ Claude Code readiness passed with `READY`.
 
 A first critique attempt was blocked because Claude Code could not read the Obsidian vault path outside its working directory. Hermes copied the spec into the repo as:
 
-- `/Users/fausto/Software/AgentTalk/design/agy-revised-protocol-spec.md`
+- `/Users/fausto/Software/AgentTalk/design/archive/agy-revised-protocol-spec.md`
 
 Claude then read that copy and delivered the review below. Hermes did not edit AgentTalk source files.
 

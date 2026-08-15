@@ -3,7 +3,7 @@
 **Status:** Discussion agenda — updated after the §10 revision (2026-06-18)
 **Author:** Claude (at Fausto's request)
 **Date:** 2026-06-18
-**Related:** `design/mcp-orchestration-proposal.md`, `design/mcp-capability-assessment.md`
+**Related:** `design/archive/mcp-orchestration-proposal.md`, `design/archive/mcp-capability-assessment.md`
 
 > **Readiness verdict is in the next section.** The numbered caveats (§1–§8) are the
 > original record; each now carries a **RESOLVED / OPEN** tag reflecting the §10 revision.

@@ -448,8 +448,19 @@ in every context (docs, messages, primers, lessons). Violations should be correc
 ### Milestone 05 Key Features
 - **MCP Attach Mode (single-agent transport)**: AgentTalk runs as an MCP server; provider MCPs are **externally launched** by the operator (not auto-launched) and connect in over a persistent WebSocket.
 - **Pull-based turn loop**: attached agents block on the `await_turn` MCP tool; the orchestrator enqueues turns per agent and replies route back via `send_to_agent`. A clean disconnect marks the agent `terminated` (not `error`), so stopping an external agent doesn't trip Milestone-03 failure propagation.
-- **Verified**: codex, claude, and gemini each attach and complete a turn end-to-end via `scripts/attach-harness.mjs` (Model B; MCP invoked per turn, no MCP needed on the MCP side) + the web UI. `scripts/test-attach-mode.mjs` is an in-process smoke; full regression stays green.
-- **Not yet (open follow-ups)**: multi-agent **consensus** mapping (the harness only emits `send_to_agent`, no `submit_plan`/agreement/work), clean **MCP-failure surfacing**, and the **native-loop/skill** path for claude/gemini. See `design/mcp-implementation-plan.md` (Phase 5) and `design/mcp-external-launch-proposal.md`.
+- **Verified**: codex, claude, and gemini each attach and complete a turn end-to-end via the attach harness
+  (Model B; MCP invoked per turn, no MCP needed on the MCP side) + the web UI; an in-process smoke covered the
+  same path. Full regression stays green.
+  ⬛ **PATHS CORRECTED 2026-08-15 ([[BL-142]]) — the evidence stands, the pointers did not.** This named both harnesses as paths
+  inside THIS repo. **Neither file
+  exists, and neither ever lived at the path given.** Traced across the full history of both repos: the harness
+  was **`attach-harness.mjs` at the CLIENT repo's root** (2 commits, since deleted); the smoke was
+  **`test-attach-mode.mjs` under this repo's `scripts/`** (3 commits, since deleted). So a reader following either
+  pointer to check the claim finds nothing and cannot tell whether the verification happened.
+  **The claim itself is not impeached** — that was this correction's first draft and it was wrong. Both
+  artifacts existed and were deleted in the ordinary course; what rotted is the citation, not the evidence.
+  Naming them without a path is deliberate: a pointer into another repo's deleted file is worse than none.
+- **Not yet (open follow-ups)**: multi-agent **consensus** mapping (the harness only emits `send_to_agent`, no `submit_plan`/agreement/work), clean **MCP-failure surfacing**, and the **native-loop/skill** path for claude/gemini. See `design/archive/mcp-implementation-plan.md` (Phase 5) and `design/archive/mcp-external-launch-proposal.md`.
 
 ### Milestone 03 Key Features
 - **Agent Failure Propagation**: Active team tasks are now immediately interrupted if an agent enters an `error` state, eliminating deadlocks. ⚠️ **Corrected 2026-07-10:** this line previously read *"(including idle timeouts)"* — **that was false.** A clean disconnect → `terminated` (M05) and an explicit `error` status do propagate; a **hung** agent is **not** detected. Do not rely on the idle timeout, and do not cite this milestone as evidence that it works.

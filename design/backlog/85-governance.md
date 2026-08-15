@@ -158,12 +158,12 @@ tags: [docs, governance, linter, citations, overhaul, wave2]
 
 <!-- @item
 id: BL-142
-status: todo
+status: done
 date: 2026-08-15
 epic: null
 tags: [docs, governance, rot, operator, agent-md, fence-in-prose]
 -->
-- [todo · **filed 2026-08-15 · found by [[BL-141]]'s resolver · PRE-EXISTING, verified present at
+- [done 2026-08-15 · register 78 → 43 · the operator's broken fallback FIXED · **filed 2026-08-15 · found by [[BL-141]]'s resolver · PRE-EXISTING, verified present at
   `289fa07` before the overhaul touched anything**] —
   **69 citations from live documents do not resolve — but read the retraction first.**
 
@@ -210,9 +210,44 @@ tags: [docs, governance, rot, operator, agent-md, fence-in-prose]
   `CLAUDE.md`, cited by `logbook.md` — LB-12 names them precisely as files that must NEVER exist
   (case-insensitive auto-slurp). They are on the checker's `NEVER_EXISTS` list.
 
-  **Disposition is per-citation and needs a human:** a dead script may mean "renamed" (fix the
-  pointer), "deleted" (delete the claim), or "never existed" (the claim was always false). Only the
-  last is interesting, and only reading tells them apart.
+  **Disposition is per-citation and needed a human — done 2026-08-15. What it actually found:**
+
+  **1. A live operational defect, created by Wave 1 and missed by it.** `operator-seat/SKILL.md` told the
+  seat to fall back to a single backlog *file* when port 3741 does not answer, and gave a literal
+  `grep … design/backlog.md | grep status:` command. Wave 1 replaced that file with a directory. Verified
+  both directions rather than assumed: the old command emits `No such file or directory` on **stderr** and
+  returns **empty stdout** — so an operator reading the pipeline's output sees an empty result set, and
+  reporting "no backlog items" is one careless step away. Fixed at three sites (`grep -r` over the
+  directory), plus the skill's own write-allowlist line and its description.
+
+  **2. `AGENT.md`'s Milestone 05 evidence claim: pointers rotted, evidence intact.** It cited two harnesses
+  as paths in THIS repo. Neither ever lived there: the attach harness was at the CLIENT repo's root (2
+  commits, deleted), the smoke was under this repo's `scripts/` (3 commits, deleted). **The claim itself is
+  NOT impeached** — that was this correction's own first draft and it was wrong, for the second time in one
+  item. Both artifacts existed and were deleted in the ordinary course. Corrected in place, naming the files
+  without a dead path.
+
+  **3. Live primers and `worktree-discipline.md`** pointed at the pre-Wave-1 backlog path; fixed.
+
+  **Then a finding about Wave 0 itself: it UNDER-ARCHIVED, and the classifier was the reason.** Filename
+  patterns missed two whole classes — topic-named episodic docs (the `mcp-*` planning set, the four-document
+  `agy`/`claude` protocol debate) and `*-spike.md` suffix forms, since the pattern only matched `^spike`.
+  Eighteen more docs archived, citation parity proven (`fresh = 0`). `design/` top-level: **143 → 34** across
+  the session.
+
+  **⚠️ The load-bearing lesson, and it is an input to [[BL-144]]: neither filename NOR date classifies
+  lifecycle.** `design/architecture.md` is frozen at 2026-06-25 and is DURABLE — it needs updating, not
+  burying; archiving it by staleness would have been exactly wrong. **What does classify is already in the
+  corpus: the docs declare themselves in their own `Status:` line.** *"Resolved"*, *"Draft for review"*,
+  *"Verification note"* are episodic; *"reference doc"*, *"Operative reference"*, *"Living reference"* are
+  durable. Wave 2 should read that line rather than invent a third proxy.
+
+  **Residual: 43 entries, deliberately left**, and none is a live instruction. 35 × `design/backlog.md`
+  (historical mentions, including this overhaul's own "was a single file before" notes), 6 ×
+  `scripts/launcher.mjs` (bare mentions of the CLIENT's launcher in dated plan/gate records — ambiguous,
+  not dangling), and two genuine one-offs: a never-written `arbiter-shadow-corpus/README.md` reference and
+  `bl091-investigation.md`. The ratchet holds them; [[BL-141]]'s gate fails on anything new.
+
 
 
 <!-- @item
@@ -239,6 +274,12 @@ tags: [overhaul, wave2, modules, colocation, architecture, docs]
   distributes to the module whose code it constrains. That is the direct fix for its 24 correction
   markers — they exist because it asserts things about files it does not sit beside, so nothing
   forces a reader touching the code to touch the claim.
+
+  **Use the `Status:` line as the lifecycle classifier — do NOT invent a third proxy.** [[BL-142]]
+  established that filename patterns and staleness BOTH misclassify: `design/architecture.md` is seven
+  weeks cold and durable. The docs already declare themselves — *"Resolved"* / *"Draft for review"* /
+  *"Verification note"* are episodic; *"reference doc"* / *"Operative reference"* / *"Living reference"*
+  are durable. Where a doc declares nothing, that is the signal a human must read it.
 
   **Deliberately NOT in scope: new repositories.** Modules give every seam without eight `AGENT.md`
   files to keep true, and [[BL-086]] already showed what one cross-repo split costs in duplicated

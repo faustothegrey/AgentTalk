@@ -272,7 +272,7 @@ committed with this gate record.
 ### Backlog gate — 2026-07-01 (opening the arbiter shadow spike · architect: Claude)
 
 Per §3b, every item dispositioned before opening the first arbiter macro unit (the shadow-mode spike,
-`design/arbiter-shadow-spike-plan.md` — inception draft, pending Planner POV + PO go). PO (Fausto) directed the
+`design/archive/arbiter-shadow-spike-plan.md` — inception draft, pending Planner POV + PO go). PO (Fausto) directed the
 groundwork this session; ratification calls are marked.
 
 | Item | Disposition for this gate |
@@ -282,7 +282,7 @@ groundwork this session; ratification calls are marked.
 | **BL-003 M07-T2 live smoke** | Blocker half-lifted (M11 shipped tolerance; quota gate remains). Likely **superseded** by the arbiter direction (the arbiter judges advancement semantically, making the old strict-protocol live bar moot). Keep `open`/parked; final supersede-or-run call when arbiter Epic 1 opens. |
 | **BL-005 worker-prompt worktree** | Unchanged — parked with explicit trigger (orchestrator collecting worker output). Not arbiter-adjacent. |
 | **BL-007 operator abort/recovery** | Unchanged — experience-triggered (needs real `awaiting_operator` cases). Not arbiter-adjacent. |
-| **BL-009 semantic arbiter** | **PROMOTED → arbiter shadow spike** (`design/arbiter-shadow-spike-plan.md`). The program decomposition (spike + 4 epics) stays in `design/arbiter-consensus-draft.md` §8/§10; only the spike opens now. |
+| **BL-009 semantic arbiter** | **PROMOTED → arbiter shadow spike** (`design/archive/arbiter-shadow-spike-plan.md`). The program decomposition (spike + 4 epics) stays in `design/arbiter-consensus-draft.md` §8/§10; only the spike opens now. |
 
 *Nothing dropped.*
 

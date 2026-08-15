@@ -6,7 +6,7 @@
 **PO:** Fausto · **Architect:** Claude · **Planner:** Codex · **Implementer:** Gemini (live default) ·
 **Reviewer:** Claude (reviewer + architect dual-hat, declared per gate; planner ≠ reviewer holds).
 **Program:** the arbiter direction — `design/arbiter-consensus-draft.md` (§7/§8/§10 decomposition); evidence
-base: `design/arbiter-shadow-spike-implementation.md` (spike PROMOTED by the PO, merged `a905b2e`).
+base: `design/archive/arbiter-shadow-spike-implementation.md` (spike PROMOTED by the PO, merged `a905b2e`).
 **Base:** `master` at `e24f07c` (2026-07-02). **Backlog:** BL-011 (`doing`); gate record 2026-07-02 in
 `design/backlog.md`.
 

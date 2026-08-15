@@ -30,7 +30,8 @@ field.
 **⚠️ `git fetch` BOTH repos at startup** (`AgentTalk`, `agentalk-mcp-client`) and verify HEAD against
 `origin/master`. Never trust a primer's hash — including this one.
 
-**Workflow / source of truth.** `design/collaboration-workflow.md` + `design/backlog.md` (BL items) + `AGENT.md`.
+**Workflow / source of truth.** `design/collaboration-workflow.md` + `design/backlog/` (BL items, one file
+per concern since 2026-08-15) + `AGENT.md`.
 Plans live in `design/bl0NN-*-plan.md`. **Closed items carry a closing block + telemetry inside the backlog item —
 read those first.** Resume from the backlog and plan docs, **NOT from chat**.
 
@@ -76,7 +77,8 @@ at the seam before you design against it.** Both times the reproduction changed 
 ## Op notes / gotchas
 
 - **Running a real goose worker (the live-proof vehicle).** Bite-0 launcher:
-  `node scripts/launcher.mjs <config.json>` from `agentalk-mcp-client`. Config needs `provider:"goose"` + an
+  `node <agentalk-mcp-client>/scripts/launcher.mjs <config.json>` — the launcher lives in the CLIENT repo,
+  and is invoked by absolute path (never `cd` into it). Config needs `provider:"goose"` + an
   explicit **`model`** — **`anthropic/claude-sonnet-5` over OpenRouter is verified working** (`OPENROUTER_API_KEY`
   set; goose CLI 1.41.0). Set **`AGENTTALK_GOOSE_MAX_TURNS=50`** for a small task (the default 30 starves a real
   one; 150 for real dev work). `startCommand` boots the orchestrator — point its `cwd` at **your worktree** if you

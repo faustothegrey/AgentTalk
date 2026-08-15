@@ -288,7 +288,7 @@ epic: null
 tags: [protocol, events, tech-debt]
 -->
 - [done · was: promoted→protocol-state-event-unification-spike · planned, 2026-06-29] — **Unify protocol state-change event emission** —
-  planned as `design/protocol-state-event-unification-spike.md` (exploratory only; no production-code
+  planned as `design/archive/protocol-state-event-unification-spike.md` (exploratory only; no production-code
   implementation in the spike). Original item: after the
   DiagramTalk overlay work (bridge v3, `milestone10-diagramtalk-overlay-plan.md`) the brain emits protocol
   state changes through **two shapes**: the `onPhaseChange` funnel (forward phases, via `setPlanningPhase`,
@@ -309,7 +309,7 @@ tags: [protocol, events, tech-debt]
   `agentalk-mcp-client` CLI (`4fb2a69`) + operator runbook (`e1524ba`) — all on `master`. Decisions Q1–Q4 were
   resolved (widen / Phase 1+2 / structured-output stays in runtime-core / name). Reviewer gate 2026-06-27: tsc 0,
   suite 245/245, consensus-free (grep-clean), `npm run smoke:exec` PASSED end-to-end. Record:
-  `design/llm-client-extraction-spike.md` + LB-47. **NOTE — this item's prior `[open · SPIKE/proposed]` line and the
+  `design/archive/llm-client-extraction-spike.md` + LB-47. **NOTE — this item's prior `[open · SPIKE/proposed]` line and the
   spike doc's "owed piece remaining" status were both stale**; ground-truth check against git found the work already
   merged (the three-layer staleness LB-47 records). **Source:** Fausto ↔ Claude, 2026-06-26/27.
 
@@ -323,7 +323,7 @@ tags: [consensus, arbiter, architecture, heavyweight]
 -->
 - [done · was: doing · PROMOTED 2026-07-02 — spike complete, merged to master (a905b2e)] — **Semantic arbiter & the two consensus modes** —
   promoted at the 2026-07-01 gate: first macro unit is the shadow-mode spike
-  (`design/arbiter-shadow-spike-plan.md` — inception complete: architect draft + planner POV + disposition + PO
+  (`design/archive/arbiter-shadow-spike-plan.md` — inception complete: architect draft + planner POV + disposition + PO
   go; planner task breakdown next); program decomposition stays in the draft
   §8/§10. Original seed below. — heavyweight direction to re-architect the
   consensus core: advancement decided by a **semantic arbiter** (reads agents' responses, advances by meaning)

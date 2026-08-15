@@ -2,7 +2,7 @@
 
 **Status:** Completed / Sign-Off (2026-06-18)  
 **Author:** Antigravity (with Fausto & Claude)  
-**Related:** `design/mcp-implementation-plan.md`, `design/mcp-implementation-caveats.md`, `design/mcp-turn-loop-resolution.md`
+**Related:** `design/archive/mcp-implementation-plan.md`, `design/archive/mcp-implementation-caveats.md`, `design/archive/mcp-turn-loop-resolution.md`
 
 This document reviews how the Phase 2 implementation matches the caveats and observations raised during the design phase, specifically looking at session isolation, crash propagation, configuration hygiene, and the resolution of Claude's config loading bug.
 

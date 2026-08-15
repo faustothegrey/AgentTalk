@@ -10,7 +10,7 @@
 > recommendation UPDATED (2026-07-02): **PROMOTE (qualified)** — supersedes the earlier PARK, whose premise
 > (no valid measurement) was resolved by AS-T3b; see the architect addendum. NEXT: PO decision (T4-C3);
 > merge of `as-t3` awaits `[Human]` per the Origin Tag Protocol.**
-> **Plan:** `design/arbiter-shadow-spike-plan.md`
+> **Plan:** `design/archive/arbiter-shadow-spike-plan.md`
 > **Base:** `master` at `b38ca9f` (2026-07-01).
 > **Planner:** Codex. **Architect:** Claude. **PO:** Fausto. **Implementer:** Gemini (live default).
 
@@ -388,7 +388,7 @@ decides. Closure must not blur "interesting rationale" with measured success.
 ### Approved Work
 
 - Append the final results table and recommendation record to this ledger.
-- Update `design/arbiter-shadow-spike-plan.md` status only if the PO decision closes or re-scopes the spike.
+- Update `design/archive/arbiter-shadow-spike-plan.md` status only if the PO decision closes or re-scopes the spike.
 - Update `design/backlog.md` / `design/logbook.md` only for durable status or findings.
 - Add task-closure telemetry.
 

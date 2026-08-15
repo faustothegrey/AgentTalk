@@ -10,7 +10,7 @@ inception round; this plan is its record.
 **PO:** Fausto · **Architect:** Claude · **Planner:** Codex · **Implementer:** Gemini (stood down from
 M14-T2, idle, awaiting M15 baton) · **Implementation Reviewer for this session:** Codex (PO appointment,
 2026-07-02, due Claude 5h-window pressure; Claude already completed Gate 1 breakdown review).
-**Program:** `design/arbiter-consensus-draft.md`; spike evidence `design/arbiter-shadow-spike-implementation.md`;
+**Program:** `design/arbiter-consensus-draft.md`; spike evidence `design/archive/arbiter-shadow-spike-implementation.md`;
 supersedes M14-T2/T3 (`design/archive/milestone14-facilitator-extraction-plan.md`, CLOSED-RESCOPED).
 **Backlog:** BL-012 (`doing`); second 2026-07-02 gate record in `design/backlog.md`.
 

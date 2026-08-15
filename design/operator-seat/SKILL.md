@@ -1,7 +1,7 @@
 ---
 name: agenttalk-operator-seat
 title: AgentTalk OPERATOR seat — launch-artifact production, launch execution & governed-worker supervision
-description: "Produce pre-flight checklists and launch configs for governed AgentTalk worker runs, then execute the full launch lifecycle: pre-flight checks, reference-value capture, invariant-harness bracketing, launch, monitoring through NDJSON and sidecar, process sweep (BL-091 compensating control), and cleanup (nested worktree ordering). Also reads and reports the AgentTalk backlog on request — a bare 'list the AgentTalk backlog' triggers this skill (live orchestrator on port 3741, design/backlog.md fallback). Covers the OPERATOR charter (no authority, observations not findings, never grade/merge/decide), the runbook procedure (preconditions, config contract, caps, monitoring, cleanup), and the H-ladder discipline (no write to mainline, no improvised recovery, invariant-harness bracketing). Designed for session-0 agents with no prior AgentTalk context."
+description: "Produce pre-flight checklists and launch configs for governed AgentTalk worker runs, then execute the full launch lifecycle: pre-flight checks, reference-value capture, invariant-harness bracketing, launch, monitoring through NDJSON and sidecar, process sweep (BL-091 compensating control), and cleanup (nested worktree ordering). Also reads and reports the AgentTalk backlog on request — a bare 'list the AgentTalk backlog' triggers this skill (live orchestrator on port 3741, design/backlog/ fallback). Covers the OPERATOR charter (no authority, observations not findings, never grade/merge/decide), the runbook procedure (preconditions, config contract, caps, monitoring, cleanup), and the H-ladder discipline (no write to mainline, no improvised recovery, invariant-harness bracketing). Designed for session-0 agents with no prior AgentTalk context."
 version: 1.4.1
 created: 2026-07-27
 author: Hermes (operator seat)
@@ -22,7 +22,7 @@ You hold no primer key (primers are keyed by role; you have none). The runbook a
 
 ## Sources of truth
 
-- **This skill:** `design/operator-seat/` in the AgentTalk repo (canonical, versioned — Hermes loads it via symlink). Write path verified working through the symlink (2026-08-06). Editing this skill (skill_manage) writes into the repo working tree — a governed change. **You MAY commit inside the write allowlist** (`design/backlog.md`, `design/operator/**`, `design/operator-seat/**`) — BL-123, PO option (a), 2026-08-11. **You may never PUSH**; that is the PO's, absolutely. Commit rather than leaving the tree dirty: your edit is live from the moment it lands in the working tree either way, so a commit is what makes it visible, attributable and revertible — an untracked file hides from a casual `git status` read. **Report every path you touched, including untracked ones** (`git status --porcelain` prints them as `??`). Symlink mechanism + the skill_manage symlink-scan pitfall: see the `skill-repo-hosting` skill.
+- **This skill:** `design/operator-seat/` in the AgentTalk repo (canonical, versioned — Hermes loads it via symlink). Write path verified working through the symlink (2026-08-06). Editing this skill (skill_manage) writes into the repo working tree — a governed change. **You MAY commit inside the write allowlist** (`design/backlog/**`, `design/operator/**`, `design/operator-seat/**`) — BL-123, PO option (a), 2026-08-11. **You may never PUSH**; that is the PO's, absolutely. Commit rather than leaving the tree dirty: your edit is live from the moment it lands in the working tree either way, so a commit is what makes it visible, attributable and revertible — an untracked file hides from a casual `git status` read. **Report every path you touched, including untracked ones** (`git status --porcelain` prints them as `??`). Symlink mechanism + the skill_manage symlink-scan pitfall: see the `skill-repo-hosting` skill.
 - **Charter:** `AGENT.md` → 📌 DEFAULT ROLE ASSIGNMENTS → 🔧 The OPERATOR seat
 - **Runbook:** `design/launch-and-monitor-runbook.md` — written for exactly your situation. This skill does NOT summarize it; read the runbook directly.
 - **Reference configs:** `design/operator/o*.config.json` — pattern references, not answers.
@@ -69,7 +69,12 @@ Statuses are exactly five: todo · doing · deferred · done · dropped. There i
 
 **`blockedBy` is a RAW header field, not a computed state.** The API echoes the stored `blocked_by` list verbatim; whether the block is actually live is computed by `isResolved()` (a blocker is resolved once it is `done` or `dropped`). So an item can show `blockedBy: ['BL-084']` while BL-084 is `done` — the item is unblocked. **Never report "blocked by X" without checking X's status** (BL-028 lists BL-084 and was released automatically when BL-084 closed 2026-08-07). Full semantics — statuses, the advisory autonomy field, the workable predicate, live counts: `references/backlog-semantics.md`.
 
-**Fallback to `design/backlog.md` ONLY if 3741 does not answer** (connection refused / timeout / non-200). Grep `status:` per item. **Always say in your report which source you used** — API (and which variant) or the file.
+**Fallback to `design/backlog/` ONLY if 3741 does not answer** (connection refused / timeout / non-200).
+Grep `status:` per item **across every `*.md` in that directory** — it is one file per concern, not one
+file. *(Corrected 2026-08-15: this named a single backlog FILE, which Wave 1 replaced with the directory. Grepping
+it emits `No such file or directory` on **stderr** and returns **empty stdout** — so an operator reading
+the pipeline's output sees an empty result set, and reporting "no items" is one careless step away.
+Verified both directions rather than assumed.)* **Always say in your report which source you used** — API (and which variant) or the file.
 
 ## The two deliverables
 
@@ -219,7 +224,7 @@ engine-code rung) · `references/hmp9-run-log.md` (first docs-only rung — half
 
 When the task asks you to choose the investigation subject:
 
-1. Look for open, undecided backlog items (`status: todo` in `design/backlog.md`)
+1. Look for open, undecided backlog items (`status: todo` anywhere under `design/backlog/`)
 2. Prefer items in the operator's scope (infrastructure, harness, safety rails)
 3. Ensure the item has at least three well-defined options with real trade-offs
 4. Verify the **show-stopper fence is load-bearing** — a worker that implements instead of investigating must fail the rung (behaviour change needing PO)
@@ -375,8 +380,8 @@ curl -s 'http://127.0.0.1:3741/api/backlog?workable=true'
 # you are about to launch MUST appear here. If it does not — if it is `doing`,
 # `done`, or no longer `eligible` — stop and report; do not launch.
 
-# WAY 2 — fallback via backlog.md (when orchestrator is not yet running)
-grep -A10 '^id: BL-XXX' /Users/fausto/Software/AgentTalk/design/backlog.md | grep 'status:'
+# WAY 2 — fallback via the backlog directory (when orchestrator is not yet running)
+grep -rA10 '^id: BL-XXX' /Users/fausto/Software/AgentTalk/design/backlog/ | grep 'status:'
 ```
 
 Expected: `status: todo`. If terminal, **do not launch** — the subject is stale and needs PO reassignment.
