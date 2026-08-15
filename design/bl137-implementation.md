@@ -124,6 +124,55 @@ lower.** I have not touched it.
 (this bar, and only this bar). Nothing else is red. Not run yet: `tsc -b`, the full suite, the mutation run,
 C6/C7/C8 (docs).
 
+### ✅ RESOLVED — PO chose option (A), 2026-08-15
+
+`commit` was **narrowed, not deleted** from the fence: it leaves the forbidden-verb loop and becomes a
+shape-asserted **single call site** — pathspec-limited (`'--', rel`) and committing an `authorizationPathFor`
+path. Every other write verb (`merge`, `push`, `reset`, `checkout`, `cherry-pick`, `rebase`) stays absolutely
+forbidden, and a second bar pins that the only committable path comes from the commission's own helper.
+
+**The bar now records its own history** — that it went red, that the implementer stopped rather than trimming
+the verb list, and that the PO lowered it knowingly — so the next person who hits it repeats the conversation
+instead of the shortcut.
+
+---
+
+## Mutation run — seven mutations, and it found two things I would otherwise have shipped
+
+| # | Mutation | Bars killed | Read |
+|---|---|---|---|
+| M1 | revert the path to `design/operator/` (C1) | **27** | the path is load-bearing across both suites |
+| M2 | drop `'launch'` from `ACTIONS` (C2) | **8** | contract row `:84` + every launch bar |
+| M3 | drop the `RUN_ID` validation (C3) | **2** | B4, B10 — exactly their own |
+| M4 | ignore a failed commit and burn anyway (C4 ordering) | **1** | B9, exactly and only |
+| M5 | drop the "commit touched exactly one path" check | **0** ⚠️ | **unfalsifiable** |
+| M6 | drop the blob read-back after commit | **0** ⚠️ | **unfalsifiable** |
+| M7 | remove the pathspec `'--', rel` from the commit | **3** | B5b, added *because* of M5 |
+
+**M5 and M6 killed nothing, and I am reporting that rather than quietly deleting them.** Both are
+defence-in-depth against a *future* edit: while the commit is pathspec-limited it cannot touch a second path,
+and if `git commit` returns success the blob is there. No test can reach either branch without first breaking
+something else. They are kept deliberately — but **they are not covered, and nobody should read the green
+suite as evidence that they work.**
+
+**What M5 did produce is B5b**, which attacks the property that *is* falsifiable: stage an unrelated file,
+approve, and assert the authorize commit still touches exactly one path **and** the interloper is still sitting
+uncommitted in the index. M7 confirms it — remove the pathspec and B5b dies. That bar exists only because the
+mutation run embarrassed the check above it.
+
+## Gate results
+
+| Gate | Result |
+|---|---|
+| `hmp-commission.test.mjs` | **54 / 54** ✅ |
+| `relay-approve.test.mjs` | **40 / 40** ✅ (baseline 29 + 11 new) |
+| **Full suite** | **796 passed, 94 files** ✅ (primer baseline: 787 / 94) |
+| `tsc -b` | **0** ✅ |
+| **D9 — honesty** | ✅ every `fence`/`prevent`/`containment` in the diff is either a *different* mechanism (the write-verb guardrail, `sha-moved`) or an explicit denial ("detection, not prevention"). **No added line describes the path move as a fence.** |
+
+**Retry budgets: nothing exceeded.** Every bar passed on attempt 1 of its pre-registered budget. The single
+stop was the show-stopper fence, which is not a retry.
+
 **Deviation to disclose regardless of the above** *(Rule 7 signal, for the implementation reviewer)*: I added
 **two new keys** to `relay-approve.mjs`'s `REFUSAL` — `COMMIT_FAILED` (required by approved bar B9; without a
 reason of its own a failed commit returns `ok: true`) and `BAD_RUN_ID` (required by B10). Scope forbade changing
