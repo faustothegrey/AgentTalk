@@ -2,7 +2,7 @@
 
 **Rung:** the seventh commission carried over HMP, and the first whose worker **changes engine code** — every
 prior rung (hmp1–hmp6) was read-only, a client-repo implementation, or an investigation that changed nothing.
-**Plan:** `design/hmp-session-submission.md` §3.
+**Plan:** `modules/relay/docs/hmp-session-submission.md` §3.
 **Bar:** `design/operator/hmp7-bar.md` (pre-registered; its hash travels in the commission).
 **Config:** `design/operator/hmp7.config.json`. **Backlog item:** [[BL-121]].
 

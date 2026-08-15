@@ -1,6 +1,6 @@
 # Run `hmp1` — operator brief: prove the channel, write nothing
 
-**Rung:** the first commission carried over HMP. **Plan:** `design/hmp-commission-plan.md` §3.
+**Rung:** the first commission carried over HMP. **Plan:** `modules/containment/docs/hmp-commission-plan.md` §3.
 **Bar:** `design/operator/hmp1-bar.md` (pre-registered; its hash travels in the commission).
 **Config:** `design/operator/hmp1.config.json`.
 

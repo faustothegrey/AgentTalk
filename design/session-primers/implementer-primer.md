@@ -30,7 +30,7 @@ field.
 **⚠️ `git fetch` BOTH repos at startup** (`AgentTalk`, `agentalk-mcp-client`) and verify HEAD against
 `origin/master`. Never trust a primer's hash — including this one.
 
-**Workflow / source of truth.** `design/collaboration-workflow.md` + `design/backlog/` (BL items, one file
+**Workflow / source of truth.** `modules/governance/docs/collaboration-workflow.md` + `design/backlog/` (BL items, one file
 per concern since 2026-08-15) + `AGENT.md`.
 Plans live in `design/bl0NN-*-plan.md`. **Closed items carry a closing block + telemetry inside the backlog item —
 read those first.** Resume from the backlog and plan docs, **NOT from chat**.

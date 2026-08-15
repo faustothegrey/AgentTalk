@@ -1,6 +1,6 @@
 # Planning / Consensus Protocol — Visual Flow
 
-**Status:** Reference (Claude, 2026-06-20). Grounded in `design/planning-protocol.md` +
+**Status:** Reference (Claude, 2026-06-20). Grounded in `modules/team-orchestration/docs/planning-protocol.md` +
 `TeamCoordinator` + `mcp-tools.ts`. Diagrams are **PlantUML** in fenced ` ```plantuml ` blocks
 — view in a Markdown reader with PlantUML support (e.g. VS Code "Markdown Preview Enhanced",
 Obsidian + PlantUML plugin) or paste a block into any PlantUML renderer.
@@ -186,7 +186,7 @@ end note
   kept as editable PlantUML source in the fenced block — so it displays in any Markdown viewer,
   while PlantUML-aware viewers can also render the source.
 - `plantuml` is installed (Homebrew). To re-render after an edit:
-  `plantuml -tsvg -o diagrams design/planning-protocol-diagrams.md` (extracts every
+  `plantuml -tsvg -o diagrams modules/team-orchestration/docs/planning-protocol-diagrams.md` (extracts every
   `@startuml`/`@enduml` block, names each SVG after its diagram id).
-- Kept deliberately close to `design/planning-protocol.md` (the prose source of truth); if the
+- Kept deliberately close to `modules/team-orchestration/docs/planning-protocol.md` (the prose source of truth); if the
   protocol changes, update the source block **and** re-render.

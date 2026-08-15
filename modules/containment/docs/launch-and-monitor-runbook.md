@@ -6,7 +6,7 @@ launcher source and in the rung-5/rung-6 runs — every claim below is either qu
 observed live. Where something is **not** verified, it says so.
 
 **Scope:** the *operator* side — launch, observe, grade, clean up. It does not teach the workflow (that is
-`design/collaboration-workflow.md`) or the rules a worker inherits (that is `AGENT.md`).
+`modules/governance/docs/collaboration-workflow.md`) or the rules a worker inherits (that is `AGENT.md`).
 
 > **The one-line mental model.** The launcher boots an orchestrator, launches **one** worker as an MCP client,
 > creates a **worker-only team**, posts your goal as that team's task, then races the worker's completion against

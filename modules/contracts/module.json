@@ -1,0 +1,11 @@
+{
+  "name": "contracts",
+  "summary": "The shared type vocabulary every other module speaks.",
+  "code": [
+    "packages/contracts/**",
+    "packages/runtime-core/src/shared/**"
+  ],
+  "docs": [],
+  "backlog": null,
+  "deps": []
+}

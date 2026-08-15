@@ -1,7 +1,7 @@
 # Run `hmp2` — operator brief: the first commissioned run that must WRITE
 
 **Rung:** the second commission carried over HMP, and the first of any HMP-carried rung whose worker must
-**modify tracked files and commit them**. **Plan:** `design/hmp-session-submission.md` §3.
+**modify tracked files and commit them**. **Plan:** `modules/relay/docs/hmp-session-submission.md` §3.
 **Bar:** `design/operator/hmp2-bar.md` (pre-registered; its hash travels in the commission).
 **Config:** `design/operator/hmp2.config.json`. **Backlog item:** [[BL-104]].
 

@@ -36,7 +36,7 @@ allowed to proceed. Include for each item the command you would run and what out
 
 ## Your source of truth
 
-**`design/launch-and-monitor-runbook.md`** in `/Users/fausto/Software/AgentTalk`. It is written for exactly your
+**`modules/containment/docs/launch-and-monitor-runbook.md`** in `/Users/fausto/Software/AgentTalk`. It is written for exactly your
 situation — an agent with no prior session context that must launch a governed worker and supervise it. It covers
 preconditions, the config contract, the caps, monitoring, grading, cleanup, and known limits.
 

@@ -1,0 +1,13 @@
+{
+  "name": "integrations",
+  "summary": "Outward connectors. Currently Google Drive.",
+  "code": [
+    "packages/integration-google-drive/**",
+    "scripts/e2e-google-drive-noninteractive.mjs"
+  ],
+  "docs": [],
+  "backlog": null,
+  "deps": [
+    "contracts"
+  ]
+}

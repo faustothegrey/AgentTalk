@@ -2,7 +2,7 @@
 
 **Run:** `hmp8` · **Brief:** `design/operator/hmp8-brief.md` · **Subject item:** BL-122
 **Written:** 2026-08-09, before the run exists. **Author:** planner seat (bar authorship is NOT delegated — PO
-decision Q1, `design/brief-authoring-rung-plan.md` §3b).
+decision Q1, `modules/containment/docs/brief-authoring-rung-plan.md` §3b).
 
 **What this rung tests:** whether an operator brief can be authored by a commissioned worker. It is the first rung
 whose deliverable is a *document that will govern a later run*, rather than code or an investigation.

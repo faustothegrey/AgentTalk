@@ -15,7 +15,7 @@ autonomy: po-decision
   outside both repos] — **HMP on this host accepts
   unauthenticated commands from any LAN peer, into a shell-capable agent.**
 
-  Found 2026-07-30 while resolving `design/hmp-session-submission.md` §1a. `~/.hermes/config.yaml:597-612` sets
+  Found 2026-07-30 while resolving `modules/relay/docs/hmp-session-submission.md` §1a. `~/.hermes/config.yaml:597-612` sets
   `host: 0.0.0.0` (every interface, not the plugin's own documented "safe staging default" of localhost),
   `allow_all_peers: true`, and no `HMP_SHARED_SECRET`. `adapter.py:223` returns `None` — authorized — **before any
   check runs** when `allow_all_peers` is true. Inbound text goes straight to `handle_message()` (`adapter.py:208`)
@@ -44,7 +44,7 @@ autonomy: po-decision
   **Options:** (a) shared secret, rolled out to all four peers — needs `peer70` reachable; (b) bind `127.0.0.1`
   and accept that this host stops being a cluster worker; (c) narrow `allow_all_peers` to an explicit peer list —
   a speed bump, **not** a control, since `from` is self-asserted; (d) accept the posture and rely on
-  `design/hmp-commission-plan.md`'s repo-anchored check for launch-class traffic only. **(d) is what is being
+  `modules/containment/docs/hmp-commission-plan.md`'s repo-anchored check for launch-class traffic only. **(d) is what is being
   built and it is deliberately narrow**: it hardens the launch path and does nothing for the other 107 messages'
   worth of capability.
 

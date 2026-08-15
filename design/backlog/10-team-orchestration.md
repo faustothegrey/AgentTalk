@@ -153,7 +153,7 @@ autonomy: human-only
   it.** Status left `todo` rather than `deferred` — a PO call, worth making at the next backlog gate.
 
   **⚠️ 2026-08-07 — T3a MERGED (`f6c7655`), and the "doubly dead" diagnosis above is INCOMPLETE — read this
-  before planning T3b/T3c.** Plan: `design/bl028-plan.md` (PO ratified the three-phase shape; T3c still open).
+  before planning T3b/T3c.** Plan: `modules/agent-runtime/docs/bl028-plan.md` (PO ratified the three-phase shape; T3c still open).
   **⛔ THE PARAGRAPH THAT STOOD HERE IS RETRACTED (2026-08-07, same day) — it claimed a "THIRD deadness":
   that on the attached transport an agent essentially never reaches `status === 'busy'`, so writing
   `lastProgressAt` would have revived the sweep for in-process agents only. THAT WAS FALSE.**
@@ -163,7 +163,7 @@ autonomy: human-only
   reading a **file name** as a statement of scope. **This item's original "doubly dead" diagnosis was correct;
   my correction to it was the mistake.** Refuted by the hmp6 run investigating [[BL-120]] — an item that
   paragraph produced. Evidence: `design/archive/bl120-attached-busy-investigation.md` §2.2; retraction in
-  `design/bl028-plan.md` §2.
+  `modules/agent-runtime/docs/bl028-plan.md` §2.
   **What still stands:** the gate T3a shipped is `currentTurnId` ("an obligation is outstanding"), which is a
   sharper question than "is this agent busy" and is the one the sweep asks. It was **argued from a false
   premise, not built on one** — no behaviour is affected, and no assertion changed.
@@ -186,7 +186,7 @@ autonomy: human-only
   - outcome:     MERGED ✅ — item stays `todo` (1 of 3 phases)
 
   **✅ 2026-08-08 — T3b DELIVERED. 2 of 3 phases done; the item stays `todo` for T3c.**
-  Plan: `design/bl028-t3b-plan.md` (Gate 1 approved with two PO decisions recorded in §8b).
+  Plan: `modules/agent-runtime/docs/bl028-t3b-plan.md` (Gate 1 approved with two PO decisions recorded in §8b).
 
   **What T3b changed.** `quietForMs` became `classifySilence` and now returns
   `{reason, silentForMs} | undefined`: the old `number | undefined` conflated **three** facts behind one

@@ -1,0 +1,11 @@
+{
+  "name": "observability",
+  "summary": "Meters, logs and the usage readings the resource rule depends on.",
+  "code": [
+    "packages/observability/**",
+    "scripts/usage.mjs"
+  ],
+  "docs": [],
+  "backlog": null,
+  "deps": []
+}

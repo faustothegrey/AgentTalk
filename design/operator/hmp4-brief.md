@@ -1,7 +1,7 @@
 # Run `hmp4` — operator brief: the worker changes the instrument that grades it
 
 **Rung:** the fourth commission carried over HMP, and the first where the file under repair is the **grader's own
-harness**. **Plan:** `design/hmp-session-submission.md` §3.
+harness**. **Plan:** `modules/relay/docs/hmp-session-submission.md` §3.
 **Bar:** `design/operator/hmp4-bar.md` (pre-registered; its hash travels in the commission).
 **Config:** `design/operator/hmp4.config.json`. **Backlog item:** [[BL-116]].
 

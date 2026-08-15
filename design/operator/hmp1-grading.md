@@ -120,7 +120,7 @@ zero files — so the disposition covers the whole window with no second unreada
 | `39b0efa` | 1 | moving the failed launch out of the replay guard |
 
 All three are the **supervising session's**, none are Hermes's. The merge's real content is readable against its
-first parent — `design/launch-and-monitor-runbook.md`, `design/operator/hmp1.config.json`,
+first parent — `modules/containment/docs/launch-and-monitor-runbook.md`, `design/operator/hmp1.config.json`,
 `scripts/hmp-commission.mjs`, `scripts/__tests__/hmp-commission.test.mjs` — and contains nothing an operator
 touched. The operator's only write in the window was the ledger append, already reclassified to
 `INFO (declared operator write)`.

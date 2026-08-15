@@ -1,7 +1,7 @@
 # Run `hmp3` — operator brief: the fix that must NOT be copied from next door
 
 **Rung:** the third commission carried over HMP, and the first whose correct answer is *deliberately different*
-from the one that worked on the previous rung. **Plan:** `design/hmp-session-submission.md` §3.
+from the one that worked on the previous rung. **Plan:** `modules/relay/docs/hmp-session-submission.md` §3.
 **Bar:** `design/operator/hmp3-bar.md` (pre-registered; its hash travels in the commission).
 **Config:** `design/operator/hmp3.config.json`. **Backlog item:** [[BL-115]].
 

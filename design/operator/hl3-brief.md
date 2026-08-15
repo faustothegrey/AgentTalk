@@ -118,7 +118,7 @@ Absolute paths for both; do not `cd` into the client (your workdir stays on gove
 
 ## Procedure
 
-**`design/launch-and-monitor-runbook.md` is the contract.** The same three easy-to-get-wrong points:
+**`modules/containment/docs/launch-and-monitor-runbook.md` is the contract.** The same three easy-to-get-wrong points:
 
 1. Run the pre-flight **for real** and report each result **with its value**.
 2. **Snapshot LAST**, immediately before launching.

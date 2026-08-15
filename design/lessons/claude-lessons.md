@@ -213,7 +213,7 @@ here.**
 - **I re-derived my own design note from scratch and didn't recognise it.** The PO floated "role-based deterministic
   hardness" as a fresh idea; I spent a long, enthusiastic stretch building it up with him — chokepoint taxonomy,
   denial-as-interrogation-trigger, over-fencing warnings, the escalation-path risk — before grepping and finding
-  **`design/scope-fences-design-note.md`, dated two days earlier, `Owner: Architect (Claude)`**, containing every one
+  **`modules/governance/docs/scope-fences-design-note.md`, dated two days earlier, `Owner: Architect (Claude)`**, containing every one
   of those points by name. Nothing was lost (the entry is better for the second pass), but I let the PO believe we
   were inventing what we had already written. **Before agreeing that an idea is new, grep `design/` for it.** The
   cost of the check is ten seconds; the cost of skipping it is a person's confidence in their own memory.

@@ -17,6 +17,6 @@ mainline stays verified-only; merging remains PO-gated where the workflow requir
 Implementation Reviewer's verdicts alone — the seat exists so closure *re-examines* the verification loop's
 judgment rather than re-asserting it (adopted from the M15-T3 catch). **Task-end Reviewer ≠ the Implementer,
 and ≠ that task's Implementation Reviewer by default** (fresh eyes at close). Canonical definition:
-`design/collaboration-workflow.md` §1 (Reviewer seats, split 2026-07-08).
+`modules/governance/docs/collaboration-workflow.md` §1 (Reviewer seats, split 2026-07-08).
 
 **Eligibility and current default holder:** `AGENT.md → 📌 DEFAULT ROLE ASSIGNMENTS` (PO-owned).

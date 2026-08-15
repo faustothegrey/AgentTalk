@@ -7,7 +7,7 @@ one of **five states — `todo · doing · deferred · done · dropped` — peri
 waits on) is the **description's** job, not a state. The file order IS the timeline: **done history
 **done history on top, the single `doing` item after that, then `deferred` items (in trigger-priority order), then the `todo` queue below in planned order.**
 item is `doing` at a time. A refinement that belongs to an open epic goes in that epic's
-`implementation.md` instead, not here. Canonical statement: `design/collaboration-workflow.md` §3b.
+`implementation.md` instead, not here. Canonical statement: `modules/governance/docs/collaboration-workflow.md` §3b.
 
 **Backlog gate (workflow §3b):** before opening any new macro unit (epic/task), the
 architect/reviewer reviews this file and **dispositions every `todo` item** in the same pass — so
@@ -156,7 +156,7 @@ recorded constraint, not folded** (full provider split remains out of M19 scope 
 
 **M19 shape:** **T1 = BL-018-lite** (contract alignment / fail-fast; hard prerequisite) → **T2 = BL-026** (supported
 attach ritual + prove Claude `--allowedTools`/`--permission-mode` pre-approval early). Ladder entry + full inception
-block: `design/self-hosting-program-draft.md` §M19. Next act: the planner authors the M19 plan → Gate 1 (reviewer ≠
+block: `modules/governance/docs/self-hosting-program-draft.md` §M19. Next act: the planner authors the M19 plan → Gate 1 (reviewer ≠
 planner). Concentration noted (architect+SM+plan-reviewer = Claude); the PO ruled the fork personally.
 
 | Item | Disposition for this gate |
@@ -172,7 +172,7 @@ planner). Concentration noted (architect+SM+plan-reviewer = Claude); the PO rule
 ### Backlog gate — 2026-07-09 (opening M18 · SM: Claude, PO go `[PO]` in session)
 
 Per §3b, dispositioned before opening **M18 — Self-hosting milestone** (the program's flywheel-first-turn
-epic, 3 of M16→M18). Inception: `design/self-hosting-program-draft.md` §M18 **INCEPTION** block
+epic, 3 of M16→M18). Inception: `modules/governance/docs/self-hosting-program-draft.md` §M18 **INCEPTION** block
 (PO+Architect, 2026-07-09 — T1=BL-015-L0 shakedown · T2=BL-020 · T3=BL-017; C3 reworded to
 relay-recorded/falls-after-T3). Planner advisory POV delivered same day (PO-relayed, recorded in the draft):
 endorses the sequence; T3 must extend the existing `send_to_agent` argument path (new tool ⇒ BL-018 reopen ⇒
@@ -196,7 +196,7 @@ Plan authored after the gate: `design/archive/milestone18-self-hosting-plan.md` 
 ### Backlog gate — 2026-07-09 (opening M17 · SM: Claude, PO go in session)
 
 Per §3b, dispositioned before opening **M17 — The gate over the channel** (self-hosting program epic 2 of
-M16→M18). Inception: `design/self-hosting-program-draft.md` §M17 **INCEPTION** block (PO+Architect,
+M16→M18). Inception: `modules/governance/docs/self-hosting-program-draft.md` §M17 **INCEPTION** block (PO+Architect,
 2026-07-09 — fence + two dispositions). Planner advisory POV delivered same day (PO-relayed): the C1 live
 proof runs on **direct SDK MCP clients** — BL-017 need not enter the fence; recommendation to open for plan
 authoring. SM go/no-go reason (durable, per the SM grant): inception + POV both landed, the one open
@@ -214,7 +214,7 @@ feasibility question (BL-017 in/out) is answered, no competing `doing` item, bud
 ### Backlog gate — 2026-07-08 (opening M16 · SM: Claude, PO go in session)
 
 Per §3b, dispositioned before opening **M16 — One real baton** (self-hosting program M16→M18; inception
-artifact `design/self-hosting-program-draft.md`, PO↔Architect 2026-07-02, planner advisory POV recorded).
+artifact `modules/governance/docs/self-hosting-program-draft.md`, PO↔Architect 2026-07-02, planner advisory POV recorded).
 First gate under the **2026-07-08 governance model**: reviewer split into three seats, role-only docs with
 the single bindings table (`AGENT.md → 📌 DEFAULT ROLE ASSIGNMENTS`), role tags `[PO]`/`[SM]`, SM handed
 Codex → Claude (commit `789850d`). SP-WAKE layer (a) **PASS** (600 s idle `await_turn` wake in 3 ms) fixes
@@ -282,7 +282,7 @@ groundwork this session; ratification calls are marked.
 | **BL-003 M07-T2 live smoke** | Blocker half-lifted (M11 shipped tolerance; quota gate remains). Likely **superseded** by the arbiter direction (the arbiter judges advancement semantically, making the old strict-protocol live bar moot). Keep `open`/parked; final supersede-or-run call when arbiter Epic 1 opens. |
 | **BL-005 worker-prompt worktree** | Unchanged — parked with explicit trigger (orchestrator collecting worker output). Not arbiter-adjacent. |
 | **BL-007 operator abort/recovery** | Unchanged — experience-triggered (needs real `awaiting_operator` cases). Not arbiter-adjacent. |
-| **BL-009 semantic arbiter** | **PROMOTED → arbiter shadow spike** (`design/archive/arbiter-shadow-spike-plan.md`). The program decomposition (spike + 4 epics) stays in `design/arbiter-consensus-draft.md` §8/§10; only the spike opens now. |
+| **BL-009 semantic arbiter** | **PROMOTED → arbiter shadow spike** (`design/archive/arbiter-shadow-spike-plan.md`). The program decomposition (spike + 4 epics) stays in `modules/consensus-lab/docs/arbiter-consensus-draft.md` §8/§10; only the spike opens now. |
 
 *Nothing dropped.*
 
@@ -438,13 +438,13 @@ fault tolerance, plan at `design/archive/milestone08-transport-fault-tolerance-p
      ```
      [CRITICAL] 2
        · tracked-file-modified: agenttalk: … design/backlog.md
-       · tracked-file-modified: agenttalk: … design/launch-and-monitor-runbook.md
+       · tracked-file-modified: agenttalk: … modules/containment/docs/launch-and-monitor-runbook.md
      ```
 
      That is this item, reproduced on demand: a process appeared inside the observation window and the rail
      could not see it. It is also why the sweep is `before cleanup` — the same position as the harness check.
 
-  **It is wired into `design/launch-and-monitor-runbook.md` §10a, not only recorded here.** A compensating
+  **It is wired into `modules/containment/docs/launch-and-monitor-runbook.md` §10a, not only recorded here.** A compensating
   control that lives in a deferred backlog item is a note, not a control — nobody reads the backlog at run time.
 
   **Reopen condition (§3c).** Reopen this item if **any** of the following happens:

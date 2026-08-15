@@ -3,7 +3,7 @@
 **Reusable template.** Instantiate by copying to `design/operator/<run>-brief.md` and changing **exactly two
 zones**: this header block (title + provenance) and **§0**. **Everything from §1 onward is the reusable
 substance and must survive untouched** — if a run ever needs it edited, that is the signal this template has
-failed its purpose. Record it; do not quietly patch it. Rationale: `design/brief-authoring-rung-plan.md`.
+failed its purpose. Record it; do not quietly patch it. Rationale: `modules/containment/docs/brief-authoring-rung-plan.md`.
 
 > *Corrected 2026-08-09 at first instantiation. This originally read "filling §0 only", which was wrong on its
 > first contact with reality: a copy obviously needs its own title, and a template that announces itself as a

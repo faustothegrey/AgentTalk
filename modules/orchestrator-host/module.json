@@ -1,0 +1,26 @@
+{
+  "name": "orchestrator-host",
+  "summary": "The host process: HTTP/WS server, scenario runner, and the bridges hanging off it.",
+  "code": [
+    "apps/orchestrator/src/index.ts",
+    "apps/orchestrator/src/server.ts",
+    "apps/orchestrator/src/scenario-runner.ts",
+    "apps/orchestrator/src/diagramtalk-bridge.ts",
+    "apps/orchestrator/src/tools/**",
+    "scripts/supervisor.mjs",
+    "scripts/restart-supervisor.mjs",
+    "scripts/check-orchestrator-ports.mjs",
+    "scripts/e2e-test.ts"
+  ],
+  "docs": [
+    "modules/orchestrator-host/docs/architecture.md",
+    "modules/orchestrator-host/docs/implementation.md"
+  ],
+  "backlog": null,
+  "deps": [
+    "team-orchestration",
+    "backlog",
+    "mcp-transport",
+    "observability"
+  ]
+}

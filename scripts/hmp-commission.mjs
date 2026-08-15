@@ -14,7 +14,7 @@
  *      verifier must never be misread as a clean refusal
  *
  * WHY THIS FILE EXISTS
- *   `design/hmp-session-submission.md` §4 says the receiver of a launch-class HMP message
+ *   `modules/relay/docs/hmp-session-submission.md` §4 says the receiver of a launch-class HMP message
  *   MUST verify authorization "before doing anything else". That was written expecting a
  *   receiver with a dispatch table. The live receiver is an LLM with a shell (Hermes,
  *   `toolsets: [hermes-cli]`), so a rule of the form "you must verify first" is BEHAVIOURAL —
@@ -532,7 +532,7 @@ function defaultSweepRunner() {
 /**
  * Launch the verified commission — DETACHED, and that is a design rule rather than a convenience.
  *
- * `design/hmp-session-submission.md` §6: a run takes minutes to tens of minutes while HMP's
+ * `modules/relay/docs/hmp-session-submission.md` §6: a run takes minutes to tens of minutes while HMP's
  * practical timeout is 120–300s, so **HMP carries the commission, never the result.** Holding the
  * connection open for a run would guarantee a timeout and, worse, would make the courier's reply
  * look like a verdict on the run. It is an acknowledgement: accepted, and where the artifact will

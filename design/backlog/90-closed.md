@@ -329,7 +329,7 @@ tags: [consensus, arbiter, architecture, heavyweight]
   consensus core: advancement decided by a **semantic arbiter** (reads agents' responses, advances by meaning)
   instead of the rigid protocol state machine. Refined into **two complementary modes over one shared "push"**:
   **A — arbiter-synthesis** (the arbiter authors the deliverable; semantic consensus) and **B — collective-signing**
-  (all agents sign the same artifact; today's protocol ≈ B). Draft: `design/arbiter-consensus-draft.md`. **Ideation
+  (all agents sign the same artifact; today's protocol ≈ B). Draft: `modules/consensus-lab/docs/arbiter-consensus-draft.md`. **Ideation
   only — may father one or more epics; PO revisits with more input.** Absorbs/supersedes the M11 "referee"/tolerance
   thread and composes with the SP1 affordance spike. **Source:** Fausto ↔ Claude (architect), 2026-07-01.
 
@@ -353,7 +353,7 @@ tags: [self-hosting, flywheel, scope-fence, robustness, baton]
   count falls here). DoD per the draft §M18: every baton/gate in the recording; friction→backlog entries
   cite recording evidence (the program's true DoD); C3 reworded — relay count recorded per task, falls
   measurably after T3, every relay a declared fallback moment. Inception + planner POV (endorses, architect-
-  verified): `design/self-hosting-program-draft.md` §M18. Plan: `design/archive/milestone18-self-hosting-plan.md`.
+  verified): `modules/governance/docs/self-hosting-program-draft.md` §M18. Plan: `design/archive/milestone18-self-hosting-plan.md`.
   **Source:** PO + Architect inception, 2026-07-09.
 
 <!-- @item
@@ -370,7 +370,7 @@ tags: [consensus, arbiter, facilitator, refactor]
   implementation reproduces today's deterministic rules **byte-identically** (zero behaviour change, zero LLM
   calls). Absorbs the BL-008 residual (unify the two protocol event-emission shapes — same surface). Leaner
   scope per PO (2026-07-02): all judge-touching work parked → BL-010. Plan:
-  `design/archive/milestone14-facilitator-extraction-plan.md`. Program: `design/arbiter-consensus-draft.md` §7/§8/§10.
+  `design/archive/milestone14-facilitator-extraction-plan.md`. Program: `modules/consensus-lab/docs/arbiter-consensus-draft.md` §7/§8/§10.
   **Source:** PO + Architect inception, 2026-07-02.
 
 <!-- @item
@@ -427,7 +427,7 @@ tags: [self-hosting, wire-contract, cross-repo, governance]
   human act. Evidence so far: exactly one occurrence (M16-T2a's v7 bump, resolved via a Gate-1 cross-repo
   sync grant) — building negotiation now would be process for a problem observed once (program risk #3).
   M17 may at most add a clearer version label on the contract, no negotiation machinery. Source:
-  `design/self-hosting-program-draft.md` §M17 inception; architect remark parked 2026-07-08.
+  `modules/governance/docs/self-hosting-program-draft.md` §M17 inception; architect remark parked 2026-07-08.
 
 <!-- @item
 id: BL-080
@@ -553,7 +553,7 @@ autonomy: human-only
   **[[BL-028]] T3a shipped an instrument whose output nothing durably records on the live orchestrator, so the
   measured silence distribution T3c is required to be entered with does not exist.**
 
-  T3a's case for shipping alone was measurement, stated in its own plan (`design/bl028-plan.md` §5): *"we
+  T3a's case for shipping alone was measurement, stated in its own plan (`modules/agent-runtime/docs/bl028-plan.md` §5): *"we
   measure, for the first time, how long real turns actually go quiet. That number is the input to T3c's
   threshold, which today we would be guessing."* The sweep is live and correct — that is not in question here.
   **What is missing is the recording.** The advisory has exactly two durable channels and neither has produced
@@ -1396,7 +1396,7 @@ tags: [engine, dead-code, registry, status, bl028-followup, investigation, opera
   changes if the branch is wired — or states plainly which it could not determine. A recommendation with no
   reader inventory does not meet it.
   **Harmless if botched**, which is why it is the rung: it changes nothing, and a wrong recommendation is
-  caught by the gate that reads it. Origin: `design/bl028-plan.md` §9 q4.
+  caught by the gate that reads it. Origin: `modules/agent-runtime/docs/bl028-plan.md` §9 q4.
 
   **✅ DONE — MERGED 2026-08-07 (`fcbc5a1`; worker commit `0f7eb6a`) — delivered by a worker commissioned over
   HMP on run `hmp6`, the sixth rung and the first where the operator listed the queue itself.** Deliverable:
@@ -2498,7 +2498,7 @@ date: 2026-07-13
 epic: null
 tags: [governance, worktree, parallel-dev, process]
 -->
-- [done · **DONE 2026-07-18 — all three bites complete** · tooling `scripts/wt-setup.mjs` (master `53d4f56`) · discipline doc `design/worktree-discipline.md` (master `48ac546`, pushed) · stale-branch prune done 2026-07-18 (PO confirm-then-prune)] — **Define a parallel-code-development worktree discipline** —
+- [done · **DONE 2026-07-18 — all three bites complete** · tooling `scripts/wt-setup.mjs` (master `53d4f56`) · discipline doc `modules/containment/docs/worktree-discipline.md` (master `48ac546`, pushed) · stale-branch prune done 2026-07-18 (PO confirm-then-prune)] — **Define a parallel-code-development worktree discipline** —
   LB-90 relaxed the serial-actor rule for *everything except code development*; the **blocker to lifting the code-dev
   half is a deliberate worktree discipline.** Three near-misses on 2026-07-13 showed the collision surface: a parallel
   session advanced `master`/primers under an in-flight session (stale primer within minutes); a delivery arrived
@@ -2525,7 +2525,7 @@ tags: [governance, worktree, parallel-dev, process]
   wip/BL-038-provider-timeouts`; *client* `task-BL-045 · task-BL-064 · task-M18-T3 · task-goose-executor ·
   m11-t1-consensus-respond · m12-c-pf1-codex-bridge-fix`. Client worktree tooling deliberately skipped (its
   worktree is a single `node_modules` symlink — no helper warranted).
-  **UPDATE (2026-07-18) — DISCIPLINE DOC BITE DONE:** `design/worktree-discipline.md` written — the adopted
+  **UPDATE (2026-07-18) — DISCIPLINE DOC BITE DONE:** `modules/containment/docs/worktree-discipline.md` written — the adopted
   convention covering branch-naming (`task-<id>`), merge serialization / who-owns-`master`, uncommitted-work
   isolation, backlog-id allocation without races (allocate-on-master + count-check; `mintId` vs hand-alloc),
   sync-before-start (`git fetch` both), stale-worktree/branch cleanup, and the `workdir`→worktree assignment for
@@ -2549,7 +2549,7 @@ epic: null
 tags: [self-hosting, launcher, agents, on-demand]
 -->
 - [done · 2026-07-15 (merged)] — **HTTP launcher: launch agents on demand, no shell command** — Option A of
-  `design/http-launcher-proposal.md`. New `agent-launcher` service in `agentalk-mcp-client` (`lib/agent-launcher.mjs`
+  `modules/containment/docs/http-launcher-proposal.md`. New `agent-launcher` service in `agentalk-mcp-client` (`lib/agent-launcher.mjs`
   core + bin, binds `127.0.0.1`): `POST /agents` creates+starts the agent via the orchestrator's existing HTTP API
   and spawns the `llm-agent` harness locally, which attaches over WS as a manual launch would; plus `GET /agents`,
   `DELETE /agents/:id`, `GET /healthz`. **Orchestrator core untouched** — the M05 "orchestrator launches nothing"
@@ -2652,7 +2652,7 @@ tags: [self-hosting, bite0, live-validation, acceptance]
 Two development lines forked at 1fbac5e and each independently allocated BL-037..BL-040. On reconcile (PO:
 "Bite 0 takes precedence") the Bite 0 items kept BL-037..BL-040; the OpenRouter/tester-thread items below were
 RENUMBERED: old BL-037→BL-044, BL-038→BL-045, BL-039→BL-046, BL-040→BL-047. Living docs were updated to match.
-HISTORICAL records were intentionally NOT rewritten — in `design/testlog.md`, `design/logbook.md` (LB-91/LB-92),
+HISTORICAL records were intentionally NOT rewritten — in `modules/governance/docs/testlog.md`, `modules/governance/docs/logbook.md` (LB-91/LB-92),
 pre-reconcile git commit messages, and the `task-BL-039` branch name, a bare "BL-037..040" carries its
 ORIGINAL (pre-remap) meaning; resolve it via this table. -->
 
@@ -2775,7 +2775,7 @@ tags: [api-agents, openrouter, product-gap, enabler, rung4, autonomous, goose]
   `ApiProvider`. **Verified prerequisite met:** OpenRouter is schema-compatible — a faithful consensus request
   (forced `tool_choice` + json `response_format` + tools) returned HTTP 200 with a valid `opinion` tool call on
   `openai/gpt-4o-mini` (the Google 400 was google-specific). Small, targeted. Source:
-  `design/decision-api-agents-for-coordination.md`, TL-005, LB-91.
+  `modules/team-orchestration/docs/decision-api-agents-for-coordination.md`, TL-005, LB-91.
 
   **✅ DONE — MERGED 2026-07-19 (`216c664`, local, NOT pushed). The FIRST AgentTalk fix produced AUTONOMOUSLY by a
   launched worker over the substrate — rung 4 of the autonomous-development ladder ("AgentTalk improves AgentTalk").**
@@ -3257,7 +3257,7 @@ tags: [infrastructure, harness, operator-seat, bl087, needs-decision]
   where the operator's own worktree and branch are **supposed** to disappear. **One harness, two questions, and
   only the first is implemented.**
 
-  **Worked around already, at zero code cost:** `design/launch-and-monitor-runbook.md` §10a now says **check
+  **Worked around already, at zero code cost:** `modules/containment/docs/launch-and-monitor-runbook.md` §10a now says **check
   BEFORE cleanup**, which answers the damage question correctly and is the question that actually gates the next
   operator run. So this item is **not urgent** — it is about whether the second question is worth supporting.
 
@@ -4773,7 +4773,7 @@ autonomy: human-only
     [[BL-103]]** (`9599642`), with the destructive path excluded by construction (`worktree remove` without
     `--force`, `branch -d` never `-D`).
   - **the operator's own `att-op-*` parent worktree** — still swept **by hand**, per
-    `design/launch-and-monitor-runbook.md` §8's TOTAL/PARTIAL distinction. That is a **human procedure**, not
+    `modules/containment/docs/launch-and-monitor-runbook.md` §8's TOTAL/PARTIAL distinction. That is a **human procedure**, not
     code, and it has never misbehaved; there is nothing here to test.
 
   **↩ Reopen condition — as a NEW item, not this one:** the operator's parent-worktree sweep should be
@@ -4913,7 +4913,7 @@ autonomy: human-only
   bars actually live in `scripts/__tests__/infra-invariant.test.mjs` and were appended there.
 
   **Left open:** the fence is enforced only when a run **declares** it. Nothing yet forces an operator run to
-  pass `--expect`; the runbook should require it, and `design/launch-and-monitor-runbook.md` was **not** touched
+  pass `--expect`; the runbook should require it, and `modules/containment/docs/launch-and-monitor-runbook.md` was **not** touched
   by this task. Worth a follow-up if the seat is used in anger.
 
   **Telemetry (task closure):**
@@ -5140,7 +5140,7 @@ autonomy: human-only
   **Not cosmetic, and there is now evidence:** `hmp5`'s worker declined to run `npm install` **because of this
   drift** (it would resync the lockfile and dirty tracked files). That refusal was correctly graded as Implementer
   Rule 2 held without supervision — but the obstacle it navigated around is this item, and it will meet the next
-  worker too. Gate record: `design/backlog-gate-2026-08-05.md` §2.4.
+  worker too. Gate record: `design/archive/backlog-gate-2026-08-05.md` §2.4.
 
   ---
 
@@ -5649,7 +5649,7 @@ autonomy: human-only
 - [done · surfaced planning the HMP commission on the Mac; fixed inline by the `hmp-commission-plan.md` §5 pass, verified and closed 2026-07-31] — **The runbook's worktree-root line was stale on
   macOS, and stale in the direction that hides a worktree from the sweep.**
 
-  `design/launch-and-monitor-runbook.md:22` reads *"Default root is `os.tmpdir()` since [[BL-100]] — `/tmp` on
+  `modules/containment/docs/launch-and-monitor-runbook.md:22` reads *"Default root is `os.tmpdir()` since [[BL-100]] — `/tmp` on
   this box, so `--root` is no longer needed on Linux"*. It was written **on the Linux box**, where that is true.
   On the Mac `os.tmpdir()` honours `$TMPDIR` and resolves to `/var/folders/n1/…/T`, so `wt-setup create` puts the
   worktree somewhere a `/tmp/att-op-*` eyeball — and the harness's `att-op-*` allowlist — will not look.
@@ -5657,14 +5657,14 @@ autonomy: human-only
   runbook disagrees with it.
 
   **Fix:** make the line platform-explicit rather than naming "this box", since which box wrote a doc is not
-  visible to whoever reads it later. Being addressed inline by `design/hmp-commission-plan.md` §5; this item
+  visible to whoever reads it later. Being addressed inline by `modules/containment/docs/hmp-commission-plan.md` §5; this item
   exists so it is not lost if that plan is dropped.
 
   **✅ CLOSED 2026-07-31 — fixed inline, exactly as this item anticipated.** No one ever worked the item; the
   `hmp-commission-plan.md` §5 pass corrected the line and the item's own hedge ("this item exists so it is not
   lost if that plan is dropped") turned out to be the thing that kept the record honest.
 
-  **Verified against the artifact, not the claim.** `design/launch-and-monitor-runbook.md:22` now reads
+  **Verified against the artifact, not the claim.** `modules/containment/docs/launch-and-monitor-runbook.md:22` now reads
   *"platform-derived — check yours, don't assume the box this was written on ([[BL-108]]): on Linux it is `/tmp`
   … on macOS `$TMPDIR` makes it `/var/folders/…/T`, which is outside every `/tmp/att-op-*` sweep and the
   harness's own allowlist — so on macOS pass `--root /tmp`"*. That satisfies the fix direction in full: platform
@@ -5695,7 +5695,7 @@ epic: null
 tags: [harness, infra-invariant, operator, charter, disposition, bl087-followup]
 autonomy: human-only
 -->
-- [done · **MERGED 2026-08-06** (`05fac03`) · originally: surfaced at Gate 1 of `design/hmp-commission-plan.md`] — **"Only the PO may dispose of a `critical`
+- [done · **MERGED 2026-08-06** (`05fac03`) · originally: surfaced at Gate 1 of `modules/containment/docs/hmp-commission-plan.md`] — **"Only the PO may dispose of a `critical`
   finding" has nowhere to record that a disposition happened.**
 
   The OPERATOR charter says a `critical` **gates the next operator run** until the PO clears it, and that only the
@@ -5782,7 +5782,7 @@ autonomy: po-decision
   Hermes: feasible now, but it needs a tag that is not `[PO]`.**
 
   Asked by the PO 2026-07-30: *can I give instructions through Hermes?* Full design:
-  `design/hmp-bidirectional-relay.md`.
+  `modules/relay/docs/hmp-bidirectional-relay.md`.
 
   **Feasibility: yes, and materially better than when it last failed.** [[LB-49]] retired exactly this idea on
   2026-07-02, and all three of its measured defects now have structural replacements rather than workarounds. The
@@ -5957,7 +5957,7 @@ autonomy: po-decision
   **So what remains open here is narrower than this item's own text claims:** [[BL-107]] (parked 2026-08-02,
   accepted-open) and **write-class verbs over HMP** (`READ_ONLY_VERBS` still frozen at `status` · `report`;
   widening is a governance act). **Nothing in the fence is relaxed by this note** — it corrects a status claim,
-  not a control. Gate record: `design/backlog-gate-2026-08-05.md` §2.6.
+  not a control. Gate record: `design/archive/backlog-gate-2026-08-05.md` §2.6.
 
 <!-- @item
 id: BL-111
@@ -6061,7 +6061,7 @@ autonomy: human-only
   put it in `os.tmpdir()`), or reached through any symlinked path.
 
   **Why it matters more than the AgentTalk sites did:** this is *the launcher*, and
-  `design/launch-and-monitor-runbook.md` explicitly mandates **invoking it by absolute path**. A silent no-op
+  `modules/containment/docs/launch-and-monitor-runbook.md` explicitly mandates **invoking it by absolute path**. A silent no-op
   there means a commissioned run reports success and never starts — which is exactly what the first hmp1 launch
   looked like from the outside before the cause was found.
 
@@ -6175,12 +6175,12 @@ autonomy: human-only
   BL-117 only, since the provider block was `ok: true` throughout and this item's coerce-to-zero path never
   engaged. The recommendation is about **sequencing, not identity** — one visit to `readMeterPercent` and the
   delta logic, two bars, neither closed on the other's run. Same shape as [[BL-028]]/[[BL-084]]: one primitive,
-  separately-closing consumers. Gate record: `design/backlog-gate-2026-08-05.md` §2.3.
+  separately-closing consumers. Gate record: `design/archive/backlog-gate-2026-08-05.md` §2.3.
 
   ---
 
   **✅ CLOSED — MERGED 2026-08-06 (`e04c576`, client repo; impl `66a0af1`). Plan:
-  `design/meter-cap-cluster-plan.md`.** `readMeterPercent` no longer coerces: an absent `used_percent` now
+  `modules/containment/docs/meter-cap-cluster-plan.md`.** `readMeterPercent` no longer coerces: an absent `used_percent` now
   throws, routing into the caller's existing skip-a-tick path — so an unreadable meter still never fails a run
   ([[LB-11]]: it is jittery by nature), it just stops pretending to be a zero.
 
@@ -6366,7 +6366,7 @@ tags: [operator, cap, meter, containment, charter, bl114-followup, lb11, hmp5]
   ---
 
   **✅ CLOSED — the PO chose option (b): DEMOTE TO A WARNING. Merged 2026-08-06 (`e04c576`, client repo; impl
-  `66a0af1`). Plan + ratification: `design/meter-cap-cluster-plan.md` §4.**
+  `66a0af1`). Plan + ratification: `modules/containment/docs/meter-cap-cluster-plan.md` §4.**
 
   The rail now **warns and the run continues**. The reading, the delta and the artifact record all stay; only the
   **authority to kill** is removed. `cap.wallClockMs` is now the only terminating rail — and it is the one
@@ -6450,7 +6450,7 @@ autonomy: human-only
   ---
 
   **✅ CLOSED — MERGED 2026-08-06 (`e04c576`, client repo; impl `66a0af1`). Plan:
-  `design/meter-cap-cluster-plan.md` §5/T1.**
+  `modules/containment/docs/meter-cap-cluster-plan.md` §5/T1.**
 
   **The diagnosis above was right, and one thing it did not say made the fix easy:** `llm-agent.mjs` installed
   **no signal handlers at all** — verified, not assumed — so `SIGTERM` took node's default disposition and the

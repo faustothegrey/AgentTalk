@@ -105,6 +105,13 @@ const BOUNDARY = '(?<![\\w./-])';
 const PATTERNS = [
   new RegExp(`${BOUNDARY}design/[A-Za-z0-9._/-]+\\.md`, 'g'),
   new RegExp(`${BOUNDARY}scripts/[A-Za-z0-9._/-]+\\.mjs`, 'g'),
+  // BL-144 (Wave 2). Durable docs move OUT of `design/` and into the module that owns them, so
+  // without this pattern the gate would simply stop seeing them — thirty documents would leave its
+  // coverage and the reported citation count would FALL, which reads as progress and is blindness.
+  // Added in its own commit, BEFORE the first doc moved, so the gate never had a window of not
+  // watching. A gate that quietly narrows its own scope during a migration is worse than one that
+  // fails, because nothing goes red.
+  new RegExp(`${BOUNDARY}modules/[A-Za-z0-9._/-]+\\.md`, 'g'),
 ];
 
 const key = (citer, target) => `${citer} -> ${target}`;

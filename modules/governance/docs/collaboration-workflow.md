@@ -148,7 +148,7 @@ orchestration migration, so it can be reviewed, refined, and reused deliberately
   running it, including (1) the test objective, (2) the evidence sources it will use, (3) what remains unverified, and
   (4) whether it is using real providers or fake/mock paths. Fake providers/models are never substituted for a real
   production-path validation without explicit PO consent. Tester runs that should be replayable are indexed in
-  `design/testlog.md`; project decisions and cross-cutting findings still go in `design/logbook.md`. When video is
+  `modules/governance/docs/testlog.md`; project decisions and cross-cutting findings still go in `modules/governance/docs/logbook.md`. When video is
   useful, the Tester may save a passive screen recording artifact (preferably `.webm`) and record its path in the
   testlog; the video is **not** AI-analyzed by default, so it adds no token cost unless the PO asks for specific frame
   or clip analysis. When using **cmux** for autonomous UI validation, keep the product UI visible in the primary
@@ -165,7 +165,7 @@ orchestration migration, so it can be reviewed, refined, and reused deliberately
   through the UI *with the human* or through an explicitly PO-assigned autonomous validation run, records the count).
   It is **orthogonal to the 3-gate build sequence** — it operates on the merged / running product, typically
   post-merge or during adoption. Independence: **Tester ≠ that task's Implementer**. Lessons are agent-keyed, tagged
-  `as tester` (no role-keyed lessons file). Charter: `design/tester-seat-proposal.md`.
+  `as tester` (no role-keyed lessons file). Charter: `modules/governance/docs/tester-seat-proposal.md`.
 
 **Planner and Reviewer are SEPARATE roles (split adopted 2026-06-29); the Reviewer itself split into three seats
 (PO decision, 2026-07-08).** The old fused `planner-reviewer` is retired, and so is the single all-gates Reviewer.

@@ -1,0 +1,23 @@
+{
+  "name": "governance",
+  "summary": "The working method itself: roles, gates, primers, and the doc-citation gate that keeps its claims honest.",
+  "code": [
+    "scripts/check-doc-citations.mjs",
+    "scripts/check-modules.mjs"
+  ],
+  "docs": [
+    "modules/governance/docs/agent-md-split-proposal.md",
+    "modules/governance/docs/agent-rating-signal-note.md",
+    "modules/governance/docs/collaboration-workflow.md",
+    "modules/governance/docs/implementer-pitfalls.md",
+    "modules/governance/docs/logbook.md",
+    "modules/governance/docs/reprime-mechanism.md",
+    "modules/governance/docs/research-agenda.md",
+    "modules/governance/docs/scope-fences-design-note.md",
+    "modules/governance/docs/self-hosting-program-draft.md",
+    "modules/governance/docs/tester-seat-proposal.md",
+    "modules/governance/docs/testlog.md"
+  ],
+  "backlog": "85-governance.md",
+  "deps": []
+}

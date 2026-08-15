@@ -1,0 +1,17 @@
+{
+  "name": "relay",
+  "summary": "The out-of-band PO channel — proposals, tokens, and the approve path.",
+  "code": [
+    "scripts/relay-approve.mjs",
+    "scripts/relay-inbox.mjs",
+    "scripts/relay-status.mjs",
+    "scripts/m19-relay-ratio.mjs"
+  ],
+  "docs": [
+    "modules/relay/docs/hmp-bidirectional-relay.md",
+    "modules/relay/docs/hmp-session-submission.md",
+    "modules/relay/docs/outbound-pointer-relay-plan.md"
+  ],
+  "backlog": "60-relay.md",
+  "deps": []
+}

@@ -23,8 +23,8 @@ all hats** (planner + all reviewer seats + implementer + tester + architect + de
 resource-scarcity fallback. Declare your hats loudly each turn; **merges stay PO-gated**; keep each gate's discipline
 separately. Do the First Entry Point handshake, verify this brief against the repo, report, and **STOP** for the PO's go.
 
-**Workflow / source of truth.** `design/collaboration-workflow.md` + artifacts: `*-plan.md`/`*-implementation.md`,
-`design/backlog.md`, `design/logbook.md` (LB-N), **`design/testlog.md` (TL-N — the running Tester record; TL-013 is
+**Workflow / source of truth.** `modules/governance/docs/collaboration-workflow.md` + artifacts: `*-plan.md`/`*-implementation.md`,
+`design/backlog.md`, `modules/governance/docs/logbook.md` (LB-N), **`modules/governance/docs/testlog.md` (TL-N — the running Tester record; TL-013 is
 the latest and the big win)**, `design/lessons/claude-lessons.md` (skim at start). Verify-don't-assert.
 
 **Where we are — the goose arc (verify against git; `master` at HEAD; two feature branches UNMERGED, PO-gated).**
@@ -50,7 +50,7 @@ Between epics; the day was a testing/experiment arc that ended on a win:
    arbiter Judge/Synthesizer made pluggable (today hardcoded `callApi({provider:'openrouter', model:'gpt-4o-mini'})`
    in `arbiter-coordinator.ts`). Depends on `task-arbiter-enable` merging.
 
-**Where state lives.** Resume from `design/testlog.md` (TL-008→013) + `design/backlog.md` (BL-039..043), not chat.
+**Where state lives.** Resume from `modules/governance/docs/testlog.md` (TL-008→013) + `design/backlog.md` (BL-039..043), not chat.
 
 **Op notes / gotchas.**
 - `OPENROUTER_API_KEY` set. Models on this account: `openai/gpt-4o`, `openai/gpt-4o-mini`, `deepseek/deepseek-v4-flash`,

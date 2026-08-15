@@ -1,0 +1,11 @@
+{
+  "name": "backlog",
+  "summary": "The backlog as a parsed artifact: the reader, the validator, and what workable means.",
+  "code": [
+    "apps/orchestrator/src/backlog.ts",
+    "scripts/validate-backlog.mjs"
+  ],
+  "docs": [],
+  "backlog": "40-backlog.md",
+  "deps": []
+}

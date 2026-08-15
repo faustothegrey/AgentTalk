@@ -2,7 +2,7 @@
 
 **Author:** Claude (planner). **Date:** 2026-08-07.
 **Status (corrected 2026-08-11 — this line read "awaiting Gate 1" for three days after the work shipped):**
-**T3a MERGED** (`f6c7655`) · **T3b MERGED** (`9ba8197`, plan: `design/bl028-t3b-plan.md`) · **T3c
+**T3a MERGED** (`f6c7655`) · **T3b MERGED** (`9ba8197`, plan: `modules/agent-runtime/docs/bl028-t3b-plan.md`) · **T3c
 OUTSTANDING** — the only unit that can kill, gated separately, and now **preceded by [[BL-124]]**
 (`design/archive/bl124-plan.md`): T3a's promised silence distribution was never durably recorded on the live
 orchestrator, so T3c's stated precondition is unmet. Of §9's questions, **q1 and q3 were ratified and

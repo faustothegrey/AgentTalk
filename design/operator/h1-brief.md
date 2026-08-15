@@ -46,7 +46,7 @@ What must change for H-1: the **goal** (above), the **recording** filename, and 
 
 ## Procedure
 
-**`design/launch-and-monitor-runbook.md` is the contract — follow it, do not reconstruct it from memory.** It
+**`modules/containment/docs/launch-and-monitor-runbook.md` is the contract — follow it, do not reconstruct it from memory.** It
 covers preconditions, launch, monitoring, grading, cleanup and the failure-mode table. Three points that are
 easy to get wrong and have each cost a run before:
 

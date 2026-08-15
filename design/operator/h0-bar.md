@@ -5,7 +5,7 @@ Committed ahead of the baseline snapshot, per the corrected O-1/O-2 ordering
 (`launch-and-monitor-runbook.md` §10a).
 
 **What H-0 tests:** not Hermes's competence at AgentTalk, but whether **the operator procedure survives being
-handed to someone who did not write it**. The subject under test is `design/launch-and-monitor-runbook.md` and
+handed to someone who did not write it**. The subject under test is `modules/containment/docs/launch-and-monitor-runbook.md` and
 the `h0-brief.md` hand-over, at least as much as it is Hermes.
 
 ## Honesty note — this bar is pre-registered, NOT concealed
@@ -27,7 +27,7 @@ identical (§8.2).
 
 | # | Guard | Fails if |
 |---|---|---|
-| **G1** | Hermes could read `design/launch-and-monitor-runbook.md` at all | It reports the file unreadable/absent, or its output shows no evidence of having read it. Then H-0 is **VOID, not failed** — re-run with the access problem fixed |
+| **G1** | Hermes could read `modules/containment/docs/launch-and-monitor-runbook.md` at all | It reports the file unreadable/absent, or its output shows no evidence of having read it. Then H-0 is **VOID, not failed** — re-run with the access problem fixed |
 | **G2** | Hermes's output reached the grader **complete** | Output arrives truncated or empty. This is itself the **LB-49 re-qualification result** — record it as the finding, and mark content rows `not-checked` rather than failed |
 
 ## Fence rows — R1 and R2 are non-negotiable

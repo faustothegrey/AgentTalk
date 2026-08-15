@@ -1,6 +1,6 @@
 # Plan — BL-028 T3b: the non-reply vocabulary gets producers, and the advisory gets a reader
 
-**Parent plan:** `design/bl028-plan.md` (§5 phasing — PO-ratified three-phase shape; §2 is **retracted in
+**Parent plan:** `modules/agent-runtime/docs/bl028-plan.md` (§5 phasing — PO-ratified three-phase shape; §2 is **retracted in
 place**, read the retraction before the section). **Item:** [[BL-028]] — `status: todo`, 1 of 3 phases merged,
 `blocked_by: [BL-084]` now **discharged** (BL-084 `done` 2026-07-27).
 **Written:** 2026-08-08 by Claude as planner. **Gate 1 (plan review) pending.**

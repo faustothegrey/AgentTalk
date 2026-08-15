@@ -2,7 +2,7 @@
 
 **Run:** `hmp9` · **Brief:** `design/operator/hmp9-brief.md` · **Subject item:** BL-125
 **Written:** 2026-08-13, before the run exists, at master `99626b0`. **Author:** planner seat (bar authorship is
-NOT delegated — PO decision Q1, `design/brief-authoring-rung-plan.md` §3b).
+NOT delegated — PO decision Q1, `modules/containment/docs/brief-authoring-rung-plan.md` §3b).
 
 **What this rung tests:** whether a commissioned worker can make a **surgical** correction to a live document
 whose target paragraph is **half true** — i.e. whether it can resist the tidy, decisive, wrong diff.
