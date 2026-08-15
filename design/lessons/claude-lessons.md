@@ -2042,3 +2042,37 @@ here.**
   BL-028 said "pid 89437, started a day before the merge." That pid was gone; the service had restarted *after*
   every merge — and was still blind, because **a restart is not a redeploy.** Right conclusion, dead reasoning,
   and only checking the artifact separated them.
+
+### 2026-08-15 (second session) — as planner + plan reviewer + implementer + task-end reviewer: I named a hazard, then walked into it three times
+
+- **Naming a trap in a document does not inoculate you against it.** My BL-136 plan wrote "a refusal bar that
+  passes for the wrong reason is this project's documented failure mode" — and two paragraphs later chose an
+  insertion point that would have silently flipped two existing bars' reasons, with its own contract table
+  asserting they were "unchanged." Then the *implementation* hit the identical shape, reusing another run's
+  sandbox so every new fixture refused `charter-mismatch` before reaching the check under test. **Three
+  encounters with one failure shape in one task. The bars caught all three; my reasoning caught none.** The
+  document is not a check.
+- **The mutation run is the only step that produced knowledge I didn't already think I had.** Four mutations,
+  each killing exactly its own bars — and the one that mattered was on a **pass**-asserting bar (the `caps`
+  spelling), which is the kind that most easily passes vacuously. I only wrote that bar because a DoD row
+  claimed both spellings were read when I had exercised one. **Auditing my own DoD for rows I hadn't earned
+  found real missing coverage** — worth doing every time, and cheap.
+- **"Check before you write it down" paid off twice, and the second one changed a PO decision.** The PO
+  proposed letting Hermes set its own `.authorized` file. Rather than reason about whether that's safe, I read
+  the path (`hmp-commission.mjs:179`), the allowlist (`infra-invariant.mjs:83`) and grepped for any committer
+  check — and found the mechanism **already exists**, unnoticed. The answer to "should we build this?" turned
+  out to be "it is already built, as a hole." **Forty seconds of grep reframed the whole question.**
+- **The pattern under both of this session's findings: a fence that exists only in prose.** `SKILL.md` asserted
+  a commission-time goal scan that no code performed; `AGENT.md` and `hmp-commission.mjs:38` assert a PO-only
+  authorization the write allowlist contradicts. **When I read a safety sentence in this repo, go find the line
+  that makes it true.** Twice it was absent — and both times the sentence was *more* dangerous than silence
+  would have been, because it retires the reader's vigilance.
+- **I flagged the "not live-proven" limit in BL-137 before anyone asked, and I want to keep doing that.** The
+  finding is code-reading plus an existing passing test; no Hermes-authored `.authorized` has gone through a
+  real commission. Writing that limit *into the item* — rather than into a message that scrolls away — is what
+  stops the next reader citing it as an exploited hole. That is the BL-053/BL-059 lesson applied before being
+  burned rather than after.
+- **Four hats, one merge, zero independent review — still the largest unmitigated risk, and I have now written
+  that sentence in four consecutive sessions.** The plan-review hat did do real work (it caught the BLOCK-class
+  ordering defect before code existed). But declaring the concentration is not mitigating it, and repeating the
+  declaration does not make it less true.

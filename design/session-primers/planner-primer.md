@@ -1,10 +1,11 @@
 ---
 role: planner
-key: 20260815-0820-9e4c7b
-written: 2026-08-15 by Claude — session close. One plan written and gate-1'd (BL-134), two items filed,
-  the live orchestrator finally redeployed. Everything below was checked against the repo at close.
-  Check it again yourself — three claims in this file's predecessor had already rotted by the time
-  anyone acted on them, and one of them was mine.
+key: 20260815-0916-3f7a2c
+written: 2026-08-15 by Claude — session close. One item planned, built, merged and closed (BL-136);
+  one containment finding filed (BL-137); the queue's only workable item deliberately re-blocked on it
+  by PO decision. Everything below was checked against the repo at close — check it again yourself.
+  The predecessor primer's own warning applies to this one: three of its claims had rotted before
+  anyone acted on them.
 ---
 
 This is your session primer.
@@ -26,77 +27,82 @@ from the backlog, **NOT from chat**.
 
 ## Where we are — verified at close, and check it anyway
 
-Clean on `master` at **`086fc0d`**. Backlog **136 items, 0 warnings** — 103 done · 26 deferred · 4 dropped ·
-**3 todo** (BL-028, BL-134, BL-136). The agent-selectable set is **still `{}`**; nothing this session became
-launchable. Ask the instruments:
+Clean on `master` at **`67e1a66`**. Backlog **137 items, 0 warnings**. Suite **787 / 94 files**, `tsc -b` 0 —
+both re-run on the merge result, not inherited. No worktrees, no `task-*` branches. Ask the instruments:
 
 ```
 node scripts/validate-backlog.mjs
 curl -s "http://127.0.0.1:3741/api/backlog?all=true"    # LIVE orchestrator; NOT 3100, NOT 3600
-npx vitest run                                           # expect 779 / 94 files — NOT re-verified this
-                                                         # session (no code changed); treat as inherited
-git log --oneline -6 && git status --porcelain
-lsof -nP -iTCP:3741 -sTCP:LISTEN -t                      # read the pid, then read its START TIME
+npx vitest run                                           # expect 787 / 94
+git log --oneline -8 && git status --porcelain
+lsof -nP -iTCP:3741 -sTCP:LISTEN -t                      # read the pid, THEN read its start time
 ```
 
 ## What this session did
 
-**1. The live orchestrator was redeployed — and the warning telling us to do it was already stale.**
-`tsc -b` exit 0 → `launchctl kickstart` → **pid 7121, 15 Aug 07:47:19**. All four fixes of the non-reply thread
-now run for the first time. **The lesson is in the discovery, not the act:** BL-028 and BL-133 both said "pid
-89437, started 13 Aug, a day before the merge." That pid no longer existed — the service had been restarted at
-14 Aug 23:28, *after* every merge. The conclusion survived for a **different, checkable** reason: the restart
-came with no rebuild, so `exec-timeout` (BL-129) and `team_no_progress` (BL-133) were absent from `dist`
-entirely. **A restart is not a redeploy.** Both stale passages are corrected in the backlog.
+**1. [[BL-136]] — planned, gate-1'd, built, merged, closed** (`05325c0`). The recursion fence scanned the brief
+and never `config.goal`, the string `bite0-launcher.mjs:195` delivers as the worker's first turn. Three
+refuse-only checks now sit in `verifyCommission`; `LAUNCH_PATTERNS` is byte-identical; `+35/-0` in the verifier.
+Refuse-only was **proven** against all eleven committed operator configs, not asserted. Four mutations, each
+killing exactly its own bars.
+**The item understated its own finding, and that half matters more than the code:** `SKILL.md` did not merely
+omit the goal scan — it *asserted the verifier already performed it*. The operator was told a fence stood behind
+their manual command when the command **was** the fence.
 
-**2. [[BL-134]] — planned and gate-1'd.** The PO asked that any *workable* item also be launchable by Hermes.
-The finding: **two independent authorization systems for one act, which never reference each other.** Gate A
-(`autonomy: eligible` + todo + blockers, `backlog.ts:274`) and Gate B (`hmp-commission.mjs` — committed brief at
-a sha, `<run>.authorized`, hashed bar, replay guard). **`autonomy` appears nowhere in hmp-commission.mjs's 626
-lines**; Gate A's only consumers are `server.ts:260`, the BL-093 test and `infra-invariant.mjs:439` — none in
-the launch path. Diagnosis: **`autonomy` is a readiness field wearing an authorization field's clothes.** Shape
-adopted: **workable** (`todo` + blockers resolved, mechanical) vs **launchable** (PO-committed per-run
-authorization). Readiness becomes `blocked_by`; recursion moves to the launch gate.
+**2. Filed [[BL-137]] and it is the live one.** The PO proposed letting Hermes set its own `.authorized` file
+("double check while moving operativity to Hermes"). Checking it found **the mechanism already exists**:
+`design/operator/<run>.authorized` (`hmp-commission.mjs:179`) sits **inside the operator's own write
+allowlist**, and the verifier checks content + ancestry from local `master` (`:323`) but **nothing about who
+committed it**. So `hmp-commission.mjs:38`'s *"the PO's merge is the authorization act"* is false for the one
+directory that matters. The PO kept the gate and rejected self-authorization.
 
-**3. Filed [[BL-135]]** (BL-028's §9 q2 — *should the sweep ever kill?* — `deferred`, so it fences without being
-proposable) and **[[BL-136]]** (the commission scans the brief but never `config.goal`, the string the worker
-actually receives as its first turn — `bite0-launcher.mjs:195`). **BL-134 is `blocked_by: [BL-136]`**, which is
-a dogfood of its own mechanism.
+**3. [[BL-134]] re-blocked `[BL-136]` → `[BL-137]`, by PO decision.** Its plan §5 would rest the OPERATOR
+charter's safety argument on Gate B and call it *per-run, sha-bound, single-use* — all true; the implied *"and
+only the PO can produce it"* is not. The PO was offered the cheaper path (implement it, drop §5 from scope) and
+**chose to block**, re-emptying the workable set rather than ship a sentence known to overstate its fence.
 
 ## What is open, in the order the backlog now forces
 
-**1. [[BL-136]] is the ONLY workable item** — small, additive, refuse-only, and it unblocks BL-134. Note it
-touches Gate B, the real fence; a launch-gate change was deliberately kept out of BL-134's scope.
-**2. [[BL-134]]** — the predicate change. Plan `design/bl134-plan.md` passed gate 1 on its second pass; **§11 q5
-(rename `?selectable=true` or not — recommendation: not) is still open for the PO.**
-**3. [[BL-135]] is the PO's alone.** Now answerable-in-principle for the first time: the instrument is deployed
-and the sink `~/.agenttalk/agent-non-reply.jsonl` is a clean zero — **zero traffic, not zero silence**
-(`/api/teams` and `/api/agents` were both `[]` all session).
-**4. Drive real traffic and read the sink.** Still not done. It is the precondition for BL-135 and for BL-028 T3c.
+**1. [[BL-137]]** — the fence. Four uncosted options in the item; **(a) move the file out of the allowlist** and
+**(c) propose/authorize split** compose, and that combination is probably the cheap path to both the fence and
+the operativity the PO wanted. Needs a plan.
+**2. [[BL-134]]** — fenced on 137. Plan `design/bl134-plan.md` passed gate 1; **§11 q1/q3/q5 are still open**
+(q2 was answered: *keep the authorized gate*). **⚠️ D6 is STALE** — it asserts a post-task workable set of
+`{BL-136}`, an item now `done`, and predates BL-137. Recompute it, don't trust it.
+**3. [[BL-028]]** — workable *by predicate* (its only blocker BL-084 is `done`) but **not actually startable**:
+it needs real traffic through the non-reply sink. That gap — a practical precondition the backlog cannot
+express — is exactly what BL-134's D5 intends to fix by fencing it on [[BL-135]]. Not done yet.
+**4. Drive real traffic and read the sink.** Still not done, three sessions running. Precondition for BL-135 and
+BL-028 T3c. Deserves its own session with the PO present; it is an open-ended live run, not a scoped task.
 
 ## Op notes — the ones that cost real time
 
-- **The plan reviewer caught two BLOCK-class defects in the planner's work, and both were the same author.**
-  Read `bl134-plan.md` §13 before writing your own plan; the pattern is not exotic.
-- **Run the predicate, don't reason about it.** A DoD row asserting a set was wrong, and one `curl` + six lines
-  of node settled it. That command is in §13 F1.
-- **Use `node scripts/wt-setup.mjs create <id>`** for a task worktree; **stage files EXPLICITLY, never
-  `git add -A`** (the symlinked `node_modules` slips past `.gitignore`).
-- **`/api/agents` does not serialize `transport`.** An endpoint's output is a projection, not the object.
-- **The meter is up.** `node scripts/usage.mjs`. Close of session: claude weekly **25%**, session **24%**.
+- **`validate-backlog.mjs` checks header↔prose drift.** Flipping `status: done` without changing the `- [todo`
+  lead-in goes red. It caught me at closure; let it.
+- **`node scripts/wt-setup.mjs create|remove <id>`** for a task worktree; **stage files EXPLICITLY, never
+  `git add -A`** (the symlinked `apps/web/node_modules` slips past `.gitignore` — it will show as `??`, leave it).
+- **Refusal-ordering is load-bearing in `hmp-commission.mjs`.** Checks are grouped message↔config binding →
+  config completeness → world state. Inserting in the wrong group silently changes which reason an existing bar
+  reports. Nothing executes until `pass()`, so ordering is purely diagnostic — which is *why* it is free to get
+  right and cheap to get wrong.
+- **The meter is up.** `node scripts/usage.mjs`. Close: claude weekly **27%**, session **49%** (session Δ ~25%
+  for one small merged task plus two backlog items — plans and closing blocks are not cheap).
 - **Docs/governance are directly master-editable; code is not** (worktree MANDATE).
 
-## The through-line — a warning about yourself, not the code
+## The through-line — one failure shape, three times, in one task
 
-The predecessor primer said: *the most expensive mistakes were claims about code I had not read.* This session
-produced the sharper version — **claims about code I could have RUN.**
+A refusal attributed to **the wrong check**. The plan picked an insertion point that would have silently flipped
+two existing bars' reasons, while its own contract table said "unchanged" — and it had **named that exact
+hazard two paragraphs earlier**. Then the implementation reused another run's sandbox and refused
+`charter-mismatch` before reaching anything under test. Three encounters; the bars caught all three; reasoning
+caught none.
 
-Three times the fix was one command away. The stale pid: one `ps`. The false DoD bar: one `curl`. The "79 items
-become selectable": one filter. Each was stated confidently in a durable artifact, and two of them had already
-influenced a decision before being caught. **The counterweight held, though, and it is the thing to imitate:**
-every one was caught by *executing the question* — and the one genuine near-miss avoided (the `cap.wallClockMs`
-"containment hole", which is enforced downstream at `bite0-launcher.mjs:36`) was avoided by forty seconds of
-reading *before* filing, not after.
+The predecessor primer said: *claims about code I could have RUN.* The sharper version from this session is
+**claims about code I had already warned myself about.** Naming a hazard in a document does not inoculate you
+against it — the document is not a check. **Write the bar, run the mutation, and let the machine tell you which
+check fired.** That is the only step in this session that actually caught anything.
 
-So: **when a claim is checkable, check it before you write it down — not before you're challenged on it.** A
-backlog item and a plan are read later, by someone who will act on them. That is the definition of load-bearing.
+And its corollary, which is what BL-136 and BL-137 are both *about*: **a fence described in prose is not a
+fence.** `SKILL.md` claimed an automated scan that did not exist; `AGENT.md` and `hmp-commission.mjs` claim a
+PO-only authorization the allowlist contradicts. When you read a safety sentence in this repo, **go find the
+line of code that makes it true.** Twice this session that line was absent.
