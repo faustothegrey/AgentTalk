@@ -72,12 +72,12 @@ autonomy: human-only
 
 <!-- @item
 id: BL-143
-status: todo
+status: done
 date: 2026-08-15
 epic: null
 tags: [backlog, validator, warning-tier, bl-134, gate]
 -->
-- [todo · **filed 2026-08-15 at BL-134's gate 2 · the reviewer ACCEPTED BL-134's D4 as an honest
+- [done 2026-08-15 · warn tier shipped, D4's second half now works, 12 tests where there were none · **filed at BL-134's gate 2 · the reviewer ACCEPTED BL-134's D4 as an honest
   PARTIAL on condition this was filed**] —
   **`validate-backlog.mjs` has no warning tier — every finding is fatal, so it cannot advise.**
 
@@ -90,9 +90,37 @@ tags: [backlog, validator, warning-tier, bl-134, gate]
   present cannot make the document invalid by being present.** BL-134's D2 deliberately keeps
   `autonomy` alive as advisory metadata, so any check that fails on its presence contradicts it.
 
-  Wanted: a real `warn` tier — reported, non-fatal, distinct from `error` in both the human output
-  and `--json`. **Note the blast radius, which is why BL-134 correctly left it alone:** it changes
-  `exitCodeFor` semantics that other callers depend on, so it is its own task with its own review.
+  **DELIVERED 2026-08-15.** `errors` fail the run; `warns` are reported and do not. `--strict` promotes
+  them, opt-in — a warning that always fails the build is an error wearing a different word, so the
+  default had to stay advisory for the tier to mean anything. D4's second half now works.
+
+  **⛔ CORRECTION — this item's stated blast radius was FALSE, and I wrote it.** It said the change
+  "changes `exitCodeFor` semantics that other callers depend on", quoting BL-134's own deferral
+  reasoning. **`exitCodeFor` lives in `infra-invariant.mjs`, a different tool.** `validate-backlog.mjs`
+  never imported or called it — it calls `process.exit(1)` directly — and has exactly **one** caller,
+  `npm run backlog:check`. **The PARTIAL was still correct, but for its OTHER reason** (D4 and D2
+  genuinely conflict: a field allowed to be present cannot invalidate the document by being present).
+  A right conclusion resting on a citation that named the wrong file — the [[BL-130]] pattern again.
+
+  **Two real bugs, both caught by RUNNING it, neither by review:**
+
+  1. **The advisory keyed on a DERIVED value.** `DEFAULT_AUTONOMY` is `human-only`, so a parsed item
+     cannot distinguish an authored fence from an absent field — and since BL-134, *absent is the
+     correct way to file an item*. The first run warned on BL-143 and BL-144, which declare no
+     `autonomy` at all: **the check fired on doing the right thing**, and would have on every future
+     item forever. Now scans the raw header for an explicit declaration (`explicitlyHumanOnly`).
+  2. **The "pure" collector reached for global state.** It took `text` but the coverage check still
+     called `backlogText()`, reading the real repo — so every fixture picked up the live backlog's
+     bullets and produced 20 phantom errors. Caught by its own first test run. **A pure function that
+     reaches for globals is worse than an honestly impure one: its tests look meaningful and are not.**
+
+  Also: the success line hardcoded `0 warnings` — true only while every finding was fatal, and a
+  sentence that would have gone on saying "0" once it stopped being true. The count is derived now.
+
+  **Behaviour-preserving refactor, proven by diff against pre-refactor output** (identical modulo the
+  derived count). Mutation-tested: collapsing `warns` into `errors` kills 3 bars. **12 tests where the
+  validator previously had none** — it was a top-level script with no export surface.
+
 
 
 *(add new items above this line)*
