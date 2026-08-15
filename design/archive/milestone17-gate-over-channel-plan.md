@@ -194,7 +194,7 @@ clients. It does not prove real CLI sessions can emit the same envelopes; that r
 | Live gate-over-channel proof | 2 |
 | `npx tsc -b` | 2 |
 | Full `npm test` | 1 |
-| `node scripts/m14-identity-harness.mjs --check` | 2 |
+| `node scripts/archive/m14-identity-harness.mjs --check` | 2 |
 | `npm run backlog:check` | 1 |
 | `git diff --check && git diff --cached --check` | 2 |
 | Pollution check: `git worktree list` + `git branch --list 'task-*'` | 1 |

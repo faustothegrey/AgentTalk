@@ -165,7 +165,7 @@ real-provider rerun can be requested before closure.
 | Live orchestrator attach proof | 2 |
 | `npx tsc -b` | 2 |
 | Full `npm test` | 1 |
-| `node scripts/m14-identity-harness.mjs --check` | 2 |
+| `node scripts/archive/m14-identity-harness.mjs --check` | 2 |
 | `npm run backlog:check` | 1 |
 | `git diff --check` | 2 |
 | Pollution check: `git worktree list` + `git branch --list 'task-*'` | 1 |

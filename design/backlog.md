@@ -371,7 +371,7 @@ tags: [tooling, wire-contract, live-proof, scripts]
 -->
 - [done · **DONE 2026-07-18** — opened+closed same session · merge `6815b6b` (branch `task-BL-073`, per-task
   worktree, PO-gated) · flagged in BL-071's closing note] — **m16/m17 live-proof scripts hardcoded the retired v7
-  wire-contract hash** — `scripts/m16-live-baton-proof.mjs` and `scripts/m17-live-gate-proof.mjs` embedded the v7
+  wire-contract hash** — `scripts/archive/m16-live-baton-proof.mjs` and `scripts/archive/m17-live-gate-proof.mjs` embedded the v7
   hash (`ffa94e93…`, 2 sites each), so a current **v8** orchestrator rejects them at `initialize` (close code 1008).
   **Fix:** read `packages/contracts/wire-contract.json` at module load and use `wireContract.hash` (the idiom
   `test-live-gate.mjs` / `m19-real-cli-attach.mjs` already use), so a future contract bump can't re-break them.
@@ -2207,8 +2207,8 @@ tags: [agents, environment, observability, platform, capabilities]
     `Agent` record and surfaces it via **`GET /api/agents`**. Verified LIVE end-to-end: a real v8 client attached
     to a real v8 orchestrator and its real `darwin` host appeared via `/api/agents` (no LLM turn). AgentTalk suite
     **368**, client suite **84**, cross-repo contract alignment check green.
-  - **Follow-up left open (flagged, not fixed — out of P2 scope):** `scripts/m16-live-baton-proof.mjs` and
-    `scripts/m17-live-gate-proof.mjs` hardcode the old v7 hash and would be rejected by a v8 orchestrator (they
+  - **Follow-up left open (flagged, not fixed — out of P2 scope):** `scripts/archive/m16-live-baton-proof.mjs` and
+    `scripts/archive/m17-live-gate-proof.mjs` hardcode the old v7 hash and would be rejected by a v8 orchestrator (they
     are manual live-proof scripts, not in the suite). Update them to v8 or read the hash dynamically. → consider
     filing as its own BL if it bites.
 
@@ -2971,14 +2971,14 @@ tags: [live-proof, evidence, gates, friction-m18]
 - [deferred · PARKED 2026-07-27 — PO directive: not instrumental to "AgentTalk within AgentTalk". Reopen: a live proof is used as a rung verdict again — which is rung 6, so this reopens naturally and soon · **M18 C7 friction item** — the highest-value lesson of the epic; a proof that cannot fail is not
   evidence] — **Live proofs need a mandatory A/B baseline and a fresh-recorder assertion** — M18-T3 shipped a
   passing live proof that **passed identically on the unfixed code** and survived six gate-2 rounds
-  (**IP-15**). Separately, `scripts/m17-live-gate-proof.mjs` asserts against a **committed** NDJSON file rather
+  (**IP-15**). Separately, `scripts/archive/m17-live-gate-proof.mjs` asserts against a **committed** NDJSON file rather
   than the run's own recorder output, so it can print `LIVE SMOKE PASSED` with no recorder attached (M17 finding
   **G2-1**, still open — it printed a spurious FAILED during the M18-T2 gate-3 run). **Evidence:** M18-T3 gate-3
   refute; M17 ledger G2-1; M18-T2 task-end review. Fix sketch: a live-proof convention — every proof states its
   A-side (the bar failing on the pre-change baseline) and asserts on a **fresh** recording path unique to the run.
   **2026-07-10 backlog gate:** the **mechanism stays parked** (PO ruled the evidence-determinism work comes "in
   time"), but two **constraints bind SP2 and M19 now**, because the defect in this item's body is live: (a) **do
-  not use `scripts/m17-live-gate-proof.mjs` as evidence** — it can print `LIVE SMOKE PASSED` with no recorder
+  not use `scripts/archive/m17-live-gate-proof.mjs` as evidence** — it can print `LIVE SMOKE PASSED` with no recorder
   attached; (b) M19's DoD must state **how a recorded `workflow_gate_event` is distinguished from an injected
   one**. C3's reopen condition already demands "actual coordination, **not a proof**" for exactly this reason:
   M18-T3's log could not tell an agent that *chose* the envelope from a bridge that *stapled it on*.
@@ -5104,9 +5104,9 @@ tags: [dx, config, ports, papercut, po-raised]
   **Fix (follows this item's own sketch):** `apps/web/vite.config.ts` and `apps/orchestrator/src/index.ts` now read
   the **same `PORT` knob** with the **same default**, moved **3000 → 3100** (3100 was already the de-facto alternate
   in the live-run recipe and every rung config, so it is the least-churn choice; nominally Grafana Loki's default —
-  *PO: "couldn't care less"*). `scripts/m16-live-baton-proof.mjs` hardcoded 3000 as the orchestrator and would have
+  *PO: "couldn't care less"*). `scripts/archive/m16-live-baton-proof.mjs` hardcoded 3000 as the orchestrator and would have
   broken the moment the default moved; it reads the knob now.
-  **⚠️ NOT TOUCHED, and the trap in this task:** `localhost:3000` in `scripts/m15-live-arbiter.mjs` and
+  **⚠️ NOT TOUCHED, and the trap in this task:** `localhost:3000` in `scripts/archive/m15-live-arbiter.mjs` and
   `apps/orchestrator/src/diagramtalk-bridge.ts` is **DiagramTalk's** port (`DIAGRAMTALK_URL`), not the
   orchestrator's. A grep-and-replace of "3000" silently repoints the DiagramTalk bridge. **Not every 3000 in this
   repo is ours.**

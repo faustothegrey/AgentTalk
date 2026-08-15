@@ -88,10 +88,10 @@ shadow judge scripts/results, client repo.
 
 | Claim | Implementer claim | Reviewer verdict | Evidence |
 |---|---|---|---|
-| T1-C1 | **NOT FILED** (handoff arrived via SM message only) — round 2: **CLAIMED ✓** (see filed claims below) | **VERIFIED ✅** (reviewer-run) | `scripts/m14-identity-harness.mjs` + baselines, branch `m14-t1-identity-harness` (`a1b0bf7`), file list fence-clean (3 files, all `scripts/`); recording/playback infra untouched. Harness monkey-patches `execSync`/`existsSync` locally — harness-level mocking, not shared-infra change; applies identically pre/post refactor. |
+| T1-C1 | **NOT FILED** (handoff arrived via SM message only) — round 2: **CLAIMED ✓** (see filed claims below) | **VERIFIED ✅** (reviewer-run) | `scripts/archive/m14-identity-harness.mjs` + baselines, branch `m14-t1-identity-harness` (`a1b0bf7`), file list fence-clean (3 files, all `scripts/`); recording/playback infra untouched. Harness monkey-patches `execSync`/`existsSync` locally — harness-level mocking, not shared-infra change; applies identically pre/post refactor. |
 | T1-C2 | NOT FILED | **VERIFIED ✅** (reviewer-run) | Both baselines carry task status, `planningComplete`, transcript kind/from/to/payload/messageType, plan field, and both `team_planning_phase` + `team_protocol_event` streams. Volatile-leak probe clean (no un-normalized `task-`/`team-` ids). Deterministic: 3 consecutive reviewer `--check` runs all pass. |
 | T1-C3 | NOT FILED | **REFUTED ❌** (reviewer-run, content signature) | The "success" baseline is **not a success**: full phase spine, then `correction,correction,eject` → final status `awaiting_operator`, `planningComplete:false`, **no plan**. `mockSuccess`'s submit-plan trigger never fires, so planner-a goes phase-illegal at `submittal_pending` and is ejected. Corpus = two failure-class streams, **zero successful consensus**. (The failure baseline itself is valid: correction×2 → eject.) |
-| T1-C4 | NOT FILED | **PARTIAL ⚠️** (reviewer-run) | Command exists and behaves: `node scripts/m14-identity-harness.mjs --check` exits 0 on match; reviewer negative test (perturbed copy, restored from backup byte-identical) exits **1**. But "documented" is unmet — the command is written down nowhere (no README/ledger/claim line). |
+| T1-C4 | NOT FILED | **PARTIAL ⚠️** (reviewer-run) | Command exists and behaves: `node scripts/archive/m14-identity-harness.mjs --check` exits 0 on match; reviewer negative test (perturbed copy, restored from backup byte-identical) exits **1**. But "documented" is unmet — the command is written down nowhere (no README/ledger/claim line). |
 | T1-C5 | NOT FILED | **VERIFIED ✅** (reviewer-run) | `npx tsc -b` exit 0; `npm test` **269/269** on the branch; `git diff --check` clean; single worktree; no stray harness processes. |
 
 ### Reviewer Gate 2 record — M14-T1: **REFUTED ❌, stays on branch** (Claude, reviewer + architect dual-hat declared, 2026-07-02)
@@ -166,10 +166,10 @@ merges `m14-t1-identity-harness` (resolving the ledger in master's favour), and 
 
 | Claim | Implementer claim (round 2) |
 |---|---|
-| T1-C1 | Standalone M14 identity harness exists in `scripts/m14-identity-harness.mjs`; runs in-process mock agents. No infra modified. |
+| T1-C1 | Standalone M14 identity harness exists in `scripts/archive/m14-identity-harness.mjs`; runs in-process mock agents. No infra modified. |
 | T1-C2 | Harness captures normalized task updates, transcripts, and protocol streams. Volatiles (taskIds, dates) are stripped via `stripVolatiles`. |
 | T1-C3 | Baselines committed to `scripts/m14-identity-baselines`. Exercises a success scenario (completed, worker accept) and failure scenario (eject on repeat illegal protocol). |
-| T1-C4 | Documented command: `node scripts/m14-identity-harness.mjs --check` compares regenerated stream to baselines and exits non-zero on mismatch. Output: `Baselines match. Identity verified.` |
+| T1-C4 | Documented command: `node scripts/archive/m14-identity-harness.mjs --check` compares regenerated stream to baselines and exits non-zero on mismatch. Output: `Baselines match. Identity verified.` |
 | T1-C5 | `npx tsc -b` passes cleanly, `npm test` passes. |
 
 ### Post-merge addendum — worktree leak found AFTER merge; T1b required before T2 (reviewer, 2026-07-02)

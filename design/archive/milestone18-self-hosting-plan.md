@@ -180,7 +180,7 @@ fallback to be declared, and the count to fall after T3a relative to T1/T2.
 | `npx tsc -b` | 2 |
 | targeted relevant tests | 2 |
 | full `npm test` | 1 |
-| `node scripts/m14-identity-harness.mjs --check` | 1 |
+| `node scripts/archive/m14-identity-harness.mjs --check` | 1 |
 | `npm run backlog:check` | 1 |
 | `git diff --check && git diff --cached --check` | 2 |
 | pollution check: `git worktree list` + `git branch --list 'task-*'` | 1 |
@@ -197,7 +197,7 @@ fallback to be declared, and the count to fall after T3a relative to T1/T2.
 | `npx tsc -b` | 2 |
 | targeted relevant tests | 2 |
 | full `npm test` | 1 |
-| `node scripts/m14-identity-harness.mjs --check` | 1 |
+| `node scripts/archive/m14-identity-harness.mjs --check` | 1 |
 | `npm run backlog:check` | 1 |
 | `git diff --check && git diff --cached --check` | 2 |
 | pollution check: `git worktree list` + `git branch --list 'task-*'` | 1 |
@@ -217,7 +217,7 @@ fallback to be declared, and the count to fall after T3a relative to T1/T2.
 | client build/lint/test check | 2 |
 | targeted relevant tests in both repos, where touched | 2 |
 | full AgentTalk `npm test` | 1 |
-| `node scripts/m14-identity-harness.mjs --check` | 1 |
+| `node scripts/archive/m14-identity-harness.mjs --check` | 1 |
 | `npm run backlog:check` | 1 |
 | `git diff --check && git diff --cached --check` in touched repos | 2 |
 | pollution check: `git worktree list` + `git branch --list 'task-*'` in touched repos | 1 |
@@ -273,7 +273,7 @@ sections remain historical/delivered context.
 Load-bearing claims verified against the repo before ruling (Reviewer Rule 1/5): server `send_to_agent`
 schema already carries optional `baton`/`workflowEvent` (`packages/runtime-core/src/registry/mcp-tools.ts:44,56`);
 `packages/contracts/wire-contract.json` exists (v7, tool-names-only hash per the M17 Gate-1 check);
-`scripts/m14-identity-harness.mjs` exists and implements `--check` (line 195); T2's narrow test surface
+`scripts/archive/m14-identity-harness.mjs` exists and implements `--check` (line 195); T2's narrow test surface
 exists (`packages/runtime-core/src/agents/__tests__/in-process-driver.test.ts`); client repo `src` has zero
 baton/workflowEvent handling (the T3 gap is real); `npm run backlog:check` re-run green (21 items, 0
 warnings); banned-wording scan clean. The four review-focus challenges each hold — fence enumerates all

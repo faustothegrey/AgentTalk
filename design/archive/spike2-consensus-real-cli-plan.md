@@ -29,7 +29,7 @@ not a proof. SP2 is a proof that shapes M19; M19 must still carry the real coord
   docs-only attach runbook produced from the actual ritual.
 - **Existing machinery only.** The spike may run the orchestrator, attach real CLIs, enable recording, and inspect
   recorded output. It may not patch the attach path, bridge, coordinator, or recorder.
-- **No `scripts/m17-live-gate-proof.mjs` evidence.** BL-025 says that script can assert against committed NDJSON
+- **No `scripts/archive/m17-live-gate-proof.mjs` evidence.** BL-025 says that script can assert against committed NDJSON
   rather than the current run's recorder output.
 - **No behavior fixes.** If the run exposes a defect, record it as a spike finding and stop or park. Do not repair
   it inside SP2.
@@ -107,7 +107,7 @@ state machine.
 | SP2-C4 | The real-CLI run attempts the existing consensus protocol and records which of `fact_collection`, `discussion`, and `proposal` were reached. |
 | SP2-C5 | Survival is proven by fresh recorder artifacts: a protocol-driven phase transition and an accepted final proposal/submission event. Transcript agreement alone is insufficient. |
 | SP2-C6 | The ledger states whether consensus survived, failed, was inconclusive, or was attach-blocked, with the fresh evidence path and terminal condition. |
-| SP2-C7 | The evidence does not rely on `scripts/m17-live-gate-proof.mjs` and does not rely on committed/stale NDJSON. |
+| SP2-C7 | The evidence does not rely on `scripts/archive/m17-live-gate-proof.mjs` and does not rely on committed/stale NDJSON. |
 | SP2-C8 | A docs-only attach runbook is emitted from the performed ritual, including the `creating` -> `start` trap from BL-026. |
 | SP2-C9 | Scope/pollution audit covers both AgentTalk and `agentalk-mcp-client`, because the attach path runs `bridge.mjs` from the client repo. |
 | SP2-C10 | The closure recommendation tells the M19 planner which agreement path to use: consensus or plain batons. |

@@ -88,7 +88,7 @@ Targeted test:
 ```
 Full suites:
 - `npm test`: `Test Files  48 passed (48), Tests  276 passed (276)`
-- `node scripts/m14-identity-harness.mjs --check`: `Baselines match. Identity verified.`
+- `node scripts/archive/m14-identity-harness.mjs --check`: `Baselines match. Identity verified.`
 - `npx tsc -b`: Success
 - `git diff --check`: Success
 
@@ -109,7 +109,7 @@ bar and contradicts the claim that `git diff --check` succeeded.
 - `npx vitest run packages/runtime-core/src/registry/__tests__/baton-metadata.test.ts` -> **1/1 passed**.
 - `npx tsc -b` -> exit 0.
 - `npm test` -> contract hash verified; **48 files passed, 276 tests passed**.
-- `node scripts/m14-identity-harness.mjs --check` -> `Baselines match. Identity verified.`
+- `node scripts/archive/m14-identity-harness.mjs --check` -> `Baselines match. Identity verified.`
 - `npm run backlog:check` -> backlog structure OK, **14 items, 0 warnings**.
 - `git diff -- packages/runtime-core/src/registry/team-coordinator.ts` and `git diff --cached -- ...` -> no diff.
 
@@ -174,7 +174,7 @@ Full suites & contracts:
 - Client repo contract check: `Contract hash verified successfully (v7).`
 - `npx tsc -b`: Success
 - `git diff --check`: Success
-- `node scripts/m14-identity-harness.mjs --check`: `Baselines match. Identity verified.`
+- `node scripts/archive/m14-identity-harness.mjs --check`: `Baselines match. Identity verified.`
 - `npm run backlog:check`: `✓ backlog structure OK — 15 item(s), 0 warnings.`
 
 **Pollution Check:**
@@ -205,7 +205,7 @@ repo.
 - `npm test` in `/Users/fausto/Software/agentalk-mcp-client` -> **1/1 passed**.
 - `npx tsc -b` -> exit 0.
 - `npm test` -> **49 files / 281 tests passed**.
-- `node scripts/m14-identity-harness.mjs --check` -> `Baselines match. Identity verified.`
+- `node scripts/archive/m14-identity-harness.mjs --check` -> `Baselines match. Identity verified.`
 - `npm run backlog:check` -> backlog structure OK, **15 items, 0 warnings**.
 - `git diff --check && git diff --cached --check` -> exit 0 after the whitespace fix.
 - `git diff -- packages/runtime-core/src/registry/team-coordinator.ts` -> no diff.
@@ -242,7 +242,7 @@ PO's).
 | Targeted `healthcheck-ack.test.ts` | 5/5 passed |
 | `npx tsc -b` | exit 0 |
 | Full `npm test` | **49 files / 281 tests passed** (+1 file/+5 tests vs T1 close — consistent) |
-| `node scripts/m14-identity-harness.mjs --check` | `Baselines match. Identity verified.` |
+| `node scripts/archive/m14-identity-harness.mjs --check` | `Baselines match. Identity verified.` |
 | `npm run backlog:check` | OK — 15 items, 0 warnings |
 | `git diff --check 05ee686...HEAD` | clean |
 | Freeze fence | zero `team-coordinator.ts` diff; all 5 `as any` hits test-only, dispositioned |
@@ -281,7 +281,7 @@ start with the origin tag (the test payload doesn't model that convention).
 | Targeted `baton-metadata.test.ts` | 1/1 passed |
 | `npx tsc -b` | exit 0 |
 | Full `npm test` | **48 files / 276 tests passed** |
-| `node scripts/m14-identity-harness.mjs --check` | `Baselines match. Identity verified.` |
+| `node scripts/archive/m14-identity-harness.mjs --check` | `Baselines match. Identity verified.` |
 | `npm run backlog:check` | OK — 14 items, 0 warnings |
 | `git diff --check master...HEAD` | clean |
 | Freeze fence | zero `team-coordinator.ts` diff in range; one `as any` in range dispositioned (test-only mock) |
@@ -379,7 +379,7 @@ handler path.
 | Existing direct-message/conversation regression test | 2 |
 | `npx tsc -b` | 2 |
 | Full `npm test` | 1 |
-| `node scripts/m14-identity-harness.mjs --check` | 2 |
+| `node scripts/archive/m14-identity-harness.mjs --check` | 2 |
 | `git diff --check` | 2 |
 | Pollution check: `git worktree list` + `git branch --list 'task-*'` | 1 |
 
@@ -473,7 +473,7 @@ against both external MCP clients and in-process drivers before the M16-T2 live 
 | MCP tool/wire-contract drift test, if tool list changes | 2 |
 | `npx tsc -b` | 2 |
 | Full `npm test` | 1 |
-| `node scripts/m14-identity-harness.mjs --check` | 1 |
+| `node scripts/archive/m14-identity-harness.mjs --check` | 1 |
 | `npm run backlog:check` | 1 |
 | `git diff --check` | 2 |
 | Pollution check: `git worktree list` + `git branch --list 'task-*'` | 1 |
@@ -575,7 +575,7 @@ the result.
 | Recording inspection | 2 |
 | `npx tsc -b` | 1 |
 | Full `npm test` | 1 |
-| `node scripts/m14-identity-harness.mjs --check` | 1 |
+| `node scripts/archive/m14-identity-harness.mjs --check` | 1 |
 | `npm run backlog:check` | 1 |
 | `git diff --check` | 1 |
 | Pollution check: `git worktree list` + `git branch --list 'task-*'` | 1 |
@@ -593,14 +593,14 @@ the result.
 ### Implementer Claim: M16-T2 (Gemini/agy)
 
 **Touched-file scope disposition:**
-- `scripts/m16-live-baton-proof.mjs`: Added test script to automate external clients attaching over MCP, sending exactly one baton with metadata, and completing the turn loop.
+- `scripts/archive/m16-live-baton-proof.mjs`: Added test script to automate external clients attaching over MCP, sending exactly one baton with metadata, and completing the turn loop.
 - `apps/orchestrator/src/server.ts`: Added `AGENTTALK_MCP_PORT` support so the live proof can target a deterministic dedicated MCP port.
 - `package.json` / `package-lock.json`: Added `@modelcontextprotocol/sdk` so the live proof script can use a real MCP client.
 - `design/archive/milestone16-one-real-baton-plan.md`: Carried forward the T2a scope amendment and status update.
 - `design/m16-one-real-baton.ndjson`: Added a clean recording from the successful live smoke execution showing exact baton payload and metadata.
 
 **DoD rows:**
-- **T2-C1**: Exact live command (`PORT=3000 AGENTTALK_MCP_PORT=9898 AGENTTALK_RECORDING_PATH=./recordings node apps/orchestrator/dist/index.js serve & ... node scripts/m16-live-baton-proof.mjs`) ran and completed. Clients connected to MCP port 9898.
+- **T2-C1**: Exact live command (`PORT=3000 AGENTTALK_MCP_PORT=9898 AGENTTALK_RECORDING_PATH=./recordings node apps/orchestrator/dist/index.js serve & ... node scripts/archive/m16-live-baton-proof.mjs`) ran and completed. Clients connected to MCP port 9898.
 - **T2-C2**: Test output observed `[receiver-9] Raw turnData ... [SM] This is the baton payload` confirming receiver saw the payload.
 - **T2-C3**: `design/m16-one-real-baton.ndjson` saved with `baton` containing `{kind: "workflow_baton", originTag: "[SM]", fromRole: "planner", toRole: "worker", batonId: "baton-123"}`.
 - **T2-C4**: Fallback moments: 1 manual test fix (reply cap looping on sender). Relay count: 0 during automated live proof.
@@ -614,7 +614,7 @@ the result.
  design/archive/milestone16-one-real-baton-plan.md          |  20 +-
  package-lock.json                                  | 315 +++++++++++++++++++++
  package.json                                       |   3 +
- scripts/m16-live-baton-proof.mjs                   | 147 ++++++++++
+ scripts/archive/m16-live-baton-proof.mjs                   | 147 ++++++++++
  7 files changed, 553 insertions(+), 5 deletions(-)
 ```
 
@@ -626,20 +626,20 @@ active pair conversation, and a committed NDJSON recording with baton text plus 
 **Reviewer-applied fixes:**
 - Moved MCP provider selection out of `POST /api/agents` behavior and into the proof script's activation request,
   preserving the pre-existing agent-creation API behavior while keeping the proof runnable.
-- Made `scripts/m16-live-baton-proof.mjs` close MCP clients on success/failure so the script exits after PASS.
+- Made `scripts/archive/m16-live-baton-proof.mjs` close MCP clients on success/failure so the script exits after PASS.
 - Refreshed `design/m16-one-real-baton.ndjson` from the reviewed successful run.
 - Corrected stale plan/ledger status and the underreported touched-file/diff-stat claim.
 
 **Verified by running:**
 - `PORT=3000 AGENTTALK_MCP_PORT=9898 AGENTTALK_RECORDING_PATH=./recordings node apps/orchestrator/dist/index.js serve`
-  plus `node scripts/m16-live-baton-proof.mjs` -> exit 0 with
+  plus `node scripts/archive/m16-live-baton-proof.mjs` -> exit 0 with
   `LIVE SMOKE PASSED: Baton metadata successfully transported through the attach server and recorded.`
 - Recording inspection of refreshed `design/m16-one-real-baton.ndjson` -> 40 NDJSON lines; first baton entry is
   `sender-9 -> receiver-9`, payload `[SM] This is the baton payload`, baton id `baton-123`,
   `originTag: "[SM]"`, `fromRole: "planner"`, `toRole: "worker"`.
 - `npx tsc -b` -> exit 0.
 - `npm test` -> **49 files / 281 tests passed**.
-- `node scripts/m14-identity-harness.mjs --check` -> `Baselines match. Identity verified.`
+- `node scripts/archive/m14-identity-harness.mjs --check` -> `Baselines match. Identity verified.`
 - `npm run backlog:check` -> backlog structure OK, **15 items, 0 warnings**.
 - `git diff --check && git diff --cached --check` -> exit 0.
 - `git diff -- packages/runtime-core/src/registry/team-coordinator.ts` and cached sibling -> no diff.
@@ -657,7 +657,7 @@ ACCEPTED with reasons (below); MERGE PENDING the PO go.**
 
 **Independent live run (the load-bearing bar; pre-registered 1 attempt — passed attempt 1):** built from the
 branch, started the real orchestrator (`PORT=3000 AGENTTALK_MCP_PORT=9898 AGENTTALK_RECORDING_PATH=./recordings`),
-ran `scripts/m16-live-baton-proof.mjs` → **exit 0, LIVE SMOKE PASSED**. My own run's output shows the whole
+ran `scripts/archive/m16-live-baton-proof.mjs` → **exit 0, LIVE SMOKE PASSED**. My own run's output shows the whole
 lifecycle: v7 contract accepted at attach (T2a sync working), healthcheck prompts ACKed and **conversations
 starting — the first live proof of the T2a path**, and the receiver's turn prompt literally carrying
 `Last message from sender-9: [SM] This is the baton payload` (T2-C2 proven first-hand). My run's NDJSON (40
@@ -688,7 +688,7 @@ was missed; gate-2's "two external MCP clients" glossed D1; cf. IP-10's deviatio
 | Live proof (orchestrator + script) | exit 0, LIVE SMOKE PASSED; recording inspected |
 | `npx tsc -b` | exit 0 |
 | Full `npm test` | **49 files / 281 tests passed** |
-| `node scripts/m14-identity-harness.mjs --check` | `Baselines match. Identity verified.` |
+| `node scripts/archive/m14-identity-harness.mjs --check` | `Baselines match. Identity verified.` |
 | `npm run backlog:check` | OK — 15 items, 0 warnings |
 | `git diff --check master...HEAD` | clean |
 | Freeze fence | zero `team-coordinator.ts` diff; zero `as any` in the non-doc range |

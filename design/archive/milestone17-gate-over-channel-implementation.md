@@ -361,17 +361,17 @@ one unrelated API response change.
 
 **Findings:**
 - **G2-1: The live proof can pass against stale committed NDJSON, even with no active recorder.** The script hard-codes
-  `design/m17-gate-channel-proof.ndjson` as `recPath` (`scripts/m17-live-gate-proof.mjs:78`) and only checks whether
-  that pre-existing file contains broad substrings for accepted verdict/go and refused PO act (`scripts/m17-live-gate-proof.mjs:169-179`).
+  `design/m17-gate-channel-proof.ndjson` as `recPath` (`scripts/archive/m17-live-gate-proof.mjs:78`) and only checks whether
+  that pre-existing file contains broad substrings for accepted verdict/go and refused PO act (`scripts/archive/m17-live-gate-proof.mjs:169-179`).
   Repro: I started the real orchestrator on the proof ports with no `AGENTTALK_RECORDING_PATH`, then ran
-  `node scripts/m17-live-gate-proof.mjs`; it still printed `LIVE SMOKE PASSED`. A second repro with
+  `node scripts/archive/m17-live-gate-proof.mjs`; it still printed `LIVE SMOKE PASSED`. A second repro with
   `AGENTTALK_RECORDING_PATH=/tmp/m17-wrong-recording.ndjson` also passed while the script inspected the committed
   design file instead of the live recording path. This does not satisfy C1/C2/C5 as a live proof because the success
   condition is not tied to fresh runtime recorder output from the current run.
 - **G2-2: The proof emits a non-canonical origin tag for the reviewer verdict.** The Gate 1 ruling made `[PO]`
   canonical, `[Human]` the legacy PO alias, and `[SM]` the process tag; reviewer authority comes from
   `fromRole: "implementation-reviewer"`, not an origin tag. The script sends `originTag: "[Reviewer]"`
-  on the accepted Gate 2 verdict (`scripts/m17-live-gate-proof.mjs:129`), and the committed NDJSON records that
+  on the accepted Gate 2 verdict (`scripts/archive/m17-live-gate-proof.mjs:129`), and the committed NDJSON records that
   invalid tag. The proof should omit `originTag` for reviewer verdicts or use only the contract-allowed tags where
   semantically valid, then regenerate the evidence.
 - **G2-3: `server.ts` changes an unrelated usage-stats response shape.** The M17-T3 branch changes the deprecated
@@ -394,7 +394,7 @@ one unrelated API response change.
 - Resource meter at review start: codex weekly ~27%, 5h ~42%.
 
 **Required return scope:**
-1. Make `scripts/m17-live-gate-proof.mjs` fail unless it validates fresh recorder output from the current proof run.
+1. Make `scripts/archive/m17-live-gate-proof.mjs` fail unless it validates fresh recorder output from the current proof run.
    The evidence should be run-bound, for example by deleting/truncating the output before the run, using the same
    path the server records to, checking the current run's unique event IDs, and failing if the active server has no
    recorder configured.
@@ -410,7 +410,7 @@ one unrelated API response change.
 Current role: implementer.
 Scope:
 - Revert the unrelated `/api/agents/:id/usage-stats` response-shape change.
-- Make `scripts/m17-live-gate-proof.mjs` delete the stale NDJSON file before running, preventing false positives.
+- Make `scripts/archive/m17-live-gate-proof.mjs` delete the stale NDJSON file before running, preventing false positives.
 - Remove `originTag: '[Reviewer]'` from the `implementation-reviewer` payload.
 - Update the proof limitation statement in this ledger to accurately reflect the use of `@modelcontextprotocol/sdk` clients.
 - Rerun the script and regenerate `design/m17-gate-channel-proof.ndjson`.
@@ -430,7 +430,7 @@ Retry Budget: 2 retries per step.
 **Verification run:**
 - `npx tsc -b` -> exit 0.
 - Stale-evidence negative: started the real orchestrator on the proof ports with no `AGENTTALK_RECORDING_PATH`,
-  then ran `node /Users/fausto/Software/AgentTalk/scripts/m17-live-gate-proof.mjs` from `/tmp/m17-proof-run`.
+  then ran `node /Users/fausto/Software/AgentTalk/scripts/archive/m17-live-gate-proof.mjs` from `/tmp/m17-proof-run`.
   The script exited 1 with `Recordings file not found`, proving it no longer passes without current-run recorder
   evidence.
 - Fresh-recorder positive: started the real orchestrator with
@@ -444,7 +444,7 @@ Retry Budget: 2 retries per step.
 - `npx vitest run apps/orchestrator/src/__tests__/m17-gate-recording.test.ts packages/runtime-core/src/registry/__tests__/m17-gate-channel.test.ts packages/runtime-core/src/registry/__tests__/baton-metadata.test.ts`
   -> **3 files / 11 tests passed**.
 - `npm test` -> **51 files / 291 tests passed**.
-- `node scripts/m14-identity-harness.mjs --check` -> `Baselines match. Identity verified.`
+- `node scripts/archive/m14-identity-harness.mjs --check` -> `Baselines match. Identity verified.`
 - `npm run backlog:check` -> backlog structure OK, **19 items, 0 warnings**.
 - `git diff --check && git diff --cached --check` -> exit 0.
 - Out-of-fence checks: zero `packages/runtime-core/src/registry/team-coordinator.ts` diff, zero

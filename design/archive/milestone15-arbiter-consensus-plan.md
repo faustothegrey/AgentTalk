@@ -46,7 +46,7 @@ via OpenRouter — PO decision; the gemini-transport fix stays deferred in BL-01
   prompt construction (new code — protocol-mode prompts byte-untouched); new tests; a live-smoke script under
   `scripts/`; this plan + M15 ledger + backlog/logbook at closure.
 - **Forbidden:** any change to `team-coordinator.ts` or to protocol-path behaviour (the 269-test suite and
-  the M14-T1 identity harness pin it — `node scripts/m14-identity-harness.mjs --check` must stay green);
+  the M14-T1 identity harness pin it — `node scripts/archive/m14-identity-harness.mjs --check` must stay green);
   weakening existing tests; client-repo changes; recording-infra changes.
 - **LLM calls:** judge + synthesis calls only, `gpt-4o-mini` via OpenRouter, temp 0; deterministic tests use
   an **injected mock judge** (no network in the suite — M11's deterministic-gate principle).
@@ -121,7 +121,7 @@ refutation. The planner breakdown should require a small default-behavior test: 
   worker path can complete. The live run is recorded evidence, not a flaky gate.
 - **C2:** good as written, but the not-converged path needs a task terminal state and emitted event that operators
   can see; "no hang" alone is not enough.
-- **C3:** this is the critical freeze claim: full suite plus `node scripts/m14-identity-harness.mjs --check`, and
+- **C3:** this is the critical freeze claim: full suite plus `node scripts/archive/m14-identity-harness.mjs --check`, and
   no default `consensusMode` opt-in by accident.
 - **C4:** include the AS-T3b lessons in the bar: full verdict-vocabulary gloss (`hold`, `fail-soft:*`,
   `not-converged`, `converged`, `advance-to:*`) and the consensus-process-only judge frame. Readiness-triggered

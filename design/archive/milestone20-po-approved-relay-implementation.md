@@ -367,7 +367,7 @@ registry routing, `team-coordinator.ts`, and `mcp-tools.ts`.
   `send_to_agent` carries codex's own `x-codex-turn-metadata` (session/turn id + `latest_git_commit_hash 571d956` =
   the T2 merge) — unforgeable by a script. Metric labeled honestly as a **demonstration** proof (raw 2, delivered 1,
   denied 1, ratio 1/3), not productivity.
-- **Fence + bars — VERIFIED.** Only `scripts/m20-approved-relay-proof.mjs` + evidence + ledger; `registry.ts` (T1),
+- **Fence + bars — VERIFIED.** Only `scripts/archive/m20-approved-relay-proof.mjs` + evidence + ledger; `registry.ts` (T1),
   `server.ts`/`apps/web` (T2), client all frozen. m20 lifecycle 8/8, `npm test` **312/312**, `backlog:check` 30/0,
   client clean.
 - **Live browser Approve-button click — honest disposition.** The helper auto-approves in one shot and runs its own
@@ -441,7 +441,7 @@ BL-030 dispositioned `done`, program status updated.
 
 Implemented the T3 proof helper and produced fresh evidence without changing frozen runtime/UI/client surfaces:
 
-- added `scripts/m20-approved-relay-proof.mjs`, a headless real-CLI proof that reuses `scripts/m19-bridge-recorder.mjs`;
+- added `scripts/archive/m20-approved-relay-proof.mjs`, a headless real-CLI proof that reuses `scripts/m19-bridge-recorder.mjs`;
 - launched a fresh orchestrator with a fresh runtime recording path and no global config mutation;
 - verified approval mode starts `off`, then enabled `approve_each` through the real WS command;
 - approved leg: real attached Codex source `m20-t3-approved-source-1783809683863` called MCP `send_to_agent` with baton `m20-t3-approved-baton-1` and workflow event `m20-t3-approved-event-1`;
@@ -471,7 +471,7 @@ m20-t3-server.log
 ### Fresh Verification
 
 ```text
-node scripts/m20-approved-relay-proof.mjs prove
+node scripts/archive/m20-approved-relay-proof.mjs prove
 PASS: result approved_relay_proven; evidence written to design/evidence/m20-t3-approved-relay-2026-07-11T22-41-23-273Z
 
 npx vitest run packages/runtime-core/src/registry/__tests__/m20-pending-relay.test.ts
@@ -502,7 +502,7 @@ Touched files stay inside the T3 manifest:
 
 - `design/archive/milestone20-po-approved-relay-implementation.md`
 - `design/evidence/m20-t3-approved-relay-2026-07-11T22-41-23-273Z/**`
-- `scripts/m20-approved-relay-proof.mjs`
+- `scripts/archive/m20-approved-relay-proof.mjs`
 
 Forbidden surfaces remain untouched: sibling client, `packages/contracts/wire-contract.json`, MCP transport,
 registry routing, `team-coordinator.ts`, `mcp-tools.ts`, orchestrator server/UI, and PO-channel behavior.

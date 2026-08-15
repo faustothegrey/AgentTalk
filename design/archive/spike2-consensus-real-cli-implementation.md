@@ -178,7 +178,7 @@ and a decision on reaping the two breach-era processes + sweeping the SP2 pollut
 - Zero production behavior change.
 - No edits to `packages/**`, `apps/**`, coordinator/registry/protocol code, MCP tool schemas, or
   `agentalk-mcp-client`.
-- No use of `scripts/m17-live-gate-proof.mjs` as evidence.
+- No use of `scripts/archive/m17-live-gate-proof.mjs` as evidence.
 - Allowed outputs are SP2 docs, evidence files under `design/evidence/**` if needed, and a docs-only attach runbook.
 - Any defect discovered in attach, consensus, recording, provider shape, or idle timeout behavior is recorded as a
   finding, not fixed here.
@@ -291,7 +291,7 @@ accepted final proposal/submission event. A transcript in which two agents merel
 | T3-C3 | Fresh recorder evidence shows a protocol-driven phase transition, or records exactly where that artifact is absent. |
 | T3-C4 | Fresh recorder evidence shows an accepted final proposal/submission event, or records exactly where that artifact is absent. |
 | T3-C5 | If the real-CLI run fails on a fact-collection timeout, one conditional 720s-profile re-run is performed by setting `providerName: 'gemini'` on one real-CLI member at registration. The run B mislabel is declared; run A's provider values, not run B's false value, satisfy SP2-C2. If run B passes, the finding is timeout/profile behavior against BL-024, not substrate consensus failure. |
-| T3-C6 | Stale committed NDJSON and `scripts/m17-live-gate-proof.mjs` are not used as proof. |
+| T3-C6 | Stale committed NDJSON and `scripts/archive/m17-live-gate-proof.mjs` are not used as proof. |
 | T3-C7 | Failure or inconclusive behavior is reported honestly without adding support code. |
 
 ## SP2-T4 — Results + Recommendation

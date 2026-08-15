@@ -54,7 +54,7 @@ SDK MCP clients may be used as controls, but they cannot satisfy the BL-027 nume
   timing assumptions; transport/vendor separation remains backlog unless the PO re-rules it.
 - No BL-014 role-skill injection, BL-015 L1/L2 fences, or BL-016 growth/debrief mechanism.
 - No `team-coordinator.ts` consensus behavior changes.
-- No use of `scripts/m17-live-gate-proof.mjs` as proof evidence.
+- No use of `scripts/archive/m17-live-gate-proof.mjs` as proof evidence.
 - No hidden terminal relay. Every manual baton/poke/config handoff is counted.
 
 ## Scope Fence
@@ -167,7 +167,7 @@ behalf, and poking an idle agent are relays.
 | M19-D5 | T3 records at least one real attached CLI substrate-carried baton or workflow event chosen through the real CLI MCP tool surface; provenance is verified by correlating recorder evidence to the attached agent's own bridge/WebSocket transaction log; SDK clients do not satisfy this row. |
 | M19-D6 | T3 and closure report BL-027 honestly: raw relay count, substrate numerator, denominator, ratio, and every terminal fallback row. |
 | M19-D7 | BL-024 is handled as a constraint only: provider values observed during real attach are recorded, and no provider-shaped timing assumption is introduced. |
-| M19-D8 | Evidence bars are fresh-run based: no stale NDJSON, no `scripts/m17-live-gate-proof.mjs`, and no proof that would pass without the intended change. |
+| M19-D8 | Evidence bars are fresh-run based: no stale NDJSON, no `scripts/archive/m17-live-gate-proof.mjs`, and no proof that would pass without the intended change. |
 | M19-D9 | Freeze bar green: targeted tests, `npx tsc -b`, full `npm test`, client `npm run build` where touched, backlog validation, whitespace checks, pollution/process checks, and no forbidden-surface diff. |
 
 ## Verification Budgets

@@ -1464,7 +1464,7 @@ no scope change to the probe plan otherwise. The plan stays DRAFT-for-review aft
   temporary implementer + reviewer. The fix removed the invalid private `TeamCoordinator` task-map write and routed
   arbiter worker response/result handling explicitly through `ArbiterCoordinator`.
 - **Verification run:** live proof passed with
-  `AGENTTALK_DIAGRAM_RECORD=1 AGENTTALK_RECORDING_PATH=design/m15-t3-live-arbiter.ndjson node scripts/m15-live-arbiter.mjs`;
+  `AGENTTALK_DIAGRAM_RECORD=1 AGENTTALK_RECORDING_PATH=design/m15-t3-live-arbiter.ndjson node scripts/archive/m15-live-arbiter.mjs`;
   refreshed `design/m15-t3-live-arbiter.log`; wrote 52-line `design/m15-t3-live-arbiter.ndjson`; judge usage
   `{ prompt_tokens: 329, completion_tokens: 41 }`; synthesis usage `{ prompt_tokens: 205, completion_tokens: 10 }`.
   Targeted arbiter vitest 5/5, `npx tsc -b` 0, full `npm test` 274/274, M14 identity `--check` matched,
@@ -1530,7 +1530,7 @@ no scope change to the probe plan otherwise. The plan stays DRAFT-for-review aft
 
 ### LB-63 — Port 9899 is double-booked: usage meter (IPv4) + orchestrator MCP (IPv6) coexist by luck (2026-07-09)
 
-The standing usage meter holds `127.0.0.1:9899` (IPv4). `scripts/m17-live-gate-proof.mjs` hardcodes the
+The standing usage meter holds `127.0.0.1:9899` (IPv4). `scripts/archive/m17-live-gate-proof.mjs` hardcodes the
 orchestrator MCP server to the same port; Node binds IPv6 `*:9899` **alongside** it, and clients using
 `localhost` resolve to `::1` first — so both services answer 9899 simultaneously and the proof works by
 address-family luck (verified live with `lsof`: both LISTEN rows at once). Any IPv4-resolving client (e.g.
@@ -2028,7 +2028,7 @@ this item's work; workflow:362). BL-022/023/024/025/026/028 → **todo**, three 
   carries (`'mcp'`, or the vendor name?); the union `'api'|'mcp'|'gemini'|'claude'|'codex'` admits both, and that
   ambiguity already caused the M17 G3-2 refute. **SP2 must record each attached agent's `provider` value as a
   first-class observation** — it cannot interpret its own result otherwise. Recording is a spike act; **fixing is not.**
-- **BL-025 carries a live defect that would void our evidence.** `scripts/m17-live-gate-proof.mjs` asserts against a
+- **BL-025 carries a live defect that would void our evidence.** `scripts/archive/m17-live-gate-proof.mjs` asserts against a
   **committed** NDJSON rather than the run's own recorder, so it can print `LIVE SMOKE PASSED` **with no recorder
   attached** (M17 G2-1, still open). Constraint: **SP2 and M19 must not use it as evidence**, and M19's DoD must say
   how a recorded `workflow_gate_event` is distinguished from an **injected** one — the exact ambiguity that refuted

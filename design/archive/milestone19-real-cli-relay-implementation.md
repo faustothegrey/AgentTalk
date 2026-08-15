@@ -175,7 +175,7 @@ substrate-carried coordination is T3's job, and the attach path it needs is only
 - AgentTalk and client contract verifiers both fail closed on committed-contract divergence, with version/hash output. The client build now runs the verifier.
 - The server wrong-hash hard reject is preserved by the existing `mcp-server.test.ts` coverage (`-32000` response and WebSocket close `1008`); no server production file was edited.
 - The narrower no-longer-v5 proof is the client WebSocket MCP test assertion that `llm-agent` initializes with the generated v7 `contractVersion` and `contractHash`.
-- Fresh-run evidence is recorded in `design/evidence/m19-t1-contract-alignment.txt`; no stale NDJSON or `scripts/m17-live-gate-proof.mjs` evidence was used.
+- Fresh-run evidence is recorded in `design/evidence/m19-t1-contract-alignment.txt`; no stale NDJSON or `scripts/archive/m17-live-gate-proof.mjs` evidence was used.
 
 ## M19-T2 - BL-026: supported real-CLI attach ritual
 

@@ -61,7 +61,7 @@
 | `npx tsc -b` | 2 | 0 |
 | targeted relevant tests | 2 | 0 |
 | full `npm test` | 1 | 0 |
-| `node scripts/m14-identity-harness.mjs --check` | 1 | 0 |
+| `node scripts/archive/m14-identity-harness.mjs --check` | 1 | 0 |
 | `npm run backlog:check` | 1 | 0 |
 | `git diff --check && git diff --cached --check` | 2 | 0 |
 | pollution check: `git worktree list` + `git branch --list 'task-*'` | 1 | 0 |
@@ -98,7 +98,7 @@ handoff to Task-end Review.
 - `git diff --check && git diff --cached --check && git show --check --oneline HEAD` -> exit 0.
 - `npm run backlog:check` -> backlog structure OK, **21 items, 0 warnings**.
 - `npm test` -> **52 files / 297 tests passed**.
-- `node scripts/m14-identity-harness.mjs --check` -> **Baselines match. Identity verified.** The known generated
+- `node scripts/archive/m14-identity-harness.mjs --check` -> **Baselines match. Identity verified.** The known generated
   harness worktree/branch was clean and swept after the run.
 - Out-of-fence checks: zero `packages/runtime-core/src/registry/team-coordinator.ts` diff; no files outside the T2
   manifest changed.
@@ -136,7 +136,7 @@ configuration and the task's own scope checker currently fails on the dirty deli
 - `npm test` -> **51 files / 291 tests passed**. Note: this does **not** include
   `scripts/__tests__/scope-check.test.mjs` because of the Vitest include globs above.
 - `npm run backlog:check` -> backlog structure OK, **21 items, 0 warnings**.
-- `node scripts/m14-identity-harness.mjs --check` -> **Baselines match. Identity verified.** The known leaked
+- `node scripts/archive/m14-identity-harness.mjs --check` -> **Baselines match. Identity verified.** The known leaked
   harness worktrees/branches were clean and swept after the run.
 - Out-of-fence check: zero `packages/runtime-core/src/registry/team-coordinator.ts` diff.
 - Pollution check after sweep: pending re-run after the implementer redelivery; this round still has the dirty
@@ -176,7 +176,7 @@ handoff to Task-end Review.
 - `npx tsc -b` -> exit 0.
 - `npm test` -> **52 files / 296 tests passed**; the full suite now includes `scripts/__tests__/scope-check.test.mjs`.
 - `npm run backlog:check` -> backlog structure OK, **21 items, 0 warnings**.
-- `node scripts/m14-identity-harness.mjs --check` -> **Baselines match. Identity verified.** The known generated
+- `node scripts/archive/m14-identity-harness.mjs --check` -> **Baselines match. Identity verified.** The known generated
   harness worktree/branch was clean and swept after the run.
 - Out-of-fence checks: zero `packages/runtime-core/src/registry/team-coordinator.ts` diff; zero
   `packages/runtime-core/src/**` diff.
@@ -274,7 +274,7 @@ for Gate 2 handoff to Task-end Review.
 - `node scripts/scope-check.mjs` on the branch -> exit 0.
 - Fresh end-to-end negative probe (untracked `apps/web/gate3-probe2.ts`) -> caught, exit 1; probe removed.
 - `npx tsc -b` -> clean. Full `npm test` -> **52 files / 296 tests**. `npm run backlog:check` -> 21 items, 0 warnings.
-- `node scripts/m14-identity-harness.mjs --check` -> Baselines match; known leaked worktree+branch swept
+- `node scripts/archive/m14-identity-harness.mjs --check` -> Baselines match; known leaked worktree+branch swept
   (`git worktree list` + `git branch --list 'task-*'` clean after sweep).
 - Whitespace clean; fences clean (zero `runtime-core`/`team-coordinator.ts` diff; no `as any`); no L1/L2 shapes.
 - Coordination rows appended and honest; final T1 relay count **9**, substrate events **0** (declared above).
@@ -341,7 +341,7 @@ C4 of the epic DoD is satisfied; BL-015 stays `todo` for L1/L2 (M19 gate with BL
 | `npx tsc -b` | 2 | 1 |
 | targeted relevant tests | 2 | 1 |
 | full `npm test` | 1 | 1 |
-| `node scripts/m14-identity-harness.mjs --check` | 1 | 1 |
+| `node scripts/archive/m14-identity-harness.mjs --check` | 1 | 1 |
 | `npm run backlog:check` | 1 | 1 |
 | `git diff --check && git diff --cached --check` | 2 | 2 |
 | pollution check: `git worktree list` + `git branch --list 'task-*'` | 1 | 1 |
@@ -581,7 +581,7 @@ for Gate 2.
 - client changed-file check: only `bridge.mjs` and `__tests__/bridge.test.mjs` changed; grep found no
   `AGENTTALK_BATON` / `AGENTTALK_WORKFLOW_EVENT` code in the client diff.
 - full AgentTalk `npm test`: PASS, 52 files / 297 tests.
-- `node scripts/m14-identity-harness.mjs --check`: PASS, "Baselines match. Identity verified." The harness-created
+- `node scripts/archive/m14-identity-harness.mjs --check`: PASS, "Baselines match. Identity verified." The harness-created
   `task-task-1783630414643` worktree/branch was swept after the run.
 - final pollution check in both repos: PASS, only the expected `task-M18-T3` archive branch and active
   `task-M18-T3a` branch remain.

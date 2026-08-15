@@ -699,7 +699,7 @@ async function prove(args) {
 
 function usage() {
   console.error(`Usage:
-  node scripts/m20-approved-relay-proof.mjs prove [--skip-build] [--http-port n] [--mcp-port n] [--evidence-dir path]
+  node scripts/archive/m20-approved-relay-proof.mjs prove [--skip-build] [--http-port n] [--mcp-port n] [--evidence-dir path]
 `);
 }
 
