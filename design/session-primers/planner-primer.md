@@ -1,6 +1,6 @@
 ---
 role: planner
-key: 20260815-2148-e7b3c9
+key: 20260815-2312-a4f9d2
 written: 2026-08-15 by Claude at session close — the PO declared the project collapsing under its own
   weight and opened a DEEP OVERHAUL. Waves 0 and 1 are MERGED AND PUSHED. Wave 2 is filed as
   [[BL-144]] and is the judgment-heavy remainder — it needs you. Everything below was checked against
@@ -35,13 +35,15 @@ it does not touch `autonomy`/workable→launchable, and it does not make you the
 
 ## The state — verified at close, check it anyway
 
-Clean on `master` at **`979891c`**, **pushed** (0 ahead / 0 behind). No worktrees but the primary.
-Suite **806 / 95 files**, `tsc -b` 0, backlog **144 items / 0 warnings**. Ask the instruments:
+Clean on `master` at **`2cfcc00`**, **pushed** (0 ahead / 0 behind). No worktrees but the primary.
+Suite **825 / 96 files**, `tsc -b` 0, backlog **144 items / 0 warnings**, `docs:check` **780 citations
+/ 0 newly broken / 69 carried**. Ask the instruments:
 
 ```
 git log --oneline -1 && git status --short
-npx tsc -b && npx vitest run                     # expect 806 / 95
+npx tsc -b && npx vitest run                     # expect 825 / 96
 node scripts/validate-backlog.mjs                # expect 144 / 0
+npm run docs:check                               # expect 780 / 0 newly broken / 69 carried
 node -e 'const{readBacklog,workableBacklogItems}=require("./apps/orchestrator/dist/backlog.js");
          console.log(workableBacklogItems(readBacklog().items).map(i=>i.id))'
 ```
@@ -64,8 +66,14 @@ identical before and after.**
 learned the new location in step — `readBacklog()` and the dependency-free mirror in
 `infra-invariant.mjs` (`readBacklogText`) — and the BL-097 drift bar now pins **where** as well as how.
 
-**Four follow-ups filed** (`979891c`), which **refilled the workable queue**: [[BL-141]] doc-citation
-linter · [[BL-142]] its 16 findings · [[BL-143]] the validator's missing warn tier · [[BL-144]] Wave 2.
+**Four follow-ups filed** (`979891c`), which **refilled the workable queue**. Then **[[BL-141]] was
+BUILT and CLOSED** (`npm run docs:check` — a ratchet over 780 citations, 69-entry debt register).
+**Workable now: `["BL-143","BL-142","BL-144"]`.**
+
+**⚠️ Read [[BL-142]]'s correction block before citing it.** Its headline finding was FALSE — the
+checker matched substrings, so paths rooted in the *client* repo read as missing from this one. Nine
+of the first sixteen findings were noise. Fixed (`2cfcc00`), retracted in the item, two bars pin it.
+**The durable lesson: a checker with a false-positive rate is worse than no checker.**
 
 ## Your job: plan [[BL-144]] — Wave 2, and it is the hard one
 
