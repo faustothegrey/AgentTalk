@@ -456,12 +456,11 @@ describe('the real backlog (design/backlog/)', () => {
     // ORDER IS FILE ORDER, not id order: `40-backlog.md` is read before `85-governance.md`, which
     // is why BL-143 leads. Since Wave 1 the backlog is a directory read in FILENAME order, so this
     // list moves when a file is renamed as well as when an item changes. Derive it, never type it.
-    expect(workableBacklogItems(items).map((i) => i.id)).toEqual([
-      'BL-143',
-      'BL-141',
-      'BL-142',
-      'BL-144',
-    ]);
+    // 2026-08-15 (later again) — [[BL-141]] DELIVERED and closed, so it leaves the set. Red shown
+    // first, as always. This is the shape the queue is supposed to have: an item is picked up, done,
+    // closed, and the set shrinks by exactly one — the first time in this file's history that a
+    // decrement was caused by work rather than by a re-status or a park.
+    expect(workableBacklogItems(items).map((i) => i.id)).toEqual(['BL-143', 'BL-142', 'BL-144']);
   });
 
   // 2026-08-07 — deliberately updated, and the red was shown to the PO first. BL-084 CLOSED (PO
@@ -529,12 +528,11 @@ describe('the real backlog (design/backlog/)', () => {
     // is about and it is UNCHANGED: it stays out because BL-135 is unresolved — note it is absent
     // from a NON-empty set now, which is a strictly stronger statement than being absent from an
     // empty one. The earlier empty pin could not tell "fenced" from "nothing here at all".
-    expect(workableBacklogItems(items).map((i) => i.id)).toEqual([
-      'BL-143',
-      'BL-141',
-      'BL-142',
-      'BL-144',
-    ]);
+    // 2026-08-15 (later again) — [[BL-141]] DELIVERED and closed, so it leaves the set. Red shown
+    // first, as always. This is the shape the queue is supposed to have: an item is picked up, done,
+    // closed, and the set shrinks by exactly one — the first time in this file's history that a
+    // decrement was caused by work rather than by a re-status or a park.
+    expect(workableBacklogItems(items).map((i) => i.id)).toEqual(['BL-143', 'BL-142', 'BL-144']);
   });
 
   it('marks BL-086 as the PO decision it is', () => {
