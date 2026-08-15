@@ -579,6 +579,15 @@ describe('verifyCommission', () => {
     expect(commitRun(run, build()).reason).toBe(REFUSAL.MISSING_CAP_WALLCLOCK);
   });
 
+  it('reads the `caps` spelling too, matching the meter lookup it sits beside', () => {
+    // The meter is read as `config?.caps?.meter ?? config?.cap?.meter` (`:371`), so real configs
+    // use `cap` and this fixture uses `caps`. A wallClockMs check that understood only one
+    // spelling would refuse a valid config — a refuse-only change is only safe if "valid" means
+    // the same thing to both lookups. Asserted as a PASS, because that is the claim.
+    const cfg = { ...without('cap'), caps: { ...CONFIG.caps, wallClockMs: 900000 } };
+    expect(commitRun('capsspelling', cfg).ok).toBe(true);
+  });
+
   it('refuses when the committed config launches into a different sandbox than commissioned', () => {
     write('design/operator/drift-brief.md', `# drift\n\nGoal: report HEAD.\n\n${authorizationLineFor('drift')}\n`);
     write('design/operator/drift.authorized', `${authorizationLineFor('drift')}\n`);
