@@ -2178,3 +2178,32 @@ here.**
   master, not in a worktree**, against the standing MANDATE. Both were hotfixes to a gate I had just
   pushed red, which is a real reason but not an authorization. **Under a standing pre-approval the
   discipline has to come from me, because nothing else is checking.**
+
+### 2026-08-15 (sixth stretch) — BL-142 + BL-143: three stated reasons, three wrong files
+
+- **Three times today a stated reason named the wrong code, and each time the conclusion was still
+  right.** BL-130's rot (`hasAgentTimedOut`), BL-142's headline (client-repo paths read as missing),
+  BL-143's blast radius (`exitCodeFor` lives in `infra-invariant.mjs`; the validator never called it,
+  and has exactly one caller). **A right conclusion resting on a wrong citation is the most durable
+  kind of error here** — nobody re-checks a claim they agree with. When I write "because X", go open X.
+- **The overhaul's own Wave 1 broke a live operator instruction, and only BL-142 found it.**
+  `SKILL.md` told the seat to fall back to a backlog *file* that Wave 1 replaced with a directory.
+  Verified both directions rather than asserted: the old grep emits to **stderr** and returns **empty
+  stdout**, so the operator sees an empty result set. **A mechanical migration proven correct by
+  citation parity can still break an instruction, because instructions are not citations.**
+- **My advisory check keyed on a DERIVED value and fired on doing the right thing.**
+  `DEFAULT_AUTONOMY` is `human-only`, so a parsed item can't distinguish an authored fence from an
+  absent field — and post-BL-134, absent is *correct*. It warned on the two items I'd just filed.
+  **Ask whether the value you're testing was authored or computed.** Same shape as the substring bug.
+- **A "pure" function that reaches for globals is worse than an honestly impure one.** My collector
+  took `text` but the coverage check still read the real repo — every fixture picked up the live
+  backlog and produced 20 phantom errors. Its tests would have *looked* meaningful. Caught on the
+  first test run, which is the argument for writing tests before believing a refactor.
+- **`architecture.md` nearly got archived by a staleness heuristic.** It is seven weeks cold and
+  DURABLE — it needs updating, not burying. **Neither filename nor date classifies lifecycle.** What
+  does was in the corpus all along: the docs declare themselves in a `Status:` line
+  (*"Resolved"* / *"Draft for review"* vs *"reference doc"* / *"Living reference"*). **Look for the
+  classifier the corpus already contains before inventing a proxy.**
+- **What worked, repeatedly: capture a baseline, then diff.** Pre-refactor output vs post; citation
+  parity before vs after; `--strict` proven to bite by planting a real fence. Every one was one
+  command, and each is worth more than any amount of re-reading.

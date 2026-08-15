@@ -1,6 +1,6 @@
 ---
 role: planner
-key: 20260815-2312-a4f9d2
+key: 20260816-0028-b6e3f7
 written: 2026-08-15 by Claude at session close — the PO declared the project collapsing under its own
   weight and opened a DEEP OVERHAUL. Waves 0 and 1 are MERGED AND PUSHED. Wave 2 is filed as
   [[BL-144]] and is the judgment-heavy remainder — it needs you. Everything below was checked against
@@ -35,15 +35,16 @@ it does not touch `autonomy`/workable→launchable, and it does not make you the
 
 ## The state — verified at close, check it anyway
 
-Clean on `master` at **`2cfcc00`**, **pushed** (0 ahead / 0 behind). No worktrees but the primary.
-Suite **825 / 96 files**, `tsc -b` 0, backlog **144 items / 0 warnings**, `docs:check` **780 citations
-/ 0 newly broken / 69 carried**. Ask the instruments:
+Clean on `master` at **`2cd1ea5`**, **pushed** (0 ahead / 0 behind). No worktrees but the primary.
+Suite **838 / 97 files**, `tsc -b` 0, backlog **144 items / 0 warnings**, `docs:check` **676 citations
+/ 0 newly broken / 43 carried**. **Workable: `["BL-144"]` — your item, and the only one left.**
+Ask the instruments:
 
 ```
 git log --oneline -1 && git status --short
-npx tsc -b && npx vitest run                     # expect 825 / 96
-node scripts/validate-backlog.mjs                # expect 144 / 0
-npm run docs:check                               # expect 780 / 0 newly broken / 69 carried
+npx tsc -b && npx vitest run                     # expect 838 / 97
+node scripts/validate-backlog.mjs                # expect 144 items / 0 warnings
+npm run docs:check                               # expect 676 / 0 newly broken / 43 carried
 node -e 'const{readBacklog,workableBacklogItems}=require("./apps/orchestrator/dist/backlog.js");
          console.log(workableBacklogItems(readBacklog().items).map(i=>i.id))'
 ```
@@ -70,10 +71,22 @@ learned the new location in step — `readBacklog()` and the dependency-free mir
 BUILT and CLOSED** (`npm run docs:check` — a ratchet over 780 citations, 69-entry debt register).
 **Workable now: `["BL-143","BL-142","BL-144"]`.**
 
-**⚠️ Read [[BL-142]]'s correction block before citing it.** Its headline finding was FALSE — the
-checker matched substrings, so paths rooted in the *client* repo read as missing from this one. Nine
-of the first sixteen findings were noise. Fixed (`2cfcc00`), retracted in the item, two bars pin it.
-**The durable lesson: a checker with a false-positive rate is worse than no checker.**
+**[[BL-141]], [[BL-142]] and [[BL-143]] are all now BUILT, MERGED and CLOSED.** In order: the
+doc-citation gate (`npm run docs:check`, a ratchet); the citation disposition (register 78 → 43, and
+it fixed a LIVE operator defect — `SKILL.md` told the seat to fall back to a backlog *file* Wave 1
+had replaced with a directory); and the backlog gate's severity tier (`warns` advise, `--strict`
+promotes, 12 tests where there were none).
+
+**⚠️ Read [[BL-142]]'s and [[BL-143]]'s correction blocks before citing either.** Both items contained
+a FALSE claim written by their author — BL-142's headline (a substring bug made client-repo paths read
+as missing from this one; nine of sixteen findings were noise) and BL-143's stated blast radius
+(`exitCodeFor` lives in a different tool and this script never called it). **Neither was caught by
+review; both by running something.** Durable lesson: *a checker with a false-positive rate is worse
+than no checker.*
+
+**Also from BL-142, and it is an input to your plan: Wave 0 UNDER-ARCHIVED**, because filename
+patterns missed topic-named episodic docs and `*-spike.md` suffixes. 18 more were archived.
+`design/` top level across the session: **143 → 34**.
 
 ## Your job: plan [[BL-144]] — Wave 2, and it is the hard one
 
