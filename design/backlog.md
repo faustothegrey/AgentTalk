@@ -8452,13 +8452,26 @@ status: todo
 date: 2026-08-15
 epic: null
 tags: [backlog, autonomy, governance, operator, bl-093, simplification]
-blocked_by: [BL-136]
+blocked_by: [BL-137]
 autonomy: po-decision
 -->
 - [todo · **PO-DIRECTED REWRITE 2026-08-15 — supersedes this item's own first shape (option (b), "flip the
   default"), which did not satisfy the requirement. Plan: `design/bl134-plan.md`, awaiting gate 1** · filed by
   the planner at the PO's direction: *"the way backlog items are eligible is too complicated; any workable
   backlog item must also be eligible for Hermes launching externally"*] —
+  **⛔ RE-BLOCKED 2026-08-15 by PO decision — `blocked_by` moved [[BL-136]] → [[BL-137]].** The first blocker
+  is **resolved** (BL-136 merged `05325c0`, closing the goal-scan seam this item's containment argument leans
+  on). The new one is worse, and it is aimed straight at **§5** of `design/bl134-plan.md`: this item proposes
+  to retire the `autonomy` fail-closed paragraph and rest the OPERATOR charter's safety argument on Gate B,
+  describing it as *per-run, sha-bound, single-use*. All three adjectives are true. **The implied fourth —
+  "and only the PO can produce it" — is not**, because `design/operator/<run>.authorized` sits inside the
+  operator's own write allowlist and no committer identity is checked ([[BL-137]]).
+  **Shipping §5 unchanged would replace one overstated fence with another** — precisely the defect class
+  [[BL-136]] had just corrected in `SKILL.md`, and [[BL-101]] before it. The PO was offered the cheaper path
+  (implement this item, drop §5's rewording from scope, leave the charter paragraph alone) and **chose to
+  block instead**, which re-empties the workable set on purpose rather than write a governance sentence
+  already known to overstate its fence.
+
   **`autonomy` is a READINESS field wearing an AUTHORIZATION field's clothes, and it gates a door nobody walks
   through.** Read its three values as they are actually defined: `eligible` = "work bounded, DoD legible" (*the
   item is specified*); `human-only` = "judgement the item doesn't encode" (*under-specified*); `po-decision` =
