@@ -230,3 +230,88 @@ are ordering claims and are the kind that most easily pass vacuously.
 - **q5 — Does this fully unblock [[BL-134]] §5?** My read: yes for the wording *"per-run, sha-bound,
   single-use"* plus a fourth adjective that becomes **defensible as a rule** — but §5 must not claim
   enforcement. BL-134's D6 (stale workable-set row) needs recomputing regardless, independent of this item.
+
+---
+
+## 12. Gate 1 findings — plan reviewer, 2026-08-15
+
+**VERDICT: REFUTED ❌ — not approvable as written.** Two plan-internal contradictions (F1, F2) and one
+unspecified failure path (F3). All three are *plan* edits: no design is wrong, and no finding requires new
+information. Re-gate after revision.
+
+**Independence: ABSENT.** Same actor as the planner, under the resource-scarcity fallback. Declared, not
+mitigated. Weigh the findings below accordingly — they were produced by re-running the claims, which is the
+only part of this review that does not depend on the reviewer being a different person.
+
+### Verified by running / reading — the plan earned these
+
+| Plan claim | Verdict | Evidence |
+|---|---|---|
+| Path resolves inside the operator allowlist | VERIFIED ✅ | `hmp-commission.mjs:179`; allowlist `infra-invariant.mjs:83` |
+| No committer/signature check anywhere | VERIFIED ✅ | grep `verify-commit\|committer\|author\|gpg\|sign` over all 661 lines — every hit is a comment or a refusal string |
+| Refusal ordering: `BRIEF_NOT_COMMITTED` → `NO_PO_AUTHORIZATION` → `RECURSIVE_COMMISSION` | VERIFIED ✅ | `:330` → `:339`/`:342` → `:346` |
+| `.approvals/` is gitignored | VERIFIED ✅ | `.gitignore:37` |
+| `ACTIONS` frozen `['merge','push']` | VERIFIED ✅ | `relay-approve.mjs:95` |
+| `:208` is the contract row for the path | VERIFIED ✅ | hardcodes `'design/operator/hmp1.authorized'` |
+| `SKILL.md:422-428` already forbids Hermes writing the file | VERIFIED ✅ | read in full |
+| No other writer of `*.authorized` exists in `scripts/` | VERIFIED ✅ | grep — only `hmp-commission.mjs` comments and `authorizationPathFor` |
+| Baseline green before any change | VERIFIED ✅ | `npx vitest run` both files → **83 passed (83)**, 5.02s |
+| Importing `hmp-commission.mjs` is side-effect-free | VERIFIED ✅ | CLI body sits behind an `isMainModule` guard at the file's tail |
+
+### F1 — [BLOCK] C3 requires a change §6 forbids
+
+C3 specifies validating `--run` *"against the same `RUN_ID` shape the commission uses (`hmp-commission.mjs:87`)."*
+**`RUN_ID` is not exported.** `:86` is `export const REQUIRED_FIELDS`; `:87` is a bare `const RUN_ID` — the
+adjacency is exactly what made the planner misread it. Exporting it is a **second** edit to
+`hmp-commission.mjs`, but §6 scope reads *"May touch: `scripts/hmp-commission.mjs` (C1 only)"*.
+
+**Fix:** widen C1 to *"C1 + export `RUN_ID`"* explicitly, in both the change table and §6. Do **not** take the
+alternative of copying the regex into `relay-approve.mjs` — C4 itself argues against a second copy of a
+contract, and it would be the same error one line later.
+
+### F2 — [BLOCK] the plan does not implement what its title claims
+
+The title and §0 say options **(a)+(c)**. §3's diagram shows Hermes writing `design/operator/<run>.requested`.
+But **no change item C1–C7 produces that file, no bar B1–B8 covers it, and §6 never names it.** What the plan
+actually delivers is **(a) plus a lighter authorization act** — which is worth doing, and is not (c).
+
+This is the item's own thesis turned on its author: **a fence described in prose is not a fence, and neither is
+a deliverable.** It also mis-reported to the PO, who was told "(a)+(c)".
+
+**Fix — pick one, don't blur it:** (i) add a change item that writes `.requested`, a bar, and a scope line; or
+(ii) retitle to *(a) + propose/approve*, and record (c) as **not built**, with q4 rewritten to ask whether it
+should be. (ii) is the smaller, more honest change; (i) is defensible if the two-party structure should be
+legible on disk from day one.
+
+### F3 — [substantive] a failed commit is not a failed notification
+
+C4 makes `approve` write **and commit**. Two existing behaviours collide with that and the plan is silent on
+both:
+
+- `git()` (`relay-approve.mjs:116-122`) **swallows every failure and returns `null`** — `stdio` discards
+  stderr.
+- `announce()` (`:230-250`) swallows deliberately, with a stated and correct reason: *"the approval itself
+  already succeeded; a failed notification must not undo it."*
+
+**That reasoning must not be extended to the commit.** If the commit silently fails, `approve` returns
+`ok: true`, the PO believes they authorized, the token is already burned (`usedAt` is written at `:207`, before
+`announce`), and the commission later refuses `no-po-authorization`. It fails **closed**, so it is safe — but
+it is a *confusing* safe, and the PO's recourse (re-propose, because the token is spent) is undocumented.
+
+**Fix:** specify the ordering explicitly — the commit must succeed **before** the token is marked used, or the
+refusal must name the commit failure. Add a bar: **B9 — a failing commit makes `approve` report a refusal, not
+`ok: true`, and does not burn the token.** Nothing in B1–B8 exercises this path.
+
+### F4 — [minor] name collision on import
+
+Both modules export `primaryRoot` (`relay-approve.mjs:127`, `hmp-commission.mjs:553`). C4's import must name
+only `authorizationLineFor` and `authorizationPathFor`, or alias. Trivial — recorded so it is not rediscovered
+at the keyboard.
+
+### Not findings — checked and cleared
+
+- **The sha wrinkle (§5)** is correctly identified and correctly pinned by D4. No defect.
+- **§10's honesty** is adequate: it does not claim enforcement, and it carries BL-137's live-proof limit
+  forward. This is the section most likely to be quietly softened during implementation — it must not be.
+- **q2's exclusion** (token-in-blob) is reasoned, not an oversight, and I agree with the exclusion for the
+  reason given: the store is no better fenced than the file.
