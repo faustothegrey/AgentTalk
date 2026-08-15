@@ -818,9 +818,15 @@ describe('BL-097 DoD row 8 — the duplicated parser may not drift', () => {
     const viaParser = workableBacklogItems(readBacklog().items).map((i) => i.id).sort();
 
     expect(viaMirror).toEqual(viaParser);
-    // …and neither side is agreeing merely by being empty.
+
+    // …and neither side is agreeing merely by having read NOTHING. Note precisely what this
+    // second bar may assert: that both located a real backlog — NOT that the workable set is
+    // non-empty. An empty workable set is a legitimate state and is the state today (BL-134
+    // closed; BL-028 is fenced by `blocked_by`). This bar asserted `viaParser.length > 0` for
+    // about an hour and fired on that legitimate state the moment it arrived — a bar that fails
+    // when the queue is legitimately drained tests the PO's backlog, not the parsers.
     expect(readBacklogText(repoRoot)).not.toBeNull();
-    expect(viaParser.length).toBeGreaterThan(0);
+    expect(readBacklogText(repoRoot).length).toBeGreaterThan(0);
   });
 
   it('ignores the @item EXAMPLE inside the schema fence — it declares autonomy: eligible', () => {
