@@ -482,7 +482,19 @@ describe('the real backlog (design/backlog/)', () => {
     // needs `design/po/<run>.authorized` committed at the sha the commission names. Re-adding a
     // field to keep a PO item off this list would rebuild the fail-open-in-a-document shape BL-134
     // removed.
-    expect(workableBacklogItems(items).map((i) => i.id)).toEqual(['BL-145']);
+    //
+    // 2026-08-15 (last this session) — [[BL-145]] DELIVERED and closed, and the queue is EMPTY again.
+    // Red shown first, as always. Read line 287 before reacting to this: an empty set here is
+    // ambiguous by construction, because a failing `toEqual([])` and a genuinely drained queue look
+    // identical at a glance. This one is drained, deliberately, and the PO asked for it — the
+    // overhaul closed, and the direction after it is a PO call rather than an agent's.
+    //
+    // What is NOT empty is the backlog: 145 items, of which 28 are DEFERRED and 1 (`BL-028`) is todo
+    // but blocked by `BL-135`, itself deferred. So the queue is empty *structurally* — every
+    // remaining piece of work is parked behind a decision, and un-parking is a PO act. That is a
+    // different and healthier state than "we ran out of ideas", and the distinction is the reason
+    // this assertion is pinned exactly rather than loosened to a length check.
+    expect(workableBacklogItems(items).map((i) => i.id)).toEqual([]);
   });
 
   // 2026-08-07 — deliberately updated, and the red was shown to the PO first. BL-084 CLOSED (PO
@@ -557,7 +569,7 @@ describe('the real backlog (design/backlog/)', () => {
     // 2026-08-15 — [[BL-142]] delivered and closed. Second decrement in a row caused by work.
     // 2026-08-15 — [[BL-143]] delivered and closed. Third consecutive decrement caused by work
     // rather than a re-status. What remains is [[BL-144]] — Wave 2, the judgment-heavy remainder.
-    expect(workableBacklogItems(items).map((i) => i.id)).toEqual(['BL-145']);
+    expect(workableBacklogItems(items).map((i) => i.id)).toEqual([]);
   });
 
   it('marks BL-086 as the PO decision it is', () => {
