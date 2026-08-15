@@ -280,13 +280,36 @@ the operator cannot read would be a fence, and none exists here.** Do not restor
 deciding what an agent may be handed *unattended*. Writing it is not describing the process, it is steering
 it — and this seat steers nothing. The rest of the write surface is bookkeeping.
 
-**Why filing is safe by construction — this is the load-bearing part.** [[BL-093]] made `autonomy` **fail
-closed**: an item that does not say it is eligible *is not eligible*. So an item Hermes files defaults to
-`human-only` and reaches no worker until the PO says so. The operator can put anything it likes in front of
-you; it cannot hand any of it to an agent. **And the guard is mechanical, not merely stated:**
-`bl093-backlog-selectable.test.ts:147` pins the real `design/backlog.md`'s selectable set *exactly*, so any
-change to what an agent may be handed goes red and forces a human look. It has already fired once on a real
-change. **Do not loosen it to accommodate the operator** — that test is now this fence's enforcement.
+**Why filing is safe by construction — this is the load-bearing part, REWRITTEN 2026-08-15 ([[BL-134]], PO-approved).**
+
+**⬛ The paragraph this replaces credited Gate A with a containment Gate B provides, and it had always done
+so.** It read: *"[[BL-093]] made `autonomy` fail closed: an item that does not say it is eligible is not
+eligible… the operator can put anything it likes in front of you; it cannot hand any of it to an agent."*
+`autonomy` no longer gates anything — it was a **readiness** field misread as an **authorization** one, and
+the predicate that reads it (`workableBacklogItems`) populates an API view and two reports. **It launches
+nothing.** The old sentence was resting a safety argument on a list.
+
+**What is true instead:**
+
+> An item Hermes files may become **workable** — but *workable is not launchable*. A launch requires
+> `design/po/<run>.authorized`, containing exactly `[PO] AUTHORIZED-RUN: <run>`, **committed at the repo-sha
+> the commission names**, single-use via the launch ledger, and written by the PO's `approve <token>` alone.
+> It lives in a directory **nothing else writes**, so an operator write there is conspicuous — and a foreign
+> path in a bracketed run ([[BL-138]]). **This is detection, not prevention:** nothing mechanically stops a
+> process holding a shell from writing it. The fence is the seat observing its instructions, and the
+> instruments that make a breach visible.
+
+**Readiness is now carried by `blocked_by`**, which is strictly better at that job than a field: it names its
+reason as a filed item, releases itself when the blocker closes, and cannot dangle (a bad id fails
+`backlog:check`). `human-only` named nothing and expired never.
+
+**The mechanical guard survives, re-aimed rather than retired** (PO decision, [[BL-134]] q1):
+`bl093-backlog-selectable.test.ts` pins the real backlog's **workable** set *exactly*, so any change to what
+an agent could be handed goes red and forces a human look. It has fired on real changes repeatedly. **Do not
+loosen it to accommodate the operator, and do not weaken it to a length or emptiness check** — its whole value
+is that it moves. The commit-time pin was kept deliberately in preference to relying on the invariant harness
+alone, because **the harness only runs around operator runs**, which would leave every ordinary commit
+unguarded.
 
 **Where it may write — a path allowlist, the write-side analogue of the `att-op-*` sandbox:**
 `design/backlog.md`, `design/operator/**`, and **`design/operator-seat/**`**. Nothing else. No code, no

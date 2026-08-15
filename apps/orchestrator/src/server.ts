@@ -11,7 +11,7 @@ const wireContract = require('@agenttalk/contracts/wire-contract.json');
 import { Registry } from '@agenttalk/runtime-core/registry/registry';
 import { mintId } from '@agenttalk/runtime-core/registry/ids';
 import { McpServer } from '@agenttalk/mcp-transport';
-import { activeBacklogItems, readBacklog, selectableBacklogItems } from './backlog.js';
+import { activeBacklogItems, readBacklog, workableBacklogItems } from './backlog.js';
 import { AGENTTALK_MCP_TOOLS } from '@agenttalk/runtime-core/registry/mcp-tools';
 import type { AgentProvider, RelayApprovalMode } from '@agenttalk/contracts/types';
 import type { ScenarioDefinition } from '@agenttalk/runtime-scenarios/scenarios/types';
@@ -252,12 +252,12 @@ export function startServer(
     console.log('[Server] GET /api/backlog');
     const { items, warnings } = readBacklog();
     // Default view = the live queue (doing + todo); pass ?all=true for done/dropped/deferred too
-    // (the future UI toggles ride this param). `?selectable=true` (BL-093) narrows further, to
+    // (the future UI toggles ride this param). `?workable=true` (BL-093) narrows further, to
     // what an autonomous selector may PROPOSE — todo · eligible · every blocker resolved.
     const all = req.query.all === 'true';
-    const selectable = req.query.selectable === 'true';
-    const visible = selectable
-      ? selectableBacklogItems(items)
+    const workable = req.query.workable === 'true';
+    const visible = workable
+      ? workableBacklogItems(items)
       : all
         ? items
         : activeBacklogItems(items);

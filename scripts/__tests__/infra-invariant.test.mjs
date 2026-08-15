@@ -8,7 +8,7 @@ import {
   SEVERITY,
   matchesAny,
   matchesWritePath,
-  parseSelectableIds,
+  parseWorkableIds,
   diffSnapshots,
   exitCodeFor,
   snapshotRepo,
@@ -566,7 +566,7 @@ describe('BL-089 — the first porcelain entry keeps its filename', () => {
 // `design/operator/**`. Before this, a HEAD move was critical and "never allowlisted", so the
 // seat's first lawful write fired three criticals and gated the next run. These bars pin the
 // softening as NARROW: declared paths only, never on an unreadable range, and never over the
-// one thing that is authority rather than a write — the agent-selectable set.
+// one thing that is authority rather than a write — the agent-workable set.
 // ---------------------------------------------------------------------------
 
 const OPERATOR_EXPECT = {
@@ -740,7 +740,7 @@ describe('BL-097 DoD row 6 — divergence softens only when the write explains i
   });
 });
 
-describe('BL-097 DoD row 7 — the selectable set is NEVER allowlistable', () => {
+describe('BL-097 DoD row 7 — the workable set is NEVER allowlistable', () => {
   it('granting eligibility gates, even though design/backlog.md is a permitted path', () => {
     const { dir } = makeRepoWithDesign(item('BL-001', 'todo', 'eligible'));
     const before = snapOf(dir);
@@ -753,7 +753,7 @@ describe('BL-097 DoD row 7 — the selectable set is NEVER allowlistable', () =>
 
     const findings = diffSnapshots(before, snapOf(dir), OPERATOR_EXPECT);
     const crits = criticalsOf(findings);
-    expect(kindsOf(crits)).toEqual(['selectable-set-changed']);
+    expect(kindsOf(crits)).toEqual(['workable-set-changed']);
     expect(crits[0].detail).toContain('BL-002');
   });
 
@@ -761,7 +761,9 @@ describe('BL-097 DoD row 7 — the selectable set is NEVER allowlistable', () =>
     const base = item('BL-001', 'todo', 'eligible', 'BL-002') + item('BL-002', 'todo');
     const { dir } = makeRepoWithDesign(base);
     const before = snapOf(dir);
-    expect(before.repos.main.selectable).toEqual([]);
+    // BL-134: BL-002 is itself todo and unblocked, so it is workable from the start — `autonomy` no
+    // longer hides it. BL-001 is the one held back, and the grant under test is its RELEASE.
+    expect(before.repos.main.workable).toEqual(['BL-002']);
 
     fs.writeFileSync(
       path.join(dir, 'design', 'backlog.md'),
@@ -771,7 +773,7 @@ describe('BL-097 DoD row 7 — the selectable set is NEVER allowlistable', () =>
     git('commit -q -m "operator: close the blocker"', dir);
 
     const findings = diffSnapshots(before, snapOf(dir), OPERATOR_EXPECT);
-    expect(kindsOf(criticalsOf(findings))).toEqual(['selectable-set-changed']);
+    expect(kindsOf(criticalsOf(findings))).toEqual(['workable-set-changed']);
   });
 
   it('an unchanged set is silent — the check does not cry wolf on ordinary edits', () => {
@@ -789,35 +791,41 @@ describe('BL-097 DoD row 7 — the selectable set is NEVER allowlistable', () =>
     const { dir } = makeRepoWithDesign(item('BL-001', 'todo', 'eligible'));
     const before = snapOf(dir);
     const after = snapOf(dir);
-    after.repos.main.selectable = 'skipped';
+    after.repos.main.workable = 'skipped';
 
     expect(kindsOf(criticalsOf(diffSnapshots(before, after, OPERATOR_EXPECT)))).toContain(
-      'selectable-set-unreadable',
+      'workable-set-unreadable',
     );
   });
 });
 
 describe('BL-097 DoD row 8 — the duplicated parser may not drift', () => {
-  it('agrees with parseBacklog/selectableBacklogItems on the REAL design/backlog.md', async () => {
-    const { parseBacklog, selectableBacklogItems } = await import(
+  it('agrees with parseBacklog/workableBacklogItems on the REAL design/backlog.md', async () => {
+    const { parseBacklog, workableBacklogItems } = await import(
       '../../apps/orchestrator/src/backlog.ts'
     );
     const real = fs.readFileSync(path.resolve(__dirname, '../../design/backlog.md'), 'utf-8');
 
-    const viaParser = selectableBacklogItems(parseBacklog(real).items).map((i) => i.id).sort();
-    expect(parseSelectableIds(real)).toEqual(viaParser);
+    const viaParser = workableBacklogItems(parseBacklog(real).items).map((i) => i.id).sort();
+    expect(parseWorkableIds(real)).toEqual(viaParser);
   });
 
   it('ignores the @item EXAMPLE inside the schema fence — it declares autonomy: eligible', () => {
     const fenced = ['```', item('BL-NNN', 'todo', 'eligible'), '```', item('BL-001', 'todo', 'eligible')].join('\n');
-    expect(parseSelectableIds(fenced)).toEqual(['BL-001']);
+    expect(parseWorkableIds(fenced)).toEqual(['BL-001']);
   });
 
-  it('fails closed exactly as BL-093 does: unknown autonomy and dangling blockers hide an item', () => {
-    expect(parseSelectableIds(item('BL-001', 'todo', 'yes-please'))).toEqual([]);
-    expect(parseSelectableIds(item('BL-001', 'todo'))).toEqual([]);
-    expect(parseSelectableIds(item('BL-001', 'done', 'eligible'))).toEqual([]);
-    expect(parseSelectableIds(item('BL-001', 'todo', 'eligible', 'BL-999'))).toEqual([]);
+  // ⬛ BL-134 — two of these four clauses INVERT, and the bar is kept rather than deleted because
+  // the mirror must track the real parser exactly. `autonomy` no longer participates in either.
+  it('mirrors BL-134 semantics exactly: status and blockers gate, autonomy does not', () => {
+    // INVERTED — an unrecognised value and a missing header are both workable now.
+    expect(parseWorkableIds(item('BL-001', 'todo', 'yes-please'))).toEqual(['BL-001']);
+    expect(parseWorkableIds(item('BL-001', 'todo'))).toEqual(['BL-001']);
+    // UNCHANGED, and now load-bearing: these two clauses carry the whole predicate.
+    expect(parseWorkableIds(item('BL-001', 'done', 'eligible'))).toEqual([]);
+    expect(parseWorkableIds(item('BL-001', 'todo', 'eligible', 'BL-999'))).toEqual([]);
+    // A dangling blocker id must still HIDE an item — a typo may never release work.
+    expect(parseWorkableIds(item('BL-001', 'todo', undefined, 'BL-999'))).toEqual([]);
   });
 });
 

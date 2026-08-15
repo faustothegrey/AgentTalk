@@ -39,7 +39,7 @@ for (const it of items) {
 
 // 3. BL-093 — the dependency graph must be sound. A dangling or circular `blocked_by`
 //    silently UNBLOCKS an item (the parser fails closed, so it just disappears from the
-//    selectable set with no explanation), which is exactly the kind of quiet wrong answer
+//    workable set with no explanation), which is exactly the kind of quiet wrong answer
 //    this gate exists to make loud.
 const byId = new Map(items.map((it) => [it.id, it]));
 for (const it of items) {
@@ -56,9 +56,30 @@ for (const it of items) {
   // has no warning tier.
   if (it.autonomy === 'eligible' && it.status !== 'todo') {
     errors.push(
-      `item "${it.id}": autonomy "eligible" on a "${it.status}" item (only todo is selectable)`,
+      `item "${it.id}": autonomy "eligible" on a "${it.status}" item (only todo is workable)`,
     );
   }
+  // BL-134 — `po-decision` is RETIRED as a value: a question is not a task, so such an item
+  // belongs in `status: deferred` where it leaves the workable set for a stated reason. Existing
+  // done/deferred items keep the value deliberately — it is history, and rewriting closed metadata
+  // to match new vocabulary falsifies the record. Only a LIVE item is worth correcting.
+  if (it.autonomy === 'po-decision' && it.status === 'todo') {
+    errors.push(
+      `item "${it.id}": autonomy "po-decision" on a todo item — BL-134 retired that value. ` +
+        `If its resolution IS a PO call, set status: deferred (a question is not a task). ` +
+        `If it is real work, drop the field and express any fence as blocked_by.`,
+    );
+  }
+  // BL-134 — the migration aid for `human-only` (plan D4) is DELIBERATELY NOT IMPLEMENTED HERE, and
+  // the reason is a contract conflict rather than an oversight. D4 asked to flag a `todo` item
+  // carrying `human-only` with no unresolved blocker. But this gate has NO WARNING TIER — every
+  // finding lands in `errors` and fails the run (see the parser-warning fold above) — while D2
+  // requires `autonomy` to survive as legitimate ADVISORY metadata. Those two cannot both hold: a
+  // field that is allowed to be present cannot make the backlog invalid by being present.
+  //
+  // `po-decision` above is different and IS an error: that value was RETIRED, so it is invalid
+  // vocabulary, not a stale fence. Adding a real warning tier would change `exitCodeFor` behaviour
+  // other callers depend on — out of scope here. Reported as PARTIAL rather than faked.
 }
 
 // Cycle detection over the blocked_by graph. Recursive three-colour DFS: `onPath` holds

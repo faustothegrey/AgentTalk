@@ -35,15 +35,17 @@ autonomy: eligible    # optional; eligible | human-only | po-decision. DEFAULT h
 ```
 
 **`autonomy` (BL-093) fails CLOSED — an item that does not say it is eligible is not eligible.** The field
-exists so an autonomous selector can tell real agent work from work that is blocked, needs judgement it cannot
-make, or **is a PO call**. Absent or unrecognised → `human-only`, so adding the field could not retroactively
-make the existing backlog selectable and a typo hides an item rather than releasing it. `eligible` = boundable,
-handable to an agent unattended. `human-only` = real work, but it carries a behaviour change to fence, needs
+is **advisory readiness metadata since [[BL-134]] — it does NOT gate anything.** The workable set is
+`status: todo` + every `blocked_by` resolved, and nothing else; what stops an agent being handed work is the
+PO-authorized launch file ([[BL-137]]), not this field. Absent or unrecognised is simply unset. Express a real
+fence as `blocked_by` instead: it names its reason as a filed item and releases itself when that item closes.
+`po-decision` is **RETIRED** as a value — a question is not a task, so such items are `status: deferred`.
+`eligible` = boundable, handable to an agent unattended. `human-only` = real work, but it carries a behaviour change to fence, needs
 judgement the item does not encode, **or its execution would itself mean launching a session** (the OPERATOR
 charter's no-recursion rule — a judgement no parser can make, so it rests on whoever files the item and is
 re-checked at each §3b gate). `po-decision` = the item's resolution *is* a PO call, not agent work.
 `blocked_by` is resolved only when every id it names is `done` or `dropped`; a dangling, self- or circular
-reference **fails `backlog:check`**. Selector view: `GET /api/backlog?selectable=true`.
+reference **fails `backlog:check`**. Selector view: `GET /api/backlog?workable=true`.
 
 The **header is authoritative for the API**; if it disagrees with the prose `[STATUS]` tag the parser
 emits a drift warning (surfaced at the §3b gate). Validate with `npm run backlog:check` after any edit.
@@ -3032,7 +3034,7 @@ status: todo
 date: 2026-07-10
 epic: null
 tags: [engine, m03, dead-code, false-claim, fault-tolerance]
-blocked_by: [BL-084]
+blocked_by: [BL-084, BL-135]
 autonomy: human-only
 -->
 - [todo · **dead mechanism + false feature claim; found while scoping M19, PO-approved to file 2026-07-10**] —
@@ -8453,7 +8455,7 @@ date: 2026-08-15
 epic: null
 tags: [backlog, autonomy, governance, operator, bl-093, simplification]
 blocked_by: [BL-137]
-autonomy: po-decision
+autonomy: human-only
 -->
 - [todo · **PO-DIRECTED REWRITE 2026-08-15 — supersedes this item's own first shape (option (b), "flip the
   default"), which did not satisfy the requirement. Plan: `design/bl134-plan.md`, awaiting gate 1** · filed by
@@ -8884,14 +8886,17 @@ autonomy: human-only
 
 <!-- @item
 id: BL-139
-status: todo
+status: deferred
 date: 2026-08-15
 epic: null
 tags: [governance, security, po, push, fence-in-prose, agent-md]
 autonomy: po-decision
 -->
-- [todo · **filed 2026-08-15 by the planner during BL-137, after TESTING an idea rather than reasoning about
-  it — PO decision, not an agent call**] —
+- [deferred · **PARKED 2026-08-15 by [[BL-134]]'s migration — this is a PO DECISION, and a question is not a
+  task.** `po-decision` retired as an `autonomy` value; items that *are* decisions now say so in `status`,
+  which keeps them out of the workable set for a stated reason rather than a field nobody could second-guess.
+  **Reopen condition:** the PO picks an option below. · filed 2026-08-15 by the planner during BL-137, after
+  TESTING an idea rather than reasoning about it**] —
   **`AGENT.md` asserts in bold, in several places, that push is the PO's "absolutely and without exception".
   Nothing on this machine enforces that.**
 
@@ -8918,13 +8923,16 @@ autonomy: po-decision
 
 <!-- @item
 id: BL-140
-status: todo
+status: deferred
 date: 2026-08-15
 epic: null
 tags: [operator, hermes, containment, authorization, signatures, bl-137]
 autonomy: po-decision
 -->
-- [todo · **filed 2026-08-15 at BL-137's close so it stays a DECISION rather than a planner's omission**] —
+- [deferred · **PARKED 2026-08-15 by [[BL-134]]'s migration — a PO DECISION, and a question is not a task**
+  (same rationale as [[BL-139]]). **Reopen condition:** the threat model changes, [[BL-139]] option (a) makes
+  key handling routine anyway, or a `critical` shows a seat writing where it should not. · filed 2026-08-15 at
+  BL-137's close so it stays a DECISION rather than a planner's omission**] —
   **Signature verification is the only option that would actually fence a shell-holding operator — and it
   trades away exactly the lightness the PO asked for.**
 
