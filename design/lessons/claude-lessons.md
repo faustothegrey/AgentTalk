@@ -2269,9 +2269,12 @@ here.**
 - **A `cd` in one Bash call persists into the next**, and I spent a real scare thinking my splice had
   destroyed `AGENT.md` (it was the client repo's 127-line one). **Check `pwd` before believing a
   shocking file measurement.**
-- **The gate caught me mid-rewrite**, exactly as intended: I cited `design/logbook.md`, which Wave 2
-  had moved hours earlier. Four newly-broken citations, red in the suite. **My own migration
-  invalidated my own memory of where files live — trust the gate over recall.**
+- **The gate caught me mid-rewrite**, exactly as intended: I cited the logbook at its old top-level
+  `design/` path, which Wave 2 had moved into `modules/governance/docs/` hours earlier. Four
+  newly-broken citations, red in the suite. **My own migration invalidated my own memory of where
+  files live — trust the gate over recall.** *(And writing this bullet broke the gate a second time,
+  because naming the dead path in prose IS a citation. A note about a broken link must not contain
+  one — same shape as the T3 proposal citing its own proposed destination.)*
 - **What worked: an explicit conservation instrument for prose.** Prose has no line conservation and
   no parse equality, so I built a normative-statement inventory (294 obligation-bearing lines) and
   dispositioned every obligation in a rewritten section by hand. Without it "I didn't drop a rule"
