@@ -1,317 +1,268 @@
-# BL-137 — the authorization file leaves the operator's allowlist, and `approve <token>` becomes the act that writes it
+# BL-137 — authorization becomes conspicuous and light; the fence claim gets retired instead of relocated
 
-**Status:** awaiting gate 1 (plan reviewer)
-**Planner:** Claude, 2026-08-15
-**Item:** [[BL-137]] · **Blocks:** [[BL-134]] · **Options taken:** (a) + (c), implemented via the existing
-`scripts/relay-approve.mjs` propose/approve primitive
-**PO direction, 2026-08-15:** *"I want to make this process lighter"* → *"plan BL-137 with the propose/approve flow"*
-
----
-
-## 0. The change in one sentence
-
-The PO's authorization act becomes **`approve <token>`**; the script — not the operator, and not the PO by
-hand — writes and commits `design/po/<run>.authorized`, a path **outside the operator's write allowlist**,
-which is what the commission verifier reads.
+**Status:** rewritten after gate 1 REFUTED the first draft; awaiting re-gate
+**Planner:** Claude, 2026-08-15 (draft 2)
+**Item:** [[BL-137]] · **Blocks:** [[BL-134]]
+**PO direction:** *"make this process lighter"* → *"plan BL-137 with the propose/approve flow"* → *"rethink the plan"*
 
 ---
 
-## 1. What BL-137 established — re-verified against the code, not the item
+## 0. What the rethink changed — read this before the rest
 
-Every load-bearing claim below was re-read today at `b22017b`. Line numbers are code unless marked otherwise.
+Draft 1 proposed options **(a)+(c)** and called moving the file a fence. Gate 1 refuted it on two internal
+contradictions. The rethink then killed something bigger than either finding: **the premise.**
 
-| Claim | Where it is true |
+| Draft 1 | Draft 2 |
 |---|---|
-| Authorization resolves inside the operator's allowlist | `hmp-commission.mjs:179` → `design/operator/<run>.authorized`; allowlist at `infra-invariant.mjs:83` and `AGENT.md` → OPERATOR → Visibility |
-| The verifier checks content and ancestry only | `hmp-commission.mjs:336-342` (blob at sha + `isAuthorizationFile`), `:323` (`isAncestorOf` local `master`) |
-| No committer identity is checked anywhere | no `verify-commit`, author, committer or gpg call exists in `hmp-commission.mjs` (661 lines, grepped) |
-| Authorization by an arbitrary committer is a **passing test today** | `hmp-commission.test.mjs:83` commits `hmp1.authorized`; the happy path accepts it |
-| Nothing enforces the charter's allowlist | `infra-invariant.mjs:88-91`, in its own words — *"does NOT enforce the charter's allowlist, and nothing does"* (that is a comment; the behaviour is `allowWritePaths: []` at `:93`) |
-
-**Two facts found today that the item does not record, and both matter to this design:**
-
-1. **`SKILL.md:422-428` already instructs Hermes not to write the file** — *"Do not write the file yourself, do
-   not bypass the verifier, do not 'helpfully' commit it."* So the intent is already documented and already
-   unenforced. This is the BL-136 shape exactly: **the instruction exists, the fence does not.** It also means
-   this plan does not introduce a new prohibition — it moves an existing one onto a path where the allowlist
-   agrees with it.
-2. **The approval store is already designed as the not-operator-writable half of a pair.**
-   `relay-approve.mjs:216-219` (comment): *"A note under `design/operator/**` is courier-writable and the store
-   is not — which is the whole reason they are different places."* The store is `.approvals/`
-   (`relay-approve.mjs:108`), **gitignored** at `.gitignore:37`. That separation is the primitive this plan
-   reuses rather than invents.
+| Moving the path is the fence | **No artifact-based scheme can fence a local shell-holder.** Moving the path buys **conspicuousness**, which is detection, not prevention — and that is worth having under its true name |
+| Options (a)+(c) | **(a) only.** `<run>.requested` is dropped, not deferred — §4.3 argues it buys a name for something that already exists |
+| §10 quietly conceded "not enforcement" | The concession is now the **spine**: the primary deliverable is retiring two false claims, not relocating a file |
+| Option (b) silently out of scope | **Filed as its own item** with its real cost, so it is a PO decision rather than a planner's omission |
 
 ---
 
-## 2. Why the file survives even though the approval is the act
+## 1. The hypothesis I tested and killed — `origin/master` as the anchor
 
-The PO asked the sharp version of this: *"if I approve 07f3, why do I need the .authorized file?"* The answer
-is that they are not two authorizations — the file is the one authorization, serialized into the only form the
-verifier can read later. The two records are not interchangeable:
+Before rewriting, one idea deserved a check, because if it worked it beat everything else in the item:
+`CHARTER.authorizedRef` is **local** `master` (`hmp-commission.mjs:83`). AGENT.md says, repeatedly and in
+bold, that **push is the PO's alone, "absolutely and without exception."** So anchoring authorization to
+`origin/master` would express, in code, a boundary the governance already claims — and a fence made of an
+existing credential boundary costs nothing to maintain.
 
-| `.approvals/<token>.json` | `design/po/<run>.authorized` |
-|---|---|
-| gitignored (`.gitignore:37`), local, mutable | git blob, read at the commissioned sha (`hmp-commission.mjs:337`) |
-| not in history — nothing to diff or revert | diffable, attributable, revertible |
-| records *"a token was approved"* | records *"**this tree** was authorized"* |
+**It does not hold on this machine, and I checked rather than reasoned:**
 
-Deleting the file and pointing the verifier at the store would require committing the store and binding it to
-the sha — at which point it **is** this file under another name. The artifact is the minimum shape the check
-requires, not ceremony. **The PO never touches it: `approve` writes it.** If any step of the delivered flow asks
-the PO to type a path, the delivery is wrong.
+- `~/.ssh/id_rsa` is an **unencrypted** PEM private key (`-----BEGIN RSA PRIVATE KEY-----`, no `ENCRYPTED`
+  header)
+- `ssh-add -l` → *"The agent has no identities"* — so git reads that key file directly
+- Hermes runs as the same user, so it can push with the same key
+
+**Verdict: dead.** There is no credential boundary between the operator and `origin`. It also costs a network
+round trip and makes the flow heavier, which fights the PO's actual ask.
+
+**But killing it produced the finding the rest of this plan rests on** (and a second one, §11.2).
 
 ---
 
-## 3. The flow, end to end
+## 2. The honest threat model — stated first, so nothing downstream can overstate itself
+
+The operator holds a shell as the repo's owner. Therefore it can write **any path**, commit to **local
+master**, push to **origin**, and write the approval store. It follows that:
+
+> **No file location, no directory, no store, and no git ref can prevent a defecting operator from
+> authorizing its own run. Only a secret it cannot read can — and none exists on this machine today.**
+
+Everything in this plan is therefore aimed at the failure modes that are **real here**, which are not
+defection:
+
+1. **Accident and drift.** `SKILL.md:422-428` says *"do not 'helpfully' commit it"* — that wording exists
+   because the temptation is live. A seat trying to be useful is the likely writer, not a hostile one.
+2. **False safety claims.** `hmp-commission.mjs:38` (comment) and AGENT.md both assert a PO-only
+   authorization. Per BL-136's lesson, a false fence is **worse than no fence, because it retires the
+   reader's vigilance.** This is the actual harm, and it is the one this plan primarily fixes.
+
+## 3. Conspicuousness — the property that is real, under its true name
+
+`design/operator/**` is the directory the operator writes **routinely and lawfully**. An `.authorized` file
+there is indistinguishable, in a listing or a diff, from the seat's own ordinary output. Move it to
+`design/po/` — a directory **nothing else writes** — and an unauthorized write stops being camouflaged.
+
+**And this is not merely aesthetic, because the detection machinery already exists and works:**
+`classifyHeadMove` (`infra-invariant.mjs:408`) compares paths written during a bracketed run against
+`allowWritePaths` and reports anything unmatched as **foreign** (`:431`, `:864-865`). It is dormant only
+because operator configs declare nothing — `allowWritePaths: []` (`:92`), which early-returns at `:410`.
+
+So the honest chain is: **(a) makes the write conspicuous → a declared `allowWritePaths` makes it a finding
+inside the bracket.** Prevention, no. Detection with an existing mechanism, yes. That distinction is the whole
+point of this draft.
+
+---
+
+## 4. The design
+
+### 4.1 The act (the PO's actual ask — lightness)
+
+`approve <token>` is the authorization. The script writes and commits `design/po/<run>.authorized`; the PO
+never touches a path. Flow unchanged from draft 1 and still correct:
 
 ```
-  Hermes   prepares brief + config + bar, commits on master ─────────────► sha X
-             │                                          (design/operator/** — allowlisted)
-             │
-             ├─ writes design/operator/<run>.requested   (option c — the proposal record)
-             │
-             └─ node scripts/relay-approve.mjs propose --action launch --run <run>
-                          │  captures master@X, mints token, TTL
-                          ▼
-  PO       "approve 07f3"          ← one word, any channel, per Origin Tag rule 5
+  Hermes   prepares brief + config + bar, commits ──────────────────► sha X
+             └─ relay-approve propose --action launch --run <run>   (captures master@X, mints token)
                           │
+  PO       "approve 07f3" │  ← one word, any channel (Origin Tag rule 5)
                           ▼
-  approve  re-resolves master. moved? → refused: sha-moved
-             │  marks the record used (single-use)
-             ├─ writes  design/po/<run>.authorized      ← NOT in the operator's allowlist
-             └─ commits it on master ──────────────────────────────────► sha Y  (= X + 1 commit)
+  approve  re-resolves master; moved? → refused: sha-moved
+             ├─ commits design/po/<run>.authorized ───────────────► sha Y (= X + 1)
+             └─ THEN marks the token used                            (§4.4)
                           │
-                          ▼
-  Hermes   commissions at sha Y → verifyCommission reads design/po/<run>.authorized @ Y ✅
+  Hermes   commissions at Y → verifier reads design/po/<run>.authorized @ Y ✅
 ```
 
-**Two parties, two directories, one keystroke from the PO.** The operator authors everything in
-`design/operator/**`; the PO's approval is the only lawful producer of anything in `design/po/**`.
+### 4.2 The claims that get retired (the primary deliverable)
+
+- `hmp-commission.mjs:38` — *"it makes the PO's merge the authorization act"* → replaced with what is true:
+  the authorization is a **discrete, sha-bound, single-use, conspicuously-located** act whose integrity rests
+  on the operator observing its instructions, **not** on a mechanism.
+- `AGENT.md` → OPERATOR → Visibility — add `.authorized` to the "may NEVER write" table (BL-137 noted its
+  absence), name `design/po/**` as not-writable, and state plainly that the fence is **behavioural**.
+- `SKILL.md:422-428` — keep the prohibition, drop *"tell the PO exactly what to commit"* (now: tell them the
+  token).
+
+### 4.3 `<run>.requested` is dropped, not deferred — resolving gate-1 F2 by deletion
+
+Draft 1 claimed option (c). Gate 1 found nothing implemented it. The right resolution is **deletion, not
+construction**: the operator *already* writes the brief, the config and the bar into `design/operator/**`, and
+those **are** the proposal. A `.requested` file adds a filename for something that exists, gates nothing, and
+would have to be kept in sync with the artifacts it summarises. The two-party structure is made legible by the
+**directory split** (§3), which costs one line instead of a new artifact and a new sync obligation.
+
+### 4.4 Commit before burn — resolving gate-1 F3
+
+`git()` (`relay-approve.mjs:116-122`) swallows every failure and returns `null`; the token is marked used at
+`:207`. So the naive order returns `ok: true` on a silent commit failure. **Order: commit → verify it landed →
+only then mark used.** `announce()`'s swallow-and-continue (`:230-250`) is correct for a *notification* and
+must **not** be extended to the commit: a missing note is cosmetic, a missing authorization is the act not
+having happened.
 
 ---
 
-## 4. What changes in code — enumerated
+## 5. Change items
 
 | # | File | Change |
 |---|---|---|
-| C1 | `hmp-commission.mjs:179` | `authorizationPathFor` → `design/po/<run>.authorized`. **One line.** This is option (a) and it is the entire fence change. |
-| C2 | `relay-approve.mjs:95` | `ACTIONS` gains `'launch'` (currently frozen `['merge','push']`) |
-| C3 | `relay-approve.mjs` `propose` | accept `--run <id>`; **required when `action === 'launch'`, refused otherwise**. Validate against the same `RUN_ID` shape the commission uses (`hmp-commission.mjs:87`) — a run id the commission will later refuse must not be proposable. Record gains `run`. `branch` defaults to `master` for `launch`. |
-| C4 | `relay-approve.mjs` `approve` | on a `launch` record, **after** the existing used/expired/sha-moved checks pass: write `design/po/<run>.authorized` with exactly `authorizationLineFor(run)`, and commit it. Import the line/path helpers from `hmp-commission.mjs` — **do not restate the string** (a second copy of a contract is a contract that drifts). |
-| C5 | `AGENT.md` → OPERATOR → Visibility | name `design/po/**` as **not** writable; add `.authorized` to the "may NEVER write" table (BL-137 noted it is absent); correct the allowlist paragraph. |
-| C6 | `SKILL.md` (5 sites: `:140-142`, `:149`, `:275-282`, `:422-428`) | new path; replace *"tell the PO exactly what to commit"* with *"tell the PO the token"*. |
-| C7 | `infra-invariant.mjs:83` comment | the charter list it restates gains the `design/po/**` exclusion. Comment only — `allowWritePaths` stays `[]`. |
+| C1 | `hmp-commission.mjs` | `authorizationPathFor` → `design/po/<run>.authorized` (`:179`) **and `export` `RUN_ID` (`:87`)** — the export is required by C3 and is named here explicitly (gate-1 F1) |
+| C2 | `relay-approve.mjs:95` | `ACTIONS` gains `'launch'` |
+| C3 | `relay-approve.mjs` `propose` | accept `--run`; required iff `action === 'launch'`; validate with the **imported** `RUN_ID`; record gains `run`; `branch` defaults to `master` |
+| C4 | `relay-approve.mjs` `approve` | on a `launch` record: write + commit the file, **verify the commit**, then mark used (§4.4). Import **only** `authorizationLineFor`, `authorizationPathFor`, `RUN_ID` — both modules export `primaryRoot` (gate-1 F4) |
+| C5 | `hmp-commission.mjs:38` | retire the false comment (§4.2). Comment only |
+| C6 | `AGENT.md` | `.authorized` into the never-write table; `design/po/**`; "behavioural, not enforced" stated plainly |
+| C7 | `SKILL.md` (`:140-142`, `:149`, `:275-282`, `:422-428`) | new path; token instead of "what to commit" |
+| C8 | `infra-invariant.mjs:83` comment | restate the charter list with the `design/po/**` exclusion. **Comment only — `allowWritePaths` stays `[]`** (populating it is §11.1) |
 
-**Refusal ordering — the load-bearing constraint (primer op-note, and BL-136's own near-miss).** C1 changes
-*which path* `NO_PO_AUTHORIZATION` names; it must **not** move the check's position in the sequence
-(`hmp-commission.mjs:336-342`, in the world-state group, after `BRIEF_NOT_COMMITTED` and before
-`RECURSIVE_COMMISSION`). Nothing executes until `pass()`, so ordering is purely diagnostic — which is why it
-is free to get right and cheap to get wrong.
-
-**Not in scope, deliberately:** no signature checking (that is option (b)), no migration of the nine historical
-`design/operator/hmp[1-9].authorized` files — they are spent records of past runs, and rewriting history to
-move them buys nothing.
-
----
-
-## 5. The sha wrinkle — approval sha ≠ commission sha, by construction
-
-The authorization file must exist **in the tree at the commissioned sha**, so writing it necessarily produces a
-new commit. The PO approves `X`; the run commissions `Y = X + 1`. This is not a hole, but it must be pinned or
-someone will later "fix" it:
-
-**DoD row (D4 below): the authorize commit adds exactly one file and nothing else.** If `approve` ever commits
-more than `design/po/<run>.authorized`, the PO approved a tree they were not shown, and `sha-moved` — the
-refusal that exists precisely to prevent that (`relay-approve.mjs:203-206`) — has been defeated by the approval
-step itself.
-
-**SKILL.md:275-282 documents a related artifact** (the phantom `.authorized` deletion in `master..<branch>`
-diffs, from the authorize commit landing after the branch point). Moving the path **does not fix that** — same
-mechanism, different path shown. The section needs its path updated, not its advice.
-
----
+**Refusal ordering is load-bearing** (primer op-note; BL-136's own near-miss). C1 changes *which path*
+`NO_PO_AUTHORIZATION` names and must **not** move the check's position: `:330` `BRIEF_NOT_COMMITTED` → `:339`/`:342`
+`NO_PO_AUTHORIZATION` → `:346` `RECURSIVE_COMMISSION`, verified at gate 1.
 
 ## 6. Scope
 
-**May touch:** `scripts/hmp-commission.mjs` (C1 only), `scripts/relay-approve.mjs` (C2–C4),
-`scripts/__tests__/hmp-commission.test.mjs`, `scripts/__tests__/relay-approve.test.mjs`, `AGENT.md`,
-`design/operator-seat/SKILL.md`, `scripts/infra-invariant.mjs` (comment at `:83` only), `design/backlog.md`.
+**May touch:** `scripts/hmp-commission.mjs` (C1, C5 — **two** named edits, nothing else),
+`scripts/relay-approve.mjs`, both test files, `AGENT.md`, `design/operator-seat/SKILL.md`,
+`scripts/infra-invariant.mjs` (comment at `:83` only), `design/backlog.md`.
 
-**May NOT touch:** `LAUNCH_PATTERNS` and the recursion fence (BL-136 territory, byte-identical);
-`isAncestorOf` / `CHARTER.authorizedRef`; `allowWritePaths`; the `REFUSAL` enum values; any other refusal's
-position or reason; `bite0-launcher.mjs`; anything under `src/`.
+**May NOT touch:** `LAUNCH_PATTERNS` / the recursion fence (BL-136, byte-identical); `isAncestorOf`;
+`CHARTER.authorizedRef` (§1 killed that idea — do not revive it mid-implementation); `allowWritePaths`; the
+`REFUSAL` enum values; any other refusal's position or text; `bite0-launcher.mjs`; anything under `src/`; the
+nine historical `design/operator/hmp[1-9].authorized` files (spent records; rewriting history buys nothing).
 
-**Worktree MANDATE:** code changes go in a per-task worktree (`node scripts/wt-setup.mjs create bl137`), stage
-files **explicitly**, never `git add -A`.
+**Worktree MANDATE:** `node scripts/wt-setup.mjs create bl137`; stage explicitly, never `git add -A`.
 
----
-
-## 7. Test contracts that change — enumerated, because they are contracts
+## 7. Test contracts that change
 
 | Test | Today | After |
 |---|---|---|
-| `hmp-commission.test.mjs:208` | `expect(authorizationPathFor(RUN)).toBe('design/operator/hmp1.authorized')` | `'design/po/hmp1.authorized'` — **this is the contract row**; it changes deliberately |
-| `:83`, `:475`, `:494`, `:535`, `:593` | fixtures write `design/operator/<run>.authorized` | write `design/po/<run>.authorized` |
-| `:173-204` (`isAuthorizationFile`) | content semantics | **unchanged** — content is not what this item touches |
-| `relay-approve.test.mjs` | `merge`/`push` only | add `launch` cases; existing `merge`/`push` bars must stay green **unchanged** |
+| `hmp-commission.test.mjs:208` | `toBe('design/operator/hmp1.authorized')` | `'design/po/hmp1.authorized'` — **the contract row**; it moves deliberately |
+| `:83`, `:475`, `:494`, `:535`, `:593` | fixtures at the old path | new path (fixtures, not contracts) |
+| `:173-204` `isAuthorizationFile` | content semantics | **unchanged** — content is not what this item touches |
+| `relay-approve.test.mjs` (29 tests) | `merge`/`push` | add `launch`; **every existing bar stays green unchanged** |
 
-A fixture path is not a contract; **`:208` is.** Changing it is the visible edge of this plan and the reviewer
-should see it move.
+**Baseline, run at gate 1: `npx vitest run` both files → 83 passed (83), 5.02s.**
 
-## 8. New bars — each must fail before the change and pass after
+## 8. Bars — each must fail before the change and pass after
 
-- **B1** `authorizationPathFor` returns a path under `design/po/`, and **not** under `design/operator/`.
-- **B2** the full happy path passes with the file at the new path (fixtures moved).
-- **B3** a file at the **old** path `design/operator/<run>.authorized`, and nothing at the new one, refuses
-  `no-po-authorization`. *(The regression that proves the fence actually moved rather than widened.)*
-- **B4** `propose --action launch` without `--run` refuses `missing-field`; with a malformed run id refuses on
-  the run-id shape.
-- **B5** `approve` on a `launch` token writes the file with **exactly** `authorizationLineFor(run)` and the
-  commit touches **exactly one path** (§5 / D4).
-- **B6** `approve` on a `launch` token whose branch moved refuses `sha-moved` **and writes no file** — the
-  refusal must precede the write.
-- **B7** a second `approve` of the same token refuses `already-used` and does not re-write or re-commit.
-- **B8** existing `merge`/`push` proposals are unaffected (no `run`, no file written).
+- **B1** `authorizationPathFor` is under `design/po/`, not `design/operator/`
+- **B2** happy path passes at the new path
+- **B3** a file at the **old** path and nothing at the new one refuses `no-po-authorization` *(proves the fence
+  moved rather than widened)*
+- **B4** `propose --action launch` without `--run` refuses `missing-field`; a malformed run id refuses on shape
+- **B5** `approve` writes exactly `authorizationLineFor(run)` and the commit touches **exactly one path**
+- **B6** a moved branch refuses `sha-moved` **and writes no file** — refusal precedes the write
+- **B7** re-approving refuses `already-used`; no second write or commit
+- **B8** `merge`/`push` proposals are unaffected — no `run`, no file
+- **B9** *(gate-1 F3)* **a failing commit makes `approve` report a refusal, not `ok: true`, and does not burn
+  the token**
+- **B10** `RUN_ID` is importable and the two modules agree on which run ids are valid *(a run id `propose`
+  accepts but the commission would refuse is a defect)*
 
-**Mutation discipline (the only step that produced knowledge last session):** after the bars are green, mutate
-each of C1–C4 in turn and confirm **each mutation kills exactly its own bars** — particularly B6 and B7, which
-are ordering claims and are the kind that most easily pass vacuously.
-
----
+**Mutation discipline** — the only step last session that produced knowledge I did not already assume: mutate
+each of C1–C4 and confirm **each kills exactly its own bars**. B6, B7 and B9 are ordering claims, the class
+that most easily passes vacuously.
 
 ## 9. Definition of Done
 
 | # | Row | Verified by |
 |---|---|---|
-| D1 | `authorizationPathFor` resolves outside every allowlisted operator path | B1 + grep of `infra-invariant.mjs:83` |
+| D1 | Authorization resolves outside every allowlisted operator path | B1 + grep `infra-invariant.mjs:83` |
 | D2 | Old-path authorization no longer authorizes | B3 |
-| D3 | `approve <token>` is the only code path that produces the file | B5 + grep: no other writer of `*.authorized` in `scripts/` |
+| D3 | `approve` is the only producer of the file | B5 + grep: no other `*.authorized` writer in `scripts/` |
 | D4 | The authorize commit adds exactly one file | B5 |
-| D5 | A moved branch refuses **before** any write | B6 |
-| D6 | `merge`/`push` behaviour is byte-unchanged | B8 + full `relay-approve.test.mjs` green |
-| D7 | No refusal reason changed position or text except `NO_PO_AUTHORIZATION`'s path detail | full `hmp-commission.test.mjs` green + diff review |
-| D8 | `AGENT.md`, `SKILL.md`, `infra-invariant.mjs:83` state the new path and `.authorized` appears in the "may NEVER write" table | read the diff |
-| D9 | `tsc -b` 0, full suite green | run it, record the count |
+| D5 | Refusal precedes any write; a failed commit never reports success | B6, B9 |
+| D6 | `merge`/`push` byte-unchanged | B8 + full `relay-approve.test.mjs` green |
+| D7 | No refusal changed position or text except `NO_PO_AUTHORIZATION`'s path detail | full `hmp-commission.test.mjs` green + diff review |
+| D8 | **Every retired claim is actually retired** — `hmp-commission.mjs:38`, AGENT.md's table, SKILL.md | read the diff; grep for the old assertions |
+| D9 | The word "fence"/"prevents" appears nowhere describing (a) | read the diff — §2 is the contract |
+| D10 | `tsc -b` 0, full suite green | run it, record the count |
+
+**D9 is not pedantry.** This plan's entire premise is that mislabelling detection as prevention is the defect
+BL-137 reports. Committing that error while fixing it is the failure shape this project has now recorded three
+times.
+
+## 10. What this does **not** fix
+
+- **A defecting operator.** §2. It can write `design/po/`, commit, and push — the SSH key is unencrypted and
+  agent-less (§1). Only a secret it cannot read would change this.
+- **Enforcement.** `allowWritePaths` stays `[]`; nothing mechanically prevents any write. §3's detection is
+  *available*, not *switched on* — that is §11.1.
+- **Live proof.** No Hermes-authored `.authorized` has gone through a real commission. Bars are unit-level.
+  BL-137's honest limit carries forward unchanged.
+- **[[BL-107]].** Out of scope and untouched.
+
+## 11. Items to file alongside this plan
+
+1. **Populate `allowWritePaths` for operator runs** — turns §3's conspicuousness into an actual bracketed
+   finding using machinery that already exists (`classifyHeadMove`, `:408`). This is BL-119's residue (its
+   option (d), deliberately unfiled at the time) and it is now load-bearing for this plan's honesty.
+2. **`~/.ssh/id_rsa` is unencrypted and the agent holds no identities**, so *"push is the PO's alone,
+   absolutely and without exception"* has **no mechanical backing** on this machine — any process running as
+   the repo owner can push. Common on a personal dev box and **not** a crisis; filed because AGENT.md states
+   that boundary in bold in several places, and it is the same fence-in-prose shape this item is about. **PO
+   call, not a planner's.**
+3. **Option (b), signature verification** — the only option that would actually fence a shell-holder. Real
+   cost: a signing key and **a passphrase typed per approval**, which trades away exactly the lightness the PO
+   asked for. Filed so it stays a decision rather than an omission.
+
+## 12. Open questions for re-gate
+
+- **q1** `design/po/` or `design/authorizations/`? Assumed `design/po/`. Under §3 the criterion is now sharper:
+  a directory **nothing else writes**, so the name should not invite future use. *(PO call.)*
+- **q2** Confirm `approve` **commits** (not just writes). §4.4 assumes it, and it means a script commits to
+  master on the PO's word. *(PO call.)*
+- **q3** Is retiring the `hmp-commission.mjs:38` comment (C5) in scope, or a separate change? It is the item's
+  primary harm, so this plan says in scope — but it is an edit to a file otherwise held to one line.
+- **q4** Does dropping `.requested` (§4.3) lose anything the reviewer values? Draft 1's q4 asked whether to
+  *gate* on it; this asks whether to *build* it at all.
+- **q5** Does this unblock [[BL-134]] §5? My read: **partly, and differently than draft 1 claimed.** §5 may
+  describe the act as per-run, sha-bound, single-use and conspicuous — but it may **not** imply "only the PO
+  can produce it," because §2 says that is false. BL-134's D6 needs recomputing regardless.
 
 ---
 
-## 10. What this does **not** fix — stated so it cannot be inferred
+## 13. Gate 1 findings (plan reviewer, 2026-08-15) — dispositions
 
-- **It does not stop a defecting Hermes.** The seat holds a shell; it can write `design/po/` regardless of any
-  allowlist, and can commit to local `master`, which is what `:323` checks. **Only option (b), signature
-  verification, survives that** — and it is not in this scope.
-- **The fence remains behavioural, not mechanical.** `allowWritePaths` is `[]` and
-  `infra-invariant.mjs:88-91` says nothing enforces the charter's allowlist. What changes is that the
-  documented rule and the path layout **stop contradicting each other**. That is worth doing on BL-136's own
-  logic — *a fence described in prose is worse than no fence, because it retires the reader's vigilance* — but
-  it is a consistency fix, not an enforcement one, and must not be written up as the latter.
-- **It is still not live-proven.** BL-137's honest limit carries forward: no Hermes-authored `.authorized` has
-  been driven through a real commission, and this plan does not add one. The bars are unit-level.
-- **It does not address [[BL-107]].** An attacker who can reach the HMP port already holds a shell and needs
-  none of this. This is about the operator seat's *own* containment.
+Verdict on draft 1 was **REFUTED ❌**. Independence **absent** (same actor as planner, resource-scarcity
+fallback) — declared, not mitigated. All four findings are disposed of below; nothing open vanished silently.
 
----
-
-## 11. Open questions for gate 1
-
-- **q1 — Should `approve` commit, or only write?** Plan assumes **commit** (C4): it makes `approve` the single
-  producer, keeps the PO's act to one word, and the commit is what `:337` reads. The alternative — write, and
-  let Hermes commit — reintroduces an operator step into the authorization path for no gain.
-- **q2 — Bind the blob to the token?** e.g. `[PO] AUTHORIZED-RUN: <run> <token>`, with the verifier
-  additionally requiring a used record in `.approvals/`. **Deliberately excluded**: it couples the verifier to
-  non-git local state, adds a refusal reason, and buys nothing against a shell-holding operator (the store is
-  no better fenced than the file). Offered so the exclusion is a decision, not an oversight.
-- **q3 — Path name: `design/po/` or `design/authorizations/`?** Plan assumes `design/po/`. Neither exists
-  today. `design/po/` reads as ownership, which is the property being asserted.
-- **q4 — Does the verifier also require `design/operator/<run>.requested`** (option (c)'s legibility half)?
-  Plan says **no** for now: it adds a refusal reason into an order-sensitive sequence for a documentation
-  benefit. The `.requested` file is still written and still useful; it is just not a gate. Reviewer may
-  disagree — it is the cheapest place to make the two-party structure machine-visible.
-- **q5 — Does this fully unblock [[BL-134]] §5?** My read: yes for the wording *"per-run, sha-bound,
-  single-use"* plus a fourth adjective that becomes **defensible as a rule** — but §5 must not claim
-  enforcement. BL-134's D6 (stale workable-set row) needs recomputing regardless, independent of this item.
-
----
-
-## 12. Gate 1 findings — plan reviewer, 2026-08-15
-
-**VERDICT: REFUTED ❌ — not approvable as written.** Two plan-internal contradictions (F1, F2) and one
-unspecified failure path (F3). All three are *plan* edits: no design is wrong, and no finding requires new
-information. Re-gate after revision.
-
-**Independence: ABSENT.** Same actor as the planner, under the resource-scarcity fallback. Declared, not
-mitigated. Weigh the findings below accordingly — they were produced by re-running the claims, which is the
-only part of this review that does not depend on the reviewer being a different person.
-
-### Verified by running / reading — the plan earned these
-
-| Plan claim | Verdict | Evidence |
+| # | Finding | Disposition |
 |---|---|---|
-| Path resolves inside the operator allowlist | VERIFIED ✅ | `hmp-commission.mjs:179`; allowlist `infra-invariant.mjs:83` |
-| No committer/signature check anywhere | VERIFIED ✅ | grep `verify-commit\|committer\|author\|gpg\|sign` over all 661 lines — every hit is a comment or a refusal string |
-| Refusal ordering: `BRIEF_NOT_COMMITTED` → `NO_PO_AUTHORIZATION` → `RECURSIVE_COMMISSION` | VERIFIED ✅ | `:330` → `:339`/`:342` → `:346` |
-| `.approvals/` is gitignored | VERIFIED ✅ | `.gitignore:37` |
-| `ACTIONS` frozen `['merge','push']` | VERIFIED ✅ | `relay-approve.mjs:95` |
-| `:208` is the contract row for the path | VERIFIED ✅ | hardcodes `'design/operator/hmp1.authorized'` |
-| `SKILL.md:422-428` already forbids Hermes writing the file | VERIFIED ✅ | read in full |
-| No other writer of `*.authorized` exists in `scripts/` | VERIFIED ✅ | grep — only `hmp-commission.mjs` comments and `authorizationPathFor` |
-| Baseline green before any change | VERIFIED ✅ | `npx vitest run` both files → **83 passed (83)**, 5.02s |
-| Importing `hmp-commission.mjs` is side-effect-free | VERIFIED ✅ | CLI body sits behind an `isMainModule` guard at the file's tail |
+| **F1** | C3 imports `RUN_ID`, which is not exported (`:87` bare `const` under an exported `:86`); §6 forbade the edit | **ACCEPTED** → C1 now names the export explicitly; §6 permits two named edits; **B10** pins that both modules agree |
+| **F2** | Title claimed (a)+(c); nothing implemented (c) | **ACCEPTED, resolved by deletion** → §4.3 drops `.requested` with an argument, rather than building it to match a title. Title corrected |
+| **F3** | `git()` swallows failures; token burned before the commit is verified → silent `ok: true` | **ACCEPTED** → §4.4 sets commit-before-burn; **B9** added; D5 pins it |
+| **F4** | Both modules export `primaryRoot` | **ACCEPTED** → C4 specifies named imports only |
 
-### F1 — [BLOCK] C3 requires a change §6 forbids
+**Verified-good at gate 1, carried forward** (re-run, not re-asserted): path `:179` · allowlist
+`infra-invariant.mjs:83` · **no committer/signature check in 661 lines** · refusal ordering `:330→:339/:342→:346` ·
+`.gitignore:37` · `ACTIONS` frozen `:95` · `:208` contract row · `SKILL.md:422-428` · side-effect-free import ·
+**baseline 83/83 green**.
 
-C3 specifies validating `--run` *"against the same `RUN_ID` shape the commission uses (`hmp-commission.mjs:87`)."*
-**`RUN_ID` is not exported.** `:86` is `export const REQUIRED_FIELDS`; `:87` is a bare `const RUN_ID` — the
-adjacency is exactly what made the planner misread it. Exporting it is a **second** edit to
-`hmp-commission.mjs`, but §6 scope reads *"May touch: `scripts/hmp-commission.mjs` (C1 only)"*.
-
-**Fix:** widen C1 to *"C1 + export `RUN_ID`"* explicitly, in both the change table and §6. Do **not** take the
-alternative of copying the regex into `relay-approve.mjs` — C4 itself argues against a second copy of a
-contract, and it would be the same error one line later.
-
-### F2 — [BLOCK] the plan does not implement what its title claims
-
-The title and §0 say options **(a)+(c)**. §3's diagram shows Hermes writing `design/operator/<run>.requested`.
-But **no change item C1–C7 produces that file, no bar B1–B8 covers it, and §6 never names it.** What the plan
-actually delivers is **(a) plus a lighter authorization act** — which is worth doing, and is not (c).
-
-This is the item's own thesis turned on its author: **a fence described in prose is not a fence, and neither is
-a deliverable.** It also mis-reported to the PO, who was told "(a)+(c)".
-
-**Fix — pick one, don't blur it:** (i) add a change item that writes `.requested`, a bar, and a scope line; or
-(ii) retitle to *(a) + propose/approve*, and record (c) as **not built**, with q4 rewritten to ask whether it
-should be. (ii) is the smaller, more honest change; (i) is defensible if the two-party structure should be
-legible on disk from day one.
-
-### F3 — [substantive] a failed commit is not a failed notification
-
-C4 makes `approve` write **and commit**. Two existing behaviours collide with that and the plan is silent on
-both:
-
-- `git()` (`relay-approve.mjs:116-122`) **swallows every failure and returns `null`** — `stdio` discards
-  stderr.
-- `announce()` (`:230-250`) swallows deliberately, with a stated and correct reason: *"the approval itself
-  already succeeded; a failed notification must not undo it."*
-
-**That reasoning must not be extended to the commit.** If the commit silently fails, `approve` returns
-`ok: true`, the PO believes they authorized, the token is already burned (`usedAt` is written at `:207`, before
-`announce`), and the commission later refuses `no-po-authorization`. It fails **closed**, so it is safe — but
-it is a *confusing* safe, and the PO's recourse (re-propose, because the token is spent) is undocumented.
-
-**Fix:** specify the ordering explicitly — the commit must succeed **before** the token is marked used, or the
-refusal must name the commit failure. Add a bar: **B9 — a failing commit makes `approve` report a refusal, not
-`ok: true`, and does not burn the token.** Nothing in B1–B8 exercises this path.
-
-### F4 — [minor] name collision on import
-
-Both modules export `primaryRoot` (`relay-approve.mjs:127`, `hmp-commission.mjs:553`). C4's import must name
-only `authorizationLineFor` and `authorizationPathFor`, or alias. Trivial — recorded so it is not rediscovered
-at the keyboard.
-
-### Not findings — checked and cleared
-
-- **The sha wrinkle (§5)** is correctly identified and correctly pinned by D4. No defect.
-- **§10's honesty** is adequate: it does not claim enforcement, and it carries BL-137's live-proof limit
-  forward. This is the section most likely to be quietly softened during implementation — it must not be.
-- **q2's exclusion** (token-in-blob) is reasoned, not an oversight, and I agree with the exclusion for the
-  reason given: the store is no better fenced than the file.
+**What gate 1 did not catch, and the rethink did:** the premise. Both findings were *internal consistency*
+defects — the reviewer checked whether the plan agreed with itself and with the code, and never asked whether
+moving a file fences anything. **A plan can be perfectly consistent and still be solving the wrong problem**,
+and no amount of the same actor re-reading it was going to surface that. The PO's "rethink" did.
