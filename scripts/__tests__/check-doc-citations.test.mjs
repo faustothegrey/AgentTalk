@@ -208,3 +208,38 @@ describe('BL-141 — the gate runs against THIS repo', () => {
     expect(fresh).toEqual([]);
   });
 });
+
+/**
+ * BL-144 (Wave 2) — the gate must follow docs into `modules/`.
+ *
+ * Wave 2 moves durable documents out of `design/` and into the module that owns them. Before this
+ * pattern existed the checker resolved only `design/**.md` and `scripts/**.mjs`, so every moved doc
+ * would have left its coverage silently — and the reported total would have FALLEN, which reads as
+ * an improvement rather than as blindness. These bars pin the third pattern, and pin that it is
+ * boundary-anchored like the other two: the [[BL-142]] substring trap applies here identically.
+ */
+describe('BL-144 — modules/**.md is a citation target', () => {
+  it('a citation into a module resolves when the file is there', () => {
+    const dir = makeRepo({
+      'design/a.md': 'see modules/backlog/docs/thing.md for detail',
+      'modules/backlog/docs/thing.md': '# thing',
+    });
+    expect(collectCitations(dir).unresolved).toEqual([]);
+  });
+
+  it('a citation into a module that is NOT there is caught', () => {
+    const dir = makeRepo({ 'design/a.md': 'see modules/backlog/docs/ghost.md' });
+    expect(collectCitations(dir).unresolved).toEqual(['design/a.md -> modules/backlog/docs/ghost.md']);
+  });
+
+  it('a module README is a citer like any other file', () => {
+    const dir = makeRepo({ 'modules/backlog/README.md': 'the slice is design/backlog/40-backlog.md' });
+    expect(collectCitations(dir).unresolved).toEqual(['modules/backlog/README.md -> design/backlog/40-backlog.md']);
+  });
+
+  /** The cross-repo case, planted: a `modules/` path rooted in ANOTHER checkout is not ours. */
+  it('does not match a modules path embedded in a longer foreign path', () => {
+    const dir = makeRepo({ 'design/a.md': 'run /abs/other-repo/modules/x/docs/y.md' });
+    expect(collectCitations(dir).unresolved).toEqual([]);
+  });
+});
