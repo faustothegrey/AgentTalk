@@ -177,3 +177,101 @@ stop was the show-stopper fence, which is not a retry.
 **two new keys** to `relay-approve.mjs`'s `REFUSAL` — `COMMIT_FAILED` (required by approved bar B9; without a
 reason of its own a failed commit returns `ok: true`) and `BAD_RUN_ID` (required by B10). Scope forbade changing
 `REFUSAL` **values**; these are additions, no existing value altered. Flagging rather than assuming.
+
+---
+
+# GATE 2 — implementation review, 2026-08-15
+
+**VERDICT: initially REFUTED ❌ on two findings, both since FIXED on-branch and re-verified. Now VERIFIED ✅.**
+**Independence: ABSENT** — same actor as the implementer. Declared, not mitigated. Every row below was
+**re-run at this gate**, not read off the implementer's report; that is what produced both findings.
+
+## The two findings — and both were in the implementer's own claims
+
+### R1 — bar **B3 was never written**, while DoD row D2 claimed it
+
+The plan called B3 *"the regression that proves the fence moved rather than widened."* The implementer moved
+the fixtures — which proves the **new** path works — and never wrote the bar proving the **old** path stopped
+working. `grep` over both test files found **no reference to the old authorization path at all**.
+
+**Proven to matter, not merely noted.** Mutation **M1b** patched the verifier to read *both* paths — the exact
+change B3 exists to catch — and every other bar in a 54-bar file passed. With B3 restored, that mutation fails
+**exactly one** bar: B3.
+
+### R2 — bar **B5b was written, verified, then destroyed by the implementer's own cleanup**
+
+B5b was added, run green (40/40), and then reverted by `git checkout -- scripts/` while cleaning up mutation
+M7 — because it had not been committed. **The branch actually carried 38 tests, not the 40 reported to the PO,
+and the pathspec property was uncovered.** The report combined a reading taken *before* the revert with a
+suite count taken *after* it, and presented them as one state.
+
+**This is the "report the actual command output" rule failing in its subtlest form:** both numbers were true
+when measured. Neither was true of the artifact. **Lesson applied immediately: commit the bar, then mutate.**
+
+## Verdict rows — each re-run at this gate
+
+| DoD | Row | Verdict | Evidence |
+|---|---|---|---|
+| D1 | authorization resolves outside every operator-allowlisted path | **VERIFIED ✅** | `authorizationPathFor` → `design/po/`; `infra-invariant.mjs:82-85` allowlist excludes it |
+| D2 | old-path authorization no longer authorizes | **VERIFIED ✅** *(was REFUTED — B3 missing)* | B3 + mutation M1b kills exactly B3 |
+| D3 | `approve` is the only producer | **VERIFIED ✅** | one `git(['commit'` call site, shape-asserted; grep finds no other `.authorized` writer |
+| D4 | authorize commit adds exactly one file | **VERIFIED ✅** | B5 asserts `git show --name-only` == `[rel]` |
+| D5 | refusal precedes any write; failed commit never reports success | **VERIFIED ✅** | B6 (no file on `sha-moved`), B9 (`commit-failed`, token unburned); M4 kills exactly B9 |
+| D6 | `merge`/`push` byte-unchanged | **VERIFIED ✅** | B8 + all 29 original bars green; `run` absent from non-launch records |
+| D7 | no refusal changed position or text | **VERIFIED ✅** | diff shows **zero** removed `REFUSAL` values; two additions only |
+| D8 | every retired claim actually retired | **VERIFIED ✅** | `hmp-commission.mjs` header, `AGENT.md` table, `SKILL.md` — read in the diff |
+| D9 | "fence"/"prevents" never describes the path move | **VERIFIED ✅** | every hit is a different mechanism or an explicit denial |
+| D10 | `tsc -b` 0, full suite green | **VERIFIED ✅** | **798 passed / 94 files**, `tsc -b` exit 0 |
+
+## Scope — verified against the guardrails the implementer swore off
+
+| Guardrail | Changed lines | Verdict |
+|---|---|---|
+| `LAUNCH_PATTERNS` | **0** | untouched ✅ |
+| `isAncestorOf` | **0** | untouched ✅ |
+| `allowWritePaths` | **0** | untouched ✅ |
+| `CHARTER.authorizedRef` | 2 | **READS only** — one in `propose`, one in a test assertion; the `CHARTER` block itself is not in the diff ✅ |
+| existing `REFUSAL` values | 0 removed | ✅ |
+| files changed | 8 | all declared in scope ✅ |
+
+## Disposition of every implementer signal (Rule 7 symmetry)
+
+| Signal | Disposition |
+|---|---|
+| **Deviation:** two new `REFUSAL` keys (`COMMIT_FAILED`, `BAD_RUN_ID`) | **ACCEPTED.** Both are *required* by approved bars B9/B10; scope forbade changing existing **values** and none changed. Disclosed rather than assumed — correct call |
+| **Show-stopper:** the write-verb guardrail | **CORRECTLY ESCALATED.** Not the implementer's to lower; the PO chose option A and the bar was narrowed, not deleted |
+| **Reported:** M5/M6 kill nothing (unfalsifiable checks) | **ACCEPTED AS REPORTED, and credited.** Kept as defence-in-depth, explicitly uncovered. Reporting these rather than deleting them is what produced B5b |
+
+---
+
+# GATE 3 — task-end closure sweep, 2026-08-15
+
+**Independence: ABSENT — and here it is at its weakest.** Gate 3 exists to be *fresh eyes at close*, and it is
+the same actor as both the implementer and gate 2. **Read this sweep as a re-run, not as an independent
+opinion.** The M15-T3 catch that created this seat is precisely what a single actor cannot reproduce.
+
+| Closure check | Result |
+|---|---|
+| Load-bearing bars re-run | `hmp-commission` **55/55**, `relay-approve` **39/39** |
+| Full suite | **798 passed / 94 files** ✅ (base `ad893a9`: 787) |
+| `tsc -b` | **0** ✅ |
+| Working tree | clean; only the known `apps/web/node_modules` symlink untracked |
+| Worktrees | 2 — primary + `att-bl137`; **removal is part of the merge, not done yet** |
+| DoD rows | 10 / 10 VERIFIED |
+| Open signals | none — all three disposed at gate 2 |
+
+**Two things the PO should carry into the merge decision, neither of which blocks it:**
+
+1. **`design/po/` does not exist on `master` yet.** It is created by the first `approve --action launch`. No
+   `.gitkeep` was added deliberately — an empty directory is not a git object, and a placeholder in a
+   PO-only directory would be the first thing written there by something that is not the PO.
+2. **The uncovered checks (M5/M6) ship as-is**, documented above. They are defence-in-depth, not proven
+   behaviour.
+
+**Telemetry (task closure):**
+- task:        BL-137
+- wall-clock:  2026-08-15 ~16:44 → 18:36 (~1h50m, session total incl. plan + 2 gates)
+- budget:      weekly 27%→31% (Δ ~4%), session 0%→40% (Δ ~40%)
+- gate:        tsc 0, suite 798/798 (94 files), pollution clean
+- diff:        8 files, +572/−40, commits `9bd1696` `914363c` `<docs>` `<gate2 bars>` (4 on `task-bl137`)
+- outcome:     **READY TO MERGE — PO-gated, not merged**
