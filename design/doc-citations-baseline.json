@@ -34,7 +34,6 @@
     "design/operator/o4-brief.md -> design/backlog.md",
     "design/session-primers/implementation-reviewer-primer.md -> design/backlog.md",
     "design/session-primers/plan-reviewer-primer.md -> design/backlog.md",
-    "design/session-primers/planner-primer.md -> design/backlog.md",
     "modules/agent-runtime/docs/llm-client-architecture.md -> design/backlog.md",
     "modules/containment/docs/hmp-commission-plan.md -> design/backlog.md",
     "modules/containment/docs/meter-cap-cluster-plan.md -> scripts/launcher.mjs",
