@@ -91,6 +91,31 @@ describe('BL-141 — resolving citations', () => {
     // A checker that resolved bare names would produce findings nobody trusts.
     expect(collectCitations(dir).total).toBe(0);
   });
+
+  it('does NOT match a path rooted in ANOTHER repository', () => {
+    const dir = makeRepo({
+      'design/runbook.md':
+        'node /abs/path/to/agentalk-mcp-client/scripts/launcher.mjs config.json\n' +
+        'and see ../other-repo/design/whatever.md too',
+    });
+    // This is the bug that shipped and produced BL-142's most alarming (and false) line: a
+    // substring match reported the CLIENT repo's launcher as missing from THIS repo. It is
+    // missing from this repo, and entirely present where it is cited from.
+    expect(collectCitations(dir).unresolved).toEqual([]);
+    expect(collectCitations(dir).total).toBe(0);
+  });
+
+  it('still matches a genuine repo-relative path at a line start, in prose, and in backticks', () => {
+    const dir = makeRepo({
+      'design/a.md': 'design/ghost.md\nsee design/ghost2.md here\nand `design/ghost3.md`\n',
+    });
+    // The boundary rule must not be so strict that it stops seeing real citations.
+    expect(collectCitations(dir).unresolved).toEqual([
+      'design/a.md -> design/ghost.md',
+      'design/a.md -> design/ghost2.md',
+      'design/a.md -> design/ghost3.md',
+    ]);
+  });
 });
 
 describe('BL-141 — where the gate agrees to be blind, and why', () => {

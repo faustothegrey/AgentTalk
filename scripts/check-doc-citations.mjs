@@ -86,8 +86,26 @@ const SCANNED = /\.(md|ts|tsx|mjs)$/;
  * Citation shapes we resolve. Deliberately only two, and both are unambiguous repo-relative paths:
  * `design/**.md` and `scripts/**.mjs`. Bare filenames (`registry.ts`) are NOT matched — they are
  * ambiguous, and a checker that guesses produces findings nobody trusts.
+ *
+ * ⚠️ THE LOOKBEHIND IS THE WHOLE CORRECTNESS OF THIS GATE — do not simplify it away.
+ *
+ * Without it these patterns match a SUBSTRING, so a fully-qualified path into ANOTHER repository —
+ * `/abs/path/to/agentalk-mcp-client/scripts/<launcher>.mjs`, which is exactly how the operator runbook
+ * tells you to invoke the launcher — matches on its trailing segment alone and is then reported
+ * missing from THIS repo. It is missing from this repo. It is also entirely present where it is
+ * being cited from, and the citation is correct.
+ *
+ * That bug shipped, and it manufactured the single most alarming line in [[BL-142]] — "the operator's
+ * live launch runbook cites a script that does not exist" — which was FALSE. It is the same trap
+ * `infra-invariant.mjs` documents against itself ("it would accept `apps/vendor/design/backlog.md`").
+ * A checker with a false-positive rate is worse than none: it spends the reader's trust, and the one
+ * real finding in the list gets discarded along with the noise.
  */
-const PATTERNS = [/design\/[A-Za-z0-9._/-]+\.md/g, /scripts\/[A-Za-z0-9._/-]+\.mjs/g];
+const BOUNDARY = '(?<![\\w./-])';
+const PATTERNS = [
+  new RegExp(`${BOUNDARY}design/[A-Za-z0-9._/-]+\\.md`, 'g'),
+  new RegExp(`${BOUNDARY}scripts/[A-Za-z0-9._/-]+\\.mjs`, 'g'),
+];
 
 const key = (citer, target) => `${citer} -> ${target}`;
 

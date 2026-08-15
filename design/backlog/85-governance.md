@@ -165,26 +165,50 @@ tags: [docs, governance, rot, operator, agent-md, fence-in-prose]
 -->
 - [todo · **filed 2026-08-15 · found by [[BL-141]]'s resolver · PRE-EXISTING, verified present at
   `289fa07` before the overhaul touched anything**] —
-  **16 live documents cite files that do not exist, and two of them are operating instructions.**
+  **69 citations from live documents do not resolve — but read the retraction first.**
 
-  Not a tidiness item. The two that matter:
+  **⛔ CORRECTION 2026-08-15, hours after filing, by the author: THIS ITEM'S HEADLINE CLAIM WAS
+  FALSE, and it was the most alarming line in it.** It read: *"`design/launch-and-monitor-runbook.md`
+  and `design/operator-seat/SKILL.md` both cite `scripts/launcher.mjs`, which is not in the repo —
+  the operator seat's LIVE launch contract points at nothing."*
 
-  1. **`design/launch-and-monitor-runbook.md` and `design/operator-seat/SKILL.md` both cite
-     `scripts/launcher.mjs`, which is not in the repo.** Those are the operator seat's LIVE
-     instructions for launching a session — the runbook is named in `AGENT.md` as "the contract".
-     The seat is told to invoke a launcher by absolute path and the path resolves to nothing.
-  2. **`AGENT.md` itself cites `scripts/attach-harness.mjs` and `scripts/test-attach-mode.mjs`** in
-     its Milestone 05 section, offered as the evidence that attach mode was verified. Both are gone.
+  **The launcher exists.** It lives in the client repo, and the runbook cites it *correctly*, by
+  fully-qualified absolute path: `node /abs/path/to/agentalk-mcp-client/scripts/launcher.mjs`. The
+  finding was manufactured by a **substring-matching bug in [[BL-141]]'s own checker**, which matched
+  the trailing segment of a path rooted in another repository and then reported it missing from this
+  one. Same for `explore-launch-worker.mjs`. Both are present in the client repo; both were verified
+  by listing it.
 
-  Others: `scripts/llm-agent.mjs` (3 docs), `scripts/mcp-bridge.mjs` (3), `scripts/smoke-llm-agent.mjs`
-  (2), `scripts/backlog-parse.mjs`, `scripts/explore-launch-worker.mjs`, `scripts/lib/protocol.mjs`
-  (cited from `packages/runtime-core/src/protocol/protocol.ts`), `design/bl091-investigation.md`
-  (from `SKILL.md`), `design/arbiter-shadow-corpus/README.md`, `design/operator/hl4-brief.md`.
+  This is precisely the trap `infra-invariant.mjs` documents against itself — *"it would accept
+  `apps/vendor/design/backlog.md`"* — committed by someone who had read that comment the same day.
+  The checker now requires a path boundary, a bar pins the cross-repo case, and the register fell
+  **78 → 69** on the fix alone.
+
+  **The lesson is the item, not the count: a checker with a false-positive rate is worse than no
+  checker.** It spends the reader's trust, and the real findings get discarded with the noise. Nine
+  of the first sixteen "findings" were noise.
+
+  **What survives the correction, verified per-path against git history and both repos:**
+
+  - `scripts/test-attach-mode.mjs` (5 citers) — **existed here and was deleted** (3 commits in this
+    repo's history). Cited by `AGENT.md` as Milestone 05's verification evidence.
+  - `scripts/attach-harness.mjs` (5), `scripts/mcp-bridge.mjs` (3), `scripts/smoke-llm-agent.mjs` (2),
+    `scripts/backlog-parse.mjs` (1) — **never committed at that path, in either repo.** `AGENT.md`
+    cites the first as how attach mode was "**Verified**". A claim about evidence, pointing at a file
+    that has never existed, is a different and more serious thing than a stale link.
+  - `scripts/llm-agent.mjs` (1) — real, and explicable: it **moved to the client repo's root** (31
+    commits here historically). The path is simply out of date.
+  - `scripts/launcher.mjs` (7 remaining) — **not dangling, ambiguous.** These are bare mentions
+    meaning the *client's* launcher without saying so. Arguably a doc defect (name the repo), not a
+    broken pointer.
+  - `design/backlog.md` (42) — mostly legitimate historical mentions created by Wave 1 itself
+    ("was `design/backlog.md` before"). Cheap to sweep, low value.
+  - `design/arbiter-shadow-corpus/README.md`, `design/bl091-investigation.md`, `scripts/lib/protocol.mjs`
+    (1 each) — genuinely unresolved, uninvestigated.
 
   **Two are NOT defects and must not be "fixed":** `design/session-primers/claude.md` and
   `CLAUDE.md`, cited by `logbook.md` — LB-12 names them precisely as files that must NEVER exist
-  (case-insensitive auto-slurp). A linter needs an allowlist for deliberate non-existence, or it
-  will teach its readers to ignore it.
+  (case-insensitive auto-slurp). They are on the checker's `NEVER_EXISTS` list.
 
   **Disposition is per-citation and needs a human:** a dead script may mean "renamed" (fix the
   pointer), "deleted" (delete the claim), or "never existed" (the claim was always false). Only the
